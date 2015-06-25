@@ -1,0 +1,9 @@
+.idea
+*.iml
+*.project
+*/target
+*/build
+*/bin
+build.gradle
+.DS_Store
+logback.xml

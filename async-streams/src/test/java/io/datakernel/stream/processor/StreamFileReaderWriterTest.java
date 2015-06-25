@@ -1,0 +1,146 @@
+/*
+ * Copyright (C) 2015 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.datakernel.stream.processor;
+
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.ByteBufQueue;
+import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.file.StreamFileWriter;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
+import static java.nio.file.StandardOpenOption.WRITE;
+import static org.junit.Assert.*;
+
+public class StreamFileReaderWriterTest {
+	EventloopStub eventloop;
+	ExecutorService executor;
+	StreamFileReader reader;
+
+	@Rule
+	public TemporaryFolder tempFolder = new TemporaryFolder();
+
+	@Before
+	public void before() {
+		eventloop = new EventloopStub();
+		executor = Executors.newCachedThreadPool();
+		reader = new StreamFileReader(eventloop, executor,
+				1, Paths.get("test_data/in.dat"), 0, Long.MAX_VALUE) {
+			@Override
+			public void send(ByteBuf item) {
+				if (item.toString().equals("1")) {
+					closeWithError(new Exception());
+					return;
+				}
+				super.send(item);
+			}
+		};
+	}
+
+	@Test
+	public void testStreamWriterOnError() throws IOException {
+		File tempFile = tempFolder.newFile("outWriterWithError.dat");
+		StreamFileWriter writer = new StreamFileWriter(eventloop, executor, Paths.get(tempFile.getAbsolutePath()),
+				new OpenOption[]{WRITE, TRUNCATE_EXISTING}, true);
+
+		reader.streamTo(writer);
+
+		eventloop.run();
+		assertTrue(reader.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
+	}
+
+	@Test
+	public void testStreamReaderOnCloseWithError() throws IOException {
+
+		File tempFile = tempFolder.newFile("outReaderWithError.dat");
+		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executor,
+				Paths.get(tempFile.getAbsolutePath()));
+
+		reader.streamTo(writer);
+		eventloop.run();
+
+		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
+		assertTrue(reader.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+	}
+
+	public byte[] mergeBuffers(List<ByteBuf> list) {
+		ByteBufQueue byteQueue = new ByteBufQueue();
+		for (ByteBuf element : list) {
+			byteQueue.add(element);
+		}
+
+		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
+		byteQueue.drainTo(buf);
+
+		return buf.array();
+	}
+
+	@Test
+	public void testStreamFileReader() throws IOException {
+		EventloopStub eventloop = new EventloopStub();
+		ExecutorService executor = Executors.newCachedThreadPool();
+
+		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
+		StreamFileReader reader = StreamFileReader.readFileFully(eventloop, executor,
+				1, Paths.get("test_data/in.dat"));
+
+		List<ByteBuf> list = new ArrayList<>();
+		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop, list);
+
+		reader.streamTo(consumer);
+		eventloop.run();
+
+		assertArrayEquals(fileBytes, mergeBuffers(list));
+	}
+
+	@Test
+	public void testStreamFileWriter() throws IOException {
+		EventloopStub eventloop = new EventloopStub();
+		ExecutorService executor = Executors.newCachedThreadPool();
+		File tempFile = tempFolder.newFile("out.dat");
+		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
+
+		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
+
+		StreamFileWriter writer = new StreamFileWriter(eventloop, executor, Paths.get(tempFile.getAbsolutePath()),
+				new OpenOption[]{WRITE, TRUNCATE_EXISTING}, false);
+
+		producer.streamTo(writer);
+		eventloop.run();
+
+		byte[] fileBytes = com.google.common.io.Files.toByteArray(tempFile);
+		assertArrayEquals(bytes, fileBytes);
+	}
+}
