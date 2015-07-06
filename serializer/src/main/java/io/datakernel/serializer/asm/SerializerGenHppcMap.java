@@ -16,18 +16,18 @@
 
 package io.datakernel.serializer.asm;
 
+import static com.google.common.base.CaseFormat.*;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Throwables.propagate;
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
+
+import java.util.Iterator;
+
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-
-import static com.google.common.base.CaseFormat.LOWER_CAMEL;
-import static com.google.common.base.CaseFormat.UPPER_CAMEL;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Throwables.propagate;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.getMethodDescriptor;
-import static org.objectweb.asm.Type.getType;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenHppcMap implements SerializerGen {
@@ -76,34 +76,34 @@ public final class SerializerGenHppcMap implements SerializerGen {
 	                      Class<?> sourceType) {
 		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
 		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKEINTERFACE, getType(mapType).getInternalName(), "size", "()I");
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(mapType), "size", getMethodDescriptor(INT_TYPE));
 		backend.writeVarIntGen(mv);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKEINTERFACE, getType(mapType).getInternalName(), "iterator", "()Ljava/util/Iterator;");
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(mapType), "iterator", getMethodDescriptor(getType(Iterator.class)));
 		mv.visitVarInsn(ASTORE, locals + VAR_I);
 
 		Label loop = new Label();
 		mv.visitLabel(loop);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z");
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Iterator.class), "hasNext", getMethodDescriptor(BOOLEAN_TYPE));
 		Label exit = new Label();
 		mv.visitJumpInsn(IFEQ, exit);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;");
-		mv.visitTypeInsn(CHECKCAST, getType(iteratorType).getInternalName());
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Iterator.class), "next", getMethodDescriptor(getType(Object.class)));
+		mv.visitTypeInsn(CHECKCAST, getInternalName(iteratorType));
 		mv.visitVarInsn(ASTORE, locals + VAR_CURSOR);
 
 		mv.visitVarInsn(ALOAD, varContainer);
 		mv.visitVarInsn(ALOAD, locals + VAR_CURSOR);
-		mv.visitFieldInsn(GETFIELD, getType(iteratorType).getInternalName(), "key", getType(keyType).getDescriptor());
+		mv.visitFieldInsn(GETFIELD, getInternalName(iteratorType), "key", getDescriptor(keyType));
 		serializerCaller.serialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, keyType);
 
 		mv.visitVarInsn(ALOAD, varContainer);
 		mv.visitVarInsn(ALOAD, locals + VAR_CURSOR);
-		mv.visitFieldInsn(GETFIELD, getType(iteratorType).getInternalName(), "value", getType(valueType).getDescriptor());
+		mv.visitFieldInsn(GETFIELD, getInternalName(iteratorType), "value", getDescriptor(valueType));
 		serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueType);
 
 		mv.visitJumpInsn(GOTO, loop);
@@ -114,10 +114,10 @@ public final class SerializerGenHppcMap implements SerializerGen {
 	@Override
 	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals,
 	                        SerializerCaller serializerCaller, Class<?> targetType) {
-		mv.visitTypeInsn(NEW, getType(hashMapType).getInternalName());
+		mv.visitTypeInsn(NEW, getInternalName(hashMapType));
 		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
 		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKESPECIAL, getType(hashMapType).getInternalName(), "<init>", "()V");
+		mv.visitMethodInsn(INVOKESPECIAL, getInternalName(hashMapType), "<init>", getMethodDescriptor(VOID_TYPE));
 
 		backend.readVarIntGen(mv);
 		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH);
@@ -138,7 +138,7 @@ public final class SerializerGenHppcMap implements SerializerGen {
 		mv.visitVarInsn(ALOAD, varContainer);
 		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueType);
 
-		mv.visitMethodInsn(INVOKEVIRTUAL, getType(hashMapType).getInternalName(), "put", getMethodDescriptor(getType(valueType), getType(keyType), getType(valueType)));
+		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(hashMapType), "put", getMethodDescriptor(getType(valueType), getType(keyType), getType(valueType)));
 
 		if (getType(valueType).getSize() == 2)
 			mv.visitInsn(POP2);
@@ -182,7 +182,6 @@ public final class SerializerGenHppcMap implements SerializerGen {
 	@Override
 	public int hashCode() {
 		int result = keySerializer.hashCode();
-		result = 31 * result + valueSerializer.hashCode();
-		return result;
+		return 31 * result + valueSerializer.hashCode();
 	}
 }

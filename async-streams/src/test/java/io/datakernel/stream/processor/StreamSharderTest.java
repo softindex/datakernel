@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Functions;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -42,7 +42,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void test1() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -63,7 +63,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void test2() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -84,7 +84,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -125,7 +125,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void testEndofStream() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -166,7 +166,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 

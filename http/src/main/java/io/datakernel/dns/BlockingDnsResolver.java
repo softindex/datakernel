@@ -78,6 +78,7 @@ public abstract class BlockingDnsResolver {
 							eventloop.postConcurrently(new Runnable() {
 								@Override
 								public void run() {
+									concurrentOperationTracker.complete();
 									callback.onResult(inetAddresses);
 								}
 							});
@@ -85,6 +86,7 @@ public abstract class BlockingDnsResolver {
 							eventloop.postConcurrently(new Runnable() {
 								@Override
 								public void run() {
+									concurrentOperationTracker.complete();
 									callback.onException(e);
 								}
 							});
@@ -92,12 +94,11 @@ public abstract class BlockingDnsResolver {
 							eventloop.postConcurrently(new Runnable() {
 								@Override
 								public void run() {
+									concurrentOperationTracker.complete();
 									if (e.getCause() instanceof Exception)
 										callback.onException((Exception) e.getCause());
 								}
 							});
-						} finally {
-							concurrentOperationTracker.complete();
 						}
 					}
 				}, sameThreadExecutor());

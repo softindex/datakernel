@@ -23,6 +23,39 @@
         <module>simplefs</module>
     </modules>
 
+    <name>DataKernel Framework</name>
+    <description>
+        DataKernel Java framework allows to build scalable, extremely fast and resilient network applications.
+        It uses unified 'Event Loop' architecture and allows to build everything from asynchronous I/O operations on standalone servers to efficient Big Data cluster solutions.
+    </description>
+    <url>http://datakernel.io/</url>
+
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/softindex/datakernel</url>
+        <connection>scm:git:git@github.com:softindex/datakernel.git</connection>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>dvolvach</id>
+            <name>Dmitry Volvach</name>
+            <email>dmitry@datakernel.io</email>
+            <timezone>UTC+2</timezone>
+            <roles>
+                <role>owner</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
     <dependencies>
         <dependency>
             <groupId>junit</groupId>

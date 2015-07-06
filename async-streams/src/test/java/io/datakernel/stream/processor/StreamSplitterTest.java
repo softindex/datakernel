@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -33,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 public class StreamSplitterTest {
 	@Test
 	public void test1() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
@@ -51,7 +51,7 @@ public class StreamSplitterTest {
 
 	@Test
 	public void testConsumerDisconnectWithError() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
@@ -97,7 +97,7 @@ public class StreamSplitterTest {
 
 	@Test
 	public void testEndOfStream() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
@@ -143,7 +143,7 @@ public class StreamSplitterTest {
 
 	@Test
 	public void testProducerDisconnectWithError() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),

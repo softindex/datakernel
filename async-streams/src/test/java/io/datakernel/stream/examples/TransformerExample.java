@@ -17,7 +17,7 @@
 package io.datakernel.stream.examples;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamDataReceiver;
@@ -54,7 +54,7 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1_Stat
 	}
 
 	public static void main(String[] args) {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<String> source = ofIterable(eventloop, asList("testdata", "testdata1", "testdata1000"));
 

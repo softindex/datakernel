@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Predicate;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -34,7 +34,7 @@ import static org.junit.Assert.assertTrue;
 public class StreamFilterTest {
 	@Test
 	public void test1() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 
@@ -58,7 +58,7 @@ public class StreamFilterTest {
 
 	@Test
 	public void testWithError() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
@@ -101,7 +101,7 @@ public class StreamFilterTest {
 
 	@Test
 	public void testEndOfStream() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
@@ -145,7 +145,7 @@ public class StreamFilterTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDisconnectWithError() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2, 3)),

@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -37,7 +37,7 @@ import static org.junit.Assert.assertTrue;
 public class StreamUnionTest {
 	@Test
 	public void test1() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -76,7 +76,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -119,7 +119,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testEndOfStream() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -162,7 +162,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testProducerWithError() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 

@@ -47,7 +47,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.jmx.MBeanUtils.register;
 
 /**
@@ -107,7 +106,11 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	/**
 	 * The thread where eventloop is running
 	 */
-	private Thread dispatchThread;
+	private Thread eventloopThread;
+	/**
+	 * The desired name of the thread
+	 */
+	private String threadName;
 
 	private volatile boolean keepAlive;
 	private volatile boolean breakEventloop;
@@ -191,7 +194,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	}
 
 	public boolean inEventloopThread() {
-		return dispatchThread == null || dispatchThread == Thread.currentThread();
+		return eventloopThread == null || eventloopThread == Thread.currentThread();
 	}
 
 	/**
@@ -217,11 +220,22 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	}
 
 	/**
+	 * Sets the desired name of the thread
+	 */
+	public void setThreadName(String threadName) {
+		this.threadName = threadName;
+		if (eventloopThread != null)
+			eventloopThread.setName(threadName);
+	}
+
+	/**
 	 * Overridden method from Runnable that executes tasks while this eventloop is alive.
 	 */
 	@Override
 	public void run() {
-		dispatchThread = Thread.currentThread();
+		eventloopThread = Thread.currentThread();
+		if (threadName != null)
+			eventloopThread.setName(threadName);
 		ensureSelector();
 		breakEventloop = false;
 
@@ -237,17 +251,17 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 				updateSelectorSelectTimeStats();
 
 				processSelectedKeys(selector.selectedKeys());
-				executeScheduledTasks();
-				executeLocalTasks();
 				executeConcurrentTasks();
+				executeScheduledTasks();
 				executeBackgroundTasks();
+				executeLocalTasks();
 			} catch (Exception e) {
 				updateExceptionCounter(UNCHECKED_MARKER, e, selector);
 				logger.error("Exception in dispatch loop", e);
 			}
 		}
 
-		dispatchThread = null;
+		eventloopThread = null;
 		if (selector.keys().isEmpty()) {
 			closeSelector();
 			logger.trace("End of event loop {}", this);
@@ -822,8 +836,13 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 
 			@Override
 			public void complete() {
-				checkState(complete.compareAndSet(false, true));
-				checkState(concurrentOperationsCount.getAndDecrement() > 0);
+				if (complete.compareAndSet(false, true)) {
+					if (concurrentOperationsCount.decrementAndGet() < 0) {
+						logger.error("Concurrent operations count < 0");
+					}
+				} else {
+					logger.error("Concurrent operation is already complete");
+				}
 			}
 		};
 	}
@@ -911,7 +930,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 
 	@Override
 	public String getThreadName() {
-		return (dispatchThread == null) ? null : dispatchThread.getName();
+		return (eventloopThread == null) ? null : eventloopThread.getName();
 	}
 
 }

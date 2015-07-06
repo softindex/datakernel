@@ -65,6 +65,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		private RequestSenderFactory requestSenderFactory;
 		private RpcMessage.RpcMessageData pingMessage;
 		private Integer countAwaitsConnects;
+		private Logger parentLogger;
 
 		public Builder(NioEventloop eventloop) {
 			this(eventloop, new RpcClientSettings());
@@ -129,6 +130,12 @@ public final class RpcClient implements NioService, RpcClientMBean {
 			return this;
 		}
 
+		public Builder parentLogger(Logger logger) {
+			checkNotNull(logger, "Logger must not be null");
+			this.parentLogger = logger;
+			return this;
+		}
+
 		public RpcClient build() {
 			checkNotNull(serializer, "RpcMessageSerializer is no set");
 			checkNotNull(protocolFactory, "RpcProtocolFactory is no set");
@@ -138,14 +145,15 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		}
 
 		private int getCountAwaitsConnects() {
-			if (countAwaitsConnects == null || countAwaitsConnects == RpcClientSettings.DEFAULT_ALL_CONNECTIONS)
-				return settings.getAddresses().size();
+			if (countAwaitsConnects == null || countAwaitsConnects == RpcClientSettings.DEFAULT_ALL_CONNECTIONS) {
+				return Math.min(settings.getMinAliveConnections(), settings.getAddresses().size());
+			}
 			checkArgument(countAwaitsConnects >= 0 && countAwaitsConnects <= settings.getAddresses().size());
 			return countAwaitsConnects;
 		}
 	}
 
-	private static final Logger logger = LoggerFactory.getLogger(RpcClient.class);
+	private final Logger logger;
 	private final RpcClientConnectionPool connections;
 	private final NioEventloop eventloop;
 	private final List<InetSocketAddress> addresses;
@@ -187,6 +195,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		this.pingIntervalMillis = builder.settings.getPingIntervalMillis();
 		this.pingAmountFailed = builder.settings.getPingAmountFailed();
 		this.addressesString = addresses.toString();
+		this.logger = LoggerFactory.getLogger((builder.parentLogger == null) ? RpcClient.class.getSimpleName() :
+				builder.parentLogger.getName() + "$" + RpcClient.class.getSimpleName());
 	}
 
 	@Override
@@ -249,7 +259,6 @@ public final class RpcClient implements NioService, RpcClientMBean {
 				completed = true;
 				logger.error(exception.getMessage());
 				connectCompletion.onException(exception);
-				closeConnections();
 			}
 		};
 		eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, new Runnable() {
@@ -401,13 +410,9 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	}
 
 	// JMX
-	public void registerMBean(MBeanServer mbeanServer, String domain, String serviceName, int clientId) {
-		registerMBean(mbeanServer, domain, serviceName, Integer.toString(clientId));
-	}
-
-	public void registerMBean(MBeanServer mbeanServer, String domain, String serviceName, String clientId) {
-		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, RpcClient.class.getSimpleName() + "#" + clientId), this);
-		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, RpcClientConnectionPool.class.getSimpleName() + "#" + clientId), connections);
+	public void registerMBean(MBeanServer mbeanServer, String domain, String serviceName, String clientName) {
+		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClient.class.getSimpleName()), this);
+		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClientConnectionPool.class.getSimpleName()), connections);
 	}
 
 	@Override

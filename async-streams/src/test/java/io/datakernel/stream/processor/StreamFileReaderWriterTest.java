@@ -18,7 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ByteBufQueue;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -44,7 +44,7 @@ import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.*;
 
 public class StreamFileReaderWriterTest {
-	EventloopStub eventloop;
+	NioEventloop eventloop;
 	ExecutorService executor;
 	StreamFileReader reader;
 
@@ -53,7 +53,7 @@ public class StreamFileReaderWriterTest {
 
 	@Before
 	public void before() {
-		eventloop = new EventloopStub();
+		eventloop = new NioEventloop();
 		executor = Executors.newCachedThreadPool();
 		reader = new StreamFileReader(eventloop, executor,
 				1, Paths.get("test_data/in.dat"), 0, Long.MAX_VALUE) {
@@ -109,7 +109,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileReader() throws IOException {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -127,7 +127,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileWriter() throws IOException {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};

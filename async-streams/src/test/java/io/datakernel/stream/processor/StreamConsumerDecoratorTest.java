@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumerDecorator;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -34,7 +34,7 @@ import static org.junit.Assert.assertTrue;
 public class StreamConsumerDecoratorTest {
 	@Test
 	public void test2() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListOneByOne(eventloop, list);
@@ -55,7 +55,7 @@ public class StreamConsumerDecoratorTest {
 
 	@Test
 	public void test1() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
 		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<>(eventloop, consumer);

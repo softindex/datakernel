@@ -23,7 +23,7 @@ import io.datakernel.cube.dimensiontype.DimensionType;
 import io.datakernel.cube.dimensiontype.DimensionTypeInt;
 import io.datakernel.cube.dimensiontype.DimensionTypeString;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
@@ -58,7 +58,7 @@ public class StringDimensionTest {
 	@Test
 	public void testQuery() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure cubeStructure = cubeStructureWithStringDimension(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);

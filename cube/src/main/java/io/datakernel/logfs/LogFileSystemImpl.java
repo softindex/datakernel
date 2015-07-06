@@ -37,9 +37,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
-import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
-
 /**
  * Represents a file system for persisting logs. Stores files in a local file system.
  */
@@ -167,14 +164,24 @@ public final class LogFileSystemImpl implements LogFileSystem {
 							return FileVisitResult.CONTINUE;
 						}
 					});
-					postResultConcurrently(eventloop, callback, entries);
-				} catch (IOException e) {
+					eventloop.postConcurrently(new Runnable() {
+						@Override
+						public void run() {
+							callback.onResult(entries);
+							concurrentOperationTracker.complete();
+						}
+					});
+				} catch (final IOException e) {
 					// TODO ?
 					logger.error("walkFileTree error", e);
-					postExceptionConcurrently(eventloop, callback, e);
+					eventloop.postConcurrently(new Runnable() {
+						@Override
+						public void run() {
+							callback.onException(e);
+							concurrentOperationTracker.complete();
+						}
+					});
 				}
-
-				concurrentOperationTracker.complete();
 			}
 		});
 	}

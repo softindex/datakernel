@@ -31,7 +31,7 @@ import java.nio.channels.SocketChannel;
  * and in which sides can exchange {@link ByteBuf}.
  */
 public abstract class TcpSocketConnection extends SocketConnection {
-	public static final int DEFAULT_TCP_BUFFER_SIZE = 16384;
+	public static final int DEFAULT_TCP_BUFFER_SIZE = 256 * 1024;
 
 	protected final SocketChannel channel;
 	protected final InetSocketAddress remoteSocketAddress;

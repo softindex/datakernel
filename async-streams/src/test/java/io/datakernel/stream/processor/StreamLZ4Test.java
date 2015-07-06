@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -63,7 +63,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void test() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);

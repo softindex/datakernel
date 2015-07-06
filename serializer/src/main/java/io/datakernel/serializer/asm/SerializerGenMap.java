@@ -16,17 +16,19 @@
 
 package io.datakernel.serializer.asm;
 
+import static com.google.common.base.Preconditions.*;
+import static io.datakernel.serializer.asm.Utils.castSourceType;
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
+
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+
 import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.serializer.asm.Utils.castSourceType;
-import static org.objectweb.asm.Opcodes.*;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenMap implements SerializerGen {
@@ -65,36 +67,38 @@ public final class SerializerGenMap implements SerializerGen {
 
 		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
 		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "size", "()I");
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Map.class), "size", getMethodDescriptor(INT_TYPE));
 		backend.writeVarIntGen(mv);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map", "entrySet", "()Ljava/util/Set;");
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Set", "iterator", "()Ljava/util/Iterator;");
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Map.class), "entrySet", getMethodDescriptor(getType(Set.class)));
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Set.class), "iterator", getMethodDescriptor(getType(Iterator.class)));
 		mv.visitVarInsn(ASTORE, locals + VAR_I);
 
 		Label loop = new Label();
 		mv.visitLabel(loop);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "hasNext", "()Z");
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Iterator.class), "hasNext", getMethodDescriptor(BOOLEAN_TYPE));
 		Label exit = new Label();
 		mv.visitJumpInsn(IFEQ, exit);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Iterator", "next", "()Ljava/lang/Object;");
-		mv.visitTypeInsn(CHECKCAST, "java/util/Map$Entry");
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Iterator.class), "next", getMethodDescriptor(getType(Object.class)));
+		mv.visitTypeInsn(CHECKCAST, getInternalName(Map.Entry.class));
 		mv.visitVarInsn(ASTORE, locals + VAR_ENTRY);
 
 		mv.visitVarInsn(ALOAD, varContainer);
 		mv.visitVarInsn(ALOAD, locals + VAR_ENTRY);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map$Entry", "getKey", "()Ljava/lang/Object;");
-		serializerCaller.serialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, Object.class);
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Map.Entry.class), "getKey", getMethodDescriptor(getType(Object.class)));
+		mv.visitTypeInsn(CHECKCAST, getInternalName(keySerializer.getRawType()));
+		serializerCaller.serialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, keySerializer.getRawType());
 
 		mv.visitVarInsn(ALOAD, varContainer);
 		mv.visitVarInsn(ALOAD, locals + VAR_ENTRY);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/Map$Entry", "getValue", "()Ljava/lang/Object;");
-		serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, Object.class);
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Map.Entry.class), "getValue", getMethodDescriptor(getType(Object.class)));
+		mv.visitTypeInsn(CHECKCAST, getInternalName(valueSerializer.getRawType()));
+		serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
 
 		mv.visitJumpInsn(GOTO, loop);
 
@@ -108,9 +112,9 @@ public final class SerializerGenMap implements SerializerGen {
 		backend.readVarIntGen(mv);
 		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH); // TODO (vsavchuk): max size check
 
-		mv.visitTypeInsn(NEW, "java/util/LinkedHashMap");
+		mv.visitTypeInsn(NEW, getInternalName(LinkedHashMap.class));
 		mv.visitInsn(DUP);
-		mv.visitMethodInsn(INVOKESPECIAL, "java/util/LinkedHashMap", "<init>", "()V");
+		mv.visitMethodInsn(INVOKESPECIAL, getInternalName(LinkedHashMap.class), "<init>", getMethodDescriptor(VOID_TYPE));
 		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
 
 		mv.visitInsn(ICONST_0);
@@ -126,11 +130,12 @@ public final class SerializerGenMap implements SerializerGen {
 		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
 
 		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, Object.class);
+		serializerCaller.deserialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, keySerializer.getRawType());
 		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, Object.class);
+		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
 
-		mv.visitMethodInsn(INVOKEVIRTUAL, "java/util/LinkedHashMap", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
+		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(LinkedHashMap.class), "put",
+				getMethodDescriptor(getType(Object.class), getType(Object.class), getType(Object.class)));
 		mv.visitInsn(POP);
 
 		mv.visitIincInsn(locals + VAR_I, 1);

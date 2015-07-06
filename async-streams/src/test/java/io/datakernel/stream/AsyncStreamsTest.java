@@ -17,7 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.AsyncGetterWithSetter;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import org.junit.Test;
 
 import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
@@ -27,7 +27,7 @@ import static org.junit.Assert.*;
 public class AsyncStreamsTest {
 	@Test
 	public void testDelayedProducer() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 

@@ -19,11 +19,11 @@ package io.datakernel.net;
 import static com.google.common.base.Preconditions.checkArgument;
 
 public final class ConnectSettings {
-	public static final long DEFAULT_RECONNECT_MILLIS = 30_000;
+	public static final int DEFAULT_RECONNECT_MILLIS = 30_000;
 
 	private final int connectTimeoutMillis;
 	private final int attemptsReconnection;
-	private final long reconnectIntervalMillis;
+	private final int reconnectIntervalMillis;
 
 	public ConnectSettings() {
 		this(0); // infinite timeout
@@ -33,7 +33,7 @@ public final class ConnectSettings {
 		this(connectTimeoutMillis, 0, DEFAULT_RECONNECT_MILLIS);
 	}
 
-	public ConnectSettings(int connectTimeoutMillis, int attemptsReconnection, long reconnectIntervalMillis) {
+	public ConnectSettings(int connectTimeoutMillis, int attemptsReconnection, int reconnectIntervalMillis) {
 		checkArgument(connectTimeoutMillis >= 0, "connectTimeoutMillis must be positive value, got %s", connectTimeoutMillis);
 		checkArgument(attemptsReconnection >= 0, "attemptsReconnection must be positive value, got %s", attemptsReconnection);
 		checkArgument(reconnectIntervalMillis >= 0, "reconnectIntervalMillis must be positive value, got %s", reconnectIntervalMillis);
@@ -50,7 +50,7 @@ public final class ConnectSettings {
 		return new ConnectSettings(connectTimeoutMillis, attemptsReconnection, reconnectIntervalMillis);
 	}
 
-	public ConnectSettings reconnectIntervalMillis(long reconnectIntervalMillis) {
+	public ConnectSettings reconnectIntervalMillis(int reconnectIntervalMillis) {
 		return new ConnectSettings(connectTimeoutMillis, attemptsReconnection, reconnectIntervalMillis);
 	}
 
@@ -62,7 +62,7 @@ public final class ConnectSettings {
 		return attemptsReconnection;
 	}
 
-	public long reconnectIntervalMillis() {
+	public int reconnectIntervalMillis() {
 		return reconnectIntervalMillis;
 	}
 

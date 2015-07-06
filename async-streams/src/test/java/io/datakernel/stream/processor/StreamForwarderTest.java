@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
@@ -33,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 public class StreamForwarderTest {
 	@Test
 	public void test1() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = Arrays.asList(1, 2, 3);
 
@@ -51,7 +51,7 @@ public class StreamForwarderTest {
 
 	@Test
 	public void test2() {
-		final EventloopStub eventloop = new EventloopStub();
+		final NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = Arrays.asList(1, 2, 3);
 
@@ -80,7 +80,7 @@ public class StreamForwarderTest {
 
 	@Test
 	public void test3() {
-		final EventloopStub eventloop = new EventloopStub();
+		final NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> producer = StreamProducers.ofValue(eventloop, 1);
 		final StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
@@ -102,7 +102,7 @@ public class StreamForwarderTest {
 
 	@Test
 	public void test4() {
-		final EventloopStub eventloop = new EventloopStub();
+		final NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> producer = StreamProducers.closing(eventloop);
 		final StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
@@ -124,7 +124,7 @@ public class StreamForwarderTest {
 
 	@Test
 	public void test5() {
-		final EventloopStub eventloop = new EventloopStub();
+		final NioEventloop eventloop = new NioEventloop();
 
 		Exception e = new Exception();
 		StreamProducer<Integer> producer = StreamProducers.closingWithError(eventloop, e);
@@ -148,7 +148,7 @@ public class StreamForwarderTest {
 
 	@Test
 	public void test6() {
-		final EventloopStub eventloop = new EventloopStub();
+		final NioEventloop eventloop = new NioEventloop();
 
 		final StreamProducer<Integer> producer = StreamProducers.ofValue(eventloop, 1);
 		final StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);

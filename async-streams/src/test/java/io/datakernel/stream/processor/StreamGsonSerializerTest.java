@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.gson.Gson;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
@@ -71,7 +71,7 @@ public class StreamGsonSerializerTest {
 	public void test1() throws Exception {
 		List<TestItem> items = asList(new TestItem(1, "item1"), new TestItem(1, "item2"), new TestItem(1, "item3"));
 
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamGsonSerializer<TestItem> serializerStream = new StreamGsonSerializer<>(eventloop, new Gson(), TestItem.class, 1, 50, 0);
 

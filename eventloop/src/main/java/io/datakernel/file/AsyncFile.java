@@ -96,10 +96,10 @@ public final class AsyncFile implements File {
 				eventloop.postConcurrently(new Runnable() {
 					@Override
 					public void run() {
+						tracker.complete();
 						callback.onResult(result);
 					}
 				});
-				tracker.complete();
 			}
 
 			@Override
@@ -107,10 +107,10 @@ public final class AsyncFile implements File {
 				eventloop.postConcurrently(new Runnable() {
 					@Override
 					public void run() {
+						tracker.complete();
 						callback.onException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
 				});
-				tracker.complete();
 			}
 		});
 	}
@@ -133,10 +133,10 @@ public final class AsyncFile implements File {
 				eventloop.postConcurrently(new Runnable() {
 					@Override
 					public void run() {
+						tracker.complete();
 						callback.onResult(result);
 					}
 				});
-				tracker.complete();
 			}
 
 			@Override
@@ -144,10 +144,10 @@ public final class AsyncFile implements File {
 				eventloop.postConcurrently(new Runnable() {
 					@Override
 					public void run() {
+						tracker.complete();
 						callback.onException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
 				});
-				tracker.complete();
 			}
 		});
 	}
@@ -163,10 +163,10 @@ public final class AsyncFile implements File {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onComplete();
 						}
 					});
-					tracker.complete();
 				} else {
 					if (cancelled.get()) {
 						tracker.complete();
@@ -181,10 +181,10 @@ public final class AsyncFile implements File {
 				eventloop.postConcurrently(new Runnable() {
 					@Override
 					public void run() {
+						tracker.complete();
 						callback.onException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
 				});
-				tracker.complete();
 			}
 		});
 	}
@@ -222,10 +222,10 @@ public final class AsyncFile implements File {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onComplete();
 						}
 					});
-					tracker.complete();
 				} else {
 					if (cancelled.get()) {
 						tracker.complete();
@@ -240,10 +240,10 @@ public final class AsyncFile implements File {
 				eventloop.postConcurrently(new Runnable() {
 					@Override
 					public void run() {
+						tracker.complete();
 						callback.onException(exc instanceof Exception ? (Exception) exc : new Exception(exc));
 					}
 				});
-				tracker.complete();
 			}
 		});
 	}

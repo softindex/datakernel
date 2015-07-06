@@ -16,13 +16,14 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
 
 import java.net.InetAddress;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.objectweb.asm.Opcodes.*;
+import io.datakernel.serializer.SerializerCaller;
+import org.objectweb.asm.MethodVisitor;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenInetAddress implements SerializerGen {
@@ -55,7 +56,7 @@ public class SerializerGenInetAddress implements SerializerGen {
 	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
 		Utils.castSourceType(mv, sourceType, InetAddress.class);
 
-		mv.visitMethodInsn(INVOKEVIRTUAL, "java/net/InetAddress", "getAddress", "()[B");
+		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(InetAddress.class), "getAddress", getMethodDescriptor(getType(byte[].class)));
 		mv.visitInsn(ICONST_0);
 		mv.visitLdcInsn(4);
 		backend.writeBytesGen(mv);
@@ -73,6 +74,6 @@ public class SerializerGenInetAddress implements SerializerGen {
 		mv.visitLdcInsn(4);
 		backend.readBytesGen(mv);
 		mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-		mv.visitMethodInsn(INVOKESTATIC, "java/net/InetAddress", "getByAddress", "([B)Ljava/net/InetAddress;");
+		mv.visitMethodInsn(INVOKESTATIC, getInternalName(InetAddress.class), "getByAddress", getMethodDescriptor(getType(InetAddress.class), getType(byte[].class)));
 	}
 }

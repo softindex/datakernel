@@ -28,7 +28,6 @@ import io.datakernel.cube.api.CubePredicatesGsonSerializer;
 import io.datakernel.cube.api.CubeQueryGsonSerializer;
 import io.datakernel.cube.dimensiontype.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopStub;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.logfs.LogFileSystemImpl;
 import io.datakernel.logfs.LogManager;
@@ -145,7 +144,7 @@ public class LogToCubeTest {
 	@Test
 	public void testStubStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub aggregationStorage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure structure = getStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, new LogToCubeMetadataStorageStub(), aggregationStorage, structure);
@@ -207,7 +206,7 @@ public class LogToCubeTest {
 
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		ExecutorService executor = Executors.newCachedThreadPool();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		LogToCubeMetadataStorageSql metadataStorage = new LogToCubeMetadataStorageSql(eventloop, executor, jooqConfiguration, new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration));
 
 		CubeStructure structure = getStructure(classLoader);
@@ -361,7 +360,7 @@ public class LogToCubeTest {
 			@Override
 			public void run() {
 				ExecutorService executor = Executors.newCachedThreadPool();
-				EventloopStub eventloop = new EventloopStub();
+				NioEventloop eventloop = new NioEventloop();
 				LogToCubeMetadataStorageSql metadataStorage = new LogToCubeMetadataStorageSql(eventloop, executor, jooqConfiguration, new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration));
 
 				CubeStructure structure = getStructure(classLoader);

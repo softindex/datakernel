@@ -22,7 +22,7 @@ import com.google.common.reflect.TypeToken;
 import io.datakernel.asm.DefiningClassLoader;
 import io.datakernel.async.CompletionCallbackObserver;
 import io.datakernel.cube.LogToCubeTest.TestAdvResult;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.logfs.LogFileSystemImpl;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
@@ -57,7 +57,7 @@ public class CubeBenchmark {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Path aggregationsDir = Paths.get("test/aggregations/");
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		for (int i = 0; i < iterations + 1; ++i) {
 			if (i == iterations - 1) {

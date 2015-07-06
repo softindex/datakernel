@@ -16,14 +16,14 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
 
 import java.nio.ByteBuffer;
 
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializerCaller;
+import org.objectweb.asm.MethodVisitor;
 
 public class SerializerGenByteBuffer implements SerializerGen {
 	private static final int VAR_BYTEBUFFER = 0;
@@ -59,15 +59,15 @@ public class SerializerGenByteBuffer implements SerializerGen {
 	                      Class<?> sourceType) {
 		mv.visitVarInsn(ASTORE, locals + VAR_BYTEBUFFER);
 		mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "array", "()[B");
+		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "array", getMethodDescriptor(getType(byte[].class)));
 		mv.visitVarInsn(ASTORE, locals + VAR_ARRAY);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "position", "()I");
+		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "position", getMethodDescriptor(INT_TYPE));
 		mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_OFFSET);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "remaining", "()I");
+		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "remaining", getMethodDescriptor(INT_TYPE));
 		mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_LENGTH);
 
 		mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
@@ -87,18 +87,18 @@ public class SerializerGenByteBuffer implements SerializerGen {
 		mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_LENGTH);
 		if (wrapped) {
 			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "array", "()[B");
+			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "array", getMethodDescriptor(getType(byte[].class)));
 			mv.visitVarInsn(ASTORE, locals + VAR_ARRAY);
 
 			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "position", "()I");
+			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "position", getMethodDescriptor(INT_TYPE));
 			mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_OFFSET);
 
 			mv.visitVarInsn(ALOAD, varContainer);
 			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_OFFSET);
 			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
 			mv.visitInsn(IADD);
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "position", "(I)V");
+			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "position", getMethodDescriptor(VOID_TYPE, INT_TYPE));
 
 			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
 			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_OFFSET);
@@ -111,7 +111,7 @@ public class SerializerGenByteBuffer implements SerializerGen {
 			mv.visitVarInsn(ASTORE, locals + VAR_BYTEBUFFER);
 			mv.visitVarInsn(ALOAD, varContainer);
 			mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "array", "()[B");
+			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "array", getMethodDescriptor(getType(byte[].class)));
 			mv.visitInsn(ICONST_0);
 			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
 			backend.readBytesGen(mv);

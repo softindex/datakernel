@@ -16,11 +16,13 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.time.SettableCurrentTimeProvider;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDateTime;
 import org.junit.Rule;
@@ -38,8 +40,9 @@ public class LogManagerTest {
 
 	@Test
 	public void testConsumer() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
-		eventloop.setTimestamp(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
+		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
+		NioEventloop eventloop = new NioEventloop(ByteBufPool.defaultInstance(), timeProvider);
+		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Path dir = temporaryFolder.newFolder().toPath();
 		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, dir);
@@ -47,11 +50,11 @@ public class LogManagerTest {
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("1", "2", "3").iterator())
 				.streamTo(logManager.consumer("p1"));
 		eventloop.run();
-		eventloop.setTimestamp(new LocalDateTime("1970-01-01T00:50:00").toDateTime(DateTimeZone.UTC).getMillis());
+		timeProvider.setTime(new LocalDateTime("1970-01-01T00:50:00").toDateTime(DateTimeZone.UTC).getMillis());
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("4", "5", "6").iterator())
 				.streamTo(logManager.consumer("p1"));
 		eventloop.run();
-		eventloop.setTimestamp(new LocalDateTime("1970-01-01T01:50:00").toDateTime(DateTimeZone.UTC).getMillis());
+		timeProvider.setTime(new LocalDateTime("1970-01-01T01:50:00").toDateTime(DateTimeZone.UTC).getMillis());
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("7", "8", "9").iterator())
 				.streamTo(logManager.consumer("p1"));
 		eventloop.run();

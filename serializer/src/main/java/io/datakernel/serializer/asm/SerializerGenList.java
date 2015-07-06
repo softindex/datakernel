@@ -16,17 +16,17 @@
 
 package io.datakernel.serializer.asm;
 
+import static com.google.common.base.Preconditions.*;
+import static io.datakernel.serializer.asm.Utils.castSourceType;
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
+
+import java.util.Arrays;
+import java.util.List;
+
 import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
-
-import java.util.List;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.serializer.asm.Utils.castSourceType;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.getInternalName;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenList implements SerializerGen {
@@ -62,7 +62,7 @@ public final class SerializerGenList implements SerializerGen {
 
 		mv.visitInsn(DUP);
 		mv.visitVarInsn(ASTORE, locals + VAR_LIST);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "size", "()I");
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(List.class), "size", getMethodDescriptor(INT_TYPE));
 
 		mv.visitInsn(DUP);
 		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH);
@@ -79,8 +79,9 @@ public final class SerializerGenList implements SerializerGen {
 		mv.visitVarInsn(ALOAD, varContainer);
 		mv.visitVarInsn(ALOAD, locals + VAR_LIST);
 		mv.visitVarInsn(ILOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, "java/util/List", "get", "(I)Ljava/lang/Object;");
-		serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, Object.class);
+		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(List.class), "get", getMethodDescriptor(getType(Object.class), INT_TYPE));
+		mv.visitTypeInsn(CHECKCAST, getInternalName(valueSerializer.getRawType()));
+		serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
 		mv.visitIincInsn(locals + VAR_I, 1);
 		mv.visitJumpInsn(GOTO, loop);
 		mv.visitLabel(exit);
@@ -107,14 +108,14 @@ public final class SerializerGenList implements SerializerGen {
 		mv.visitVarInsn(ALOAD, locals + VAR_LIST);
 		mv.visitVarInsn(ILOAD, locals + VAR_I);
 		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, Object.class);
+		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
 		mv.visitInsn(AASTORE);
 		mv.visitIincInsn(locals + VAR_I, 1);
 		mv.visitJumpInsn(GOTO, loop);
 		mv.visitLabel(exit);
 
 		mv.visitVarInsn(ALOAD, locals + VAR_LIST);
-		mv.visitMethodInsn(INVOKESTATIC, "java/util/Arrays", "asList", "([Ljava/lang/Object;)Ljava/util/List;");
+		mv.visitMethodInsn(INVOKESTATIC, getInternalName(Arrays.class), "asList", getMethodDescriptor(getType(List.class), getType(Object[].class)));
 	}
 
 	@Override

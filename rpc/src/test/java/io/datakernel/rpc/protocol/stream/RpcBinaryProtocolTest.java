@@ -21,7 +21,6 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.EventloopStub;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
@@ -196,7 +195,7 @@ public class RpcBinaryProtocolTest {
 	public void testCompression() {
 		int countRequests = 10;
 		int MIN_COMPRESS_BLOCK_SIZE = 64;
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		RpcMessageSerializer serializer = buildMessageSerializer();
 		int defaultPacketSize = 1 << 10;
 		int maxPacketSize = 1 << 16;

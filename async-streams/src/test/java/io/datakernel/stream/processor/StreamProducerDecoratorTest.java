@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerDecorator;
@@ -34,7 +34,7 @@ public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void test2() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		List<Integer> list = new ArrayList<>();
 
 		StreamConsumers.ToList consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
@@ -71,7 +71,7 @@ public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void test1() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumers.ToList consumer = StreamConsumers.toListOneByOne(eventloop, list);

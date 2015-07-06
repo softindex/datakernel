@@ -53,7 +53,7 @@ public class StreamProducerProviders {
 
 		@Override
 		public StreamProducer<ByteBuf> getProducer() {
-			return StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, filePath);
+			return StreamFileReader.readFileFully(eventloop, executor, 256 * 1024, filePath);
 		}
 	}
 

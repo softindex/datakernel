@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -33,15 +33,15 @@ public class ProducerOfIteratorTest {
 
 	@Test
 	public void test1() {
-		EventloopStub eventloopStub = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = Arrays.asList(1, 2, 3);
 
-		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloopStub, list);
-		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<>(eventloopStub, new ArrayList<Integer>());
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, list);
+		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<>(eventloop, new ArrayList<Integer>());
 		producer.streamTo(consumer);
 
-		eventloopStub.run();
+		eventloop.run();
 
 		assertEquals(list, consumer.getList());
 		assertTrue(producer.getStatus() == StreamProducer.CLOSED);

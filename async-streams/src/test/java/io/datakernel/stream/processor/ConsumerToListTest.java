@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -33,8 +33,8 @@ public class ConsumerToListTest {
 
 	@Test
 	public void emptyListTest() {
-		EventloopStub eventloopStub = new EventloopStub();
-		StreamConsumers.ToList<String> consumer = new StreamConsumers.ToList<>(eventloopStub, new ArrayList<String>());
+		NioEventloop eventloop = new NioEventloop();
+		StreamConsumers.ToList<String> consumer = new StreamConsumers.ToList<>(eventloop, new ArrayList<String>());
 
 		List<String> testList2 = new ArrayList<>();
 		testList2.add("a");
@@ -42,9 +42,9 @@ public class ConsumerToListTest {
 		testList2.add("c");
 		testList2.add("d");
 
-		StreamProducer<String> producer = StreamProducers.ofIterable(eventloopStub, testList2);
+		StreamProducer<String> producer = StreamProducers.ofIterable(eventloop, testList2);
 		producer.streamTo(consumer);
-		eventloopStub.run();
+		eventloop.run();
 
 		assertEquals(testList2, consumer.getList());
 		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
@@ -52,21 +52,21 @@ public class ConsumerToListTest {
 
 	@Test
 	public void fullListTest() {
-		EventloopStub eventloopStub = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		List<Integer> testList1 = new ArrayList<>();
 		testList1.add(1);
 		testList1.add(2);
 		testList1.add(3);
-		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<>(eventloopStub, testList1);
+		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<>(eventloop, testList1);
 
 		List<Integer> testList2 = new ArrayList<>();
 		testList2.add(4);
 		testList2.add(5);
 		testList2.add(6);
 
-		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloopStub, testList2);
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, testList2);
 		producer.streamTo(consumer);
-		eventloopStub.run();
+		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
 		assertTrue(producer.getStatus() == StreamProducer.CLOSED);

@@ -18,7 +18,6 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
-import io.datakernel.eventloop.EventloopStub;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -37,7 +36,7 @@ import static org.junit.Assert.assertTrue;
 public class StreamSorterTest {
 	@Test
 	public void test() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -116,7 +115,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnSorter() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
@@ -152,7 +151,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testBadStorage() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -191,7 +190,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnConsumer() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -223,7 +222,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnProducer() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2)),

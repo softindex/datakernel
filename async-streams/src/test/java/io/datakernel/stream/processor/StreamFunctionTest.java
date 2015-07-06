@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -31,7 +31,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunction() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
 			@Override

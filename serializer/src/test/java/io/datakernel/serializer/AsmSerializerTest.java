@@ -16,17 +16,17 @@
 
 package io.datakernel.serializer;
 
-import com.google.common.reflect.TypeToken;
-import io.datakernel.serializer.annotations.*;
-import io.datakernel.serializer.asm.SerializerGen;
-import org.junit.Test;
+import static org.junit.Assert.*;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static org.junit.Assert.*;
+import com.google.common.reflect.TypeToken;
+import io.datakernel.serializer.annotations.*;
+import io.datakernel.serializer.asm.SerializerGen;
+import org.junit.Test;
 
 @SuppressWarnings("serial")
 public class AsmSerializerTest {
@@ -424,8 +424,7 @@ public class AsmSerializerTest {
 	@Test
 	public void testList() {
 		List<String> testData1 = Arrays.asList("a", "b", "c");
-		List<String> testData2 = doTest(new TypeToken<List<String>>() {
-		}, testData1);
+		List<String> testData2 = doTest(new TypeToken<List<String>>() {}, testData1);
 		assertEquals(testData1, testData2);
 	}
 
@@ -434,8 +433,7 @@ public class AsmSerializerTest {
 		Map<Integer, String> testData1 = new HashMap<>();
 		testData1.put(1, "abc");
 		testData1.put(2, "xyz");
-		Map<Integer, String> testData2 = doTest(new TypeToken<Map<Integer, String>>() {
-		}, testData1);
+		Map<Integer, String> testData2 = doTest(new TypeToken<Map<Integer, String>>() {}, testData1);
 		assertEquals(testData1, testData2);
 	}
 
@@ -516,8 +514,7 @@ public class AsmSerializerTest {
 		testData1.setList(Arrays.asList(
 				new TestDataGenericNested<>(10, "a"),
 				new TestDataGenericNested<>(20, "b")));
-		TestDataGeneric<Integer, String> testData2 = doTest(new TypeToken<TestDataGeneric<Integer, String>>() {
-		}, testData1);
+		TestDataGeneric<Integer, String> testData2 = doTest(new TypeToken<TestDataGeneric<Integer, String>>() {}, testData1);
 		assertEquals(testData1.list.size(), testData2.list.size());
 		for (int i = 0; i < testData1.list.size(); i++) {
 			assertEqualsGenericNested(testData1.list.get(i), testData2.list.get(i));
@@ -539,8 +536,7 @@ public class AsmSerializerTest {
 				null,
 				new TestDataGenericNested<>(10, "a"),
 				new TestDataGenericNested<Integer, String>(null, null));
-		TestDataGenericParameters testData2 = doTest(new TypeToken<TestDataGenericParameters>() {
-		}, testData1);
+		TestDataGenericParameters testData2 = doTest(new TypeToken<TestDataGenericParameters>() {}, testData1);
 		assertEquals(testData1.list.size(), testData2.list.size());
 		for (int i = 0; i < testData1.list.size(); i++) {
 			assertEqualsGenericNested(testData1.list.get(i), testData2.list.get(i));
@@ -553,8 +549,7 @@ public class AsmSerializerTest {
 		testData1.setList(Arrays.asList(
 				new TestDataGenericNested<>(10, "a"),
 				new TestDataGenericNested<>(20, "b")));
-		TestDataGenericInterface<Integer, String> testData2 = doTest(new TypeToken<TestDataGenericInterface<Integer, String>>() {
-		}, testData1);
+		TestDataGenericInterface<Integer, String> testData2 = doTest(new TypeToken<TestDataGenericInterface<Integer, String>>() {}, testData1);
 		assertEquals(testData1.getList().size(), testData2.getList().size());
 		for (int i = 0; i < testData1.getList().size(); i++) {
 			assertEqualsGenericNested(testData1.getList().get(i), testData2.getList().get(i));
@@ -564,8 +559,7 @@ public class AsmSerializerTest {
 	@Test
 	public void testGenericNested() {
 		TestDataGenericNested<String, Integer> testData1 = new TestDataGenericNested<>("a", 10);
-		TestDataGenericNested<String, Integer> testData2 = doTest(new TypeToken<TestDataGenericNested<String, Integer>>() {
-		}, testData1);
+		TestDataGenericNested<String, Integer> testData2 = doTest(new TypeToken<TestDataGenericNested<String, Integer>>() {}, testData1);
 		assertEquals(testData1.key, testData2.key);
 		assertEquals(testData1.value, testData2.value);
 	}
@@ -573,8 +567,7 @@ public class AsmSerializerTest {
 	@Test
 	public void testGenericNestedInterface() {
 		TestDataGenericNested<String, Integer> testData1 = new TestDataGenericNested<>("a", 10);
-		TestDataGenericNestedInterface<String, Integer> testData2 = doTest(new TypeToken<TestDataGenericNestedInterface<String, Integer>>() {
-		}, testData1);
+		TestDataGenericNestedInterface<String, Integer> testData2 = doTest(new TypeToken<TestDataGenericNestedInterface<String, Integer>>() {}, testData1);
 		assertEquals(testData1.getKey(), testData2.getKey());
 		assertEquals(testData1.getValue(), testData2.getValue());
 	}
@@ -598,8 +591,7 @@ public class AsmSerializerTest {
 		testData1.a = 10;
 		testData1.b = "abc";
 		testData1.c = true;
-		TestDataGenericSubclass<String, Boolean> testData2 = doTest(new TypeToken<TestDataGenericSubclass<String, Boolean>>() {
-		}, testData1);
+		TestDataGenericSubclass<String, Boolean> testData2 = doTest(new TypeToken<TestDataGenericSubclass<String, Boolean>>() {}, testData1);
 		assertEquals(testData1.a, testData2.a);
 		assertEquals(testData1.b, testData2.b);
 		assertEquals(testData1.c, testData2.c);
@@ -638,16 +630,14 @@ public class AsmSerializerTest {
 	public void testSubclasses1() {
 		TestDataSuperclassHolder testData1 = new TestDataSuperclassHolder();
 		testData1.data = null;
-		TestDataSuperclassHolder testData2 = doTest(new TypeToken<TestDataSuperclassHolder>() {
-		}, testData1);
+		TestDataSuperclassHolder testData2 = doTest(new TypeToken<TestDataSuperclassHolder>() {}, testData1);
 		assertEquals(testData1.data, testData2.data);
 
 		TestDataSubclass1 subclass1 = new TestDataSubclass1();
 		testData1.data = subclass1;
 		subclass1.a = 10;
 		subclass1.b = true;
-		testData2 = doTest(new TypeToken<TestDataSuperclassHolder>() {
-		}, testData1);
+		testData2 = doTest(new TypeToken<TestDataSuperclassHolder>() {}, testData1);
 		TestDataSubclass1 subclass2 = (TestDataSubclass1) testData2.data;
 		assertEquals(subclass1.a, subclass2.a);
 		assertEquals(subclass1.b, subclass2.b);
@@ -661,15 +651,13 @@ public class AsmSerializerTest {
 		testData1.data = subclass1;
 		subclass1.a = 10;
 		subclass1.s = "abc";
-		TestDataSuperclassHolder testData2 = doTest(new TypeToken<TestDataSuperclassHolder>() {
-		}, testData1);
+		TestDataSuperclassHolder testData2 = doTest(new TypeToken<TestDataSuperclassHolder>() {}, testData1);
 		TestDataSubclass2 subclass2 = (TestDataSubclass2) testData2.data;
 		assertEquals(subclass1.a, subclass2.a);
 		assertEquals(subclass1.s, subclass2.s);
 
 		subclass1.s = null;
-		testData2 = doTest(new TypeToken<TestDataSuperclassHolder>() {
-		}, testData1);
+		testData2 = doTest(new TypeToken<TestDataSuperclassHolder>() {}, testData1);
 		subclass2 = (TestDataSubclass2) testData2.data;
 		assertEquals(subclass1.a, subclass2.a);
 		assertEquals(subclass1.s, subclass2.s);
@@ -687,8 +675,7 @@ public class AsmSerializerTest {
 	public void testSerializerUtf16() {
 		TestDataSerializerUtf16 testData1 = new TestDataSerializerUtf16();
 		testData1.strings = Arrays.asList("abc", null, "123");
-		TestDataSerializerUtf16 testData2 = doTest(new TypeToken<TestDataSerializerUtf16>() {
-		}, testData1);
+		TestDataSerializerUtf16 testData2 = doTest(new TypeToken<TestDataSerializerUtf16>() {}, testData1);
 		assertEquals(testData1.strings, testData2.strings);
 	}
 
@@ -708,8 +695,7 @@ public class AsmSerializerTest {
 		TestDataFixedSize testData1 = new TestDataFixedSize();
 		testData1.strings = new String[]{"abc", null, "123"};
 		testData1.bytes = new byte[]{1, 2, 3, 4};
-		TestDataFixedSize testData2 = doTest(new TypeToken<TestDataFixedSize>() {
-		}, testData1);
+		TestDataFixedSize testData2 = doTest(new TypeToken<TestDataFixedSize>() {}, testData1);
 		assertArrayEquals(testData1.strings, testData2.strings);
 		assertArrayEquals(testData1.bytes, testData2.bytes);
 	}
@@ -727,8 +713,7 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testVersions() {
-		TypeToken<TestDataVersions> typeToken = new TypeToken<TestDataVersions>() {
-		};
+		TypeToken<TestDataVersions> typeToken = new TypeToken<TestDataVersions>() {};
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		SerializerGen serializerGen = registry.serializer(typeToken);
 		BufferSerializer<TestDataVersions> serializer0 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(serializerGen, 0);
@@ -803,8 +788,7 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testProfiles() {
-		TypeToken<TestDataProfiles> typeToken = new TypeToken<TestDataProfiles>() {
-		};
+		TypeToken<TestDataProfiles> typeToken = new TypeToken<TestDataProfiles>() {};
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		SerializerScanner registry1 = SerializerScanner.defaultScanner("profile1");
 		SerializerScanner registry2 = SerializerScanner.defaultScanner("profile2");
@@ -859,8 +843,7 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testProfilesVersions() {
-		TypeToken<TestDataProfiles2> typeToken = new TypeToken<TestDataProfiles2>() {
-		};
+		TypeToken<TestDataProfiles2> typeToken = new TypeToken<TestDataProfiles2>() {};
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		SerializerScanner registryProfile = SerializerScanner.defaultScanner("profile");
 		BufferSerializer<TestDataProfiles2> serializer1 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(registry.serializer(typeToken), 1);
@@ -963,8 +946,7 @@ public class AsmSerializerTest {
 		TestDataRecursive testData1 = new TestDataRecursive("a");
 		testData1.next = new TestDataRecursive("b");
 		testData1.next.next = new TestDataRecursive("c");
-		TestDataRecursive testData2 = doTest(new TypeToken<TestDataRecursive>() {
-		}, testData1);
+		TestDataRecursive testData2 = doTest(new TypeToken<TestDataRecursive>() {}, testData1);
 		assertTrue(testData1 != testData2 && testData1.next != testData2.next && testData1.next.next != testData2.next.next);
 		assertEquals(testData1.s, testData2.s);
 		assertEquals(testData1.next.s, testData2.next.s);
@@ -1125,8 +1107,7 @@ public class AsmSerializerTest {
 		expected.s2 = "1234";
 		expected.s3 = "QWE";
 
-		TestDataMaxLength actual = doTest(new TypeToken<TestDataMaxLength>() {
-		}, expected);
+		TestDataMaxLength actual = doTest(new TypeToken<TestDataMaxLength>() {}, expected);
 		assertEquals(expected.s1.substring(0, 3), actual.s1);
 		assertEquals(expected.s2, actual.s2);
 		assertEquals(expected.s3, actual.s3);
@@ -1225,27 +1206,23 @@ public class AsmSerializerTest {
 	@Test
 	public void testDeserializeFactory() {
 		TestDataDeserializeFactory0 sourceTestData0 = TestDataDeserializeFactory0.create("abcdef");
-		TestDataDeserializeFactory0 resultTestData0 = doTest(new TypeToken<TestDataDeserializeFactory0>() {
-		}, sourceTestData0);
+		TestDataDeserializeFactory0 resultTestData0 = doTest(new TypeToken<TestDataDeserializeFactory0>() {}, sourceTestData0);
 		assertEquals(sourceTestData0.getStr(), resultTestData0.getStr());
 		assertEquals(sourceTestData0.getHash(), resultTestData0.getHash());
 
 		TestDataDeserializeFactory1 sourceTestData1 = TestFactory.create("abcdef");
-		TestDataDeserializeFactory1 resultTestData1 = doTest(new TypeToken<TestDataDeserializeFactory1>() {
-		}, sourceTestData1);
+		TestDataDeserializeFactory1 resultTestData1 = doTest(new TypeToken<TestDataDeserializeFactory1>() {}, sourceTestData1);
 		assertEquals(sourceTestData1.getStr(), resultTestData1.getStr());
 		assertEquals(sourceTestData1.getHash(), resultTestData1.getHash());
 
 		TestDataDeserializeFactory2 sourceTestData2 = TestFactory.create2("asdfg");
 		sourceTestData2.setTest("12341242");
-		TestDataDeserializeFactory2 resultTestData2 = doTest(new TypeToken<TestDataDeserializeFactory2>() {
-		}, sourceTestData2);
+		TestDataDeserializeFactory2 resultTestData2 = doTest(new TypeToken<TestDataDeserializeFactory2>() {}, sourceTestData2);
 		assertEquals(sourceTestData2.getStr(), resultTestData2.getStr());
 		assertEquals(sourceTestData2.getHash(), resultTestData2.getHash());
 		assertEquals(sourceTestData2.getTest(), resultTestData2.getTest());
 
-		TestDataFactoryInterface resultTestData3 = doTest(new TypeToken<TestDataFactoryInterface>() {
-		}, sourceTestData2);
+		TestDataFactoryInterface resultTestData3 = doTest(new TypeToken<TestDataFactoryInterface>() {}, sourceTestData2);
 		assertEquals(sourceTestData2.getStr(), resultTestData3.getStr());
 		assertEquals(sourceTestData2.getHash(), resultTestData3.getHash());
 	}
@@ -1281,8 +1258,52 @@ public class AsmSerializerTest {
 	@Test
 	public void testCustomSerializeEnum() {
 		TestEnum sourceData = TestEnum.TWO;
-		TestEnum resultData = doTest(new TypeToken<TestEnum>() {
-		}, sourceData);
+		TestEnum resultData = doTest(new TypeToken<TestEnum>() {}, sourceData);
 		assertEquals(sourceData, resultData);
 	}
+
+	@Test
+	public void testListEnums() {
+		List<TestEnum> testData1 = Arrays.asList(TestEnum.ONE, TestEnum.THREE, TestEnum.TWO);
+		List<TestEnum> testData2 = doTest(new TypeToken<List<TestEnum>>() {}, testData1);
+		assertEquals(testData1, testData2);
+	}
+
+	@Test
+	public void testMapEnums() {
+		Map<TestEnum, String> testData1 = new HashMap<>();
+		testData1.put(TestEnum.ONE, "abc");
+		testData1.put(TestEnum.TWO, "xyz");
+		Map<TestEnum, String> testData2 = doTest(new TypeToken<Map<TestEnum, String>>() {}, testData1);
+		assertEquals(testData1, testData2);
+		assertEquals(testData1, testData2);
+	}
+
+	public enum TestEnum2 {
+		ONE, TWO, THREE;
+	}
+
+	@Test
+	public void testEnums() {
+		TestEnum2 testData1 = TestEnum2.ONE;
+		TestEnum2 testData2 = doTest(new TypeToken<TestEnum2>() {}, testData1);
+		assertEquals(testData1, testData2);
+	}
+
+	@Test
+	public void testListEnums2() {
+		List<TestEnum2> testData1 = Arrays.asList(TestEnum2.ONE, TestEnum2.THREE, TestEnum2.TWO);
+		List<TestEnum2> testData2 = doTest(new TypeToken<List<TestEnum2>>() {}, testData1);
+		assertEquals(testData1, testData2);
+	}
+
+	@Test
+	public void testMapEnums2() {
+		Map<TestEnum2, TestEnum2> testData1 = new HashMap<>();
+		testData1.put(TestEnum2.ONE, TestEnum2.THREE);
+		testData1.put(TestEnum2.TWO, TestEnum2.ONE);
+		Map<TestEnum2, TestEnum2> testData2 = doTest(new TypeToken<Map<TestEnum2, TestEnum2>>() {}, testData1);
+		assertEquals(testData1, testData2);
+	}
+
 }

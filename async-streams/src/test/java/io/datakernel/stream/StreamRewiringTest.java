@@ -18,7 +18,7 @@ package io.datakernel.stream;
 
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.processor.StreamFunction;
 import org.junit.Test;
 
@@ -32,7 +32,7 @@ import static org.junit.Assert.*;
 public class StreamRewiringTest {
 	@Test
 	public void noRewire() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -58,7 +58,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireConsumer1() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -91,7 +91,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireConsumer2() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -124,7 +124,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireProducer1() {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducers.OfIterator<Integer> producer0 = new StreamProducers.OfIterator<>(eventloop, asList(0).iterator(), false);
 		StreamProducers.OfIterator<Integer> producer1 = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator(), false);

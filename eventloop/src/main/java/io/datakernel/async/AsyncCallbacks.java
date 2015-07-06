@@ -251,6 +251,7 @@ public class AsyncCallbacks {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onResult(result);
 						}
 					});
@@ -259,11 +260,11 @@ public class AsyncCallbacks {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onException(e);
 						}
 					});
 				}
-				tracker.complete();
 			}
 		});
 		notifyOnCancel(callback, new AsyncCancellableStatus.CancelNotifier() {
@@ -300,6 +301,7 @@ public class AsyncCallbacks {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onResult(result);
 						}
 					});
@@ -308,11 +310,11 @@ public class AsyncCallbacks {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onException(e);
 						}
 					});
 				}
-				tracker.complete();
 			}
 		});
 		notifyOnCancel(callback, new AsyncCancellableStatus.CancelNotifier() {
@@ -348,6 +350,7 @@ public class AsyncCallbacks {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onComplete();
 						}
 					});
@@ -356,11 +359,11 @@ public class AsyncCallbacks {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onException(e);
 						}
 					});
 				}
-				tracker.complete();
 			}
 		});
 		notifyOnCancel(callback, new AsyncCancellableStatus.CancelNotifier() {
@@ -393,6 +396,7 @@ public class AsyncCallbacks {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onComplete();
 						}
 					});
@@ -401,11 +405,11 @@ public class AsyncCallbacks {
 					eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
+							tracker.complete();
 							callback.onException(e);
 						}
 					});
 				}
-				tracker.complete();
 			}
 		});
 		notifyOnCancel(callback, new AsyncCancellableStatus.CancelNotifier() {

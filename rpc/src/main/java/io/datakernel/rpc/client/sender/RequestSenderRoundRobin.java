@@ -35,7 +35,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 @NioThread
 final class RequestSenderRoundRobin implements RequestSender {
-	private static final RequestSenderToNone NO_AVAILABLE_CONNECTION = new RequestSenderToNone();
+	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 	private final RpcClientConnectionPool connections;
 	private int activeConnection = 0;
 

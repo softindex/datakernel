@@ -16,17 +16,21 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
-
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.getDescriptor;
-import static org.objectweb.asm.Type.getInternalName;
+import static org.objectweb.asm.Type.*;
+
+import io.datakernel.serializer.SerializerCaller;
+import org.objectweb.asm.MethodVisitor;
 
 @SuppressWarnings("StatementWithEmptyBody")
 public class SerializerGenEnum implements SerializerGen {
 	private static final int VAR_I = 1;
+	private final Class<?> enumType;
+
+	public SerializerGenEnum(Class<?> enumType) {
+		this.enumType = enumType;
+	}
 
 	@Override
 	public void getVersions(VersionsCollector versions) {
@@ -39,13 +43,13 @@ public class SerializerGenEnum implements SerializerGen {
 
 	@Override
 	public Class<?> getRawType() {
-		return Object.class;
+		return enumType;
 	}
 
 	@Override
 	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
 		if (sourceType.isEnum()) {
-			mv.visitMethodInsn(INVOKEVIRTUAL, "java/lang/Enum", "ordinal", "()I");
+			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(Enum.class), "ordinal", getMethodDescriptor(INT_TYPE));
 		} else if (sourceType == byte.class) {
 			// do nothing
 		} else if (sourceType == Byte.class) {

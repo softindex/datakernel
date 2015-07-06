@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -37,7 +37,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void test1() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(1, 1, 10, 20),
@@ -104,7 +104,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void testWithError() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		List<DataItemResult> list = new ArrayList<>();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
@@ -173,7 +173,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void test() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		List<DataItemResult> list = new ArrayList<>();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
@@ -242,7 +242,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void testProducerWithError() throws Exception {
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),

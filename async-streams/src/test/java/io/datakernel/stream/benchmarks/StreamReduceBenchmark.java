@@ -20,7 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopStub;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -94,7 +94,7 @@ public class StreamReduceBenchmark implements Runnable {
 		this.bestTime = -1;
 		this.worstTime = -1;
 
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 
 		for (int i = 0; i < this.benchmarkRounds; i++) {
 			setUp(eventloop);

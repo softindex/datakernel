@@ -47,9 +47,10 @@ import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertFalse;
 
 public class SimpleFsServerTest {
+	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServerTest.class);
+
 	private static final int LISTEN_PORT = 6432;
 	private static final InetSocketAddress address = new InetSocketAddress("127.0.0.1", LISTEN_PORT);
-	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServerTest.class);
 	@Rule
 	public final TemporaryFolder folder = new TemporaryFolder();
 	private Path dirPath;

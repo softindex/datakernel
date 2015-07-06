@@ -23,7 +23,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.cube.dimensiontype.DimensionType;
 import io.datakernel.cube.dimensiontype.DimensionTypeInt;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopStub;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamConsumer;
@@ -104,7 +103,7 @@ public class CubeTest {
 	@Test
 	public void testQuery1() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure cubeStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);
@@ -222,7 +221,7 @@ public class CubeTest {
 	@Test
 	public void testOrdering() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure cubeStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);
@@ -257,7 +256,7 @@ public class CubeTest {
 	@Test
 	public void testMultipleOrdering() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure cubeStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);
@@ -298,7 +297,7 @@ public class CubeTest {
 	@Test
 	public void testBetweenPredicate() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure cubeStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);
@@ -348,7 +347,7 @@ public class CubeTest {
 	@Test
 	public void testBetweenTransformation() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure cubeStructure = sophisticatedCubeStructure(classLoader);
 		Cube cube = newSophisticatedCube(eventloop, classLoader, storage, cubeStructure);
@@ -398,7 +397,7 @@ public class CubeTest {
 	@Test
 	public void testGrouping() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure cubeStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);
@@ -432,7 +431,7 @@ public class CubeTest {
 	@Test
 	public void testQuery2() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		ExecutorService executorService = newSingleThreadExecutor();
 		Path dir = temporaryFolder.newFolder().toPath();
 		Utils.deleteRecursivelyQuietly(dir);
@@ -470,7 +469,7 @@ public class CubeTest {
 	@Test
 	public void testConsolidate() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		EventloopStub eventloop = new EventloopStub();
+		NioEventloop eventloop = new NioEventloop();
 		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
 		CubeStructure cubeStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);
