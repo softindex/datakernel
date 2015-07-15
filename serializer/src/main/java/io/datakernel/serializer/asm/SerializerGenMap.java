@@ -21,16 +21,12 @@ import static io.datakernel.serializer.asm.Utils.castSourceType;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.*;
 
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenMap implements SerializerGen {
 	public static final int VAR_MAP = 0;
 	public static final int VAR_LENGTH = 1;
@@ -107,14 +103,22 @@ public final class SerializerGenMap implements SerializerGen {
 
 	@Override
 	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		checkArgument(targetType.isAssignableFrom(LinkedHashMap.class));
+		boolean isEnum = keySerializer.getRawType().isEnum();
+		Class<?> targetInstance = isEnum ? EnumMap.class : LinkedHashMap.class;
+		checkArgument(targetType.isAssignableFrom(targetInstance));
 
 		backend.readVarIntGen(mv);
-		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH); // TODO (vsavchuk): max size check
+		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH);
 
-		mv.visitTypeInsn(NEW, getInternalName(LinkedHashMap.class));
+		mv.visitTypeInsn(NEW, getInternalName(targetInstance));
 		mv.visitInsn(DUP);
-		mv.visitMethodInsn(INVOKESPECIAL, getInternalName(LinkedHashMap.class), "<init>", getMethodDescriptor(VOID_TYPE));
+		if (isEnum) {
+			mv.visitLdcInsn(getType(keySerializer.getRawType()));
+			mv.visitMethodInsn(INVOKESPECIAL, getInternalName(targetInstance), "<init>", getMethodDescriptor(VOID_TYPE, getType(Class.class)));
+		} else {
+			mv.visitVarInsn(ILOAD, locals + VAR_LENGTH);
+			mv.visitMethodInsn(INVOKESPECIAL, getInternalName(targetInstance), "<init>", getMethodDescriptor(VOID_TYPE, INT_TYPE));
+		}
 		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
 
 		mv.visitInsn(ICONST_0);
@@ -134,7 +138,7 @@ public final class SerializerGenMap implements SerializerGen {
 		mv.visitVarInsn(ALOAD, varContainer);
 		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
 
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(LinkedHashMap.class), "put",
+		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(targetInstance), "put",
 				getMethodDescriptor(getType(Object.class), getType(Object.class), getType(Object.class)));
 		mv.visitInsn(POP);
 

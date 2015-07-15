@@ -21,7 +21,5 @@ public interface StreamLZ4CompressorMBean {
 
 	long getBytesOutput();
 
-	int getBufsInput();
-
-	int getBufsOutput();
+	int getBufs();
 }

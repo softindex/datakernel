@@ -83,10 +83,15 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	public StreamConsumer<T> streamWriter() {
 		assert partition >= 0;
 		StreamBinarySerializer<T> streamSerializer = new StreamBinarySerializer<>(eventloop, serializer, blockSize, blockSize, 1, false);
-		StreamLZ4Compressor streamCompressor = new StreamLZ4Compressor(eventloop, blockSize);
+		StreamByteChunker streamByteChunkerBefore = new StreamByteChunker(eventloop, blockSize / 2, blockSize);
+		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
+		StreamByteChunker streamByteChunkerAfter = new StreamByteChunker(eventloop, blockSize / 2, blockSize);
 		StreamFileWriter streamWriter = StreamFileWriter.createFile(eventloop, executorService, partitionPath(partition++));
-		streamSerializer.streamTo(streamCompressor);
-		streamCompressor.streamTo(streamWriter);
+
+		streamSerializer.streamTo(streamByteChunkerBefore);
+		streamByteChunkerBefore.streamTo(streamCompressor);
+		streamCompressor.streamTo(streamByteChunkerAfter);
+		streamByteChunkerAfter.streamTo(streamWriter);
 		return streamSerializer;
 	}
 

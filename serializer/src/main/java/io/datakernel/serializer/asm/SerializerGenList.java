@@ -28,7 +28,6 @@ import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenList implements SerializerGen {
 	public static final int VAR_LIST = 0;
 	public static final int VAR_LENGTH = 1;
@@ -94,7 +93,7 @@ public final class SerializerGenList implements SerializerGen {
 		backend.readVarIntGen(mv);
 		mv.visitInsn(DUP);
 		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH);
-		mv.visitTypeInsn(ANEWARRAY, getInternalName(Object.class)); // TODO (vsavchuk): max length check
+		mv.visitTypeInsn(ANEWARRAY, getInternalName(Object.class)); // TODO: max length check
 		mv.visitVarInsn(ASTORE, locals + VAR_LIST);
 
 		mv.visitInsn(ICONST_0);

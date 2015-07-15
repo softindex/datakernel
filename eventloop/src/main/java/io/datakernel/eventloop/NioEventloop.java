@@ -174,6 +174,9 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 		}
 	}
 
+	/**
+	 * Closes the selector if it has been opened.
+	 */
 	private void closeSelector() {
 		if (selector != null) {
 			try {
@@ -288,6 +291,8 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	}
 
 	private long getSelectTimeout() {
+		if (!concurrentTasks.isEmpty())
+			return 1L;
 		if (scheduledTasks.isEmpty() && backgroundTasks.isEmpty())
 			return DEFAULT_EVENT_TIMEOUT;
 		long timeout = Math.min(getTimeBeforeExecution(scheduledTasks), getTimeBeforeExecution(backgroundTasks));

@@ -27,8 +27,7 @@ import java.nio.channels.SocketChannel;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 
 /**
- * Example 1.
- * This class contains examples of working with SimpleNioServer.
+ * Example of creating a simple echo server by subclassing `SimpleNioServer`.
  */
 public class TcpEchoServerExample {
 	public static final int PORT = 9922;

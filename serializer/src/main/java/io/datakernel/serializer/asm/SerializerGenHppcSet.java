@@ -17,7 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import static com.google.common.base.CaseFormat.*;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.*;
 import static com.google.common.base.Throwables.propagate;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.*;
@@ -46,19 +46,41 @@ public class SerializerGenHppcSet implements SerializerGen {
 			.put(char.class, new SerializerGenChar())
 			.build();
 
+	public static SerializerGenBuilder serializerGenBuilder(final Class<?> setType, final Class<?> valueType) {
+		String prefix = LOWER_CAMEL.to(UPPER_CAMEL, valueType.getSimpleName());
+		checkArgument(setType.getSimpleName().startsWith(prefix), "Expected setType '%s', but was begin '%s'", setType.getSimpleName(), prefix);
+		return new SerializerGenBuilder() {
+			@Override
+			public SerializerGen serializer(Class<?> type, final SerializerForType[] generics, SerializerGen fallback) {
+				SerializerGen valueSerializer;
+				if (generics.length == 1) {
+					if (valueType == Object.class) {
+						valueSerializer = generics[0].serializer;
+					} else {
+						throw new IllegalArgumentException("keyClass or valueType must be Object.class");
+					}
+				} else {
+					valueSerializer = primitiveSerializers.get(valueType);
+				}
+				return new SerializerGenHppcSet(setType, valueType, checkNotNull(valueSerializer));
+			}
+		};
+	}
+
 	private final Class<?> setType;
 	private final Class<?> hashSetType;
 	private final Class<?> iteratorType;
 	private final Class<?> valueType;
 	private final SerializerGen valueSerializer;
 
-	public SerializerGenHppcSet(Class<?> setType, Class<?> valueType) {
+	private SerializerGenHppcSet(Class<?> setType, Class<?> valueType, SerializerGen valueSerializer) {
 		this.setType = setType;
 		this.valueType = valueType;
-		this.valueSerializer = checkNotNull(primitiveSerializers.get(valueType));
+		this.valueSerializer = valueSerializer;
 		try {
-			this.iteratorType = Class.forName("com.carrotsearch.hppc.cursors." + LOWER_CAMEL.to(UPPER_CAMEL, valueType.getName()) + "Cursor");
-			this.hashSetType = Class.forName("com.carrotsearch.hppc." + LOWER_CAMEL.to(UPPER_CAMEL, valueType.getName()) + "OpenHashSet");
+			String prefix = LOWER_CAMEL.to(UPPER_CAMEL, valueType.getSimpleName());
+			this.iteratorType = Class.forName("com.carrotsearch.hppc.cursors." + prefix + "Cursor");
+			this.hashSetType = Class.forName("com.carrotsearch.hppc." + prefix + "OpenHashSet");
 		} catch (ClassNotFoundException e) {
 			throw propagate(e);
 		}

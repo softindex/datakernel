@@ -16,6 +16,10 @@
 
 package io.datakernel.hashfs;
 
+import static io.datakernel.stream.processor.StreamLZ4Compressor.fastCompressor;
+
+import java.util.List;
+
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -27,13 +31,43 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.processor.StreamByteChunker;
+import io.datakernel.stream.processor.StreamLZ4Compressor;
+import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-
 public class HashFsImpl implements HashFs {
 	private static final Logger logger = LoggerFactory.getLogger(HashFsImpl.class);
+
+	public interface StreamLZ4CompressorFactory {
+		StreamLZ4Compressor getInstance(Eventloop eventloop);
+	}
+
+	public static HashFsImpl createHashClient(NioEventloop eventloop, List<ServerInfo> connectServers) {
+		return createHashClient(eventloop, connectServers, 128 * 1024);
+	}
+
+	public static HashFsImpl createHashClient(NioEventloop eventloop, List<ServerInfo> connectServers, int bufferSize) {
+		return createHashClient(eventloop, connectServers, bufferSize, new StreamLZ4CompressorFactory() {
+			@Override
+			public StreamLZ4Compressor getInstance(Eventloop eventloop) {
+				return fastCompressor(eventloop);
+			}
+		});
+	}
+
+	public static HashFsImpl createHashClient(NioEventloop eventloop, List<ServerInfo> connectServers, int bufferSize,
+	                                          StreamLZ4CompressorFactory compressorFactory) {
+		Configuration configuration = new Configuration();
+		return createHashClient(eventloop, connectServers, configuration, bufferSize, compressorFactory);
+	}
+
+	public static HashFsImpl createHashClient(NioEventloop eventloop, List<ServerInfo> connectServers, Configuration configuration, int bufferSize,
+	                                          StreamLZ4CompressorFactory compressorFactory) {
+		HashFsGsonClientProtocol clientTransport = new HashFsGsonClientProtocol(eventloop, connectServers);
+		return new HashFsImpl(eventloop, clientTransport, connectServers, configuration, bufferSize, compressorFactory);
+	}
 
 	private final Eventloop eventloop;
 	private final HashFsClientProtocol protocol;
@@ -41,17 +75,18 @@ public class HashFsImpl implements HashFs {
 	private final Configuration configuration;
 	private int currentBootstrapServer = 0;
 
-	private HashFsImpl(Eventloop eventloop, HashFsClientProtocol protocol, List<ServerInfo> bootstrapServers, Configuration configuration) {
+	private final int bufferSize;
+
+	private final StreamLZ4CompressorFactory compressorFactory;
+
+	private HashFsImpl(Eventloop eventloop, HashFsClientProtocol protocol, List<ServerInfo> bootstrapServers, Configuration configuration,
+	                   int bufferSize, StreamLZ4CompressorFactory compressorFactory) {
 		this.eventloop = eventloop;
 		this.protocol = protocol;
 		this.bootstrapServers = bootstrapServers;
 		this.configuration = configuration;
-	}
-
-	public static HashFsImpl createHashClient(NioEventloop eventloop, List<ServerInfo> connectServers) {
-		Configuration configuration = new Configuration();
-		HashFsGsonClientProtocol clientTransport = new HashFsGsonClientProtocol(eventloop, connectServers);
-		return new HashFsImpl(eventloop, clientTransport, connectServers, configuration);
+		this.bufferSize = bufferSize;
+		this.compressorFactory = compressorFactory;
 	}
 
 	private void getAliveServers(final ResultCallback<List<ServerInfo>> callback) {
@@ -94,7 +129,15 @@ public class HashFsImpl implements HashFs {
 		protocol.upload(server, filename, new ResultCallback<StreamConsumer<ByteBuf>>() {
 			@Override
 			public void onResult(StreamConsumer<ByteBuf> streamConsumer) {
-				callback.onResult(streamConsumer);
+				StreamByteChunker streamByteChunkerBefore = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
+				StreamLZ4Compressor compressor = compressorFactory.getInstance(eventloop);
+				StreamByteChunker streamByteChunkerAfter = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
+
+				streamByteChunkerBefore.streamTo(compressor);
+				compressor.streamTo(streamByteChunkerAfter);
+				streamByteChunkerAfter.streamTo(streamConsumer);
+
+				callback.onResult(streamByteChunkerBefore);
 			}
 
 			@Override
@@ -136,7 +179,9 @@ public class HashFsImpl implements HashFs {
 
 			@Override
 			public void onResult(StreamProducer<ByteBuf> result) {
-				producerResultCallback.onResult(result);
+				StreamLZ4Decompressor lz4Decompressor = new StreamLZ4Decompressor(eventloop);
+				result.streamTo(lz4Decompressor);
+				producerResultCallback.onResult(lz4Decompressor);
 			}
 
 			@Override

@@ -38,7 +38,7 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 	                  String streamId) {
 		super(eventloop);
 		this.streamBinarySerializer = new StreamBinarySerializer<>(eventloop, serializer, 1024 * 1024, StreamBinarySerializer.MAX_SIZE, 1000, false);
-		this.streamCompressor = new StreamLZ4Compressor(eventloop, 1024 * 1024, 256 * 1024);
+		this.streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		this.logStreamConsumer_byteBuffer = new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
 
 		this.logStreamConsumer_byteBuffer.setTag(streamId);

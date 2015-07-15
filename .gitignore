@@ -2,6 +2,7 @@
 *.iml
 *.project
 */target
+/target
 */build
 */bin
 build.gradle

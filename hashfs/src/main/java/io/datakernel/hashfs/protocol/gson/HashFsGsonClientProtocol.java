@@ -16,6 +16,9 @@
 
 package io.datakernel.hashfs.protocol.gson;
 
+import java.nio.channels.SocketChannel;
+import java.util.*;
+
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ForwardingConnectCallback;
@@ -36,9 +39,6 @@ import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.nio.channels.SocketChannel;
-import java.util.*;
 
 public class HashFsGsonClientProtocol implements HashFsClientProtocol {
 	private static final Logger logger = LoggerFactory.getLogger(HashFsGsonClientProtocol.class);
@@ -87,7 +87,7 @@ public class HashFsGsonClientProtocol implements HashFsClientProtocol {
 								.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {
 									@Override
 									public void onMessage(HashFsResponseError item, Messaging<HashFsCommand> messaging) {
-										logger.warn("Receive error from server {}", server.serverId, item.exceptionName);
+										logger.warn("Receive error from server {}: {}", server.serverId, item.exceptionName);
 										messaging.shutdown();
 										callback.onException(new Exception(item.exceptionName));
 										// TODO (eberezhanskyi): will consumer be notified on errors during transfer?

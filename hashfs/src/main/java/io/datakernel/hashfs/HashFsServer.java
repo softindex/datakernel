@@ -185,8 +185,13 @@ public class HashFsServer implements ServerStatusChangeListeners {
 		}
 
 		metadata.startUpload(filename);
+
+//		StreamLZ4Validator lz4DecompressorValidate = new StreamLZ4Validator(eventloop);
 		StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, destination, true);
+
 		producer.streamTo(diskWrite);
+//		producer.streamTo(lz4DecompressorValidate);
+//		lz4DecompressorValidate.streamTo(diskWrite);
 
 		diskWrite.addCompletionCallback(new CompletionCallback() {
 			@Override

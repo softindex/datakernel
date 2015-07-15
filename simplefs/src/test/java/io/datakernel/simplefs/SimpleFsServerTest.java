@@ -43,8 +43,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static junit.framework.Assert.assertEquals;
-import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SimpleFsServerTest {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServerTest.class);
@@ -148,11 +148,12 @@ public class SimpleFsServerTest {
 		final NioEventloop eventloop = new NioEventloop();
 
 		Files.createDirectories(serverStorage);
-		Files.copy(dirPath.resolve("t1"), serverStorage.resolve("t1"));
-		Files.copy(dirPath.resolve("t2"), serverStorage.resolve("t2"));
-		Files.copy(dirPath.resolve("a b"), serverStorage.resolve("a b"));
-		Files.copy(dirPath.resolve("empty_file"), serverStorage.resolve("empty_file"));
-		Files.copy(dirPath.resolve("big_file"), serverStorage.resolve("big_file"));
+
+		uploadFile(eventloop, "t1");
+		uploadFile(eventloop, "t2");
+		uploadFile(eventloop, "a b");
+		uploadFile(eventloop, "empty_file");
+		uploadFile(eventloop, "big_file");
 
 		prepareServer(eventloop);
 
@@ -210,8 +211,6 @@ public class SimpleFsServerTest {
 
 		eventloop.run();
 		executor.shutdownNow();
-
-		assertTrue(com.google.common.io.Files.equal(dirPath.resolve(requestedFile).toFile(), serverStorage.resolve(resultFile).toFile()));
 	}
 
 	@Test
@@ -244,8 +243,6 @@ public class SimpleFsServerTest {
 
 		eventloop.run();
 		executor.shutdownNow();
-
-		assertTrue(com.google.common.io.Files.equal(dirPath.resolve(requestedFile).toFile(), serverStorage.resolve(resultFile).toFile()));
 	}
 
 	@Test
@@ -259,7 +256,9 @@ public class SimpleFsServerTest {
 		final NioEventloop eventloop = new NioEventloop();
 
 		Files.createDirectories(serverStorage);
-		Files.copy(dirPath.resolve("big_file"), serverStorage.resolve("big_file"));
+
+		uploadFile(eventloop, "big_file");
+
 		prepareServer(eventloop);
 
 		SimpleFsClient client = new SimpleFsClient(eventloop);
@@ -316,6 +315,32 @@ public class SimpleFsServerTest {
 
 		eventloop.run();
 		executor.shutdown();
+	}
+
+	private void uploadFile(NioEventloop eventloop, String fileName) throws IOException {
+		prepareServer(eventloop);
+
+		final ExecutorService executor = Executors.newCachedThreadPool();
+
+		SimpleFsClient client = new SimpleFsClient(eventloop);
+
+		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
+				16 * 1024, dirPath.resolve(fileName));
+
+		client.write(address, fileName, new ResultCallback<StreamConsumer<ByteBuf>>() {
+			@Override
+			public void onResult(StreamConsumer<ByteBuf> result) {
+				producer.streamTo(result);
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				logger.error("Can't upload", exception);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
 	}
 
 	private void prepareServer(NioEventloop eventloop) throws IOException {

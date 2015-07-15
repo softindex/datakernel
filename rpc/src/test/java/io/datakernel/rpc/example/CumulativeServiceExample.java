@@ -21,7 +21,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.example.CumulativeHelper.ValueMessage;
+import io.datakernel.rpc.example.CumulativeServiceHelper.ValueMessage;
 import io.datakernel.rpc.server.RpcServer;
 
 import java.io.IOException;
@@ -30,13 +30,13 @@ import java.net.InetSocketAddress;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static java.util.Collections.singletonList;
 
-public class CumulativeSimple {
+public class CumulativeServiceExample {
 	private static final int SERVICE_PORT = 12345;
 
 	public static void main(String[] args) throws IOException {
 		final NioEventloop eventloop = new NioEventloop();
-		final RpcServer server = CumulativeHelper.createServer(eventloop, SERVICE_PORT);
-		final RpcClient client = CumulativeHelper.createClient(eventloop, singletonList(new InetSocketAddress(SERVICE_PORT)), new ConnectSettings(500));
+		final RpcServer server = CumulativeServiceHelper.createServer(eventloop, SERVICE_PORT);
+		final RpcClient client = CumulativeServiceHelper.createClient(eventloop, singletonList(new InetSocketAddress(SERVICE_PORT)), new ConnectSettings(500));
 
 		final CompletionCallback finishCallback = new CompletionCallback() {
 			@Override

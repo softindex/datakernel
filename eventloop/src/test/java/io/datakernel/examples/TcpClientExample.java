@@ -31,8 +31,8 @@ import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 /**
- * Example 2.
- * This class contains examples of creating simple TCP client and way to run it in event loop.
+ * Example of creating a simple TCP console client by subclassing `TcpSocketConnection`.
+ * By default this client connects to the same address as the server in the previous example.
  */
 public class TcpClientExample {
 	/* TCP client connection, which sends characters and prints received responses to the console. */

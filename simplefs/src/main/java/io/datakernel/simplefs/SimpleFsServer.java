@@ -49,15 +49,21 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> {
 	private static final String IN_PROGRESS_EXTENSION = ".partial";
 	private final ExecutorService executor;
 	private final Path fileStorage;
+	private final int bufferSize;
 
-	private SimpleFsServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor) {
+	private SimpleFsServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor, int bufferSize) {
 		super(eventloop);
 		this.fileStorage = fileStorage;
 		this.executor = executor;
+		this.bufferSize = bufferSize;
 	}
 
 	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor) throws IOException {
-		SimpleFsServer server = new SimpleFsServer(eventloop, fileStorage, executor);
+		return createServer(eventloop, fileStorage, executor, 256 * 1024);
+	}
+
+	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor, int bufferSize) throws IOException {
+		SimpleFsServer server = new SimpleFsServer(eventloop, fileStorage, executor, bufferSize);
 		Files.createDirectories(fileStorage);
 		// Delete not uploaded files.
 		List<String> files = server.fileList();
@@ -98,7 +104,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> {
 
 						messaging.sendMessage(new SimpleFsResponseOperationOk());
 
-						StreamFileReader.readFileFrom(eventloop, executor, 1024 * 1024, source, 0L).streamTo(messaging.binarySocketWriter());
+						StreamFileReader.readFileFrom(eventloop, executor, bufferSize, source, 0L).streamTo(messaging.binarySocketWriter());
 						messaging.shutdownReader();
 					}
 				})
@@ -122,9 +128,15 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> {
 							return;
 						}
 
-						StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, inProgress, true);
+						messaging.sendMessage(new SimpleFsResponseOperationOk());
+
 						StreamProducer<ByteBuf> producer = messaging.binarySocketReader();
+//						StreamLZ4Validator lz4DecompressorValidate = new StreamLZ4Validator(eventloop);
+						StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, inProgress, true);
+
 						producer.streamTo(diskWrite);
+//						producer.streamTo(lz4DecompressorValidate);
+//						lz4DecompressorValidate.streamTo(diskWrite);
 
 						diskWrite.addCompletionCallback(new CompletionCallback() {
 							@Override

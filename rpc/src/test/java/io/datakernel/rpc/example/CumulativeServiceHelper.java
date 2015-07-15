@@ -37,7 +37,7 @@ import io.datakernel.serializer.annotations.Serialize;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-public final class CumulativeHelper {
+public final class CumulativeServiceHelper {
 	public static final class ValueMessage extends RpcMessage.AbstractRpcMessage {
 		@Serialize(order = 0)
 		public int value;
@@ -75,7 +75,7 @@ public final class CumulativeHelper {
 
 	public static RpcServer createServer(NioEventloop eventloop, int listenPort) {
 		RpcServer server = new RpcServer.Builder(eventloop)
-				.serializer(CumulativeHelper.MESSAGE_SERIALIZER)
+				.serializer(CumulativeServiceHelper.MESSAGE_SERIALIZER)
 				.requestHandlers(cumulativeService())
 				.protocolFactory(PROTOCOL_FACTORY)
 				.build();
@@ -87,7 +87,7 @@ public final class CumulativeHelper {
 				.addresses(addresses)
 				.connectSettings(connectSettings)
 				.waitForAllConnected()
-				.serializer(CumulativeHelper.MESSAGE_SERIALIZER)
+				.serializer(CumulativeServiceHelper.MESSAGE_SERIALIZER)
 				.requestSenderFactory(RequestSenderFactory.firstAvailable())
 				.protocolFactory(PROTOCOL_FACTORY)
 				.build();

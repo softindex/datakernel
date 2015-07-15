@@ -142,23 +142,4 @@ public class ByteArraySlabPoolTest {
 		checkReallocate(pool, 100, 101, false);
 	}
 
-	// TODO (nkhokhlov): test that show that function source.drainTo(ByteBuf target) fails if source.remaining() < target.remaining()
-	@Test
-	@Ignore
-	public void testDrainTo() {
-		ByteBuf source = ByteBuf.allocate(10);
-		ByteBuf target = ByteBuf.allocate(10);
-
-		byte someByte = 65;
-		for (int i = 0; i < 5; i++) {
-			source.put(someByte);
-		}
-		source.flip();
-
-		assertTrue(source.remaining() == 5);
-		assertTrue(target.remaining() == 10);
-
-		source.drainTo(target);
-	}
-
 }

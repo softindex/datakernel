@@ -17,7 +17,7 @@
 package io.datakernel.serializer.asm;
 
 import static com.google.common.base.CaseFormat.*;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.*;
 import static com.google.common.base.Throwables.propagate;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.*;
@@ -29,7 +29,6 @@ import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 
-@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenHppcMap implements SerializerGen {
 	private static final int VAR_MAP = 0;
 	private static final int VAR_I = 1;
@@ -47,6 +46,37 @@ public final class SerializerGenHppcMap implements SerializerGen {
 			.put(char.class, new SerializerGenChar())
 			.build();
 
+	public static SerializerGenBuilder serializerGenBuilder(final Class<?> mapType, final Class<?> keyType, final Class<?> valueType) {
+		String prefix = LOWER_CAMEL.to(UPPER_CAMEL, keyType.getSimpleName()) + LOWER_CAMEL.to(UPPER_CAMEL, valueType.getSimpleName());
+		checkArgument(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
+		return new SerializerGenBuilder() {
+			@Override
+			public SerializerGen serializer(Class<?> type, final SerializerForType[] generics, SerializerGen fallback) {
+				SerializerGen keySerializer;
+				SerializerGen valueSerializer;
+				if (generics.length == 2) {
+					checkArgument((keyType == Object.class) && (valueType == Object.class), "keyType and valueType must be Object.class");
+					keySerializer = generics[0].serializer;
+					valueSerializer = generics[1].serializer;
+				} else if (generics.length == 1) {
+					if (keyType == Object.class) {
+						keySerializer = generics[0].serializer;
+						valueSerializer = primitiveSerializers.get(valueType);
+					} else if (valueType == Object.class) {
+						keySerializer = primitiveSerializers.get(keyType);
+						valueSerializer = generics[0].serializer;
+					} else {
+						throw new IllegalArgumentException("keyType or valueType must be Object.class");
+					}
+				} else {
+					keySerializer = primitiveSerializers.get(keyType);
+					valueSerializer = primitiveSerializers.get(valueType);
+				}
+				return new SerializerGenHppcMap(mapType, keyType, valueType, checkNotNull(keySerializer), checkNotNull(valueSerializer));
+			}
+		};
+	}
+
 	private final Class<?> mapType;
 	private final Class<?> hashMapType;
 	private final Class<?> iteratorType;
@@ -55,17 +85,16 @@ public final class SerializerGenHppcMap implements SerializerGen {
 	private final SerializerGen keySerializer;
 	private final SerializerGen valueSerializer;
 
-	public SerializerGenHppcMap(Class<?> mapType, Class<?> keyType, Class<?> valueType) {
+	private SerializerGenHppcMap(Class<?> mapType, Class<?> keyType, Class<?> valueType, SerializerGen keySerializer, SerializerGen valueSerializer) {
 		this.mapType = mapType;
 		this.keyType = keyType;
 		this.valueType = valueType;
-		this.keySerializer = checkNotNull(primitiveSerializers.get(keyType));
-		this.valueSerializer = checkNotNull(primitiveSerializers.get(valueType));
+		this.keySerializer = keySerializer;
+		this.valueSerializer = valueSerializer;
 		try {
-			this.iteratorType = Class.forName("com.carrotsearch.hppc.cursors." +
-					LOWER_CAMEL.to(UPPER_CAMEL, keyType.getName()) + LOWER_CAMEL.to(UPPER_CAMEL, valueType.getName()) + "Cursor");
-			this.hashMapType = Class.forName("com.carrotsearch.hppc." +
-					LOWER_CAMEL.to(UPPER_CAMEL, keyType.getName()) + LOWER_CAMEL.to(UPPER_CAMEL, valueType.getName()) + "OpenHashMap");
+			String prefix = LOWER_CAMEL.to(UPPER_CAMEL, keyType.getSimpleName()) + LOWER_CAMEL.to(UPPER_CAMEL, valueType.getSimpleName());
+			this.iteratorType = Class.forName("com.carrotsearch.hppc.cursors." + prefix + "Cursor");
+			this.hashMapType = Class.forName("com.carrotsearch.hppc." + prefix + "OpenHashMap");
 		} catch (ClassNotFoundException e) {
 			throw propagate(e);
 		}

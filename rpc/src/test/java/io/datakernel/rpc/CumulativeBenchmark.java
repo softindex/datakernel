@@ -25,7 +25,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.example.CumulativeHelper;
+import io.datakernel.rpc.example.CumulativeServiceHelper;
 import io.datakernel.rpc.protocol.RpcException;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.NioEventloopRunner;
@@ -46,13 +46,13 @@ public final class CumulativeBenchmark {
 	private static final ImmutableList<InetSocketAddress> addresses = ImmutableList.of(new InetSocketAddress(SERVICE_PORT));
 
 	private final NioEventloop serverEventloop = new NioEventloop();
-	private final RpcServer server = CumulativeHelper.createServer(serverEventloop, SERVICE_PORT);
+	private final RpcServer server = CumulativeServiceHelper.createServer(serverEventloop, SERVICE_PORT);
 	private final NioEventloopRunner serverRunner = new NioEventloopRunner(serverEventloop).addNioServers(server);
 
 	private final NioEventloop eventloop = new NioEventloop();
-	private final RpcClient client = CumulativeHelper.createClient(eventloop, addresses, new ConnectSettings(500));
+	private final RpcClient client = CumulativeServiceHelper.createClient(eventloop, addresses, new ConnectSettings(500));
 
-	private final CumulativeHelper.ValueMessage incrementMessage;
+	private final CumulativeServiceHelper.ValueMessage incrementMessage;
 	private final int totalRounds;
 	private final int roundRequests;
 	private final int requestsAtOnce;
@@ -67,7 +67,7 @@ public final class CumulativeBenchmark {
 		this.roundRequests = roundRequests;
 		this.requestsAtOnce = requestsAtOnce;
 		this.requestTimeout = requestTimeout;
-		this.incrementMessage = new CumulativeHelper.ValueMessage(2);
+		this.incrementMessage = new CumulativeServiceHelper.ValueMessage(2);
 	}
 
 	private void printBenchmarkInfo() {
@@ -76,7 +76,7 @@ public final class CumulativeBenchmark {
 		System.out.println("Requests at once   : " + requestsAtOnce);
 		System.out.println("Increment value    : " + incrementMessage.value);
 		System.out.println("Request timeout    : " + requestTimeout + " ms");
-		System.out.println("RpcMessage size    : " + CumulativeHelper.calculateRpcMessageSize(incrementMessage) + " bytes");
+		System.out.println("RpcMessage size    : " + CumulativeServiceHelper.calculateRpcMessageSize(incrementMessage) + " bytes");
 	}
 
 	private void run() throws ExecutionException, InterruptedException {
@@ -176,9 +176,9 @@ public final class CumulativeBenchmark {
 			if (i >= numberRequests)
 				return;
 
-			client.sendRequest(incrementMessage, requestTimeout, new ResultCallback<CumulativeHelper.ValueMessage>() {
+			client.sendRequest(incrementMessage, requestTimeout, new ResultCallback<CumulativeServiceHelper.ValueMessage>() {
 				@Override
-				public void onResult(CumulativeHelper.ValueMessage result) {
+				public void onResult(CumulativeServiceHelper.ValueMessage result) {
 					success++;
 					lastResponseValue = result.value;
 					tryCompete();

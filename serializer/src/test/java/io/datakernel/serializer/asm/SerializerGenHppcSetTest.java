@@ -16,13 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
+import static org.junit.Assert.*;
+
 import com.carrotsearch.hppc.*;
 import com.google.common.reflect.TypeToken;
 import io.datakernel.serializer.*;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 public class SerializerGenHppcSetTest {
 	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
@@ -37,16 +36,14 @@ public class SerializerGenHppcSetTest {
 
 	private static <T, V> BufferSerializer<T> getBufferSerializer(TypeToken<T> collectionTypeToken, Class<V> valueClass) {
 		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGenHppcSet hppcSetSerializer = new SerializerGenHppcSet(collectionTypeToken.getRawType(), valueClass);
-		registry.register(collectionTypeToken.getRawType(), hppcSetSerializer);
+		registry.register(collectionTypeToken.getRawType(), SerializerGenHppcSet.serializerGenBuilder(collectionTypeToken.getRawType(), valueClass));
 		SerializerGen serializerGen = registry.serializer(collectionTypeToken);
 		return bufferSerializerFactory.createBufferSerializer(serializerGen);
 	}
 
 	@Test
 	public void testByteSet() throws Exception {
-		BufferSerializer<ByteSet> serializer = getBufferSerializer(new TypeToken<ByteSet>() {
-		}, byte.class);
+		BufferSerializer<ByteSet> serializer = getBufferSerializer(new TypeToken<ByteSet>() {}, byte.class);
 
 		ByteSet test1 = new ByteOpenHashSet();
 		ByteSet test2 = doTest(test1, serializer);
@@ -63,8 +60,7 @@ public class SerializerGenHppcSetTest {
 
 	@Test
 	public void testCharSet() throws Exception {
-		BufferSerializer<CharSet> serializer = getBufferSerializer(new TypeToken<CharSet>() {
-		}, char.class);
+		BufferSerializer<CharSet> serializer = getBufferSerializer(new TypeToken<CharSet>() {}, char.class);
 		CharSet test1 = new CharOpenHashSet();
 		CharSet test2 = doTest(test1, serializer);
 		assertNotNull(test2);
@@ -79,8 +75,7 @@ public class SerializerGenHppcSetTest {
 
 	@Test
 	public void testShortSet() throws Exception {
-		BufferSerializer<ShortSet> serializer = getBufferSerializer(new TypeToken<ShortSet>() {
-		}, short.class);
+		BufferSerializer<ShortSet> serializer = getBufferSerializer(new TypeToken<ShortSet>() {}, short.class);
 
 		ShortSet test1 = new ShortOpenHashSet();
 		ShortSet test2 = doTest(test1, serializer);
@@ -96,8 +91,7 @@ public class SerializerGenHppcSetTest {
 
 	@Test
 	public void testIntSet() throws Exception {
-		BufferSerializer<IntSet> serializer = getBufferSerializer(new TypeToken<IntSet>() {
-		}, int.class);
+		BufferSerializer<IntSet> serializer = getBufferSerializer(new TypeToken<IntSet>() {}, int.class);
 		IntSet test1 = new IntOpenHashSet();
 		IntSet test2 = doTest(test1, serializer);
 		assertNotNull(test2);
@@ -112,8 +106,7 @@ public class SerializerGenHppcSetTest {
 
 	@Test
 	public void testLongSet() throws Exception {
-		BufferSerializer<LongSet> serializer = getBufferSerializer(new TypeToken<LongSet>() {
-		}, long.class);
+		BufferSerializer<LongSet> serializer = getBufferSerializer(new TypeToken<LongSet>() {}, long.class);
 		LongSet test1 = new LongOpenHashSet();
 		LongSet test2 = doTest(test1, serializer);
 		assertNotNull(test2);
@@ -128,8 +121,7 @@ public class SerializerGenHppcSetTest {
 
 	@Test
 	public void testFloatSet() throws Exception {
-		BufferSerializer<FloatSet> serializer = getBufferSerializer(new TypeToken<FloatSet>() {
-		}, float.class);
+		BufferSerializer<FloatSet> serializer = getBufferSerializer(new TypeToken<FloatSet>() {}, float.class);
 		FloatSet test1 = new FloatOpenHashSet();
 		FloatSet test2 = doTest(test1, serializer);
 		assertNotNull(test2);
@@ -144,8 +136,7 @@ public class SerializerGenHppcSetTest {
 
 	@Test
 	public void testDoubleSet() throws Exception {
-		BufferSerializer<DoubleSet> serializer = getBufferSerializer(new TypeToken<DoubleSet>() {
-		}, double.class);
+		BufferSerializer<DoubleSet> serializer = getBufferSerializer(new TypeToken<DoubleSet>() {}, double.class);
 		DoubleSet test1 = new DoubleOpenHashSet();
 		DoubleSet test2 = doTest(test1, serializer);
 		assertNotNull(test2);
@@ -158,10 +149,18 @@ public class SerializerGenHppcSetTest {
 		assertEquals(test1, test3);
 	}
 
-	@Test(expected = NullPointerException.class)
+	@Test
 	public void testObjectSet() throws Exception {
-		@SuppressWarnings("unused")
-		BufferSerializer<ObjectSet<String>> serializer = getBufferSerializer(new TypeToken<ObjectSet<String>>() {
-		}, Object.class);
+		BufferSerializer<ObjectSet<String>> serializer = getBufferSerializer(new TypeToken<ObjectSet<String>>() {}, Object.class);
+		ObjectSet<String> test1 = new ObjectOpenHashSet<>();
+		ObjectSet<String> test2 = doTest(test1, serializer);
+		assertNotNull(test2);
+		assertEquals(test1, test2);
+
+		test1.add("10");
+		test1.add("11");
+		ObjectSet<String> test3 = doTest(test1, serializer);
+		assertNotNull(test3);
+		assertEquals(test1, test3);
 	}
 }

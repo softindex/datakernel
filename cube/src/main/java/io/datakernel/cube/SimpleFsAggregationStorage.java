@@ -24,8 +24,6 @@ import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-import io.datakernel.stream.processor.StreamLZ4Compressor;
-import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,14 +50,12 @@ public class SimpleFsAggregationStorage implements AggregationStorage {
 	@Override
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> dimensions, List<String> measures,
 	                                         Class<T> recordClass, final long id) {
-		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = cubeStructure.createBufferSerializer(recordClass, dimensions, measures);
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE);
 
 		final StreamForwarder forwarder = new StreamForwarder<>(eventloop);
 
-		forwarder.streamTo(decompressor);
-		decompressor.streamTo(deserializer);
+		forwarder.streamTo(deserializer);
 
 		client.read(address, path(id), new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
@@ -83,12 +79,10 @@ public class SimpleFsAggregationStorage implements AggregationStorage {
 	                                         final Class<T> recordClass, final long id) {
 		BufferSerializer<T> bufferSerializer = cubeStructure.createBufferSerializer(recordClass, dimensions, measures);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
-		final StreamLZ4Compressor compressor = new StreamLZ4Compressor(eventloop, 1024 * 1024, 256 * 1024);
 
 		final StreamForwarder forwarder = new StreamForwarder<>(eventloop);
 
-		serializer.streamTo(compressor);
-		compressor.streamTo(forwarder);
+		serializer.streamTo(forwarder);
 
 		client.write(address, path(id), new ResultCallback<StreamConsumer<ByteBuf>>() {
 			@Override

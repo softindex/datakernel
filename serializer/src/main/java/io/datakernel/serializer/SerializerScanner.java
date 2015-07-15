@@ -94,6 +94,13 @@ public final class SerializerScanner {
 				return new SerializerGenList(generics[0].serializer);
 			}
 		});
+		result.register(Set.class, new SerializerGenBuilder() {
+			@Override
+			public SerializerGen serializer(Class<?> type, final SerializerForType[] generics, SerializerGen fallback) {
+				checkArgument(generics.length == 1);
+				return new SerializerGenSet(generics[0].serializer);
+			}
+		});
 		result.register(Map.class, new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, final SerializerForType[] generics, SerializerGen fallback) {

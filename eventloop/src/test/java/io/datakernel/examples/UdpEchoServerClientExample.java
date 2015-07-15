@@ -29,8 +29,7 @@ import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 
 /**
- * Example 3.
- * This class contains examples of working with UdpSocketConnection.
+ * Example of creating UDP echo server and UDP client by subclassing `UDPSocketConnection`.
  */
 public class UdpEchoServerClientExample {
 	private static final int SERVER_PORT = 45555;
@@ -46,7 +45,6 @@ public class UdpEchoServerClientExample {
 		@Override
 		protected void onRead(UdpPacket packet) {
 			System.out.println("Server read completed from port " + packet.getSocketAddress().getPort());
-			packet.getBuf().flip();
 			send(packet);
 		}
 
@@ -69,12 +67,12 @@ public class UdpEchoServerClientExample {
 
 			byte[] bytesReceived = packet.getBuf().array();
 
-			System.out.print("Received " + packet.getBuf().position() + " bytes: ");
-			for (int i = 0; i < packet.getBuf().position(); ++i) {
-				System.out.print(bytesReceived[i]);
-				if (i != packet.getBuf().position() - 1) {
+			System.out.print("Received " + packet.getBuf().limit() + " bytes: ");
+			for (int i = 0; i < packet.getBuf().limit(); ++i) {
+				if (i > 0) {
 					System.out.print(", ");
 				}
+				System.out.print(bytesReceived[i]);
 			}
 
 			close();

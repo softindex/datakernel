@@ -67,6 +67,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 					break;
 				}
 
+				buf.flip();
 				UdpPacket packet = new UdpPacket(buf, (InetSocketAddress) sourceAddress);
 				onRead(packet);
 			}

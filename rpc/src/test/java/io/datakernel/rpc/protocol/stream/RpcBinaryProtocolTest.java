@@ -208,14 +208,14 @@ public class RpcBinaryProtocolTest {
 		}
 		StreamProducer<RpcMessage> client = StreamProducers.ofIterable(eventloop, sourceList);
 
-		StreamLZ4Compressor compressorClient = new StreamLZ4Compressor(eventloop, MIN_COMPRESS_BLOCK_SIZE, 1);
+		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorClient = new StreamLZ4Decompressor(eventloop);
 		StreamSerializer<RpcMessage> serializerClient = new StreamBinarySerializer<>(eventloop, serializer.getSerializer(),
 				defaultPacketSize, maxPacketSize, 0, false);
 		StreamDeserializer<RpcMessage> deserializerClient = new StreamBinaryDeserializer<>(eventloop, serializer.getSerializer(), maxPacketSize);
 
 		// server side
-		StreamLZ4Compressor compressorServer = new StreamLZ4Compressor(eventloop, MIN_COMPRESS_BLOCK_SIZE, 1);
+		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorServer = new StreamLZ4Decompressor(eventloop);
 		StreamSerializer<RpcMessage> serializerServer = new StreamBinarySerializer<>(eventloop, serializer.getSerializer(),
 				defaultPacketSize, maxPacketSize, 0, false);

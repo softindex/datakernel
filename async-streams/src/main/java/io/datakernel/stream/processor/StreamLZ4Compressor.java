@@ -27,80 +27,85 @@ import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
-import java.nio.ByteBuffer;
-
-import static com.google.common.base.Preconditions.checkArgument;
-
-/**
- * It is realization LZ4 is a lossless data compression algorithm that is focused on compression
- * and decompression speed. It used for storing data in external memory. It is a {@link AbstractStreamTransformer_1_1}
- * which receives ByteBufs and streams compression ByteBufs  to the destination .
- */
 public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Stateless<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4CompressorMBean {
 	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
 
 	static final int HEADER_LENGTH =
-			MAGIC_LENGTH // magic bytes
-					+ 1          // token
-					+ 4          // compressed length
-					+ 4          // decompressed length
-					+ 4;         // checksum
+			MAGIC_LENGTH    // magic bytes
+					+ 1     // token
+					+ 4     // compressed length
+					+ 4     // decompressed length
+					+ 4;    // checksum
 
 	static final int COMPRESSION_LEVEL_BASE = 10;
-	static final int MIN_BLOCK_SIZE = 64;
-	static final int MAX_BLOCK_SIZE = 1 << (COMPRESSION_LEVEL_BASE + 0x0F);
 
 	static final int COMPRESSION_METHOD_RAW = 0x10;
 	static final int COMPRESSION_METHOD_LZ4 = 0x20;
 
-	public static final int DEFAULT_SEED = 0x9747b28c;
+	static final int DEFAULT_SEED = 0x9747b28c;
 
+	private static final int MIN_BLOCK_SIZE = 64;
 	private final ByteBufPool pool;
 
-	private final int writeThroughSize;
-	private final int blockSize;
-	//	private final int compressionLevel;
-	private final LZ4Compressor compressor = LZ4Factory.fastestInstance().fastCompressor();
+	private final LZ4Compressor compressor;
 	private final StreamingXXHash32 checksum = XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED);
 
-	private ByteBuf inputBuf = ByteBuf.allocate(1);
-
-	private long sentBytes;
-
 	private long jmxBytesInput;
-	private int jmxBufsInput;
-	private int jmxBufsOutput;
+	private long jmxBytesOutput;
+	private int jmxBufs;
 
 	/**
-	 * Returns new instance of this compressor. Large blocks require more memory at compression
-	 * and decompression time but should improve the compression ratio.
+	 * Returns new instance of StreamLZ4Compressor without compression.
 	 *
 	 * @param eventloop event loop in which compressor will run
-	 * @param blockSize the maximum number of bytes to try to compress at once
 	 */
-	public StreamLZ4Compressor(Eventloop eventloop, int blockSize, int writeThroughSize) {
-		super(eventloop);
-		checkArgument(blockSize >= MIN_BLOCK_SIZE, "blockSize must be >= %s, got %s", MIN_BLOCK_SIZE, blockSize);
-		checkArgument(blockSize <= MAX_BLOCK_SIZE, "blockSize must be <= %s, got %s", MAX_BLOCK_SIZE, blockSize);
-		checkArgument(writeThroughSize >= 0 && writeThroughSize <= blockSize,
-				"writeThroughSize must be positive value and it must be less than blockSize, got %s", writeThroughSize);
+	public static StreamLZ4Compressor rawCompressor(Eventloop eventloop) {
+		return new StreamLZ4Compressor(eventloop, null);
+	}
 
-		this.writeThroughSize = writeThroughSize;
-		this.blockSize = blockSize;
-		this.pool = eventloop.getByteBufferPool();
-//		this.compressionLevel = compressionLevel(blockSize);
+	/**
+	 * Returns new instance of StreamLZ4Compressor with a {@link LZ4Factory#fastCompressor()}.
+	 * for data compression.
+	 *
+	 * @param eventloop event loop in which compressor will run
+	 */
+	public static StreamLZ4Compressor fastCompressor(Eventloop eventloop) {
+		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().fastCompressor());
+	}
+
+	/**
+	 * Returns new instance of StreamLZ4Compressor with a {@link LZ4Factory#highCompressor()}.
+	 * for data compression.
+	 *
+	 * @param eventloop event loop in which compressor will run
+	 */
+	public static StreamLZ4Compressor highCompressor(Eventloop eventloop) {
+		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor());
+	}
+
+	/**
+	 * Returns new instance of StreamLZ4Compressor with a {@link LZ4Factory#highCompressor(int)}
+	 * for data compression.
+	 *
+	 * @param eventloop        event loop in which compressor will run
+	 * @param compressionLevel compression level in the same manner as the {@link LZ4Factory#highCompressor(int)}
+	 */
+	public static StreamLZ4Compressor highCompressor(Eventloop eventloop, int compressionLevel) {
+		return new StreamLZ4Compressor(eventloop, LZ4Factory.fastestInstance().highCompressor(compressionLevel));
 	}
 
 	/**
 	 * Returns new instance of this compressor. Large blocks require more memory at compression
 	 * and decompression time but should improve the compression ratio.
 	 *
-	 * @param eventloop event loop in which compressor will run
-	 * @param blockSize the maximum number of bytes to try to compress at once
+	 * @param eventloop  event loop in which compressor will run
+	 * @param compressor compressor which will use; can be {@code null} for transmission without compression
 	 */
-	public StreamLZ4Compressor(Eventloop eventloop, int blockSize) {
-		this(eventloop, blockSize, blockSize);
+	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
+		super(eventloop);
+		this.pool = eventloop.getByteBufferPool();
+		this.compressor = compressor;
 	}
 
 	private static int compressionLevel(int blockSize) {
@@ -116,76 +121,62 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 		buf[off++] = (byte) i;
 		buf[off++] = (byte) (i >>> 8);
 		buf[off++] = (byte) (i >>> 16);
-		buf[off++] = (byte) (i >>> 24);
+		buf[off] = (byte) (i >>> 24);
 	}
 
 	public static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum, ByteBufPool pool,
-	                                    ByteBuffer buf, boolean endOfStreamBlock) {
-		return compressBlock(compressor, checksum, pool,
-				buf.array(), buf.arrayOffset() + buf.position(), buf.remaining(), endOfStreamBlock);
-	}
-
-	public static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum, ByteBufPool pool,
-	                                    byte[] buffer, int off, int len, boolean endOfStreamBlock) {
-		if (len == 0 && !endOfStreamBlock) {
-			return pool.allocate(0);
-		}
-
+	                                    byte[] buffer, int off, int len) {
 		int compressionLevel = compressionLevel(len < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : len);
 
-		int outputBufMaxSize = HEADER_LENGTH + compressor.maxCompressedLength(len) + (endOfStreamBlock ? HEADER_LENGTH : 0);
+		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));
 		ByteBuf outputBuf = pool.allocate(outputBufMaxSize);
 		byte[] outputBytes = outputBuf.array();
-		int compressedBlockLength = 0;
+		System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
 
-		if (len != 0) {
-			checksum.reset();
-			checksum.update(buffer, off, len);
-			int check = checksum.getValue();
+		checksum.reset();
+		checksum.update(buffer, off, len);
+		int check = checksum.getValue();
 
-			System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
-			int compressedLength = compressor.compress(buffer, off, len, outputBytes, HEADER_LENGTH);
-			int compressMethod;
-			if (compressedLength >= len) {
-				compressMethod = COMPRESSION_METHOD_RAW;
-				compressedLength = len;
-				System.arraycopy(buffer, off, outputBytes, HEADER_LENGTH, len);
-			} else {
-				compressMethod = COMPRESSION_METHOD_LZ4;
-			}
-
-			outputBytes[MAGIC_LENGTH] = (byte) (compressMethod | compressionLevel);
-			writeIntLE(compressedLength, outputBytes, MAGIC_LENGTH + 1);
-			writeIntLE(len, outputBytes, MAGIC_LENGTH + 5);
-			writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
-			assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
-
-			compressedBlockLength = HEADER_LENGTH + compressedLength;
+		int compressedLength = len;
+		if (compressor != null) {
+			compressedLength = compressor.compress(buffer, off, len, outputBytes, HEADER_LENGTH);
 		}
 
-		if (endOfStreamBlock) {
-			System.arraycopy(MAGIC, 0, outputBytes, compressedBlockLength, MAGIC_LENGTH);
-			outputBytes[compressedBlockLength + MAGIC_LENGTH] = (byte) (COMPRESSION_METHOD_RAW | compressionLevel);
-			writeIntLE(0, outputBytes, compressedBlockLength + MAGIC_LENGTH + 1);
-			writeIntLE(0, outputBytes, compressedBlockLength + MAGIC_LENGTH + 5);
-			writeIntLE(0, outputBytes, compressedBlockLength + MAGIC_LENGTH + 9);
+		int compressMethod;
+		if (compressor == null || compressedLength >= len) {
+			compressMethod = COMPRESSION_METHOD_RAW;
+			compressedLength = len;
+			System.arraycopy(buffer, off, outputBytes, HEADER_LENGTH, len);
+		} else {
+			compressMethod = COMPRESSION_METHOD_LZ4;
 		}
 
-		outputBuf.limit(compressedBlockLength + (endOfStreamBlock ? HEADER_LENGTH : 0));
+		outputBytes[MAGIC_LENGTH] = (byte) (compressMethod | compressionLevel);
+		writeIntLE(compressedLength, outputBytes, MAGIC_LENGTH + 1);
+		writeIntLE(len, outputBytes, MAGIC_LENGTH + 5);
+		writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
+		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
+
+		outputBuf.limit(HEADER_LENGTH + compressedLength);
 
 		return outputBuf;
 	}
 
-	private void flushBufferedData(byte[] buffer, int off, int len, boolean endOfStreamBlock) {
-		ByteBuf outputBuffer = compressBlock(compressor, checksum, pool, buffer, off, len, endOfStreamBlock);
-		jmxBufsOutput++;
-		int size = outputBuffer.remaining();
-		if (size != 0) {
-			if (status <= SUSPENDED) {
-				downstreamDataReceiver.onData(outputBuffer);
-			}
-			sentBytes += size;
-		}
+	public static ByteBuf createEndOfStreamBlock(ByteBufPool pool) {
+		int compressionLevel = compressionLevel(MIN_BLOCK_SIZE);
+
+		ByteBuf outputBuf = pool.allocate(HEADER_LENGTH);
+		byte[] outputBytes = outputBuf.array();
+		System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
+
+		outputBytes[MAGIC_LENGTH] = (byte) (COMPRESSION_METHOD_RAW | compressionLevel);
+		writeIntLE(0, outputBytes, MAGIC_LENGTH + 1);
+		writeIntLE(0, outputBytes, MAGIC_LENGTH + 5);
+		writeIntLE(0, outputBytes, MAGIC_LENGTH + 9);
+		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
+
+		outputBuf.limit(HEADER_LENGTH);
+		return outputBuf;
 	}
 
 	@Override
@@ -193,26 +184,14 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 		if (status >= END_OF_STREAM)
 			return;
 		try {
-			jmxBufsInput++;
-			jmxBytesInput += inputBuf.remaining();
-			while (inputBuf.position() + buf.remaining() >= blockSize) {
-				if (inputBuf.position() == 0) {
-					flushBufferedData(buf.array(), buf.position(), blockSize, false);
-					buf.advance(blockSize);
-				} else {
-					inputBuf = pool.resize(inputBuf, blockSize);
-					buf.drainTo(inputBuf, inputBuf.remaining());
-					flushBufferedData(inputBuf.array(), 0, blockSize, false);
-					inputBuf.position(0);
-				}
-			}
+			jmxBufs++;
+			jmxBytesInput += buf.remaining();
 
-			if (inputBuf.position() == 0 && buf.remaining() >= writeThroughSize) {
-				flushBufferedData(buf.array(), buf.position(), buf.remaining(), false);
-			} else {
-				inputBuf = pool.resize(inputBuf, blockSize);
-				buf.drainTo(inputBuf, buf.remaining());
-			}
+			ByteBuf outputBuffer = compressBlock(compressor, checksum, pool,
+					buf.array(), buf.position(), buf.remaining());
+			jmxBytesOutput += outputBuffer.remaining();
+
+			send(outputBuffer);
 
 			buf.recycle();
 		} catch (Exception e) {
@@ -222,17 +201,13 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 
 	@Override
 	public void onEndOfStream() {
-		flushBufferedData(inputBuf.array(), 0, inputBuf.position(), true);
+		send(createEndOfStreamBlock(pool));
 		sendEndOfStream();
 	}
 
 	@Override
 	public StreamDataReceiver<ByteBuf> getDataReceiver() {
 		return this;
-	}
-
-	public long getSentBytes() {
-		return sentBytes;
 	}
 
 	@Override
@@ -242,17 +217,12 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 
 	@Override
 	public long getBytesOutput() {
-		return sentBytes;
+		return jmxBytesOutput;
 	}
 
 	@Override
-	public int getBufsInput() {
-		return jmxBufsInput;
-	}
-
-	@Override
-	public int getBufsOutput() {
-		return jmxBufsOutput;
+	public int getBufs() {
+		return jmxBufs;
 	}
 
 	@SuppressWarnings("AssertWithSideEffects")
@@ -260,9 +230,8 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 	public String toString() {
 		return '{' + super.toString() +
 				" inBytes:" + jmxBytesInput +
-				" outBytes:" + sentBytes +
-				" inBufs:" + jmxBufsInput +
-				" outBufs:" + jmxBufsOutput +
+				" outBytes:" + jmxBytesOutput +
+				" bufs:" + jmxBufs +
 				'}';
 	}
 }

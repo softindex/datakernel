@@ -50,7 +50,6 @@ public final class DnsCache {
 
 	/**
 	 * Enum with freshness cache's entry.
-	 * <p/>
 	 * <ul>
 	 * <li>FRESH - while time to live of this entry has not passed, empty is considered resolved
 	 * <li> SOFT_TTL_EXPIRED - while hard time expiration has not passed, empty is considered resolved, but needs refreshing

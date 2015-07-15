@@ -108,7 +108,7 @@ public class LocalFsAggregationStorage implements AggregationStorage {
 	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> dimensions, List<String> measures, Class<T> recordClass, long id) {
 		BufferSerializer<T> bufferSerializer = cubeStructure.createBufferSerializer(recordClass, dimensions, measures);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
-		StreamLZ4Compressor compressor = new StreamLZ4Compressor(eventloop, 1024 * 1024, 256 * 1024);
+		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(aggregationId, id));
 
 		serializer.streamTo(compressor);

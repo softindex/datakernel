@@ -44,16 +44,16 @@ public class UdpSocketConnectionTest {
 			System.out.println("Client read completed");
 
 			byte[] bytesReceived = packet.getBuf().array();
-			byte[] message = new byte[packet.getBuf().position()];
+			byte[] message = new byte[packet.getBuf().limit()];
 
-			System.out.print("Received " + packet.getBuf().position() + " bytes: ");
-			for (int i = 0; i < packet.getBuf().position(); ++i) {
+			System.out.print("Received " + packet.getBuf().limit() + " bytes: ");
+			for (int i = 0; i < packet.getBuf().limit(); ++i) {
 				message[i] = bytesReceived[i];
 
-				System.out.print(bytesReceived[i]);
-				if (i != packet.getBuf().position() - 1) {
+				if (i > 0) {
 					System.out.print(", ");
 				}
+				System.out.print(bytesReceived[i]);
 			}
 
 			System.out.println("");
@@ -90,7 +90,7 @@ public class UdpSocketConnectionTest {
 		@Override
 		protected void onRead(UdpPacket packet) {
 			System.out.println("Server read completed from port " + packet.getSocketAddress().getPort());
-			packet.getBuf().flip();
+//			packet.getBuf().flip();
 			send(packet);
 		}
 

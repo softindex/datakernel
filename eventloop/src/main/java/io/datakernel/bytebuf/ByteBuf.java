@@ -424,19 +424,6 @@ public final class ByteBuf implements Recyclable {
 	}
 
 	/**
-	 * Adds all elements after position to buffer from argument.
-	 *
-	 * @param buf the buffer for draining
-	 */
-	public void drainTo(ByteBuf buf) {
-		assert !isRecycled();
-		drainTo(buf, buf.remaining()); // TODO (nkhokhlov): concerning second argument:
-		// if source buffer contains less bytes than target buffer method fails.
-		// maybe this variant will be better: buf.remaining() > this.remaining() ? this.remaining() : buf.remaining(); ?
-		// ByteArraySlabPoolTest contains appropriate test to show this
-	}
-
-	/**
 	 * Returns limit of this buffer
 	 */
 	public int limit() {

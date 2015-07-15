@@ -16,37 +16,25 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
-import io.datakernel.stream.StreamDataReceiver;
-import net.jpountz.lz4.LZ4Exception;
-import net.jpountz.lz4.LZ4Factory;
-import net.jpountz.lz4.LZ4FastDecompressor;
-import net.jpountz.util.Utils;
-import net.jpountz.xxhash.StreamingXXHash32;
-import net.jpountz.xxhash.XXHashFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
 
-/**
- * It is realization LZ4 is a lossless data decompression algorithm that is focused on compression
- * and decompression speed. It used for storing data in external memory. It is a {@link AbstractStreamTransformer_1_1}
- * which receives ByteBufs and streams decompressed ByteBufs to the destination .
- */
-public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1_Stateless<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4DecompressorMBean {
+import java.io.IOException;
 
-	private static final Logger logger = LoggerFactory.getLogger(StreamLZ4Decompressor.class);
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
+import io.datakernel.stream.StreamDataReceiver;
+import net.jpountz.lz4.LZ4Exception;
+import net.jpountz.lz4.LZ4Factory;
+import net.jpountz.lz4.LZ4FastDecompressor;
+import net.jpountz.util.SafeUtils;
+import net.jpountz.xxhash.StreamingXXHash32;
+import net.jpountz.xxhash.XXHashFactory;
 
+public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4DecompressorMBean {
 	private static final int INITIAL_BUFFER_SIZE = 256;
 
 	private final ByteBufPool pool;
@@ -55,8 +43,8 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1_S
 	private final StreamingXXHash32 checksum;
 
 	private final ByteBuf headerBuf = ByteBuf.allocate(HEADER_LENGTH);
+
 	private ByteBuf inputBuf;
-	//	private int inputBufferPosition;
 	private long inputStreamPosition;
 
 	private long jmxBytesInput;
@@ -91,7 +79,11 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1_S
 		return this;
 	}
 
-	@SuppressWarnings("ConstantConditions")
+	@Override
+	public void onEndOfStream() {
+		sendEndOfStream();
+	}
+
 	private static void readHeader(Header header, byte[] buf, int off) throws Exception {
 		for (int i = 0; i < MAGIC_LENGTH; ++i) {
 			if (buf[off + i] != MAGIC[i]) {
@@ -104,18 +96,17 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1_S
 		if (header.compressionMethod != COMPRESSION_METHOD_RAW && header.compressionMethod != COMPRESSION_METHOD_LZ4) {
 			throw new IOException("Stream is corrupted");
 		}
-		header.compressedLen = Utils.readIntLE(buf, off + MAGIC_LENGTH + 1);
-		header.originalLen = Utils.readIntLE(buf, off + MAGIC_LENGTH + 5);
-		header.check = Utils.readIntLE(buf, off + MAGIC_LENGTH + 9);
+		header.compressedLen = SafeUtils.readIntLE(buf, off + MAGIC_LENGTH + 1);
+		header.originalLen = SafeUtils.readIntLE(buf, off + MAGIC_LENGTH + 5);
+		header.check = SafeUtils.readIntLE(buf, off + MAGIC_LENGTH + 9);
 		if (header.originalLen > 1 << compressionLevel
-				|| header.originalLen < 0
-				|| header.compressedLen < 0
+				|| (header.originalLen < 0 || header.compressedLen < 0)
 				|| (header.originalLen == 0 && header.compressedLen != 0)
 				|| (header.originalLen != 0 && header.compressedLen == 0)
 				|| (header.compressionMethod == COMPRESSION_METHOD_RAW && header.originalLen != header.compressedLen)) {
 			throw new IOException("Stream is corrupted");
 		}
-		if (header.originalLen == 0 && header.compressedLen == 0) {
+		if (header.originalLen == 0) {
 			if (header.check != 0) {
 				throw new IOException("Stream is corrupted");
 			}
@@ -150,17 +141,6 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1_S
 			throw new IOException("Stream is corrupted");
 		}
 		return outputBuf;
-	}
-
-	public static ByteBuf decompressBlock(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum,
-	                                      ByteBufPool byteBufferPool, ByteBuffer compressedBlock) throws Exception {
-		byte[] buf = compressedBlock.array();
-		int off = compressedBlock.arrayOffset() + compressedBlock.position();
-		Header header = new Header();
-		readHeader(header, buf, off);
-		ByteBuf resultByteBuffer = readBody(byteBufferPool, decompressor, checksum, header, buf, off + HEADER_LENGTH);
-		compressedBlock.position(compressedBlock.position() + HEADER_LENGTH + header.compressedLen);
-		return resultByteBuffer;
 	}
 
 	private boolean isReadingHeader() {

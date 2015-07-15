@@ -303,8 +303,19 @@ public class HashFsTest {
 		Assert.assertTrue(finishSucceed.get());
 	}
 
+
 	@Test
-	public void testDownload() throws Exception {
+	public void downloadBigFile() throws Exception {
+		download("big_file", "copy_big_file");
+	}
+
+	@Test
+	public void downloadInnerFile() throws Exception {
+		download("t_dir/t1", "copy_t1");
+	}
+
+
+	public void download(final String fileName, String copyFile) throws Exception {
 		final NioEventloop eventloop = new NioEventloop();
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		final int serverCount = 5;
@@ -322,8 +333,8 @@ public class HashFsTest {
 		Assert.assertTrue(finishSucceed.get());
 
 		HashFsImpl client = HashFsImpl.createHashClient(eventloop, serverInfos);
-		StreamProducer<ByteBuf> producer = client.download("t_dir/t1");
-		final Path destination = dirPath.resolve("copy_t1");
+		StreamProducer<ByteBuf> producer = client.download(fileName);
+		final Path destination = dirPath.resolve(copyFile);
 		StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, destination, true);
 		producer.streamTo(diskWrite);
 		diskWrite.addCompletionCallback(new CompletionCallback() {
@@ -331,7 +342,7 @@ public class HashFsTest {
 			public void onComplete() {
 				boolean fileContentEquals = false;
 				try {
-					fileContentEquals = com.google.common.io.Files.equal(dirPath.resolve("t_dir/t1").toFile(), destination.toFile());
+					fileContentEquals = com.google.common.io.Files.equal(dirPath.resolve(fileName).toFile(), destination.toFile());
 				} catch (IOException e) {
 					logger.error("Can't compare files", e);
 				}
@@ -399,7 +410,7 @@ public class HashFsTest {
 
 	@Test
 	public void testUploadLotFiles() throws IOException {
-		final int filesCount = 10;
+		final int filesCount = 50;
 		List<String> createdFiles = new ArrayList<>();
 
 		for (int i = 0; i < filesCount; i++) {

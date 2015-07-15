@@ -16,19 +16,18 @@
 
 package io.datakernel.stream.processor;
 
+import static org.junit.Assert.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamLZ4Test {
 
@@ -62,26 +61,30 @@ public class StreamLZ4Test {
 	}
 
 	@Test
-	public void test() throws Exception {
+	public void test() {
 		NioEventloop eventloop = new NioEventloop();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
-		int buffersCount = 50;
+		int buffersCount = 1000;
 		for (int i = 0; i < buffersCount; i++) {
 			ByteBuf buffer = createRandomByteBuf(random);
+			buffer.flip();
 			buffers.add(buffer);
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
 		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
-		StreamLZ4Compressor compressor = new StreamLZ4Compressor(eventloop, 64, 32);
+		StreamByteChunker preBuf = new StreamByteChunker(eventloop, 64, 128);
+		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+		StreamByteChunker postBuf = new StreamByteChunker(eventloop, 64, 128);
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(compressor);
-
-		compressor.streamTo(decompressor);
+		source.streamTo(preBuf);
+		preBuf.streamTo(compressor);
+		compressor.streamTo(postBuf);
+		postBuf.streamTo(decompressor);
 		decompressor.streamTo(consumer);
 
 		eventloop.run();
@@ -89,6 +92,63 @@ public class StreamLZ4Test {
 		byte[] actual = byteBufsToByteArray(consumer.getList());
 
 		assertArrayEquals(expected, actual);
+		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+	}
+
+	@Test
+	public void testRaw() {
+		NioEventloop eventloop = new NioEventloop();
+		StreamLZ4Compressor compressor = StreamLZ4Compressor.rawCompressor(eventloop);
+
+		doTest(eventloop, compressor);
+	}
+
+	@Test
+	public void testLz4Fast() {
+		NioEventloop eventloop = new NioEventloop();
+		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+
+		doTest(eventloop, compressor);
+	}
+
+	@Test
+	public void testLz4High() {
+		NioEventloop eventloop = new NioEventloop();
+		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(eventloop);
+
+		doTest(eventloop, compressor);
+	}
+
+	@Test
+	public void testLz4High10() {
+		NioEventloop eventloop = new NioEventloop();
+		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(eventloop, 10);
+
+		doTest(eventloop, compressor);
+	}
+
+	private void doTest(NioEventloop eventloop, StreamLZ4Compressor compressor) {
+		byte data[] = "1".getBytes();
+		ByteBuf buf = ByteBuf.allocate(data.length);
+		buf.put(data);
+		buf.flip();
+		List<ByteBuf> buffers = new ArrayList<>();
+		buffers.add(buf);
+
+		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
+		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop);
+
+		source.streamTo(compressor);
+		compressor.streamTo(decompressor);
+		decompressor.streamTo(consumer);
+
+		eventloop.run();
+
+		byte[] actual = byteBufsToByteArray(consumer.getList());
+		byte[] expected = byteBufsToByteArray(buffers);
+		assertArrayEquals(actual, expected);
+
 		assertTrue(source.getStatus() == StreamProducer.CLOSED);
 	}
 
