@@ -16,7 +16,7 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.AsmFunctionFactory;
 
 import static io.datakernel.codegen.FunctionDefs.*;

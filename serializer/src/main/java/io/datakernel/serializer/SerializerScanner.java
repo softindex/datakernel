@@ -30,7 +30,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.reflect.TypeToken;
-import io.datakernel.asm.Annotations;
+import io.datakernel.serializer.utils.Annotations;
 import io.datakernel.serializer.annotations.*;
 import io.datakernel.serializer.asm.*;
 import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;

@@ -18,7 +18,7 @@ package io.datakernel.cube;
 
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.AsmFunctionFactory;
 import io.datakernel.codegen.FunctionDefComparator;
 import io.datakernel.codegen.FunctionDefSequence;

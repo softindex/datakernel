@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.serializer.utils.DefiningClassLoader;
 import io.datakernel.serializer.asm.SerializerGen;
 import org.objectweb.asm.MethodVisitor;
 

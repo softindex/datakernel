@@ -18,7 +18,7 @@ package io.datakernel.cube_http;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.*;
 import io.datakernel.cube.api.CubePredicatesGsonSerializer;

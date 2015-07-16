@@ -19,7 +19,7 @@ package io.datakernel.cube;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.google.common.reflect.TypeToken;
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.async.CompletionCallbackObserver;
 import io.datakernel.cube.LogToCubeTest.TestAdvResult;
 import io.datakernel.eventloop.NioEventloop;

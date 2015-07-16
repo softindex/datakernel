@@ -2,36 +2,40 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
         <version>1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
 
     <artifactId>rpc</artifactId>
+
+    <name>DataKernel: RPC</name>
+    <description>
+        High-performance and fault-tolerant remote procedure call module for building distributed applications.
+    </description>
 
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>eventloop</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${io.datakernel.version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>serializer</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${io.datakernel.version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>async-streams</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${io.datakernel.version}</version>
         </dependency>
         <dependency>
             <groupId>net.jpountz.lz4</groupId>
             <artifactId>lz4</artifactId>
-            <version>1.3.0</version>
         </dependency>
     </dependencies>
 </project>

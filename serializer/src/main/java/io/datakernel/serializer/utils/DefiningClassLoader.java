@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.asm;
+package io.datakernel.serializer.utils;
 
 import java.util.HashMap;
 import java.util.Map;

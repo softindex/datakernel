@@ -2,26 +2,30 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
         <version>1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
 
     <artifactId>guice</artifactId>
+
+    <name>DataKernel: Guice integration</name>
+    <description>
+        Extensions for Google Guice: support of primary and worker Event Loop threads; construction of service graphs.
+    </description>
 
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>eventloop</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>${io.datakernel.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
-            <version>4.0</version>
         </dependency>
     </dependencies>
 </project>

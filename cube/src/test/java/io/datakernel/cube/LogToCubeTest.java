@@ -22,7 +22,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.async.CompletionCallbackObserver;
 import io.datakernel.cube.api.CubePredicatesGsonSerializer;
 import io.datakernel.cube.api.CubeQueryGsonSerializer;

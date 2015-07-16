@@ -17,7 +17,7 @@
 package io.datakernel.cube;
 
 import com.google.common.collect.ImmutableMap;
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.CubeTest.MyCommitCallback;
 import io.datakernel.cube.dimensiontype.DimensionType;
 import io.datakernel.cube.dimensiontype.DimensionTypeInt;

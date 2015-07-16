@@ -20,7 +20,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.reflect.TypeToken;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.async.CompletionCallbackObserver;
 import io.datakernel.cube.*;
 import io.datakernel.cube.dimensiontype.DimensionType;

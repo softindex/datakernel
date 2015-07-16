@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.asm;
+package io.datakernel.serializer.utils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;

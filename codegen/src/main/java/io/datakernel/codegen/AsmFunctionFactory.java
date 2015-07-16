@@ -17,8 +17,8 @@
 package io.datakernel.codegen;
 
 import com.google.common.reflect.TypeToken;
-import io.datakernel.asm.DefiningClassLoader;
-import io.datakernel.asm.DefiningClassWriter;
+import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassWriter;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;

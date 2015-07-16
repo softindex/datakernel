@@ -16,8 +16,6 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
 import io.datakernel.serializer.SerializationOutputBuffer;
@@ -262,23 +260,5 @@ public final class BufferSerializers {
 
 	public static BufferSerializer<String> utf16Serializer() {
 		return UTF16_SERIALIZER;
-	}
-
-	public static BufferSerializer<ByteBuf> byteBufSerializer(final ByteBufPool byteBufPool) {
-		return new BufferSerializer<ByteBuf>() {
-			@Override
-			public void serialize(SerializationOutputBuffer output, ByteBuf item) {
-				output.writeVarInt(item.remaining());
-				output.write(item.array(), item.position(), item.remaining());
-			}
-
-			@Override
-			public ByteBuf deserialize(SerializationInputBuffer input) {
-				int size = input.readVarInt();
-				ByteBuf byteBuffer = byteBufPool.allocate(size);
-				input.read(byteBuffer.array(), 0, size);
-				return byteBuffer;
-			}
-		};
 	}
 }

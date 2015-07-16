@@ -2,31 +2,33 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
         <version>1.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
 
     <artifactId>codegen</artifactId>
 
+    <name>DataKernel: Codegen</name>
+    <description>
+        Dynamic class and method bytecode generator on top of ObjectWeb ASM. An expression-based fluent API abstracts the complexity of direct bytecode manipulation.
+    </description>
+
     <dependencies>
         <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>serializer</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
         </dependency>
         <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm</artifactId>
-            <version>5.0.4</version>
         </dependency>
         <dependency>
             <groupId>org.ow2.asm</groupId>
             <artifactId>asm-commons</artifactId>
-            <version>5.0.4</version>
         </dependency>
     </dependencies>
 </project>

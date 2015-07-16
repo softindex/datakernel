@@ -18,7 +18,7 @@ package io.datakernel.cube;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Multimap;
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.cube.dimensiontype.DimensionType;
 import io.datakernel.cube.dimensiontype.DimensionTypeInt;

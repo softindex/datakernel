@@ -19,8 +19,8 @@ package io.datakernel.serializer;
 import com.google.common.base.Optional;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Maps;
-import io.datakernel.asm.DefiningClassLoader;
-import io.datakernel.asm.DefiningClassWriter;
+import io.datakernel.serializer.utils.DefiningClassLoader;
+import io.datakernel.serializer.utils.DefiningClassWriter;
 import io.datakernel.serializer.asm.SerializerBackend;
 import io.datakernel.serializer.asm.SerializerGen;
 import org.objectweb.asm.ClassWriter;
@@ -28,7 +28,6 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

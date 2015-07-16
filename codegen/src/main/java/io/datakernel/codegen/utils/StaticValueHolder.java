@@ -17,8 +17,6 @@
 package io.datakernel.codegen.utils;
 
 import com.google.common.collect.Maps;
-import io.datakernel.asm.DefiningClassLoader;
-import io.datakernel.asm.DefiningClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;

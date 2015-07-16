@@ -16,7 +16,7 @@
 
 package io.datakernel.codegen;
 
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 
 import java.util.Comparator;
 
