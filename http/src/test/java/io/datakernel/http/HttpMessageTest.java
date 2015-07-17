@@ -32,16 +32,14 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
 
 public class HttpMessageTest {
-	private final ByteBufPool pool = ByteBufPool.defaultInstance();
-
 	public void assertHttpResponseEquals(String expected, HttpResponse result) {
-		ByteBuf buf = result.write(pool);
+		ByteBuf buf = result.write();
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 		buf.recycle();
 	}
 
 	public void assertHttpRequestEquals(String expected, HttpRequest request) {
-		ByteBuf buf = request.write(pool);
+		ByteBuf buf = request.write();
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 		buf.recycle();
 	}
@@ -79,7 +77,7 @@ public class HttpMessageTest {
 //				HttpRequest.get("http://test.com/index.html").cookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 
 		HttpRequest request = HttpRequest.post("http://test.com/index.html");
-		ByteBuf buf = pool.allocate(100);
+		ByteBuf buf = ByteBufPool.allocate(100);
 		buf.put("/abc".getBytes(), 0, 4);
 		buf.flip();
 		request.setBody(buf);

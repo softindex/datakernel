@@ -29,7 +29,7 @@ public class ResultCallbackWithTimeoutTest {
 	@Test
 	public void testTimeout() throws Exception {
 		SteppingCurrentTimeProvider timeProvider = new SteppingCurrentTimeProvider(0, 1);
-		NioEventloop eventloop = new NioEventloop(ByteBufPool.defaultInstance(), timeProvider);
+		NioEventloop eventloop = new NioEventloop(timeProvider);
 		TestLoggingResultCallback<Integer> callback = new TestLoggingResultCallback<>();
 		final ResultCallbackWithTimeout<Integer> callbackWithTimeout =
 				new ResultCallbackWithTimeout<>(eventloop, callback, 10);
@@ -50,7 +50,7 @@ public class ResultCallbackWithTimeoutTest {
 	@Test
 	public void testResult() throws Exception {
 		SteppingCurrentTimeProvider timeProvider = new SteppingCurrentTimeProvider(0, 1);
-		NioEventloop eventloop = new NioEventloop(ByteBufPool.defaultInstance(), timeProvider);
+		NioEventloop eventloop = new NioEventloop(timeProvider);
 		TestLoggingResultCallback<Integer> callback = new TestLoggingResultCallback<>();
 		final ResultCallbackWithTimeout<Integer> callbackWithTimeout =
 				new ResultCallbackWithTimeout<>(eventloop, callback, 10);
@@ -72,7 +72,7 @@ public class ResultCallbackWithTimeoutTest {
 	@Test
 	public void testException() throws Exception {
 		SteppingCurrentTimeProvider timeProvider = new SteppingCurrentTimeProvider(0, 1);
-		NioEventloop eventloop = new NioEventloop(ByteBufPool.defaultInstance(), timeProvider);
+		NioEventloop eventloop = new NioEventloop(timeProvider);
 		TestLoggingResultCallback<Integer> callback = new TestLoggingResultCallback<>();
 		final ResultCallbackWithTimeout<Integer> callbackWithTimeout =
 				new ResultCallbackWithTimeout<>(eventloop, callback, 10);
@@ -95,7 +95,7 @@ public class ResultCallbackWithTimeoutTest {
 	@Test
 	public void testWithCancellableCallback() throws Exception {
 		SteppingCurrentTimeProvider timeProvider = new SteppingCurrentTimeProvider(0, 1);
-		NioEventloop eventloop = new NioEventloop(ByteBufPool.defaultInstance(), timeProvider);
+		NioEventloop eventloop = new NioEventloop(timeProvider);
 		TestLoggingCancellableCallback<Integer> callback = new TestLoggingCancellableCallback<>();
 		final ResultCallbackWithTimeout<Integer> callbackWithTimeout =
 				new ResultCallbackWithTimeout<>(eventloop, callback, 10);

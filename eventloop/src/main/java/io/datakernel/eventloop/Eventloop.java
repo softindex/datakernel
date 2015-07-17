@@ -66,8 +66,6 @@ public interface Eventloop extends CurrentTimeProvider {
 		void complete();
 	}
 
-	ByteBufPool getByteBufferPool();
-
 	<T> Object get(Class<T> type);
 
 	<T> void set(Class<T> type, T value);

@@ -63,9 +63,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	 */
 	@Override
 	public void onReadReady() {
-		ByteBufPool byteBufPool = eventloop.getByteBufferPool();
-
-		ByteBuf buf = byteBufPool.allocate(getReceiveBufferSize());
+		ByteBuf buf = ByteBufPool.allocate(getReceiveBufferSize());
 		ByteBuffer byteBuffer = buf.toByteBuffer();
 
 		int numRead;
@@ -145,7 +143,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 			if (remainingNew > 0) {
 				break;
 			}
-			writeQueue.takeBuf();
+			writeQueue.take();
 		}
 
 		if (wasWritten) {

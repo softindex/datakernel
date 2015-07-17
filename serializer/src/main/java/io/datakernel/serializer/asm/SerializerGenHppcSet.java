@@ -54,11 +54,8 @@ public class SerializerGenHppcSet implements SerializerGen {
 			public SerializerGen serializer(Class<?> type, final SerializerForType[] generics, SerializerGen fallback) {
 				SerializerGen valueSerializer;
 				if (generics.length == 1) {
-					if (valueType == Object.class) {
-						valueSerializer = generics[0].serializer;
-					} else {
-						throw new IllegalArgumentException("keyClass or valueType must be Object.class");
-					}
+					checkArgument(valueType == Object.class, "valueType must be Object.class");
+					valueSerializer = generics[0].serializer;
 				} else {
 					valueSerializer = primitiveSerializers.get(valueType);
 				}

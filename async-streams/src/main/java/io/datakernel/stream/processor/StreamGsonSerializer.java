@@ -44,7 +44,6 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 	private final BufferAppendable appendable = new BufferAppendable();
 	private final int defaultBufferSize;
 	private final int maxMessageSize;
-	private final ByteBufPool pool;
 
 	private final Gson gson;
 	private final Class<T> type;
@@ -79,13 +78,12 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		this.type = checkNotNull(type);
 		this.defaultBufferSize = defaultBufferSize;
 		this.estimatedMessageSize = 1;
-		this.pool = eventloop.getByteBufferPool();
 		this.flushDelayMillis = flushDelayMillis;
 		allocateBuffer();
 	}
 
 	private void allocateBuffer() {
-		buf = pool.allocate(min(maxMessageSize, max(defaultBufferSize, estimatedMessageSize)));
+		buf = ByteBufPool.allocate(min(maxMessageSize, max(defaultBufferSize, estimatedMessageSize)));
 		appendable.set(buf.array(), 0);
 	}
 

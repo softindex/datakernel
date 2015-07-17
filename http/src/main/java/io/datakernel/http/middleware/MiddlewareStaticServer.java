@@ -43,7 +43,7 @@ public final class MiddlewareStaticServer {
 	private static final Logger logger = LoggerFactory.getLogger(MiddlewareStaticServer.class);
 
 	public static HttpSuccessHandler serveStatic(final String directory) {
-		NioEventloop eventloop = new NioEventloop(new ByteBufPool(32, 1 << 25), CurrentTimeProviderSystem.instance());
+		NioEventloop eventloop = new NioEventloop(CurrentTimeProviderSystem.instance());
 		return serveStatic(directory, eventloop);
 	}
 

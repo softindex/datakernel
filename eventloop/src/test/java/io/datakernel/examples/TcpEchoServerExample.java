@@ -57,7 +57,7 @@ public class TcpEchoServerExample {
 			@Override
 			protected void onRead() {
 				while (!readQueue.isEmpty()) {
-					ByteBuf buf = readQueue.takeBuf();
+					ByteBuf buf = readQueue.take();
 					System.out.println("client: " + decodeAscii(buf));
 					write(buf);
 				}

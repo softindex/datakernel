@@ -23,17 +23,15 @@ import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
 public class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf> {
-	private final ByteBufPool byteBufPool;
 	private final int minChunkSize;
 	private final int maxChunkSize;
 	private ByteBuf internalBuf;
 
 	public StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
 		super(eventloop);
-		this.byteBufPool = eventloop.getByteBufferPool();
 		this.minChunkSize = minChunkSize;
 		this.maxChunkSize = maxChunkSize;
-		this.internalBuf = byteBufPool.allocate(maxChunkSize);
+		this.internalBuf = ByteBufPool.allocate(maxChunkSize);
 	}
 
 	@Override
@@ -49,13 +47,13 @@ public class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, By
 			while (internalBuf.position() + buf.remaining() >= minChunkSize) {
 				if (internalBuf.position() == 0) {
 					int chunkSize = Math.min(maxChunkSize, buf.remaining());
-					send(ByteBuf.wrap(buf.array(), buf.position(), chunkSize));
+					send(buf.slice(buf.position(), chunkSize));
 					buf.advance(chunkSize);
 				} else {
 					buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
 					internalBuf.flip();
 					send(internalBuf);
-					internalBuf = byteBufPool.allocate(maxChunkSize);
+					internalBuf = ByteBufPool.allocate(maxChunkSize);
 				}
 			}
 

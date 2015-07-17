@@ -59,14 +59,13 @@ public final class SerializerGenHppcMap implements SerializerGen {
 					keySerializer = generics[0].serializer;
 					valueSerializer = generics[1].serializer;
 				} else if (generics.length == 1) {
+					checkArgument((keyType == Object.class) || (valueType == Object.class), "keyType or valueType must be Object.class");
 					if (keyType == Object.class) {
 						keySerializer = generics[0].serializer;
 						valueSerializer = primitiveSerializers.get(valueType);
-					} else if (valueType == Object.class) {
+					} else {
 						keySerializer = primitiveSerializers.get(keyType);
 						valueSerializer = generics[0].serializer;
-					} else {
-						throw new IllegalArgumentException("keyType or valueType must be Object.class");
 					}
 				} else {
 					keySerializer = primitiveSerializers.get(keyType);

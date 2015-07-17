@@ -105,7 +105,7 @@ public class DnsClientConnection extends UdpSocketConnection {
 			return;
 		}
 
-		ByteBuf query = DnsMessage.newQuery(domainName, ipv6, eventloop.getByteBufferPool());
+		ByteBuf query = DnsMessage.newQuery(domainName, ipv6);
 
 		ListenableResultCallback<DnsQueryResult> callbackList = new ListenableResultCallback<>();
 		callbackList.addListener(callbackWithTimeout);

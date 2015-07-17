@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
@@ -87,13 +88,13 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
 		this.buffersPoolSize = buffersPoolSize;
 		this.byteBufs = new ArrayDeque<>(buffersPoolSize);
-		this.buf = eventloop.getByteBufferPool().allocate(INITIAL_BUFFER_SIZE);
+		this.buf = ByteBufPool.allocate(INITIAL_BUFFER_SIZE);
 		this.buffer = buf.array();
 	}
 
 	private void growBuf(int newSize) {
 		buf.limit(bufferPos);
-		buf = eventloop.getByteBufferPool().resize(buf, newSize);
+		buf = ByteBufPool.resize(buf, newSize);
 		buffer = buf.array();
 	}
 

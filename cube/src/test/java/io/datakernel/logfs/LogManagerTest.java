@@ -41,7 +41,7 @@ public class LogManagerTest {
 	@Test
 	public void testConsumer() throws Exception {
 		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
-		NioEventloop eventloop = new NioEventloop(ByteBufPool.defaultInstance(), timeProvider);
+		NioEventloop eventloop = new NioEventloop(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Path dir = temporaryFolder.newFolder().toPath();

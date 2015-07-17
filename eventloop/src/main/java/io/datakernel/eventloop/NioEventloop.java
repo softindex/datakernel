@@ -89,8 +89,6 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	 */
 	private final AtomicInteger concurrentOperationsCount = new AtomicInteger(0);
 
-	private final ByteBufPool byteBufferPool;
-
 	private final Map<Class<?>, Object> localMap = new HashMap<>();
 
 	private final CurrentTimeProvider timeProvider;
@@ -148,17 +146,15 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	 * Creates a new instance of Eventloop with default instance of ByteBufPool
 	 */
 	public NioEventloop() {
-		this(ByteBufPool.defaultInstance(), CurrentTimeProviderSystem.instance());
+		this(CurrentTimeProviderSystem.instance());
 	}
 
 	/**
 	 * Creates a new instance of Eventloop with given ByteBufPool and timeProvider
 	 *
-	 * @param byteBufferPool pool for this Eventloop, for convenient access by other components running inside this event loop.
 	 * @param timeProvider   provider for retrieving time on each cycle of event loop. Useful for unit testing.
 	 */
-	public NioEventloop(ByteBufPool byteBufferPool, CurrentTimeProvider timeProvider) {
-		this.byteBufferPool = byteBufferPool;
+	public NioEventloop(CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		refreshTimestampAndGet();
 	}
@@ -728,12 +724,6 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 		};
 	}
 
-	@Override
-	public ByteBufPool getByteBufferPool() {
-		assert inEventloopThread();
-		return byteBufferPool;
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> T get(Class<T> type) {
@@ -870,7 +860,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	public void registerMBean(MBeanServer mbeanServer, String domain, String type) {
 		register(mbeanServer, MBeanFormat.name(domain, type, NioEventloop.class), this);
 		register(mbeanServer, MBeanFormat.name(domain, type, NioEventloopStats.class), statsCounters);
-		register(mbeanServer, MBeanFormat.name(domain, type, ByteBufPool.class), byteBufferPool);
+//		register(mbeanServer, MBeanFormat.name(domain, type, ByteBufPool.class), byteBufferPool);
 	}
 
 	public LastExceptionCounter getExceptionCounter(ExceptionMarker marker) {

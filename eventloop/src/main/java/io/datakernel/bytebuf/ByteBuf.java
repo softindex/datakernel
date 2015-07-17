@@ -26,15 +26,15 @@ import java.nio.ByteBuffer;
  * After using this ByteBuf, call its recycle, but after it you can not work with its instance.
  * You may don't recycle it, after it this ByteBuf can be removing with the GC
  */
-public final class ByteBuf implements Recyclable {
-	ByteBufPool byteBufPool;
+public class ByteBuf {
+	protected int refs;
 
 	private static final byte[] EMPTY_ARRAY = new byte[0];
 	private static final ByteBuf EMPTY_BUF = new ByteBuf(EMPTY_ARRAY, 0, 0);
 
-	private final byte[] array;
-	private int position;
-	private int limit;
+	protected final byte[] array;
+	protected int position;
+	protected int limit;
 
 	private ByteBuf(byte[] array, int position, int limit) {
 		assert position >= 0 && position <= limit && limit <= array.length;
@@ -91,57 +91,42 @@ public final class ByteBuf implements Recyclable {
 		return new ByteBuf(array, offset, offset + length);
 	}
 
-	/**
-	 * Wraps a ByteBuffer into a ByteBuf.
-	 * The new buffer will be backed by the given ByteBuffer. The new buffer's capacity will be capacity of
-	 * ByteBuffer, its position will be zero, its limit will be limit of this ByteBuffer.
-	 *
-	 * @param byteBuffer the ByteBuffer that will back this ByteBuf
-	 * @return the new ByteBuf
-	 */
-	public static ByteBuf wrap(ByteBuffer byteBuffer) {
-		assert byteBuffer.arrayOffset() == 0;
-		return new ByteBuf(byteBuffer.array(), 0, byteBuffer.limit());  // TODO (dvolvach): check why second argument is 0 but not byteBuffer.position()
+	private final static class ByteBufSlice extends ByteBuf {
+		private final ByteBuf root;
+
+		private ByteBufSlice(ByteBuf root, byte[] array, int position, int limit) {
+			super(array, position, limit);
+			this.root = root;
+		}
+
+		@Override
+		public void recycle() {
+			root.recycle();
+		}
+
+		@Override
+		public ByteBuf slice(int offset, int length) {
+			return root.slice(offset, length);
+		}
+
+		@Override
+		boolean isRecycled() {
+			return root.isRecycled();
+		}
+
+		@Override
+		public boolean isRecycleNeeded() {
+			return root.isRecycleNeeded();
+		}
 	}
 
-	/**
-	 * Wraps a ByteBuffer into a ByteBuf.
-	 * The new buffer will be backed by the given ByteBuffer. The new buffer's capacity will be capacity of
-	 * ByteBuffer, its position and limit will are positions and limit from arguments.
-	 *
-	 * @param byteBuffer the ByteBuffer that will back this ByteBuf
-	 * @param position   position for new ByteBuf
-	 * @param limit      position for new ByteBuf
-	 * @return the new ByteBuf
-	 */
-	public static ByteBuf wrap(ByteBuffer byteBuffer, int position, int limit) {
-		assert byteBuffer.arrayOffset() == 0;
-		return new ByteBuf(byteBuffer.array(), position, limit);
-	}
-
-	/**
-	 * Wraps a ByteBuf into other ByteBuf.
-	 * The new buffer will be backed by the given ByteBuf. The new buffer's capacity will be capacity of
-	 * ByteBuf, its position will be position of ByteBuf, its limit will be limit of this ByteBuf.
-	 *
-	 * @return the new ByteBuf
-	 */
-	public static ByteBuf wrap(ByteBuf buf) {
-		return new ByteBuf(buf.array, buf.position, buf.limit);
-	}
-
-	/**
-	 * Wraps a ByteBuf into a ByteBuf.
-	 * The new buffer will be backed by the given ByteBuffer. The new buffer's capacity will be capacity of
-	 * buf, its position and limit will are positions and limit from arguments.
-	 *
-	 * @param buf      the ByteBuffer that will back this ByteBuf
-	 * @param position position for new ByteBuf
-	 * @param limit    position for new ByteBuf
-	 * @return the new ByteBuf
-	 */
-	public static ByteBuf wrap(ByteBuf buf, int position, int limit) {
-		return new ByteBuf(buf.array, position, limit);
+	public ByteBuf slice(int offset, int length) {
+		assert !isRecycled();
+		if (!isRecycleNeeded()) {
+			return ByteBuf.wrap(array, offset, length);
+		}
+		refs++;
+		return new ByteBufSlice(this, array, offset, offset + length);
 	}
 
 	/**
@@ -176,19 +161,17 @@ public final class ByteBuf implements Recyclable {
 	 */
 	@VisibleForTesting
 	boolean isRecycled() {
-		return byteBufPool == ByteBufPool.RECYCLED_INSTANCE;
+		return refs == -1;
 	}
 
 	/**
 	 * Resets this ByteBuf, puts it back to byteBufPool
 	 */
-	@Override
 	public void recycle() {
 		assert !isRecycled();
-		ByteBufPool pool = byteBufPool;
-		if (pool != null) {
-			byteBufPool = null;
-			pool.doRecycle(this);
+		if (refs > 0 && --refs == 0) {
+			assert --refs == -1;
+			ByteBufPool.recycle(this);
 		}
 	}
 
@@ -196,7 +179,7 @@ public final class ByteBuf implements Recyclable {
 	 * Tells whether or not this byte buffer needs recycling.
 	 */
 	public boolean isRecycleNeeded() {
-		return byteBufPool != null;
+		return refs > 0;
 	}
 
 	/**

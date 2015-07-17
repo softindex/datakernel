@@ -75,8 +75,8 @@ public final class DnsMessage {
 	 * @param ipv6       if it is true, it is IPv6, else IPv4
 	 * @return ByteBuf with DnsMessage
 	 */
-	public static ByteBuf newQuery(String domainName, boolean ipv6, ByteBufPool byteBufPool) {
-		ByteBuf byteBuf = byteBufPool.allocate(MAX_SIZE);
+	public static ByteBuf newQuery(String domainName, boolean ipv6) {
+		ByteBuf byteBuf = ByteBufPool.allocate(MAX_SIZE);
 		DnsMessage m = new DnsMessage(byteBuf.array());
 		m.generateRequest(domainName, ipv6);
 		byteBuf.limit(m.idx);

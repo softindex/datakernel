@@ -97,7 +97,6 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		contentLength = -1;
 		isChunked = false;
 		bodyQueue.clear();
-		readQueue.recycleRefs();
 	}
 
 	/**
@@ -113,7 +112,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			ByteBuf buf = readQueue.peekBuf(i);
 			for (int p = buf.position(); p < buf.limit(); p++) {
 				if (buf.at(p) == LF) {
-					ByteBuf line = readQueue.takeRef(eventloop.getByteBufferPool(), offset + p - buf.position() + 1);
+					ByteBuf line = readQueue.takeExactSize(offset + p - buf.position() + 1);
 					if (line.remaining() >= 2 && line.peek(line.remaining() - 2) == CR) {
 						line.limit(line.limit() - 2);
 					} else {
@@ -182,11 +181,11 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 				return;
 			}
 			int bytesToRead = contentLength - bodyQueue.remainingBytes();
-			int actualBytes = readQueue.drainRefsTo(bodyQueue, bytesToRead);
+			int actualBytes = readQueue.drainTo(bodyQueue, bytesToRead);
 			if (actualBytes == bytesToRead) {
 //				if (!readQueue.isEmpty())
 //					throw new IllegalStateException("Extra bytes outside of HTTP message");
-				onHttpMessage(bodyQueue.takeRef(eventloop.getByteBufferPool()));
+				onHttpMessage(bodyQueue.takeRemaining());
 			}
 		} else {
 			assert reading == CHUNK || reading == CHUNK_LENGTH;
@@ -235,14 +234,14 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 							throw new IllegalArgumentException("Could not found end of chunks");
 //						if (!readQueue.isEmpty())
 //							throw new IllegalStateException("Extra bytes outside of chunk");
-						onHttpMessage(bodyQueue.takeRef(eventloop.getByteBufferPool()));
+						onHttpMessage(bodyQueue.takeRemaining());
 						return;
 					}
 				} else
 					throw new IllegalArgumentException("Unrecognized chunk");
 			}
 			if (reading == CHUNK) {
-				int read = readQueue.drainRefsTo(bodyQueue, chunkSize);
+				int read = readQueue.drainTo(bodyQueue, chunkSize);
 				chunkSize -= read;
 				if (chunkSize == 0) {
 					if (!readQueue.hasRemainingBytes(2)) {

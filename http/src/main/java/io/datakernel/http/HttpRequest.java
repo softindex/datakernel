@@ -322,10 +322,9 @@ public final class HttpRequest extends HttpMessage {
 	/**
 	 * Creates HttpRequest as ByteBuf
 	 *
-	 * @param pool pool from which ByteBuf will be taken
 	 * @return HttpRequest as ByteBuf
 	 */
-	public ByteBuf write(ByteBufPool pool) {
+	public ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
 			setHeader(CONTENT_LENGTH, HttpHeader.valueOfDecimal(body == null ? 0 : body.remaining()));
@@ -334,7 +333,7 @@ public final class HttpRequest extends HttpMessage {
 				+ 1 // SPACE
 				+ url.getPathAndQuery().length())
 				+ HTTP_1_1_SIZE;
-		ByteBuf buf = pool.allocate(estimatedSize);
+		ByteBuf buf = ByteBufPool.allocate(estimatedSize);
 
 		method.write(buf);
 		buf.put(SP);

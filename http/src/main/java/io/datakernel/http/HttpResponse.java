@@ -361,17 +361,16 @@ public final class HttpResponse extends HttpMessage {
 	/**
 	 * Writes this HttpResult to pool-allocated ByteBuf with large enough size
 	 *
-	 * @param pool pool from which ByteBuf will be taken
 	 * @return HttpResponse as ByteBuf
 	 */
-	public ByteBuf write(ByteBufPool pool) {
+	public ByteBuf write() {
 		assert !recycled;
 		if (code >= 400 && getBody() == null) {
 			setBody(DEFAULT_CODE_BODIES.get(code));
 		}
 		setHeader(CONTENT_LENGTH, HttpHeader.valueOfDecimal(body == null ? 0 : body.remaining()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
-		ByteBuf buf = pool.allocate(estimateSize);
+		ByteBuf buf = ByteBufPool.allocate(estimateSize);
 
 		writeCodeMessage(buf, code);
 

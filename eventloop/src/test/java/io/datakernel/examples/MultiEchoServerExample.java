@@ -46,9 +46,9 @@ public class MultiEchoServerExample extends SimpleNioServer {
 		@Override
 		protected void onRead() {
 			while (!readQueue.isEmpty()) {
-				ByteBuf buf = readQueue.takeBuf();
+				ByteBuf buf = readQueue.take();
 				for (MultiEchoServerConnection connection : connections) {
-					ByteBuf sendBuf = ByteBuf.wrap(buf);
+					ByteBuf sendBuf = buf.slice(buf.position(), buf.remaining());
 					connection.write(sendBuf);
 				}
 			}

@@ -73,7 +73,7 @@ public class TcpClientExample {
 		@Override
 		protected void onRead() {
 			while (!readQueue.isEmpty()) {
-				ByteBuf buffer = readQueue.takeBuf();
+				ByteBuf buffer = readQueue.take();
 				System.out.println("> " + decodeUTF8(buffer));
 			}
 		}

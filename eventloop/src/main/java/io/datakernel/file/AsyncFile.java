@@ -18,6 +18,7 @@ package io.datakernel.file;
 
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 
 import java.io.IOException;
@@ -295,7 +296,7 @@ public final class AsyncFile implements File {
 			return;
 		}
 
-		final ByteBuf buf = eventloop.getByteBufferPool().allocate((int) size);
+		final ByteBuf buf = ByteBufPool.allocate((int) size);
 		buf.limit((int) size);
 		readFully(buf, 0, new ForwardingCompletionCallback(callback) {
 			@Override

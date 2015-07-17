@@ -18,6 +18,7 @@ package io.datakernel.stream.file;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamProducer;
@@ -117,7 +118,7 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			return;
 		}
 
-		final ByteBuf buf = eventloop.getByteBufferPool().allocate((int) min(bufferSize, length));
+		final ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
 
 		asyncFile.read(buf, position, new ResultCallback<Integer>() {
 			@Override

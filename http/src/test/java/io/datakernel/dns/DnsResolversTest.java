@@ -304,7 +304,7 @@ public class DnsResolversTest {
 				3, (short) 1);
 
 		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider(0);
-		NioEventloop eventloopWithTimeProvider = new NioEventloop(ByteBufPool.defaultInstance(), timeProvider);
+		NioEventloop eventloopWithTimeProvider = new NioEventloop(timeProvider);
 		NativeDnsResolver nativeResolver = new NativeDnsResolver(eventloopWithTimeProvider, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, GOOGLE_PUBLIC_DNS);
 		DnsCache cache = nativeResolver.getCache();

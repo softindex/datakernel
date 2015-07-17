@@ -37,8 +37,6 @@ import net.jpountz.xxhash.XXHashFactory;
 public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4DecompressorMBean {
 	private static final int INITIAL_BUFFER_SIZE = 256;
 
-	private final ByteBufPool pool;
-
 	private final LZ4FastDecompressor decompressor;
 	private final StreamingXXHash32 checksum;
 
@@ -64,10 +62,9 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 
 	public StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 		super(eventloop);
-		this.pool = eventloop.getByteBufferPool();
 		this.decompressor = decompressor;
 		this.checksum = checksum;
-		this.inputBuf = pool.allocate(INITIAL_BUFFER_SIZE);
+		this.inputBuf = ByteBufPool.allocate(INITIAL_BUFFER_SIZE);
 	}
 
 	public StreamLZ4Decompressor(Eventloop eventloop) {
@@ -114,9 +111,9 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		}
 	}
 
-	private static ByteBuf readBody(ByteBufPool pool, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
+	private static ByteBuf readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
 	                                byte[] buf, int off) throws Exception {
-		ByteBuf outputBuf = pool.allocate(header.originalLen);
+		ByteBuf outputBuf = ByteBufPool.allocate(header.originalLen);
 		outputBuf.limit(header.originalLen);
 		switch (header.compressionMethod) {
 			case COMPRESSION_METHOD_RAW:
@@ -173,14 +170,14 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 			assert !isReadingHeader();
 			ByteBuf outputBuf;
 			if (inputBuf.position() == 0 && buf.remaining() >= header.compressedLen) {
-				outputBuf = readBody(pool, decompressor, checksum, header, buf.array(), buf.position());
+				outputBuf = readBody(decompressor, checksum, header, buf.array(), buf.position());
 				buf.advance(header.compressedLen);
 			} else {
-				inputBuf = pool.resize(inputBuf, header.compressedLen);
+				inputBuf = ByteBufPool.resize(inputBuf, header.compressedLen);
 				buf.drainTo(inputBuf, min(inputBuf.remaining(), buf.remaining()));
 				if (inputBuf.hasRemaining())
 					break;
-				outputBuf = readBody(pool, decompressor, checksum, header, inputBuf.array(), 0);
+				outputBuf = readBody(decompressor, checksum, header, inputBuf.array(), 0);
 			}
 			inputStreamPosition += HEADER_LENGTH + header.compressedLen;
 			jmxBufsOutput++;

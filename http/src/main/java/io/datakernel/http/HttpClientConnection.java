@@ -162,7 +162,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		assert eventloop.inEventloopThread();
 		if (callback != null) {
 			if (reading == BODY && contentLength == -1) {
-				onHttpMessage(bodyQueue.takeRef(eventloop.getByteBufferPool()));
+				onHttpMessage(bodyQueue.takeRemaining());
 			} else {
 				onException(CLOSED_CONNECTION);
 			}
@@ -191,7 +191,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			httpRequest.setHeader(CONNECTION, CONNECTION_KEEP_ALIVE);
 		}
-		ByteBuf buf = httpRequest.write(getEventloop().getByteBufferPool());
+		ByteBuf buf = httpRequest.write();
 		write(buf);
 	}
 

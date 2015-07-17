@@ -168,7 +168,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			httpResponse.setHeader(CONNECTION, CONNECTION_KEEP_ALIVE);
 		}
-		ByteBuf buf = httpResponse.write(getEventloop().getByteBufferPool());
+		ByteBuf buf = httpResponse.write();
 		write(buf);
 	}
 
@@ -261,7 +261,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		if (e instanceof HttpException) {
 			HttpException httpException = (HttpException) e;
 			status = httpException.getStatus();
-			message = ByteBufStrings.wrapUTF8(eventloop.getByteBufferPool(), httpException.getMessage());
+			message = ByteBufStrings.wrapUTF8(httpException.getMessage());
 		} else {
 			logger.error("Error processing http request", e);
 			message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);

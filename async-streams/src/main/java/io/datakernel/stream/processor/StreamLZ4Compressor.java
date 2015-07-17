@@ -46,7 +46,6 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 	static final int DEFAULT_SEED = 0x9747b28c;
 
 	private static final int MIN_BLOCK_SIZE = 64;
-	private final ByteBufPool pool;
 
 	private final LZ4Compressor compressor;
 	private final StreamingXXHash32 checksum = XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED);
@@ -104,7 +103,6 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 	 */
 	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
 		super(eventloop);
-		this.pool = eventloop.getByteBufferPool();
 		this.compressor = compressor;
 	}
 
@@ -124,12 +122,12 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 		buf[off] = (byte) (i >>> 24);
 	}
 
-	public static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum, ByteBufPool pool,
+	public static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum,
 	                                    byte[] buffer, int off, int len) {
 		int compressionLevel = compressionLevel(len < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : len);
 
 		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));
-		ByteBuf outputBuf = pool.allocate(outputBufMaxSize);
+		ByteBuf outputBuf = ByteBufPool.allocate(outputBufMaxSize);
 		byte[] outputBytes = outputBuf.array();
 		System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
 
@@ -162,10 +160,10 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 		return outputBuf;
 	}
 
-	public static ByteBuf createEndOfStreamBlock(ByteBufPool pool) {
+	public static ByteBuf createEndOfStreamBlock() {
 		int compressionLevel = compressionLevel(MIN_BLOCK_SIZE);
 
-		ByteBuf outputBuf = pool.allocate(HEADER_LENGTH);
+		ByteBuf outputBuf = ByteBufPool.allocate(HEADER_LENGTH);
 		byte[] outputBytes = outputBuf.array();
 		System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
 
@@ -187,7 +185,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 			jmxBufs++;
 			jmxBytesInput += buf.remaining();
 
-			ByteBuf outputBuffer = compressBlock(compressor, checksum, pool,
+			ByteBuf outputBuffer = compressBlock(compressor, checksum,
 					buf.array(), buf.position(), buf.remaining());
 			jmxBytesOutput += outputBuffer.remaining();
 
@@ -201,7 +199,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 
 	@Override
 	public void onEndOfStream() {
-		send(createEndOfStreamBlock(pool));
+		send(createEndOfStreamBlock());
 		sendEndOfStream();
 	}
 

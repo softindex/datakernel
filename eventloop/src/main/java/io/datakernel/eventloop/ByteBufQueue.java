@@ -29,7 +29,6 @@ public final class ByteBufQueue {
 
 	private ByteBuf[] bufs;
 
-	private int firstRef = -1;
 	private int first = 0;
 	private int last = 0;
 
@@ -54,8 +53,7 @@ public final class ByteBufQueue {
 	}
 
 	private void doPoll() {
-		if (firstRef == -1)
-			bufs[first].recycle();
+		bufs[first].recycle();
 		first = nxt(first);
 	}
 
@@ -67,14 +65,7 @@ public final class ByteBufQueue {
 		ByteBuf[] newBufs = new ByteBuf[bufs.length * 2];
 		arraycopy(bufs, last, newBufs, 0, bufs.length - last);
 		arraycopy(bufs, 0, newBufs, bufs.length - last, last);
-		if (firstRef != -1) {
-			first = first - firstRef;
-			if (first < 0)
-				first += bufs.length;
-			firstRef = 0;
-		} else {
-			first = 0;
-		}
+		first = 0;
 		last = bufs.length;
 		bufs = newBufs;
 	}
@@ -92,7 +83,7 @@ public final class ByteBufQueue {
 
 		bufs[last] = buf;
 		last = nxt(last);
-		if (last == (firstRef == -1 ? first : firstRef)) {
+		if (last == first) {
 			grow();
 		}
 	}
@@ -100,17 +91,11 @@ public final class ByteBufQueue {
 	/**
 	 * Returns the first ByteBuf from this queue and removes it
 	 */
-	public ByteBuf takeBuf() {
+	public ByteBuf take() {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
 		first = nxt(first);
-		if (firstRef == -1) {
-			return buf;
-		} else {
-			ByteBuf result = ByteBuf.wrap(buf);
-			buf.position(buf.limit());
-			return result;
-		}
+		return buf;
 	}
 
 	/**
@@ -121,17 +106,15 @@ public final class ByteBufQueue {
 	 * @param maxSize number of bytes to returning
 	 * @return ByteBuf with result bytes
 	 */
-	public ByteBuf takeRef(int maxSize) {
+	public ByteBuf takeMaxSize(int maxSize) {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
-		if (maxSize > buf.remaining())
-			maxSize = buf.remaining();
-		ByteBuf result = ByteBuf.wrap(buf.array(), buf.position(), maxSize);
-		buf.advance(maxSize);
-		if (firstRef == -1)
-			firstRef = first;
-		if (!buf.hasRemaining())
+		if (maxSize >= buf.remaining()) {
 			first = nxt(first);
+			return buf;
+		}
+		ByteBuf result = buf.slice(buf.position(), maxSize);
+		buf.advance(maxSize);
 		return result;
 	}
 
@@ -139,27 +122,22 @@ public final class ByteBufQueue {
 	 * Returns ByteBuf that contains {@code exactSize} of bytes if queue has enough bytes.
 	 * Otherwise returns ByteBuf that contains all bytes from queue
 	 *
-	 * @param pool      pool of ByteBufs
 	 * @param exactSize amount of bytes to return
 	 * @return ByteBuf with {@code exactSize} or less bytes
 	 */
-	public ByteBuf takeRef(ByteBufPool pool, int exactSize) {
+	public ByteBuf takeExactSize(int exactSize) {
 		if (!hasRemaining())
 			return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
-		if (buf.remaining() == exactSize && firstRef == -1) {
+		if (buf.remaining() == exactSize) {
 			first = nxt(first);
 			return buf;
-		} else if (buf.remaining() >= exactSize) {
-			ByteBuf result = ByteBuf.wrap(buf.array(), buf.position(), exactSize);
+		} else if (exactSize < buf.remaining()) {
+			ByteBuf result = buf.slice(buf.position(), exactSize);
 			buf.advance(exactSize);
-			if (firstRef == -1)
-				firstRef = first;
-			if (!buf.hasRemaining())
-				first = nxt(first);
 			return result;
 		}
-		ByteBuf result = pool.allocate(exactSize);
+		ByteBuf result = ByteBufPool.allocate(exactSize);
 		drainTo(result.array(), 0, exactSize);
 		return result;
 	}
@@ -167,11 +145,10 @@ public final class ByteBufQueue {
 	/**
 	 * Creates and returns ByteBuf with all remaining bytes from queue
 	 *
-	 * @param pool pool of ByteBufs
 	 * @return ByteBuf with all remaining bytes
 	 */
-	public ByteBuf takeRef(ByteBufPool pool) {
-		return takeRef(pool, remainingBytes());
+	public ByteBuf takeRemaining() {
+		return takeExactSize(remainingBytes());
 	}
 
 	/**
@@ -366,7 +343,7 @@ public final class ByteBufQueue {
 	public int drainTo(ByteBufQueue dest) {
 		int size = 0;
 		while (hasRemaining()) {
-			ByteBuf buf = takeBuf();
+			ByteBuf buf = take();
 			dest.add(buf);
 			size += buf.remaining();
 		}
@@ -381,10 +358,10 @@ public final class ByteBufQueue {
 	 * @param maxSize number of bytes for adding
 	 * @return number of added elements
 	 */
-	public int drainRefsTo(ByteBufQueue dest, int maxSize) {
+	public int drainTo(ByteBufQueue dest, int maxSize) {
 		int s = maxSize;
 		while (s != 0 && hasRemaining()) {
-			ByteBuf buf = takeRef(s);
+			ByteBuf buf = takeMaxSize(s);
 			dest.add(buf);
 			s -= buf.remaining();
 		}
@@ -392,25 +369,12 @@ public final class ByteBufQueue {
 	}
 
 	/**
-	 * Recycles all referenced ButyBufs
-	 */
-	public void recycleRefs() {
-		if (firstRef == -1)
-			return;
-		for (int i = firstRef; i != first; i = nxt(i)) {
-			bufs[i].recycle();
-		}
-		firstRef = -1;
-	}
-
-	/**
 	 * Recycles all ByteBufs from this queue.
 	 */
 	public void clear() {
-		for (int i = (firstRef == -1 ? first : firstRef); i != last; i = nxt(i)) {
+		for (int i = first; i != last; i = nxt(i)) {
 			bufs[i].recycle();
 		}
-		firstRef = -1;
 		first = last = 0;
 	}
 

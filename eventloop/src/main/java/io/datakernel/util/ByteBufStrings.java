@@ -50,13 +50,7 @@ public final class ByteBufStrings {
 	}
 
 	public static ByteBuf wrapAscii(String string) {
-		return wrapAscii(null, string);
-	}
-
-	public static ByteBuf wrapAscii(ByteBufPool pool, String string) {
-		ByteBuf buf = (pool != null) ?
-				pool.allocate(string.length()) :
-				ByteBuf.allocate(string.length());
+		ByteBuf buf = ByteBufPool.allocate(string.length());
 		byte[] array = buf.array();
 		for (int i = 0; i < string.length(); i++) {
 			array[i] = (byte) string.charAt(i);
@@ -234,13 +228,7 @@ public final class ByteBufStrings {
 	}
 
 	public static ByteBuf wrapUTF8(String string) {
-		return wrapUTF8(null, string);
-	}
-
-	public static ByteBuf wrapUTF8(ByteBufPool pool, String string) {
-		ByteBuf byteBuffer = pool != null ?
-				pool.allocate(string.length() * 3) :
-				ByteBuf.allocate(string.length() * 3);
+		ByteBuf byteBuffer = ByteBufPool.allocate(string.length() * 3);
 		int len = encodeUTF8(byteBuffer.array(), 0, string);
 		byteBuffer.limit(len);
 		return byteBuffer;

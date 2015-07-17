@@ -22,36 +22,9 @@ import io.datakernel.util.ConcurrentStack;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Integer.numberOfLeadingZeros;
 
-public final class ByteBufPool implements ByteBufPoolMBean {
-	private static ByteBufPool defaultInstance;
-	static final ByteBufPool RECYCLED_INSTANCE = new ByteBufPool(0, 0);
-
-	/**
-	 * Returns the instance of ByteBufPool with min - minimal size of buffer to be stored,
-	 * max - maximum size of buffer to be stored.
-	 *
-	 * @param min minimal size of buffer to be stored
-	 * @param max maximum size of buffer to be stored
-	 * @return the instance of ByteBufPool
-	 */
-	synchronized public static ByteBufPool defaultInstance(int min, int max) {
-		if (defaultInstance == null) {
-			defaultInstance = new ByteBufPool(min, max);
-		}
-		checkArgument(defaultInstance.minSize == min && defaultInstance.maxSize == max, "Default ByteBufPool must have same settings");
-		return defaultInstance;
-	}
-
-	/**
-	 * Returns the instance of ByteBufPool in which minimal size of buffer to be stored is 32,
-	 * maximal size of buffer to be stored is 1048576.
-	 */
-	public static ByteBufPool defaultInstance() {
-		return defaultInstance(32, 1 << 20);
-	}
-
-	private final int minSize;
-	private final int maxSize;
+public final class ByteBufPool {
+	private static int minSize = 32;
+	private static int maxSize = 1 << 30;
 
 	/**
 	 * Each array item contains collection (stack) of ByteBufs with specific size.
@@ -60,7 +33,15 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * slabs[2] - ByteBufs with capacity 2^2 bytes and so on.
 	 * Except slabs[32] that contains ByteBufs with size 0
 	 */
-	private final ConcurrentStack<ByteBuf>[] slabs;
+	private static final ConcurrentStack<ByteBuf>[] slabs;
+
+	static {
+		//noinspection unchecked
+		slabs = new ConcurrentStack[33];
+		for (int i = 0; i < slabs.length; i++) {
+			slabs[i] = new ConcurrentStack<>();
+		}
+	}
 
 	/**
 	 * Creates a new instance of ByteBufPool with min - minimal size of buffer to be stored,
@@ -69,14 +50,9 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * @param minSize minimal size of buffer to be stored
 	 * @param maxSize maximum size of buffer to be stored
 	 */
-	@SuppressWarnings("unchecked")
-	public ByteBufPool(int minSize, int maxSize) {
-		this.minSize = minSize;
-		this.maxSize = maxSize;
-		this.slabs = new ConcurrentStack[33];
-		for (int i = 0; i < this.slabs.length; i++) {
-			this.slabs[i] = new ConcurrentStack<>();
-		}
+	public static void setSizes(int minSize, int maxSize) {
+		ByteBufPool.minSize = minSize;
+		ByteBufPool.maxSize = maxSize;
 	}
 
 	/**
@@ -87,7 +63,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * @param size new buffers size in bytes
 	 * @return the new ByteBuf
 	 */
-	public ByteBuf allocate(int size) {
+	public static ByteBuf allocate(int size) {
 		if (size < minSize || size >= maxSize) {
 			return ByteBuf.allocate(size);
 		}
@@ -95,24 +71,15 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 		ConcurrentStack<ByteBuf> queue = slabs[index];
 		ByteBuf buf = queue.pop();
 		if (buf != null) {
-			assert (buf = newByteBufWrap(buf)) != null;
-			buf.byteBufPool = this;
+			buf.refs = 1;
 			buf.position(0);
 			buf.limit(size);
 		} else {
 			byte[] array = new byte[1 << index];
 			buf = ByteBuf.wrap(array, 0, size);
-			buf.byteBufPool = this;
+			buf.refs = 1;
 		}
 		return buf;
-	}
-
-	// -ea mode: renew ByteBuf by .array()
-	private ByteBuf newByteBufWrap(ByteBuf buf) {
-		buf.byteBufPool = this;
-		ByteBuf newBuf = ByteBuf.wrap(buf.array());
-		buf.byteBufPool = RECYCLED_INSTANCE;
-		return newBuf;
 	}
 
 	/**
@@ -122,7 +89,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * @param newSize new size for buffer
 	 * @return new buffer with new size
 	 */
-	public ByteBuf reallocate(ByteBuf prevBuf, int newSize) {
+	public static ByteBuf reallocate(ByteBuf prevBuf, int newSize) {
 		int prevSize = prevBuf.array().length;
 		if (newSize <= prevSize && (prevSize <= minSize || numberOfLeadingZeros(newSize - 1) == numberOfLeadingZeros(prevSize - 1))) {
 			prevBuf.position(0);
@@ -140,7 +107,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * @param newSize new size for buffer
 	 * @return new buffer with bytes from prevBuf and with new size
 	 */
-	public ByteBuf resize(ByteBuf prevBuf, int newSize) {
+	public static ByteBuf resize(ByteBuf prevBuf, int newSize) {
 		if (newSize <= prevBuf.array().length) {
 			prevBuf.limit(newSize);
 			if (prevBuf.position() > newSize)
@@ -161,7 +128,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * @param dataToAppend buffer for appending
 	 * @return result buffer
 	 */
-	public ByteBuf append(ByteBuf buf, ByteBuf dataToAppend) {
+	public static ByteBuf append(ByteBuf buf, ByteBuf dataToAppend) {
 		return append(buf, dataToAppend, dataToAppend.remaining());
 	}
 
@@ -173,7 +140,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * @param size         number of elements to appending
 	 * @return result buffer
 	 */
-	public ByteBuf append(ByteBuf buf, ByteBuf dataToAppend, int size) {
+	public static ByteBuf append(ByteBuf buf, ByteBuf dataToAppend, int size) {
 		buf = append(buf, dataToAppend.array(), dataToAppend.position(), size);
 		dataToAppend.advance(size);
 		return buf;
@@ -186,7 +153,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * @param array array for appending
 	 * @return result buffer
 	 */
-	public ByteBuf append(ByteBuf buf, byte[] array) {
+	public static ByteBuf append(ByteBuf buf, byte[] array) {
 		return append(buf, array, 0, array.length);
 	}
 
@@ -199,7 +166,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * @param size   number of bytes for appending
 	 * @return result buffer
 	 */
-	public ByteBuf append(ByteBuf buf, byte[] array, int offset, int size) {
+	public static ByteBuf append(ByteBuf buf, byte[] array, int offset, int size) {
 		int newPosition = buf.position() + size;
 		if (newPosition > buf.array().length) {
 			buf = resize(buf, newPosition);
@@ -213,29 +180,28 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 
 	/**
 	 * Puts back ByteBuf which was taken from pool
-	 * <p/>
+	 * <p>
 	 * Puts back the ByteBuf which was taking from pool
 	 *
 	 * @param buf ByteBuf for recycling
 	 */
-	void doRecycle(ByteBuf buf) {
-		assert buf.array().length >= minSize && buf.array().length <= maxSize;
-		int index = 32 - numberOfLeadingZeros(buf.array().length - 1);
+	protected static void recycle(ByteBuf buf) {
+		assert buf.array.length >= minSize && buf.array.length <= maxSize;
+		int index = 32 - numberOfLeadingZeros(buf.array.length - 1);
 		ConcurrentStack<ByteBuf> queue = slabs[index];
 		assert !queue.contains(buf) : "duplicate recycle array";
-		buf.byteBufPool = ByteBufPool.RECYCLED_INSTANCE;
 		queue.push(buf);
 	}
 
 	@VisibleForTesting
-	ConcurrentStack<ByteBuf>[] getPool() {
+	static ConcurrentStack<ByteBuf>[] getPool() {
 		return slabs;
 	}
 
 	/**
 	 * Removes all items from this pool
 	 */
-	public void clear() {
+	public static void clear() {
 		for (ConcurrentStack<ByteBuf> slab : slabs) {
 			slab.clear();
 		}
@@ -244,8 +210,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	/**
 	 * Returns the number of items in this pool
 	 */
-	@Override
-	public int getPoolItems() {
+	public static int getPoolItems() {
 		int result = 0;
 		for (ConcurrentStack<ByteBuf> slab : slabs) {
 			result += slab.size();
@@ -256,7 +221,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	/**
 	 * Returns the number of occupied bytes in in this pool
 	 */
-	private int getPoolSize() {
+	private static int getPoolSize() {
 		int result = 0;
 		for (int i = 0; i < slabs.length; i++) {
 			int slotSize = 1 << i;
@@ -268,16 +233,14 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	/**
 	 * Returns the size of this pool in kB
 	 */
-	@Override
-	public int getPoolSizeKB() {
+	public static int getPoolSizeKB() {
 		return getPoolSize() / 1024;
 	}
 
 	/**
 	 * Returns mean size of each item in this pool
 	 */
-	@Override
-	public int getPoolItemAvgSize() {
+	public static int getPoolItemAvgSize() {
 		int items = getPoolItems();
 		return items == 0 ? 0 : getPoolSize() / items;
 	}
@@ -286,8 +249,7 @@ public final class ByteBufPool implements ByteBufPoolMBean {
 	 * Returns an array of String where each string described each slab in pool.
 	 * It contains data about size of slot in slab, number of elements in slab, and size of slot in kB
 	 */
-	@Override
-	public String[] getPoolSlabs() {
+	public static String[] getPoolSlabs() {
 		String[] result = new String[slabs.length];
 		for (int i = 0; i < slabs.length; i++) {
 			long slotSize = 1L << i;

@@ -35,7 +35,6 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 	private final BufferReader bufferReader = new BufferReader();
 	private final ArrayDeque<ByteBuf> byteBufs;
 	private final int buffersPoolSize;
-	private final ByteBufPool pool;
 
 	private final Gson gson;
 	private final Class<T> type;
@@ -52,8 +51,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 		this.byteBufs = new ArrayDeque<>(buffersPoolSize);
 		this.gson = gson;
 		this.type = type;
-		this.pool = eventloop.getByteBufferPool();
-		this.buf = pool.allocate(INITIAL_BUFFER_SIZE);
+		this.buf = ByteBufPool.allocate(INITIAL_BUFFER_SIZE);
 	}
 
 	private static int findZero(byte[] b, int off, int len) {
@@ -84,13 +82,13 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 				int zeroPos = findZero(srcBuf.array(), srcBuf.position(), srcBuf.remaining());
 
 				if (zeroPos == -1) {
-					buf = pool.append(buf, srcBuf);
+					buf = ByteBufPool.append(buf, srcBuf);
 					break;
 				}
 
 				int readLen = zeroPos - srcBuf.position();
 				if (buf.position() != 0) {
-					buf = pool.append(buf, srcBuf, readLen);
+					buf = ByteBufPool.append(buf, srcBuf, readLen);
 					bufferReader.set(buf.array(), 0, buf.position());
 					buf.position(0);
 				} else {

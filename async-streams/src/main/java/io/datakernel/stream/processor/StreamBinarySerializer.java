@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationOutputBuffer;
@@ -100,7 +101,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	}
 
 	private void allocateBuffer() {
-		byteBuf = eventloop.getByteBufferPool().allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
+		byteBuf = ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
 		outputBuffer.set(byteBuf.array(), 0);
 	}
 
