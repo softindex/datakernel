@@ -16,23 +16,22 @@
 
 package io.datakernel.dns;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
-import org.junit.Before;
-import org.junit.Test;
+import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
+import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
-import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.eventloop.NioEventloop;
+import org.junit.Before;
+import org.junit.Test;
 
 public class NativeDnsResolverConnectionTest {
 	private DnsClientConnection dnsClientConnection;
 	private NioEventloop eventloop;
-	private static InetSocketAddress LOCAL_ADDRESS = new InetSocketAddress(5000);
 	private static InetSocketAddress DNS_SERVER_ADDRESS = new InetSocketAddress("8.8.8.8", 53);
 	private static long TIMEOUT = 1000L;
 	private int answersReceived = 0;
@@ -86,7 +85,7 @@ public class NativeDnsResolverConnectionTest {
 			@Override
 			public void run() {
 				try {
-					DatagramChannel datagramChannel = createDatagramChannel(defaultDatagramSocketSettings(), LOCAL_ADDRESS, LOCAL_ADDRESS);
+					DatagramChannel datagramChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
 					dnsClientConnection = new DnsClientConnection(eventloop, datagramChannel);
 					dnsClientConnection.register();
 				} catch (IOException e) {

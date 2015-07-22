@@ -16,19 +16,21 @@
 
 package io.datakernel.http;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.jmx.MBeanUtils.register;
+
+import java.lang.management.ManagementFactory;
+import java.util.Random;
+
+import javax.management.MBeanServer;
+
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.util.ByteBufStrings;
-
-import javax.management.MBeanServer;
-import java.lang.management.ManagementFactory;
-import java.util.Random;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static io.datakernel.jmx.MBeanUtils.register;
 
 public class HttpThrottlingServer {
 	private static final String WOW = "wow";
@@ -132,6 +134,7 @@ public class HttpThrottlingServer {
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
 		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
 		eventloop.registerMBean(mbeanServer, WOW, NIO);
+		ByteBufPool.registerMBean(mbeanServer);
 		register(mbeanServer, MBeanFormat.name(WOW, NIO, ThrottlingController.class), eventloop.throttlingController);
 		server.start();
 

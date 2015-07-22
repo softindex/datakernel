@@ -16,12 +16,26 @@
 
 package io.datakernel.rpc.hello;
 
+import static io.datakernel.async.AsyncCallbacks.closeFuture;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.junit.Assert.*;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.BlockingCompletionCallback;
 import io.datakernel.async.BlockingResultObserver;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.sender.RequestSenderFactory;
@@ -37,20 +51,8 @@ import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.junit.Assert.*;
 
 public class RpcNioHelloWorldTest {
 
@@ -179,20 +181,13 @@ public class RpcNioHelloWorldTest {
 
 	@Before
 	public void setUp() throws Exception {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+
 		eventloop = new NioEventloop();
 		server = createServer(eventloop, protocolFactory);
 		server.listen();
 		defaultNioThreadFactory().newThread(eventloop).start();
-	}
-
-	@After
-	public void tearDown() throws Exception {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				server.close();
-			}
-		});
 	}
 
 	@Test
@@ -201,12 +196,15 @@ public class RpcNioHelloWorldTest {
 			for (int i = 0; i < 100; i++) {
 				assertEquals("Hello, World!", client.hello("World"));
 			}
+		} finally {
+			closeFuture(server).get();
 		}
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testAsyncCall() throws Exception {
-		int count = 1_000; // amount requests
+		int count = 100; // amount requests
 		final AtomicInteger success = new AtomicInteger();
 		try (HelloClient client = new HelloClient(eventloop, protocolFactory)) {
 			final CountDownLatch latch = new CountDownLatch(count);
@@ -228,8 +226,11 @@ public class RpcNioHelloWorldTest {
 				});
 			}
 			latch.await();
+		} finally {
+			closeFuture(server).get();
 		}
 		assertTrue(success.get() > 0);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -238,7 +239,10 @@ public class RpcNioHelloWorldTest {
 		     HelloClient client2 = new HelloClient(eventloop, protocolFactory)) {
 			assertEquals("Hello, John!", client2.hello("John"));
 			assertEquals("Hello, World!", client1.hello("World"));
+		} finally {
+			closeFuture(server).get();
 		}
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -248,7 +252,10 @@ public class RpcNioHelloWorldTest {
 			fail("Exception expected");
 		} catch (RpcRemoteException e) {
 			assertEquals("java.lang.Exception: Illegal name", e.getMessage());
+		} finally {
+			closeFuture(server).get();
 		}
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -291,7 +298,10 @@ public class RpcNioHelloWorldTest {
 			}
 			latch1.await();
 			latch2.await();
+		} finally {
+			closeFuture(server).get();
 		}
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	//@Test
@@ -324,6 +334,8 @@ public class RpcNioHelloWorldTest {
 				System.out.println(t + ": Elapsed " + stopwatch.stop().toString() + " rps: " + count * 1000.0 / stopwatch.elapsed(MILLISECONDS)
 						+ " (" + success.get() + "/" + count + " [" + error.get() + "])");
 			}
+		} finally {
+			closeFuture(server).get();
 		}
 	}
 }

@@ -20,7 +20,10 @@ import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.StandardSocketOptions;
 import java.nio.channels.Channel;
+import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 
@@ -31,6 +34,7 @@ import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
  */
 public abstract class SocketConnection {
 	private static final Logger logger = LoggerFactory.getLogger(SocketConnection.class);
+	private static final int DEFAULT_RECEIVE_BUFFER_SIZE = 8 * 1024;
 
 	protected final NioEventloop eventloop;
 
@@ -38,7 +42,7 @@ public abstract class SocketConnection {
 
 	private int ops = SelectionKey.OP_READ;
 
-	protected int receiveBufferSize;
+	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
 
 	protected long lifeTime;
 	protected long readTime;
@@ -57,8 +61,14 @@ public abstract class SocketConnection {
 		writeTime = lifeTime;
 	}
 
-	protected int getReceiveBufferSize() {
-		return receiveBufferSize;
+	protected static int getReceiveBufferSize(NetworkChannel channel) {
+		try {
+			Integer bufferSize = channel.getOption(StandardSocketOptions.SO_RCVBUF);
+			if (bufferSize != null)
+				return bufferSize;
+		} catch (IOException ignored) {
+		}
+		return DEFAULT_RECEIVE_BUFFER_SIZE;
 	}
 
 	/**

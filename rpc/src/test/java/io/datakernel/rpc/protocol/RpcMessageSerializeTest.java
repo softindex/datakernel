@@ -17,14 +17,19 @@
 package io.datakernel.rpc.protocol;
 
 import com.google.common.reflect.TypeToken;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serializer.*;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.asm.SerializerGen;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.net.UnknownHostException;
+
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static org.junit.Assert.assertEquals;
 
 public class RpcMessageSerializeTest {
 	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
@@ -73,6 +78,12 @@ public class RpcMessageSerializeTest {
 		return deserializer.deserialize(input);
 	}
 
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
+
 	@Test
 	public void testRpcMessageData() throws UnknownHostException {
 		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");
@@ -82,6 +93,7 @@ public class RpcMessageSerializeTest {
 
 		TestRpcMessageData testMessage2 = (TestRpcMessageData) messageData2;
 		Assert.assertEquals(messageData1.s, testMessage2.s);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -94,6 +106,7 @@ public class RpcMessageSerializeTest {
 		Assert.assertTrue(message2.getData() instanceof TestRpcMessageData);
 		TestRpcMessageData messageData2 = (TestRpcMessageData) message2.getData();
 		Assert.assertEquals(messageData1.getS(), messageData2.getS());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

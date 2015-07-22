@@ -20,12 +20,14 @@ import com.google.common.io.Closeables;
 import com.google.inject.*;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.guice.workers.*;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.service.NioEventloopRunner;
 import io.datakernel.util.ByteBufStrings;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedReader;
@@ -36,12 +38,20 @@ import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.http.HttpServerTest.readAndAssert;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static org.junit.Assert.assertEquals;
 
 public class HelloWorldGuiceTest {
 	public static final int PORT = 7583;
 	public static final int WORKERS = 4;
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	public static class TestModule extends AbstractModule {
 		@Override
@@ -146,6 +156,8 @@ public class HelloWorldGuiceTest {
 			Closeables.close(socket0, true);
 			Closeables.close(socket1, true);
 		}
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	public static void main(String[] args) throws ExecutionException, InterruptedException, IOException {

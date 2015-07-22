@@ -123,16 +123,21 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		asyncFile.read(buf, position, new ResultCallback<Integer>() {
 			@Override
 			public void onResult(Integer result) {
+				if (status >= END_OF_STREAM) {
+					buf.recycle();
+					doCleanup();
+					return;
+				}
 				pendingAsyncOperation = false;
 				if (result == -1) {
+					buf.recycle();
 					doCleanup();
 					sendEndOfStream();
 					return;
 				} else {
 					position += result;
 					buf.flip();
-					if (status < END_OF_STREAM)
-						send(buf);
+					send(buf);
 					if (length != Long.MAX_VALUE)
 						length -= result;
 				}

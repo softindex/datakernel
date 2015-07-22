@@ -16,12 +16,12 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.http.server.AsyncHttpServlet;
-import org.junit.Assert;
-import org.junit.Test;
+import static com.google.common.io.ByteStreams.*;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.util.ByteBufStrings.*;
+import static java.lang.Math.min;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -29,14 +29,22 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
 
-import static com.google.common.io.ByteStreams.readFully;
-import static com.google.common.io.ByteStreams.toByteArray;
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static java.lang.Math.min;
-import static org.junit.Assert.assertTrue;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.http.server.AsyncHttpServlet;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 
 public class HttpServerTest {
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	public static AsyncHttpServer blockingHttpServer(NioEventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
@@ -52,10 +60,10 @@ public class HttpServerTest {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 						callback.onResult(content);
 					}
 				});
@@ -68,10 +76,10 @@ public class HttpServerTest {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new Runnable() {
 					@Override
 					public void run() {
-						HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 						callback.onResult(content);
 					}
 				});
@@ -131,6 +139,8 @@ public class HttpServerTest {
 		doTestKeepAlive(eventloop, blockingHttpServer(eventloop));
 		doTestKeepAlive(eventloop, asyncHttpServer(eventloop));
 		doTestKeepAlive(eventloop, delayedHttpServer(eventloop));
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -152,6 +162,8 @@ public class HttpServerTest {
 
 		server.closeFuture();
 		thread.join();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -175,6 +187,8 @@ public class HttpServerTest {
 
 		server.closeFuture();
 		thread.join();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -184,6 +198,8 @@ public class HttpServerTest {
 		doTestPipelining(eventloop, blockingHttpServer(eventloop));
 		doTestPipelining(eventloop, asyncHttpServer(eventloop));
 		doTestPipelining(eventloop, delayedHttpServer(eventloop));
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private void doTestPipelining(NioEventloop eventloop, AsyncHttpServer server) throws IOException, InterruptedException {

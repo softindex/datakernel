@@ -16,18 +16,9 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.ByteBufQueue;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static java.nio.file.StandardOpenOption.*;
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,9 +30,19 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.nio.file.StandardOpenOption.WRITE;
-import static org.junit.Assert.*;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.file.StreamFileWriter;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class StreamFileReaderWriterTest {
 	NioEventloop eventloop;
@@ -66,6 +67,8 @@ public class StreamFileReaderWriterTest {
 				super.send(item);
 			}
 		};
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -95,18 +98,6 @@ public class StreamFileReaderWriterTest {
 		assertTrue(reader.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
 	}
 
-	public byte[] mergeBuffers(List<ByteBuf> list) {
-		ByteBufQueue byteQueue = new ByteBufQueue();
-		for (ByteBuf element : list) {
-			byteQueue.add(element);
-		}
-
-		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
-		byteQueue.drainTo(buf);
-
-		return buf.array();
-	}
-
 	@Test
 	public void testStreamFileReader() throws IOException {
 		NioEventloop eventloop = new NioEventloop();
@@ -122,7 +113,16 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(consumer);
 		eventloop.run();
 
-		assertArrayEquals(fileBytes, mergeBuffers(list));
+		ByteBufQueue byteQueue = new ByteBufQueue();
+		for (ByteBuf buf : list) {
+			byteQueue.add(buf);
+		}
+
+		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
+		byteQueue.drainTo(buf);
+
+		assertArrayEquals(fileBytes, buf.array());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -142,5 +142,6 @@ public class StreamFileReaderWriterTest {
 
 		byte[] fileBytes = com.google.common.io.Files.toByteArray(tempFile);
 		assertArrayEquals(bytes, fileBytes);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

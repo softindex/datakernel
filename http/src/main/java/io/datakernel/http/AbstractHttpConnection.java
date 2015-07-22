@@ -16,8 +16,15 @@
 
 package io.datakernel.http;
 
+import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
+import static io.datakernel.http.HttpHeader.*;
+import static io.datakernel.util.ByteBufStrings.*;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
+
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.ByteBufQueue;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.util.ByteBufStrings;
@@ -25,18 +32,12 @@ import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
-
-import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
-import static io.datakernel.http.HttpHeader.*;
-import static io.datakernel.util.ByteBufStrings.*;
-
 /**
  * Realization of the {@link TcpSocketConnection} which handles the HTTP messages. It is used by server and client.
  */
 public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	private static final Logger logger = LoggerFactory.getLogger(AbstractHttpConnection.class);
+
 	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 
 	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
@@ -292,11 +293,13 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 
 				if (!line.hasRemaining()) {
 					reading = isChunked ? CHUNK_LENGTH : BODY;
+					line.recycle();
 					break;
 				}
 
 				if (reading == FIRSTLINE) {
 					onFirstLine(line);
+					line.recycle();
 					reading = HEADERS;
 				} else {
 					onHeader(line);

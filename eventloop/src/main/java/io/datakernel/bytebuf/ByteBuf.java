@@ -16,9 +16,9 @@
 
 package io.datakernel.bytebuf;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.nio.ByteBuffer;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Represent a buffer which can be recycled from itself.Byte buffers can be created either by allocation,
@@ -354,13 +354,13 @@ public class ByteBuf {
 	/**
 	 * Transfers all remaining bytes of the given ByteBuf into this buffer.
 	 *
-	 * @param body the ByteBuf for transferring
+	 * @param buf the ByteBuf for transferring
 	 */
-	public void put(ByteBuf body) {
+	public void put(ByteBuf buf) {
 		assert !isRecycled();
-		assert (this.position + body.remaining()) <= this.limit;
-		System.arraycopy(body.array, body.position, this.array, this.position, body.remaining());
-		this.position += body.remaining();
+		assert (this.position + buf.remaining()) <= this.limit;
+		System.arraycopy(buf.array, buf.position, this.array, this.position, buf.remaining());
+		this.position += buf.remaining();
 	}
 
 	/**

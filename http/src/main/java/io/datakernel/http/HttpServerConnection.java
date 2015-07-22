@@ -169,6 +169,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			httpResponse.setHeader(CONNECTION, CONNECTION_KEEP_ALIVE);
 		}
 		ByteBuf buf = httpResponse.write();
+		httpResponse.recycleBufs();
 		write(buf);
 	}
 
@@ -194,6 +195,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 				} else {
 					// connection is closed, but bufs are not recycled, let's recycle them now
 					recycleBufs();
+					httpResponse.recycleBufs();
 				}
 			}
 
@@ -270,8 +272,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	private void recycleBufs() {
-		writeQueue.clear();
-		readQueue.clear();
 		bodyQueue.clear();
 		if (request != null) {
 			request.recycleBufs();
@@ -281,6 +281,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	@Override
 	public void onClosed() {
+		super.onClosed();
 		if (reading != NOTHING) {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();

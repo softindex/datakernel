@@ -16,17 +16,18 @@
 
 package io.datakernel.jmx;
 
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
-import com.google.common.io.CharStreams;
+import static com.google.common.base.Throwables.propagate;
 
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import static com.google.common.base.Throwables.propagate;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
+import com.google.common.io.CharStreams;
 
 public final class MBeanFormat {
 	private static final Splitter SPLITTER_LN = Splitter.on('\n');
@@ -41,6 +42,10 @@ public final class MBeanFormat {
 	public static ObjectName name(String domain, String type, String value) {
 		value = value.replace(':', '_').replace(',', '_').replace('=', '_');
 		return name(domain + ":type=" + type + ",value=" + value);
+	}
+
+	public static ObjectName name(String domain, String type) {
+		return name(domain + ":type=" + type);
 	}
 
 	private static ObjectName name(String name) {

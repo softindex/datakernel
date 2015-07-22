@@ -21,6 +21,7 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
@@ -37,11 +38,13 @@ import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.*;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.assertEquals;
 
 public class RpcBinaryProtocolTest {
@@ -101,6 +104,12 @@ public class RpcBinaryProtocolTest {
 		return RpcMessageSerializer.builder()
 				.addExtraRpcMessageType(TestRpcRequestMessage.class, TestRpcResponseMessage.class)
 				.build();
+	}
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -189,12 +198,13 @@ public class RpcBinaryProtocolTest {
 		for (int i = 0; i < countRequests; i++) {
 			assertEquals("Hello, " + testMessage.getRequest() + "!", results.get(i).getResponse());
 		}
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testCompression() {
 		int countRequests = 10;
-		int MIN_COMPRESS_BLOCK_SIZE = 64;
 		NioEventloop eventloop = new NioEventloop();
 		RpcMessageSerializer serializer = buildMessageSerializer();
 		int defaultPacketSize = 1 << 10;
@@ -244,5 +254,7 @@ public class RpcBinaryProtocolTest {
 			TestRpcRequestMessage data = (TestRpcRequestMessage) resultsData.get(i).getData();
 			assertEquals(testMessage.getRequest(), data.getRequest());
 		}
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

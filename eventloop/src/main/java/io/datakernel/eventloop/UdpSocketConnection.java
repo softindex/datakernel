@@ -16,9 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -27,15 +24,15 @@ import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectableChannel;
 import java.util.ArrayDeque;
 
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+
 /**
  * Represent I/O handler of UDP {@link DatagramChannel}
  */
 public abstract class UdpSocketConnection extends SocketConnection {
-	public static final int DEFAULT_UDP_BUFFER_SIZE = 16384;
-
 	protected final DatagramChannel channel;
 	protected final ArrayDeque<UdpPacket> writeQueue = new ArrayDeque<>();
-	protected final ArrayDeque<UdpPacket> readQueue = new ArrayDeque<>();
 
 	/**
 	 * Creates new instance of UDP connection
@@ -46,7 +43,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 	public UdpSocketConnection(NioEventloop eventloop, DatagramChannel datagramChannel) {
 		super(eventloop);
 		this.channel = datagramChannel;
-		this.receiveBufferSize = DEFAULT_UDP_BUFFER_SIZE;
+		this.receiveBufferSize = getReceiveBufferSize(channel);
 	}
 
 	/**
@@ -54,9 +51,10 @@ public abstract class UdpSocketConnection extends SocketConnection {
 	 */
 	@Override
 	public void onReadReady() {
+		ByteBuf buf = null;
 		try {
 			while (true) {
-				ByteBuf buf = ByteBufPool.allocate(getReceiveBufferSize());
+				buf = ByteBufPool.allocate(receiveBufferSize);
 				ByteBuffer byteBuffer = buf.toByteBuffer();
 				SocketAddress sourceAddress = channel.receive(byteBuffer);
 				buf.setByteBuffer(byteBuffer);
@@ -73,6 +71,9 @@ public abstract class UdpSocketConnection extends SocketConnection {
 			if (isRegistered()) {
 				onInternalException(e);
 			}
+		} finally {
+			if (buf != null)
+				buf.recycle();
 		}
 	}
 
@@ -151,7 +152,6 @@ public abstract class UdpSocketConnection extends SocketConnection {
 	 */
 	@Override
 	public void onClosed() {
-		readQueue.clear();
 		writeQueue.clear();
 	}
 
@@ -159,7 +159,4 @@ public abstract class UdpSocketConnection extends SocketConnection {
 		return channel.toString();
 	}
 
-	public String getSocketInfo() {
-		return channel.toString();
-	}
 }

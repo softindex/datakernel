@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop;
-
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
+package io.datakernel.bytebuf;
 
 import static java.lang.System.arraycopy;
+
+import io.datakernel.jmx.StatsCounter;
 
 /**
  * It is the queue which has array of {@link ByteBuf}
@@ -31,6 +30,8 @@ public final class ByteBufQueue {
 
 	private int first = 0;
 	private int last = 0;
+
+//	private final StatsCounter limitsCounter = new StatsCounter();
 
 	/**
 	 * Creates a new instance of ByteBufQueue with capacity ByteBufs
@@ -48,13 +49,13 @@ public final class ByteBufQueue {
 		this(DEFAULT_CAPACITY);
 	}
 
-	private int nxt(int i) {
+	private int next(int i) {
 		return ++i >= bufs.length ? 0 : i;
 	}
 
 	private void doPoll() {
 		bufs[first].recycle();
-		first = nxt(first);
+		first = next(first);
 	}
 
 	/**
@@ -82,9 +83,16 @@ public final class ByteBufQueue {
 		}
 
 		bufs[last] = buf;
-		last = nxt(last);
+		last = next(last);
 		if (last == first) {
 			grow();
+		}
+//		limitsCounter.add(buf.limit);
+	}
+
+	public void addAll(Iterable<ByteBuf> byteBufs) {
+		for (ByteBuf buf : byteBufs) {
+			add(buf);
 		}
 	}
 
@@ -94,7 +102,7 @@ public final class ByteBufQueue {
 	public ByteBuf take() {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
-		first = nxt(first);
+		first = next(first);
 		return buf;
 	}
 
@@ -110,7 +118,7 @@ public final class ByteBufQueue {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
 		if (maxSize >= buf.remaining()) {
-			first = nxt(first);
+			first = next(first);
 			return buf;
 		}
 		ByteBuf result = buf.slice(buf.position(), maxSize);
@@ -130,7 +138,7 @@ public final class ByteBufQueue {
 			return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
 		if (buf.remaining() == exactSize) {
-			first = nxt(first);
+			first = next(first);
 			return buf;
 		} else if (exactSize < buf.remaining()) {
 			ByteBuf result = buf.slice(buf.position(), exactSize);
@@ -184,7 +192,7 @@ public final class ByteBufQueue {
 	 */
 	public int remainingBytes() {
 		int result = 0;
-		for (int i = first; i != last; i = nxt(i)) {
+		for (int i = first; i != last; i = next(i)) {
 			result += bufs[i].remaining();
 		}
 		return result;
@@ -210,7 +218,7 @@ public final class ByteBufQueue {
 	 * @return true if, and only if, there are remaining bytes.
 	 */
 	public boolean hasRemainingBytes(int remaining) {
-		for (int i = first; i != last; i = nxt(i)) {
+		for (int i = first; i != last; i = next(i)) {
 			int bufRemaining = bufs[i].remaining();
 			if (bufRemaining >= remaining)
 				return true;
@@ -249,7 +257,7 @@ public final class ByteBufQueue {
 	 */
 	public byte peekByte(int index) {
 		assert hasRemainingBytes(index + 1);
-		for (int i = first; ; i = nxt(i)) {
+		for (int i = first; ; i = next(i)) {
 			ByteBuf buf = bufs[i];
 			if (index < buf.remaining())
 				return buf.peek(index);
@@ -372,10 +380,13 @@ public final class ByteBufQueue {
 	 * Recycles all ByteBufs from this queue.
 	 */
 	public void clear() {
-		for (int i = first; i != last; i = nxt(i)) {
+		for (int i = first; i != last; i = next(i)) {
 			bufs[i].recycle();
 		}
 		first = last = 0;
 	}
 
+//	public StatsCounter getBufsStats() {
+//		return limitsCounter;
+//	}
 }

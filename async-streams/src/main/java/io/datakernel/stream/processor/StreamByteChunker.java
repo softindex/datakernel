@@ -71,8 +71,10 @@ public class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, By
 		internalBuf.flip();
 		if (internalBuf.hasRemaining()) {
 			send(internalBuf);
-			internalBuf = null;
+		} else {
+			internalBuf.recycle();
 		}
+		internalBuf = null;
 		sendEndOfStream();
 	}
 

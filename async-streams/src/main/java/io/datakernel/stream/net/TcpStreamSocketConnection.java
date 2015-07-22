@@ -99,10 +99,10 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		}
 	}
 
-	private String name;
-
 	protected final Reader socketReader;
 	protected final Writer socketWriter;
+
+	private String name;
 
 	/**
 	 * Returns new instance of TcpStreamSocketConnection

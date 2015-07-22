@@ -16,26 +16,8 @@
 
 package io.datakernel.eventloop;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Stopwatch;
-import io.datakernel.annotation.Nullable;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.jmx.CompositeDataBuilder;
-import io.datakernel.jmx.LastExceptionCounter;
-import io.datakernel.jmx.MBeanFormat;
-import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.time.CurrentTimeProviderSystem;
-import io.datakernel.util.ExceptionMarker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static io.datakernel.jmx.MBeanUtils.register;
 
-import javax.management.MBeanServer;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -47,7 +29,25 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.jmx.MBeanUtils.register;
+import javax.management.MBeanServer;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.SimpleType;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Stopwatch;
+import io.datakernel.annotation.Nullable;
+import io.datakernel.jmx.CompositeDataBuilder;
+import io.datakernel.jmx.LastExceptionCounter;
+import io.datakernel.jmx.MBeanFormat;
+import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
+import io.datakernel.time.CurrentTimeProvider;
+import io.datakernel.time.CurrentTimeProviderSystem;
+import io.datakernel.util.ExceptionMarker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * It is internal class for asynchronous programming. NioEventloop represents infinite loop with only one
@@ -860,7 +860,6 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	public void registerMBean(MBeanServer mbeanServer, String domain, String type) {
 		register(mbeanServer, MBeanFormat.name(domain, type, NioEventloop.class), this);
 		register(mbeanServer, MBeanFormat.name(domain, type, NioEventloopStats.class), statsCounters);
-//		register(mbeanServer, MBeanFormat.name(domain, type, ByteBufPool.class), byteBufferPool);
 	}
 
 	public LastExceptionCounter getExceptionCounter(ExceptionMarker marker) {

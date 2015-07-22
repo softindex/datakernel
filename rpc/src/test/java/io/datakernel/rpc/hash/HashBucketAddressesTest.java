@@ -18,15 +18,23 @@ package io.datakernel.rpc.hash;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
+import io.datakernel.bytebuf.ByteBufPool;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class HashBucketAddressesTest {
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	@Test
 	public void testHashBucketAddress() {
@@ -77,6 +85,7 @@ public class HashBucketAddressesTest {
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			assertEquals(baseBucket[i], hashBucket.getAddressId(i));
 		}
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	static List<InetSocketAddress> buildInetSocketAddressListIp(int COUNT_SERVERS) {

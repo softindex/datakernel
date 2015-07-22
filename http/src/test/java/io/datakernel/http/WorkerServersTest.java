@@ -17,11 +17,13 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.service.NioEventloopRunner;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -33,13 +35,21 @@ import java.util.concurrent.ExecutionException;
 
 import static com.google.common.io.ByteStreams.readFully;
 import static com.google.common.io.ByteStreams.toByteArray;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class WorkerServersTest {
 	final static int PORT = 9444;
 	final static int WORKERS = 4;
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	public static AsyncHttpServer echoServer(NioEventloop primaryEventloop, final int workerN) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
@@ -104,6 +114,8 @@ public class WorkerServersTest {
 			server.getNioEventloop().keepAlive(false);
 			server.closeFuture().get();
 		}
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -151,6 +163,8 @@ public class WorkerServersTest {
 		socket2.close();
 
 		primaryService.stopFuture().get();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

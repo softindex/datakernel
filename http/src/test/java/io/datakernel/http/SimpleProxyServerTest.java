@@ -18,11 +18,13 @@ package io.datakernel.http;
 
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.net.DatagramSocketSettings;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -33,13 +35,21 @@ import java.net.Socket;
 
 import static com.google.common.io.ByteStreams.readFully;
 import static com.google.common.io.ByteStreams.toByteArray;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class SimpleProxyServerTest {
 	final static int ECHO_SERVER_PORT = 9707;
 	final static int PROXY_SERVER_PORT = 9444;
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	public static AsyncHttpServer proxyHttpServer(final NioEventloop primaryEventloop, final HttpClientImpl httpClient) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
@@ -116,6 +126,8 @@ public class SimpleProxyServerTest {
 
 		echoServerThread.join();
 		proxyServerThread.join();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

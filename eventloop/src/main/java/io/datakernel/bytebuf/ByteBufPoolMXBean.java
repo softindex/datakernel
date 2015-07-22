@@ -16,13 +16,19 @@
 
 package io.datakernel.bytebuf;
 
-/**
- * Represents a recyclable object. Implementations of this interface will want to recycle their
- * states with a call to recycle()
- */
-public interface Recyclable {
-	/**
-	 * Puts back this object to its pool
-	 */
-	void recycle();
+import java.util.List;
+
+import javax.management.openmbean.OpenDataException;
+
+public interface ByteBufPoolMXBean {
+
+	int getCreatedItems();
+
+	int getPoolItems();
+
+	long getPoolItemAvgSize();
+
+	long getPoolSizeKB();
+
+	List<String> getPoolSlabs() throws OpenDataException;
 }

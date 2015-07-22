@@ -16,10 +16,12 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -29,6 +31,7 @@ import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -37,6 +40,12 @@ import static org.junit.Assert.assertTrue;
 public class StreamSorterStorageImplTest {
 	@Rule
 	public TemporaryFolder tempFolder = new TemporaryFolder();
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	@Test
 	public void testStreamStorage() throws Exception {
@@ -69,6 +78,7 @@ public class StreamSorterStorageImplTest {
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());
 		assertEquals(asList(111), consumer2.getList());
 		storage.cleanup();
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

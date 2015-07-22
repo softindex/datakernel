@@ -16,12 +16,14 @@
 
 package io.datakernel.http;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import io.datakernel.annotation.NioThread;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractNioServer;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.jmx.DynamicStatsCounter;
 import io.datakernel.jmx.MBeanFormat;
@@ -192,13 +194,16 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 
 	@Override
 	public String[] getConnections() {
+		Joiner joiner = Joiner.on(',');
 		List<String> info = new ArrayList<>();
-		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
-		for (ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
+		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime,ReadBufsSize,WriteBufsSize");
+		for (Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
 			AbstractHttpConnection connection = node.getValue();
-			String string = connection.getRemoteSocketAddress() + "," + connection.isRegistered() + ","
-					+ MBeanFormat.formatPeriodAgo(connection.getLifeTime()) + ","
-					+ MBeanFormat.formatPeriodAgo(connection.getActivityTime());
+			String string = joiner.join(connection.getRemoteSocketAddress(), connection.isRegistered(),
+					MBeanFormat.formatPeriodAgo(connection.getLifeTime()),
+					MBeanFormat.formatPeriodAgo(connection.getActivityTime())
+//					connection.getReadBufsStats(), connection.getWriteBufsStats()
+			);
 			info.add(string);
 		}
 		return info.toArray(new String[info.size()]);

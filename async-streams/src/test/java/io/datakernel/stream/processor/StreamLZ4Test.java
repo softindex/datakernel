@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.*;
 
 import java.util.ArrayList;
@@ -23,10 +24,13 @@ import java.util.List;
 import java.util.Random;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import org.junit.Before;
 import org.junit.Test;
 
 public class StreamLZ4Test {
@@ -46,18 +50,19 @@ public class StreamLZ4Test {
 	}
 
 	private static byte[] byteBufsToByteArray(List<ByteBuf> byteBufs) {
-		int size = 0;
-		for (ByteBuf byteBuf : byteBufs) {
-			size += byteBuf.remaining();
+		ByteBufQueue queue = new ByteBufQueue();
+		for (ByteBuf buf : byteBufs) {
+			queue.add(buf.slice(0, buf.remaining()));
 		}
-		byte[] result = new byte[size];
-		int pos = 0;
-		for (ByteBuf byteBuf : byteBufs) {
-			System.arraycopy(byteBuf.array(), byteBuf.position(),
-					result, pos, byteBuf.remaining());
-			pos += byteBuf.remaining();
-		}
-		return result;
+		byte[] bytes = new byte[queue.remainingBytes()];
+		queue.drainTo(bytes, 0, bytes.length);
+		return bytes;
+	}
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -90,9 +95,13 @@ public class StreamLZ4Test {
 		eventloop.run();
 
 		byte[] actual = byteBufsToByteArray(consumer.getList());
+		for (ByteBuf buf : consumer.getList()) {
+			buf.recycle();
+		}
 
 		assertArrayEquals(expected, actual);
 		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -147,9 +156,13 @@ public class StreamLZ4Test {
 
 		byte[] actual = byteBufsToByteArray(consumer.getList());
 		byte[] expected = byteBufsToByteArray(buffers);
+		for (ByteBuf b : consumer.getList()) {
+			b.recycle();
+		}
 		assertArrayEquals(actual, expected);
 
 		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

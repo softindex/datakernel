@@ -16,24 +16,20 @@
 
 package io.datakernel.http;
 
+import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.util.ByteBufStrings.decodeUTF8;
+
+import java.util.concurrent.CountDownLatch;
+
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.service.NioEventloopRunner;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static io.datakernel.util.ByteBufStrings.decodeUTF8;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
-
 public class HttpBenchmark extends Benchmark {
 	private NioEventloop eventloop;
 	private NioEventloopRunner eventloopRunner;
-	private ExecutorService executor = newSingleThreadExecutor();
-	private AsyncHttpServer server;
 	private HttpClientAsync httpClient;
 	private final int port;
 
@@ -49,11 +45,11 @@ public class HttpBenchmark extends Benchmark {
 	protected void setUp() throws Exception {
 		eventloop = new NioEventloop();
 		eventloopRunner = new NioEventloopRunner(eventloop);
-		server = HelloWorldServer.helloWorldServer(eventloop, port);
+		AsyncHttpServer server = HelloWorldServer.helloWorldServer(eventloop, port);
 		eventloopRunner.addNioServers(server);
-		eventloopRunner.startFuture().get();
 		httpClient = new HttpClientImpl(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-				3_000L, InetAddresses.forString("8.8.8.8")));
+				3_000L, InetAddresses.forString("127.0.0.1")));
+		eventloopRunner.startFuture().get();
 	}
 
 	@Override
@@ -64,28 +60,33 @@ public class HttpBenchmark extends Benchmark {
 
 	@Override
 	protected void round() throws Exception {
-		String uri = "http://127.0.0.1:" + port + "/";
+		final String uri = "http://127.0.0.1:" + port + "/";
 		final CountDownLatch latch = new CountDownLatch(1);
 		for (int i = 0; i < operations; i++) {
-			httpClient.getHttpResultAsync(HttpRequest.get(uri), 1000, new ResultCallback<HttpResponse>() {
+			eventloop.postConcurrently(new Runnable() {
 				@Override
-				public void onResult(HttpResponse result) {
-					complete++;
-					if (!result.getBody().equalsTo(HelloWorldServer.HELLO_WORLD))
-						throw new RuntimeException("Received result: " + decodeUTF8(result.getBody()));
-					checkEnd();
-				}
+				public void run() {
+					httpClient.getHttpResultAsync(HttpRequest.get(uri), 3000, new ResultCallback<HttpResponse>() {
+						@Override
+						public void onResult(HttpResponse result) {
+							complete++;
+							if (!result.getBody().equalsTo(HelloWorldServer.HELLO_WORLD))
+								throw new RuntimeException("Received result: " + decodeUTF8(result.getBody()));
+							checkEnd();
+						}
 
-				@Override
-				public void onException(Exception exception) {
-					fails++;
-					checkEnd();
-				}
+						@Override
+						public void onException(Exception exception) {
+							fails++;
+							checkEnd();
+						}
 
-				private void checkEnd() {
-					if ((complete + fails) >= operations) {
-						latch.countDown();
-					}
+						private void checkEnd() {
+							if ((complete + fails) >= operations) {
+								latch.countDown();
+							}
+						}
+					});
 				}
 			});
 		}
@@ -100,7 +101,6 @@ public class HttpBenchmark extends Benchmark {
 	@Override
 	protected void tearDown() throws Exception {
 		eventloopRunner.stopFuture().get();
-		executor.shutdown();
 	}
 
 	public static void main(String[] args) throws Exception {

@@ -16,24 +16,32 @@
 
 package io.datakernel.http;
 
-import com.google.common.net.InetAddresses;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackObserver;
-import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.http.server.AsyncHttpServlet;
-import org.junit.Test;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.util.ByteBufStrings.*;
+import static org.junit.Assert.assertEquals;
 
 import java.util.concurrent.TimeoutException;
 
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static io.datakernel.util.ByteBufStrings.decodeUTF8;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static org.junit.Assert.assertEquals;
+import com.google.common.net.InetAddresses;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackObserver;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.http.server.AsyncHttpServlet;
+import org.junit.Before;
+import org.junit.Test;
 
 public class HttpClientTest {
 	private static final int PORT = 45788;
 	public static final byte[] TIMEOUT_EXCEPTION_BYTES = encodeAscii("ERROR: Must be TimeoutException");
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	@Test
 	public void testAsyncClient() throws Exception {
@@ -65,6 +73,8 @@ public class HttpClientTest {
 		eventloop.run();
 
 		assertEquals(decodeUTF8(HelloWorldServer.HELLO_WORLD), resultObserver.getResultOrException());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test(expected = TimeoutException.class)

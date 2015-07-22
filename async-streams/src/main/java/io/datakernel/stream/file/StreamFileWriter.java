@@ -129,15 +129,15 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void doFlush() {
-		ByteBuf buf = queue.peek();
+		final ByteBuf buf = queue.poll();
 		final int len = buf.remaining();
 
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
+				buf.recycle();
 				pendingAsyncOperation = false;
 				position += len;
-				queue.poll();
 				if (queue.size() <= 1) {
 					resumeUpstream();
 				}
@@ -146,6 +146,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 			@Override
 			public void onException(final Exception e) {
+				buf.recycle();
 				doCleanup(new CompletionCallback() {
 					@Override
 					public void onComplete() {

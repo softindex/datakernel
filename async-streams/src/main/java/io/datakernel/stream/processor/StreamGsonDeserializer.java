@@ -112,10 +112,13 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 			}
 		}
 		if (byteBufs.isEmpty()) {
-			if (getUpstreamStatus() == END_OF_STREAM)
+			if (getUpstreamStatus() == END_OF_STREAM) {
 				sendEndOfStream();
-			else
+				buf.recycle();
+				buf = null;
+			} else {
 				resumeUpstream();
+			}
 		}
 	}
 

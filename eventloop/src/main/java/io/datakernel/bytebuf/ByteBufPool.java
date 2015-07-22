@@ -17,12 +17,22 @@
 package io.datakernel.bytebuf;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
+import io.datakernel.jmx.MBeanFormat;
+import io.datakernel.jmx.MBeanUtils;
 import io.datakernel.util.ConcurrentStack;
+
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import javax.management.openmbean.OpenDataException;
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Integer.numberOfLeadingZeros;
 
 public final class ByteBufPool {
+	public static final int NUMBER_SLABS = 33;
 	private static int minSize = 32;
 	private static int maxSize = 1 << 30;
 
@@ -34,18 +44,21 @@ public final class ByteBufPool {
 	 * Except slabs[32] that contains ByteBufs with size 0
 	 */
 	private static final ConcurrentStack<ByteBuf>[] slabs;
+	private static final int[] created = new int[NUMBER_SLABS];
 
 	static {
 		//noinspection unchecked
-		slabs = new ConcurrentStack[33];
+		slabs = new ConcurrentStack[NUMBER_SLABS];
 		for (int i = 0; i < slabs.length; i++) {
 			slabs[i] = new ConcurrentStack<>();
 		}
 	}
 
+	private ByteBufPool() {
+	}
+
 	/**
-	 * Creates a new instance of ByteBufPool with min - minimal size of buffer to be stored,
-	 * max - maximum size of buffer to be stored.
+	 * Sets new minimum and maximum buffer size to be stored in ByteBufPool
 	 *
 	 * @param minSize minimal size of buffer to be stored
 	 * @param maxSize maximum size of buffer to be stored
@@ -76,6 +89,7 @@ public final class ByteBufPool {
 			buf.limit(size);
 		} else {
 			byte[] array = new byte[1 << index];
+			created[index]++;
 			buf = ByteBuf.wrap(array, 0, size);
 			buf.refs = 1;
 		}
@@ -202,14 +216,78 @@ public final class ByteBufPool {
 	 * Removes all items from this pool
 	 */
 	public static void clear() {
-		for (ConcurrentStack<ByteBuf> slab : slabs) {
-			slab.clear();
+		for (int i = 0; i < ByteBufPool.NUMBER_SLABS; i++) {
+			slabs[i].clear();
+			created[i] = 0;
 		}
 	}
 
-	/**
-	 * Returns the number of items in this pool
-	 */
+	// JMX
+	public static final ObjectName JMX_NAME = MBeanFormat.name(ByteBufPool.class.getPackage().getName(), ByteBufPool.class.getSimpleName());
+
+	synchronized public static void registerMBean(MBeanServer mbeanServer) {
+		if (mbeanServer.isRegistered(JMX_NAME))
+			return;
+		MBeanUtils.register(mbeanServer, JMX_NAME, new ByteBufPoolMXBean() {
+			@Override
+			public int getCreatedItems() {
+				return ByteBufPool.getCreatedItems();
+			}
+
+			@Override
+			public int getPoolItems() {
+				return ByteBufPool.getPoolItems();
+			}
+
+			@Override
+			public long getPoolItemAvgSize() {
+				int result = 0;
+				for (ConcurrentStack<ByteBuf> slab : slabs) {
+					result += slab.size();
+				}
+				int items = result;
+				return items == 0 ? 0 : ByteBufPool.getPoolSize() / items;
+			}
+
+			@Override
+			public long getPoolSizeKB() {
+				return ByteBufPool.getPoolSize() / 1024;
+			}
+
+			@Override
+			public List<String> getPoolSlabs() throws OpenDataException {
+				assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
+				Joiner joiner = Joiner.on(',');
+				List<String> result = new ArrayList<>(slabs.length + 1);
+				result.add(joiner.join("SlotSize", "Created", "InPool", "Total(Kb)"));
+				for (int i = 0; i < slabs.length; i++) {
+					long slotSize = 1L << i;
+					int count = slabs[i].size();
+					result.add(joiner.join(slotSize & 0xffffffffL, created[i], count, slotSize * count / 1024));
+				}
+				return result;
+			}
+		});
+	}
+
+	public static int getCreatedItems() {
+		int items = 0;
+		for (int n : created) {
+			items += n;
+		}
+		return items;
+	}
+
+	public static int getCreatedItems(int slab) {
+		checkArgument(slab <= slabs.length);
+		return created[slab];
+	}
+
+	public static int getPoolItems(int slab) {
+		checkArgument(slab <= slabs.length);
+		return slabs[slab].size();
+	}
+
 	public static int getPoolItems() {
 		int result = 0;
 		for (ConcurrentStack<ByteBuf> slab : slabs) {
@@ -218,43 +296,26 @@ public final class ByteBufPool {
 		return result;
 	}
 
-	/**
-	 * Returns the number of occupied bytes in in this pool
-	 */
-	private static int getPoolSize() {
-		int result = 0;
-		for (int i = 0; i < slabs.length; i++) {
-			int slotSize = 1 << i;
-			result += slotSize * slabs[i].size();
+	public static String getPoolItemsString() {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < ByteBufPool.NUMBER_SLABS; ++i) {
+			int createdItems = ByteBufPool.getCreatedItems(i);
+			int poolItems = ByteBufPool.getPoolItems(i);
+			if (createdItems != poolItems) {
+				sb.append(String.format("Slab %d (%d) ", i, (1 << i)))
+						.append(" created: ").append(createdItems)
+						.append(" pool: ").append(poolItems).append("\n");
+			}
 		}
-		return result;
+		return sb.toString();
 	}
 
-	/**
-	 * Returns the size of this pool in kB
-	 */
-	public static int getPoolSizeKB() {
-		return getPoolSize() / 1024;
-	}
-
-	/**
-	 * Returns mean size of each item in this pool
-	 */
-	public static int getPoolItemAvgSize() {
-		int items = getPoolItems();
-		return items == 0 ? 0 : getPoolSize() / items;
-	}
-
-	/**
-	 * Returns an array of String where each string described each slab in pool.
-	 * It contains data about size of slot in slab, number of elements in slab, and size of slot in kB
-	 */
-	public static String[] getPoolSlabs() {
-		String[] result = new String[slabs.length];
-		for (int i = 0; i < slabs.length; i++) {
+	private static long getPoolSize() {
+		assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
+		long result = 0;
+		for (int i = 0; i < slabs.length - 1; i++) {
 			long slotSize = 1L << i;
-			int count = slabs[i].size();
-			result[i] = slotSize + " : " + count + " = " + slotSize * count / 1024 + " kB";
+			result += slotSize * slabs[i].size();
 		}
 		return result;
 	}

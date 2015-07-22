@@ -16,11 +16,11 @@
 
 package io.datakernel.eventloop;
 
+import java.nio.channels.SocketChannel;
+import java.util.Collection;
+
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
-
-import java.nio.channels.SocketChannel;
-import java.util.List;
 
 /**
  * It is the {@link AbstractNioServer} which only handles accepting to it. It contains collection of
@@ -56,7 +56,7 @@ public final class PrimaryNioServer extends AbstractNioServer<PrimaryNioServer> 
 	 * @return this PrimaryNioServer
 	 */
 	@SuppressWarnings("unchecked")
-	public PrimaryNioServer workerNioServers(List<? extends NioServer> workerNioServers) {
+	public PrimaryNioServer workerNioServers(Collection<? extends NioServer> workerNioServers) {
 		this.workerNioServers = workerNioServers.toArray(new NioServer[workerNioServers.size()]);
 		return this;
 	}

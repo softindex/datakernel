@@ -112,8 +112,8 @@ public abstract class HttpMessage {
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
 				headerBufs = new ArrayList<>(4);
-				headerBufs.add(value);
 			}
+			headerBufs.add(value);
 		}
 	}
 
@@ -129,8 +129,8 @@ public abstract class HttpMessage {
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
 				headerBufs = new ArrayList<>(4);
-				headerBufs.add(value);
 			}
+			headerBufs.add(value);
 		}
 	}
 

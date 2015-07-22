@@ -20,9 +20,11 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackObserver;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.DataInputStream;
@@ -34,12 +36,19 @@ import java.net.Socket;
 
 import static com.google.common.io.ByteStreams.readFully;
 import static com.google.common.io.ByteStreams.toByteArray;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.util.ByteBufStrings.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class HttpTolerantApplicationTest {
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	public static AsyncHttpServer asyncHttpServer(final NioEventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
@@ -88,6 +97,8 @@ public class HttpTolerantApplicationTest {
 
 		server.closeFuture();
 		thread.join();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private static ServerSocket socketServer(int port, final String testResponse) throws IOException {
@@ -152,6 +163,8 @@ public class HttpTolerantApplicationTest {
 			eventloop.run();
 		}
 		assertEquals("text/html; charset=UTF-8", resultObserver.getResult());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

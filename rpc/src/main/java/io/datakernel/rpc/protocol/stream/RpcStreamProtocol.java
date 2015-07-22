@@ -198,6 +198,8 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	public void reset() {
 		if (isMonitoring())
 			timeMonitoring = System.currentTimeMillis();
+//		connection.getReadBufsStats().reset();
+//		connection.getWriteBufsStats().reset();
 	}
 
 	private String getMonitoringTime() {
@@ -213,6 +215,9 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 				.add("Compression", SimpleType.BOOLEAN, compression)
 				.add("Monitoring", SimpleType.BOOLEAN, isMonitoring())
 				.add("MonitoringTime", SimpleType.STRING, getMonitoringTime())
+				.add("ChannelInfo", SimpleType.STRING, connection.getChannelInfo())
+//				.add("ChannelReadBufsSize", SimpleType.STRING, connection.getReadBufsStats())
+//				.add("ChannelWriteBufsSize", SimpleType.STRING, connection.getWriteBufsStats())
 				.build();
 	}
 }

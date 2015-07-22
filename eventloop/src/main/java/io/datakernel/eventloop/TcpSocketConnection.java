@@ -16,23 +16,23 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
 
+import io.datakernel.annotation.Nullable;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.jmx.StatsCounter;
+
 /**
  * Represent the TCP connection, which is {@link SocketConnection}. It is created with socketChannel
  * and in which sides can exchange {@link ByteBuf}.
  */
 public abstract class TcpSocketConnection extends SocketConnection {
-	public static final int DEFAULT_TCP_BUFFER_SIZE = 256 * 1024;
-
 	protected final SocketChannel channel;
 	protected final InetSocketAddress remoteSocketAddress;
 	protected final ByteBufQueue writeQueue;
@@ -54,7 +54,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 		this.writeQueue = new ByteBufQueue();
 		this.readQueue = new ByteBufQueue();
-		this.receiveBufferSize = DEFAULT_TCP_BUFFER_SIZE;
+		this.receiveBufferSize = getReceiveBufferSize(channel);
 	}
 
 	/**
@@ -63,7 +63,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	 */
 	@Override
 	public void onReadReady() {
-		ByteBuf buf = ByteBufPool.allocate(getReceiveBufferSize());
+		ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
 		ByteBuffer byteBuffer = buf.toByteBuffer();
 
 		int numRead;
@@ -144,6 +144,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 				break;
 			}
 			writeQueue.take();
+			buf.recycle();
 		}
 
 		if (wasWritten) {
@@ -213,4 +214,14 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	public String getChannelInfo() {
 		return channel.toString();
 	}
+
+/*
+	public StatsCounter getReadBufsStats() {
+		return readQueue.getBufsStats();
+	}
+
+	public StatsCounter getWriteBufsStats() {
+		return writeQueue.getBufsStats();
+	}
+*/
 }

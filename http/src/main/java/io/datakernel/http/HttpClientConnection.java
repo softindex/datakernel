@@ -238,8 +238,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	public void onClosed() {
-		writeQueue.clear();
-		readQueue.clear();
+		super.onClosed();
 		bodyQueue.clear();
 		if (connectionsListNode != null) {
 			connectionsList.removeNode(connectionsListNode);

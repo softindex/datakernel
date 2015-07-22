@@ -81,6 +81,25 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		sendEndOfStream();
 	}
 
+	@Override
+	public void onClosed() {
+		super.onClosed();
+		recycleBufs();
+	}
+
+	@Override
+	protected void onClosedWithError(Exception e) {
+		super.onClosedWithError(e);
+		recycleBufs();
+	}
+
+	private void recycleBufs() {
+		if (inputBuf != null) {
+			inputBuf.recycle();
+			inputBuf = null;
+		}
+	}
+
 	private static void readHeader(Header header, byte[] buf, int off) throws Exception {
 		for (int i = 0; i < MAGIC_LENGTH; ++i) {
 			if (buf[off + i] != MAGIC[i]) {

@@ -216,6 +216,9 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	@Override
 	public void onEndOfStream() {
 		flushBuffer(downstreamDataReceiver);
+		byteBuf.recycle();
+		byteBuf = null;
+		outputBuffer.set(null, 0);
 		logger.trace("endOfStream {}, upstream: {}", this, upstreamProducer);
 		sendEndOfStream();
 	}
@@ -235,14 +238,18 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			eventloop.postLater(new Runnable() {
 				@Override
 				public void run() {
-					flush();
+					if (status < END_OF_STREAM) {
+						flush();
+					}
 				}
 			});
 		} else {
 			eventloop.scheduleBackground(eventloop.currentTimeMillis() + flushDelayMillis, new Runnable() {
 				@Override
 				public void run() {
-					flush();
+					if (status < END_OF_STREAM) {
+						flush();
+					}
 				}
 			});
 		}

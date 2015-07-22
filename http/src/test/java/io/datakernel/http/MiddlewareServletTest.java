@@ -17,12 +17,24 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.http.middleware.*;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.concurrent.Executors;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static org.junit.Assert.assertEquals;
+
 public class MiddlewareServletTest {
+
+	@Before
+	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
+
 	@Test
 	public void test() throws Exception {
 		MiddlewareServlet servlet = new MiddlewareServlet();
@@ -160,6 +172,7 @@ public class MiddlewareServletTest {
 			}
 		});
 
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -249,6 +262,8 @@ public class MiddlewareServletTest {
 				exception.printStackTrace();
 			}
 		});
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -278,6 +293,8 @@ public class MiddlewareServletTest {
 				exception.printStackTrace();
 			}
 		});
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -308,5 +325,7 @@ public class MiddlewareServletTest {
 				exception.printStackTrace();
 			}
 		});
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

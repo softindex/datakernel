@@ -60,8 +60,6 @@ public class DnsClientConnection extends UdpSocketConnection {
 		try {
 			DnsQueryResult dnsQueryResult = DnsMessage.getQueryResult(response);
 
-			packet.getBuf().recycle();
-
 			String domainName = dnsQueryResult.getDomainName();
 
 			ListenableResultCallback<DnsQueryResult> callback = resultHandlers.get(domainName);
