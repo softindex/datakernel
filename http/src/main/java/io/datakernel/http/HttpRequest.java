@@ -83,7 +83,7 @@ public final class HttpRequest extends HttpMessage {
 	/**
 	 * Sets the header for this HttpRequest
 	 *
-	 * @param value  value of header
+	 * @param value value of header
 	 * @return this HttpRequest
 	 */
 	public HttpRequest header(HttpHeaderValue value) {
@@ -95,7 +95,7 @@ public final class HttpRequest extends HttpMessage {
 	/**
 	 * Adds the header for this HttpRequest
 	 *
-	 * @param value  value of header
+	 * @param value value of header
 	 * @return this HttpRequest
 	 */
 	public HttpRequest add(HttpHeaderValue value) {

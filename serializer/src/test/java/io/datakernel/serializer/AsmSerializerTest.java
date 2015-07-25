@@ -121,7 +121,7 @@ public class AsmSerializerTest {
 		testData1.lBoxed = Long.MIN_VALUE;
 		testData1.fBoxed = Float.MIN_VALUE;
 		testData1.dBoxed = Double.MIN_VALUE;
-		testData1.bytes = new byte[] { 1, 2, 3 };
+		testData1.bytes = new byte[]{1, 2, 3};
 
 		testData1.string = "abc";
 		testData1.testEnum = TestDataScalars.TestEnum.TWO;
@@ -273,16 +273,16 @@ public class AsmSerializerTest {
 	public void testComplex() {
 		TestDataComplex testData1 = new TestDataComplex();
 
-		testData1.ints = new int[] { 1, 2, 3 };
-		testData1.intsArray = new int[][] {
-				new int[] { 1, 2 },
-				new int[] { 3, 4, 5 } };
+		testData1.ints = new int[]{1, 2, 3};
+		testData1.intsArray = new int[][]{
+				new int[]{1, 2},
+				new int[]{3, 4, 5}};
 
 		testData1.nested = new TestDataNested(11);
-		testData1.nestedArray = new TestDataNested[] { new TestDataNested(12), new TestDataNested(13) };
-		testData1.nestedArrayArray = new TestDataNested[][] {
-				new TestDataNested[] { new TestDataNested(14), new TestDataNested(15) },
-				new TestDataNested[] { new TestDataNested(16) } };
+		testData1.nestedArray = new TestDataNested[]{new TestDataNested(12), new TestDataNested(13)};
+		testData1.nestedArrayArray = new TestDataNested[][]{
+				new TestDataNested[]{new TestDataNested(14), new TestDataNested(15)},
+				new TestDataNested[]{new TestDataNested(16)}};
 		testData1.nestedList = Arrays.asList(new TestDataNested(1), new TestDataNested(2));
 		testData1.nestedListList = Arrays.asList(
 				Arrays.asList(new TestDataNested(20), new TestDataNested(21)),
@@ -344,11 +344,11 @@ public class AsmSerializerTest {
 		public List<String> listOfNullableStrings;
 
 		@Serialize(order = 3)
-		@SerializeNullableEx({ @SerializeNullable, @SerializeNullable(path = { 0 }), @SerializeNullable(path = { 0, 0 }) })
+		@SerializeNullableEx({@SerializeNullable, @SerializeNullable(path = {0}), @SerializeNullable(path = {0, 0})})
 		public String[][] nullableArrayOfNullableArrayOfNullableStrings;
 
 		@Serialize(order = 4)
-		@SerializeNullableEx({ @SerializeNullable(path = { 0 }), @SerializeNullable(path = { 1 }) })
+		@SerializeNullableEx({@SerializeNullable(path = {0}), @SerializeNullable(path = {1})})
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
@@ -359,9 +359,9 @@ public class AsmSerializerTest {
 		testData1.nullableString1 = null;
 		testData1.nullableString2 = "abc";
 		testData1.listOfNullableStrings = Arrays.asList("a", null, "b");
-		testData1.nullableArrayOfNullableArrayOfNullableStrings = new String[][] {
-				new String[] { "a", null },
-				null };
+		testData1.nullableArrayOfNullableArrayOfNullableStrings = new String[][]{
+				new String[]{"a", null},
+				null};
 		testData1.mapOfNullableInt2NullableString = new LinkedHashMap<>();
 		testData1.mapOfNullableInt2NullableString.put(1, "abc");
 		testData1.mapOfNullableInt2NullableString.put(2, null);
@@ -526,9 +526,9 @@ public class AsmSerializerTest {
 
 	public static class TestDataGenericParameters {
 		@Serialize(order = 0)
-		@SerializeNullableEx({ @SerializeNullable(path = { 0 }), @SerializeNullable(path = { 0, 0 }), @SerializeNullable(path = { 0, 1 }) })
-		@SerializeVarLength(path = { 0, 0 })
-		@SerializeUtf16(path = { 0, 1 })
+		@SerializeNullableEx({@SerializeNullable(path = {0}), @SerializeNullable(path = {0, 0}), @SerializeNullable(path = {0, 1})})
+		@SerializeVarLength(path = {0, 0})
+		@SerializeUtf16(path = {0, 1})
 		public List<TestDataGenericNested<Integer, String>> list;
 	}
 
@@ -607,7 +607,7 @@ public class AsmSerializerTest {
 
 	public static class TestDataSuperclassHolder {
 		@Serialize(order = 0)
-		@SerializeSubclasses({ TestDataSubclass1.class, TestDataSubclass2.class })
+		@SerializeSubclasses({TestDataSubclass1.class, TestDataSubclass2.class})
 		@SerializeNullable
 		public TestDataSuperclass data;
 	}
@@ -678,8 +678,8 @@ public class AsmSerializerTest {
 
 	public static class TestDataSerializerUtf16 {
 		@Serialize(order = 0)
-		@SerializeUtf16(path = { 0 })
-		@SerializeNullable(path = { 0 })
+		@SerializeUtf16(path = {0})
+		@SerializeNullable(path = {0})
 		public List<String> strings;
 	}
 
@@ -695,7 +695,7 @@ public class AsmSerializerTest {
 	public static class TestDataFixedSize {
 		@Serialize(order = 0)
 		@SerializeFixedSize(3)
-		@SerializeNullable(path = { 0 })
+		@SerializeNullable(path = {0})
 		public String[] strings;
 
 		@Serialize(order = 1)
@@ -706,8 +706,8 @@ public class AsmSerializerTest {
 	@Test
 	public void testFixedSize() {
 		TestDataFixedSize testData1 = new TestDataFixedSize();
-		testData1.strings = new String[] { "abc", null, "123" };
-		testData1.bytes = new byte[] { 1, 2, 3, 4 };
+		testData1.strings = new String[]{"abc", null, "123"};
+		testData1.bytes = new byte[]{1, 2, 3, 4};
 		TestDataFixedSize testData2 = doTest(new TypeToken<TestDataFixedSize>() {
 		}, testData1);
 		assertArrayEquals(testData1.strings, testData2.strings);
@@ -797,7 +797,7 @@ public class AsmSerializerTest {
 		public int b;
 
 		@Serialize(order = 2)
-		@SerializeProfiles({ "profile1", "profile2" })
+		@SerializeProfiles({"profile1", "profile2"})
 		public int c;
 	}
 
@@ -840,10 +840,10 @@ public class AsmSerializerTest {
 		public int a;
 
 		@Serialize(order = 1, added = 1)
-		@SerializeProfiles(value = "profile", added = { 2 })
+		@SerializeProfiles(value = "profile", added = {2})
 		public int b;
 
-		@SerializeProfiles(value = { "profile", SerializeProfiles.COMMON_PROFILE }, added = { 1 }, removed = { 2 })
+		@SerializeProfiles(value = {"profile", SerializeProfiles.COMMON_PROFILE}, added = {1}, removed = {2})
 		@Serialize(order = 2, added = 2)
 		public int c;
 
@@ -978,11 +978,11 @@ public class AsmSerializerTest {
 
 	public static class TestDataExtraSubclasses {
 		@Serialize(order = 0)
-		@SerializeSubclasses(value = { String.class }, extraSubclassesId = "extraSubclasses1")
+		@SerializeSubclasses(value = {String.class}, extraSubclassesId = "extraSubclasses1")
 		public Object object1;
 
 		@Serialize(order = 1)
-		@SerializeSubclasses(value = { String.class }, extraSubclassesId = "extraSubclasses2")
+		@SerializeSubclasses(value = {String.class}, extraSubclassesId = "extraSubclasses2")
 		public Object object2;
 	}
 
@@ -1002,7 +1002,7 @@ public class AsmSerializerTest {
 		assertEquals(testData1.object2, testData2.object2);
 	}
 
-	@SerializeSubclasses(value = { TestDataExtraSubclasses1.class }, extraSubclassesId = "extraSubclasses")
+	@SerializeSubclasses(value = {TestDataExtraSubclasses1.class}, extraSubclassesId = "extraSubclasses")
 	public interface TestDataExtraSubclassesInterface {}
 
 	public static class TestDataExtraSubclasses1 implements TestDataExtraSubclassesInterface {

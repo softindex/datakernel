@@ -151,7 +151,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	/**
 	 * Creates a new instance of Eventloop with given ByteBufPool and timeProvider
 	 *
-	 * @param timeProvider   provider for retrieving time on each cycle of event loop. Useful for unit testing.
+	 * @param timeProvider provider for retrieving time on each cycle of event loop. Useful for unit testing.
 	 */
 	public NioEventloop(CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;

@@ -81,7 +81,7 @@ public final class HttpResponse extends HttpMessage {
 	/**
 	 * Adds the header for this HttpResponse
 	 *
-	 * @param value  value of header
+	 * @param value value of header
 	 * @return this HttpResponse
 	 */
 	public HttpResponse header(HttpHeaderValue value) {
@@ -89,7 +89,6 @@ public final class HttpResponse extends HttpMessage {
 		addHeader(value);
 		return this;
 	}
-
 
 	/**
 	 * Adds the header with value as ByteBuf for this HttpResponse
@@ -104,7 +103,6 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-
 	/**
 	 * Adds the header as array of bytes for this HttpResponse
 	 *
@@ -117,7 +115,6 @@ public final class HttpResponse extends HttpMessage {
 		addHeader(header, value);
 		return this;
 	}
-
 
 	/**
 	 * Adds the header as string for this HttpResponse

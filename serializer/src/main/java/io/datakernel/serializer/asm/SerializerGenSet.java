@@ -57,7 +57,7 @@ public final class SerializerGenSet implements SerializerGen {
 
 	@Override
 	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller,
-			Class<?> sourceType) {
+	                      Class<?> sourceType) {
 		castSourceType(mv, sourceType, Set.class);
 
 		mv.visitVarInsn(ASTORE, locals + VAR_SET);
@@ -90,7 +90,7 @@ public final class SerializerGenSet implements SerializerGen {
 
 	@Override
 	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller,
-			Class<?> targetType) {
+	                        Class<?> targetType) {
 		boolean isEnum = valueSerializer.getRawType().isEnum();
 		Class<?> targetInstance = isEnum ? EnumSet.class : LinkedHashSet.class;
 		checkArgument(targetType.isAssignableFrom(targetInstance));

@@ -303,7 +303,6 @@ public class HashFsTest {
 		Assert.assertTrue(finishSucceed.get());
 	}
 
-
 	@Test
 	public void downloadBigFile() throws Exception {
 		download("big_file", "copy_big_file");
@@ -313,7 +312,6 @@ public class HashFsTest {
 	public void downloadInnerFile() throws Exception {
 		download("t_dir/t1", "copy_t1");
 	}
-
 
 	public void download(final String fileName, String copyFile) throws Exception {
 		final NioEventloop eventloop = new NioEventloop();

@@ -332,7 +332,7 @@ public class StreamBenchmark {
 	}
 
 	@Benchmark
-	public void serializers(){
+	public void serializers() {
 		NioEventloop eventloop = new NioEventloop();
 		StreamBenchmark.SequenceGenerator generator = new StreamBenchmark.SequenceGenerator(eventloop, sequenceLength);
 
@@ -346,7 +346,6 @@ public class StreamBenchmark {
 
 		eventloop.run();
 	}
-
 
 	public static class KeyValueWrapper {
 		final int key;
@@ -449,6 +448,5 @@ public class StreamBenchmark {
 			receivedValues++;
 		}
 	}
-
 
 }
