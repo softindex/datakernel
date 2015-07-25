@@ -19,9 +19,6 @@ package io.datakernel.eventloop;
 import java.nio.channels.SocketChannel;
 import java.util.Collection;
 
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
-
 /**
  * It is the {@link AbstractNioServer} which only handles accepting to it. It contains collection of
  * other {@link NioServer}, and when takes place new accept to it, it forwards request to other server

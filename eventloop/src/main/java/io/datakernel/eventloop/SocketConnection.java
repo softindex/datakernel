@@ -20,10 +20,7 @@ import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.StandardSocketOptions;
 import java.nio.channels.Channel;
-import java.nio.channels.NetworkChannel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 

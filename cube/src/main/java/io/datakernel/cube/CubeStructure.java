@@ -18,10 +18,10 @@ package io.datakernel.cube;
 
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.AsmFunctionFactory;
 import io.datakernel.codegen.FunctionDefComparator;
 import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.dimensiontype.DimensionType;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerFactory;

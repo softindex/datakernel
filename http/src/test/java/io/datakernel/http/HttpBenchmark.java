@@ -16,16 +16,16 @@
 
 package io.datakernel.http;
 
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static io.datakernel.util.ByteBufStrings.decodeUTF8;
-
-import java.util.concurrent.CountDownLatch;
-
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.service.NioEventloopRunner;
+
+import java.util.concurrent.CountDownLatch;
+
+import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 
 public class HttpBenchmark extends Benchmark {
 	private NioEventloop eventloop;

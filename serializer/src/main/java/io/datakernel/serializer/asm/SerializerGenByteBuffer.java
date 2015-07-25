@@ -16,14 +16,14 @@
 
 package io.datakernel.serializer.asm;
 
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
-
-import java.nio.ByteBuffer;
-
 import io.datakernel.serializer.SerializationInputBuffer;
 import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.MethodVisitor;
+
+import java.nio.ByteBuffer;
+
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
 
 public class SerializerGenByteBuffer implements SerializerGen {
 	private static final int VAR_BYTEBUFFER = 0;

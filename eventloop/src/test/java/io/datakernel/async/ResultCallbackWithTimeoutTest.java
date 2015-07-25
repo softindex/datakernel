@@ -16,7 +16,6 @@
 
 package io.datakernel.async;
 
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.time.SteppingCurrentTimeProvider;
 import org.junit.Test;

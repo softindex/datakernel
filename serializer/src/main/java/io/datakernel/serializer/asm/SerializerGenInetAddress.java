@@ -16,14 +16,14 @@
 
 package io.datakernel.serializer.asm;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import io.datakernel.serializer.SerializerCaller;
+import org.objectweb.asm.MethodVisitor;
 
 import java.net.InetAddress;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
+import static com.google.common.base.Preconditions.checkArgument;
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenInetAddress implements SerializerGen {

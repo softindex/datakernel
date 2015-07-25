@@ -16,26 +16,27 @@
 
 package io.datakernel.serializer;
 
-import static com.google.common.base.Preconditions.*;
-import static com.google.common.collect.Lists.newArrayListWithCapacity;
-import static com.google.common.collect.Maps.newLinkedHashMap;
-import static java.lang.reflect.Modifier.*;
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.reflect.TypeToken;
+import io.datakernel.serializer.annotations.*;
+import io.datakernel.serializer.asm.*;
+import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
+import io.datakernel.serializer.utils.Annotations;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.net.InetAddress;
 import java.util.*;
 
-import com.google.common.base.Strings;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.reflect.TypeToken;
-import io.datakernel.serializer.utils.Annotations;
-import io.datakernel.serializer.annotations.*;
-import io.datakernel.serializer.asm.*;
-import io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.Lists.newArrayListWithCapacity;
+import static com.google.common.collect.Maps.newLinkedHashMap;
+import static java.lang.reflect.Modifier.*;
 
 /**
  * Scans fields of classes for serialization.

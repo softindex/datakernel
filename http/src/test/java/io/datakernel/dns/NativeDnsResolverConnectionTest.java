@@ -16,18 +16,18 @@
 
 package io.datakernel.dns;
 
-import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
-import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.eventloop.NioEventloop;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
-import org.junit.Before;
-import org.junit.Test;
+import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
+import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 
 public class NativeDnsResolverConnectionTest {
 	private DnsClientConnection dnsClientConnection;

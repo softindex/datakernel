@@ -16,14 +16,6 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-
-import java.nio.channels.SocketChannel;
-
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
-
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
@@ -36,6 +28,13 @@ import io.datakernel.rpc.protocol.RpcProtocol;
 import io.datakernel.stream.*;
 import io.datakernel.stream.net.TcpStreamSocketConnection;
 import io.datakernel.stream.processor.*;
+
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.SimpleType;
+import java.nio.channels.SocketChannel;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 abstract class RpcStreamProtocol implements RpcProtocol {
 

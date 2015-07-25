@@ -16,17 +16,16 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.annotation.Nullable;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.bytebuf.ByteBufQueue;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SocketChannel;
-
-import io.datakernel.annotation.Nullable;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.jmx.StatsCounter;
 
 /**
  * Represent the TCP connection, which is {@link SocketConnection}. It is created with socketChannel

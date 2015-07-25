@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.time.CurrentTimeProvider;
 
 /**

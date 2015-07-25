@@ -16,18 +16,20 @@
 
 package io.datakernel.serializer.asm;
 
-import static com.google.common.base.CaseFormat.*;
-import static com.google.common.base.Preconditions.*;
-import static com.google.common.base.Throwables.propagate;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
-
-import java.util.Iterator;
-
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+
+import java.util.Iterator;
+
+import static com.google.common.base.CaseFormat.LOWER_CAMEL;
+import static com.google.common.base.CaseFormat.UPPER_CAMEL;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Throwables.propagate;
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
 
 public class SerializerGenHppcSet implements SerializerGen {
 	private static final int VAR_SET = 0;

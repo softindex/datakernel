@@ -16,12 +16,12 @@
 
 package io.datakernel.eventloop;
 
-import java.util.Random;
-
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.Random;
 
 public class ByteBufferQueueTest {
 

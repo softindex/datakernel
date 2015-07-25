@@ -16,12 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import static com.google.common.base.Preconditions.checkState;
-import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
-import static java.lang.Math.min;
-
-import java.io.IOException;
-
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -33,6 +27,12 @@ import net.jpountz.lz4.LZ4FastDecompressor;
 import net.jpountz.util.SafeUtils;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
+
+import java.io.IOException;
+
+import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
+import static java.lang.Math.min;
 
 public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4DecompressorMBean {
 	private static final int INITIAL_BUFFER_SIZE = 256;

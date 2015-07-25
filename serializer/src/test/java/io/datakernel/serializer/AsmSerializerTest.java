@@ -16,17 +16,17 @@
 
 package io.datakernel.serializer;
 
-import static org.junit.Assert.*;
+import com.google.common.reflect.TypeToken;
+import io.datakernel.serializer.annotations.*;
+import io.datakernel.serializer.asm.SerializerGen;
+import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.google.common.reflect.TypeToken;
-import io.datakernel.serializer.annotations.*;
-import io.datakernel.serializer.asm.SerializerGen;
-import org.junit.Test;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("serial")
 public class AsmSerializerTest {

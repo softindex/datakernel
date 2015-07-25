@@ -18,8 +18,6 @@ package io.datakernel.bytebuf;
 
 import java.util.List;
 
-import javax.management.openmbean.OpenDataException;
-
 public interface ByteBufPoolMXBean {
 
 	int getCreatedItems();

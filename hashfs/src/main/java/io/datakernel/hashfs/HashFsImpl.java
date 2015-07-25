@@ -16,10 +16,6 @@
 
 package io.datakernel.hashfs;
 
-import static io.datakernel.stream.processor.StreamLZ4Compressor.fastCompressor;
-
-import java.util.List;
-
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -36,6 +32,10 @@ import io.datakernel.stream.processor.StreamLZ4Compressor;
 import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
+import static io.datakernel.stream.processor.StreamLZ4Compressor.fastCompressor;
 
 public class HashFsImpl implements HashFs {
 	private static final Logger logger = LoggerFactory.getLogger(HashFsImpl.class);

@@ -16,12 +16,12 @@
 
 package io.datakernel.http;
 
-import static io.datakernel.util.ByteBufStrings.*;
+import com.google.common.net.HttpHeaders;
+import io.datakernel.bytebuf.ByteBuf;
 
 import java.util.List;
 
-import com.google.common.net.HttpHeaders;
-import io.datakernel.bytebuf.ByteBuf;
+import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * Represent the header {@link HttpResponse}

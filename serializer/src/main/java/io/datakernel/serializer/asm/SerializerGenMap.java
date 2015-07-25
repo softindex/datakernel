@@ -16,16 +16,17 @@
 
 package io.datakernel.serializer.asm;
 
-import static com.google.common.base.Preconditions.*;
-import static io.datakernel.serializer.asm.Utils.castSourceType;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
-
-import java.util.*;
-
 import io.datakernel.serializer.SerializerCaller;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+
+import java.util.*;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.serializer.asm.Utils.castSourceType;
+import static org.objectweb.asm.Opcodes.*;
+import static org.objectweb.asm.Type.*;
 
 public final class SerializerGenMap implements SerializerGen {
 	public static final int VAR_MAP = 0;

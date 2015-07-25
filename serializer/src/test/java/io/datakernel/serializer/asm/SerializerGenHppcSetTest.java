@@ -16,12 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
-import static org.junit.Assert.*;
-
 import com.carrotsearch.hppc.*;
 import com.google.common.reflect.TypeToken;
 import io.datakernel.serializer.*;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class SerializerGenHppcSetTest {
 	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();

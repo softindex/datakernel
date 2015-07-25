@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.serializer.SerializerCaller;
+import org.objectweb.asm.MethodVisitor;
+
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.*;
-
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
 
 @SuppressWarnings("StatementWithEmptyBody")
 public class SerializerGenEnum implements SerializerGen {

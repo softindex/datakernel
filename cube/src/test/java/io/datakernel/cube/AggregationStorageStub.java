@@ -18,9 +18,9 @@ package io.datakernel.cube;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.AsmFunctionFactory;
 import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;

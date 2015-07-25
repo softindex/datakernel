@@ -18,7 +18,6 @@ package io.datakernel.dns;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop.ConcurrentOperationTracker;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.time.SettableCurrentTimeProvider;

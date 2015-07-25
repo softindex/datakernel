@@ -16,20 +16,19 @@
 
 package io.datakernel.bytebuf;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.lang.Integer.numberOfLeadingZeros;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.MBeanUtils;
 import io.datakernel.util.ConcurrentStack;
+
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import java.util.ArrayList;
+import java.util.List;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.Integer.numberOfLeadingZeros;
 
 public final class ByteBufPool {
 	public static final int NUMBER_SLABS = 33;

@@ -16,13 +16,6 @@
 
 package io.datakernel.http;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static io.datakernel.util.ByteBufStrings.*;
-import static org.junit.Assert.assertEquals;
-
-import java.util.concurrent.TimeoutException;
-
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackObserver;
@@ -32,6 +25,14 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.concurrent.TimeoutException;
+
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.util.ByteBufStrings.decodeUTF8;
+import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static org.junit.Assert.assertEquals;
 
 public class HttpClientTest {
 	private static final int PORT = 45788;

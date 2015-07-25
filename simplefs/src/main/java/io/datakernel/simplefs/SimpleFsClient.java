@@ -16,12 +16,6 @@
 
 package io.datakernel.simplefs;
 
-import static io.datakernel.stream.processor.StreamLZ4Compressor.fastCompressor;
-
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
-import java.util.List;
-
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
@@ -36,6 +30,12 @@ import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.MessagingStarter;
 import io.datakernel.stream.net.StreamMessagingConnection;
 import io.datakernel.stream.processor.*;
+
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
+import java.util.List;
+
+import static io.datakernel.stream.processor.StreamLZ4Compressor.fastCompressor;
 
 public class SimpleFsClient implements SimpleFs {
 	public interface StreamLZ4CompressorFactory {

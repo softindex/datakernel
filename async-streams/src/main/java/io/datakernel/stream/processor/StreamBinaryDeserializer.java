@@ -16,11 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.lang.Math.min;
-
-import java.util.ArrayDeque;
-
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -30,6 +25,11 @@ import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayDeque;
+
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.Math.min;
 
 /**
  * Represent deserializer which deserializes data from ByteBuffer to some type. Is a {@link AbstractStreamTransformer_1_1}

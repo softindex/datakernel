@@ -16,13 +16,6 @@
 
 package io.datakernel.http;
 
-import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
-import static io.datakernel.http.HttpHeader.*;
-import static io.datakernel.util.ByteBufStrings.*;
-
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
-
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.NioEventloop;
@@ -31,6 +24,13 @@ import io.datakernel.util.ByteBufStrings;
 import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
+
+import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
+import static io.datakernel.http.HttpHeader.*;
+import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * Realization of the {@link TcpSocketConnection} which handles the HTTP messages. It is used by server and client.

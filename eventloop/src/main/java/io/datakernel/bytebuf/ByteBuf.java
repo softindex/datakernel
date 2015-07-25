@@ -16,9 +16,9 @@
 
 package io.datakernel.bytebuf;
 
-import java.nio.ByteBuffer;
-
 import com.google.common.annotations.VisibleForTesting;
+
+import java.nio.ByteBuffer;
 
 /**
  * Represent a buffer which can be recycled from itself.Byte buffers can be created either by allocation,

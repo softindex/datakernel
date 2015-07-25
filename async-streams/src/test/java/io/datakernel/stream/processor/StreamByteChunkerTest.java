@@ -16,10 +16,6 @@
 
 package io.datakernel.stream.processor;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -28,14 +24,15 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
-import junit.framework.TestCase;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 
 public class StreamByteChunkerTest {
 
