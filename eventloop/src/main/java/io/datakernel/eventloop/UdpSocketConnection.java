@@ -31,6 +31,8 @@ import io.datakernel.bytebuf.ByteBufPool;
  * Represent I/O handler of UDP {@link DatagramChannel}
  */
 public abstract class UdpSocketConnection extends SocketConnection {
+	public static final int DEFAULT_UDP_BUFFER_SIZE = 16384;
+
 	protected final DatagramChannel channel;
 	protected final ArrayDeque<UdpPacket> writeQueue = new ArrayDeque<>();
 
@@ -43,7 +45,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 	public UdpSocketConnection(NioEventloop eventloop, DatagramChannel datagramChannel) {
 		super(eventloop);
 		this.channel = datagramChannel;
-		this.receiveBufferSize = getReceiveBufferSize(channel);
+		this.receiveBufferSize = DEFAULT_UDP_BUFFER_SIZE;
 	}
 
 	/**

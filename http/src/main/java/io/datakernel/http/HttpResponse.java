@@ -22,10 +22,9 @@ import io.datakernel.bytebuf.ByteBufPool;
 
 import java.net.HttpCookie;
 import java.util.Collection;
-import java.util.Map;
+import java.util.List;
 
-import static io.datakernel.http.HttpHeader.CONTENT_LENGTH;
-import static io.datakernel.http.HttpHeader.CONTENT_TYPE;
+import static io.datakernel.http.HttpHeader.*;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.ByteBufStrings.putDecimal;
 
@@ -80,43 +79,17 @@ public final class HttpResponse extends HttpMessage {
 	// common builder methods
 
 	/**
-	 * Sets the header for this HttpResponse
-	 *
-	 * @param header header for this HttpResponse
-	 * @param value  value of this header
-	 * @return this HttpResponse
-	 */
-	public HttpResponse headerReset(HttpHeader header, HttpHeaderValue value) {
-		assert !recycled;
-		setHeader(header, value);
-		return this;
-	}
-
-	/**
 	 * Adds the header for this HttpResponse
 	 *
-	 * @param header header for this HttpResponse
 	 * @param value  value of header
 	 * @return this HttpResponse
 	 */
-	public HttpResponse header(HttpHeader header, HttpHeaderValue value) {
+	public HttpResponse header(HttpHeaderValue value) {
 		assert !recycled;
-		addHeader(header, value);
+		addHeader(value);
 		return this;
 	}
 
-	/**
-	 * Sets the header with value as ByteBuf for this HttpResponse
-	 *
-	 * @param header header for this HttpResponse
-	 * @param value  value of this header
-	 * @return this HttpResponse
-	 */
-	public HttpResponse headerReset(HttpHeader header, ByteBuf value) {
-		assert !recycled;
-		setHeader(header, value);
-		return this;
-	}
 
 	/**
 	 * Adds the header with value as ByteBuf for this HttpResponse
@@ -131,18 +104,6 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-	/**
-	 * Sets the header with value as array of bytes for this HttpResult
-	 *
-	 * @param header header for this HttpResponse
-	 * @param value  value of this header
-	 * @return this HttpResult
-	 */
-	public HttpResponse headerReset(HttpHeader header, byte[] value) {
-		assert !recycled;
-		setHeader(header, value);
-		return this;
-	}
 
 	/**
 	 * Adds the header as array of bytes for this HttpResponse
@@ -157,18 +118,6 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-	/**
-	 * Sets the header with value as string for this HttpResponse
-	 *
-	 * @param header header for this HttpResponse
-	 * @param value  value of this header
-	 * @return this HttpResponse
-	 */
-	public HttpResponse headerReset(HttpHeader header, String value) {
-		assert !recycled;
-		setHeader(header, value);
-		return this;
-	}
 
 	/**
 	 * Adds the header as string for this HttpResponse
@@ -189,9 +138,9 @@ public final class HttpResponse extends HttpMessage {
 	 * @param headers collection with headers and its values
 	 * @return this HttpResponse
 	 */
-	public HttpResponse headers(Map<HttpHeader, HttpHeaderValue> headers) {
+	public HttpResponse headers(List<HttpHeaderValue> headers) {
 		assert !recycled;
-		setHeaders(headers);
+		addHeaders(headers);
 		return this;
 	}
 
@@ -226,15 +175,15 @@ public final class HttpResponse extends HttpMessage {
 	 */
 	public HttpResponse contentType(String contentType) {
 		assert !recycled;
-		setHeader(CONTENT_TYPE, contentType);
+		addHeader(CONTENT_TYPE, contentType);
 		return this;
 	}
 
 	// specific builder methods
 
-	private static final HttpHeaderValue CACHE_CONTROL__NO_STORE = HttpHeader.valueAsBytes("no-store");
-	private static final HttpHeaderValue PRAGMA__NO_CACHE = HttpHeader.valueAsBytes("no-cache");
-	private static final HttpHeaderValue AGE__0 = HttpHeader.valueAsBytes("0");
+	private static final HttpHeaderValue CACHE_CONTROL__NO_STORE = HttpHeader.asBytes(CACHE_CONTROL, "no-store");
+	private static final HttpHeaderValue PRAGMA__NO_CACHE = HttpHeader.asBytes(PRAGMA, "no-cache");
+	private static final HttpHeaderValue AGE__0 = HttpHeader.asBytes(AGE, "0");
 
 	/**
 	 * Sets the headers that means that it is no cache
@@ -243,9 +192,9 @@ public final class HttpResponse extends HttpMessage {
 	 */
 	public HttpResponse noCache() {
 		assert !recycled;
-		setHeader(HttpHeader.CACHE_CONTROL, CACHE_CONTROL__NO_STORE);
-		setHeader(HttpHeader.PRAGMA, PRAGMA__NO_CACHE);
-		setHeader(HttpHeader.AGE, AGE__0);
+		addHeader(CACHE_CONTROL__NO_STORE);
+		addHeader(PRAGMA__NO_CACHE);
+		addHeader(AGE__0);
 		return this;
 	}
 
@@ -368,7 +317,7 @@ public final class HttpResponse extends HttpMessage {
 		if (code >= 400 && getBody() == null) {
 			setBody(DEFAULT_CODE_BODIES.get(code));
 		}
-		setHeader(CONTENT_LENGTH, HttpHeader.valueOfDecimal(body == null ? 0 : body.remaining()));
+		addHeader(HttpHeader.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
 		ByteBuf buf = ByteBufPool.allocate(estimateSize);
 

@@ -196,13 +196,12 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 	public String[] getConnections() {
 		Joiner joiner = Joiner.on(',');
 		List<String> info = new ArrayList<>();
-		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime,ReadBufsSize,WriteBufsSize");
+		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
 		for (Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
 			AbstractHttpConnection connection = node.getValue();
 			String string = joiner.join(connection.getRemoteSocketAddress(), connection.isRegistered(),
 					MBeanFormat.formatPeriodAgo(connection.getLifeTime()),
 					MBeanFormat.formatPeriodAgo(connection.getActivityTime())
-//					connection.getReadBufsStats(), connection.getWriteBufsStats()
 			);
 			info.add(string);
 		}

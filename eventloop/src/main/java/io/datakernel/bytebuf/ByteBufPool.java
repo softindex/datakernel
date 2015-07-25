@@ -16,20 +16,20 @@
 
 package io.datakernel.bytebuf;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static java.lang.Integer.numberOfLeadingZeros;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.MBeanUtils;
 import io.datakernel.util.ConcurrentStack;
-
-import javax.management.MBeanServer;
-import javax.management.ObjectName;
-import javax.management.openmbean.OpenDataException;
-import java.util.ArrayList;
-import java.util.List;
-
-import static com.google.common.base.Preconditions.checkArgument;
-import static java.lang.Integer.numberOfLeadingZeros;
 
 public final class ByteBufPool {
 	public static final int NUMBER_SLABS = 33;
@@ -255,11 +255,11 @@ public final class ByteBufPool {
 			}
 
 			@Override
-			public List<String> getPoolSlabs() throws OpenDataException {
+			public List<String> getPoolSlabs() {
 				assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
 				Joiner joiner = Joiner.on(',');
 				List<String> result = new ArrayList<>(slabs.length + 1);
-				result.add(joiner.join("SlotSize", "Created", "InPool", "Total(Kb)"));
+				result.add("SlotSize,Created,InPool,Total(Kb)");
 				for (int i = 0; i < slabs.length; i++) {
 					long slotSize = 1L << i;
 					int count = slabs[i].size();
@@ -279,12 +279,12 @@ public final class ByteBufPool {
 	}
 
 	public static int getCreatedItems(int slab) {
-		checkArgument(slab <= slabs.length);
+		checkArgument(slab >= 0 && slab <= slabs.length);
 		return created[slab];
 	}
 
 	public static int getPoolItems(int slab) {
-		checkArgument(slab <= slabs.length);
+		checkArgument(slab >= 0 && slab <= slabs.length);
 		return slabs[slab].size();
 	}
 

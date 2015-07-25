@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	private static final Logger logger = LoggerFactory.getLogger(AbstractHttpConnection.class);
 
+	public static final int DEFAULT_HTTP_BUFFER_SIZE = 16 * 1024;
 	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 
 	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
@@ -75,6 +76,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 */
 	public AbstractHttpConnection(NioEventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars) {
 		super(eventloop, socketChannel);
+		this.receiveBufferSize = DEFAULT_HTTP_BUFFER_SIZE;
 		this.connectionsList = connectionsList;
 		this.headerChars = headerChars;
 		assert headerChars.length >= MAX_HEADER_LINE_SIZE;

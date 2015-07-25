@@ -18,8 +18,6 @@ package io.datakernel.bytebuf;
 
 import static java.lang.System.arraycopy;
 
-import io.datakernel.jmx.StatsCounter;
-
 /**
  * It is the queue which has array of {@link ByteBuf}
  */
@@ -30,8 +28,6 @@ public final class ByteBufQueue {
 
 	private int first = 0;
 	private int last = 0;
-
-//	private final StatsCounter limitsCounter = new StatsCounter();
 
 	/**
 	 * Creates a new instance of ByteBufQueue with capacity ByteBufs
@@ -87,7 +83,6 @@ public final class ByteBufQueue {
 		if (last == first) {
 			grow();
 		}
-//		limitsCounter.add(buf.limit);
 	}
 
 	public void addAll(Iterable<ByteBuf> byteBufs) {
@@ -385,8 +380,4 @@ public final class ByteBufQueue {
 		}
 		first = last = 0;
 	}
-
-//	public StatsCounter getBufsStats() {
-//		return limitsCounter;
-//	}
 }

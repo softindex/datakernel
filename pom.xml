@@ -9,9 +9,10 @@
     <version>1.0-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-    <name>DataKernel framework</name>
+    <name>DataKernel</name>
     <description>
-        DataKernel is a scalable and extremely fast Java framework for building applications with asynchronous I/O.
+        Java components for building extremely fast and scalable applications with asynchronous I/O,
+        ranging from standalone applications with high-performance I/O, to cluster-wide solutions.
     </description>
     <url>http://datakernel.io/</url>
 

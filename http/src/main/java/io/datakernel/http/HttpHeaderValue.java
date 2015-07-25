@@ -19,18 +19,17 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 
 public abstract class HttpHeaderValue {
-	private HttpHeaderValue next;
+	private final HttpHeader key;
 
-	void next(HttpHeaderValue next) {
-		this.next = next;
-	}
-
-	HttpHeaderValue next() {
-		return next;
+	public HttpHeaderValue(HttpHeader key) {
+		this.key = key;
 	}
 
 	public abstract int estimateSize();
 
 	public abstract void writeTo(ByteBuf buf);
 
+	public HttpHeader getKey() {
+		return key;
+	}
 }

@@ -54,7 +54,6 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 		this.writeQueue = new ByteBufQueue();
 		this.readQueue = new ByteBufQueue();
-		this.receiveBufferSize = getReceiveBufferSize(channel);
 	}
 
 	/**
@@ -214,14 +213,4 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	public String getChannelInfo() {
 		return channel.toString();
 	}
-
-/*
-	public StatsCounter getReadBufsStats() {
-		return readQueue.getBufsStats();
-	}
-
-	public StatsCounter getWriteBufsStats() {
-		return writeQueue.getBufsStats();
-	}
-*/
 }

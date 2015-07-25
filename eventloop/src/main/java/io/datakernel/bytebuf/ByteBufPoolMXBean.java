@@ -30,5 +30,5 @@ public interface ByteBufPoolMXBean {
 
 	long getPoolSizeKB();
 
-	List<String> getPoolSlabs() throws OpenDataException;
+	List<String> getPoolSlabs();
 }

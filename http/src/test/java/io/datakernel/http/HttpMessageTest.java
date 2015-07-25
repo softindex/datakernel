@@ -17,14 +17,12 @@
 package io.datakernel.http;
 
 import com.google.common.base.Charsets;
-import com.google.common.collect.Lists;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
 import java.net.HttpCookie;
-import java.util.List;
 
 import static io.datakernel.http.HttpHeader.headerOfString;
 import static java.util.Arrays.asList;
@@ -57,9 +55,9 @@ public class HttpMessageTest {
 				"Error 502", HttpResponse.create(502).body("Error 502".getBytes(Charsets.UTF_8)));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1;Path=/\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.create(200).cookie(new HttpCookie("cookie1", "value1")));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie2=value2;Path=/\r\nSet-Cookie: cookie1=value1;Path=/\r\nContent-Length: 0\r\n\r\n",
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1;Path=/\r\nSet-Cookie: cookie2=value2;Path=/\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.create(200).cookie(new HttpCookie("cookie1", "value1")).cookie(new HttpCookie("cookie2", "value2")));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie2=value2;Path=/\r\nSet-Cookie: cookie1=value1;Path=/\r\nContent-Length: 0\r\n\r\n",
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1;Path=/\r\nSet-Cookie: cookie2=value2;Path=/\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.create(200).cookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 	}
 
@@ -73,8 +71,8 @@ public class HttpMessageTest {
 				HttpRequest.create(HttpMethod.CONNECT).url("http://test.com/index.html"));
 		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"\r\n\r\n",
 				HttpRequest.get("http://test.com/index.html").cookie(new HttpCookie("cookie1", "value1")));
-//		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"; cookie2=\"value2\"\r\n\r\n",
-//				HttpRequest.get("http://test.com/index.html").cookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"; cookie2=\"value2\"\r\n\r\n",
+				HttpRequest.get("http://test.com/index.html").cookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 
 		HttpRequest request = HttpRequest.post("http://test.com/index.html");
 		ByteBuf buf = ByteBufPool.allocate(100);
@@ -85,51 +83,35 @@ public class HttpMessageTest {
 		buf.recycle();
 	}
 
-	private static String getHeaderValue(HttpMessage message, String headerName) {
-		return message.getHeaderString(headerOfString(headerName));
-	}
-
-	private static List<String> getHeaderValues(HttpMessage message, String headerName) {
-		List<String> result = Lists.newArrayList();
-		HttpHeaderValue value = message.getHeaderValue(headerOfString(headerName));
-		if (value == null)
-			return result;
-		result.add(value.toString());
-		while (value.next() != null) {
-			value = value.next();
-			result.add(value.toString());
-		}
-		return result;
+	private static String getHeaderValue(HttpMessage message, HttpHeader header) {
+		return message.getHeaderString(header);
 	}
 
 	@Test
 	public void testMultiHeaders() {
 		HttpResponse h = HttpResponse.create(200);
+		HttpHeader h1 = headerOfString("h1");
+		HttpHeader h2 = headerOfString("h2");
+
 		assertTrue(h.getHeaders().isEmpty());
-		assertNull(getHeaderValue(h, "h1"));
-		assertNull(getHeaderValue(h, "h2"));
+		assertNull(getHeaderValue(h, h1));
+		assertNull(getHeaderValue(h, h2));
 
-		h.header(headerOfString("h1"), "v1");
-		h.header(headerOfString("h2"), "v2");
-		h.header(headerOfString("h1"), "v3");
+		h.header(h1, "v1");
+		h.header(h2, "v2");
+		h.header(h1, "v3");
 
-		assertEquals(2, h.getHeaders().size());
-		assertEquals(asList("v3", "v1"), getHeaderValues(h, "h1"));
-		assertEquals(singletonList("v2"), getHeaderValues(h, "h2"));
-		assertEquals("v2", getHeaderValue(h, "h2"));
-		assertEquals("v3", getHeaderValue(h, "h1"));
+		assertEquals(3, h.getHeaders().size());
+		assertEquals(asList("v1", "v3"), h.getHeaderStrings(h1));
+		assertEquals(singletonList("v2"), h.getHeaderStrings(h2));
+		assertEquals("v2", h.getHeaderString(h2));
+		assertEquals("v1", h.getHeaderString(h1));
 
-		h.header(headerOfString("h2"), "v4");
-		assertEquals(asList("v3", "v1"), getHeaderValues(h, "h1"));
-		assertEquals(asList("v4", "v2"), getHeaderValues(h, "h2"));
-		assertEquals("v4", getHeaderValue(h, "h2"));
-		assertEquals("v3", getHeaderValue(h, "h1"));
+		h.header(h2, "v4");
+		assertEquals(asList("v1", "v3"), h.getHeaderStrings(h1));
+		assertEquals(asList("v2", "v4"), h.getHeaderStrings(h2));
+		assertEquals("v2", getHeaderValue(h, h2));
+		assertEquals("v1", getHeaderValue(h, h1));
 
-		h.headerReset(headerOfString("h1"), "v5");
-		assertEquals(2, h.getHeaders().size());
-		assertEquals(singletonList("v5"), getHeaderValues(h, "h1"));
-		assertEquals(asList("v4", "v2"), getHeaderValues(h, "h2"));
-		assertEquals("v4", getHeaderValue(h, "h2"));
-		assertEquals("v5", getHeaderValue(h, "h1"));
 	}
 }

@@ -41,6 +41,8 @@ import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import static io.datakernel.net.SocketSettings.defaultSocketSettings;
+
 /**
  * Client for datagraph server.
  * Sends JSON commands for performing certain actions on server.
@@ -51,7 +53,7 @@ public final class DatagraphClient {
 	private final NioEventloop eventloop;
 	private final DatagraphSerialization serialization;
 
-	private SocketSettings socketSettings = new SocketSettings(); // TODO - make it configurable?
+	private SocketSettings socketSettings = defaultSocketSettings();
 
 	/**
 	 * Constructs a datagraph client that runs in a given event loop and uses the specified DatagraphSerialization object for various serialization purposes.

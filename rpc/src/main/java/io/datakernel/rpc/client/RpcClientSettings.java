@@ -31,7 +31,7 @@ public final class RpcClientSettings {
 	private static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	private static final int DEFAULT_RECONNECT_INTERVAL = 30 * 1000;
 	public static final ConnectSettings DEFAULT_CONNECT_SETTINGS = new ConnectSettings(DEFAULT_CONNECT_TIMEOUT, SocketReconnector.RECONNECT_ALWAYS, DEFAULT_RECONNECT_INTERVAL);
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings();
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final long DEFAULT_PING_INTERVAL_MILLIS = 30_000L;
 	public static final int DEFAULT_PING_AMOUNT_FAILED = 3;
 	public static final int DEFAULT_ALL_CONNECTIONS = Integer.MAX_VALUE;

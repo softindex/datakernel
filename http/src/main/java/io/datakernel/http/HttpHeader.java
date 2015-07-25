@@ -16,12 +16,12 @@
 
 package io.datakernel.http;
 
-import com.google.common.net.HttpHeaders;
-import io.datakernel.bytebuf.ByteBuf;
+import static io.datakernel.util.ByteBufStrings.*;
 
 import java.util.List;
 
-import static io.datakernel.util.ByteBufStrings.*;
+import com.google.common.net.HttpHeaders;
+import io.datakernel.bytebuf.ByteBuf;
 
 /**
  * Represent the header {@link HttpResponse}
@@ -175,7 +175,7 @@ public class HttpHeader {
 		return parseHeader(array, 0, array.length, hashCodeLowerCaseAscii(array));
 	}
 
-	private static class HttpCustomHeader extends HttpHeader {
+	protected static final class HttpCustomHeader extends HttpHeader {
 		private HttpCustomHeader(byte[] array, int offset, int length, int lowerCaseHashCode) {
 			super(array, offset, length, null, lowerCaseHashCode);
 		}
@@ -199,11 +199,6 @@ public class HttpHeader {
 			}
 			return true;
 		}
-
-		@Override
-		public int hashCode() {
-			return lowerCaseHashCode;
-		}
 	}
 
 	@Override
@@ -224,28 +219,28 @@ public class HttpHeader {
 		buf.put(bytes, offset, length);
 	}
 
-	public static HttpHeaderValue valueAsBytes(byte[] array, int offset, int size) {
-		return new HttpHeaderValueOfBytes(array, offset, size);
+	public static HttpHeaderValue asBytes(HttpHeader key, byte[] array, int offset, int size) {
+		return new HttpHeaderValueOfBytes(key, array, offset, size);
 	}
 
-	public static HttpHeaderValue valueAsBytes(byte[] array) {
-		return valueAsBytes(array, 0, array.length);
+	public static HttpHeaderValue asBytes(HttpHeader key, byte[] array) {
+		return asBytes(key, array, 0, array.length);
 	}
 
-	public static HttpHeaderValue valueAsBytes(String string) {
-		return valueAsBytes(encodeAscii(string));
+	public static HttpHeaderValue asBytes(HttpHeader key, String string) {
+		return asBytes(key, encodeAscii(string));
 	}
 
-	public static HttpHeaderValue valueOfList(List<HttpHeaderValue> values, char separator) {
-		return new HttpHeaderValueOfList(values, separator);
+	public static HttpHeaderValue ofList(HttpHeader key, List<HttpHeaderValue> values, char separator) {
+		return new HttpHeaderValueOfList(key, values, separator);
 	}
 
-	public static HttpHeaderValue valueOfDecimal(int value) {
-		return new HttpHeaderValueOfUnsignedDecimal(value);
+	public static HttpHeaderValue ofDecimal(HttpHeader key, int value) {
+		return new HttpHeaderValueOfUnsignedDecimal(key, value);
 	}
 
-	public static HttpHeaderValue valueOfString(String string) {
-		return new HttpHeaderValueOfString(string);
+	public static HttpHeaderValue ofString(HttpHeader key, String string) {
+		return new HttpHeaderValueOfString(key, string);
 	}
 
 	private static final class HttpHeaderValueOfBytes extends HttpHeaderValue {
@@ -253,7 +248,8 @@ public class HttpHeader {
 		private final int offset;
 		private final int size;
 
-		private HttpHeaderValueOfBytes(byte[] array, int offset, int size) {
+		private HttpHeaderValueOfBytes(HttpHeader key, byte[] array, int offset, int size) {
+			super(key);
 			this.array = array;
 			this.offset = offset;
 			this.size = size;
@@ -283,7 +279,8 @@ public class HttpHeader {
 		private final List<HttpHeaderValue> values;
 		private final byte separator;
 
-		private HttpHeaderValueOfList(List<HttpHeaderValue> values, char separator) {
+		private HttpHeaderValueOfList(HttpHeader key, List<HttpHeaderValue> values, char separator) {
+			super(key);
 			this.values = values;
 			this.separator = (byte) separator;
 		}
@@ -318,7 +315,8 @@ public class HttpHeader {
 	private static final class HttpHeaderValueOfUnsignedDecimal extends HttpHeaderValue {
 		private final int value;
 
-		private HttpHeaderValueOfUnsignedDecimal(int value) {
+		private HttpHeaderValueOfUnsignedDecimal(HttpHeader header, int value) {
+			super(header);
 			this.value = value;
 		}
 
@@ -341,7 +339,8 @@ public class HttpHeader {
 	private static final class HttpHeaderValueOfString extends HttpHeaderValue {
 		private final String string;
 
-		private HttpHeaderValueOfString(String string) {
+		private HttpHeaderValueOfString(HttpHeader key, String string) {
+			super(key);
 			this.string = string;
 		}
 

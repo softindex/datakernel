@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import static com.google.common.base.Preconditions.*;
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -62,8 +63,6 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final BindException BIND_EXCEPTION = new BindException();
 
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
-
 	private final NioEventloop eventloop;
 	private final DnsClient dnsClient;
 	private final SocketSettings socketSettings;
@@ -93,7 +92,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	 * @param dnsClient DNS client for resolving IP addresses for the specified host names
 	 */
 	public HttpClientImpl(NioEventloop eventloop, DnsClient dnsClient) {
-		this(eventloop, dnsClient, DEFAULT_SOCKET_SETTINGS);
+		this(eventloop, dnsClient, defaultSocketSettings());
 	}
 
 	/**
@@ -491,13 +490,12 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	public String[] getConnections() {
 		Joiner joiner = Joiner.on(',');
 		List<String> info = new ArrayList<>();
-		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime,ReadBufsSize,WriteBufsSize");
+		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
 		for (Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
 			AbstractHttpConnection connection = node.getValue();
 			String string = joiner.join(connection.getRemoteSocketAddress(), connection.isRegistered(),
 					MBeanFormat.formatPeriodAgo(connection.getLifeTime()),
 					MBeanFormat.formatPeriodAgo(connection.getActivityTime())
-//					connection.getReadBufsStats(), connection.getWriteBufsStats()
 			);
 			info.add(string);
 		}

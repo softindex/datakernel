@@ -28,9 +28,6 @@ import io.datakernel.net.SocketSettings;
  * from collection with round-robin algorithm.
  */
 public final class PrimaryNioServer extends AbstractNioServer<PrimaryNioServer> {
-	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(16384);
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
-
 	private NioServer[] workerNioServers;
 
 	private int currentAcceptor = 0;

@@ -18,7 +18,6 @@ package io.datakernel.http.middleware;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.file.AsyncFileSystem;
 import io.datakernel.file.File;
@@ -76,7 +75,7 @@ public final class MiddlewareStaticServer {
 						file.readFully(new ResultCallback<ByteBuf>() {
 							@Override
 							public void onResult(ByteBuf byteBuf) {
-								response.header(CONTENT_LENGTH, valueOfDecimal(byteBuf.limit()));
+								response.header(ofDecimal(CONTENT_LENGTH, byteBuf.limit()));
 
 								ByteBuf contentType = getContentType(urlTrail);
 								if (contentType != null) {

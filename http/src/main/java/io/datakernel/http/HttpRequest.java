@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import java.net.HttpCookie;
 import java.net.InetAddress;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Strings.nullToEmpty;
@@ -82,26 +83,24 @@ public final class HttpRequest extends HttpMessage {
 	/**
 	 * Sets the header for this HttpRequest
 	 *
-	 * @param header header for this HttpRequest
 	 * @param value  value of header
 	 * @return this HttpRequest
 	 */
-	public HttpRequest header(HttpHeader header, HttpHeaderValue value) {
+	public HttpRequest header(HttpHeaderValue value) {
 		assert !recycled;
-		setHeader(header, value);
+		addHeader(value);
 		return this;
 	}
 
 	/**
 	 * Adds the header for this HttpRequest
 	 *
-	 * @param header header for this HttpRequest
 	 * @param value  value of header
 	 * @return this HttpRequest
 	 */
-	public HttpRequest add(HttpHeader header, HttpHeaderValue value) {
+	public HttpRequest add(HttpHeaderValue value) {
 		assert !recycled;
-		addHeader(header, value);
+		addHeader(value);
 		return this;
 	}
 
@@ -114,7 +113,7 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest header(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		setHeader(header, value);
+		addHeader(header, value);
 		return this;
 	}
 
@@ -140,7 +139,7 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest header(HttpHeader header, byte[] value) {
 		assert !recycled;
-		setHeader(header, value);
+		addHeader(header, value);
 		return this;
 	}
 
@@ -166,7 +165,7 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest header(HttpHeader header, String value) {
 		assert !recycled;
-		setHeader(header, value);
+		addHeader(header, value);
 		return this;
 	}
 
@@ -189,9 +188,9 @@ public final class HttpRequest extends HttpMessage {
 	 * @param headers map with headers and its values
 	 * @return this HttpRequest
 	 */
-	public HttpRequest headers(Map<HttpHeader, HttpHeaderValue> headers) {
+	public HttpRequest headers(List<HttpHeaderValue> headers) {
 		assert !recycled;
-		setHeaders(headers);
+		addHeaders(headers);
 		return this;
 	}
 
@@ -215,7 +214,7 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest contentType(String contentType) {
 		assert !recycled;
-		setHeader(HttpHeader.CONTENT_TYPE, contentType);
+		addHeader(HttpHeader.CONTENT_TYPE, contentType);
 		return this;
 	}
 
@@ -229,7 +228,7 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest cookie(HttpCookie cookie) {
 		assert !recycled;
-		setHeader(HttpHeader.COOKIE, cookie.toString());
+		addHeader(HttpHeader.COOKIE, cookie.toString());
 		return this;
 	}
 
@@ -242,7 +241,7 @@ public final class HttpRequest extends HttpMessage {
 	public HttpRequest cookie(Collection<HttpCookie> cookies) {
 		assert !recycled;
 		String s = HttpUtils.cookiesToString(cookies);
-		setHeader(HttpHeader.COOKIE, s);
+		addHeader(HttpHeader.COOKIE, s);
 		return this;
 	}
 
@@ -256,7 +255,7 @@ public final class HttpRequest extends HttpMessage {
 		assert !recycled;
 		this.url = url;
 		if (!url.isPartial()) {
-			setHeader(HttpHeader.HOST, url.getHostAndPort());
+			addHeader(HttpHeader.HOST, url.getHostAndPort());
 		}
 		return this;
 	}
@@ -327,7 +326,7 @@ public final class HttpRequest extends HttpMessage {
 	public ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
-			setHeader(CONTENT_LENGTH, HttpHeader.valueOfDecimal(body == null ? 0 : body.remaining()));
+			addHeader(HttpHeader.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE

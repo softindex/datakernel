@@ -36,6 +36,8 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
+import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -49,14 +51,12 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implements NioServer, AbstractNioServerMBean {
 	private static final Logger logger = getLogger(AbstractNioServer.class);
 
-	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(16384);
+	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
 	/**
-	 * Creates a new default socket settings for creating new sockets with its values. Default value is TCP connection without delay.
+	 * Creates a new default socket settings for creating new sockets with its values.
 	 */
-	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
-
 	private ServerSocketSettings serverSocketSettings = DEFAULT_SERVER_SOCKET_SETTINGS;
-	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
+	private SocketSettings socketSettings = defaultSocketSettings();
 
 	protected final NioEventloop eventloop;
 

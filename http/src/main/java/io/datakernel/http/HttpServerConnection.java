@@ -42,7 +42,7 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final Logger logger = LoggerFactory.getLogger(HttpServerConnection.class);
 	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
-	private static final HttpHeaderValue CONNECTION_KEEP_ALIVE = HttpHeader.valueAsBytes("keep-alive");
+	private static final HttpHeaderValue CONNECTION_KEEP_ALIVE = HttpHeader.asBytes(CONNECTION, "keep-alive");
 
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
@@ -166,7 +166,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private void writeHttpResult(HttpResponse httpResponse) {
 		if (keepAlive) {
-			httpResponse.setHeader(CONNECTION, CONNECTION_KEEP_ALIVE);
+			httpResponse.addHeader(CONNECTION_KEEP_ALIVE);
 		}
 		ByteBuf buf = httpResponse.write();
 		httpResponse.recycleBufs();

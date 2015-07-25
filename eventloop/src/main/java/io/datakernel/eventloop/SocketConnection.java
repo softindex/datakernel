@@ -61,16 +61,6 @@ public abstract class SocketConnection {
 		writeTime = lifeTime;
 	}
 
-	protected static int getReceiveBufferSize(NetworkChannel channel) {
-		try {
-			Integer bufferSize = channel.getOption(StandardSocketOptions.SO_RCVBUF);
-			if (bufferSize != null)
-				return bufferSize;
-		} catch (IOException ignored) {
-		}
-		return DEFAULT_RECEIVE_BUFFER_SIZE;
-	}
-
 	/**
 	 * Returns the {@link NioEventloop} with which was associated with this connection
 	 */

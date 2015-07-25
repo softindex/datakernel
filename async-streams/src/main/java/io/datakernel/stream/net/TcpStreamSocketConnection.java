@@ -99,6 +99,8 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		}
 	}
 
+	public static final int DEFAULT_STREAM_BUFFER_SIZE = 256 * 1024;
+
 	protected final Reader socketReader;
 	protected final Writer socketWriter;
 
@@ -112,6 +114,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	 */
 	public TcpStreamSocketConnection(NioEventloop eventloop, SocketChannel socketChannel) {
 		super(eventloop, socketChannel);
+		this.receiveBufferSize = DEFAULT_STREAM_BUFFER_SIZE;
 		this.socketReader = new Reader(eventloop);
 		this.socketWriter = new Writer(eventloop);
 	}
