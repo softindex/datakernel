@@ -98,12 +98,12 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		} else {
 			buf.recycle();
 		}
+		allocateBuffer();
 	}
 
 	private void ensureSize(int size) {
 		if (appendable.remaining() < size) {
 			flushBuffer(downstreamDataReceiver);
-			allocateBuffer();
 		}
 	}
 
@@ -178,7 +178,6 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 	@Override
 	public void flush() {
 		flushBuffer(downstreamDataReceiver);
-		allocateBuffer();
 		flushPosted = false;
 	}
 
@@ -202,6 +201,25 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 					}
 				}
 			});
+		}
+	}
+
+	@Override
+	public void onClosed() {
+		super.onClosed();
+		recycleBufs();
+	}
+
+	@Override
+	protected void onClosedWithError(Exception e) {
+		super.onClosedWithError(e);
+		recycleBufs();
+	}
+
+	private void recycleBufs() {
+		if (buf != null) {
+			buf.recycle();
+			buf = null;
 		}
 	}
 

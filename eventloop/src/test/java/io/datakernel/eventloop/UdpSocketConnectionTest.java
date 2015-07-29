@@ -17,15 +17,19 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class UdpSocketConnectionTest {
 	private static final int SERVER_PORT = 45555;
@@ -60,6 +64,8 @@ public class UdpSocketConnectionTest {
 
 			assertArrayEquals(bytesToSend, message);
 
+			packet.recycle();
+
 			close();
 		}
 
@@ -90,7 +96,6 @@ public class UdpSocketConnectionTest {
 		@Override
 		protected void onRead(UdpPacket packet) {
 			System.out.println("Server read completed from port " + packet.getSocketAddress().getPort());
-//			packet.getBuf().flip();
 			send(packet);
 		}
 
@@ -99,6 +104,12 @@ public class UdpSocketConnectionTest {
 			System.out.println("Server write completed");
 			close();
 		}
+	}
+
+	@Before
+	public void setUp() throws Exception {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test
@@ -125,5 +136,7 @@ public class UdpSocketConnectionTest {
 		});
 
 		eventloop.run();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

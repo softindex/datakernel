@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumers;
@@ -24,6 +25,7 @@ import io.datakernel.stream.StreamProducers;
 import io.datakernel.time.SettableCurrentTimeProvider;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDateTime;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -33,9 +35,18 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static org.junit.Assert.assertEquals;
+
 public class LogManagerTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@Before
+	public void setUp() throws Exception {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	@Test
 	public void testConsumer() throws Exception {
@@ -64,6 +75,8 @@ public class LogManagerTest {
 		eventloop.run();
 		System.out.println(consumerToList.getList());
 //		System.out.println(p1.getLogPosition());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test

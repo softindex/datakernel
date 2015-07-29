@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import com.google.gson.Gson;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SimpleNioServer;
@@ -31,6 +32,7 @@ import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -38,12 +40,19 @@ import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.serializer.asm.BufferSerializers.*;
 import static org.junit.Assert.*;
 
 public class BinaryProtocolTest {
 	private static final int LISTEN_PORT = 4821;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
+
+	@Before
+	public void setUp() throws Exception {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	@Test
 	public void testPing() throws Exception {
@@ -100,6 +109,8 @@ public class BinaryProtocolTest {
 		);
 
 		eventloop.run();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -163,6 +174,9 @@ public class BinaryProtocolTest {
 		eventloop.run();
 
 		assertEquals(source, consumerToList.getList());
+
+		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
+//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -230,6 +244,9 @@ public class BinaryProtocolTest {
 		eventloop.run();
 
 		assertEquals(source, consumerToList.getList());
+
+		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
+//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -321,6 +338,8 @@ public class BinaryProtocolTest {
 
 		assertEquals(source, consumerToList.getList());
 		assertTrue(ack.get());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -388,6 +407,9 @@ public class BinaryProtocolTest {
 		eventloop.run();
 
 		assertEquals(source, consumerToList.getList());
+
+		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
+//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

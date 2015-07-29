@@ -19,6 +19,7 @@ package io.datakernel.stream.net;
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SimpleNioServer;
@@ -29,12 +30,14 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.SocketReconnector.reconnect;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
@@ -44,6 +47,12 @@ import static org.junit.Assert.fail;
 public final class TcpStreamSocketConnectionTest {
 	private static final int LISTEN_PORT = 1234;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
+
+	@Before
+	public void setUp() throws Exception {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	}
 
 	@Test
 	public void test() throws Exception {
@@ -95,6 +104,8 @@ public final class TcpStreamSocketConnectionTest {
 		eventloop.run();
 
 		assertEquals(source, consumerToList.getList());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -148,6 +159,8 @@ public final class TcpStreamSocketConnectionTest {
 		eventloop.run();
 
 		assertEquals(source, consumerToList.getList());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

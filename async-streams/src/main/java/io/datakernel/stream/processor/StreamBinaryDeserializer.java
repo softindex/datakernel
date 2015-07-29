@@ -23,8 +23,6 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 
@@ -38,7 +36,6 @@ import static java.lang.Math.min;
  * @param <T> original type of data
  */
 public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamDataReceiver<ByteBuf>, StreamBinaryDeserializerMBean {
-	private static final Logger logger = LoggerFactory.getLogger(StreamBinaryDeserializer.class);
 
 	private static final int MAX_HEADER_BYTES = 3;
 	private final int maxMessageSize;
@@ -288,6 +285,10 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			buf = null;
 			buffer = null;
 		}
+		for (ByteBuf byteBuf : byteBufs) {
+			byteBuf.recycle();
+		}
+		byteBufs.clear();
 	}
 
 	@Override

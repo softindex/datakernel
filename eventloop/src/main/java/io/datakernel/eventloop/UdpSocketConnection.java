@@ -68,6 +68,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 				buf.flip();
 				UdpPacket packet = new UdpPacket(buf, (InetSocketAddress) sourceAddress);
 				onRead(packet);
+				buf = null;
 			}
 		} catch (IOException e) {
 			if (isRegistered()) {
@@ -115,8 +116,6 @@ public abstract class UdpSocketConnection extends SocketConnection {
 			} catch (IOException e) {
 				onInternalException(e);
 				return;
-			} finally {
-				packet.getBuf().recycle();
 			}
 
 			if (sent == remainingBeforeWrite) {
@@ -126,6 +125,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 			}
 
 			writeQueue.poll();
+			packet.recycle();
 		}
 
 		if (wasWritten) {
@@ -154,6 +154,9 @@ public abstract class UdpSocketConnection extends SocketConnection {
 	 */
 	@Override
 	public void onClosed() {
+		for (UdpPacket packet : writeQueue) {
+			packet.recycle();
+		}
 		writeQueue.clear();
 	}
 

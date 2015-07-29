@@ -28,7 +28,7 @@ public final class UdpPacket {
 	/**
 	 * The data buffer to send
 	 */
-	private final ByteBuf buf;
+	private ByteBuf buf;
 	/**
 	 * The address to which the packet should be sent or from which it
 	 * was received.
@@ -60,5 +60,15 @@ public final class UdpPacket {
 	 */
 	public InetSocketAddress getSocketAddress() {
 		return inetSocketAddress;
+	}
+
+	/**
+	 * Recycles data buffer. You should do it after use.
+	 */
+	public void recycle() {
+		if (buf != null) {
+			buf.recycle();
+			buf = null;
+		}
 	}
 }

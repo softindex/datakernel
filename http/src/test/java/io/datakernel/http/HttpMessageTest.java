@@ -99,7 +99,7 @@ public class HttpMessageTest {
 
 		h.header(h1, "v1");
 		h.header(h2, "v2");
-		h.header(h1, "v3");
+		h.addHeader(h1, "v3");
 
 		assertEquals(3, h.getHeaders().size());
 		assertEquals(asList("v1", "v3"), h.getHeaderStrings(h1));
@@ -107,7 +107,7 @@ public class HttpMessageTest {
 		assertEquals("v2", h.getHeaderString(h2));
 		assertEquals("v1", h.getHeaderString(h1));
 
-		h.header(h2, "v4");
+		h.addHeader(h2, "v4");
 		assertEquals(asList("v1", "v3"), h.getHeaderStrings(h1));
 		assertEquals(asList("v2", "v4"), h.getHeaderStrings(h2));
 		assertEquals("v2", getHeaderValue(h, h2));

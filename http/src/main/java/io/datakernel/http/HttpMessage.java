@@ -19,6 +19,8 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.util.ByteBufStrings.*;
@@ -45,14 +47,37 @@ public abstract class HttpMessage {
 	}
 
 	/**
-	 * Adds all headers from map from argument to this HttpMessage
+	 * Sets all headers from collection from argument to this HttpMessage
 	 *
 	 * @param headers headers for adding
 	 */
 
-	protected void addHeaders(List<HttpHeaderValue> headers) {
+	protected void setHeaders(Collection<HttpHeaderValue> headers) {
+		assert !recycled;
+		assert Collections.disjoint(this.headers, headers) : "Duplicate headers: " + this.headers + " : " + headers;
+		this.headers.addAll(headers);
+	}
+
+	/**
+	 * Adds all headers from collection from argument to this HttpMessage
+	 *
+	 * @param headers headers for adding
+	 */
+
+	protected void addHeaders(Collection<HttpHeaderValue> headers) {
 		assert !recycled;
 		this.headers.addAll(headers);
+	}
+
+	/**
+	 * Sets the header with value to this HttpMessage
+	 *
+	 * @param value value of this header
+	 */
+	public void setHeader(HttpHeaderValue value) {
+		assert !recycled;
+		assert getHeader(value.getKey()) == null : "Duplicate header: " + value.getKey();
+		headers.add(value);
 	}
 
 	/**
@@ -63,6 +88,23 @@ public abstract class HttpMessage {
 	public void addHeader(HttpHeaderValue value) {
 		assert !recycled;
 		headers.add(value);
+	}
+
+	/**
+	 * Sets the header with value as ByteBuf to this HttpMessage
+	 *
+	 * @param header header for adding
+	 * @param value  value of this header
+	 */
+	protected void setHeader(HttpHeader header, ByteBuf value) {
+		assert !recycled;
+		setHeader(HttpHeader.asBytes(header, value.array(), value.position(), value.remaining()));
+		if (value.isRecycleNeeded()) {
+			if (headerBufs == null) {
+				headerBufs = new ArrayList<>(4);
+			}
+			headerBufs.add(value);
+		}
 	}
 
 	/**
@@ -83,6 +125,17 @@ public abstract class HttpMessage {
 	}
 
 	/**
+	 * Sets the header with value as array of bytes to this HttpMessage
+	 *
+	 * @param header header for adding
+	 * @param value  value of this header
+	 */
+	protected void setHeader(HttpHeader header, byte[] value) {
+		assert !recycled;
+		setHeader(HttpHeader.asBytes(header, value, 0, value.length));
+	}
+
+	/**
 	 * Adds the header with value as array of bytes to this HttpMessage
 	 *
 	 * @param header header for adding
@@ -91,6 +144,17 @@ public abstract class HttpMessage {
 	protected void addHeader(HttpHeader header, byte[] value) {
 		assert !recycled;
 		addHeader(HttpHeader.asBytes(header, value, 0, value.length));
+	}
+
+	/**
+	 * Sets the header with value as string to this HttpMessage
+	 *
+	 * @param header header for adding
+	 * @param string value of this header
+	 */
+	protected void setHeader(HttpHeader header, String string) {
+		assert !recycled;
+		setHeader(HttpHeader.ofString(header, string));
 	}
 
 	/**

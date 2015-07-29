@@ -22,13 +22,10 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 
 public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamDataReceiver<ByteBuf>, StreamGsonDeserializerMBean {
-	private static final Logger logger = LoggerFactory.getLogger(StreamGsonDeserializer.class);
 
 	private static final int INITIAL_BUFFER_SIZE = 1;
 
@@ -146,6 +143,29 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 	@Override
 	public StreamDataReceiver<ByteBuf> getDataReceiver() {
 		return this;
+	}
+
+	@Override
+	public void onClosed() {
+		super.onClosed();
+		recycleBufs();
+	}
+
+	@Override
+	protected void onClosedWithError(Exception e) {
+		super.onClosedWithError(e);
+		recycleBufs();
+	}
+
+	private void recycleBufs() {
+		if (buf != null) {
+			buf.recycle();
+			buf = null;
+		}
+		for (ByteBuf byteBuf : byteBufs) {
+			byteBuf.recycle();
+		}
+		byteBufs.clear();
 	}
 
 	@Override

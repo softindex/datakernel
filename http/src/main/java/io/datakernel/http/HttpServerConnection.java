@@ -161,7 +161,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	@Override
 	protected void onHeader(HttpHeader header, final ByteBuf value) {
 		super.onHeader(header, value);
-		request.header(header, value);
+		request.addHeader(header, value);
 	}
 
 	private void writeHttpResult(HttpResponse httpResponse) {

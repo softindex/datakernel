@@ -17,6 +17,7 @@
 package io.datakernel.dns;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,8 +27,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
+import static org.junit.Assert.assertEquals;
 
 public class NativeDnsResolverConnectionTest {
 	private DnsClientConnection dnsClientConnection;
@@ -38,6 +41,9 @@ public class NativeDnsResolverConnectionTest {
 
 	@Before
 	public void setUp() throws Exception {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+
 		eventloop = new NioEventloop();
 	}
 
@@ -116,5 +122,7 @@ public class NativeDnsResolverConnectionTest {
 		});
 
 		eventloop.run();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

@@ -75,6 +75,8 @@ public class UdpEchoServerClientExample {
 				System.out.print(bytesReceived[i]);
 			}
 
+			packet.recycle();
+
 			close();
 		}
 

@@ -255,6 +255,25 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 	}
 
+	@Override
+	public void onClosed() {
+		super.onClosed();
+		recycleBufs();
+	}
+
+	@Override
+	protected void onClosedWithError(Exception e) {
+		super.onClosedWithError(e);
+		recycleBufs();
+	}
+
+	private void recycleBufs() {
+		if (byteBuf != null) {
+			byteBuf.recycle();
+			byteBuf = null;
+		}
+	}
+
 	// JMX
 
 	@Override

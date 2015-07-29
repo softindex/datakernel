@@ -22,7 +22,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import java.net.HttpCookie;
 import java.net.InetAddress;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Strings.nullToEmpty;
@@ -88,32 +87,7 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest header(HttpHeaderValue value) {
 		assert !recycled;
-		addHeader(value);
-		return this;
-	}
-
-	/**
-	 * Adds the header for this HttpRequest
-	 *
-	 * @param value value of header
-	 * @return this HttpRequest
-	 */
-	public HttpRequest add(HttpHeaderValue value) {
-		assert !recycled;
-		addHeader(value);
-		return this;
-	}
-
-	/**
-	 * Sets the header with value as ByteBuf for this HttpRequest
-	 *
-	 * @param header header for this HttpRequest
-	 * @param value  value of this header
-	 * @return this HttpRequest
-	 */
-	public HttpRequest header(HttpHeader header, ByteBuf value) {
-		assert !recycled;
-		addHeader(header, value);
+		setHeader(value);
 		return this;
 	}
 
@@ -121,17 +95,17 @@ public final class HttpRequest extends HttpMessage {
 	 * Adds the header with value as ByteBuf for this HttpRequest
 	 *
 	 * @param header header for this HttpRequest
-	 * @param value  value o this header
+	 * @param value  value of this header
 	 * @return this HttpRequest
 	 */
-	public HttpRequest add(HttpHeader header, ByteBuf value) {
+	public HttpRequest header(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		addHeader(header, value);
+		setHeader(header, value);
 		return this;
 	}
 
 	/**
-	 * Sets the header with value as array of bytes for this HttpRequest
+	 * Adds the header with value as array of bytes for this HttpRequest
 	 *
 	 * @param header header for this HttpRequest
 	 * @param value  value of this header
@@ -139,25 +113,12 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest header(HttpHeader header, byte[] value) {
 		assert !recycled;
-		addHeader(header, value);
+		setHeader(header, value);
 		return this;
 	}
 
 	/**
-	 * Adds the header as array of bytes for this HttpRequest
-	 *
-	 * @param header header for this HttpRequest
-	 * @param value  value of header
-	 * @return this HttpRequest
-	 */
-	public HttpRequest add(HttpHeader header, byte[] value) {
-		assert !recycled;
-		addHeader(header, value);
-		return this;
-	}
-
-	/**
-	 * Sets the header with value as string for this HttpRequest
+	 * Adds the header with value as string for this HttpRequest
 	 *
 	 * @param header header for this HttpRequest
 	 * @param value  value of this header
@@ -165,32 +126,19 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest header(HttpHeader header, String value) {
 		assert !recycled;
-		addHeader(header, value);
+		setHeader(header, value);
 		return this;
 	}
 
 	/**
-	 * Adds the header as string for this HttpRequest
+	 * Adds the collection of headers to this HttpRequest
 	 *
-	 * @param header header for this HttpRequest
-	 * @param value  value of header
+	 * @param headers collection with headers and its values
 	 * @return this HttpRequest
 	 */
-	public HttpRequest add(HttpHeader header, String value) {
+	public HttpRequest headers(Collection<HttpHeaderValue> headers) {
 		assert !recycled;
-		addHeader(header, value);
-		return this;
-	}
-
-	/**
-	 * Sets the map of headers to this HttpRequest
-	 *
-	 * @param headers map with headers and its values
-	 * @return this HttpRequest
-	 */
-	public HttpRequest headers(List<HttpHeaderValue> headers) {
-		assert !recycled;
-		addHeaders(headers);
+		setHeaders(headers);
 		return this;
 	}
 
@@ -214,14 +162,14 @@ public final class HttpRequest extends HttpMessage {
 	 */
 	public HttpRequest contentType(String contentType) {
 		assert !recycled;
-		addHeader(HttpHeader.CONTENT_TYPE, contentType);
+		setHeader(HttpHeader.CONTENT_TYPE, contentType);
 		return this;
 	}
 
 	// specific builder methods
 
 	/**
-	 * Sets the header COOKIE
+	 * Adds the header COOKIE
 	 *
 	 * @param cookie value of header COOKIE
 	 * @return this HttpRequest
@@ -233,7 +181,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	/**
-	 * Sets the header SET_COOKIE
+	 * Adds the header COOKIE
 	 *
 	 * @param cookies collection with cookies for setting
 	 * @return this HttpResponse
@@ -255,7 +203,7 @@ public final class HttpRequest extends HttpMessage {
 		assert !recycled;
 		this.url = url;
 		if (!url.isPartial()) {
-			addHeader(HttpHeader.HOST, url.getHostAndPort());
+			setHeader(HttpHeader.HOST, url.getHostAndPort());
 		}
 		return this;
 	}
@@ -326,7 +274,7 @@ public final class HttpRequest extends HttpMessage {
 	public ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
-			addHeader(HttpHeader.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+			setHeader(HttpHeader.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE

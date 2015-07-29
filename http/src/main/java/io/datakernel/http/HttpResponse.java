@@ -22,7 +22,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 
 import java.net.HttpCookie;
 import java.util.Collection;
-import java.util.List;
 
 import static io.datakernel.http.HttpHeader.*;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -79,19 +78,19 @@ public final class HttpResponse extends HttpMessage {
 	// common builder methods
 
 	/**
-	 * Adds the header for this HttpResponse
+	 * Sets the header for this HttpResponse
 	 *
 	 * @param value value of header
 	 * @return this HttpResponse
 	 */
 	public HttpResponse header(HttpHeaderValue value) {
 		assert !recycled;
-		addHeader(value);
+		setHeader(value);
 		return this;
 	}
 
 	/**
-	 * Adds the header with value as ByteBuf for this HttpResponse
+	 * Sets the header with value as ByteBuf for this HttpResponse
 	 *
 	 * @param header header for this HttpResponse
 	 * @param value  value o this header
@@ -99,12 +98,12 @@ public final class HttpResponse extends HttpMessage {
 	 */
 	public HttpResponse header(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		addHeader(header, value);
+		setHeader(header, value);
 		return this;
 	}
 
 	/**
-	 * Adds the header as array of bytes for this HttpResponse
+	 * Sets the header as array of bytes for this HttpResponse
 	 *
 	 * @param header header for this HttpResponse
 	 * @param value  value of header
@@ -112,12 +111,12 @@ public final class HttpResponse extends HttpMessage {
 	 */
 	public HttpResponse header(HttpHeader header, byte[] value) {
 		assert !recycled;
-		addHeader(header, value);
+		setHeader(header, value);
 		return this;
 	}
 
 	/**
-	 * Adds the header as string for this HttpResponse
+	 * Sets the header as string for this HttpResponse
 	 *
 	 * @param header header for this HttpResponse
 	 * @param value  value of header
@@ -125,19 +124,19 @@ public final class HttpResponse extends HttpMessage {
 	 */
 	public HttpResponse header(HttpHeader header, String value) {
 		assert !recycled;
-		addHeader(header, value);
+		setHeader(header, value);
 		return this;
 	}
 
 	/**
-	 * Sets the map of headers to this HttpResponse
+	 * Sets the collection of headers to this HttpResponse
 	 *
 	 * @param headers collection with headers and its values
 	 * @return this HttpResponse
 	 */
-	public HttpResponse headers(List<HttpHeaderValue> headers) {
+	public HttpResponse headers(Collection<HttpHeaderValue> headers) {
 		assert !recycled;
-		addHeaders(headers);
+		setHeaders(headers);
 		return this;
 	}
 
@@ -165,14 +164,14 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	/**
-	 * Adds header CONTENT_TYPE
+	 * Sets header CONTENT_TYPE
 	 *
 	 * @param contentType value of header
 	 * @return this HttpResponse
 	 */
 	public HttpResponse contentType(String contentType) {
 		assert !recycled;
-		addHeader(CONTENT_TYPE, contentType);
+		setHeader(CONTENT_TYPE, contentType);
 		return this;
 	}
 
@@ -189,14 +188,14 @@ public final class HttpResponse extends HttpMessage {
 	 */
 	public HttpResponse noCache() {
 		assert !recycled;
-		addHeader(CACHE_CONTROL__NO_STORE);
-		addHeader(PRAGMA__NO_CACHE);
-		addHeader(AGE__0);
+		setHeader(CACHE_CONTROL__NO_STORE);
+		setHeader(PRAGMA__NO_CACHE);
+		setHeader(AGE__0);
 		return this;
 	}
 
 	/**
-	 * Sets the header SET_COOKIE
+	 * Adds the header SET_COOKIE
 	 *
 	 * @param cookie cookie for setting
 	 * @return this HttpResponse
@@ -217,7 +216,7 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	/**
-	 * Sets the header SET_COOKIE
+	 * Adds the header SET_COOKIE
 	 *
 	 * @param cookies collection with cookies for setting
 	 * @return this HttpResponse
@@ -314,7 +313,7 @@ public final class HttpResponse extends HttpMessage {
 		if (code >= 400 && getBody() == null) {
 			setBody(DEFAULT_CODE_BODIES.get(code));
 		}
-		addHeader(HttpHeader.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+		setHeader(HttpHeader.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
 		ByteBuf buf = ByteBufPool.allocate(estimateSize);
 

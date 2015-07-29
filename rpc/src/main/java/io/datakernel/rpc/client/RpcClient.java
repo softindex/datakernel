@@ -415,6 +415,11 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClientConnectionPool.class.getSimpleName()), connections);
 	}
 
+	public void unregisterMBean(MBeanServer mbeanServer, String domain, String serviceName, String clientName) {
+		MBeanUtils.unregisterIfExists(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClient.class.getSimpleName()));
+		MBeanUtils.unregisterIfExists(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClientConnectionPool.class.getSimpleName()));
+	}
+
 	@Override
 	public void resetStats() {
 		successfulConnects = 0;

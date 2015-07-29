@@ -75,6 +75,8 @@ public class DnsClientConnection extends UdpSocketConnection {
 			}
 		} catch (DnsResponseParseException e) {
 			logger.info("Received packet cannot be parsed as DNS server response.", e);
+		} finally {
+			packet.recycle();
 		}
 	}
 

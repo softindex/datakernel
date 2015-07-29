@@ -55,6 +55,9 @@ public class StreamFileReaderWriterTest {
 
 	@Before
 	public void before() {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+
 		eventloop = new NioEventloop();
 		executor = Executors.newCachedThreadPool();
 		reader = new StreamFileReader(eventloop, executor,
@@ -68,8 +71,6 @@ public class StreamFileReaderWriterTest {
 				super.send(item);
 			}
 		};
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
 	@Test

@@ -278,12 +278,12 @@ public final class ByteBufPool {
 	}
 
 	public static int getCreatedItems(int slab) {
-		checkArgument(slab >= 0 && slab <= slabs.length);
+		checkArgument(slab >= 0 && slab < slabs.length);
 		return created[slab];
 	}
 
 	public static int getPoolItems(int slab) {
-		checkArgument(slab >= 0 && slab <= slabs.length);
+		checkArgument(slab >= 0 && slab < slabs.length);
 		return slabs[slab].size();
 	}
 

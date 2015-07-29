@@ -127,7 +127,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onHeader(HttpHeader header, ByteBuf value) {
-		response.header(header, value);
+		response.addHeader(header, value);
 		super.onHeader(header, value);
 	}
 

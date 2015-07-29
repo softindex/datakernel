@@ -19,8 +19,6 @@ package io.datakernel.stream;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +31,6 @@ import static com.google.common.base.Preconditions.*;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
-	private static final Logger logger = LoggerFactory.getLogger(AbstractStreamConsumer.class);
 
 	protected final Eventloop eventloop;
 
