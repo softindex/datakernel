@@ -71,9 +71,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 				buf = null;
 			}
 		} catch (IOException e) {
-			if (isRegistered()) {
-				onInternalException(e);
-			}
+			onInternalException(e);
 		} finally {
 			if (buf != null)
 				buf.recycle();

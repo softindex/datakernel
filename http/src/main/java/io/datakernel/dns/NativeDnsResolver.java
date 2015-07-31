@@ -222,7 +222,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				if (connection == null) {
+				if (connection == null || !connection.isRegistered()) {
 					registerConnection();
 				}
 				assert connection != null;

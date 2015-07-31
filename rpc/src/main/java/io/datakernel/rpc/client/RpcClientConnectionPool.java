@@ -16,14 +16,15 @@
 
 package io.datakernel.rpc.client;
 
-import com.google.common.collect.ImmutableList;
-import io.datakernel.jmx.CompositeDataBuilder;
+import java.net.InetSocketAddress;
+import java.util.*;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
-import java.net.InetSocketAddress;
-import java.util.*;
+
+import com.google.common.collect.ImmutableList;
+import io.datakernel.jmx.CompositeDataBuilder;
 
 public final class RpcClientConnectionPool implements RpcClientConnectionPoolMBean {
 	private final List<InetSocketAddress> addresses;
@@ -141,5 +142,75 @@ public final class RpcClientConnectionPool implements RpcClientConnectionPoolMBe
 					.build());
 		}
 		return compositeData.toArray(new CompositeData[compositeData.size()]);
+	}
+
+	@Override
+	public long getTotalSuccessfulRequests() {
+		if (pool.isEmpty())
+			return 0;
+		long result = 0;
+		for (InetSocketAddress address : new HashSet<>(pool.keySet())) {
+			RpcClientConnection connection = pool.get(address);
+			if (connection == null)
+				continue;
+			result += connection.getSuccessfulRequests();
+		}
+		return result;
+	}
+
+	@Override
+	public long getTotalPendingRequests() {
+		if (pool.isEmpty())
+			return 0;
+		long result = 0;
+		for (InetSocketAddress address : new HashSet<>(pool.keySet())) {
+			RpcClientConnection connection = pool.get(address);
+			if (connection == null)
+				continue;
+			result += connection.getPendingRequests();
+		}
+		return result;
+	}
+
+	@Override
+	public long getTotalRejectedRequests() {
+		if (pool.isEmpty())
+			return 0;
+		long result = 0;
+		for (InetSocketAddress address : new HashSet<>(pool.keySet())) {
+			RpcClientConnection connection = pool.get(address);
+			if (connection == null)
+				continue;
+			result += connection.getRejectedRequests();
+		}
+		return result;
+	}
+
+	@Override
+	public long getTotalFailedRequests() {
+		if (pool.isEmpty())
+			return 0;
+		long result = 0;
+		for (InetSocketAddress address : new HashSet<>(pool.keySet())) {
+			RpcClientConnection connection = pool.get(address);
+			if (connection == null)
+				continue;
+			result += connection.getFailedRequests();
+		}
+		return result;
+	}
+
+	@Override
+	public long getTotalExpiredRequests() {
+		if (pool.isEmpty())
+			return 0;
+		long result = 0;
+		for (InetSocketAddress address : new HashSet<>(pool.keySet())) {
+			RpcClientConnection connection = pool.get(address);
+			if (connection == null)
+				continue;
+			result += connection.getExpiredRequests();
+		}
+		return result;
 	}
 }

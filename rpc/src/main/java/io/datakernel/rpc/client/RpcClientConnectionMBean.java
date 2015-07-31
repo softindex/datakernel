@@ -30,6 +30,8 @@ public interface RpcClientConnectionMBean {
 
 	CompositeData getConnectionDetails() throws OpenDataException;
 
+	int getPendingRequests();
+
 	int getSuccessfulRequests();
 
 	int getFailedRequests();

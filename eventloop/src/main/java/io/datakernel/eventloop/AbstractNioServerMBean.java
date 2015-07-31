@@ -22,9 +22,7 @@ import javax.management.openmbean.OpenDataException;
 public interface AbstractNioServerMBean {
 	void resetStats();
 
-	long getTotalRequests();
-
-	long getTotalRejectedRequests();
+	long getTotalAccepts();
 
 	CompositeData getLastPrepareSocketException() throws OpenDataException;
 

@@ -68,8 +68,7 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	// JMX
 	private static final ExceptionMarker PREPARE_SOCKET_MARKER = NioEventloopStats.exceptionMarker(PrimaryNioServer.class, "PrepareSocketException");
 	private static final ExceptionMarker CLOSE_MARKER = NioEventloopStats.exceptionMarker(PrimaryNioServer.class, "CloseException");
-	protected long totalRequests;
-	protected long totalRejectedRequests;
+	protected long totalAccepts;
 
 	public AbstractNioServer(NioEventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
@@ -234,7 +233,7 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	@Override
 	public void onAccept(SocketChannel socketChannel) {
 		assert eventloop.inEventloopThread();
-		totalRequests++;
+		totalAccepts++;
 		prepareSocket(socketChannel);
 		SocketConnection connection = createConnection(socketChannel);
 		connection.register();
@@ -255,20 +254,14 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	// JMX
 	@Override
 	public void resetStats() {
-		totalRequests = 0;
-		totalRejectedRequests = 0;
+		totalAccepts = 0;
 		eventloop.resetExceptionCounter(PREPARE_SOCKET_MARKER);
 		eventloop.resetExceptionCounter(CLOSE_MARKER);
 	}
 
 	@Override
-	public long getTotalRequests() {
-		return totalRequests;
-	}
-
-	@Override
-	public long getTotalRejectedRequests() {
-		return totalRejectedRequests;
+	public long getTotalAccepts() {
+		return totalAccepts;
 	}
 
 	@Override

@@ -31,4 +31,14 @@ public interface RpcClientConnectionPoolMBean {
 	int getConnectionsCount();
 
 	CompositeData[] getConnections() throws OpenDataException;
+
+	long getTotalSuccessfulRequests();
+
+	long getTotalPendingRequests();
+
+	long getTotalRejectedRequests();
+
+	long getTotalFailedRequests();
+
+	long getTotalExpiredRequests();
 }

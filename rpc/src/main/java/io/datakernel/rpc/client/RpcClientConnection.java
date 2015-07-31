@@ -340,6 +340,11 @@ public final class RpcClientConnection implements RpcConnection, RpcClientConnec
 	}
 
 	@Override
+	public int getPendingRequests() {
+		return requests.size();
+	}
+
+	@Override
 	public int getSuccessfulRequests() {
 		return successfulRequests;
 	}

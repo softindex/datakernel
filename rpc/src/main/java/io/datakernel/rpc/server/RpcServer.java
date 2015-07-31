@@ -130,5 +130,15 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 	public CompositeData[] getConnections() throws OpenDataException {
 		return connections.getConnections();
 	}
+
+	@Override
+	public long getTotalRequests() {
+		return connections.getTotalRequests();
+	}
+
+	@Override
+	public long getTotalProcessingErrors() {
+		return connections.getTotalProcessingErrors();
+	}
 }
 

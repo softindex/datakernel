@@ -87,7 +87,7 @@ public final class PrimaryNioServer extends AbstractNioServer<PrimaryNioServer> 
 	@Override
 	public void onAccept(final SocketChannel socketChannel) {
 		assert eventloop.inEventloopThread();
-		totalRequests++;
+		totalAccepts++;
 
 		final NioServer nioServer = workerNioServers[currentAcceptor];
 		currentAcceptor = (currentAcceptor + 1) % workerNioServers.length;

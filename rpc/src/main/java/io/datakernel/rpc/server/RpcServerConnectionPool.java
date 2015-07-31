@@ -119,4 +119,32 @@ public final class RpcServerConnectionPool implements RpcServerConnectionPoolMBe
 		}
 		return compositeData.toArray(new CompositeData[compositeData.size()]);
 	}
+
+	@Override
+	public long getTotalRequests() {
+		if (pool.isEmpty())
+			return 0;
+		long requests = 0;
+		for (SocketChannel socketChannel : new HashSet<>(pool.keySet())) {
+			RpcServerConnection connection = pool.get(socketChannel);
+			if (connection == null)
+				continue;
+			requests += connection.getSuccessfulResponses() + connection.getErrorResponses();
+		}
+		return requests;
+	}
+
+	@Override
+	public long getTotalProcessingErrors() {
+		if (pool.isEmpty())
+			return 0;
+		long requests = 0;
+		for (SocketChannel socketChannel : new HashSet<>(pool.keySet())) {
+			RpcServerConnection connection = pool.get(socketChannel);
+			if (connection == null)
+				continue;
+			requests += connection.getErrorResponses();
+		}
+		return requests;
+	}
 }
