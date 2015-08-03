@@ -19,7 +19,6 @@ package io.datakernel.http;
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.datakernel.annotation.NioThread;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
@@ -55,7 +54,6 @@ import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 
-@NioThread
 public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientImplMXBean {
 	private static final Logger logger = LoggerFactory.getLogger(HttpClientImpl.class);
 	private static final long CHECK_PERIOD = 1000L;

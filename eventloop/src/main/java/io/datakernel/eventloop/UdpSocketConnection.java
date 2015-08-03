@@ -55,7 +55,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 	public void onReadReady() {
 		ByteBuf buf = null;
 		try {
-			while (true) {
+			while (isRegistered()) {
 				buf = ByteBufPool.allocate(receiveBufferSize);
 				ByteBuffer byteBuffer = buf.toByteBuffer();
 				SocketAddress sourceAddress = channel.receive(byteBuffer);

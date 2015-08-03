@@ -18,7 +18,6 @@ package io.datakernel.rpc.client;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
-import io.datakernel.annotation.NioThread;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -53,7 +52,6 @@ import static com.google.common.base.Preconditions.*;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAny;
 
-@NioThread
 public final class RpcClient implements NioService, RpcClientMBean {
 
 	@SuppressWarnings("unused")

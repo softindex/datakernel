@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
-import io.datakernel.annotation.NioThread;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractNioServer;
 import io.datakernel.eventloop.NioEventloop;
@@ -40,7 +39,6 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
  * A HttpServer is bound to an IP address and port number and listens for incoming connections
  * from clients on this address. A HttpServer is supported  {@link AsyncHttpServlet} that completes all responses asynchronously.
  */
-@NioThread
 public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> implements AsyncHttpServerMBean {
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;

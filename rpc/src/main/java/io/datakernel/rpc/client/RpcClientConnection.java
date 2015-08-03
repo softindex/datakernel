@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client;
 
 import com.google.common.base.Stopwatch;
-import io.datakernel.annotation.NioThread;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
@@ -39,7 +38,6 @@ import java.util.PriorityQueue;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.slf4j.LoggerFactory.getLogger;
 
-@NioThread
 public final class RpcClientConnection implements RpcConnection, RpcClientConnectionMBean {
 
 	public interface StatusListener {

@@ -16,6 +16,7 @@
 
 package io.datakernel.file;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -25,14 +26,18 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.CompletionHandler;
+import java.nio.file.CopyOption;
+import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.async.AsyncCallbacks.*;
+import static java.nio.file.StandardOpenOption.*;
 
 /**
  * An abstract representation of file. Actions with this file are non-blocking
@@ -46,7 +51,7 @@ public final class AsyncFile implements File {
 	/**
 	 * Creates a new instance of AsyncFile
 	 *
-	 * @param eventloop event loop in which will be using file
+	 * @param eventloop event loop in which a file will be used
 	 * @param executor  executor for running tasks in other thread
 	 * @param channel   an asynchronous channel for reading, writing, and manipulating a file.
 	 */
@@ -60,7 +65,7 @@ public final class AsyncFile implements File {
 	/**
 	 * Asynchronous opens file
 	 *
-	 * @param eventloop   event loop in which will be using file
+	 * @param eventloop   event loop in which a file will be used
 	 * @param executor    executor for running tasks in other thread
 	 * @param path        the  path of the file to open or create
 	 * @param openOptions options specifying how the file is opened
@@ -76,6 +81,138 @@ public final class AsyncFile implements File {
 				return (T) new AsyncFile(eventloop, executor, channel);
 			}
 		}, callback);
+	}
+
+	/**
+	 * Deletes the file in new thread
+	 *
+	 * @param eventloop event loop in which a file will be used
+	 * @param executor  @param path     the  path of the file to open or create
+	 * @param callback  callback which will be called after opening
+	 */
+	public static void delete(Eventloop eventloop, ExecutorService executor,
+	                          final Path path, CompletionCallback callback) {
+		runConcurrently(eventloop, executor, false, new RunnableWithException() {
+			@Override
+			public void runWithException() throws Exception {
+				Files.delete(path);
+			}
+		}, callback);
+	}
+
+	/**
+	 * Moves or renames a file to a target file.
+	 *
+	 * @param eventloop event loop in which a file will be used
+	 * @param executor  @param source   the path to the file to move
+	 * @param target    the path to the target file (may be associated with a different provider to the source path)
+	 * @param options   options specifying how the move should be done
+	 * @param callback  callback which will be called after moving
+	 */
+	public static void move(Eventloop eventloop, ExecutorService executor,
+	                        final Path source, final Path target, final CopyOption[] options, CompletionCallback callback) {
+		runConcurrently(eventloop, executor, false, new RunnableWithException() {
+			@Override
+			public void runWithException() throws Exception {
+				Files.move(source, target, options);
+			}
+		}, callback);
+	}
+
+	/**
+	 * Creates a new directory.
+	 *
+	 * @param eventloop event loop in which a file will be used
+	 * @param executor  @param dir      the directory to create
+	 * @param attrs     an optional list of file attributes to set atomically when creating the directory
+	 * @param callback  callback which will be called after creating
+	 */
+	public static void createDirectory(Eventloop eventloop, ExecutorService executor,
+	                                   final Path dir, @Nullable final FileAttribute<?>[] attrs, CompletionCallback callback) {
+		runConcurrently(eventloop, executor, false, new RunnableWithException() {
+			@Override
+			public void runWithException() throws Exception {
+				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
+			}
+		}, callback);
+	}
+
+	/**
+	 * Creates a directory by creating all nonexistent parent directories first.
+	 *
+	 * @param eventloop event loop in which a file will be used
+	 * @param executor  @param dir      the directory to create
+	 * @param attrs     an optional list of file attributes to set atomically when creating the directory
+	 * @param callback  callback which will be called after creating
+	 */
+	public static void createDirectories(Eventloop eventloop, ExecutorService executor,
+	                                     final Path dir, @Nullable final FileAttribute<?>[] attrs, CompletionCallback callback) {
+		runConcurrently(eventloop, executor, false, new RunnableWithException() {
+			@Override
+			public void runWithException() throws Exception {
+				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
+			}
+		}, callback);
+	}
+
+	/**
+	 * Reads all sequence of bytes from this channel into the given buffer.
+	 *
+	 * @param eventloop event loop in which a file will be used
+	 * @param executor  @param path     the  path of the file to read
+	 * @param callback  which will be called after complete
+	 */
+	public static void readFile(Eventloop eventloop, ExecutorService executor,
+	                            Path path, final ResultCallback<ByteBuf> callback) {
+		open(eventloop, executor, path, new OpenOption[]{READ}, new ForwardingResultCallback<AsyncFile>(callback) {
+			@Override
+			public void onResult(final AsyncFile file) {
+				file.readFully(new ForwardingResultCallback<ByteBuf>(callback) {
+					@Override
+					public void onResult(ByteBuf buf) {
+						file.close(ignoreCompletionCallback());
+						callback.onResult(buf);
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						file.close(ignoreCompletionCallback());
+						callback.onException(exception);
+					}
+				});
+			}
+		});
+	}
+
+	/**
+	 * Creates new file and writes a sequence of bytes to this file from the given buffer, starting at the given file
+	 * position
+	 *
+	 * @param eventloop event loop in which a file will be used
+	 * @param executor  @param path     the  path of the file to create and write
+	 * @param buf       the  buffer from which bytes are to be transferred byteBuffer
+	 * @param callback  which will be called after complete
+	 */
+	public static void createNewAndWriteFile(Eventloop eventloop, ExecutorService executor,
+	                                         Path path, final ByteBuf buf, final CompletionCallback callback) {
+		open(eventloop, executor, path, new OpenOption[]{WRITE, CREATE_NEW}, new ForwardingResultCallback<AsyncFile>(callback) {
+			@Override
+			public void onResult(AsyncFile file) {
+				file.writeFully(buf, 0L, new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						buf.recycle();
+						callback.onComplete();
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						buf.recycle();
+						callback.onException(exception);
+					}
+				});
+			}
+		});
 	}
 
 	/**

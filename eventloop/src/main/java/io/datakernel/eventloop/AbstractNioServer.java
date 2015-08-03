@@ -17,7 +17,6 @@
 package io.datakernel.eventloop;
 
 import com.google.common.util.concurrent.ListenableFuture;
-import io.datakernel.annotation.NioThread;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.jmx.LastExceptionCounter;
@@ -47,7 +46,6 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * @param <S> type of AbstractNioServer which extends from it
  */
-@NioThread
 public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implements NioServer, AbstractNioServerMBean {
 	private static final Logger logger = getLogger(AbstractNioServer.class);
 

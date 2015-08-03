@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.annotation.NioThread;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
@@ -32,7 +31,6 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.nio.channels.SocketChannel;
 
-@NioThread
 public final class RpcServerConnection implements RpcConnection, RpcServerConnectionMBean {
 
 	public interface StatusListener {

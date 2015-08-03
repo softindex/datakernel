@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.annotation.NioThread;
 import io.datakernel.async.FirstResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnection;
@@ -29,7 +28,6 @@ import java.net.InetSocketAddress;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-@NioThread
 final class RequestSenderToAll implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 	private final RpcClientConnectionPool connections;

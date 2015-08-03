@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client.sender;
 
 import com.google.common.annotations.VisibleForTesting;
-import io.datakernel.annotation.NioThread;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.rpc.client.RpcClientConnection;
@@ -35,7 +34,6 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-@NioThread
 final class RequestSenderRendezvousHashing implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 	private final RpcClientConnectionPool connections;

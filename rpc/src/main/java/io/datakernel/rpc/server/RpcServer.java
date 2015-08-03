@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.annotation.NioThread;
 import io.datakernel.eventloop.AbstractNioServer;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
@@ -30,7 +29,6 @@ import java.nio.channels.SocketChannel;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-@NioThread
 public final class RpcServer extends AbstractNioServer<RpcServer> implements RpcServerMBean {
 
 	public static class Builder {
