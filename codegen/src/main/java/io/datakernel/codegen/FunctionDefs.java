@@ -48,22 +48,11 @@ public final class FunctionDefs {
 	/**
 	 * Return new variable which will process function
 	 *
-	 * @param name        name of variable
 	 * @param functionDef function which will be processed when variable will be used
 	 * @return new instance of the FunctionDef
 	 */
-	public static FunctionDef let(String name, FunctionDef functionDef) {
-		return new FunctionDefLet(functionDef, name);
-	}
-
-	/**
-	 * Return variable which was created with method 'let' before
-	 *
-	 * @param name name of variable
-	 * @return new instance of the FunctionDef
-	 */
-	public static FunctionDef var(String name) {
-		return new FunctionDefVar(name);
+	public static FunctionDef let(FunctionDef functionDef) {
+		return new FunctionDefLet(functionDef);
 	}
 
 	/**
@@ -386,6 +375,10 @@ public final class FunctionDefs {
 		return new FunctionDefArithmeticOp(FunctionDefArithmeticOp.Operation.ADD, left, right);
 	}
 
+	public static FunctionDefArithmeticOp sub(FunctionDef left, FunctionDef right) {
+		return new FunctionDefArithmeticOp(FunctionDefArithmeticOp.Operation.SUB, left, right);
+	}
+
 	/**
 	 * Returns new instance of class
 	 *
@@ -409,4 +402,123 @@ public final class FunctionDefs {
 		return new FunctionDefCall(owner, methodName, arguments);
 	}
 
+	public static FunctionDefIf choice(PredicateDef condition, FunctionDef left, FunctionDef right) {
+		return new FunctionDefIf(condition, left, right);
+	}
+
+	public static FunctionDefLength length(FunctionDef field) {
+		return new FunctionDefLength(field);
+	}
+
+	public static FunctionDefNewArray newArray(Class<?> type, FunctionDef length) {
+		return new FunctionDefNewArray(type, length);
+	}
+
+	public static FunctionDefCallStatic callStatic(Class<?> owner, String method, FunctionDef... arguments) {
+		return new FunctionDefCallStatic(owner, method, arguments);
+	}
+
+	public static FunctionDefArrayGet get(FunctionDef array, FunctionDef nom) {
+		return new FunctionDefArrayGet(array, nom);
+	}
+
+	public static FunctionDefCmpNull ifNull(FunctionDef field) {
+		return new FunctionDefCmpNull(field);
+	}
+
+	public static FunctionDefCmpNotNull ifNotNull(FunctionDef field) {
+		return new FunctionDefCmpNotNull(field);
+	}
+
+	public static FunctionDefNull nullRef(Class<?> type) {
+		return new FunctionDefNull(type);
+	}
+
+	public static FunctionDefNull nullRef(Type type) {
+		return new FunctionDefNull(type);
+	}
+
+	public static FunctionDefVoid voidFunc() {
+		return new FunctionDefVoid();
+	}
+
+	public static FunctionDefCallSelf callSelf(String methodName, Type returnType, FunctionDef... arguments) {
+		return new FunctionDefCallSelf(methodName, returnType, arguments);
+	}
+
+	public static FunctionDefSwitch switchForPosition(FunctionDef position, Type returnType, List<FunctionDef> list) {
+		return new FunctionDefSwitch(position, returnType, list);
+	}
+
+	public static FunctionDefSwitch switchForPosition(FunctionDef position, Type returnType, FunctionDef... functions) {
+		return new FunctionDefSwitch(position, returnType, asList(functions));
+	}
+
+	public static FunctionDefSwitchForKey switchForKey(FunctionDef key, Type returnType, List<FunctionDef> listKey, List<FunctionDef> listValue) {
+		return new FunctionDefSwitchForKey(key, returnType, listKey, listValue);
+	}
+
+	public static FunctionDefCallStaticForDynamicType callFutureStatic(String className, String methodName, Type returnType, FunctionDef... functions) {
+		return new FunctionDefCallStaticForDynamicType(className, methodName, returnType, functions);
+	}
+
+	public static FunctionDefCallForDynamicType callFuture(String className, String methodName, Type returnType, FunctionDef... functions) {
+		return new FunctionDefCallForDynamicType(className, methodName, returnType, functions);
+	}
+
+	public static FunctionDefArraySet setForArray(FunctionDef array, FunctionDef position, FunctionDef newElement) {
+		return new FunctionDefArraySet(array, position, newElement);
+	}
+
+	public static FunctionDefArrayForEachWithChanges arrayForEachWithChanges(FunctionDef field, ForEachWithChanges forEachWithChanges) {
+		return new FunctionDefArrayForEachWithChanges(field, forEachWithChanges);
+	}
+
+	public static FunctionDefArrayForEachWithChanges arrayForEachWithChanges(FunctionDef field, FunctionDef start, FunctionDef length, ForEachWithChanges forEachWithChanges) {
+		return new FunctionDefArrayForEachWithChanges(field, start, length, forEachWithChanges);
+	}
+
+	public static FunctionDefFor functionFor(FunctionDef start, FunctionDef length, ForVar forVar) {
+		return new FunctionDefFor(start, length, forVar);
+	}
+
+	public static FunctionDefFor functionFor(FunctionDef length, ForVar forVar) {
+		return new FunctionDefFor(length, forVar);
+	}
+
+	public static FunctionDefForEach arrayForEach(FunctionDef field, ForVar forVar) {
+		return new FunctionDefForEach(field, forVar);
+	}
+
+	public static FunctionDefForEach arrayForEach(FunctionDef field, FunctionDef start, FunctionDef length, ForVar forVar) {
+		return new FunctionDefForEach(field, start, length, forVar);
+	}
+
+	public static FunctionDefListForEach listForEach(FunctionDef field, ForVar forVar) {
+		return new FunctionDefListForEach(field, forVar);
+	}
+
+	public static FunctionDefMapForEach mapForEach(FunctionDef field, ForVar forKey, ForVar forValue) {
+		return new FunctionDefMapForEach(field, forKey, forValue);
+	}
+
+	public static FunctionDefSetForEach setForEach(FunctionDef field, ForVar forVar) {
+		return new FunctionDefSetForEach(field, forVar);
+	}
+
+	public static ForEachHppcMap hppcMapForEach(Class<?> iteratorType, FunctionDef value, ForVar forKey, ForVar forValue) {
+		return new ForEachHppcMap(iteratorType, value, forKey, forValue);
+	}
+
+	public static ForEachHppcSet hppcSetForEach(Class<?> iteratorType, FunctionDef field, ForVar forVar) {
+		return new ForEachHppcSet(iteratorType, field, forVar);
+	}
+
+	public static FunctionDefNeg neg(FunctionDef arg) {
+		return new FunctionDefNeg(arg);
+	}
+
+	public static FunctionDefBitOp bitOp(FunctionDefBitOp.Operation op, FunctionDef value, FunctionDef shift) {
+		return new FunctionDefBitOp(op, value, shift);
+	}
 }

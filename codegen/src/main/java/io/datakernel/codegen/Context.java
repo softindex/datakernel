@@ -36,7 +36,6 @@ public final class Context {
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
 	private final Map<FunctionDef, Integer> cache = new HashMap<>();
-	private final Map<String, Integer> namedLocals = new HashMap<>();
 
 	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> thisSuperclass, Map<String, Class<?>> thisFields,
 	               Set<Method> methods, Type[] argumentTypes) {
@@ -84,23 +83,4 @@ public final class Context {
 		return cache.get(functionDef);
 	}
 
-	public void putLocal(String name, VarLocal varLocal) {
-		this.namedLocals.put(name, varLocal.getLocal());
-	}
-
-	public VarLocal newLocal(String name, Type type) {
-		int local = g.newLocal(type);
-		VarLocal var = new VarLocal(local);
-		putLocal(name, var);
-		return var;
-	}
-
-	public VarLocal getLocal(String name) {
-		int local = this.namedLocals.get(name);
-		return new VarLocal(local);
-	}
-
-	public boolean hasLocal(String name) {
-		return this.namedLocals.containsKey(name);
-	}
 }

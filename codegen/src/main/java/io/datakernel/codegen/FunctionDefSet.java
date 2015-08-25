@@ -25,7 +25,7 @@ public final class FunctionDefSet implements FunctionDef {
 	private final StoreDef to;
 	private final FunctionDef from;
 
-	public FunctionDefSet(StoreDef to, FunctionDef from) {
+	FunctionDefSet(StoreDef to, FunctionDef from) {
 		this.to = to;
 		this.from = from;
 	}

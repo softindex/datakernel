@@ -34,7 +34,7 @@ public final class FunctionDefArithmeticOp implements FunctionDef {
 	}
 
 	public enum Operation {
-		ADD(IADD, "+"), SUB(ISUB, "-"), MUL(IMUL, "*"), DIV(IDIV, "/");
+		ADD(IADD, "+"), SUB(ISUB, "-"), MUL(IMUL, "*"), DIV(IDIV, "/"), REM(IREM, "%");
 
 		private final int opCode;
 		private final String symbol;
@@ -67,6 +67,7 @@ public final class FunctionDefArithmeticOp implements FunctionDef {
 			int order;
 			if (dataType == Byte.TYPE ||
 					dataType == Short.TYPE ||
+					dataType == Character.TYPE ||
 					dataType == Integer.TYPE) {
 				t = Integer.TYPE;
 				order = 1;

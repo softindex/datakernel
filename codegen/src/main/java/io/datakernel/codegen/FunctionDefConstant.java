@@ -16,11 +16,11 @@
 
 package io.datakernel.codegen;
 
-import com.google.common.primitives.Primitives;
+import io.datakernel.codegen.utils.Primitives;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -41,7 +41,12 @@ public final class FunctionDefConstant implements FunctionDef {
 
 	@Override
 	public Type type(Context ctx) {
-		return getType(Primitives.unwrap(value.getClass()));
+		if (value instanceof String) {
+			return getType(String.class);
+		} else if (value instanceof Type) {
+			return (Type) value;
+		} else
+			return getType(Primitives.unwrap(value.getClass()));
 	}
 
 	@Override
@@ -65,13 +70,9 @@ public final class FunctionDefConstant implements FunctionDef {
 		} else if (value instanceof Character) {
 			g.push((Character) value);
 		} else if (value instanceof String) {
-//            if (argumentDataType instanceof DataTypeEnum) {
-//                DataTypeEnum dataTypeEnum = (DataTypeEnum) argumentDataType;
-//                Integer ordinal = dataTypeEnum.getValuesBiMap().inverse().get(value);
-//                checkNotNull(ordinal);
-//                g.push((byte) (int) ordinal);
-//            } else
 			g.push((String) value);
+		} else if (value instanceof Type) {
+			g.push((Type) value);
 		} else
 			throw new IllegalArgumentException();
 		return type;

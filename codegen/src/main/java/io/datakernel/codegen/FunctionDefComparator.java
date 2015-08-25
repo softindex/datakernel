@@ -16,6 +16,7 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.codegen.utils.Preconditions;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
@@ -24,7 +25,6 @@ import org.objectweb.asm.commons.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static io.datakernel.codegen.Utils.wrap;
 import static org.objectweb.asm.Type.INT_TYPE;
@@ -41,7 +41,7 @@ public final class FunctionDefComparator implements FunctionDef {
 	}
 
 	FunctionDefComparator(List<FunctionDef> left, List<FunctionDef> right) {
-		checkArgument(left.size() == right.size());
+		Preconditions.check(left.size() == right.size());
 		this.left.addAll(left);
 		this.right.addAll(right);
 	}
@@ -67,14 +67,14 @@ public final class FunctionDefComparator implements FunctionDef {
 			Type leftFieldType = left.get(i).load(ctx);
 			Type rightFieldType = right.get(i).load(ctx);
 
-			checkArgument(leftFieldType.equals(rightFieldType));
+			Preconditions.check(leftFieldType.equals(rightFieldType));
 			if (isPrimitiveType(leftFieldType)) {
 				g.invokeStatic(wrap(leftFieldType), new Method("compare", INT_TYPE, new Type[]{leftFieldType, leftFieldType}));
 				g.dup();
 				g.ifZCmp(NE, labelNe);
 				g.pop();
 			} else {
-				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{leftFieldType}));
+				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
 				g.dup();
 				g.ifZCmp(NE, labelNe);
 				g.pop();

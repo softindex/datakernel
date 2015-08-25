@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Throwables.propagate;
 import static io.datakernel.codegen.Utils.getJavaType;
 import static io.datakernel.codegen.Utils.invokeVirtualOrInterface;
 import static org.objectweb.asm.Type.getType;
@@ -58,14 +57,15 @@ public final class FunctionDefCall implements FunctionDef {
 			if (ctx.getThisType().equals(owner.type(ctx))) {
 				// TODO
 				throw new UnsupportedOperationException();
+			} else {
+				Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), owner.type(ctx));
+				Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));
+				Class<?> returnClass = method.getReturnType();
+				returnType = getType(returnClass);
 			}
-			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), owner.type(ctx));
-			Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));
-			Class<?> returnClass = method.getReturnType();
-			returnType = getType(returnClass);
 
 		} catch (NoSuchMethodException e) {
-			throw propagate(e);
+			throw new RuntimeException(e);
 		}
 
 		return returnType;
@@ -100,7 +100,7 @@ public final class FunctionDefCall implements FunctionDef {
 					returnType, argumentTypes.toArray(new Type[]{})));
 
 		} catch (NoSuchMethodException e) {
-			throw propagate(e);
+			throw new RuntimeException(e);
 		}
 		return returnType;
 	}

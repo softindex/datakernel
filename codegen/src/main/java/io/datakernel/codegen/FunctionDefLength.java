@@ -17,27 +17,33 @@
 package io.datakernel.codegen;
 
 import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
 
-/**
- * Defines methods for using a variable which was created with method 'let' before
- */
-public final class FunctionDefVar implements FunctionDef {
-	private final String name;
+import static io.datakernel.codegen.FunctionDefs.call;
 
-	public FunctionDefVar(String name) {
-		this.name = name;
+public class FunctionDefLength implements FunctionDef {
+	private final FunctionDef field;
+
+	FunctionDefLength(FunctionDef field) {
+		this.field = field;
 	}
 
 	@Override
 	public Type type(Context ctx) {
-		return ctx.getLocal(name).type(ctx);
+		return Type.INT_TYPE;
 	}
 
 	@Override
 	public Type load(Context ctx) {
-		VarLocal var = ctx.getLocal(name);
-		var.load(ctx);
-		return var.type(ctx);
+		GeneratorAdapter g = ctx.getGeneratorAdapter();
+
+		if (field.type(ctx).getSort() == Type.ARRAY) {
+			field.load(ctx);
+			g.arrayLength();
+		} else if (field.type(ctx).getSort() == Type.OBJECT) {
+			call(field, "size").load(ctx);
+		}
+		return Type.INT_TYPE;
 	}
 
 	@Override
@@ -45,13 +51,14 @@ public final class FunctionDefVar implements FunctionDef {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-		FunctionDefVar that = (FunctionDefVar) o;
+		FunctionDefLength that = (FunctionDefLength) o;
 
-		return name.equals(that.name);
+		return !(field != null ? !field.equals(that.field) : that.field != null);
+
 	}
 
 	@Override
 	public int hashCode() {
-		return name.hashCode();
+		return field != null ? field.hashCode() : 0;
 	}
 }

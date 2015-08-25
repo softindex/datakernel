@@ -20,34 +20,44 @@ import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Utils.newLocal;
 
-/**
- * Defines methods which allow to create variables
- */
-public final class FunctionDefLet implements FunctionDef {
-	private final FunctionDef functionDef;
-	private final String name;
+public class FunctionDefLet implements FunctionDef, StoreDef {
+	private final FunctionDef field;
+	private VarLocal var;
 
-	public FunctionDefLet(FunctionDef functionDef, String name) {
-		this.functionDef = functionDef;
-		this.name = name;
+	FunctionDefLet(FunctionDef field) {
+		this.field = field;
 	}
 
 	@Override
 	public Type type(Context ctx) {
-		return functionDef.type(ctx);
+		return field.type(ctx);
 	}
 
 	@Override
 	public Type load(Context ctx) {
-		VarLocal var = ctx.hasLocal(name) ? ctx.getLocal(name) : null;
 		if (var == null) {
-			Type type = functionDef.load(ctx);
-			var = newLocal(ctx, type);
+			var = newLocal(ctx, field.type(ctx));
+			field.load(ctx);
 			var.store(ctx);
-			ctx.putLocal(name, var);
 		}
 		var.load(ctx);
-		return var.type(ctx);
+		return field.type(ctx);
+	}
+
+	@Override
+	public Object beginStore(Context ctx) {
+		return null;
+	}
+
+	@Override
+	public void store(Context ctx, Object storeContext, Type type) {
+		if (var == null) {
+			var = newLocal(ctx, field.type(ctx));
+			field.load(ctx);
+			var.store(ctx);
+		}
+
+		var.store(ctx, storeContext, type);
 	}
 
 	@Override
@@ -57,13 +67,15 @@ public final class FunctionDefLet implements FunctionDef {
 
 		FunctionDefLet that = (FunctionDefLet) o;
 
-		return (functionDef.equals(that.functionDef)) && (name.equals(that.name));
+		if (field != null ? !field.equals(that.field) : that.field != null) return false;
+		return !(var != null ? !var.equals(that.var) : that.var != null);
+
 	}
 
 	@Override
 	public int hashCode() {
-		int result = functionDef.hashCode();
-		result = 31 * result + name.hashCode();
+		int result = field != null ? field.hashCode() : 0;
+		result = 31 * result + (var != null ? var.hashCode() : 0);
 		return result;
 	}
 }

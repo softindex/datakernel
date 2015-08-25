@@ -167,6 +167,7 @@ public class FunctionDefTest {
 
 	@org.junit.Test
 	public void test() throws IllegalAccessException, InstantiationException {
+		FunctionDef local = let(constructor(TestPojo.class, value(1)));
 		Class<Test> testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), Test.class)
 				.field("x", int.class)
 				.field("y", Long.class)
@@ -190,9 +191,9 @@ public class FunctionDefTest {
 						set(field(cache(arg(0)), "field2"), value(20)),
 						arg(0)))
 				.method("ctor", sequence(
-						let("t", constructor(TestPojo.class, value(1))),
-						set(field(var("t"), "field2"), value(2)),
-						var("t")))
+						local,
+						set(field(local, "field2"), value(2)),
+						local))
 				.method("getX",
 						field(self(), "x"))
 				.method("getY",
@@ -279,4 +280,166 @@ public class FunctionDefTest {
 				.newInstance();
 		assertTrue(comparator.compare(new TestPojo(1, 10), new TestPojo(1, 10)) == 0);
 	}
+
+	public interface TestNeg {
+		boolean negBoolean();
+
+		int negByte();
+
+		int negShort();
+
+		int negChar();
+
+		int negInt();
+
+		long negLong();
+
+		float negFloat();
+
+		double negDouble();
+	}
+
+	@org.junit.Test
+	public void testNeg() {
+		boolean z = true;
+		byte b = Byte.MAX_VALUE;
+		short s = Short.MAX_VALUE;
+		char c = Character.MAX_VALUE;
+		int i = Integer.MAX_VALUE;
+		long l = Long.MAX_VALUE;
+		float f = Float.MAX_VALUE;
+		double d = Double.MAX_VALUE;
+
+		TestNeg testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestNeg.class)
+				.method("negBoolean", neg(value(z)))
+				.method("negShort", neg(value(s)))
+				.method("negByte", neg(value(b)))
+				.method("negChar", neg(value(c)))
+				.method("negInt", neg(value(i)))
+				.method("negLong", neg(value(l)))
+				.method("negFloat", neg(value(f)))
+				.method("negDouble", neg(value(d)))
+				.newInstance();
+
+		assertTrue(testClass.negBoolean() == !z);
+		assertTrue(testClass.negShort() == -(int) s);
+		assertTrue(testClass.negByte() == -(int) b);
+		assertTrue(testClass.negChar() == -(int) c);
+		assertTrue(testClass.negInt() == -i);
+		assertTrue(testClass.negLong() == -l);
+		assertTrue(testClass.negFloat() == -f);
+		assertTrue(testClass.negDouble() == -d);
+	}
+
+	public interface TestOperation {
+		int remB();
+
+		int remS();
+
+		int remC();
+
+		int remI();
+
+		long remL();
+
+		float remF();
+
+		double remD();
+	}
+
+	@org.junit.Test
+	public void testOperation() {
+		byte b = Byte.MAX_VALUE;
+		short s = Short.MAX_VALUE;
+		char c = Character.MAX_VALUE;
+		int i = Integer.MAX_VALUE;
+		long l = Long.MAX_VALUE;
+		float f = Float.MAX_VALUE;
+		double d = Double.MAX_VALUE;
+
+		TestOperation testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestOperation.class)
+				.method("remB", arithmeticOp(FunctionDefArithmeticOp.Operation.REM, value(b), value(20)))
+				.method("remS", arithmeticOp(FunctionDefArithmeticOp.Operation.REM, value(s), value(20)))
+				.method("remC", arithmeticOp(FunctionDefArithmeticOp.Operation.REM, value(c), value(20)))
+				.method("remI", arithmeticOp(FunctionDefArithmeticOp.Operation.REM, value(i), value(20)))
+				.method("remL", arithmeticOp(FunctionDefArithmeticOp.Operation.REM, value(l), value(20)))
+				.method("remF", arithmeticOp(FunctionDefArithmeticOp.Operation.REM, value(f), value(20)))
+				.method("remD", arithmeticOp(FunctionDefArithmeticOp.Operation.REM, value(d), value(20)))
+				.newInstance();
+
+		assertTrue(testClass.remB() == (b % (20)));
+		assertTrue(testClass.remS() == (s % (20)));
+		assertTrue(testClass.remC() == (c % (20)));
+		assertTrue(testClass.remI() == (i % (20)));
+		assertTrue(testClass.remL() == (l % (20)));
+		assertTrue(testClass.remF() == (f % (20)));
+		assertTrue(testClass.remD() == (d % (20)));
+	}
+
+	public interface TestSH {
+		int shlInt();
+
+		long shlLong();
+
+		int shrInt();
+
+		long shrLong();
+
+		int ushrInt();
+	}
+
+	@org.junit.Test
+	public void testSH() {
+		byte b = 8;
+		int i = 2;
+		long l = 4;
+
+		TestSH testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestSH.class)
+				.method("shlInt", bitOp(FunctionDefBitOp.Operation.SHL, value(b), value(i)))
+				.method("shlLong", bitOp(FunctionDefBitOp.Operation.SHL, value(l), value(b)))
+				.method("shrInt", bitOp(FunctionDefBitOp.Operation.SHR, value(b), value(i)))
+				.method("shrLong", bitOp(FunctionDefBitOp.Operation.SHR, value(l), value(i)))
+				.method("ushrInt", bitOp(FunctionDefBitOp.Operation.USHR, value(b), value(i)))
+				.newInstance();
+
+		assertTrue(testClass.shlInt() == (b << i));
+		assertTrue(testClass.shlLong() == (l << b));
+		assertTrue(testClass.shrInt() == (b >> i));
+		assertTrue(testClass.shrLong() == (l >> i));
+		assertTrue(testClass.ushrInt() == (b >>> i));
+	}
+
+	public interface TestBitMask {
+		int andInt();
+
+		int orInt();
+
+		int xorInt();
+
+		long andLong();
+
+		long orLong();
+
+		long xorLong();
+	}
+
+	@org.junit.Test
+	public void testBitMask() {
+		TestBitMask testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestBitMask.class)
+				.method("andInt", bitOp(FunctionDefBitOp.Operation.AND, value(2), value(4)))
+				.method("orInt", bitOp(FunctionDefBitOp.Operation.OR, value(2), value(4)))
+				.method("xorInt", bitOp(FunctionDefBitOp.Operation.XOR, value(2), value(4)))
+				.method("andLong", bitOp(FunctionDefBitOp.Operation.AND, value(2), value((long) 4)))
+				.method("orLong", bitOp(FunctionDefBitOp.Operation.OR, value(2L), value(4L)))
+				.method("xorLong", bitOp(FunctionDefBitOp.Operation.XOR, value(2L), value(4L)))
+				.newInstance();
+
+		assertTrue(testClass.andInt() == (2 & 4));
+		assertTrue(testClass.orInt() == (2 | 4));
+		assertTrue(testClass.xorInt() == (2 ^ 4));
+		assertTrue(testClass.andLong() == (2L & 4L));
+		assertTrue(testClass.orLong() == (2L | 4L));
+		assertTrue(testClass.xorLong() == (2L ^ 4L));
+	}
+
 }

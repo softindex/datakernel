@@ -23,7 +23,6 @@ import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Throwables.propagate;
 import static io.datakernel.codegen.Utils.getJavaType;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
@@ -71,7 +70,7 @@ public final class FunctionDefConstructor implements FunctionDef {
 			g.invokeConstructor(getType(type), getMethod(constructor));
 			return getType(type);
 		} catch (NoSuchMethodException e) {
-			throw propagate(e);
+			throw new RuntimeException(e);
 		}
 	}
 

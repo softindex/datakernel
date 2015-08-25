@@ -16,11 +16,11 @@
 
 package io.datakernel.codegen;
 
+import io.datakernel.codegen.utils.Preconditions;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
 /**
@@ -76,7 +76,7 @@ public final class PredicateDefCmp implements PredicateDef {
 		Label labelTrue = new Label();
 		Label labelExit = new Label();
 
-		checkArgument(left.type(ctx).equals(right.type(ctx)));
+		Preconditions.check(left.type(ctx).equals(right.type(ctx)));
 		left.load(ctx);
 		right.load(ctx);
 		g.ifCmp(left.type(ctx), operation.opCode, labelTrue);

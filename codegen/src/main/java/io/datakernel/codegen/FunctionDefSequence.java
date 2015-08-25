@@ -22,7 +22,6 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.collect.Iterables.getLast;
 import static org.objectweb.asm.Type.VOID_TYPE;
 
 /**
@@ -45,6 +44,10 @@ public final class FunctionDefSequence implements FunctionDef {
 	public Type type(Context ctx) {
 		FunctionDef functionDef = getLast(functionDefs);
 		return functionDef.type(ctx);
+	}
+
+	private FunctionDef getLast(List<FunctionDef> list) {
+		return list.get(list.size() - 1);
 	}
 
 	@Override
