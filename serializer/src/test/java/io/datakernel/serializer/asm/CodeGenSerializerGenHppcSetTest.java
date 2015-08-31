@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer2.asm;
+package io.datakernel.serializer.asm;
 
 import com.carrotsearch.hppc.*;
-import io.datakernel.serializer2.*;
-import io.datakernel.serializer2.annotations.Serialize;
+import io.datakernel.serializer.*;
+import io.datakernel.serializer.annotations.Serialize;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class CodeGenSerializerGenHppcSetTest {
-	private static final SerializerCodeGenFactory bufferSerializerFactory = SerializerCodeGenFactory.createBufferSerializerFactory();
+	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer) {
 		byte[] array = new byte[1000];

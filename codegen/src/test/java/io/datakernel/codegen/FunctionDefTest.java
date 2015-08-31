@@ -18,6 +18,7 @@ package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
+import java.util.Collections;
 import java.util.Comparator;
 
 import static io.datakernel.codegen.FunctionDefs.*;
@@ -429,8 +430,8 @@ public class FunctionDefTest {
 				.method("andInt", bitOp(FunctionDefBitOp.Operation.AND, value(2), value(4)))
 				.method("orInt", bitOp(FunctionDefBitOp.Operation.OR, value(2), value(4)))
 				.method("xorInt", bitOp(FunctionDefBitOp.Operation.XOR, value(2), value(4)))
-				.method("andLong", bitOp(FunctionDefBitOp.Operation.AND, value(2), value((long) 4)))
-				.method("orLong", bitOp(FunctionDefBitOp.Operation.OR, value(2L), value(4L)))
+				.method("andLong", bitOp(FunctionDefBitOp.Operation.AND, value(2), value(4L)))
+				.method("orLong", bitOp(FunctionDefBitOp.Operation.OR, value((byte) 2), value(4L)))
 				.method("xorLong", bitOp(FunctionDefBitOp.Operation.XOR, value(2L), value(4L)))
 				.newInstance();
 
@@ -442,4 +443,60 @@ public class FunctionDefTest {
 		assertTrue(testClass.xorLong() == (2L ^ 4L));
 	}
 
+	public interface TestCall {
+		int callOther1(int i);
+
+		long callOther2();
+
+		int callStatic1(int i1, int i2);
+
+		long callStatic2(long l);
+	}
+
+	@org.junit.Test
+	public void testCall() {
+		TestCall testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestCall.class)
+				.method("callOther1", call(self(), "method", arg(0)))
+				.method("callOther2", call(self(), "method"))
+				.method("method", int.class, asList(int.class), arg(0))
+				.method("method", long.class, Collections.<Class<?>>emptyList(), value(-1L))
+				.method("callStatic1", int.class, asList(int.class, int.class), callStaticSelf("method", arg(0), arg(1)))
+				.method("callStatic2", long.class, asList(long.class), callStaticSelf("method", arg(0)))
+				.staticMethod("method", int.class, asList(int.class, int.class), arg(1))
+				.staticMethod("method", long.class, asList(long.class), arg(0))
+				.newInstance();
+
+		assert (testClass.callOther1(100) == 100);
+		assert (testClass.callOther2() == -1);
+		assert (testClass.callStatic1(1, 2) == 2);
+		assert (testClass.callStatic2(3L) == 3L);
+	}
+
+	public interface TestArgument {
+		Object array(WriteFirstElement w, Object[] arr);
+
+		Object write(WriteFirstElement w, Object o);
+	}
+
+	public static class WriteFirstElement {
+		public Object writeFirst(Object[] i) {
+			return i[0];
+		}
+
+		public Object write(Object o) {
+			return o;
+		}
+
+	}
+
+	@org.junit.Test
+	public void testArgument() {
+		TestArgument testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestArgument.class)
+				.method("array", call(arg(0), "writeFirst", arg(1)))
+				.method("write", call(arg(0), "write", arg(1)))
+				.newInstance();
+
+		assertTrue(testClass.array(new WriteFirstElement(), new Object[]{1000, 2, 3, 4}).equals(1000));
+		assertTrue(testClass.write(new WriteFirstElement(), 1000).equals(1000));
+	}
 }

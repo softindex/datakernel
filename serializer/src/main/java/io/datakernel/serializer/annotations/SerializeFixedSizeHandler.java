@@ -29,7 +29,7 @@ public final class SerializeFixedSizeHandler implements AnnotationHandler<Serial
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
 				if (fallback instanceof SerializerGenArray) {
-					return ((SerializerGenArray) fallback).fixedSize(annotation.value());
+					return ((SerializerGenArray) fallback).fixedSize(annotation.value(), type);
 				}
 				if (fallback instanceof SerializerGenList) {
 					throw new UnsupportedOperationException(); // TODO

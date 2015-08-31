@@ -18,7 +18,6 @@ package io.datakernel.cube;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import com.google.common.reflect.TypeToken;
 import io.datakernel.async.CompletionCallbackObserver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.LogToCubeTest.TestAdvResult;
@@ -82,7 +81,7 @@ public class CubeBenchmark {
 			LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, dir);
 			SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
 			SerializerScanner registry = SerializerScanner.defaultScanner();
-			SerializerGen serializerGen = registry.serializer(TypeToken.of(TestPubRequest.class));
+			SerializerGen serializerGen = registry.serializer(TestPubRequest.class);
 			BufferSerializer<TestPubRequest> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 			LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);

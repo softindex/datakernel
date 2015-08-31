@@ -16,22 +16,17 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.FunctionDef;
+import io.datakernel.serializer.SerializerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenNullable implements SerializerGen {
 	private static final Logger logger = LoggerFactory.getLogger(SerializerGenNullable.class);
-
-	public static final int VAR_ITEM = 0;
-	public static final int VAR_LAST = VAR_ITEM + 1;
 
 	private final SerializerGen serializer;
 
@@ -54,70 +49,33 @@ public class SerializerGenNullable implements SerializerGen {
 		return serializer.getRawType();
 	}
 
-	public static void serializeNullable(SerializerGen serializer, int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		if (sourceType.isPrimitive()) {
-			logger.warn("Nullable serializer for primitive type {}", sourceType);
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitInsn(ICONST_1);
-			backend.writeByteGen(mv);
-			serializerCaller.serialize(serializer, version, mv, locals + VAR_LAST, varContainer, sourceType);
-			return;
-		}
-
-		Label notNull = new Label();
-		Label exit = new Label();
-
-		mv.visitVarInsn(ASTORE, locals + VAR_ITEM);
-		mv.visitVarInsn(ALOAD, locals + VAR_ITEM);
-		mv.visitJumpInsn(IFNONNULL, notNull);
-		mv.visitInsn(ICONST_0);
-		backend.writeByteGen(mv);
-		mv.visitJumpInsn(GOTO, exit);
-
-		mv.visitLabel(notNull);
-		mv.visitInsn(ICONST_1);
-		backend.writeByteGen(mv);
-		mv.visitVarInsn(ALOAD, varContainer);
-		mv.visitVarInsn(ALOAD, locals + VAR_ITEM);
-		serializerCaller.serialize(serializer, version, mv, locals + VAR_LAST, varContainer, sourceType);
-
-		mv.visitLabel(exit);
-	}
-
-	public static void deserializeNullable(SerializerGen serializer, int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		Label notNull = new Label();
-		Label exit = new Label();
-
-		backend.readByteGen(mv);
-		mv.visitJumpInsn(IFNE, notNull);
-
-		if (targetType.isPrimitive()) {
-			logger.warn("Nullable deserializer for primitive type {}", targetType);
-			mv.visitTypeInsn(NEW, getInternalName(NullPointerException.class));
-			mv.visitInsn(DUP);
-			mv.visitMethodInsn(INVOKESPECIAL, getInternalName(NullPointerException.class),
-					"<init>", getMethodDescriptor(VOID_TYPE));
-			mv.visitInsn(ATHROW);
-		} else {
-			mv.visitInsn(ACONST_NULL);
-			mv.visitJumpInsn(GOTO, exit);
-		}
-
-		mv.visitLabel(notNull);
-		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(serializer, version, mv, locals, varContainer, targetType);
-
-		mv.visitLabel(exit);
+	@Override
+	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+		serializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		serializeNullable(serializer, version, mv, backend, varContainer, locals, serializerCaller, sourceType);
+	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+		return choice(ifNotNull(value),
+				sequence(call(arg(0), "writeByte", value((byte) 1)),
+						serializer.serialize(value, version, staticMethods),
+						voidFunc()),
+				sequence(call(arg(0), "writeByte", value((byte) 0)), voidFunc())
+		);
 	}
 
 	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		deserializeNullable(serializer, version, mv, backend, varContainer, locals, serializerCaller, targetType);
+	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+		serializer.prepareDeserializeStaticMethods(version, staticMethods);
+	}
+
+	@Override
+	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+		FunctionDef isNotNull = let(call(arg(0), "readByte"));
+		return sequence(isNotNull, choice(cmpEq(isNotNull, value((byte) 1)),
+						serializer.deserialize(serializer.getRawType(), version, staticMethods),
+						nullRef(targetType))
+		);
 	}
 
 	@Override
@@ -127,7 +85,9 @@ public class SerializerGenNullable implements SerializerGen {
 
 		SerializerGenNullable that = (SerializerGenNullable) o;
 
-		return serializer.equals(that.serializer);
+		if (!serializer.equals(that.serializer)) return false;
+
+		return true;
 	}
 
 	@Override

@@ -16,7 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.FunctionDef;
+import io.datakernel.serializer.SerializerFactory;
+
+import static io.datakernel.codegen.FunctionDefs.*;
 
 public final class SerializerGenBoolean extends SerializerGenPrimitive {
 
@@ -25,12 +28,15 @@ public final class SerializerGenBoolean extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected void doSerialize(MethodVisitor mv, SerializerBackend backend) {
-		backend.writeBooleanGen(mv);
+	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+		return call(arg(0), "writeBoolean", cast(value, boolean.class));
 	}
 
 	@Override
-	protected void doDeserialize(MethodVisitor mv, SerializerBackend backend) {
-		backend.readBooleanGen(mv);
+	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+		if (targetType.isPrimitive())
+			return call(arg(0), "readBoolean");
+		else
+			return cast(call(arg(0), "readBoolean"), Boolean.class);
 	}
 }

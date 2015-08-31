@@ -226,6 +226,16 @@ public class SerializationOutputBuffer {
 		}
 	}
 
+	public void writeAscii(String s) {
+		int length = s.length();
+		writeVarInt(length);
+		ensureSize(length * 3);
+		for (int i = 0; i < length; i++) {
+			int c = s.charAt(i);
+			buf[pos++] = (byte) c;
+		}
+	}
+
 	public void writeNullableUTF8(String s) {
 		if (s == null) {
 			writeByte((byte) 0);
@@ -241,6 +251,20 @@ public class SerializationOutputBuffer {
 			} else {
 				writeUtfChar(c);
 			}
+		}
+	}
+
+	public void writeNullableAscii(String s) {
+		if (s == null) {
+			writeByte((byte) 0);
+			return;
+		}
+		int length = s.length();
+		writeVarInt(length);
+		ensureSize(length * 3);
+		for (int i = 0; i < length; i++) {
+			int c = s.charAt(i);
+			buf[pos++] = (byte) c;
 		}
 	}
 

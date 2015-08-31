@@ -16,20 +16,17 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializerFactory;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.primitives.Primitives.wrap;
-import static org.objectweb.asm.Opcodes.CHECKCAST;
-import static org.objectweb.asm.Type.getInternalName;
+import static io.datakernel.codegen.utils.Primitives.wrap;
 
 public abstract class SerializerGenPrimitive implements SerializerGen {
 
 	private final Class<?> primitiveType;
 
 	protected SerializerGenPrimitive(Class<?> primitiveType) {
-		checkArgument(primitiveType.isPrimitive());
+		Preconditions.check(primitiveType.isPrimitive());
 		this.primitiveType = primitiveType;
 	}
 
@@ -55,36 +52,6 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 		return wrap(primitiveType);
 	}
 
-	protected abstract void doSerialize(MethodVisitor mv, SerializerBackend backend);
-
-	@Override
-	public final void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		if (sourceType.isPrimitive()) {
-			checkArgument(sourceType == getPrimitiveType());
-		} else {
-			if (sourceType != getBoxedType()) {
-				checkArgument(sourceType.isAssignableFrom(getBoxedType()));
-				mv.visitTypeInsn(CHECKCAST, getInternalName(getBoxedType()));
-			}
-			Utils.unbox(mv, getPrimitiveType());
-		}
-		doSerialize(mv, backend);
-	}
-
-	protected abstract void doDeserialize(MethodVisitor mv, SerializerBackend backend);
-
-	@Override
-	public final void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer,
-	                              int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		doDeserialize(mv, backend);
-		if (targetType.isPrimitive()) {
-			checkArgument(targetType == getPrimitiveType());
-		} else {
-			checkArgument(targetType.isAssignableFrom(getBoxedType()));
-			Utils.box(mv, getPrimitiveType());
-		}
-	}
-
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
@@ -98,4 +65,13 @@ public abstract class SerializerGenPrimitive implements SerializerGen {
 		return 0;
 	}
 
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+
+	}
+
+	@Override
+	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+
+	}
 }

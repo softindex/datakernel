@@ -14,15 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer2.annotations;
+package io.datakernel.serializer.annotations;
+
+import io.datakernel.serializer.SerializerScanner;
+import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.asm.SerializerGenBuilder;
+import io.datakernel.serializer.asm.SerializerGenString;
 
 public class SerializeAsciiHandler implements AnnotationHandler<SerializeAscii, SerializeAsciiEx> {
 	@Override
-	public io.datakernel.serializer2.asm.SerializerGenBuilder createBuilder(io.datakernel.serializer2.SerializerScanner serializerScanner, SerializeAscii annotation) {
-		return new io.datakernel.serializer2.asm.SerializerGenBuilder() {
+	public SerializerGenBuilder createBuilder(SerializerScanner serializerScanner, SerializeAscii annotation) {
+		return new SerializerGenBuilder() {
 			@Override
-			public io.datakernel.serializer2.asm.SerializerGen serializer(Class<?> type, SerializerForType[] generics, io.datakernel.serializer2.asm.SerializerGen fallback) {
-				return ((io.datakernel.serializer2.asm.SerializerGenString) fallback).ascii(true);
+			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
+				return ((SerializerGenString) fallback).ascii(true);
 			}
 		};
 	}

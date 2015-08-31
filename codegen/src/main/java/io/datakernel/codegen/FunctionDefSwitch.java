@@ -20,6 +20,8 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static io.datakernel.codegen.Utils.newLocal;
@@ -28,18 +30,26 @@ import static org.objectweb.asm.Type.getType;
 
 public class FunctionDefSwitch implements FunctionDef {
 	private final FunctionDef nom;
-	private final Type returnType;
-	private final List<FunctionDef> list;
+	private final List<FunctionDef> list = new ArrayList<>();
 
-	FunctionDefSwitch(FunctionDef nom, Type returnType, List<FunctionDef> list) {
+	FunctionDefSwitch(FunctionDef nom, FunctionDef... args) {
 		this.nom = nom;
-		this.returnType = returnType;
-		this.list = list;
+		this.list.addAll(Arrays.asList(args));
+	}
+
+	FunctionDefSwitch(FunctionDef nom, List<FunctionDef> list) {
+		this.nom = nom;
+		this.list.addAll(list);
 	}
 
 	@Override
 	public Type type(Context ctx) {
-		return returnType;
+		if (list.size() != 0) {
+			return list.get(0).type(ctx);
+		} else {
+			return getType(Object.class);
+		}
+
 	}
 
 	@Override
@@ -67,7 +77,7 @@ public class FunctionDefSwitch implements FunctionDef {
 		g.throwException(getType(IllegalArgumentException.class), "");
 		g.mark(labelExit);
 
-		return returnType;
+		return type(ctx);
 	}
 
 	@Override
@@ -78,7 +88,6 @@ public class FunctionDefSwitch implements FunctionDef {
 		FunctionDefSwitch that = (FunctionDefSwitch) o;
 
 		if (nom != null ? !nom.equals(that.nom) : that.nom != null) return false;
-		if (returnType != null ? !returnType.equals(that.returnType) : that.returnType != null) return false;
 		return !(list != null ? !list.equals(that.list) : that.list != null);
 
 	}
@@ -86,7 +95,6 @@ public class FunctionDefSwitch implements FunctionDef {
 	@Override
 	public int hashCode() {
 		int result = nom != null ? nom.hashCode() : 0;
-		result = 31 * result + (returnType != null ? returnType.hashCode() : 0);
 		result = 31 * result + (list != null ? list.hashCode() : 0);
 		return result;
 	}

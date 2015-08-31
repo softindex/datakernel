@@ -171,7 +171,12 @@ public class Utils {
 			}
 		}
 		if (sort == Type.ARRAY) {
-			Class<?> result = type.getClass();
+			Class<?> result;
+			if (type.equals(getType(Object[].class))) {
+				result = Object[].class;
+			} else {
+				result = type.getClass();
+			}
 			try {
 				result = Class.forName(type.getDescriptor());
 			} catch (ClassNotFoundException e) {

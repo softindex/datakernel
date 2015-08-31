@@ -16,7 +16,6 @@
 
 package io.datakernel.serializer.examples;
 
-import com.google.common.reflect.TypeToken;
 import io.datakernel.serializer.*;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -39,7 +38,7 @@ public class SimpleObjectSerializationExample {
 		testData1.setMultiple(40, "123");
 
 		// Serialize testData1 and then deserialize it to testData2
-		TestDataSimple testData2 = serializeAndDeserialize(TypeToken.of(TestDataSimple.class), testData1);
+		TestDataSimple testData2 = serializeAndDeserialize(TestDataSimple.class, testData1);
 
 		// Compare them
 		System.out.println(testData1.finalInt + " " + testData2.finalInt);
@@ -50,7 +49,7 @@ public class SimpleObjectSerializationExample {
 		System.out.println(testData1.getGetterString() + " " + testData2.getGetterString());
 	}
 
-	private static <T> T serializeAndDeserialize(TypeToken<T> typeToken, T testData1) {
+	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		SerializerGen serializerGen = registry.serializer(typeToken);
 		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);

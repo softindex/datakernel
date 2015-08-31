@@ -23,7 +23,6 @@ import org.objectweb.asm.commons.Method;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Contains information about a dynamic class
@@ -35,16 +34,20 @@ public final class Context {
 	private final Class<?> thisSuperclass;
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
+	private final Map<Method, FunctionDef> functionDefMap;
+	private final Map<Method, FunctionDef> functionDefStaticMap;
 	private final Map<FunctionDef, Integer> cache = new HashMap<>();
 
 	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> thisSuperclass, Map<String, Class<?>> thisFields,
-	               Set<Method> methods, Type[] argumentTypes) {
+	               Type[] argumentTypes, Map<Method, FunctionDef> functionDefMap, Map<Method, FunctionDef> functionDefStaticMap) {
 		this.classLoader = classLoader;
 		this.g = g;
 		this.thisSuperclass = thisSuperclass;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
 		this.thisFields = thisFields;
+		this.functionDefMap = functionDefMap;
+		this.functionDefStaticMap = functionDefStaticMap;
 	}
 
 	public DefiningClassLoader getClassLoader() {
@@ -83,4 +86,11 @@ public final class Context {
 		return cache.get(functionDef);
 	}
 
+	public Map<Method, FunctionDef> getFunctionDefStaticMap() {
+		return functionDefStaticMap;
+	}
+
+	public Map<Method, FunctionDef> getFunctionDefMap() {
+		return functionDefMap;
+	}
 }

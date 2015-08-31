@@ -16,20 +16,14 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.FunctionDef;
+import io.datakernel.serializer.SerializerFactory;
 
 import java.nio.ByteBuffer;
 
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import static io.datakernel.codegen.FunctionDefs.*;
 
 public class SerializerGenByteBuffer implements SerializerGen {
-	private static final int VAR_BYTEBUFFER = 0;
-	private static final int VAR_ARRAY = 1;
-	private static final int VAR_ARRAY_OFFSET = 2;
-	private static final int VAR_ARRAY_LENGTH = 3;
 	private final boolean wrapped;
 
 	public SerializerGenByteBuffer() {
@@ -55,67 +49,38 @@ public class SerializerGenByteBuffer implements SerializerGen {
 	}
 
 	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller,
-	                      Class<?> sourceType) {
-		mv.visitVarInsn(ASTORE, locals + VAR_BYTEBUFFER);
-		mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "array", getMethodDescriptor(getType(byte[].class)));
-		mv.visitVarInsn(ASTORE, locals + VAR_ARRAY);
+	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
 
-		mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "position", getMethodDescriptor(INT_TYPE));
-		mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_OFFSET);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "remaining", getMethodDescriptor(INT_TYPE));
-		mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_LENGTH);
-
-		mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-		backend.writeVarIntGen(mv);
-
-		mv.visitVarInsn(ALOAD, varContainer);
-		mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-		mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_OFFSET);
-		mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-		backend.writeBytesGen(mv);
 	}
 
 	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller,
-	                        Class<?> targetType) {
-		backend.readVarIntGen(mv);
-		mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_LENGTH);
-		if (wrapped) {
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "array", getMethodDescriptor(getType(byte[].class)));
-			mv.visitVarInsn(ASTORE, locals + VAR_ARRAY);
+	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+		FunctionDef array = call(cast(value, ByteBuffer.class), "array");
+		FunctionDef position = call(cast(value, ByteBuffer.class), "position");
+		FunctionDef remaining = let(call(cast(value, ByteBuffer.class), "remaining"));
+		FunctionDef writeLength = call(arg(0), "writeVarInt", remaining);
 
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "position", getMethodDescriptor(INT_TYPE));
-			mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_OFFSET);
+		return sequence(writeLength, call(arg(0), "write", array, position, remaining));
+	}
 
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_OFFSET);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			mv.visitInsn(IADD);
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(SerializationInputBuffer.class), "position", getMethodDescriptor(VOID_TYPE, INT_TYPE));
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
 
-			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_OFFSET);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			mv.visitMethodInsn(INVOKESTATIC, getInternalName(ByteBuffer.class), "wrap", getMethodDescriptor(getType(ByteBuffer.class), getType(byte[].class),
-					getType(int.class), getType(int.class)));
+	}
+
+	@Override
+	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+		FunctionDef length = let(call(arg(0), "readVarInt"));
+
+		if (!wrapped) {
+			FunctionDef array = let(newArray(byte[].class, length));
+			return sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array));
 		} else {
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			mv.visitMethodInsn(INVOKESTATIC, getInternalName(ByteBuffer.class), "allocate", getMethodDescriptor(getType(ByteBuffer.class), getType(int.class)));
-			mv.visitVarInsn(ASTORE, locals + VAR_BYTEBUFFER);
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(ByteBuffer.class), "array", getMethodDescriptor(getType(byte[].class)));
-			mv.visitInsn(ICONST_0);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			backend.readBytesGen(mv);
-			mv.visitVarInsn(ALOAD, locals + VAR_BYTEBUFFER);
+			FunctionDef inputBuffer = call(arg(0), "array");
+			FunctionDef position = let(call(arg(0), "position"));
+			FunctionDef setPosition = call(arg(0), "position", add(position, length));
+
+			return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));
 		}
 	}
 }

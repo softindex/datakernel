@@ -16,7 +16,6 @@
 
 package io.datakernel.serializer.examples;
 
-import com.google.common.reflect.TypeToken;
 import io.datakernel.serializer.*;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.asm.SerializerGen;
@@ -32,16 +31,15 @@ public class GenericsAndInterfacesSerializationExample {
 
 	public static void main(String[] args) {
 		// Create a test object
-		TestDataGeneric<Integer, String> testData1 = new TestDataGeneric<>();
+		TestDataGenericInterfaceImpl testData1 = new TestDataGenericInterfaceImpl();
 
 		testData1.setList(Arrays.asList(
 				new TestDataGenericNested<>(10, "a"),
 				new TestDataGenericNested<>(20, "b")));
 
 		// Serialize testData1 and then deserialize it to testData2
-		TestDataGenericInterface<Integer, String> testData2 =
-				serializeAndDeserialize(new TypeToken<TestDataGenericInterface<Integer, String>>() {
-				}, testData1);
+		TestDataGenericInterfaceImpl testData2 =
+				serializeAndDeserialize(TestDataGenericInterfaceImpl.class, testData1);
 
 		// Compare them
 		System.out.println(testData1.getList().size() + " " + testData2.getList().size());
@@ -113,7 +111,10 @@ public class GenericsAndInterfacesSerializationExample {
 		}
 	}
 
-	private static <T> T serializeAndDeserialize(TypeToken<T> typeToken, T testData1) {
+	public static class TestDataGenericInterfaceImpl extends TestDataGeneric<Integer, String> {
+	}
+
+	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		SerializerGen serializerGen = registry.serializer(typeToken);
 		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);

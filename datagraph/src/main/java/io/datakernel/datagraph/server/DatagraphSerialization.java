@@ -21,7 +21,6 @@ import com.google.common.base.Functions;
 import com.google.common.base.Predicate;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Ordering;
-import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.InstanceCreator;
@@ -149,7 +148,7 @@ public final class DatagraphSerialization {
 			try {
 				logger.info("Creating serializer for {}", type);
 				SerializerScanner registry = SerializerScanner.defaultScanner();
-				SerializerGen serializerGen = registry.serializer(TypeToken.of(type));
+				SerializerGen serializerGen = registry.serializer(type);
 				serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 				serializers.put(type, serializer);
 			} catch (Exception e) {

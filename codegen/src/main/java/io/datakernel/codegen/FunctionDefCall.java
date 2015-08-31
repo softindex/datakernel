@@ -47,16 +47,32 @@ public final class FunctionDefCall implements FunctionDef {
 		List<Class<?>> argumentClasses = new ArrayList<>();
 		List<Type> argumentTypes = new ArrayList<>();
 		for (FunctionDef argument : arguments) {
-			argument.load(ctx);
 			argumentTypes.add(argument.type(ctx));
-			argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
+			if (argument.type(ctx).equals(getType(Object[].class))) {
+				argumentClasses.add(Object[].class);
+			} else {
+				argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
+			}
 		}
-
 		Type returnType;
 		try {
 			if (ctx.getThisType().equals(owner.type(ctx))) {
-				// TODO
-				throw new UnsupportedOperationException();
+				for (org.objectweb.asm.commons.Method method : ctx.getFunctionDefMap().keySet()) {
+					if (method.getName().equals(methodName)) {
+						if (method.getArgumentTypes().length == arguments.size()) {
+							Type[] methodTypes = method.getArgumentTypes();
+							boolean isSame = true;
+							for (int i = 0; i < arguments.size(); i++) {
+								if (!methodTypes[i].equals(argumentTypes.get(i))) {
+									isSame = false;
+									break;
+								}
+							}
+							if (isSame) return method.getReturnType();
+						}
+					}
+				}
+				throw new NoSuchMethodException();
 			} else {
 				Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), owner.type(ctx));
 				Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));
@@ -88,8 +104,28 @@ public final class FunctionDefCall implements FunctionDef {
 		Type returnType;
 		try {
 			if (ctx.getThisType().equals(owner.type(ctx))) {
-				// TODO
-				throw new UnsupportedOperationException();
+				org.objectweb.asm.commons.Method method = null;
+				for (org.objectweb.asm.commons.Method m : ctx.getFunctionDefMap().keySet()) {
+					if (m.getName().equals(methodName)) {
+						if (m.getArgumentTypes().length == arguments.size()) {
+							Type[] methodTypes = m.getArgumentTypes();
+							boolean isSame = true;
+							for (int i = 0; i < arguments.size(); i++) {
+								if (!methodTypes[i].equals(argumentTypes.get(i))) {
+									isSame = false;
+									break;
+								}
+							}
+							if (isSame) {
+								method = m;
+								break;
+							}
+						}
+					}
+				}
+				if (method == null) throw new NoSuchMethodException();
+				g.invokeVirtual(owner.type(ctx), method);
+				return method.getReturnType();
 			}
 			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), owner.type(ctx));
 			Method method = ownerJavaType.getMethod(methodName, argumentClasses.toArray(new Class<?>[]{}));

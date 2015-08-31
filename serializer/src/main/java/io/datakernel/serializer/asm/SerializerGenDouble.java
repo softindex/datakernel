@@ -16,7 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.FunctionDef;
+import io.datakernel.serializer.SerializerFactory;
+
+import static io.datakernel.codegen.FunctionDefs.*;
 
 public final class SerializerGenDouble extends SerializerGenPrimitive {
 
@@ -25,13 +28,16 @@ public final class SerializerGenDouble extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected void doSerialize(MethodVisitor mv, SerializerBackend backend) {
-		backend.writeDoubleGen(mv);
+	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+		return call(arg(0), "writeDouble", cast(value, double.class));
 	}
 
 	@Override
-	protected void doDeserialize(MethodVisitor mv, SerializerBackend backend) {
-		backend.readDoubleGen(mv);
+	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+		if (targetType.isPrimitive())
+			return call(arg(0), "readDouble");
+		else
+			return cast(call(arg(0), "readDouble"), Double.class);
 	}
 }
 

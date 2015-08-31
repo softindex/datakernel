@@ -47,6 +47,10 @@ public interface SerializerBackend {
 
 	void writeNullableUTF16Gen(MethodVisitor mv);
 
+	void writeAscii(MethodVisitor mv);
+
+	void writeNullableAscii(MethodVisitor mv);
+
 	void readBytesGen(MethodVisitor mv);
 
 	void readByteGen(MethodVisitor mv);
@@ -78,4 +82,8 @@ public interface SerializerBackend {
 	void readUTF16Gen(MethodVisitor mv);
 
 	void readNullableUTF16Gen(MethodVisitor mv);
+
+	void readAscii(MethodVisitor mv);
+
+	void readNullableAscii(MethodVisitor mv);
 }

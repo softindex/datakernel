@@ -16,14 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.FunctionDef;
+import io.datakernel.codegen.FunctionDefs;
+import io.datakernel.serializer.SerializerFactory;
 
 import java.net.InetAddress;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import static io.datakernel.codegen.FunctionDefs.*;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenInetAddress implements SerializerGen {
@@ -35,8 +34,6 @@ public class SerializerGenInetAddress implements SerializerGen {
 
 	private SerializerGenInetAddress() {
 	}
-
-	private static final int VAR_ARRAY = 0;
 
 	@Override
 	public void getVersions(VersionsCollector versions) {
@@ -53,27 +50,24 @@ public class SerializerGenInetAddress implements SerializerGen {
 	}
 
 	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		Utils.castSourceType(mv, sourceType, InetAddress.class);
+	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
 
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(InetAddress.class), "getAddress", getMethodDescriptor(getType(byte[].class)));
-		mv.visitInsn(ICONST_0);
-		mv.visitLdcInsn(4);
-		backend.writeBytesGen(mv);
 	}
 
 	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		checkArgument(targetType.isAssignableFrom(InetAddress.class));
-
-		mv.visitIntInsn(BIPUSH, 4);
-		mv.visitIntInsn(NEWARRAY, T_BYTE);
-		mv.visitVarInsn(ASTORE, locals + VAR_ARRAY);
-		mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-		mv.visitInsn(ICONST_0);
-		mv.visitLdcInsn(4);
-		backend.readBytesGen(mv);
-		mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-		mv.visitMethodInsn(INVOKESTATIC, getInternalName(InetAddress.class), "getByAddress", getMethodDescriptor(getType(InetAddress.class), getType(byte[].class)));
+	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+		return call(arg(0), "write", call(value, "getAddress"));
 	}
+
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+
+	}
+
+	@Override
+	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+		FunctionDef local = let(FunctionDefs.newArray(byte[].class, value(4)));
+		return sequence(call(arg(0), "read", local), callStatic(targetType, "getByAddress", local));
+	}
+
 }

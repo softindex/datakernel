@@ -16,7 +16,6 @@
 
 package io.datakernel.serializer.examples;
 
-import com.google.common.reflect.TypeToken;
 import io.datakernel.serializer.*;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
@@ -50,7 +49,7 @@ public class ComplexObjectSerializationExample {
 		testData1.mapOfNullableInt2NullableString.put(null, "xyz");
 
 		// Serialize testData1 and then deserialize it to testData2
-		TestDataComplex testData2 = serializeAndDeserialize(TypeToken.of(TestDataComplex.class), testData1);
+		TestDataComplex testData2 = serializeAndDeserialize(TestDataComplex.class, testData1);
 
 		// Compare them
 		System.out.println(testData1.nullableString1 + " " + testData2.nullableString1);
@@ -94,7 +93,7 @@ public class ComplexObjectSerializationExample {
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
-	private static <T> T serializeAndDeserialize(TypeToken<T> typeToken, T testData1) {
+	private static <T> T serializeAndDeserialize(Class<?> typeToken, T testData1) {
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		SerializerGen serializerGen = registry.serializer(typeToken);
 		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);

@@ -167,11 +167,34 @@ public final class SerializationInputBuffer {
 		return doReadUTF8(length);
 	}
 
+	public String readAscii() {
+		int length = readVarInt();
+		char[] chars = ensureCharArray(length);
+		for (int i = 0; i < length; i++) {
+			int c = readByte() & 0xff;
+			chars[i] = (char) c;
+		}
+		return new String(chars, 0, length);
+	}
+
 	public String readNullableUTF8() {
 		int length = readVarInt();
 		if (length == 0)
 			return null;
 		return doReadUTF8(length - 1);
+	}
+
+	public String readNullableAscii() {
+		int length = readVarInt();
+		if (length == 0)
+			return null;
+
+		char[] chars = ensureCharArray(length);
+		for (int i = 0; i < length; i++) {
+			int c = readByte() & 0xff;
+			chars[i] = (char) c;
+		}
+		return new String(chars, 0, length);
 	}
 
 	private String doReadUTF8(int length) {

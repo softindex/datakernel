@@ -16,7 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.FunctionDef;
+import io.datakernel.serializer.SerializerFactory;
+
+import static io.datakernel.codegen.FunctionDefs.*;
 
 public final class SerializerGenLong extends SerializerGenPrimitive {
 
@@ -28,29 +31,15 @@ public final class SerializerGenLong extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected void doSerialize(MethodVisitor mv, SerializerBackend backend) {
-		if (varLength)
-			backend.writeVarLongGen(mv);
-		else
-			backend.writeLongGen(mv);
-	}
-
-	@Override
-	protected void doDeserialize(MethodVisitor mv, SerializerBackend backend) {
-		if (varLength)
-			backend.readVarLongGen(mv);
-		else
-			backend.readLongGen(mv);
-	}
-
-	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
 		SerializerGenLong that = (SerializerGenLong) o;
 
-		return varLength == that.varLength;
+		if (varLength != that.varLength) return false;
+
+		return true;
 	}
 
 	@Override
@@ -58,5 +47,29 @@ public final class SerializerGenLong extends SerializerGenPrimitive {
 		int result = 0;
 		result = 31 * result + (varLength ? 1 : 0);
 		return result;
+	}
+
+	@Override
+	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+		if (varLength) {
+			return call(arg(0), "writeVarLong", cast(value, long.class));
+		} else {
+			return call(arg(0), "writeLong", cast(value, long.class));
+		}
+	}
+
+	@Override
+	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+		if (varLength) {
+			if (targetType.isPrimitive())
+				return call(arg(0), "readVarLong");
+			else
+				return cast(call(arg(0), "readVarLong"), Long.class);
+		} else {
+			if (targetType.isPrimitive())
+				return call(arg(0), "readLong");
+			else
+				return cast(call(arg(0), "readLong"), Long.class);
+		}
 	}
 }

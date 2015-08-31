@@ -20,29 +20,31 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.codegen.FunctionDefs.call;
 import static io.datakernel.codegen.Utils.newLocal;
-import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 public class FunctionDefSwitchForKey implements FunctionDef {
 	private final FunctionDef key;
-	private final Type returnType;
-	private final List<FunctionDef> listKey;
-	private final List<FunctionDef> listValue;
+	private final List<FunctionDef> listKey = new ArrayList<>();
+	private final List<FunctionDef> listValue = new ArrayList<>();
 
-	FunctionDefSwitchForKey(FunctionDef key, Type returnType, List<FunctionDef> listKey, List<FunctionDef> listValue) {
+	FunctionDefSwitchForKey(FunctionDef key, List<FunctionDef> listKey, List<FunctionDef> listValue) {
 		this.key = key;
-		this.returnType = returnType;
-		this.listKey = listKey;
-		this.listValue = listValue;
+		this.listKey.addAll(listKey);
+		this.listValue.addAll(listValue);
 	}
 
 	@Override
 	public Type type(Context ctx) {
-		return returnType;
+		if (listValue.size() != 0) {
+			return listValue.get(0).type(ctx);
+		} else {
+			return getType(Object.class);
+		}
 	}
 
 	@Override
@@ -56,7 +58,6 @@ public class FunctionDefSwitchForKey implements FunctionDef {
 
 		for (int i = 0; i < listKey.size(); i++) {
 			Label labelNext = new Label();
-
 			if (Utils.isPrimitiveType(key.type(ctx))) {
 				listKey.get(i).load(ctx);
 				varKey.load(ctx);
@@ -64,7 +65,7 @@ public class FunctionDefSwitchForKey implements FunctionDef {
 			} else {
 				call(listKey.get(i), "equals", varKey).load(ctx);
 				g.push(true);
-				g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.NE, labelNext);
+				g.ifCmp(Type.BOOLEAN_TYPE, GeneratorAdapter.NE, labelNext);
 			}
 
 			listValue.get(i).load(ctx);
@@ -76,7 +77,7 @@ public class FunctionDefSwitchForKey implements FunctionDef {
 		g.throwException(getType(IllegalArgumentException.class), "");
 		g.mark(labelExit);
 
-		return returnType;
+		return type(ctx);
 	}
 
 	@Override
@@ -87,7 +88,6 @@ public class FunctionDefSwitchForKey implements FunctionDef {
 		FunctionDefSwitchForKey that = (FunctionDefSwitchForKey) o;
 
 		if (key != null ? !key.equals(that.key) : that.key != null) return false;
-		if (returnType != null ? !returnType.equals(that.returnType) : that.returnType != null) return false;
 		if (listKey != null ? !listKey.equals(that.listKey) : that.listKey != null) return false;
 		return !(listValue != null ? !listValue.equals(that.listValue) : that.listValue != null);
 
@@ -96,7 +96,6 @@ public class FunctionDefSwitchForKey implements FunctionDef {
 	@Override
 	public int hashCode() {
 		int result = key != null ? key.hashCode() : 0;
-		result = 31 * result + (returnType != null ? returnType.hashCode() : 0);
 		result = 31 * result + (listKey != null ? listKey.hashCode() : 0);
 		result = 31 * result + (listValue != null ? listValue.hashCode() : 0);
 		return result;

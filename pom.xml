@@ -31,7 +31,6 @@
         <module>cube</module>
         <module>rpc</module>
         <module>serializer</module>
-        <module>serializer2</module>
         <module>hashfs</module>
         <module>simplefs</module>
     </modules>

@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,14 +56,26 @@ public class AsmFunctionFactory<T> {
 	private final DefiningClassLoader classLoader;
 
 	private final Class<T> type;
-	private final String className;
-	private String folder;
+	private Path bytecodeSaveDir;
 
 	private Map<String, Class<?>> fields = new LinkedHashMap<>();
 	private Map<String, Class<?>> staticFields = new LinkedHashMap<>();
 	private Map<Method, FunctionDef> functionDefMap = new LinkedHashMap<>();
+
+	public Map<Method, FunctionDef> getFunctionDefStaticMap() {
+		return functionDefStaticMap;
+	}
+
+	public Map<Method, FunctionDef> getFunctionDefMap() {
+		return functionDefMap;
+	}
+
 	private Map<Method, FunctionDef> functionDefStaticMap = new LinkedHashMap<>();
-	private AsmFunctionKey key;
+
+	public AsmFunctionFactory<T> setBytecodeSaveDir(Path bytecodeSaveDir) {
+		this.bytecodeSaveDir = bytecodeSaveDir;
+		return this;
+	}
 
 	private class AsmFunctionKey {
 		private final Map<String, Class<?>> fields;
@@ -108,14 +121,6 @@ public class AsmFunctionFactory<T> {
 	public AsmFunctionFactory(DefiningClassLoader classLoader, Class<T> type) {
 		this.classLoader = classLoader;
 		this.type = type;
-		className = ASM_FUNCTION + COUNTER.incrementAndGet();
-	}
-
-	public AsmFunctionFactory(DefiningClassLoader classLoader, Class<T> type, String folder) {
-		this.classLoader = classLoader;
-		this.type = type;
-		this.folder = folder;
-		className = ASM_FUNCTION + COUNTER.incrementAndGet();
 	}
 
 	/**
@@ -221,9 +226,7 @@ public class AsmFunctionFactory<T> {
 	 */
 	public Class<T> defineClass() {
 		synchronized (classLoader) {
-			if (key == null) {
-				key = new AsmFunctionKey(new LinkedHashMap<>(fields), new LinkedHashMap<>(functionDefMap), new LinkedHashMap<>(functionDefStaticMap));
-			}
+			AsmFunctionKey key = new AsmFunctionKey(fields, functionDefMap, functionDefStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -246,16 +249,17 @@ public class AsmFunctionFactory<T> {
 	private Class<T> defineNewClass(AsmFunctionKey key) {
 		DefiningClassWriter cw = new DefiningClassWriter(classLoader);
 
+		String className = ASM_FUNCTION + COUNTER.incrementAndGet();
 		Type classType = getType('L' + className.replace('.', '/') + ';');
 
 		if (type.isInterface()) {
-			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
+			cw.visit(V1_7, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
 					classType.getInternalName(),
 					null,
 					"java/lang/Object",
 					new String[]{getInternalName(type)});
 		} else {
-			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
+			cw.visit(V1_7, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
 					classType.getInternalName(),
 					null,
 					getInternalName(type),
@@ -276,50 +280,39 @@ public class AsmFunctionFactory<T> {
 			cw.visitField(ACC_PUBLIC, field, getType(fieldClass).getDescriptor(), null, null);
 		}
 
-		while (!functionDefStaticMap.isEmpty() || !functionDefMap.isEmpty()) {
-			if (!functionDefStaticMap.isEmpty()) {
-				Map<Method, FunctionDef> mapStatic = functionDefStaticMap;
-				functionDefStaticMap = new LinkedHashMap<>();
-				for (Method m : mapStatic.keySet()) {
-					try {
-						GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
+		for (Method m : functionDefStaticMap.keySet()) {
+			try {
+				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-						Context ctx = new Context(classLoader, g, classType, type, staticFields, null, m.getArgumentTypes());
+				Context ctx = new Context(classLoader, g, classType, type, staticFields, m.getArgumentTypes(), functionDefMap, functionDefStaticMap);
 
-						FunctionDef functionDef = mapStatic.get(m);
-						loadAndCast(ctx, functionDef, m.getReturnType());
-						g.returnValue();
+				FunctionDef functionDef = functionDefStaticMap.get(m);
+				loadAndCast(ctx, functionDef, m.getReturnType());
+				g.returnValue();
 
-						g.endMethod();
-					} catch (Exception e) {
-						logger.error("Could not implement " + m, e);
-					}
-				}
-			}
-
-			if (!functionDefMap.isEmpty()) {
-				Map<Method, FunctionDef> map = functionDefMap;
-				functionDefMap = new LinkedHashMap<>();
-				for (Method m : map.keySet()) {
-					try {
-						GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
-
-						Context ctx = new Context(classLoader, g, classType, type, fields, null, m.getArgumentTypes());
-
-						FunctionDef functionDef = map.get(m);
-						loadAndCast(ctx, functionDef, m.getReturnType());
-						g.returnValue();
-
-						g.endMethod();
-					} catch (Exception e) {
-						logger.error("Could not implement " + m, e);
-					}
-				}
+				g.endMethod();
+			} catch (Exception e) {
+				logger.error("Could not implement " + m, e);
 			}
 		}
 
-		if (folder != null) {
-			try (FileOutputStream fos = new FileOutputStream(folder + "/" + getClassName() + ".class")) {
+		for (Method m : functionDefMap.keySet()) {
+			try {
+				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
+
+				Context ctx = new Context(classLoader, g, classType, type, fields, m.getArgumentTypes(), functionDefMap, functionDefStaticMap);
+
+				FunctionDef functionDef = functionDefMap.get(m);
+				loadAndCast(ctx, functionDef, m.getReturnType());
+				g.returnValue();
+
+				g.endMethod();
+			} catch (Exception e) {
+				logger.error("Could not implement " + m, e);
+			}
+		}
+		if (bytecodeSaveDir != null) {
+			try (FileOutputStream fos = new FileOutputStream(bytecodeSaveDir.resolve(className + ".class").toFile())) {
 				fos.write(cw.toByteArray());
 			} catch (IOException ignored) {
 			}
@@ -347,9 +340,5 @@ public class AsmFunctionFactory<T> {
 		} catch (InstantiationException | IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}
-	}
-
-	public String getClassName() {
-		return className;
 	}
 }

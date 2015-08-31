@@ -16,11 +16,11 @@
 
 package io.datakernel.serializer.annotations;
 
+
+import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.SerializerScanner;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
-
-import static com.google.common.base.Preconditions.checkArgument;
 
 public final class SerializeSubclassesHandler implements AnnotationHandler<SerializeSubclasses, SerializeSubclassesEx> {
 	@Override
@@ -28,8 +28,8 @@ public final class SerializeSubclassesHandler implements AnnotationHandler<Seria
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> superclass, SerializerForType[] superclassGenerics, SerializerGen fallback) {
-				checkArgument(superclass.getTypeParameters().length == 0);
-				checkArgument(superclassGenerics.length == 0);
+				Preconditions.check(superclass.getTypeParameters().length == 0);
+				Preconditions.check(superclassGenerics.length == 0);
 
 				return serializerScanner.createSubclassesSerializer(superclass, annotation);
 			}

@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.annotations;
 
+import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.SerializerScanner;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenNullable;
 import io.datakernel.serializer.asm.SerializerGenString;
 
-import static com.google.common.base.Preconditions.checkArgument;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
@@ -30,7 +30,7 @@ public final class SerializeNullableHandler implements AnnotationHandler<Seriali
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				checkArgument(!type.isPrimitive());
+				Preconditions.check(!type.isPrimitive());
 				if (fallback instanceof SerializerGenString)
 					return ((SerializerGenString) fallback).nullable(true);
 				return new SerializerGenNullable(fallback);

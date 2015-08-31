@@ -16,8 +16,9 @@
 
 package io.datakernel.serializer.asm;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import io.datakernel.codegen.utils.Preconditions;
+
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 public final class SerializerGenBuilderConst implements SerializerGenBuilder {
 	private final SerializerGen serializer;
@@ -28,7 +29,7 @@ public final class SerializerGenBuilderConst implements SerializerGenBuilder {
 
 	@Override
 	public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-		checkArgument(generics.length == 0);
+		Preconditions.check(generics.length == 0);
 		return serializer;
 	}
 }

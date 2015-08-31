@@ -418,6 +418,10 @@ public final class FunctionDefs {
 		return new FunctionDefCallStatic(owner, method, arguments);
 	}
 
+	public static FunctionDefCallStaticSelf callStaticSelf(String method, FunctionDef... arguments) {
+		return new FunctionDefCallStaticSelf(method, arguments);
+	}
+
 	public static FunctionDefArrayGet get(FunctionDef array, FunctionDef nom) {
 		return new FunctionDefArrayGet(array, nom);
 	}
@@ -442,28 +446,16 @@ public final class FunctionDefs {
 		return new FunctionDefVoid();
 	}
 
-	public static FunctionDefCallSelf callSelf(String methodName, Type returnType, FunctionDef... arguments) {
-		return new FunctionDefCallSelf(methodName, returnType, arguments);
+	public static FunctionDefSwitch switchForPosition(FunctionDef position, List<FunctionDef> list) {
+		return new FunctionDefSwitch(position, list);
 	}
 
-	public static FunctionDefSwitch switchForPosition(FunctionDef position, Type returnType, List<FunctionDef> list) {
-		return new FunctionDefSwitch(position, returnType, list);
+	public static FunctionDefSwitch switchForPosition(FunctionDef position, FunctionDef... functions) {
+		return new FunctionDefSwitch(position, asList(functions));
 	}
 
-	public static FunctionDefSwitch switchForPosition(FunctionDef position, Type returnType, FunctionDef... functions) {
-		return new FunctionDefSwitch(position, returnType, asList(functions));
-	}
-
-	public static FunctionDefSwitchForKey switchForKey(FunctionDef key, Type returnType, List<FunctionDef> listKey, List<FunctionDef> listValue) {
-		return new FunctionDefSwitchForKey(key, returnType, listKey, listValue);
-	}
-
-	public static FunctionDefCallStaticForDynamicType callFutureStatic(String className, String methodName, Type returnType, FunctionDef... functions) {
-		return new FunctionDefCallStaticForDynamicType(className, methodName, returnType, functions);
-	}
-
-	public static FunctionDefCallForDynamicType callFuture(String className, String methodName, Type returnType, FunctionDef... functions) {
-		return new FunctionDefCallForDynamicType(className, methodName, returnType, functions);
+	public static FunctionDefSwitchForKey switchForKey(FunctionDef key, List<FunctionDef> listKey, List<FunctionDef> listValue) {
+		return new FunctionDefSwitchForKey(key, listKey, listValue);
 	}
 
 	public static FunctionDefArraySet setForArray(FunctionDef array, FunctionDef position, FunctionDef newElement) {

@@ -16,7 +16,6 @@
 
 package io.datakernel.serializer.asm;
 
-import com.google.common.reflect.TypeToken;
 import io.datakernel.serializer.*;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -27,7 +26,7 @@ import java.nio.ByteBuffer;
 
 import static org.junit.Assert.*;
 
-public class SerializerGenByteBufferTest {
+public class CodeGenSerializerGenByteBufferTest {
 
 	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
@@ -49,8 +48,7 @@ public class SerializerGenByteBufferTest {
 
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		registry.register(ByteBuffer.class, new SerializerGenByteBuffer());
-		SerializerGen serializerGen = registry.serializer(new TypeToken<ByteBuffer>() {
-		});
+		SerializerGen serializerGen = registry.serializer(ByteBuffer.class);
 		BufferSerializer<ByteBuffer> serializerByteBuffer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
 
@@ -68,8 +66,7 @@ public class SerializerGenByteBufferTest {
 
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		registry.register(ByteBuffer.class, new SerializerGenByteBuffer(true));
-		SerializerGen serializerGen = registry.serializer(new TypeToken<ByteBuffer>() {
-		});
+		SerializerGen serializerGen = registry.serializer(ByteBuffer.class);
 		BufferSerializer<ByteBuffer> serializerByteBuffer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
 
@@ -90,8 +87,7 @@ public class SerializerGenByteBufferTest {
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		registry.register(ByteBuffer.class, new SerializerGenByteBuffer());
 
-		SerializerGen serializerGen = registry.serializer(new TypeToken<ByteBuffer>() {
-		});
+		SerializerGen serializerGen = registry.serializer(ByteBuffer.class);
 		BufferSerializer<ByteBuffer> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 		byte[] buffer = new byte[1000];
@@ -127,8 +123,7 @@ public class SerializerGenByteBufferTest {
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		registry.register(ByteBuffer.class, new SerializerGenByteBuffer(true));
 
-		SerializerGen serializerGen = registry.serializer(new TypeToken<ByteBuffer>() {
-		});
+		SerializerGen serializerGen = registry.serializer(ByteBuffer.class);
 		BufferSerializer<ByteBuffer> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 		byte[] buffer = new byte[1000];
@@ -158,6 +153,10 @@ public class SerializerGenByteBufferTest {
 			this.buffer = buffer;
 		}
 
+		public TestByteBufferData() {
+			this.buffer = null;
+		}
+
 		@Serialize(order = 0)
 		@SerializeNullable
 		public ByteBuffer getBuffer() {
@@ -172,15 +171,14 @@ public class SerializerGenByteBufferTest {
 		for (int i = 0; i < array.length; i++)
 			array[i] = (byte) i;
 
-		TestByteBufferData testBuffer1 = new TestByteBufferData(ByteBuffer.wrap(array, 10, 100));
+		TestByteBufferData testBuffer1 = new TestByteBufferData(ByteBuffer.wrap(array, 10, 2));
 		TestByteBufferData testBuffer0 = new TestByteBufferData(null);
-		TestByteBufferData testBuffer2 = new TestByteBufferData(ByteBuffer.wrap(array, 110, 100));
+		TestByteBufferData testBuffer2 = new TestByteBufferData(ByteBuffer.wrap(array, 110, 3));
 
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		registry.register(ByteBuffer.class, new SerializerGenByteBuffer());
 
-		SerializerGen serializerGen = registry.serializer(new TypeToken<TestByteBufferData>() {
-		});
+		SerializerGen serializerGen = registry.serializer(TestByteBufferData.class);
 		BufferSerializer<TestByteBufferData> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 		byte[] buffer = new byte[1000];
@@ -218,8 +216,7 @@ public class SerializerGenByteBufferTest {
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		registry.register(ByteBuffer.class, new SerializerGenByteBuffer(true));
 
-		SerializerGen serializerGen = registry.serializer(new TypeToken<TestByteBufferData>() {
-		});
+		SerializerGen serializerGen = registry.serializer(TestByteBufferData.class);
 		BufferSerializer<TestByteBufferData> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 		byte[] buffer = new byte[1000];

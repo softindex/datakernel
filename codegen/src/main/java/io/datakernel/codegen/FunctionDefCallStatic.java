@@ -43,25 +43,15 @@ public class FunctionDefCallStatic implements FunctionDef {
 		List<Class<?>> argumentClasses = new ArrayList<>();
 		List<Type> argumentTypes = new ArrayList<>();
 		for (FunctionDef argument : arguments) {
-			argument.load(ctx);
 			argumentTypes.add(argument.type(ctx));
 			argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
 		}
 
-		Class<?>[] arguments = new Class<?>[this.arguments.size()];
-		for (int i = 0; i < this.arguments.size(); i++) {
-			Type type = this.arguments.get(i).type(ctx);
-			if (type.getSort() == Type.ARRAY && type.getElementType().equals(getType(Object.class))) {
-				arguments[i] = Object[].class;
-			} else {
-				arguments[i] = getJavaType(this.arguments.get(i).type(ctx));
-			}
-		}
+		Class<?>[] arguments = argumentClasses.toArray(new Class<?>[]{});
 
 		Type returnType;
-		Method method;
 		try {
-			method = owner.getMethod(name, arguments);
+			Method method = owner.getMethod(name, arguments);
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
 		} catch (NoSuchMethodException e) {
@@ -78,30 +68,24 @@ public class FunctionDefCallStatic implements FunctionDef {
 		for (FunctionDef argument : arguments) {
 			argument.load(ctx);
 			argumentTypes.add(argument.type(ctx));
-			argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
-		}
-
-		Class<?>[] arguments = new Class<?>[this.arguments.size()];
-		for (int i = 0; i < this.arguments.size(); i++) {
-			Type type = this.arguments.get(i).type(ctx);
-			if (type.getSort() == Type.ARRAY && type.getElementType().equals(getType(Object.class))) {
-				arguments[i] = Object[].class;
+			if (argument.type(ctx).equals(getType(Object[].class))) {
+				argumentClasses.add(Object[].class);
 			} else {
-				arguments[i] = getJavaType(this.arguments.get(i).type(ctx));
+				argumentClasses.add(getJavaType(ctx.getClassLoader(), argument.type(ctx)));
 			}
-
 		}
-		Type returnType = null;
-		Method method = null;
+
+		Class<?>[] arguments = argumentClasses.toArray(new Class<?>[]{});
+		Type returnType;
+		Method method;
 		try {
 			Class<?> ownerJavaType = getJavaType(ctx.getClassLoader(), Type.getType(owner));
 			method = ownerJavaType.getMethod(name, arguments);
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
 		} catch (NoSuchMethodException e) {
-			new RuntimeException(e);
+			throw new RuntimeException(e);
 		}
-
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		g.invokeStatic(Type.getType(owner), org.objectweb.asm.commons.Method.getMethod(method));
 		return returnType;

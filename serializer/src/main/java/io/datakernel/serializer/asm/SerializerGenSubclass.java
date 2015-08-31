@@ -16,38 +16,27 @@
 
 package io.datakernel.serializer.asm;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.FunctionDef;
+import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializerFactory;
 
-import java.util.LinkedHashMap;
+import java.util.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenSubclass implements SerializerGen {
-	private final static int VAR = 0;
-	private final static int VAR_CLASS = 1;
-	private final static int VAR_LAST = 2;
-
-	private final static int VAR_N = 0;
-	private final static int VAR_LAST2 = 1;
-
 	public static final class Builder {
 		private final Class<?> dataType;
-		private final LinkedHashMap<Class<?>, SerializerGen> subclassSerializers = Maps.newLinkedHashMap();
+		private final LinkedHashMap<Class<?>, SerializerGen> subclassSerializers = new LinkedHashMap<>();
 
 		public Builder(Class<?> dataType) {
 			this.dataType = dataType;
 		}
 
 		public Builder add(Class<?> subclass, SerializerGen serializer) {
-			checkArgument(subclassSerializers.put(subclass, serializer) == null);
+			Preconditions.check(subclassSerializers.put(subclass, serializer) == null);
 			return this;
 		}
 
@@ -57,11 +46,11 @@ public class SerializerGenSubclass implements SerializerGen {
 	}
 
 	private final Class<?> dataType;
-	private final ImmutableMap<Class<?>, SerializerGen> subclassSerializers;
+	private final Map<Class<?>, SerializerGen> subclassSerializers;
 
 	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers) {
 		this.dataType = checkNotNull(dataType);
-		this.subclassSerializers = ImmutableMap.copyOf(subclassSerializers);
+		this.subclassSerializers = new HashMap<>(subclassSerializers);
 	}
 
 	@Override
@@ -82,72 +71,52 @@ public class SerializerGenSubclass implements SerializerGen {
 	}
 
 	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		mv.visitVarInsn(ASTORE, locals + VAR);
-		mv.visitVarInsn(ALOAD, locals + VAR);
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(Object.class),
-				"getClass", getMethodDescriptor(getType(Class.class)));
-		mv.visitVarInsn(ASTORE, locals + VAR_CLASS);
-
-		Label exit = new Label();
-
-		int subclassN = 0;
-		for (Class<?> subclass : subclassSerializers.keySet()) {
-			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
-			mv.visitVarInsn(ALOAD, locals + VAR_CLASS);
-			mv.visitLdcInsn(getType(subclass));
-			Label next = new Label();
-			mv.visitJumpInsn(IF_ACMPNE, next);
-			mv.visitLdcInsn(subclassN++);
-			backend.writeByteGen(mv);
-
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitVarInsn(ALOAD, locals + VAR);
-			mv.visitTypeInsn(CHECKCAST, getInternalName(subclass));
-			serializerCaller.serialize(subclassSerializer, version, mv, locals + VAR_LAST, varContainer, sourceType);
-
-			mv.visitJumpInsn(GOTO, exit);
-			mv.visitLabel(next);
+	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+		if (staticMethods.startSerializeStaticMethod(this, version)) {
+			return;
 		}
 
-		mv.visitTypeInsn(NEW, getInternalName(IllegalArgumentException.class));
-		mv.visitInsn(DUP);
-		mv.visitMethodInsn(INVOKESPECIAL, getInternalName(IllegalArgumentException.class),
-				"<init>", getMethodDescriptor(VOID_TYPE));
-		mv.visitInsn(ATHROW);
-
-		mv.visitLabel(exit);
+		byte subClassN = 0;
+		List<FunctionDef> listKey = new ArrayList<>();
+		List<FunctionDef> listValue = new ArrayList<>();
+		for (Class<?> subclass : subclassSerializers.keySet()) {
+			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
+			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods);
+			listKey.add(value(subclass.getName()));
+			listValue.add(sequence(
+					call(arg(0), "writeByte", value(subClassN++)),
+					subclassSerializer.serialize(cast(arg(1), subclassSerializer.getRawType()), version, staticMethods),
+					voidFunc()));
+		}
+		staticMethods.registerStaticSerializeMethod(this, version,
+				switchForKey(cast(call(call(cast(arg(1), Object.class), "getClass"), "getName"), Object.class), listKey, listValue));
 	}
 
 	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		backend.readByteGen(mv);
-		mv.visitVarInsn(ISTORE, locals + VAR_N);
+	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+		return staticMethods.callStaticSerializeMethod(this, version, arg(0), value);
+	}
 
-		Label exit = new Label();
-
-		int subclassN = 0;
-		for (Class<?> subclass : subclassSerializers.keySet()) {
-			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
-			Label next = new Label();
-			mv.visitVarInsn(ILOAD, locals + VAR_N);
-			mv.visitLdcInsn(subclassN++);
-			mv.visitJumpInsn(IF_ICMPNE, next);
-
-			mv.visitVarInsn(ALOAD, varContainer);
-			serializerCaller.deserialize(subclassSerializer, version, mv, locals + VAR_LAST2, varContainer, targetType);
-			mv.visitJumpInsn(GOTO, exit);
-
-			mv.visitLabel(next);
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+		if (staticMethods.startDeserializeStaticMethod(this, version)) {
+			return;
 		}
 
-		mv.visitTypeInsn(NEW, getInternalName(IllegalArgumentException.class));
-		mv.visitInsn(DUP);
-		mv.visitMethodInsn(INVOKESPECIAL, getInternalName(IllegalArgumentException.class),
-				"<init>", getMethodDescriptor(VOID_TYPE));
-		mv.visitInsn(ATHROW);
+		List<FunctionDef> list = new ArrayList<>();
+		for (Class<?> subclass : subclassSerializers.keySet()) {
+			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
+			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods), this.getRawType()));
+		}
 
-		mv.visitLabel(exit);
+		staticMethods.registerStaticDeserializeMethod(this, version,
+				cast(switchForPosition(call(arg(0), "readByte"), list), this.getRawType()));
+	}
+
+	@Override
+	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 
 	@Override
@@ -157,7 +126,10 @@ public class SerializerGenSubclass implements SerializerGen {
 
 		SerializerGenSubclass that = (SerializerGenSubclass) o;
 
-		return (dataType.equals(that.dataType)) && (subclassSerializers.equals(that.subclassSerializers));
+		if (!dataType.equals(that.dataType)) return false;
+		if (!subclassSerializers.equals(that.subclassSerializers)) return false;
+
+		return true;
 	}
 
 	@Override

@@ -16,37 +16,33 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
+import io.datakernel.codegen.ForEachWithChanges;
+import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.FunctionDef;
+import io.datakernel.codegen.FunctionDefs;
+import io.datakernel.serializer.SerializerFactory;
 
-import static com.google.common.base.Preconditions.*;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.getInternalName;
-import static org.objectweb.asm.Type.getType;
+import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenArray implements SerializerGen {
-	public static final int VAR_ARRAY = 0;
-	public static final int VAR_ARRAY_LENGTH = 1;
-	public static final int VAR_I = 2;
-	public static final int VAR_LAST = VAR_I + 1;
 	private final SerializerGen valueSerializer;
 	private final int fixedSize;
+	private Class<?> type;
 
-	public SerializerGenArray(SerializerGen serializer, int fixedSize) {
+	public SerializerGenArray(SerializerGen serializer, int fixedSize, Class<?> type) {
 		this.valueSerializer = checkNotNull(serializer);
 		this.fixedSize = fixedSize;
+		this.type = type;
 	}
 
-	public SerializerGenArray(SerializerGen serializer) {
-		this(serializer, -1);
+	public SerializerGenArray(SerializerGen serializer, Class<?> type) {
+		this(serializer, -1, type);
 	}
 
-	public SerializerGenArray fixedSize(int fixedSize) {
-		return new SerializerGenArray(valueSerializer, fixedSize);
+	public SerializerGenArray fixedSize(int fixedSize, Class<?> nameOfClass) {
+		return new SerializerGenArray(valueSerializer, fixedSize, nameOfClass);
 	}
 
 	@Override
@@ -64,131 +60,49 @@ public final class SerializerGenArray implements SerializerGen {
 		return Object.class;
 	}
 
-	private void newArray(MethodVisitor mv, Class<?> type) {
-		int typ;
-		switch (getType(type).getSort()) {
-			case Type.BOOLEAN:
-				typ = Opcodes.T_BOOLEAN;
-				break;
-			case Type.CHAR:
-				typ = Opcodes.T_CHAR;
-				break;
-			case Type.BYTE:
-				typ = Opcodes.T_BYTE;
-				break;
-			case Type.SHORT:
-				typ = Opcodes.T_SHORT;
-				break;
-			case Type.INT:
-				typ = Opcodes.T_INT;
-				break;
-			case Type.FLOAT:
-				typ = Opcodes.T_FLOAT;
-				break;
-			case Type.LONG:
-				typ = Opcodes.T_LONG;
-				break;
-			case Type.DOUBLE:
-				typ = Opcodes.T_DOUBLE;
-				break;
-			default:
-				mv.visitTypeInsn(ANEWARRAY, getInternalName(type));
-				return;
-		}
-		mv.visitIntInsn(Opcodes.NEWARRAY, typ);
+	@Override
+	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		checkArgument(sourceType.isArray());
-		Class<?> componentType = sourceType.getComponentType();
+	public FunctionDef serialize(FunctionDef value, final int version, final SerializerFactory.StaticMethods staticMethods) {
+		value = cast(value, type);
+		FunctionDef len = call(arg(0), "writeVarInt", length(value));
+		if (fixedSize != -1) len = value(fixedSize);
 
-		mv.visitVarInsn(ASTORE, locals + VAR_ARRAY);
-		if (fixedSize != -1) {
-			mv.visitInsn(POP);
-			mv.visitLdcInsn(fixedSize);
-			mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_LENGTH);
+		if (type.getComponentType() == Byte.TYPE) {
+			return sequence(len, call(arg(0), "write", value));
 		} else {
-			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-			mv.visitInsn(ARRAYLENGTH);
-			mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_LENGTH);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			backend.writeVarIntGen(mv);
-		}
-
-		if (componentType == Byte.TYPE) {
-			checkState(valueSerializer instanceof SerializerGenByte);
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-			mv.visitInsn(ICONST_0);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			backend.writeBytesGen(mv);
-		} else {
-			mv.visitInsn(ICONST_0);
-			mv.visitVarInsn(ISTORE, locals + VAR_I);
-			Label loop = new Label();
-			mv.visitLabel(loop);
-			mv.visitVarInsn(ILOAD, locals + VAR_I);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			Label exit = new Label();
-			mv.visitJumpInsn(IF_ICMPGE, exit);
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-			mv.visitVarInsn(ILOAD, locals + VAR_I);
-			mv.visitInsn(getType(componentType).getOpcode(IALOAD));
-			serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, componentType);
-			mv.visitIincInsn(locals + VAR_I, 1);
-			mv.visitJumpInsn(GOTO, loop);
-			mv.visitLabel(exit);
+			return sequence(len, arrayForEach(value, new ForVar() {
+				@Override
+				public FunctionDef forVar(FunctionDef item) {
+					return valueSerializer.serialize(item, version, staticMethods);
+				}
+			}));
 		}
 	}
 
 	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		checkArgument(targetType.isArray());
-		Class<?> componentType = targetType.getComponentType();
+	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+	}
 
-		if (fixedSize != -1) {
-			mv.visitInsn(POP);
-			mv.visitLdcInsn(fixedSize);
-			mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_LENGTH);
-		} else {
-			backend.readVarIntGen(mv);
-			mv.visitVarInsn(ISTORE, locals + VAR_ARRAY_LENGTH);
-		}
+	@Override
+	public FunctionDef deserialize(Class<?> targetType, final int version, final SerializerFactory.StaticMethods staticMethods) {
+		FunctionDef len = call(arg(0), "readVarInt");
+		if (fixedSize != -1) len = value(fixedSize);
 
-		if (componentType == Byte.TYPE) {
-			checkState(valueSerializer instanceof SerializerGenByte);
-			mv.visitVarInsn(ALOAD, varContainer);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			mv.visitIntInsn(NEWARRAY, T_BYTE); // TODO (vsavchuk): max array size check
-			mv.visitVarInsn(ASTORE, locals + VAR_ARRAY);
-			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-			mv.visitInsn(ICONST_0);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			backend.readBytesGen(mv);
-			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
+		FunctionDef array = let(FunctionDefs.newArray(type, len));
+		if (type.getComponentType() == Byte.TYPE) {
+			return sequence(call(arg(0), "read", array), array);
 		} else {
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			newArray(mv, componentType); // TODO (vsavchuk): max array size check
-			mv.visitVarInsn(ASTORE, locals + VAR_ARRAY);
-			mv.visitInsn(ICONST_0);
-			mv.visitVarInsn(ISTORE, locals + VAR_I);
-			Label loop = new Label();
-			mv.visitLabel(loop);
-			mv.visitVarInsn(ILOAD, locals + VAR_I);
-			mv.visitVarInsn(ILOAD, locals + VAR_ARRAY_LENGTH);
-			Label exit = new Label();
-			mv.visitJumpInsn(IF_ICMPGE, exit);
-			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
-			mv.visitVarInsn(ILOAD, locals + VAR_I);
-			mv.visitVarInsn(ALOAD, varContainer);
-			serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, componentType);
-			mv.visitInsn(getType(componentType).getOpcode(IASTORE));
-			mv.visitIincInsn(locals + VAR_I, 1);
-			mv.visitJumpInsn(GOTO, loop);
-			mv.visitLabel(exit);
-			mv.visitVarInsn(ALOAD, locals + VAR_ARRAY);
+			return sequence(arrayForEachWithChanges(array, new ForEachWithChanges() {
+				@Override
+				public FunctionDef forEachWithChanges() {
+					return cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), type.getComponentType());
+				}
+			}), array);
 		}
 	}
 
@@ -199,7 +113,10 @@ public final class SerializerGenArray implements SerializerGen {
 
 		SerializerGenArray that = (SerializerGenArray) o;
 
-		return (fixedSize == that.fixedSize) && (valueSerializer.equals(that.valueSerializer));
+		if (fixedSize != that.fixedSize) return false;
+		if (!valueSerializer.equals(that.valueSerializer)) return false;
+
+		return true;
 	}
 
 	@Override

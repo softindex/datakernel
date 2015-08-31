@@ -65,7 +65,7 @@ public class RpcMessageSerializeTest {
 	private static <T> T doTest(TypeToken<T> typeToken, T testData1) {
 		SerializerScanner registry = SerializerScanner.defaultScanner();
 		registry.setExtraSubclasses("extraRpcMessages", TestRpcMessageData.class, TestRpcMessageData2.class);
-		SerializerGen serializerGen = registry.serializer(typeToken);
+		SerializerGen serializerGen = registry.serializer(typeToken.getRawType());
 		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 		return doTest(testData1, serializer, serializer);
 	}

@@ -17,7 +17,6 @@
 package io.datakernel.cube;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.zaxxer.hikari.HikariConfig;
@@ -157,7 +156,7 @@ public class LogToCubeTest {
 		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, dir);
 		SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
 		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(TypeToken.of(TestPubRequest.class));
+		SerializerGen serializerGen = registry.serializer(TestPubRequest.class);
 		BufferSerializer<TestPubRequest> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 		LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
@@ -232,7 +231,7 @@ public class LogToCubeTest {
 		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, logsDir);
 		SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
 		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(TypeToken.of(TestPubRequest.class));
+		SerializerGen serializerGen = registry.serializer(TestPubRequest.class);
 		BufferSerializer<TestPubRequest> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 		LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
@@ -379,7 +378,7 @@ public class LogToCubeTest {
 				LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, logsDir);
 				SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
 				SerializerScanner registry = SerializerScanner.defaultScanner();
-				SerializerGen serializerGen = registry.serializer(TypeToken.of(TestPubRequest.class));
+				SerializerGen serializerGen = registry.serializer(TestPubRequest.class);
 				BufferSerializer<TestPubRequest> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 				LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);

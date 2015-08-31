@@ -17,7 +17,6 @@
 package io.datakernel.example;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.async.CompletionCallbackObserver;
@@ -154,7 +153,7 @@ public class CubeExample {
 		SerializerFactory bufferSerializerFactory =
 				SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
 		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(TypeToken.of(LogItem.class));
+		SerializerGen serializerGen = registry.serializer(LogItem.class);
 		BufferSerializer<LogItem> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
 
 		LogManager<LogItem> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
