@@ -27,11 +27,9 @@ import static org.objectweb.asm.Type.BOOLEAN_TYPE;
  * Defines methods for comparing functions
  */
 public final class PredicateDefCmp implements PredicateDef {
-	private FunctionDef left;
-	private FunctionDef right;
+	private Expression left;
+	private Expression right;
 	private Operation operation = Operation.EQ;
-
-//	private List<FunctionDef> predicates = new ArrayList<>();
 
 	public enum Operation {
 		EQ(GeneratorAdapter.EQ, "=="),
@@ -59,7 +57,7 @@ public final class PredicateDefCmp implements PredicateDef {
 		}
 	}
 
-	PredicateDefCmp(Operation operation, FunctionDef left, FunctionDef right) {
+	PredicateDefCmp(Operation operation, Expression left, Expression right) {
 		this.left = left;
 		this.right = right;
 		this.operation = operation;

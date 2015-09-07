@@ -197,7 +197,7 @@ public class Utils {
 			g.invokeVirtual(getType(owner), method);
 	}
 
-	public static FunctionDef thisVar() {
+	public static Expression thisVar() {
 		return new VarThis();
 	}
 
@@ -212,12 +212,12 @@ public class Utils {
 //		return varLocal;
 //	}
 
-	public static FunctionDef argumentVar(int argument) {
+	public static Expression argumentVar(int argument) {
 		return new VarArg(argument);
 	}
 
-	public static void loadAndCast(Context ctx, FunctionDef functionDef, Type targetType) {
-		Type type = functionDef.load(ctx);
+	public static void loadAndCast(Context ctx, Expression expression, Type targetType) {
+		Type type = expression.load(ctx);
 		cast(ctx, type, targetType);
 	}
 

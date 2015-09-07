@@ -30,9 +30,7 @@ import io.datakernel.logfs.LogFileSystemImpl;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerFactory;
-import io.datakernel.serializer.SerializerScanner;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamProducers;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
@@ -150,11 +148,9 @@ public class CubeExample {
 	private static LogManager<LogItem> getLogManager(NioEventloop eventloop, ExecutorService executor,
 	                                                 DefiningClassLoader classLoader, Path logsDir) {
 		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, logsDir);
-		SerializerFactory bufferSerializerFactory =
-				SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(LogItem.class);
-		BufferSerializer<LogItem> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<LogItem> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(classLoader)
+				.create(LogItem.class);
 
 		LogManager<LogItem> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
 

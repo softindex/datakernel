@@ -34,20 +34,20 @@ public final class Context {
 	private final Class<?> thisSuperclass;
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
-	private final Map<Method, FunctionDef> functionDefMap;
-	private final Map<Method, FunctionDef> functionDefStaticMap;
-	private final Map<FunctionDef, Integer> cache = new HashMap<>();
+	private final Map<Method, Expression> expressionMap;
+	private final Map<Method, Expression> expressionStaticMap;
+	private final Map<Expression, Integer> cache = new HashMap<>();
 
 	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> thisSuperclass, Map<String, Class<?>> thisFields,
-	               Type[] argumentTypes, Map<Method, FunctionDef> functionDefMap, Map<Method, FunctionDef> functionDefStaticMap) {
+	               Type[] argumentTypes, Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
 		this.classLoader = classLoader;
 		this.g = g;
 		this.thisSuperclass = thisSuperclass;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
 		this.thisFields = thisFields;
-		this.functionDefMap = functionDefMap;
-		this.functionDefStaticMap = functionDefStaticMap;
+		this.expressionMap = expressionMap;
+		this.expressionStaticMap = expressionStaticMap;
 	}
 
 	public DefiningClassLoader getClassLoader() {
@@ -78,19 +78,19 @@ public final class Context {
 		return argumentTypes[argument];
 	}
 
-	public void putCache(FunctionDef functionDef, Integer localVar) {
-		this.cache.put(functionDef, localVar);
+	public void putCache(Expression expression, Integer localVar) {
+		this.cache.put(expression, localVar);
 	}
 
-	public Integer getCache(FunctionDef functionDef) {
-		return cache.get(functionDef);
+	public Integer getCache(Expression expression) {
+		return cache.get(expression);
 	}
 
-	public Map<Method, FunctionDef> getFunctionDefStaticMap() {
-		return functionDefStaticMap;
+	public Map<Method, Expression> getExpressionStaticMap() {
+		return expressionStaticMap;
 	}
 
-	public Map<Method, FunctionDef> getFunctionDefMap() {
-		return functionDefMap;
+	public Map<Method, Expression> getExpressionMap() {
+		return expressionMap;
 	}
 }

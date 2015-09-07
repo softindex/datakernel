@@ -16,59 +16,46 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.FunctionDef;
+import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Preconditions;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.StringFormat;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 public class SerializerGenString implements SerializerGen {
-	private final boolean utf16;
+	private final StringFormat format;
 	private final boolean nullable;
-	private final boolean ascii;
 	private final int maxLength;
 
-	public SerializerGenString(boolean utf16, boolean nullable, int maxLength, boolean ascii) {
+	public SerializerGenString(int maxLength, boolean nullable, StringFormat format) {
 		Preconditions.check(maxLength == -1 || maxLength > 0);
-		this.utf16 = utf16;
-		this.nullable = nullable;
 		this.maxLength = maxLength;
-		this.ascii = ascii;
-	}
-
-	public SerializerGenString(boolean utf16, boolean nullable, int maxLength) {
-		Preconditions.check(maxLength == -1 || maxLength > 0);
-		this.utf16 = utf16;
+		this.format = format;
 		this.nullable = nullable;
-		this.maxLength = maxLength;
-		this.ascii = false;
 	}
 
 	public SerializerGenString() {
-		this(false, false, -1, false);
+		this(-1, false, StringFormat.UTF8);
 	}
 
-	public SerializerGenString(boolean utf16, boolean nullable) {
-		this(utf16, nullable, -1, false);
-	}
-
-	public SerializerGenString ascii(boolean ascii) {
-		return new SerializerGenString(false, nullable, maxLength, ascii);
-	}
-
-	public SerializerGenString utf16(boolean utf16) {
-		return new SerializerGenString(utf16, nullable, maxLength, ascii);
+	public SerializerGenString(StringFormat format) {
+		this(-1, false, format);
 	}
 
 	public SerializerGenString nullable(boolean nullable) {
-		return new SerializerGenString(utf16, nullable, maxLength, ascii);
+		return new SerializerGenString(maxLength, nullable, format);
+	}
+
+	public SerializerGenString encoding(StringFormat format) {
+		return new SerializerGenString(maxLength, nullable, format);
 	}
 
 	public SerializerGen maxLength(int maxLength) {
-		return new SerializerGenString(utf16, nullable, maxLength, ascii);
+		return new SerializerGenString(maxLength, nullable, format);
 	}
 
 	@Override
@@ -86,60 +73,72 @@ public class SerializerGenString implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
-		List<FunctionDef> list = new ArrayList<>();
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+		List<Expression> list = new ArrayList<>();
 
-		FunctionDef maxLen = value(maxLength);
-		FunctionDef function;
+		Expression maxLen = value(maxLength);
+		Expression expression;
 		if (maxLength != -1) {
-			function = choice(and(cmpGe(maxLen, value(0)), cmpGe(call(cast(value, String.class), "length"), value(maxLength + 1))),
+			expression = choice(and(cmpGe(maxLen, value(0)), cmpGe(call(cast(value, String.class), "length"), value(maxLength + 1))),
 					cast(call(cast(value, String.class), "substring", value(0), maxLen), String.class),
 					cast(value, String.class));
 		} else {
-			function = cast(value, String.class);
+			expression = cast(value, String.class);
 		}
 
-		if (utf16) {
+		if (format == StringFormat.UTF16) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableUTF16", function));
+				list.add(call(arg(0), "writeNullableUTF16", expression));
 			else
-				list.add(call(arg(0), "writeUTF16", function));
-		} else if (ascii) {
+				list.add(call(arg(0), "writeUTF16", expression));
+		} else if (format == StringFormat.ASCII) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableAscii", function));
+				list.add(call(arg(0), "writeNullableAscii", expression));
 			else
-				list.add(call(arg(0), "writeAscii", function));
+				list.add(call(arg(0), "writeAscii", expression));
+		} else if (format == StringFormat.UTF8) {
+			if (nullable)
+				list.add(call(arg(0), "writeNullableJavaUTF8", expression));
+			else
+				list.add(call(arg(0), "writeJavaUTF8", expression));
 		} else {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableUTF8", function));
+				list.add(call(arg(0), "writeNullableUTF8", expression));
 			else
-				list.add(call(arg(0), "writeUTF8", function));
+				list.add(call(arg(0), "writeUTF8", expression));
 		}
+
 		return sequence(list);
-	}
-
-	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
-		if (utf16) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+
+	}
+
+	@Override
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+		if (format == StringFormat.UTF16) {
 			if (nullable)
 				return call(arg(0), "readNullableUTF16");
 			else
 				return call(arg(0), "readUTF16");
-		} else if (ascii) {
+		} else if (format == StringFormat.ASCII) {
 			if (nullable)
 				return call(arg(0), "readNullableAscii");
 			else
 				return call(arg(0), "readAscii");
+		} else if (format == StringFormat.UTF8) {
+			if (nullable)
+				return call(arg(0), "readNullableJavaUTF8");
+			else
+				return call(arg(0), "readJavaUTF8");
 		} else {
 			if (nullable)
 				return call(arg(0), "readNullableUTF8");
@@ -156,15 +155,16 @@ public class SerializerGenString implements SerializerGen {
 		SerializerGenString that = (SerializerGenString) o;
 
 		if (nullable != that.nullable) return false;
-		if (utf16 != that.utf16) return false;
+		if (maxLength != that.maxLength) return false;
+		return format == that.format;
 
-		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = (utf16 ? 1 : 0);
+		int result = format != null ? format.hashCode() : 0;
 		result = 31 * result + (nullable ? 1 : 0);
+		result = 31 * result + maxLength;
 		return result;
 	}
 }

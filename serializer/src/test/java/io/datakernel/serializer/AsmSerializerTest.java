@@ -17,7 +17,6 @@
 package io.datakernel.serializer;
 
 import io.datakernel.serializer.annotations.*;
-import io.datakernel.serializer.asm.SerializerGen;
 import org.junit.Test;
 
 import java.net.InetAddress;
@@ -29,12 +28,11 @@ import static org.junit.Assert.*;
 
 @SuppressWarnings("serial")
 public class AsmSerializerTest {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	private static <T> T doTest(Class<?> type, T testData1) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(type);
-		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<T> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(type);
 		return doTest(testData1, serializer, serializer);
 	}
 
@@ -42,7 +40,7 @@ public class AsmSerializerTest {
 		byte[] array = new byte[1000];
 		SerializationOutputBuffer output = new SerializationOutputBuffer(array);
 		serializer.serialize(output, testData1);
-		SerializationInputBuffer input = new SerializationInputBuffer(array, 0);
+		SerializationInputBuffer input = new SerializationInputBuffer(output.array(), 0);
 		return deserializer.deserialize(input);
 	}
 
@@ -543,7 +541,7 @@ public class AsmSerializerTest {
 		@Serialize(order = 0)
 		@SerializeNullableEx({@SerializeNullable(path = {0}), @SerializeNullable(path = {0, 0}), @SerializeNullable(path = {0, 1})})
 		@SerializeVarLength(path = {0, 0})
-		@SerializeUtf16(path = {0, 1})
+		@SerializeStringFormat(value = StringFormat.UTF16, path = {0, 1})
 		public List<TestDataGenericNested<Integer, String>> list;
 	}
 
@@ -710,7 +708,7 @@ public class AsmSerializerTest {
 
 	public static class TestDataSerializerUtf16 {
 		@Serialize(order = 0)
-		@SerializeUtf16(path = {0})
+		@SerializeStringFormat(value = StringFormat.UTF16, path = {0})
 		@SerializeNullable(path = {0})
 		public List<String> strings;
 	}
@@ -757,11 +755,10 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testVersions() {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(TestDataVersions.class);
-		BufferSerializer<TestDataVersions> serializer0 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(serializerGen, 0);
-		BufferSerializer<TestDataVersions> serializer1 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(serializerGen, 1);
-		BufferSerializer<TestDataVersions> serializer2 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(serializerGen, 2);
+		SerializerBuilder builder = SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
+		BufferSerializer<TestDataVersions> serializer0 = builder.version(0).create(TestDataVersions.class);
+		BufferSerializer<TestDataVersions> serializer1 = builder.version(1).create(TestDataVersions.class);
+		BufferSerializer<TestDataVersions> serializer2 = builder.version(2).create(TestDataVersions.class);
 
 		TestDataVersions testData1 = new TestDataVersions();
 		testData1.a = 10;
@@ -832,12 +829,9 @@ public class AsmSerializerTest {
 	@Test
 	public void testProfiles() {
 		Class<?> type = TestDataProfiles.class;
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerScanner registry1 = SerializerScanner.defaultScanner("profile1");
-		SerializerScanner registry2 = SerializerScanner.defaultScanner("profile2");
-		BufferSerializer<TestDataProfiles> serializer = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(registry.serializer(type));
-		BufferSerializer<TestDataProfiles> serializer1 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(registry1.serializer(type));
-		BufferSerializer<TestDataProfiles> serializer2 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(registry2.serializer(type));
+		BufferSerializer<TestDataProfiles> serializer = SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader()).create(type);
+		BufferSerializer<TestDataProfiles> serializer1 = SerializerBuilder.newDefaultInstance("profile1", ClassLoader.getSystemClassLoader()).create(type);
+		BufferSerializer<TestDataProfiles> serializer2 = SerializerBuilder.newDefaultInstance("profile2", ClassLoader.getSystemClassLoader()).create(type);
 
 		TestDataProfiles testData1 = new TestDataProfiles();
 		testData1.a = 10;
@@ -886,17 +880,24 @@ public class AsmSerializerTest {
 
 	@Test
 	public void testProfilesVersions() {
-		Class type = TestDataProfiles2.class;
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerScanner registryProfile = SerializerScanner.defaultScanner("profile");
-		BufferSerializer<TestDataProfiles2> serializer1 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(registry.serializer(type),
-				1);
-		BufferSerializer<TestDataProfiles2> serializer2 = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(registry.serializer(type),
-				2);
-		BufferSerializer<TestDataProfiles2> serializer1Profile = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(
-				registryProfile.serializer(type), 1);
-		BufferSerializer<TestDataProfiles2> serializer2Profile = SerializerFactory.createBufferSerializerFactory().createBufferSerializer(
-				registryProfile.serializer(type), 2);
+		Class<TestDataProfiles2> type = TestDataProfiles2.class;
+		BufferSerializer<TestDataProfiles2> serializer1 = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.version(1)
+				.create(type);
+		BufferSerializer<TestDataProfiles2> serializer2 = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.version(2)
+				.create(type);
+
+		BufferSerializer<TestDataProfiles2> serializer1Profile = SerializerBuilder
+				.newDefaultInstance("profile", ClassLoader.getSystemClassLoader())
+				.version(1)
+				.create(type);
+		BufferSerializer<TestDataProfiles2> serializer2Profile = SerializerBuilder
+				.newDefaultInstance("profile", ClassLoader.getSystemClassLoader())
+				.version(2)
+				.create(type);
 
 		TestDataProfiles2 testData1 = new TestDataProfiles2();
 		testData1.a = 10;
@@ -1017,10 +1018,10 @@ public class AsmSerializerTest {
 		testData1.object1 = 10;
 		testData1.object2 = "object2";
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.setExtraSubclasses("extraSubclasses1", Integer.class);
-		SerializerGen serializerGen = registry.serializer(TestDataExtraSubclasses.class);
-		BufferSerializer<TestDataExtraSubclasses> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<TestDataExtraSubclasses> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.setExtraSubclasses("extraSubclasses1", Integer.class)
+				.create(TestDataExtraSubclasses.class);
 		TestDataExtraSubclasses testData2 = doTest(testData1, serializer, serializer);
 
 		assertEquals(testData1.object1, testData2.object1);
@@ -1045,10 +1046,10 @@ public class AsmSerializerTest {
 		TestDataExtraSubclasses2 testData1 = new TestDataExtraSubclasses2();
 		testData1.i = 10;
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.setExtraSubclasses("extraSubclasses", TestDataExtraSubclasses2.class);
-		SerializerGen serializerGen = registry.serializer(TestDataExtraSubclassesInterface.class);
-		BufferSerializer<TestDataExtraSubclassesInterface> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<TestDataExtraSubclassesInterface> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.setExtraSubclasses("extraSubclasses", TestDataExtraSubclasses2.class)
+				.create(TestDataExtraSubclassesInterface.class);
 		TestDataExtraSubclassesInterface testData2 = doTest(testData1, serializer, serializer);
 
 		assertEquals(testData1.i, ((TestDataExtraSubclasses2) testData2).i);
@@ -1111,18 +1112,18 @@ public class AsmSerializerTest {
 		testData1.setDoubleValue(1.23);
 		testData1.setStringValue("test");
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(TestInheritAnnotationsInterface3.class);
-		BufferSerializer<TestInheritAnnotationsInterface3> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<TestInheritAnnotationsInterface3> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(TestInheritAnnotationsInterface3.class);
 		TestInheritAnnotationsInterface3 testData2 = doTest(testData1, serializer, serializer);
 
 		assertEquals(testData1.getIntValue(), testData2.getIntValue());
 		assertEquals(testData1.getDoubleValue(), testData2.getDoubleValue(), Double.MIN_VALUE);
 		assertEquals(testData1.getStringValue(), testData2.getStringValue());
 
-		SerializerScanner registry2 = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen2 = registry2.serializer(TestInheritAnnotationsInterfacesImpl.class);
-		BufferSerializer<TestInheritAnnotationsInterfacesImpl> serializer2 = bufferSerializerFactory.createBufferSerializer(serializerGen2);
+		BufferSerializer<TestInheritAnnotationsInterfacesImpl> serializer2 = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(TestInheritAnnotationsInterfacesImpl.class);
 		TestInheritAnnotationsInterfacesImpl testData3 = doTest(testData1, serializer2, serializer2);
 
 		assertEquals(0, testData3.getIntValue());
@@ -1427,7 +1428,7 @@ public class AsmSerializerTest {
 	@Test
 	public void testGenericHolder() {
 		GenericComplex gc = new GenericComplex();
-		GenericHolder1 g1 = new GenericHolder1(); g1.item = 10;
+		GenericHolder1 g1 = new GenericHolder1(); g1.item = 42;
 		GenericHolder2 g2 = new GenericHolder2(); g2.item = "abcd";
 
 		gc.holder1 = g1;

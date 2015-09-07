@@ -19,13 +19,13 @@ package io.datakernel.cube;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import io.datakernel.codegen.AsmFunctionFactory;
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.codegen.FunctionDefComparator;
-import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionComparator;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.dimensiontype.DimensionType;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamReducers;
 import org.slf4j.Logger;
@@ -39,7 +39,7 @@ import java.util.Map;
 import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Iterables.concat;
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 /**
  * Defines a structure of a cube.
@@ -52,7 +52,6 @@ public class CubeStructure {
 	private final DefiningClassLoader classLoader;
 	private final Map<String, DimensionType> dimensions;
 	private final Map<String, MeasureType> measures;
-	private final SerializerFactory bufferSerializerFactory;
 
 	private final static Logger logger = LoggerFactory.getLogger(CubeStructure.class);
 
@@ -68,7 +67,6 @@ public class CubeStructure {
 		this.classLoader = classLoader;
 		this.dimensions = dimensions;
 		this.measures = measures;
-		this.bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
 	}
 
 	public void checkThatDimensionsExist(List<String> dimensions) {
@@ -117,8 +115,8 @@ public class CubeStructure {
 	public Function createFieldFunction(Class<?> recordClass, Class<?> fieldClass, List<String> fields) {
 		logger.trace("Creating field function for fields {}", fields);
 		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Function.class);
-		FunctionDef letField = let(constructor(fieldClass));
-		FunctionDefSequence applyDef = sequence(letField);
+		Expression letField = let(constructor(fieldClass));
+		ExpressionSequence applyDef = sequence(letField);
 
 		for (String field : fields) {
 			applyDef.add(set(
@@ -163,7 +161,7 @@ public class CubeStructure {
 	public Comparator createFieldComparator(CubeQuery query, Class<?> fieldClass) {
 		logger.trace("Creating field comparator for query {}", query.toString());
 		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Comparator.class);
-		FunctionDefComparator comparator = comparator();
+		ExpressionComparator comparator = comparator();
 		List<CubeQuery.CubeOrdering> orderings = query.getOrderings();
 
 		for (CubeQuery.CubeOrdering ordering : orderings) {
@@ -187,8 +185,8 @@ public class CubeStructure {
 	public Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> dimensions) {
 		logger.trace("Creating key function for dimensions {}", dimensions);
 		AsmFunctionFactory factory = new AsmFunctionFactory<>(classLoader, Function.class);
-		FunctionDef key = let(constructor(keyClass));
-		FunctionDefSequence applyDef = sequence(key);
+		Expression key = let(constructor(keyClass));
+		ExpressionSequence applyDef = sequence(key);
 		for (String dimension : dimensions) {
 			applyDef.add(set(
 					field(key, dimension),
@@ -242,8 +240,8 @@ public class CubeStructure {
 		logger.trace("Creating aggregation reducer for dimensions {}, measures {}", recordDimensions, recordMeasures);
 		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, StreamReducers.Reducer.class);
 
-		FunctionDef accumulator = let(constructor(outputClass));
-		FunctionDefSequence onFirstItemDef = sequence(accumulator);
+		Expression accumulator = let(constructor(outputClass));
+		ExpressionSequence onFirstItemDef = sequence(accumulator);
 		for (String dimension : recordDimensions) {
 			onFirstItemDef.add(set(
 					field(accumulator, dimension),
@@ -257,7 +255,7 @@ public class CubeStructure {
 		onFirstItemDef.add(accumulator);
 		factory.method("onFirstItem", onFirstItemDef);
 
-		FunctionDefSequence onNextItemDef = sequence();
+		ExpressionSequence onNextItemDef = sequence();
 		for (String measure : recordMeasures) {
 			onNextItemDef.add(set(
 					field(cast(arg(3), outputClass), measure),
@@ -278,8 +276,8 @@ public class CubeStructure {
 		logger.trace("Creating merge measures reducer for dimensions {}, measures {}", dimensions, recordMeasures);
 		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, StreamReducers.Reducer.class);
 
-		FunctionDef accumulator1 = let(constructor(outputClass));
-		FunctionDefSequence onFirstItemDef = sequence(accumulator1);
+		Expression accumulator1 = let(constructor(outputClass));
+		ExpressionSequence onFirstItemDef = sequence(accumulator1);
 		for (String dimension : dimensions) {
 			onFirstItemDef.add(set(
 					field(accumulator1, dimension),
@@ -293,8 +291,8 @@ public class CubeStructure {
 		onFirstItemDef.add(accumulator1);
 		factory.method("onFirstItem", onFirstItemDef);
 
-		FunctionDef accumulator2 = let(cast(arg(3), outputClass));
-		FunctionDefSequence onNextItemDef = sequence(accumulator2);
+		Expression accumulator2 = let(cast(arg(3), outputClass));
+		ExpressionSequence onNextItemDef = sequence(accumulator2);
 		for (String measure : recordMeasures) {
 			onNextItemDef.add(set(
 					field(accumulator2, measure),
@@ -316,8 +314,8 @@ public class CubeStructure {
 		logger.trace("Creating aggregate for dimensions {}, measures {}", recordDimensions, recordMeasures);
 		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Aggregate.class);
 
-		FunctionDef result = let(constructor(outputClass));
-		FunctionDefSequence createAccumulatorDef = sequence(result);
+		Expression result = let(constructor(outputClass));
+		ExpressionSequence createAccumulatorDef = sequence(result);
 		for (String dimension : recordDimensions) {
 			createAccumulatorDef.add(set(
 					field(result, dimension),
@@ -331,7 +329,7 @@ public class CubeStructure {
 		createAccumulatorDef.add(result);
 		factory.method("createAccumulator", createAccumulatorDef);
 
-		FunctionDefSequence accumulateDef = sequence();
+		ExpressionSequence accumulateDef = sequence();
 		for (String measure : recordMeasures) {
 			accumulateDef.add(set(
 					field(cast(arg(0), outputClass), measure),
@@ -364,7 +362,9 @@ public class CubeStructure {
 				throw propagate(e);
 			}
 		}
-		return bufferSerializerFactory.createBufferSerializer(serializerGenClass);
+		return SerializerBuilder
+				.newDefaultInstance(classLoader)
+				.create(serializerGenClass);
 	}
 
 	@Override

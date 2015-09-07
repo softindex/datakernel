@@ -31,9 +31,7 @@ import io.datakernel.datagraph.server.command.DatagraphCommandDownload;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.GsonSubclassesAdapter;
-import io.datakernel.serializer.SerializerFactory;
-import io.datakernel.serializer.SerializerScanner;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +52,6 @@ public final class DatagraphSerialization {
 
 	public final Gson gson;
 
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	private final Map<Class<?>, BufferSerializer<?>> serializers = new HashMap<>();
 
@@ -147,9 +144,7 @@ public final class DatagraphSerialization {
 		if (serializer == null) {
 			try {
 				logger.info("Creating serializer for {}", type);
-				SerializerScanner registry = SerializerScanner.defaultScanner();
-				SerializerGen serializerGen = registry.serializer(type);
-				serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+				serializer = SerializerBuilder.newDefaultSerializer(type, ClassLoader.getSystemClassLoader());
 				serializers.put(type, serializer);
 			} catch (Exception e) {
 				logger.error("Error creating serializer for {}", type, e);

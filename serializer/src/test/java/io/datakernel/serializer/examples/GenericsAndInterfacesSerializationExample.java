@@ -16,9 +16,11 @@
 
 package io.datakernel.serializer.examples;
 
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.serializer.asm.SerializerGen;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +29,6 @@ import java.util.List;
  * Example of using generics and interfaces with serializers and deserializers.
  */
 public class GenericsAndInterfacesSerializationExample {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	public static void main(String[] args) {
 		// Create a test object
@@ -115,9 +116,9 @@ public class GenericsAndInterfacesSerializationExample {
 	}
 
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(typeToken);
-		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<T> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
 

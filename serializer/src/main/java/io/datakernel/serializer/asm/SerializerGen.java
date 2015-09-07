@@ -16,8 +16,8 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -58,12 +58,12 @@ public interface SerializerGen {
 
 	Class<?> getRawType();
 
-	void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods);
+	void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods);
 
-	FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods);
+	Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods);
 
-	void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods);
+	void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods);
 
-	FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods);
+	Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods);
 
 }

@@ -22,14 +22,14 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Iterator;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
-public class ForEachHppcSet implements FunctionDef {
+public class ForEachHppcSet implements Expression {
 	private final Class<?> iteratorType;
-	private final FunctionDef value;
+	private final Expression value;
 	private final ForVar forVar;
 
 	@Override
@@ -53,7 +53,7 @@ public class ForEachHppcSet implements FunctionDef {
 		return result;
 	}
 
-	ForEachHppcSet(Class<?> iteratorType, FunctionDef field, ForVar forVar) {
+	ForEachHppcSet(Class<?> iteratorType, Expression field, ForVar forVar) {
 		this.iteratorType = iteratorType;
 		this.value = field;
 		this.forVar = forVar;

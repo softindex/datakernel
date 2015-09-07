@@ -16,12 +16,12 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.nio.ByteBuffer;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 public class SerializerGenByteBuffer implements SerializerGen {
 	private final boolean wrapped;
@@ -49,36 +49,36 @@ public class SerializerGenByteBuffer implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef array = call(cast(value, ByteBuffer.class), "array");
-		FunctionDef position = call(cast(value, ByteBuffer.class), "position");
-		FunctionDef remaining = let(call(cast(value, ByteBuffer.class), "remaining"));
-		FunctionDef writeLength = call(arg(0), "writeVarInt", remaining);
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+		Expression array = call(cast(value, ByteBuffer.class), "array");
+		Expression position = call(cast(value, ByteBuffer.class), "position");
+		Expression remaining = let(call(cast(value, ByteBuffer.class), "remaining"));
+		Expression writeLength = call(arg(0), "writeVarInt", remaining);
 
 		return sequence(writeLength, call(arg(0), "write", array, position, remaining));
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef length = let(call(arg(0), "readVarInt"));
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(call(arg(0), "readVarInt"));
 
 		if (!wrapped) {
-			FunctionDef array = let(newArray(byte[].class, length));
+			Expression array = let(newArray(byte[].class, length));
 			return sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array));
 		} else {
-			FunctionDef inputBuffer = call(arg(0), "array");
-			FunctionDef position = let(call(arg(0), "position"));
-			FunctionDef setPosition = call(arg(0), "position", add(position, length));
+			Expression inputBuffer = call(arg(0), "array");
+			Expression position = let(call(arg(0), "position"));
+			Expression setPosition = call(arg(0), "position", add(position, length));
 
 			return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));
 		}

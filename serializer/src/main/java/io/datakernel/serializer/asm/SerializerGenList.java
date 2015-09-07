@@ -17,12 +17,12 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.*;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
@@ -49,17 +49,17 @@ public final class SerializerGenList implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef length = let(length(value));
-		FunctionDef len = call(arg(0), "writeVarInt", length);
-		FunctionDefListForEach forEach = listForEach(value, new ForVar() {
+	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(length(value));
+		Expression len = call(arg(0), "writeVarInt", length);
+		ExpressionListForEach forEach = listForEach(value, new ForVar() {
 			@Override
-			public FunctionDef forVar(FunctionDef item) {
+			public Expression forVar(Expression item) {
 				return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);
 			}
 		});
@@ -68,16 +68,16 @@ public final class SerializerGenList implements SerializerGen {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef local = let(FunctionDefs.newArray(Object[].class, call(arg(0), "readVarInt")));
-		FunctionDefArrayForEachWithChanges forEach = arrayForEachWithChanges(local, new ForEachWithChanges() {
+	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression local = let(Expressions.newArray(Object[].class, call(arg(0), "readVarInt")));
+		ExpressionArrayForEachWithChanges forEach = arrayForEachWithChanges(local, new ForEachWithChanges() {
 			@Override
-			public FunctionDef forEachWithChanges() {
+			public Expression forEachWithChanges() {
 				return valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods);
 			}
 		});

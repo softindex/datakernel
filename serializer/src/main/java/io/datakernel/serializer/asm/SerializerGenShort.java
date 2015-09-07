@@ -16,10 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 public final class SerializerGenShort extends SerializerGenPrimitive {
 
@@ -28,12 +28,12 @@ public final class SerializerGenShort extends SerializerGenPrimitive {
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return call(arg(0), "writeShort", cast(value, short.class));
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (targetType.isPrimitive())
 			return call(arg(0), "readShort");
 		else

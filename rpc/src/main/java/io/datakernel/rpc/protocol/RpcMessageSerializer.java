@@ -18,8 +18,7 @@ package io.datakernel.rpc.protocol;
 
 import com.google.common.collect.Sets;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerFactory;
-import io.datakernel.serializer.SerializerScanner;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenBuilderConst;
@@ -76,16 +75,14 @@ public final class RpcMessageSerializer {
 	private final BufferSerializer<RpcMessage> messageSerializer;
 
 	private RpcMessageSerializer(Builder builder) {
-		SerializerScanner serializersRegistry = SerializerScanner.defaultScanner();
+		SerializerBuilder serializersRegistry = SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
 		for (Entry<Class<?>, SerializerGenBuilder> serializer : builder.extraSerializers.entrySet())
-			serializersRegistry.register(serializer.getKey(), serializer.getValue());
+			serializersRegistry.registry(serializer.getKey(), serializer.getValue());
 		serializersRegistry.setExtraSubclasses("extraRpcMessages", builder.extraSubClasses);
-		SerializerGen serializerGen = serializersRegistry.serializer(RpcMessage.class);
-		SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 		if (builder.serializeVersion == 0)
-			this.messageSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+			this.messageSerializer = serializersRegistry.create(RpcMessage.class);
 		else
-			this.messageSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen, builder.serializeVersion);
+			this.messageSerializer = serializersRegistry.version(builder.serializeVersion).create(RpcMessage.class);
 	}
 
 	public BufferSerializer<RpcMessage> getSerializer() {

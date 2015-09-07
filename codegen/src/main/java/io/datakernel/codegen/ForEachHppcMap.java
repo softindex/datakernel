@@ -22,18 +22,18 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Iterator;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 import static org.objectweb.asm.Type.getType;
 
-public class ForEachHppcMap implements FunctionDef {
+public class ForEachHppcMap implements Expression {
 	private final Class<?> iteratorType;
-	private final FunctionDef value;
+	private final Expression value;
 	private final ForVar forKey;
 	private final ForVar forValue;
 
-	ForEachHppcMap(Class<?> iteratorType, FunctionDef value, ForVar forKey, ForVar forValue) {
+	ForEachHppcMap(Class<?> iteratorType, Expression value, ForVar forKey, ForVar forValue) {
 		this.iteratorType = iteratorType;
 		this.value = value;
 		this.forKey = forKey;

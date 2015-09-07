@@ -16,11 +16,13 @@
 
 package io.datakernel.serializer.examples;
 
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
 import io.datakernel.serializer.annotations.SerializeNullableEx;
-import io.datakernel.serializer.asm.SerializerGen;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -31,7 +33,6 @@ import java.util.Map;
  * Example of serialization and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array.
  */
 public class ComplexObjectSerializationExample {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	public static void main(String[] args) {
 		// Create a test object
@@ -94,9 +95,9 @@ public class ComplexObjectSerializationExample {
 	}
 
 	private static <T> T serializeAndDeserialize(Class<?> typeToken, T testData1) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(typeToken);
-		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<T> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
 

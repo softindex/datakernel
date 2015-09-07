@@ -16,15 +16,15 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForEachWithChanges;
 import io.datakernel.codegen.ForVar;
-import io.datakernel.codegen.FunctionDef;
 import io.datakernel.codegen.utils.Preconditions;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.*;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 public class SerializerGenSet implements SerializerGen {
 	private final SerializerGen valueSerializer;
@@ -47,30 +47,30 @@ public class SerializerGenSet implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, final int version, final SerializerFactory.StaticMethods staticMethods) {
+	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		return sequence(
 				call(arg(0), "writeVarInt", call(value, "size")),
 				setForEach(value, new ForVar() {
 					@Override
-					public FunctionDef forVar(FunctionDef local) {
-						return sequence(valueSerializer.serialize(cast(local, valueSerializer.getRawType()), version, staticMethods), voidFunc());
+					public Expression forVar(Expression local) {
+						return sequence(valueSerializer.serialize(cast(local, valueSerializer.getRawType()), version, staticMethods), voidExp());
 					}
 				})
 		);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		boolean isEnum = valueSerializer.getRawType().isEnum();
 		Class<?> targetInstance = isEnum ? EnumSet.class : LinkedHashSet.class;
 		Preconditions.check(targetType.isAssignableFrom(targetInstance));
@@ -82,29 +82,29 @@ public class SerializerGenSet implements SerializerGen {
 		}
 	}
 
-	private FunctionDef deserializeEnumSet(final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef len = let(call(arg(0), "readVarInt"));
-		FunctionDef container = let(newArray(Object[].class, len));
-		FunctionDef array = arrayForEachWithChanges(container, new ForEachWithChanges() {
+	private Expression deserializeEnumSet(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression len = let(call(arg(0), "readVarInt"));
+		Expression container = let(newArray(Object[].class, len));
+		Expression array = arrayForEachWithChanges(container, new ForEachWithChanges() {
 			@Override
-			public FunctionDef forEachWithChanges() {
+			public Expression forEachWithChanges() {
 				return valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods);
 			}
 		});
-		FunctionDef list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
-		FunctionDef enumSet = callStatic(EnumSet.class, "copyOf", list);
+		Expression list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
+		Expression enumSet = callStatic(EnumSet.class, "copyOf", list);
 		return sequence(len, container, array, list, enumSet);
 	}
 
-	private FunctionDef deserializeSimpleSet(final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef length = let(call(arg(0), "readVarInt"));
-		final FunctionDef container = let(constructor(LinkedHashSet.class, length));
-		return sequence(length, container, functionFor(length, new ForVar() {
+	private Expression deserializeSimpleSet(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(call(arg(0), "readVarInt"));
+		final Expression container = let(constructor(LinkedHashSet.class, length));
+		return sequence(length, container, expressionFor(length, new ForVar() {
 					@Override
-					public FunctionDef forVar(FunctionDef local) {
+					public Expression forVar(Expression local) {
 						return sequence(
 								call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)),
-								voidFunc()
+								voidExp()
 						);
 					}
 				}), container

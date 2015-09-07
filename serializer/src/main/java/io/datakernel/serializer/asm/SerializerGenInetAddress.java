@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.codegen.FunctionDefs;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Expressions;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.net.InetAddress;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenInetAddress implements SerializerGen {
@@ -50,23 +50,23 @@ public class SerializerGenInetAddress implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return call(arg(0), "write", call(value, "getAddress"));
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef local = let(FunctionDefs.newArray(byte[].class, value(4)));
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+		Expression local = let(Expressions.newArray(byte[].class, value(4)));
 		return sequence(call(arg(0), "read", local), callStatic(targetType, "getByAddress", local));
 	}
 

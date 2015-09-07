@@ -17,7 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import com.carrotsearch.hppc.*;
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import org.junit.Test;
 
@@ -25,7 +28,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class CodeGenSerializerGenHppcMapTest {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer) {
 		byte[] array = new byte[1000];
@@ -36,10 +38,10 @@ public class CodeGenSerializerGenHppcMapTest {
 	}
 
 	private static <T, K, V> BufferSerializer<T> getBufferSerializer(Class<?> collectionType, Class<K> keyClass, Class<V> valueClass) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(collectionType, SerializerGenHppcMap.serializerGenBuilder(collectionType, keyClass, valueClass));
-		SerializerGen serializerGen = registry.serializer(collectionType);
-		return bufferSerializerFactory.createBufferSerializer(serializerGen);
+		return SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(collectionType, SerializerGenHppcMap.serializerGenBuilder(collectionType, keyClass, valueClass))
+				.create(collectionType);
 	}
 
 	@Test
@@ -188,10 +190,10 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testIntObjectMap() {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class));
-		SerializerGen serializerGen = registry.serializer(MapIntObjectHolder.class);
-		BufferSerializer<MapIntObjectHolder> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<MapIntObjectHolder> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
+				.create(MapIntObjectHolder.class);
 
 		MapIntObjectHolder testMap1 = new MapIntObjectHolder();
 		testMap1.map = new IntObjectOpenHashMap<>();
@@ -213,10 +215,10 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testObjectShortMap() throws Exception {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ObjectShortMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectShortMap.class, Object.class, short.class));
-		SerializerGen serializerGen = registry.serializer(MapObjectShortHolder.class);
-		BufferSerializer<MapObjectShortHolder> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<MapObjectShortHolder> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ObjectShortMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectShortMap.class, Object.class, short.class))
+				.create(MapObjectShortHolder.class);
 
 		MapObjectShortHolder testMap1 = new MapObjectShortHolder();
 		testMap1.map = new ObjectShortOpenHashMap<>();
@@ -238,10 +240,10 @@ public class CodeGenSerializerGenHppcMapTest {
 
 	@Test
 	public void testObjectObjectMap() throws Exception {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ObjectObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectObjectMap.class, Object.class, Object.class));
-		SerializerGen serializerGen = registry.serializer(MapObjectObjectHolder.class);
-		BufferSerializer<MapObjectObjectHolder> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<MapObjectObjectHolder> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ObjectObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectObjectMap.class, Object.class, Object.class))
+				.create(MapObjectObjectHolder.class);
 
 		MapObjectObjectHolder testMap1 = new MapObjectObjectHolder();
 		testMap1.map = new ObjectObjectOpenHashMap<>();

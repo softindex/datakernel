@@ -21,7 +21,7 @@ import org.objectweb.asm.Type;
 /**
  * Defines method which allow to take current instance
  */
-public final class VarThis implements FunctionDef {
+public final class VarThis implements Expression {
 	@Override
 	public Type type(Context ctx) {
 		return ctx.getThisType();

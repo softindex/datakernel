@@ -17,10 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.AsmFunctionFactory;
-import io.datakernel.codegen.FunctionDef;
+import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.VarField;
 import io.datakernel.codegen.utils.Preconditions;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 import org.objectweb.asm.Type;
 
 import java.lang.reflect.Constructor;
@@ -28,7 +28,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.check;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static java.lang.reflect.Modifier.*;
@@ -276,12 +276,12 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (staticMethods.startSerializeStaticMethod(this, version)) {
 			return;
 		}
 
-		List<FunctionDef> list = new ArrayList<>();
+		List<Expression> list = new ArrayList<>();
 		for (String fieldName : fields.keySet()) {
 
 			FieldGen fieldGen = fields.get(fieldName);
@@ -303,48 +303,48 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef field, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression serialize(Expression field, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return staticMethods.callStaticSerializeMethod(this, version, arg(0), field);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (staticMethods.startDeserializeStaticMethod(this, version)) {
 			return;
 		}
 
 		if (!implInterface && dataTypeIn.isInterface()) {
-			FunctionDef functionDef = deserializeInterface(this.getRawType(), version, staticMethods);
-			staticMethods.registerStaticDeserializeMethod(this, version, functionDef);
+			Expression expression = deserializeInterface(this.getRawType(), version, staticMethods);
+			staticMethods.registerStaticDeserializeMethod(this, version, expression);
 			return;
 		}
 		if (!implInterface && constructor == null && factory == null && setters.isEmpty()) {
-			FunctionDef functionDef = deserializeClassSimple(version, staticMethods);
-			staticMethods.registerStaticDeserializeMethod(this, version, functionDef);
+			Expression expression = deserializeClassSimple(version, staticMethods);
+			staticMethods.registerStaticDeserializeMethod(this, version, expression);
 			return;
 		}
 
-		List<FunctionDef> list = new ArrayList<>();
-		final Map<String, FunctionDef> map = new HashMap<>();
+		List<Expression> list = new ArrayList<>();
+		final Map<String, Expression> map = new HashMap<>();
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
 
 			if (!fieldGen.hasVersion(version)) continue;
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
-			FunctionDef functionDef = let(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods));
-			list.add(functionDef);
-			map.put(fieldName, cast(functionDef, fieldGen.getRawType()));
+			Expression expression = let(fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods));
+			list.add(expression);
+			map.put(fieldName, cast(expression, fieldGen.getRawType()));
 		}
 
-		FunctionDef constructor;
+		Expression constructor;
 		if (factory == null) {
 			constructor = _insertCallConstructor(this.getRawType(), map);
 		} else {
 			constructor = _insertCallFactory(map);
 		}
 
-		FunctionDef local = let(constructor);
+		Expression local = let(constructor);
 		list.add(local);
 
 		for (Method method : setters.keySet()) {
@@ -358,7 +358,7 @@ public class SerializerGenClass implements SerializerGen {
 				}
 			}
 			if (found) {
-				FunctionDef[] temp = new FunctionDef[method.getParameterTypes().length];
+				Expression[] temp = new Expression[method.getParameterTypes().length];
 				int i = 0;
 				for (String fieldName : setters.get(method)) {
 					FieldGen fieldGen = fields.get(fieldName);
@@ -388,12 +388,12 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 
-	private FunctionDef _insertCallFactory(Map<String, FunctionDef> map) {
-		FunctionDef[] param = new FunctionDef[factoryParams.size()];
+	private Expression _insertCallFactory(Map<String, Expression> map) {
+		Expression[] param = new Expression[factoryParams.size()];
 		int i = 0;
 		for (String fieldName : factoryParams) {
 			param[i++] = map.get(fieldName);
@@ -401,13 +401,13 @@ public class SerializerGenClass implements SerializerGen {
 		return callStatic(factory.getDeclaringClass(), factory.getName(), param);
 	}
 
-	private FunctionDef _insertCallConstructor(Class<?> targetType, final Map<String, FunctionDef> map) {
-		FunctionDef[] param;
+	private Expression _insertCallConstructor(Class<?> targetType, final Map<String, Expression> map) {
+		Expression[] param;
 		if (constructorParams == null) {
-			param = new FunctionDef[0];
+			param = new Expression[0];
 			return constructor(targetType, param);
 		}
-		param = new FunctionDef[constructorParams.size()];
+		param = new Expression[constructorParams.size()];
 
 		int i = 0;
 		for (String fieldName : constructorParams) {
@@ -416,7 +416,7 @@ public class SerializerGenClass implements SerializerGen {
 		return constructor(targetType, param);
 	}
 
-	private FunctionDef deserializeInterface(Class<?> targetType, final int version, SerializerFactory.StaticMethods staticMethods) {
+	private Expression deserializeInterface(Class<?> targetType, final int version, SerializerBuilder.StaticMethods staticMethods) {
 		final AsmFunctionFactory<Object> asmFactory = new AsmFunctionFactory(staticMethods.getDefiningClassLoader(), targetType);
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
@@ -429,8 +429,8 @@ public class SerializerGenClass implements SerializerGen {
 
 		Class<?> newClass = asmFactory.defineClass();
 
-		FunctionDef local = let(constructor(newClass));
-		List<FunctionDef> list = new ArrayList<>();
+		Expression local = let(constructor(newClass));
+		List<Expression> list = new ArrayList<>();
 		list.add(local);
 
 		for (String fieldName : fields.keySet()) {
@@ -440,18 +440,18 @@ public class SerializerGenClass implements SerializerGen {
 			VarField field = field(local, fieldName);
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
-			FunctionDef functionDef = fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods);
-			list.add(set(field, functionDef));
+			Expression expression = fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods);
+			list.add(set(field, expression));
 		}
 
 		list.add(local);
 		return sequence(list);
 	}
 
-	private FunctionDef deserializeClassSimple(final int version, SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef local = let(constructor(this.getRawType()));
+	private Expression deserializeClassSimple(final int version, SerializerBuilder.StaticMethods staticMethods) {
+		Expression local = let(constructor(this.getRawType()));
 
-		List<FunctionDef> list = new ArrayList<>();
+		List<Expression> list = new ArrayList<>();
 		list.add(local);
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
@@ -466,7 +466,7 @@ public class SerializerGenClass implements SerializerGen {
 		return sequence(list);
 	}
 
-	private FunctionDef pushDefaultValue(Type type) {
+	private Expression pushDefaultValue(Type type) {
 		switch (type.getSort()) {
 			case BOOLEAN:
 			case CHAR:

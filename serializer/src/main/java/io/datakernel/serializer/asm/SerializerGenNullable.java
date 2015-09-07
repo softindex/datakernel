@@ -16,18 +16,14 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.serializer.SerializerFactory;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenNullable implements SerializerGen {
-	private static final Logger logger = LoggerFactory.getLogger(SerializerGenNullable.class);
-
 	private final SerializerGen serializer;
 
 	public SerializerGenNullable(SerializerGen serializer) {
@@ -50,28 +46,28 @@ public class SerializerGenNullable implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		serializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return choice(ifNotNull(value),
 				sequence(call(arg(0), "writeByte", value((byte) 1)),
 						serializer.serialize(value, version, staticMethods),
-						voidFunc()),
-				sequence(call(arg(0), "writeByte", value((byte) 0)), voidFunc())
+						voidExp()),
+				sequence(call(arg(0), "writeByte", value((byte) 0)), voidExp())
 		);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		serializer.prepareDeserializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef isNotNull = let(call(arg(0), "readByte"));
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+		Expression isNotNull = let(call(arg(0), "readByte"));
 		return sequence(isNotNull, choice(cmpEq(isNotNull, value((byte) 1)),
 						serializer.deserialize(serializer.getRawType(), version, staticMethods),
 						nullRef(targetType))

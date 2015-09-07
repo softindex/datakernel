@@ -17,5 +17,5 @@
 package io.datakernel.codegen;
 
 public interface ForEachWithChanges {
-	FunctionDef forEachWithChanges();
+	Expression forEachWithChanges();
 }

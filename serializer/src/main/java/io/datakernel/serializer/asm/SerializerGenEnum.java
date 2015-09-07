@@ -16,11 +16,11 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
 import org.objectweb.asm.Type;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 @SuppressWarnings("StatementWithEmptyBody")
 public class SerializerGenEnum implements SerializerGen {
@@ -45,22 +45,22 @@ public class SerializerGenEnum implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return call(arg(0), "writeByte", cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE));
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return get(callStatic(nameOfEnum, "values"), call(arg(0), "readByte"));
 	}
 

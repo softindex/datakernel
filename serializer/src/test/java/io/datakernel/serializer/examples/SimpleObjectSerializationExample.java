@@ -16,10 +16,12 @@
 
 package io.datakernel.serializer.examples;
 
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.serializer.asm.SerializerGen;
 
 import java.net.UnknownHostException;
 
@@ -28,8 +30,6 @@ import java.net.UnknownHostException;
  * Example of serialization and deserialization of a simple object (no null fields, generics or complex objects, such as maps or arrays, as fields).
  */
 public class SimpleObjectSerializationExample {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
-
 	public static void main(String[] args) throws UnknownHostException {
 		// Create a test object
 		TestDataSimple testData1 = new TestDataSimple(10, "abc");
@@ -50,9 +50,9 @@ public class SimpleObjectSerializationExample {
 	}
 
 	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(typeToken);
-		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<T> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
 

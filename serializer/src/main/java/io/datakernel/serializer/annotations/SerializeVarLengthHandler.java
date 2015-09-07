@@ -17,16 +17,15 @@
 package io.datakernel.serializer.annotations;
 
 import io.datakernel.codegen.utils.Preconditions;
-import io.datakernel.serializer.SerializerScanner;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenInt;
 import io.datakernel.serializer.asm.SerializerGenLong;
 
-
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerScanner serializerScanner, SerializeVarLength annotation) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, SerializeVarLength annotation) {
 //        final boolean zigzag = annotation.zigzag();
 		return new SerializerGenBuilder() {
 			@Override

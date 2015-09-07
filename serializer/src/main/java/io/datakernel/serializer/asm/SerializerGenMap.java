@@ -16,15 +16,15 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
@@ -54,35 +54,35 @@ public final class SerializerGenMap implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		keySerializer.prepareSerializeStaticMethods(version, staticMethods);
 		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef length = call(arg(0), "writeVarInt", length(value));
+	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = call(arg(0), "writeVarInt", length(value));
 
 		return sequence(length, mapForEach(value,
 						new ForVar() {
 							@Override
-							public FunctionDef forVar(FunctionDef item) {return keySerializer.serialize(cast(item, keySerializer.getRawType()), version, staticMethods);}
+							public Expression forVar(Expression item) {return keySerializer.serialize(cast(item, keySerializer.getRawType()), version, staticMethods);}
 						},
 						new ForVar() {
 							@Override
-							public FunctionDef forVar(FunctionDef item) {return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);}
+							public Expression forVar(Expression item) {return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);}
 						})
 		);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		keySerializer.prepareDeserializeStaticMethods(version, staticMethods);
 		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, final int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, final int version, SerializerBuilder.StaticMethods staticMethods) {
 		boolean isEnum = keySerializer.getRawType().isEnum();
 
 		if (!isEnum) {
@@ -92,31 +92,31 @@ public final class SerializerGenMap implements SerializerGen {
 		}
 	}
 
-	public FunctionDef deserializeSimple(final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef length = let(call(arg(0), "readVarInt"));
-		final FunctionDef local = let(constructor(LinkedHashMap.class, length));
-		FunctionDef forEach = functionFor(length, new ForVar() {
+	public Expression deserializeSimple(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(call(arg(0), "readVarInt"));
+		final Expression local = let(constructor(LinkedHashMap.class, length));
+		Expression forEach = expressionFor(length, new ForVar() {
 			@Override
-			public FunctionDef forVar(FunctionDef eachNumber) {
+			public Expression forVar(Expression eachNumber) {
 				return sequence(call(local, "put",
 						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
 						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
-				), voidFunc());
+				), voidExp());
 			}
 		});
 		return sequence(length, local, forEach, local);
 	}
 
-	public FunctionDef deserializeEnum(final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef length = let(call(arg(0), "readVarInt"));
-		final FunctionDef localMap = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
-		FunctionDef forEach = functionFor(length, new ForVar() {
+	public Expression deserializeEnum(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(call(arg(0), "readVarInt"));
+		final Expression localMap = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
+		Expression forEach = expressionFor(length, new ForVar() {
 			@Override
-			public FunctionDef forVar(FunctionDef eachNumber) {
+			public Expression forVar(Expression eachNumber) {
 				return sequence(call(localMap, "put",
 						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
 						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
-				), voidFunc());
+				), voidExp());
 			}
 		});
 		return sequence(length, localMap, forEach, localMap);

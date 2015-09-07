@@ -16,7 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
@@ -27,8 +30,6 @@ import java.nio.ByteBuffer;
 import static org.junit.Assert.*;
 
 public class CodeGenSerializerGenByteBufferTest {
-
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer, BufferSerializer<T> deserializer) {
 		byte[] array = new byte[1000];
@@ -46,10 +47,10 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array);
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ByteBuffer.class, new SerializerGenByteBuffer());
-		SerializerGen serializerGen = registry.serializer(ByteBuffer.class);
-		BufferSerializer<ByteBuffer> serializerByteBuffer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ByteBuffer.class, new SerializerGenByteBuffer())
+				.create(ByteBuffer.class);
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
 
 		assertNotNull(testBuffer2);
@@ -64,10 +65,11 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array);
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ByteBuffer.class, new SerializerGenByteBuffer(true));
-		SerializerGen serializerGen = registry.serializer(ByteBuffer.class);
-		BufferSerializer<ByteBuffer> serializerByteBuffer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.create(ByteBuffer.class);
+
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
 
 		assertNotNull(testBuffer2);
@@ -84,11 +86,10 @@ public class CodeGenSerializerGenByteBufferTest {
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array, 10, 100);
 		ByteBuffer testBuffer2 = ByteBuffer.wrap(array, 110, 100);
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ByteBuffer.class, new SerializerGenByteBuffer());
-
-		SerializerGen serializerGen = registry.serializer(ByteBuffer.class);
-		BufferSerializer<ByteBuffer> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ByteBuffer.class, new SerializerGenByteBuffer())
+				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
 		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
@@ -120,11 +121,10 @@ public class CodeGenSerializerGenByteBufferTest {
 		ByteBuffer testBuffer1 = ByteBuffer.wrap(array, 10, 100);
 		ByteBuffer testBuffer2 = ByteBuffer.wrap(array, 110, 100);
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ByteBuffer.class, new SerializerGenByteBuffer(true));
-
-		SerializerGen serializerGen = registry.serializer(ByteBuffer.class);
-		BufferSerializer<ByteBuffer> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
 		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
@@ -175,11 +175,10 @@ public class CodeGenSerializerGenByteBufferTest {
 		TestByteBufferData testBuffer0 = new TestByteBufferData(null);
 		TestByteBufferData testBuffer2 = new TestByteBufferData(ByteBuffer.wrap(array, 110, 3));
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ByteBuffer.class, new SerializerGenByteBuffer());
-
-		SerializerGen serializerGen = registry.serializer(TestByteBufferData.class);
-		BufferSerializer<TestByteBufferData> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ByteBuffer.class, new SerializerGenByteBuffer())
+				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
 		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);
@@ -213,11 +212,10 @@ public class CodeGenSerializerGenByteBufferTest {
 		TestByteBufferData testBuffer0 = new TestByteBufferData(null);
 		TestByteBufferData testBuffer2 = new TestByteBufferData(ByteBuffer.wrap(array, 110, 100));
 
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ByteBuffer.class, new SerializerGenByteBuffer(true));
-
-		SerializerGen serializerGen = registry.serializer(TestByteBufferData.class);
-		BufferSerializer<TestByteBufferData> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
 		SerializationOutputBuffer output = new SerializationOutputBuffer(buffer);

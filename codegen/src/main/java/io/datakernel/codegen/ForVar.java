@@ -17,5 +17,5 @@
 package io.datakernel.codegen;
 
 public interface ForVar {
-	FunctionDef forVar(FunctionDef local);
+	Expression forVar(Expression local);
 }

@@ -16,14 +16,14 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.check;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
@@ -99,37 +99,37 @@ public class SerializerGenHppcSet implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef length = call(arg(0), "writeVarInt", call(value, "size"));
+	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = call(arg(0), "writeVarInt", call(value, "size"));
 		return sequence(length, hppcSetForEach(iteratorType, value, new ForVar() {
 			@Override
-			public FunctionDef forVar(FunctionDef local) {
+			public Expression forVar(Expression local) {
 				return valueSerializer.serialize(local, version, staticMethods);
 			}
 		}));
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, final int version, final SerializerFactory.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		final Class<?> valueType = valueSerializer.getRawType();
-		FunctionDef length = let(call(arg(0), "readVarInt"));
-		final FunctionDef set = let(constructor(hashSetType));
-		return sequence(set, functionFor(length, new ForVar() {
+		Expression length = let(call(arg(0), "readVarInt"));
+		final Expression set = let(constructor(hashSetType));
+		return sequence(set, expressionFor(length, new ForVar() {
 			@Override
-			public FunctionDef forVar(FunctionDef local) {
+			public Expression forVar(Expression local) {
 				return sequence(
 						call(set, "add", cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcSet.this.valueType)),
-						voidFunc()
+						voidExp()
 				);
 			}
 		}), set);

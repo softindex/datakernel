@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForEachWithChanges;
 import io.datakernel.codegen.ForVar;
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.codegen.FunctionDefs;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
@@ -61,14 +61,14 @@ public final class SerializerGenArray implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, final int version, final SerializerFactory.StaticMethods staticMethods) {
+	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		value = cast(value, type);
-		FunctionDef len = call(arg(0), "writeVarInt", length(value));
+		Expression len = call(arg(0), "writeVarInt", length(value));
 		if (fixedSize != -1) len = value(fixedSize);
 
 		if (type.getComponentType() == Byte.TYPE) {
@@ -76,7 +76,7 @@ public final class SerializerGenArray implements SerializerGen {
 		} else {
 			return sequence(len, arrayForEach(value, new ForVar() {
 				@Override
-				public FunctionDef forVar(FunctionDef item) {
+				public Expression forVar(Expression item) {
 					return valueSerializer.serialize(item, version, staticMethods);
 				}
 			}));
@@ -84,22 +84,22 @@ public final class SerializerGenArray implements SerializerGen {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, final int version, final SerializerFactory.StaticMethods staticMethods) {
-		FunctionDef len = call(arg(0), "readVarInt");
+	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression len = call(arg(0), "readVarInt");
 		if (fixedSize != -1) len = value(fixedSize);
 
-		FunctionDef array = let(FunctionDefs.newArray(type, len));
+		Expression array = let(Expressions.newArray(type, len));
 		if (type.getComponentType() == Byte.TYPE) {
 			return sequence(call(arg(0), "read", array), array);
 		} else {
 			return sequence(arrayForEachWithChanges(array, new ForEachWithChanges() {
 				@Override
-				public FunctionDef forEachWithChanges() {
+				public Expression forEachWithChanges() {
 					return cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), type.getComponentType());
 				}
 			}), array);

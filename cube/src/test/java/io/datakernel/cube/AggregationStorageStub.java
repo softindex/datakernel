@@ -19,8 +19,8 @@ package io.datakernel.cube;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import io.datakernel.codegen.AsmFunctionFactory;
-import io.datakernel.codegen.FunctionDef;
-import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 @SuppressWarnings("unchecked")
 public class AggregationStorageStub implements AggregationStorage {
@@ -52,8 +52,8 @@ public class AggregationStorageStub implements AggregationStorage {
 		Class<?> sourceClass = chunkTypes.get(id);
 		AsmFunctionFactory<Function> factory = new AsmFunctionFactory(classLoader, Function.class);
 
-		FunctionDef result = let(constructor(recordClass));
-		FunctionDefSequence applyDef = sequence(result);
+		Expression result = let(constructor(recordClass));
+		ExpressionSequence applyDef = sequence(result);
 		for (String dimension : dimensions) {
 			applyDef.add(set(
 					field(result, dimension),

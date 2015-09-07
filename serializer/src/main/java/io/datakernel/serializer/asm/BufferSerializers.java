@@ -210,6 +210,18 @@ public final class BufferSerializers {
 		}
 	};
 
+	private static final BufferSerializer<String> ASCII_SERIALIZER = new BufferSerializer<String>() {
+		@Override
+		public void serialize(SerializationOutputBuffer output, String item) {
+			output.writeAscii(item);
+		}
+
+		@Override
+		public String deserialize(SerializationInputBuffer input) {
+			return input.readAscii();
+		}
+	};
+
 	public static BufferSerializer<Byte> byteSerializer() {
 		return BYTE_SERIALIZER;
 	}
@@ -261,4 +273,6 @@ public final class BufferSerializers {
 	public static BufferSerializer<String> utf16Serializer() {
 		return UTF16_SERIALIZER;
 	}
+
+	public static BufferSerializer<String> asciiSerializer() { return ASCII_SERIALIZER; }
 }

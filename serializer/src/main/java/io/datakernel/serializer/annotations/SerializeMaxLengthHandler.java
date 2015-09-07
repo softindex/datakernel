@@ -16,14 +16,14 @@
 
 package io.datakernel.serializer.annotations;
 
-import io.datakernel.serializer.SerializerScanner;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenString;
 
 public final class SerializeMaxLengthHandler implements AnnotationHandler<SerializeMaxLength, SerializeMaxLengthEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerScanner serializerScanner, final SerializeMaxLength annotation) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, final SerializeMaxLength annotation) {
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {

@@ -16,22 +16,21 @@
 
 package io.datakernel.serializer.annotations;
 
-
 import io.datakernel.codegen.utils.Preconditions;
-import io.datakernel.serializer.SerializerScanner;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 
 public final class SerializeSubclassesHandler implements AnnotationHandler<SerializeSubclasses, SerializeSubclassesEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(final SerializerScanner serializerScanner, final SerializeSubclasses annotation) {
+	public SerializerGenBuilder createBuilder(final SerializerBuilder serializerBuilder, final SerializeSubclasses annotation) {
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> superclass, SerializerForType[] superclassGenerics, SerializerGen fallback) {
 				Preconditions.check(superclass.getTypeParameters().length == 0);
 				Preconditions.check(superclassGenerics.length == 0);
 
-				return serializerScanner.createSubclassesSerializer(superclass, annotation);
+				return serializerBuilder.createSubclassesSerializer(superclass, annotation);
 			}
 		};
 	}

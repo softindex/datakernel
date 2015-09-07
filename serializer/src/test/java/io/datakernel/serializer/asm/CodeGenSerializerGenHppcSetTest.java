@@ -17,7 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import com.carrotsearch.hppc.*;
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import org.junit.Test;
 
@@ -25,7 +28,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 public class CodeGenSerializerGenHppcSetTest {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	private static <T> T doTest(T testData1, BufferSerializer<T> serializer) {
 		byte[] array = new byte[1000];
@@ -36,10 +38,10 @@ public class CodeGenSerializerGenHppcSetTest {
 	}
 
 	private static <T, V> BufferSerializer<T> getBufferSerializer(Class<?> collectionType, Class<V> valueClass) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(collectionType, SerializerGenHppcSet.serializerGenBuilder(collectionType, valueClass));
-		SerializerGen serializerGen = registry.serializer(collectionType);
-		return bufferSerializerFactory.createBufferSerializer(serializerGen);
+		return SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(collectionType, SerializerGenHppcSet.serializerGenBuilder(collectionType, valueClass))
+				.create(collectionType);
 	}
 
 	@Test
@@ -157,10 +159,10 @@ public class CodeGenSerializerGenHppcSetTest {
 
 	@Test
 	public void testObjectSet() throws Exception {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.register(ObjectSet.class, SerializerGenHppcSet.serializerGenBuilder(ObjectSet.class, Object.class));
-		SerializerGen serializerGen = registry.serializer(ObjectSetStringHolder.class);
-		BufferSerializer<ObjectSetStringHolder> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<ObjectSetStringHolder> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ObjectSet.class, SerializerGenHppcSet.serializerGenBuilder(ObjectSet.class, Object.class))
+				.create(ObjectSetStringHolder.class);
 
 		ObjectSetStringHolder testData1 = new ObjectSetStringHolder();
 		testData1.set = new ObjectOpenHashSet<>();

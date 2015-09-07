@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.FunctionDef;
+import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.Preconditions;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.*;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
@@ -71,14 +71,14 @@ public class SerializerGenSubclass implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (staticMethods.startSerializeStaticMethod(this, version)) {
 			return;
 		}
 
 		byte subClassN = 0;
-		List<FunctionDef> listKey = new ArrayList<>();
-		List<FunctionDef> listValue = new ArrayList<>();
+		List<Expression> listKey = new ArrayList<>();
+		List<Expression> listValue = new ArrayList<>();
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods);
@@ -86,24 +86,24 @@ public class SerializerGenSubclass implements SerializerGen {
 			listValue.add(sequence(
 					call(arg(0), "writeByte", value(subClassN++)),
 					subclassSerializer.serialize(cast(arg(1), subclassSerializer.getRawType()), version, staticMethods),
-					voidFunc()));
+					voidExp()));
 		}
 		staticMethods.registerStaticSerializeMethod(this, version,
 				switchForKey(cast(call(call(cast(arg(1), Object.class), "getClass"), "getName"), Object.class), listKey, listValue));
 	}
 
 	@Override
-	public FunctionDef serialize(FunctionDef value, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return staticMethods.callStaticSerializeMethod(this, version, arg(0), value);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerFactory.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (staticMethods.startDeserializeStaticMethod(this, version)) {
 			return;
 		}
 
-		List<FunctionDef> list = new ArrayList<>();
+		List<Expression> list = new ArrayList<>();
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods);
@@ -115,7 +115,7 @@ public class SerializerGenSubclass implements SerializerGen {
 	}
 
 	@Override
-	public FunctionDef deserialize(Class<?> targetType, int version, SerializerFactory.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 
