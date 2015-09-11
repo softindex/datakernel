@@ -47,6 +47,11 @@
                                     <goal>shade</goal>
                                 </goals>
                                 <configuration>
+                                    <artifactSet>
+                                        <excludes>
+                                            <exclude>com.carrotsearch</exclude>
+                                        </excludes>
+                                    </artifactSet>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <relocations>
                                         <relocation>
