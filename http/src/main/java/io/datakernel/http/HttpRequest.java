@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import java.net.HttpCookie;
 import java.net.InetAddress;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.google.common.base.Strings.nullToEmpty;
@@ -41,6 +42,10 @@ public final class HttpRequest extends HttpMessage {
 	private HttpUri url;
 
 	private InetAddress remoteAddress;
+
+	private Map<String, String> urlParameters;
+
+	private int pos;
 
 	private HttpRequest(HttpMethod method) {
 		this.method = method;
@@ -237,6 +242,14 @@ public final class HttpRequest extends HttpMessage {
 
 	// getters
 
+	int getPos() {
+		return pos;
+	}
+
+	void setPos(int pos) {
+		this.pos = pos;
+	}
+
 	public HttpMethod getMethod() {
 		assert !recycled;
 		return method;
@@ -257,6 +270,15 @@ public final class HttpRequest extends HttpMessage {
 		return url.getPath();
 	}
 
+	String getRelativePath() {
+		assert !recycled;
+		String path = url.getPath();
+		if (pos < path.length()) {
+			return path.substring(pos);
+		}
+		return "";
+	}
+
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
@@ -264,6 +286,39 @@ public final class HttpRequest extends HttpMessage {
 	public String getParameter(String name) {
 		assert !recycled;
 		return url.getParameter(name);
+	}
+
+	public String getUrlParameter(String key) {
+		return urlParameters == null ? null : urlParameters.get(key);
+	}
+
+	String pollUrlPart() {
+		String path = url.getPath();
+		if (pos < path.length()) {
+			int start = pos + 1;
+			pos = path.indexOf('/', start);
+			String part;
+			if (pos == -1) {
+				part = path.substring(start);
+				pos = path.length();
+			} else {
+				part = path.substring(start, pos);
+			}
+			return part;
+		} else {
+			return "";
+		}
+	}
+
+	void removeUrlParameter(String key) {
+		urlParameters.remove(key);
+	}
+
+	void putUrlParameter(String key, String value) {
+		if (urlParameters == null) {
+			urlParameters = new HashMap<>();
+		}
+		urlParameters.put(key, value);
 	}
 
 	/**
