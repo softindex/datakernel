@@ -90,13 +90,13 @@ public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
 	}
 
 	@Override
-	public void onEndOfStream() {
-		decoratedConsumer.onEndOfStream();
+	public void onProducerEndOfStream() {
+		decoratedConsumer.onProducerEndOfStream();
 	}
 
 	@Override
-	public void onError(Exception e) {
-		decoratedConsumer.onError(e);
+	public void onProducerError(Exception e) {
+		decoratedConsumer.onProducerError(e);
 	}
 
 }

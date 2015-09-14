@@ -37,12 +37,12 @@ public abstract class StreamProducerDecorator<T> extends AbstractStreamProducer<
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			StreamProducerDecorator.this.onEndOfStream();
 		}
 
 		@Override
-		public void onError(Exception e) {
+		public void onProducerError(Exception e) {
 			StreamProducerDecorator.this.onError(e);
 		}
 	}
@@ -85,12 +85,12 @@ public abstract class StreamProducerDecorator<T> extends AbstractStreamProducer<
 
 	@Override
 	protected void onSuspended() {
-		decoratedProducer.suspend();
+		decoratedProducer.onConsumerSuspended();
 	}
 
 	@Override
 	protected void onResumed() {
-		decoratedProducer.resume();
+		decoratedProducer.onConsumerResumed();
 	}
 
 	@Override
@@ -100,6 +100,6 @@ public abstract class StreamProducerDecorator<T> extends AbstractStreamProducer<
 
 	@Override
 	protected void onClosedWithError(Exception e) {
-		decoratedProducer.closeWithError(e);
+		decoratedProducer.onConsumerError(e);
 	}
 }

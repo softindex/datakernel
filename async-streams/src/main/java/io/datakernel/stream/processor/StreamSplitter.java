@@ -65,8 +65,8 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 
 		@Override
 		protected void onClosedWithError(Exception e) {
-			onError(e);
-			downstreamConsumer.onError(e);
+			onProducerError(e);
+			downstreamConsumer.onProducerError(e);
 		}
 	}
 
@@ -82,7 +82,7 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		sendEndOfStreamToDownstreams();
 	}
 

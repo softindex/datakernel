@@ -255,14 +255,14 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			produce();
 		}
 
 		@Override
-		public void onError(Exception e) {
-			upstreamProducer.closeWithError(e);
-			closeWithError(e);
+		public void onProducerError(Exception e) {
+			upstreamProducer.onConsumerError(e);
+			onConsumerError(e);
 		}
 
 		@Override

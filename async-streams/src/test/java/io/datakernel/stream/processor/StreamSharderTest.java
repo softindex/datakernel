@@ -99,14 +99,14 @@ public class StreamSharderTest {
 			public void onData(Integer item) {
 				super.onData(item);
 				if (item == 3) {
-					onError(new Exception());
+					onProducerError(new Exception());
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -140,14 +140,14 @@ public class StreamSharderTest {
 			public void onData(Integer item) {
 				super.onData(item);
 				if (item == 3) {
-					onEndOfStream();
+					onProducerEndOfStream();
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}

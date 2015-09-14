@@ -428,7 +428,7 @@ public class StreamBenchmark {
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			upstreamProducer.close();
 		}
 

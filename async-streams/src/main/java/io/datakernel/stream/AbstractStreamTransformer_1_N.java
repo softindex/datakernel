@@ -48,8 +48,8 @@ public abstract class AbstractStreamTransformer_1_N<I> extends AbstractStreamCon
 	}
 
 	@Override
-	public void onError(Exception e) {
-		upstreamProducer.closeWithError(e);
+	public void onProducerError(Exception e) {
+		upstreamProducer.onConsumerError(e);
 		closeDownstreamsWithError(e);
 	}
 
@@ -84,7 +84,7 @@ public abstract class AbstractStreamTransformer_1_N<I> extends AbstractStreamCon
 
 	protected void closeDownstreamsWithError(Exception e) {
 		for (AbstractStreamProducer<?> output : outputs) {
-			output.closeWithError(e);
+			output.onConsumerError(e);
 		}
 	}
 }

@@ -111,14 +111,14 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			if (socketReaderSwitcher.getCurrentConsumer() == streamDeserializer) {
 				shutdown();
 			}
 		}
 
 		@Override
-		public void onError(Exception e) {
+		public void onProducerError(Exception e) {
 
 		}
 	}

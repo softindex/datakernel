@@ -65,7 +65,7 @@ public class StreamFileReaderWriterTest {
 			@Override
 			public void send(ByteBuf item) {
 				if (item.toString().equals("1")) {
-					closeWithError(new Exception());
+					onConsumerError(new Exception());
 					return;
 				}
 				super.send(item);

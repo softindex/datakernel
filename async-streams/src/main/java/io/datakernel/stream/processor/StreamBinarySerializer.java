@@ -201,7 +201,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		if (skipSerializationErrors) {
 			logger.warn("Skipping serialization error in {} : {}", this, e.toString());
 		} else {
-			closeWithError(e);
+			onConsumerError(e);
 		}
 	}
 
@@ -214,7 +214,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	 * After end of stream,  it flushes all received bytes to recipient
 	 */
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		flushBuffer(downstreamDataReceiver);
 		byteBuf.recycle();
 		byteBuf = null;

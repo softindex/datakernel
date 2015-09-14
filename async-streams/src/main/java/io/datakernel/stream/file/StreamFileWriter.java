@@ -232,13 +232,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		logger.trace("endOfStream for {}, upstream: {}", this, upstreamProducer);
 		postFlush();
 	}
 
 	@Override
-	public void onError(final Exception e) {
+	public void onProducerError(final Exception e) {
 
 		doCleanup(new CompletionCallback() {
 

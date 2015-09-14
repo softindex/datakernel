@@ -82,21 +82,21 @@ public abstract class AbstractStreamTransformer_1_1<I, O> extends AbstractStream
 
 	@Override
 	protected void onClosedWithError(Exception e) {
-		upstreamProducer.closeWithError(e);
-		downstreamConsumer.onError(e);
+		upstreamProducer.onConsumerError(e);
+		downstreamConsumer.onProducerError(e);
 	}
 
 	@Override
-	public void onError(Exception e) {
-		closeWithError(e);
+	public void onProducerError(Exception e) {
+		onConsumerError(e);
 	}
 
 	protected final void resumeUpstream() {
-		upstreamProducer.resume();
+		upstreamProducer.onConsumerResumed();
 	}
 
 	protected final void suspendUpstream() {
-		upstreamProducer.suspend();
+		upstreamProducer.onConsumerSuspended();
 	}
 
 	protected final void closeUpstream() {
@@ -104,7 +104,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> extends AbstractStream
 	}
 
 	protected final void closeUpstreamWithError(Exception e) {
-		upstreamProducer.closeWithError(e);
+		upstreamProducer.onConsumerError(e);
 	}
 
 	// misc

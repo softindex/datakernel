@@ -77,7 +77,7 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		sendEndOfStream();
 	}
 

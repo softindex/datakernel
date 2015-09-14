@@ -55,13 +55,13 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			sender.sendEndOfStream();
 		}
 
 		@Override
-		public void onError(Exception e) {
-			sender.closeWithError(e);
+		public void onProducerError(Exception e) {
+			sender.onConsumerError(e);
 		}
 	}
 

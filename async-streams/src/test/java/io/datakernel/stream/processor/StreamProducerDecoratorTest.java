@@ -41,15 +41,15 @@ public class StreamProducerDecoratorTest {
 			@Override
 			public void onData(Integer item) {
 				if (item == 3) {
-					upstreamProducer.closeWithError(new Exception());
+					upstreamProducer.onConsumerError(new Exception());
 					return;
 				}
 				super.onData(item);
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}

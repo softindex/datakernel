@@ -74,7 +74,7 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			if (!allUpstreamsEndOfStream())
 				return;
 
@@ -85,9 +85,9 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 		}
 
 		@Override
-		public void onError(Exception e) {
-			upstreamProducer.closeWithError(e);
-			closeWithError(e);
+		public void onProducerError(Exception e) {
+			upstreamProducer.onConsumerError(e);
+			onConsumerError(e);
 		}
 	}
 

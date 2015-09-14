@@ -77,8 +77,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public void onError(Exception e) {
-		upstreamProducer.closeWithError(e);
+	public void onProducerError(Exception e) {
+		upstreamProducer.onConsumerError(e);
 	}
 
 	@Override
@@ -97,11 +97,11 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	public void suspendUpstream() {
-		upstreamProducer.suspend();
+		upstreamProducer.onConsumerSuspended();
 	}
 
 	public void resumeUpstream() {
-		upstreamProducer.resume();
+		upstreamProducer.onConsumerResumed();
 	}
 
 	public void closeUpstream() {
@@ -109,7 +109,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	public void closeUpstreamWithError(Exception e) {
-		upstreamProducer.closeWithError(e);
+		upstreamProducer.onConsumerError(e);
 	}
 
 	public Object getTag() {

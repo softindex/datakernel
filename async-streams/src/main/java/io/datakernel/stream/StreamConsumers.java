@@ -76,11 +76,11 @@ public class StreamConsumers {
 			@Override
 			public void onData(T item) {
 				super.onData(item);
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				this.eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -197,7 +197,7 @@ public class StreamConsumers {
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 		}
 	}
 
@@ -211,7 +211,7 @@ public class StreamConsumers {
 
 		@Override
 		public void onConsumerStarted() {
-			upstreamProducer.closeWithError(exception);
+			upstreamProducer.onConsumerError(exception);
 		}
 
 		@Override
@@ -225,7 +225,7 @@ public class StreamConsumers {
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 		}
 	}
 
@@ -251,7 +251,7 @@ public class StreamConsumers {
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			upstreamProducer.close();
 		}
 	}
@@ -312,7 +312,7 @@ public class StreamConsumers {
 		 * Sets the flag complete as true
 		 */
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			upstreamProducer.close();
 		}
 	}

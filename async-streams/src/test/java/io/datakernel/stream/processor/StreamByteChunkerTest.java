@@ -135,14 +135,14 @@ public class StreamByteChunkerTest {
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			for (CompletionCallback callback : callbacks) {
 				callback.onComplete();
 			}
 		}
 
 		@Override
-		public void onError(Exception e) {
+		public void onProducerError(Exception e) {
 
 		}
 

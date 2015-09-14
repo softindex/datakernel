@@ -131,7 +131,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		produce();
 	}
 

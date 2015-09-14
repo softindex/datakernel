@@ -40,17 +40,17 @@ public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			if (this == currentInternalConsumer) {
 				sendEndOfStream();
 			}
 		}
 
 		@Override
-		public void onError(Exception e) {
+		public void onProducerError(Exception e) {
 			if (this == currentInternalConsumer) {
-				upstreamProducer.closeWithError(e);
-				closeWithError(e);
+				upstreamProducer.onConsumerError(e);
+				onConsumerError(e);
 			}
 		}
 	}
@@ -109,9 +109,9 @@ public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
 
 	@Override
 	protected void onClosedWithError(Exception e) {
-		downstreamConsumer.onError(e);
+		downstreamConsumer.onProducerError(e);
 		if (currentInternalConsumer != null) {
-			currentInternalConsumer.onError(e);
+			currentInternalConsumer.onProducerError(e);
 		}
 	}
 }

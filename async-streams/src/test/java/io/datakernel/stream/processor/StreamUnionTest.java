@@ -93,11 +93,11 @@ public class StreamUnionTest {
 					closeUpstreamWithError(new Exception());
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -133,14 +133,14 @@ public class StreamUnionTest {
 			public void onData(Integer item) {
 				super.onData(item);
 				if (item == 5) {
-					onEndOfStream();
+					onProducerEndOfStream();
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}

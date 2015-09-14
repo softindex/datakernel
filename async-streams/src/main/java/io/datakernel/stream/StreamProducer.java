@@ -52,12 +52,12 @@ public interface StreamProducer<T> {
 	/**
 	 * This method is called for stop streaming of this producer
 	 */
-	void suspend();
+	void onConsumerSuspended();
 
 	/**
 	 * This method is called for restore streaming of this producer
 	 */
-	void resume();
+	void onConsumerResumed();
 
 	/**
 	 * This method is called for close streaming
@@ -69,7 +69,7 @@ public interface StreamProducer<T> {
 	 *
 	 * @param e exception which was found
 	 */
-	void closeWithError(Exception e);
+	void onConsumerError(Exception e);
 
 	byte READY = 0;
 	byte SUSPENDED = 1;

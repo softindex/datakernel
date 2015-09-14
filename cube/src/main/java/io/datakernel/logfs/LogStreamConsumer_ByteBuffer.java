@@ -106,7 +106,7 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		logger.trace("{}: current producer {} endOfStream.", this, currentProducer);
 		if (currentProducer != null) {
 			currentProducer.sendEndOfStream();
@@ -114,9 +114,9 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 	}
 
 	@Override
-	public void onError(Exception e) {
+	public void onProducerError(Exception e) {
 		if (currentProducer != null) {
-			currentProducer.closeWithError(e);
+			currentProducer.onConsumerError(e);
 		}
 	}
 }

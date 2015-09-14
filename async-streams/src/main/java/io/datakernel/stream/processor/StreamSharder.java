@@ -71,8 +71,8 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 
 		@Override
 		protected void onClosedWithError(Exception e) {
-			onError(e);
-			downstreamConsumer.onError(e);
+			onProducerError(e);
+			downstreamConsumer.onProducerError(e);
 		}
 	}
 
@@ -94,7 +94,7 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		sendEndOfStreamToDownstreams();
 	}
 

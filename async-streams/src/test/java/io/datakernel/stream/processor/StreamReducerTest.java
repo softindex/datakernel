@@ -112,14 +112,14 @@ public class StreamReducerTest {
 			public void onData(KeyValueResult item) {
 				super.onData(item);
 				if (list.size() == 1) {
-					onError(new Exception());
+					onProducerError(new Exception());
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -160,14 +160,14 @@ public class StreamReducerTest {
 			public void onData(KeyValueResult item) {
 				super.onData(item);
 				if (list.size() == 1) {
-					onEndOfStream();
+					onProducerEndOfStream();
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}

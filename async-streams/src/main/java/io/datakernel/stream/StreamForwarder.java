@@ -62,8 +62,8 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 
 	private void flushAndRewire() {
 		if (error != null) {
-			upstreamProducer.closeWithError(error);
-			downstreamConsumer.onError(error);
+			upstreamProducer.onConsumerError(error);
+			downstreamConsumer.onProducerError(error);
 			return;
 		}
 
@@ -103,7 +103,7 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		if (rewired) {
 			sendEndOfStream();
 		} else {
@@ -135,8 +135,8 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 	@Override
 	public void onClosedWithError(Exception e) {
 		if (rewired) {
-			upstreamProducer.closeWithError(e);
-			downstreamConsumer.onError(e);
+			upstreamProducer.onConsumerError(e);
+			downstreamConsumer.onProducerError(e);
 		}
 	}
 }

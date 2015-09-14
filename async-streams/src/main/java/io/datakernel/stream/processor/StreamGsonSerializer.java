@@ -167,7 +167,7 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 	 * After end of stream,  it flushes all received bytes to recipient
 	 */
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		flushBuffer(downstreamDataReceiver);
 		sendEndOfStream();
 	}

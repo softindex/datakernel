@@ -186,13 +186,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		logger.trace("{}: upstream producer {} closed.", this, upstreamProducer);
 		doNext();
 	}
 
 	@Override
-	public void onError(Exception e) {
+	public void onProducerError(Exception e) {
 		logger.trace("{}: upstream producer {} exception.", this, upstreamProducer, e);
 	}
 }

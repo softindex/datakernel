@@ -126,7 +126,7 @@ public class StreamSorterTest {
 			public void onData(Integer value) {
 				assert jmxItems != ++jmxItems;
 				if (value == 5) {
-					onError(new Exception());
+					onProducerError(new Exception());
 					return;
 				}
 				list.add(value);
@@ -165,7 +165,7 @@ public class StreamSorterTest {
 					public void onData(Integer item) {
 						super.onData(item);
 						if (list.size() == 2) {
-							onError(new Exception());
+							onProducerError(new Exception());
 						}
 					}
 				};
@@ -204,7 +204,7 @@ public class StreamSorterTest {
 			public void onData(Integer item) {
 				super.onData(item);
 				if (list.size() == 2) {
-					onError(new Exception());
+					onProducerError(new Exception());
 				}
 			}
 		};

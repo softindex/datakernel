@@ -146,14 +146,14 @@ public class StreamMemoryReducerTest {
 			public void onData(DataItemResult item) {
 				super.onData(item);
 				if (item.equals(new DataItemResult(1, 2, 60, 90, 0))) {
-					onError(new Exception());
+					onProducerError(new Exception());
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -215,14 +215,14 @@ public class StreamMemoryReducerTest {
 			public void onData(DataItemResult item) {
 				super.onData(item);
 				if (item.equals(new DataItemResult(1, 2, 60, 90, 0))) {
-					onEndOfStream();
+					onProducerEndOfStream();
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}

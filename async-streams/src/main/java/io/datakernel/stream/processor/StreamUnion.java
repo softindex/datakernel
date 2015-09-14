@@ -42,16 +42,16 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> imple
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			if (allUpstreamsEndOfStream()) {
 				sendEndOfStream();
 			}
 		}
 
 		@Override
-		public void onError(Exception e) {
-			upstreamProducer.closeWithError(e);
-			closeWithError(e);
+		public void onProducerError(Exception e) {
+			upstreamProducer.onConsumerError(e);
+			onConsumerError(e);
 		}
 	}
 

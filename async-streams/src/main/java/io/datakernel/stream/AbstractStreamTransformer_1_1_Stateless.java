@@ -41,7 +41,7 @@ public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends Abst
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		sendEndOfStream();
 	}
 }

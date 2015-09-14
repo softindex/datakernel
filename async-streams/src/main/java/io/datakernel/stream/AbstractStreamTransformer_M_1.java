@@ -53,7 +53,7 @@ public abstract class AbstractStreamTransformer_M_1<O> extends AbstractStreamPro
 
 	@Override
 	protected void onInternalError(Exception e) {
-		closeWithError(e);
+		onConsumerError(e);
 		sendError(e);
 		for (AbstractStreamConsumer<?> input : inputs) {
 			input.closeUpstreamWithError(e);
@@ -73,9 +73,9 @@ public abstract class AbstractStreamTransformer_M_1<O> extends AbstractStreamPro
 	 */
 	@Override
 	protected void onClosedWithError(Exception e) {
-		downstreamConsumer.onError(e);
+		downstreamConsumer.onProducerError(e);
 		for (AbstractStreamConsumer<?> input : inputs) {
-			input.onError(e);
+			input.onProducerError(e);
 		}
 	}
 

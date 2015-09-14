@@ -92,12 +92,12 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public final void sendEndOfStream() {
 		if (status < END_OF_STREAM) {
 			status = END_OF_STREAM;
-			downstreamConsumer.onEndOfStream();
+			downstreamConsumer.onProducerEndOfStream();
 		}
 	}
 
 	public final void sendError(Exception e) {
-		downstreamConsumer.onError(e);
+		downstreamConsumer.onProducerError(e);
 	}
 
 	protected void doProduce() {
@@ -126,7 +126,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	protected void onInternalError(Exception e) {
-		closeWithError(e);
+		onConsumerError(e);
 	}
 
 	@Override
@@ -151,7 +151,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public final void suspend() {
+	public final void onConsumerSuspended() {
 		if (status != READY)
 			return;
 		status = SUSPENDED;
@@ -162,7 +162,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public final void resume() {
+	public final void onConsumerResumed() {
 		if (status != SUSPENDED)
 			return;
 		status = READY;
@@ -186,11 +186,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	protected void onClosedWithError(Exception e) {
-		downstreamConsumer.onError(e);
+		downstreamConsumer.onProducerError(e);
 	}
 
 	@Override
-	public final void closeWithError(Exception e) {
+	public final void onConsumerError(Exception e) {
 		checkNotNull(e);
 		if (status >= CLOSED)
 			return;

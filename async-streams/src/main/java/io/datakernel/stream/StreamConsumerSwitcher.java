@@ -58,8 +58,8 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		@Override
 		protected void onClosedWithError(Exception e) {
 			if (this == currentInternalProducer) {
-				StreamConsumerSwitcher.this.onError(e);
-				downstreamConsumer.onError(e);
+				StreamConsumerSwitcher.this.onProducerError(e);
+				downstreamConsumer.onProducerError(e);
 			}
 		}
 	}
@@ -97,15 +97,15 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		currentInternalProducer.sendEndOfStream();
 	}
 
 	@Override
-	public void onError(Exception e) {
-		upstreamProducer.closeWithError(e);
+	public void onProducerError(Exception e) {
+		upstreamProducer.onConsumerError(e);
 		if (currentInternalProducer != null) {
-			currentInternalProducer.closeWithError(e);
+			currentInternalProducer.onConsumerError(e);
 		}
 	}
 

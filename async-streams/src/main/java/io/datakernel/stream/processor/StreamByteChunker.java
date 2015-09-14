@@ -67,7 +67,7 @@ public class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, By
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		internalBuf.flip();
 		if (internalBuf.hasRemaining()) {
 			send(internalBuf);

@@ -57,14 +57,14 @@ public interface StreamConsumer<T> {
 	/**
 	 * This method is called when consumer has finished with sending information
 	 */
-	void onEndOfStream();
+	void onProducerEndOfStream();
 
 	/**
 	 * This method is called when consumer has error
 	 *
 	 * @param e exception which was found
 	 */
-	void onError(Exception e);
+	void onProducerError(Exception e);
 
 	/**
 	 * Adds new CompletionCallback which will be called when consumer closed or closed with error

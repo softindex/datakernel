@@ -218,14 +218,14 @@ public class StreamJoinAsUnsortedStreamTest {
 			public void onData(DataItemMasterDetail item) {
 				super.onData(item);
 				if (item.master.equals("masterB+")) {
-					onError(new Exception());
+					onProducerError(new Exception());
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -290,14 +290,14 @@ public class StreamJoinAsUnsortedStreamTest {
 			public void onData(DataItemMasterDetail item) {
 				super.onData(item);
 				if (item.master.equals("masterB+")) {
-					onEndOfStream();
+					onProducerEndOfStream();
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}

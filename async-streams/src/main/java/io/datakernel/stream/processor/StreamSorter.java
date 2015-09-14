@@ -179,7 +179,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 
 				@Override
 				public void onException(Exception e) {
-//					closeWithError(e);
+//					onConsumerError(e);
 					new StreamProducers.ClosingWithError<T>(eventloop, e).streamTo(result);
 				}
 			});
@@ -194,14 +194,14 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 	 * After producer end of stream it sorts elements and stream it to consumer
 	 */
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		nextState();
 	}
 
 	@Override
-	public void onError(Exception e) {
-		result.onError(e);
-		upstreamProducer.closeWithError(e);
+	public void onProducerError(Exception e) {
+		result.onProducerError(e);
+		upstreamProducer.onConsumerError(e);
 	}
 
 	@Override

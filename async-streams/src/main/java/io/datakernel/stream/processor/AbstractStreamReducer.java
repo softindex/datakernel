@@ -193,7 +193,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			if (headItem == null) {
 				streamsAwaiting--;
 			}
@@ -201,9 +201,9 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 		}
 
 		@Override
-		public void onError(Exception e) {
-			upstreamProducer.closeWithError(e);
-			closeWithError(e);
+		public void onProducerError(Exception e) {
+			upstreamProducer.onConsumerError(e);
+			onConsumerError(e);
 		}
 
 		@Override

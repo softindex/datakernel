@@ -67,14 +67,14 @@ public class StreamMapTest {
 			public void onData(Integer item) {
 				super.onData(item);
 				if (item == 12) {
-					onError(new Exception());
+					onProducerError(new Exception());
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -102,14 +102,14 @@ public class StreamMapTest {
 			public void onData(Integer item) {
 				super.onData(item);
 				if (item == 12) {
-					onEndOfStream();
+					onProducerEndOfStream();
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}

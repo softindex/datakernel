@@ -197,7 +197,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		send(createEndOfStreamBlock());
 		sendEndOfStream();
 	}

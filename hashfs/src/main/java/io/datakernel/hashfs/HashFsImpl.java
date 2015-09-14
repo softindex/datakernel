@@ -257,7 +257,7 @@ public class HashFsImpl implements HashFs {
 
 			@Override
 			public void onException(Exception exception) {
-				forwarder.closeWithError(exception);
+				forwarder.onConsumerError(exception);
 			}
 		});
 

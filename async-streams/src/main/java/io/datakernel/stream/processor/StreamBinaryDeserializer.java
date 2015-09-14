@@ -255,7 +255,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		produce();
 	}
 
