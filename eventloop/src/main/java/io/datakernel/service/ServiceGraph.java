@@ -16,22 +16,17 @@
 
 package io.datakernel.service;
 
-import com.google.common.base.Function;
-import com.google.common.base.Stopwatch;
-import com.google.common.collect.LinkedHashMultimap;
-import com.google.common.collect.SetMultimap;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Predicates.in;
-import static com.google.common.base.Predicates.not;
-import static com.google.common.base.Strings.repeat;
-import static com.google.common.base.Throwables.propagate;
-import static com.google.common.collect.Iterables.*;
-import static com.google.common.collect.Sets.difference;
+import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -102,14 +97,47 @@ public class ServiceGraph implements ConcurrentService {
 	 * exists edge from N1 to N2, it can be represent as adding to this SetMultimap element <N1,N2>.
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
-	private final SetMultimap<Node, Node> forwards = LinkedHashMultimap.create();
+	private final Map<Node, Set<Node>> forwards = new HashMap<Node, Set<Node>>() {
+		@Override
+		public Set<Node> get(final Object key) {
+			if (!this.containsKey(key)) {
+				return new HashSet<Node>() {
+					@Override
+					public boolean add(Node o) {
+						if (!backwards.containsKey(key)) {
+							backwards.put((Node) key, this);
+						}
+						return super.add(o);
+					}
+				};
+			};
+			return super.get(key);
+		}
+	};
 
 	/**
 	 * This set used to represent edges between vertices. If N1 and N2 - nodes and between them
 	 * exists edge from N1 to N2, it can be represent as adding to this SetMultimap element <N2,N1>
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
-	private final SetMultimap<Node, Node> backwards = LinkedHashMultimap.create();
+	private final Map<Node, Set<Node>> backwards = new HashMap<Node, Set<Node>>() {
+		@Override
+		public Set<Node> get(final Object key) {
+			if (!this.containsKey(key)) {
+				return new HashSet<Node>() {
+					@Override
+					public boolean add(Node o) {
+						if (!backwards.containsKey(key)) {
+							backwards.put((Node) key, this);
+						}
+						return super.add(o);
+					}
+				};
+			};
+			return super.get(key);
+
+		}
+	};
 
 	/**
 	 * Services which have been started
@@ -140,7 +168,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * @return changed service graph
 	 */
 	public final ServiceGraph add(Node service, Node... dependencies) {
-		checkArgument(!started, "Already started");
+		check(!started, "Already started");
 		return add(service, Arrays.asList(dependencies));
 	}
 
@@ -153,18 +181,18 @@ public class ServiceGraph implements ConcurrentService {
 	 * @return changed service graph
 	 */
 	public ServiceGraph add(Node service, Iterable<Node> dependencies) {
-		checkArgument(!started, "Already started");
+		check(!started, "Already started");
 		vertices.add(service);
 		for (Node dependency : dependencies) {
 			vertices.add(dependency);
-			forwards.put(service, dependency);
-			backwards.put(dependency, service);
+			forwards.get(service).add(dependency);
+			backwards.get(dependency).add(service);
 		}
 		return this;
 	}
 
 	private static List<Node> nextNodes(Set<Node> processedNodes,
-	                                    Set<Node> vertices, SetMultimap<Node, Node> directNodes, SetMultimap<Node, Node> backwardNodes) {
+	                                    Set<Node> vertices, Map<Node, Set<Node>> directNodes, Map<Node, Set<Node>> backwardNodes) {
 		List<Node> result = new ArrayList<>();
 		for (Node node : vertices) {
 			if (processedNodes.contains(node))
@@ -195,10 +223,10 @@ public class ServiceGraph implements ConcurrentService {
 	}
 
 	private void longestPath(Map<Node, Long> timings,
-	                         Set<Node> vertices, SetMultimap<Node, Node> forwardNodes, SetMultimap<Node, Node> backwardNodes) {
+	                         Set<Node> vertices, Map<Node, Set<Node>> forwardNodes, Map<Node, Set<Node>> backwardNodes) {
 		List<Node> stack = new ArrayList<>();
 		List<Iterator<Node>> path = new ArrayList<>();
-		path.add(filter(vertices, not(in(backwardNodes.keySet()))).iterator());
+		path.add(difference(vertices, (backwardNodes.keySet())).iterator());
 		int length = 0;
 		int maxLength = -1;
 		List<Node> maxLengthStack = null;
@@ -247,7 +275,7 @@ public class ServiceGraph implements ConcurrentService {
 
 	synchronized private void next(final ServiceGraphAction action, final ExecutorService executorService,
 	                               final Set<Node> activeNodes, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes,
-	                               final Set<Node> vertices, final SetMultimap<Node, Node> forwardNodes, final SetMultimap<Node, Node> backwardNodes,
+	                               final Set<Node> vertices, final Map<Node, Set<Node>> forwardNodes, final Map<Node, Set<Node>> backwardNodes,
 	                               final Map<Node, Long> processingTimes, final SimpleCompletionFuture callback, final String done, final String fail) {
 		List<Node> newNodes = Collections.emptyList();
 		if (failedNodes.isEmpty()) {
@@ -270,7 +298,7 @@ public class ServiceGraph implements ConcurrentService {
 					executorService.execute(new Runnable() {
 						@Override
 						public void run() {
-							callback.onError((Exception) getFirst(failedNodes.values(), null));
+							callback.onError((Exception) (failedNodes.values().iterator().next()));
 						}
 					});
 				}
@@ -304,11 +332,11 @@ public class ServiceGraph implements ConcurrentService {
 					@Override
 					public void doOnError(Exception e) {
 						logger.error(fail + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
-						propagate(e);
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
 						activeNodes.remove(node);
 						failedNodes.put(node, e);
 						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes, backwardNodes, processingTimes, callback, done, fail);
+						throw new RuntimeException(e);
 					}
 				};
 				action.asyncAction(node, callbackAction);
@@ -320,23 +348,24 @@ public class ServiceGraph implements ConcurrentService {
 
 	private void removeIntermediate(Node vertex) {
 		for (Node backward : backwards.get(vertex)) {
-			forwards.remove(backward, vertex);
+			forwards.get(backward).remove(vertex);
 			for (Node forward : forwards.get(vertex)) {
 				if (!forward.equals(backward)) {
-					forwards.put(backward, forward);
+					forwards.get(backward).add(forward);
 				}
 			}
 		}
 		for (Node forward : forwards.get(vertex)) {
-			backwards.remove(forward, vertex);
+			backwards.get(forward).remove(vertex);
 			for (Node backward : backwards.get(vertex)) {
 				if (!forward.equals(backward)) {
-					backwards.put(forward, backward);
+					backwards.get(forward).add(backward);
 				}
 			}
 		}
-		forwards.removeAll(vertex);
-		backwards.removeAll(vertex);
+
+		forwards.remove(vertex);
+		backwards.remove(vertex);
 		vertices.remove(vertex);
 	}
 
@@ -389,7 +418,17 @@ public class ServiceGraph implements ConcurrentService {
 
 				serviceOrNull.stopFuture(callback);
 			}
-		}, startedServices, new HashSet<>(difference(vertices, startedServices)), new LinkedHashMap<Node, Throwable>(), callback, "stopped", "failed");
+		}, startedServices, difference(vertices, startedServices), new LinkedHashMap<Node, Throwable>(), callback, "stopped", "failed");
+	}
+
+	private Set<Node> difference(Set<Node> main, Set<Node> other) {
+		Set<Node> set = new HashSet<>();
+		for (Node mainNode : main) {
+			if (!other.contains(mainNode)) {
+				set.add(mainNode);
+			}
+		}
+		return set;
 	}
 
 	/**
@@ -443,7 +482,7 @@ public class ServiceGraph implements ConcurrentService {
 		StringBuilder sb = new StringBuilder();
 		Set<Node> visited = new LinkedHashSet<>();
 		List<Iterator<Node>> path = new ArrayList<>();
-		Iterable<Node> roots = filter(vertices, not(in(backwards.keySet())));
+		Iterable<Node> roots = difference(vertices, (backwards.keySet()));
 		path.add(roots.iterator());
 		while (!path.isEmpty()) {
 			Iterator<Node> it = path.get(path.size() - 1);
@@ -463,11 +502,22 @@ public class ServiceGraph implements ConcurrentService {
 		return sb.toString();
 	}
 
+	private static String repeat(String s, int count) {
+		checkNotNull(s);
+		StringBuilder builder = new StringBuilder();
+
+		while (count-- > 0) {
+			builder.append(s);
+		}
+
+		return builder.toString();
+	}
+
 	/**
 	 * Removes nodes which don't have services
 	 */
 	public void removeIntermediateNodes() {
-		checkArgument(!started, "Already started");
+		check(!started, "Already started");
 		List<Node> toRemove = new ArrayList<>();
 		for (Node v : vertices) {
 			if (v.getService() == null) {
@@ -485,7 +535,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * dependencies.
 	 */
 	public void breakCircularDependencies() {
-		checkArgument(!started, "Already started");
+		check(!started, "Already started");
 		Set<Node> visited = new LinkedHashSet<>();
 		List<Node> path = new ArrayList<>();
 		next:
@@ -495,8 +545,8 @@ public class ServiceGraph implements ConcurrentService {
 				if (loopIndex != -1) {
 					logger.warn("Found circular dependency, breaking: " + nodesToString(path.subList(loopIndex, path.size())));
 					Node last = path.get(path.size() - 1);
-					forwards.remove(last, node);
-					backwards.remove(node, last);
+					forwards.get(last).remove(node);
+					backwards.get(node).remove(last);
 					continue next;
 				}
 				if (!visited.contains(node)) {
@@ -516,12 +566,16 @@ public class ServiceGraph implements ConcurrentService {
 	}
 
 	private String nodesToString(Iterable<Node> newNodes) {
-		return "" + transform(newNodes, new Function<Node, String>() {
-			@Override
-			public String apply(Node node) {
-				return nodeToString(node);
+		StringBuilder builder = new StringBuilder().append("[");
+		Iterator<Node> iterator = newNodes.iterator();
+
+		while (iterator.hasNext()) {
+			builder.append(nodeToString(iterator.next()));
+			if (iterator.hasNext()) {
+				builder.append(", ");
 			}
-		});
+		}
+		return builder.append("]").toString();
 	}
 
 }

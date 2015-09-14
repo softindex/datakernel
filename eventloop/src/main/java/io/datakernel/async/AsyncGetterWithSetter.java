@@ -18,8 +18,8 @@ package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * Instance of this class combines possibility of  getter and ResultCallback
@@ -66,7 +66,7 @@ public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCal
 	 */
 	@Override
 	public void onResult(T result) {
-		checkState(this.result == null && exception == null);
+		check(this.result == null && exception == null);
 		this.result = checkNotNull(result);
 		if (callback != null) {
 			fireResult();
@@ -81,7 +81,7 @@ public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCal
 	 */
 	@Override
 	public void onException(Exception exception) {
-		checkState(this.result == null && exception == null);
+		check(this.result == null && exception == null);
 		this.exception = exception;
 		if (callback != null) {
 			fireException();

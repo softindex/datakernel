@@ -16,8 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Stopwatch;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.jmx.LastExceptionCounter;
@@ -28,6 +26,7 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
 import io.datakernel.util.ExceptionMarker;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -841,7 +840,6 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 		};
 	}
 
-	@VisibleForTesting
 	public long refreshTimestampAndGet() {
 		timestamp = timeProvider.currentTimeMillis();
 		return timestamp;

@@ -16,11 +16,11 @@
 
 package io.datakernel.async;
 
-import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.service.SimpleCompletionFuture;
+import io.datakernel.util.Function;
 import org.slf4j.Logger;
 
 import java.io.IOException;

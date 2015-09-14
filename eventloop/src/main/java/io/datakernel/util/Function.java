@@ -14,25 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.async;
+package io.datakernel.util;
 
-/**
- * Represents the runnable which will be ran with exception, which will be threw from runWithException()
- */
-public abstract class RunnableWithException implements Runnable {
-
-	/**
-	 * Throws the exception
-	 */
-	public abstract void runWithException() throws Exception;
+public interface Function<I, O> {
+	O apply(I input);
 
 	@Override
-	public final void run() {
-		try {
-			runWithException();
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
-	}
-
+	boolean equals(Object object);
 }

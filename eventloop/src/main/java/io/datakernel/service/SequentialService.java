@@ -16,15 +16,12 @@
 
 package io.datakernel.service;
 
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static com.google.common.base.Throwables.propagate;
-import static com.google.common.collect.Lists.reverse;
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public class SequentialService implements ConcurrentService {
@@ -37,7 +34,7 @@ public class SequentialService implements ConcurrentService {
 	 * @param services services for new sequential service
 	 */
 	public SequentialService(List<? extends ConcurrentService> services) {
-		this.services = ImmutableList.copyOf(services);
+		this.services = new ArrayList<>(services);
 	}
 
 	@Override
@@ -91,17 +88,21 @@ public class SequentialService implements ConcurrentService {
 				public void doOnError(Exception e) {
 					logger.error("Exception while {} {}", action, service);
 					callback.onError(e);
-					propagate(e);
+					throw new RuntimeException(e);
 				}
 			};
 			action.apply(service, applyCallback);
 			return;
 		}
-		sameThreadExecutor().execute(new Runnable() {
-			@Override
-			public void run() {
-				callback.onSuccess();
-			}
-		});
+		callback.onSuccess();
+	}
+
+	private List<ConcurrentService> reverse(List<ConcurrentService> list) {
+		ArrayList<ConcurrentService> concurrentServices = new ArrayList<>(list.size());
+		for (int i = list.size() - 1; i >= 0; i--) {
+			concurrentServices.add(list.get(i));
+		}
+
+		return concurrentServices;
 	}
 }

@@ -33,10 +33,10 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
+import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -131,7 +131,7 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	 */
 	@Override
 	public final void listen() throws IOException {
-		checkState(eventloop.inEventloopThread());
+		check(eventloop.inEventloopThread());
 		if (running)
 			return;
 		running = true;
@@ -154,7 +154,7 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 
 	@Override
 	public final void close() {
-		checkState(eventloop.inEventloopThread());
+		check(eventloop.inEventloopThread());
 		if (!running)
 			return;
 		running = false;

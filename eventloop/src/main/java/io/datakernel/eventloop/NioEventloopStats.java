@@ -16,21 +16,17 @@
 
 package io.datakernel.eventloop;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Stopwatch;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.*;
 import io.datakernel.util.ExceptionMarker;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class NioEventloopStats implements NioEventloopStatsMBean {
@@ -204,13 +200,17 @@ public final class NioEventloopStats implements NioEventloopStatsMBean {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 			ExceptionMarkerImpl that = (ExceptionMarkerImpl) o;
-			return Objects.equal(this.clazz, that.clazz) &&
-					Objects.equal(this.marker, that.marker);
+			return equal(this.clazz, that.clazz) &&
+					equal(this.marker, that.marker);
+		}
+
+		private static boolean equal(Object a, Object b) {
+			return a == b || (a != null && a.equals(b));
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hashCode(clazz, marker);
+			return Arrays.hashCode(new Object[]{clazz, marker});
 		}
 
 		@Override

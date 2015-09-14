@@ -16,8 +16,6 @@
 
 package io.datakernel.bytebuf;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Joiner;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.MBeanUtils;
 import io.datakernel.util.ConcurrentStack;
@@ -27,7 +25,7 @@ import javax.management.ObjectName;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.check;
 import static java.lang.Integer.numberOfLeadingZeros;
 
 public final class ByteBufPool {
@@ -206,7 +204,6 @@ public final class ByteBufPool {
 		queue.push(buf);
 	}
 
-	@VisibleForTesting
 	static ConcurrentStack<ByteBuf>[] getPool() {
 		return slabs;
 	}
@@ -256,13 +253,12 @@ public final class ByteBufPool {
 			@Override
 			public List<String> getPoolSlabs() {
 				assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
-				Joiner joiner = Joiner.on(',');
 				List<String> result = new ArrayList<>(slabs.length + 1);
 				result.add("SlotSize,Created,InPool,Total(Kb)");
 				for (int i = 0; i < slabs.length; i++) {
 					long slotSize = 1L << i;
 					int count = slabs[i].size();
-					result.add(joiner.join(slotSize & 0xffffffffL, created[i], count, slotSize * count / 1024));
+					result.add((slotSize & 0xffffffffL) + "," + created[i] + "," + count + "," + slotSize * count / 1024);
 				}
 				return result;
 			}
@@ -278,12 +274,12 @@ public final class ByteBufPool {
 	}
 
 	public static int getCreatedItems(int slab) {
-		checkArgument(slab >= 0 && slab < slabs.length);
+		check(slab >= 0 && slab < slabs.length);
 		return created[slab];
 	}
 
 	public static int getPoolItems(int slab) {
-		checkArgument(slab >= 0 && slab < slabs.length);
+		check(slab >= 0 && slab < slabs.length);
 		return slabs[slab].size();
 	}
 

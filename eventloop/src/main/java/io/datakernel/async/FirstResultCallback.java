@@ -16,8 +16,8 @@
 
 package io.datakernel.async;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public class FirstResultCallback<T> implements ResultCallback<T> {
 	private final ResultCallback<T> resultCallback;
@@ -56,7 +56,7 @@ public class FirstResultCallback<T> implements ResultCallback<T> {
 	}
 
 	public void resultOf(int maxAwaitsCalls) {
-		checkArgument(maxAwaitsCalls > 0);
+		check(maxAwaitsCalls > 0);
 		this.awaitsCalls = maxAwaitsCalls;
 		processResult();
 	}

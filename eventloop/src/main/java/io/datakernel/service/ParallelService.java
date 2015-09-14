@@ -16,14 +16,12 @@
 
 package io.datakernel.service;
 
-import com.google.common.collect.ImmutableList;
 import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.base.Throwables.propagate;
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public class ParallelService implements ConcurrentService {
@@ -36,9 +34,8 @@ public class ParallelService implements ConcurrentService {
 	 * @param services services for new parallel service
 	 */
 	public ParallelService(List<? extends ConcurrentService> services) {
-		this.services = ImmutableList.copyOf(services);
+		this.services = new ArrayList<>(services);
 	}
-
 
 	@Override
 	public void startFuture(SimpleCompletionFuture callback) {
@@ -85,29 +82,20 @@ public class ParallelService implements ConcurrentService {
 				public void doOnSuccess() {
 					logger.info("{} {} complete", action, service);
 					if (counter.decrementAndGet() == 0) {
-						sameThreadExecutor().execute(new Runnable() {
-							@Override
-							public void run() {
-								callback.onSuccess();
-							}
-						});
+						callback.onSuccess();
 					}
+
 				}
 
 				@Override
 				public void doOnError(Exception e) {
 					logger.error("Exception while {} {}", action, service);
-					propagate(e);
 					breakCallback[0] = Boolean.TRUE;
 
 					if (counter.decrementAndGet() == 0) {
-						sameThreadExecutor().execute(new Runnable() {
-							@Override
-							public void run() {
-								callback.onSuccess();
-							}
-						});
+						callback.onSuccess();
 					}
+					throw new RuntimeException(e);
 				}
 			};
 			action.apply(service, applyCallback);

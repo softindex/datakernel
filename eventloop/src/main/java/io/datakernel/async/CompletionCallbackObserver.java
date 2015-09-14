@@ -16,8 +16,7 @@
 
 package io.datakernel.async;
 
-import static com.google.common.base.Preconditions.checkState;
-import static com.google.common.base.Throwables.propagate;
+import io.datakernel.util.Preconditions;
 
 /**
  * Observer, used to check completion of some asynchronous action.
@@ -51,8 +50,8 @@ public class CompletionCallbackObserver implements CompletionCallback {
 	 */
 	public void check() {
 		if (exception != null) {
-			throw propagate(exception);
+			throw new RuntimeException(exception);
 		}
-		checkState(complete, "Not complete");
+		Preconditions.check(complete, "Not complete");
 	}
 }
