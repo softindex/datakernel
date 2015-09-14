@@ -28,11 +28,11 @@ import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.example.CumulativeServiceHelper;
 import io.datakernel.rpc.protocol.RpcException;
 import io.datakernel.rpc.server.RpcServer;
+import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.service.NioEventloopRunner;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.ExecutionException;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -79,10 +79,12 @@ public final class CumulativeBenchmark {
 		System.out.println("RpcMessage size    : " + CumulativeServiceHelper.calculateRpcMessageSize(incrementMessage) + " bytes");
 	}
 
-	private void run() throws ExecutionException, InterruptedException {
+	private void run() throws Exception {
 		printBenchmarkInfo();
 
-		serverRunner.startFuture().get();
+		SimpleCompletionFuture startServiceCallback = new SimpleCompletionFuture();
+		serverRunner.startFuture(startServiceCallback);
+		startServiceCallback.await();
 
 		try {
 			final CompletionCallback finishCallback = new CompletionCallback() {
@@ -115,7 +117,9 @@ public final class CumulativeBenchmark {
 			eventloop.run();
 
 		} finally {
-			serverRunner.stopFuture().get();
+			SimpleCompletionFuture callbackStop = new SimpleCompletionFuture();
+			serverRunner.stopFuture(callbackStop);
+			callbackStop.await();
 		}
 	}
 
@@ -229,7 +233,7 @@ public final class CumulativeBenchmark {
 		});
 	}
 
-	public static void main(String[] args) throws ExecutionException, InterruptedException {
+	public static void main(String[] args) throws Exception {
 		loggerLevel(Level.OFF);
 
 		new CumulativeBenchmark().run();

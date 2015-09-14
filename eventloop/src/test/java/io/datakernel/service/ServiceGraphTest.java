@@ -34,11 +34,15 @@ public class ServiceGraphTest {
 		graph.add(new ServiceGraph.Node("t2", ConcurrentServices.immediateService()), new ServiceGraph.Node("t1", null));
 
 		try {
-			graph.startFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			graph.startFuture(callback);
+			callback.await();
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			graph.stopFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			graph.stopFuture(callback);
+			callback.await();
 		}
 	}
 

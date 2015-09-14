@@ -16,12 +16,12 @@
 
 package io.datakernel.eventloop;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 
@@ -162,12 +162,12 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 		onClose();
 	}
 
-	public ListenableFuture<?> listenFuture() {
-		return AsyncCallbacks.listenFuture(this);
+	public void listenFuture(SimpleCompletionFuture callback) {
+		AsyncCallbacks.listenFuture(this, callback);
 	}
 
-	public ListenableFuture<?> closeFuture() {
-		return AsyncCallbacks.closeFuture(this);
+	public void closeFuture(SimpleCompletionFuture callback) {
+		AsyncCallbacks.closeFuture(this, callback);
 	}
 
 	protected void onClose() {

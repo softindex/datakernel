@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
-import com.google.common.util.concurrent.ListenableFuture;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
@@ -33,6 +32,7 @@ import io.datakernel.jmx.DynamicStatsCounter;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.StatsCounter;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.service.SimpleCompletionFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -431,13 +431,8 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		callback.onComplete();
 	}
 
-	/**
-	 * Stops this clients handler and returns ListenableFuture with result of stopping.
-	 *
-	 * @return ListenableFuture with result of stopping.
-	 */
-	public ListenableFuture<?> closeFuture() {
-		return AsyncCallbacks.stopFuture(this);
+	public void closeFuture(SimpleCompletionFuture callback) {
+		AsyncCallbacks.stopFuture(this, callback);
 	}
 
 	// JMX

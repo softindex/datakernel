@@ -38,6 +38,7 @@ import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -197,7 +198,10 @@ public class RpcNioHelloWorldTest {
 				assertEquals("Hello, World!", client.hello("World"));
 			}
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionCallback = new SimpleCompletionFuture();
+			closeFuture(server, completionCallback);
+			completionCallback.await();
+
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -227,7 +231,9 @@ public class RpcNioHelloWorldTest {
 			}
 			latch.await();
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 		assertTrue(success.get() > 0);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -240,7 +246,9 @@ public class RpcNioHelloWorldTest {
 			assertEquals("Hello, John!", client2.hello("John"));
 			assertEquals("Hello, World!", client1.hello("World"));
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -253,7 +261,9 @@ public class RpcNioHelloWorldTest {
 		} catch (RpcRemoteException e) {
 			assertEquals("java.lang.Exception: Illegal name", e.getMessage());
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -299,7 +309,9 @@ public class RpcNioHelloWorldTest {
 			latch1.await();
 			latch2.await();
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -335,7 +347,9 @@ public class RpcNioHelloWorldTest {
 						+ " (" + success.get() + "/" + count + " [" + error.get() + "])");
 			}
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 	}
 }

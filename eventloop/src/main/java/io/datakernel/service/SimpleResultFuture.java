@@ -16,13 +16,37 @@
 
 package io.datakernel.service;
 
-/**
- * Service which starts and stops asynchronously and does not block thread while startFuture/stopFuture methods are running.
- */
-public interface ConcurrentService {
-	void startFuture(SimpleCompletionFuture callback);
+import java.util.concurrent.CountDownLatch;
 
-	void stopFuture(SimpleCompletionFuture callback);
+public class SimpleResultFuture<T> {
+	private CountDownLatch latch = new CountDownLatch(1);
+	private T result;
+	private Exception exception;
 
+	protected void doOnResult(T item) {
+	}
+
+	public final void onResult(T item) {
+		result = item;
+		doOnResult(item);
+		latch.countDown();
+	}
+
+	protected void doOnError(Exception e) {
+
+	}
+
+	public final void onError(Exception e) {
+		doOnError(e);
+		exception = e;
+		latch.countDown();
+	}
+
+	public final T get() throws Exception {
+		latch.await();
+		if (exception != null) {
+			throw exception;
+		}
+		return result;
+	}
 }
-

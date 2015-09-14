@@ -16,25 +16,18 @@
 
 package io.datakernel.service;
 
-import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
+import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Lists.reverse;
 import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
 import static org.slf4j.LoggerFactory.getLogger;
 
-/**
- * SequentialService  processes services in  the order received. You can control the order
- * in which services are processed. It is implementation of {@link ConcurrentService}.
- */
-public final class SequentialService implements ConcurrentService {
+public class SequentialService implements ConcurrentService {
 	private static final Logger logger = getLogger(SequentialService.class);
 	private final List<ConcurrentService> services;
 
@@ -47,87 +40,67 @@ public final class SequentialService implements ConcurrentService {
 		this.services = ImmutableList.copyOf(services);
 	}
 
-	@SuppressWarnings("ConstantConditions")
-	private void next(final SettableFuture<Boolean> future, final Iterator<ConcurrentService> it,
-	                  final Function<ConcurrentService, ListenableFuture<?>> action) {
-		while (it.hasNext()) {
-			final ConcurrentService service = it.next();
-			logger.info("{} {}", action, service);
-			final ListenableFuture<?> serviceFuture = action.apply(service);
-			if (serviceFuture.isDone()) {
-				try {
-					serviceFuture.get();
-					logger.info("{} {} complete", action, service);
-				} catch (InterruptedException | ExecutionException e) {
-					future.setException(e);
-					logger.error("Exception while {} {}", action, service);
-					return;
-				}
-			} else {
-				serviceFuture.addListener(new Runnable() {
-					@Override
-					public void run() {
-						try {
-							serviceFuture.get();
-							logger.info("{} {} complete", action, service);
-						} catch (InterruptedException | ExecutionException e) {
-							future.setException(e);
-							logger.error("Exception while {} {}", action, service);
-							return;
-						}
-						next(future, it, action);
-					}
-				}, sameThreadExecutor());
-				return;
-			}
-		}
-		future.set(true);
-	}
-
-	private ListenableFuture<?> doAction(Iterable<ConcurrentService> iterable, Function<ConcurrentService, ListenableFuture<?>> action) {
-		SettableFuture<Boolean> future = SettableFuture.create();
-		next(future, iterable.iterator(), action);
-		return future;
-	}
-
-	/**
-	 * Starts all asynchronous services
-	 *
-	 * @return ListenableFuture with listener which guaranteed to be called once the action is
-	 * complete.It is used as an input to another derived Future
-	 */
 	@Override
-	public ListenableFuture<?> startFuture() {
-		return doAction(services, new Function<ConcurrentService, ListenableFuture<?>>() {
+	public void startFuture(SimpleCompletionFuture callback) {
+		doAction(services, new FunctionCallback<ConcurrentService>() {
 			@Override
-			public ListenableFuture<?> apply(ConcurrentService input) {
-				return input.startFuture();
+			public void apply(ConcurrentService input, SimpleCompletionFuture callback) {
+				input.startFuture(callback);
 			}
 
 			@Override
 			public String toString() {
 				return "Starting";
 			}
-		});
+		}, callback);
 	}
 
-	/**
-	 * Stops all asynchronous services
-	 *
-	 * @return ListenableFuture with listener which guaranteed to be called once the action is
-	 * complete.It is used as an input to another derived Future
-	 */
 	@Override
-	public ListenableFuture<?> stopFuture() {
-		return doAction(reverse(services), new Function<ConcurrentService, ListenableFuture<?>>() {
+	public void stopFuture(SimpleCompletionFuture callback) {
+		doAction(reverse(services), new FunctionCallback<ConcurrentService>() {
 			@Override
-			public ListenableFuture<?> apply(ConcurrentService input) {
-				return input.stopFuture();
+			public void apply(ConcurrentService input, SimpleCompletionFuture callback) {
+				input.stopFuture(callback);
 			}
 
 			@Override
 			public String toString() {
 				return "Stopping";
+			}
+		}, callback);
+	}
+
+	private void doAction(Iterable<ConcurrentService> iterable, FunctionCallback<ConcurrentService> action, SimpleCompletionFuture callback) {
+		next(iterable.iterator(), action, callback);
+	}
+
+	private void next(final Iterator<ConcurrentService> it,
+	                  final FunctionCallback<ConcurrentService> action,
+	                  final SimpleCompletionFuture callback) {
+		while (it.hasNext()) {
+			final ConcurrentService service = it.next();
+			logger.info("{} {}", action, service);
+			SimpleCompletionFuture applyCallback = new SimpleCompletionFuture() {
+				@Override
+				public void doOnSuccess() {
+					logger.info("{} {} complete", action, service);
+					next(it, action, callback);
+				}
+
+				@Override
+				public void doOnError(Exception e) {
+					logger.error("Exception while {} {}", action, service);
+					callback.onError(e);
+					propagate(e);
+				}
+			};
+			action.apply(service, applyCallback);
+			return;
+		}
+		sameThreadExecutor().execute(new Runnable() {
+			@Override
+			public void run() {
+				callback.onSuccess();
 			}
 		});
 	}

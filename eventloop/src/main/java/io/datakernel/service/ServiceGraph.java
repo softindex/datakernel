@@ -20,8 +20,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.SetMultimap;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
 
 import java.util.*;
@@ -31,10 +29,9 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.base.Predicates.not;
 import static com.google.common.base.Strings.repeat;
+import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Sets.difference;
-import static com.google.common.util.concurrent.Futures.immediateFuture;
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -193,10 +190,8 @@ public class ServiceGraph implements ConcurrentService {
 		/**
 		 * Executes the action for service from argument. Used under traversing the graph.
 		 *
-		 * @return ListenableFuture with listener which guaranteed to be called once the action is
-		 * complete. It is used as an input to another derived Future
 		 */
-		ListenableFuture<?> asyncAction(Node service);
+		void asyncAction(Node service, SimpleCompletionFuture serviceCallback);
 	}
 
 	private void longestPath(Map<Node, Long> timings,
@@ -250,10 +245,10 @@ public class ServiceGraph implements ConcurrentService {
 		}
 	}
 
-	synchronized private void next(final SettableFuture<Boolean> future, final ServiceGraphAction action, final ExecutorService executorService,
+	synchronized private void next(final ServiceGraphAction action, final ExecutorService executorService,
 	                               final Set<Node> activeNodes, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes,
 	                               final Set<Node> vertices, final SetMultimap<Node, Node> forwardNodes, final SetMultimap<Node, Node> backwardNodes,
-	                               final Map<Node, Long> processingTimes) {
+	                               final Map<Node, Long> processingTimes, final SimpleCompletionFuture callback, final String done, final String fail) {
 		List<Node> newNodes = Collections.emptyList();
 		if (failedNodes.isEmpty()) {
 			newNodes = nextNodes(processedNodes, vertices, forwardNodes, backwardNodes);
@@ -262,12 +257,22 @@ public class ServiceGraph implements ConcurrentService {
 
 		if (newNodes.isEmpty()) {
 			if (activeNodes.isEmpty()) {
-				executorService.shutdown();
 				if (failedNodes.isEmpty()) {
-					future.set(true);
+					executorService.execute(new Runnable() {
+						@Override
+						public void run() {
+							callback.onSuccess();
+						}
+					});
+
 					longestPath(processingTimes, vertices, forwardNodes, backwardNodes);
 				} else {
-					future.setException(getFirst(failedNodes.values(), null));
+					executorService.execute(new Runnable() {
+						@Override
+						public void run() {
+							callback.onError((Exception) getFirst(failedNodes.values(), null));
+						}
+					});
 				}
 			}
 			return;
@@ -283,30 +288,33 @@ public class ServiceGraph implements ConcurrentService {
 			final long startProcessingTime = currentTimeMillis();
 
 			Stopwatch asyncActionTime = Stopwatch.createStarted();
-			final ListenableFuture<?> nodeFuture = action.asyncAction(node);
-			if (asyncActionTime.elapsed(TimeUnit.SECONDS) >= 1)
-				logger.info("action.asyncAction time for {} is {}", node, asyncActionTime);
+			final Stopwatch sw = Stopwatch.createStarted();
 
-			nodeFuture.addListener(new Runnable() {
-				@Override
-				public void run() {
-					synchronized (ServiceGraph.this) {
+			synchronized (ServiceGraph.this) {
+				SimpleCompletionFuture callbackAction = new SimpleCompletionFuture() {
+					@Override
+					public void doOnSuccess() {
+						logger.info(done + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
 						activeNodes.remove(node);
-						try {
-							nodeFuture.get();
-							processedNodes.add(node);
-						} catch (InterruptedException e) {
-							failedNodes.put(node, e);
-						} catch (ExecutionException e) {
-							failedNodes.put(node, e.getCause());
-						}
-						next(future, action, executorService,
-								activeNodes, processedNodes, failedNodes,
-								vertices, forwardNodes, backwardNodes, processingTimes);
+						processedNodes.add(node);
+						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes, backwardNodes, processingTimes, callback, done, fail);
 					}
-				}
-			}, executorService);
+
+					@Override
+					public void doOnError(Exception e) {
+						logger.error(fail + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
+						propagate(e);
+						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
+						activeNodes.remove(node);
+						failedNodes.put(node, e);
+						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes, backwardNodes, processingTimes, callback, done, fail);
+					}
+				};
+				action.asyncAction(node, callbackAction);
+			}
+			if (asyncActionTime.elapsed(TimeUnit.SECONDS) >= 1)
+				logger.info("action.asyncAction time for {} is {}", node, asyncActionTime);
 		}
 	}
 
@@ -330,6 +338,129 @@ public class ServiceGraph implements ConcurrentService {
 		forwards.removeAll(vertex);
 		backwards.removeAll(vertex);
 		vertices.remove(vertex);
+	}
+
+	/**
+	 * Called before starting execution service graph
+	 */
+	protected void onStart() {
+	}
+
+	/**
+	 * Started services from the service graph
+	 *
+	 */
+	@Override
+	synchronized public void startFuture(SimpleCompletionFuture callback) {
+		if (!started) {
+			onStart();
+			started = true;
+		}
+		logger.info("Starting services...");
+		visitBackwardAsync(new ServiceGraphAction() {
+			@Override
+			public void asyncAction(final Node service, final SimpleCompletionFuture callback) {
+				ConcurrentService serviceOrNull = service.getService();
+				if (serviceOrNull == null) {
+					callback.onSuccess();
+					return;
+				}
+
+				serviceOrNull.startFuture(callback);
+			}
+		}, vertices, startedServices, failedServices, callback, "started", "failed");
+	}
+
+	/**
+	 * Stops services from  the service graph
+	 *
+	 */
+	@Override
+	synchronized public void stopFuture(final SimpleCompletionFuture callback) {
+		logger.info("Stopping running services: " + nodesToString(startedServices));
+		visitForwardAsync(new ServiceGraphAction() {
+			@Override
+			public void asyncAction(final Node service, final SimpleCompletionFuture callback) {
+				ConcurrentService serviceOrNull = service.getService();
+				if (serviceOrNull == null) {
+					callback.onSuccess();
+					return;
+				}
+
+				serviceOrNull.stopFuture(callback);
+			}
+		}, startedServices, new HashSet<>(difference(vertices, startedServices)), new LinkedHashMap<Node, Throwable>(), callback, "stopped", "failed");
+	}
+
+	/**
+	 * Visits nodes in which there are edges from processedNodes and executes its service .
+	 *
+	 * @param action         action which will be executed with node
+	 * @param vertices       set of all vertices
+	 * @param processedNodes nodes which have been visited
+	 * @param failedNodes    nodes which have not started
+	 * @return SettableFuture  with result of action
+	 */
+	public void visitForwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes,
+	                              final Map<Node, Throwable> failedNodes, final SimpleCompletionFuture callback,
+	                              final String done, final String fail) {
+		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
+		executor.execute(new Runnable() {
+			@Override
+			public void run() {
+				HashMap<Node, Long> processingTimes = new HashMap<>();
+				next(action, executor, new HashSet<Node>(), processedNodes, failedNodes, vertices, forwards, backwards, processingTimes, callback, done, fail);
+			}
+		});
+	}
+
+	/**
+	 * Visits nodes from which there are edges to processedNodes and executes its service .
+	 *
+	 * @param action         action which will be executed with node
+	 * @param vertices       set of all vertices
+	 * @param processedNodes nodes which have been visited
+	 * @param failedNodes    nodes which have not started
+	 * @return SettableFuture  with result of action
+	 */
+	public void visitBackwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes,
+	                               final Map<Node, Throwable> failedNodes, final SimpleCompletionFuture callback,
+	                               final String done, final String fail) {
+		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
+		executor.execute(new Runnable() {
+			@Override
+			public void run() {
+				HashMap<Node, Long> processingTimes = new HashMap<>();
+				next(action, executor, new HashSet<Node>(), processedNodes, failedNodes, vertices, backwards, forwards, processingTimes, callback, done, fail);
+			}
+		});
+
+	}
+
+	@Override
+	@SuppressWarnings("StringConcatenationInsideStringBufferAppend")
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		Set<Node> visited = new LinkedHashSet<>();
+		List<Iterator<Node>> path = new ArrayList<>();
+		Iterable<Node> roots = filter(vertices, not(in(backwards.keySet())));
+		path.add(roots.iterator());
+		while (!path.isEmpty()) {
+			Iterator<Node> it = path.get(path.size() - 1);
+			if (it.hasNext()) {
+				Node node = it.next();
+				if (!visited.contains(node)) {
+					visited.add(node);
+					sb.append(repeat("\t", path.size() - 1) + "" + nodeToString(node) + "\n");
+					path.add(forwards.get(node).iterator());
+				} else {
+					sb.append(repeat("\t", path.size() - 1) + nodeToString(node) + " ^" + "\n");
+				}
+			} else {
+				path.remove(path.size() - 1);
+			}
+		}
+		return sb.toString();
 	}
 
 	/**
@@ -378,184 +509,6 @@ public class ServiceGraph implements ConcurrentService {
 				break;
 			path.remove(path.size() - 1);
 		}
-	}
-
-	private void logFutureWhenDone(ListenableFuture<?> future, Node node, Stopwatch sw, String done, String failed) {
-		try {
-			future.get();
-			logger.info(done + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
-		} catch (Exception e) {
-			logger.error(failed + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""), e);
-		}
-	}
-
-	private void logFuture(final Node node, final ListenableFuture<?> future, final Stopwatch sw, String working, final String done, final String failed) {
-		if (future.isDone()) {
-			logFutureWhenDone(future, node, sw, done, failed);
-		} else {
-			logger.trace(working + " " + nodeToString(node));
-			future.addListener(new Runnable() {
-				@Override
-				public void run() {
-					logFutureWhenDone(future, node, sw, done, failed);
-				}
-			}, sameThreadExecutor());
-		}
-	}
-
-	/**
-	 * Called before starting execution service graph
-	 */
-	protected void onStart() {
-	}
-
-	/**
-	 * Started services from the service graph
-	 *
-	 * @return ListenableFuture with listener which guaranteed to be called once the action is
-	 * complete.It is used as an input to another derived Future
-	 */
-	@Override
-	synchronized public ListenableFuture<?> startFuture() {
-		if (!started) {
-			onStart();
-			started = true;
-		}
-		final Stopwatch swTotal = Stopwatch.createStarted();
-		logger.info("Starting services...");
-		final SettableFuture<?> future = visitBackwardAsync(new ServiceGraphAction() {
-			@Override
-			public ListenableFuture<?> asyncAction(Node service) {
-				ConcurrentService serviceOrNull = service.getService();
-				if (serviceOrNull == null)
-					return immediateFuture(true);
-				Stopwatch sw = Stopwatch.createStarted();
-				ListenableFuture<?> future = serviceOrNull.startFuture();
-				logFuture(service, future, sw, "...starting", "...started", "...failed");
-				return future;
-			}
-		}, vertices, startedServices, failedServices);
-		future.addListener(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					future.get();
-					logger.info("Services started in {}", swTotal);
-				} catch (InterruptedException | ExecutionException e) {
-					logger.error("Failed services: {}", nodesToString(failedServices.keySet()));
-				}
-				started = true;
-			}
-		}, sameThreadExecutor());
-		return future;
-	}
-
-	/**
-	 * Stops services from  the service graph
-	 *
-	 * @return ListenableFuture with listener which guaranteed to be called once the action is
-	 * complete.It is used as an input to another derived Future
-	 */
-	@Override
-	synchronized public ListenableFuture<?> stopFuture() {
-		final Stopwatch swTotal = Stopwatch.createStarted();
-		logger.info("Stopping running services: " + nodesToString(startedServices));
-		final SettableFuture<?> future = visitForwardAsync(new ServiceGraphAction() {
-			@Override
-			public ListenableFuture<?> asyncAction(Node service) {
-				ConcurrentService serviceOrNull = service.getService();
-				if (serviceOrNull == null)
-					return immediateFuture(true);
-				Stopwatch sw = Stopwatch.createStarted();
-				ListenableFuture<?> future = serviceOrNull.stopFuture();
-				logFuture(service, future, sw, "...stopping", "...stopped", "...failed");
-				return future;
-			}
-		}, startedServices, new HashSet<>(difference(vertices, startedServices)), new LinkedHashMap<Node, Throwable>());
-		future.addListener(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					future.get();
-					logger.info("Services stopped in {}", swTotal);
-				} catch (InterruptedException | ExecutionException e) {
-					logger.error("Services stopped with failed services: {}", failedServices.keySet());
-				}
-			}
-		}, sameThreadExecutor());
-		return future;
-	}
-
-	/**
-	 * Visits nodes in which there are edges from processedNodes and executes its service .
-	 *
-	 * @param action         action which will be executed with node
-	 * @param vertices       set of all vertices
-	 * @param processedNodes nodes which have been visited
-	 * @param failedNodes    nodes which have not started
-	 * @return SettableFuture  with result of action
-	 */
-	public SettableFuture<?> visitForwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes) {
-		final SettableFuture<Boolean> future = SettableFuture.create();
-		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
-		executor.execute(new Runnable() {
-			@Override
-			public void run() {
-				HashMap<Node, Long> processingTimes = new HashMap<>();
-				next(future, action, executor,
-						new HashSet<Node>(), processedNodes, failedNodes, vertices, forwards, backwards, processingTimes);
-			}
-		});
-		return future;
-	}
-
-	/**
-	 * Visits nodes from which there are edges to processedNodes and executes its service .
-	 *
-	 * @param action         action which will be executed with node
-	 * @param vertices       set of all vertices
-	 * @param processedNodes nodes which have been visited
-	 * @param failedNodes    nodes which have not started
-	 * @return SettableFuture  with result of action
-	 */
-	public SettableFuture<?> visitBackwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes) {
-		final SettableFuture<Boolean> future = SettableFuture.create();
-		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
-		executor.execute(new Runnable() {
-			@Override
-			public void run() {
-				HashMap<Node, Long> processingTimes = new HashMap<>();
-				next(future, action, executor,
-						new HashSet<Node>(), processedNodes, failedNodes, vertices, backwards, forwards, processingTimes);
-			}
-		});
-		return future;
-	}
-
-	@Override
-	@SuppressWarnings("StringConcatenationInsideStringBufferAppend")
-	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		Set<Node> visited = new LinkedHashSet<>();
-		List<Iterator<Node>> path = new ArrayList<>();
-		Iterable<Node> roots = filter(vertices, not(in(backwards.keySet())));
-		path.add(roots.iterator());
-		while (!path.isEmpty()) {
-			Iterator<Node> it = path.get(path.size() - 1);
-			if (it.hasNext()) {
-				Node node = it.next();
-				if (!visited.contains(node)) {
-					visited.add(node);
-					sb.append(repeat("\t", path.size() - 1) + "" + nodeToString(node) + "\n");
-					path.add(forwards.get(node).iterator());
-				} else {
-					sb.append(repeat("\t", path.size() - 1) + nodeToString(node) + " ^" + "\n");
-				}
-			} else {
-				path.remove(path.size() - 1);
-			}
-		}
-		return sb.toString();
 	}
 
 	protected String nodeToString(Node node) {
