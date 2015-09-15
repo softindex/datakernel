@@ -20,6 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -55,9 +56,9 @@ public class StreamMergerTest {
 		eventloop.run();
 		assertEquals(asList(3, 4, 6, 7), consumer.getList());
 
-		assertTrue(source0.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source0).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -80,9 +81,9 @@ public class StreamMergerTest {
 		eventloop.run();
 		assertEquals(asList(3, 3, 4, 6, 7), consumer.getList());
 
-		assertTrue(source0.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source0).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -127,8 +128,8 @@ public class StreamMergerTest {
 				d2  //DataItem1(0,6,1,3)
 		), consumer.getList());
 
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -166,8 +167,8 @@ public class StreamMergerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 5);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -205,7 +206,7 @@ public class StreamMergerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 5);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 //		source2.getStatus() should be equals to CLOSE?
 //		assertTrue(source2.getStatus() == CLOSED_WITH_ERROR);
 	}
@@ -242,8 +243,8 @@ public class StreamMergerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 }

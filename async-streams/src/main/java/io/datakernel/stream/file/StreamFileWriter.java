@@ -22,8 +22,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -163,7 +163,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void postFlush() {
-		if (getUpstreamStatus() == StreamProducer.END_OF_STREAM && queue.isEmpty()) {
+		if (getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM && queue.isEmpty()) {
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
@@ -209,7 +209,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	public void onData(ByteBuf buf) {
-		checkState(getUpstreamStatus() < StreamProducer.END_OF_STREAM, "Unexpected buf after end-of-stream %s : %s", this, buf);
+		checkState(getUpstreamStatus() < AbstractStreamProducer.END_OF_STREAM, "Unexpected buf after end-of-stream %s : %s", this, buf);
 		queue.offer(buf);
 		if (queue.size() > 1) {
 			suspendUpstream();

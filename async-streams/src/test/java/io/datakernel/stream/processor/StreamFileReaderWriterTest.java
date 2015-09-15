@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -82,7 +83,7 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(writer);
 
 		eventloop.run();
-		assertTrue(reader.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(reader.getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
 	}
 
@@ -97,7 +98,7 @@ public class StreamFileReaderWriterTest {
 		eventloop.run();
 
 		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
-		assertTrue(reader.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(reader.getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test

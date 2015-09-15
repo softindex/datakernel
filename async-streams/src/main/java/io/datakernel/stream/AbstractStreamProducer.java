@@ -51,6 +51,12 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		this.eventloop = checkNotNull(eventloop);
 	}
 
+	public static final byte READY = 0;
+	public static final byte SUSPENDED = 1;
+	public static final byte END_OF_STREAM = 2;
+	public static final byte CLOSED = 3;
+	public static final byte CLOSED_WITH_ERROR = 4;
+
 	/**
 	 * Sets consumer for this producer. At the moment of calling this method producer shouldn't have consumer,
 	 * as well as consumer shouldn't have producer, otherwise there will be error
@@ -204,7 +210,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		onClosedWithError(e);
 	}
 
-	@Override
+	/**
+	 * Returns current status of this producer
+	 *
+	 * @return current status of this producer
+	 */
 	public byte getStatus() {
 		return status;
 	}

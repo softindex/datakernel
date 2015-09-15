@@ -72,7 +72,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> extends AbstractStream
 	}
 
 	public byte getUpstreamStatus() {
-		return upstreamProducer.getStatus();
+		return ((AbstractStreamProducer)upstreamProducer).getStatus();
 	}
 
 	@Override

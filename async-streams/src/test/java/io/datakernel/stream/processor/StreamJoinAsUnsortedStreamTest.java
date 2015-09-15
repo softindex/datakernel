@@ -20,6 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -166,8 +167,8 @@ public class StreamJoinAsUnsortedStreamTest {
 						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
 						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
 				result.toArray(new DataItemMasterDetail[result.size()]));
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -238,8 +239,8 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 3);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -310,8 +311,8 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 3);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -368,7 +369,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 1);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 }

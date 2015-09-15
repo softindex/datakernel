@@ -93,7 +93,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	public byte getUpstreamStatus() {
-		return upstreamProducer.getStatus();
+		// чи потрібен цей метод тут?
+		return ((AbstractStreamProducer)upstreamProducer).getStatus();
 	}
 
 	public void suspendUpstream() {

@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -44,7 +45,7 @@ public class ProducerOfIteratorTest {
 		eventloop.run();
 
 		assertEquals(list, consumer.getList());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 }

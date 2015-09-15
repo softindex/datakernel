@@ -142,7 +142,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 			return;
 		}
 
-		if (getUpstreamStatus() == StreamProducer.END_OF_STREAM) {
+		if (getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM) {
 			StreamMerger<K, T> merger = StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate);
 
 			Collections.sort(list, itemComparator);

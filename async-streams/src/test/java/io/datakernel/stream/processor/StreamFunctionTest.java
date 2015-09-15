@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -49,8 +50,8 @@ public class StreamFunctionTest {
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(streamFunction.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(streamFunction.getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 }

@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -47,7 +48,7 @@ public class ConsumerToListTest {
 		eventloop.run();
 
 		assertEquals(testList2, consumer.getList());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -69,7 +70,7 @@ public class ConsumerToListTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 }

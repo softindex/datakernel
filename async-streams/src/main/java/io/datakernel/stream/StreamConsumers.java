@@ -289,7 +289,7 @@ public class StreamConsumers {
 		 */
 		public final List<T> getList() {
 			checkState(upstreamProducer.getError() == null, "Upstream error %s: %s", upstreamProducer, upstreamProducer.getError());
-			checkState(upstreamProducer.getStatus() == StreamProducer.CLOSED, "Upstream %s is not closed", upstreamProducer);
+			checkState(((AbstractStreamProducer)upstreamProducer).getStatus() == AbstractStreamProducer.CLOSED, "Upstream %s is not closed", upstreamProducer);
 			return list;
 		}
 

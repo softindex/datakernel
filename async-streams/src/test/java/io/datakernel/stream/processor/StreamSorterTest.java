@@ -19,10 +19,7 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import io.datakernel.stream.examples.ScheduledProducer;
 import org.junit.Test;
 
@@ -53,8 +50,8 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
-		assertTrue(sorter.getSortedStream().getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)sorter.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED);
 //		assertNull(source.getWiredConsumerStatus());
 	}
 
@@ -107,10 +104,10 @@ public class StreamSorterTest {
 		assertEquals(consumerToList1.getList(), asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
 		assertEquals(consumerToList2.getList(), asList(10, 20, 30, 40, 50));
 
-		assertTrue(iterableSource.getStatus() == StreamProducer.CLOSED);
-		assertTrue(scheduledSource.getStatus() == StreamProducer.CLOSED);
-		assertTrue(sorter1.getSortedStream().getStatus() == StreamProducer.CLOSED);
-		assertTrue(sorter2.getSortedStream().getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)iterableSource).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)scheduledSource).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)sorter1.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)sorter2.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -145,8 +142,8 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertTrue(list.size() == 0);
-		assertTrue(sorter.getSortedStream().getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)sorter.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -184,8 +181,8 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertTrue(list.size() == 0);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(sorter.getSortedStream().getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)sorter.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -216,8 +213,8 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertTrue(list.size() == 2);
-		assertTrue(sorter.getSortedStream().getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)sorter.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -245,7 +242,7 @@ public class StreamSorterTest {
 
 		assertTrue(list.size() == 0);
 		assertTrue(sorter.getItems() == 4);
-		assertTrue(sorter.getSortedStream().getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)sorter.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 }

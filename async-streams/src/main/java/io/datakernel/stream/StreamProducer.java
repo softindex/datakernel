@@ -71,19 +71,6 @@ public interface StreamProducer<T> {
 	 */
 	void onConsumerError(Exception e);
 
-	byte READY = 0;
-	byte SUSPENDED = 1;
-	byte END_OF_STREAM = 2;
-	byte CLOSED = 3;
-	byte CLOSED_WITH_ERROR = 4;
-
-	/**
-	 * Returns current status of this producer
-	 *
-	 * @return current status of this producer
-	 */
-	byte getStatus();
-
 	/**
 	 * Returns exception which was found
 	 *

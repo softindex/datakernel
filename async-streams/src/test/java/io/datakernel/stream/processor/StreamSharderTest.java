@@ -18,10 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -58,7 +55,7 @@ public class StreamSharderTest {
 		assertEquals(asList(2, 4), consumer1.getList());
 		assertEquals(asList(1, 3), consumer2.getList());
 
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -79,7 +76,7 @@ public class StreamSharderTest {
 		assertEquals(asList(2, 4), consumer1.getList());
 		assertEquals(asList(1, 3), consumer2.getList());
 
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -120,7 +117,7 @@ public class StreamSharderTest {
 
 		assertTrue(list1.size() == 1);
 		assertTrue(list2.size() == 2);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -161,7 +158,7 @@ public class StreamSharderTest {
 
 		assertTrue(list1.size() == 1);
 		assertTrue(list2.size() == 2);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -192,6 +189,6 @@ public class StreamSharderTest {
 		assertTrue(list1.size() == 1);
 		assertTrue(list2.size() == 2);
 
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 }

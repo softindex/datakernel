@@ -52,7 +52,7 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -86,14 +86,14 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
-		assertTrue(source0.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source4.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source5.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source6.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source7.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source0).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source4).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source5).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source6).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source7).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -139,9 +139,9 @@ public class StreamReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 1);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -187,9 +187,9 @@ public class StreamReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 1);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -228,9 +228,9 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 0);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	private static final class KeyValue1 {
@@ -448,9 +448,9 @@ public class StreamReducerTest {
 						new KeyValueResult(2, 0.0, 10.0, 20.0),
 						new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -482,8 +482,8 @@ public class StreamReducerTest {
 						new KeyValueResult(2, 0.0, 10.0, 20.0),
 						new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 }

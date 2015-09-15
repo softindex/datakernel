@@ -39,13 +39,13 @@ public class AsyncStreamsTest {
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertFalse(consumer.getUpstreamStatus() == StreamProducer.CLOSED);
+		assertFalse(consumer.getUpstreamStatus() == AbstractStreamProducer.CLOSED);
 
 		producerSetter.onResult(source);
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
-		assertTrue(consumer.getUpstreamStatus() == StreamProducer.CLOSED);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(consumer.getUpstreamStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 //		assertNull(producer.getWiredConsumerStatus());
 	}
 

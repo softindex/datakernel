@@ -69,7 +69,7 @@ public abstract class AbstractStreamTransformer_1_N<I> extends AbstractStreamCon
 		for (AbstractStreamProducer<?> output : outputs) {
 			if (output.getDownstream() == null)
 				return false;
-			if (output.getStatus() != StreamProducer.READY) {
+			if (output.getStatus() != AbstractStreamProducer.READY) {
 				return false;
 			}
 		}

@@ -156,19 +156,19 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	private void closeIfDone() {
 		if (!isRegistered())
 			return;
-		if (socketReader.getStatus() >= StreamProducer.CLOSED && socketWriter.getUpstreamStatus() >= StreamProducer.CLOSED) {
+		if (socketReader.getStatus() >= AbstractStreamProducer.CLOSED && socketWriter.getUpstreamStatus() >= AbstractStreamProducer.CLOSED) {
 			logger.trace("done, closing {}", this);
 			close();
 			return;
 		}
-		if (socketReader.getStatus() >= StreamProducer.CLOSED) {
+		if (socketReader.getStatus() >= AbstractStreamProducer.CLOSED) {
 			try {
 				channel.shutdownInput();
 			} catch (IOException e) {
 				logger.error("shutdownInput error {} for {}", e.toString(), this);
 			}
 		}
-		if (socketWriter.getUpstreamStatus() >= StreamProducer.CLOSED) {
+		if (socketWriter.getUpstreamStatus() >= AbstractStreamProducer.CLOSED) {
 			try {
 				channel.shutdownOutput();
 			} catch (IOException e) {
@@ -199,7 +199,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 	@Override
 	protected void onWriteFlushed() {
-		if (socketWriter.getUpstreamStatus() == StreamProducer.END_OF_STREAM) {
+		if (socketWriter.getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM) {
 			socketWriter.closeUpstream();
 			closeIfDone();
 		} else {

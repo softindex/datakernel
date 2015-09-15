@@ -17,10 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -46,7 +43,7 @@ public class StreamSplitterTest {
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumerToList1.getList());
 		assertEquals(asList(1, 2, 3), consumerToList2.getList());
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -92,7 +89,7 @@ public class StreamSplitterTest {
 		assertTrue(toList2.size() == 3);
 		assertTrue(toBadList.size() == 3);
 
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -138,7 +135,7 @@ public class StreamSplitterTest {
 		assertTrue(toList2.size() == 3);
 		assertTrue(toBadList.size() == 3);
 
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -173,6 +170,6 @@ public class StreamSplitterTest {
 		assertTrue(list1.size() == 3);
 		assertTrue(list2.size() == 3);
 		assertTrue(list3.size() == 3);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 }

@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -51,7 +52,7 @@ public class StreamMapTest {
 
 		eventloop.run();
 		assertEquals(asList(11, 12, 13), consumer.getList());
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -86,7 +87,7 @@ public class StreamMapTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 2);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -121,7 +122,7 @@ public class StreamMapTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 2);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -143,7 +144,7 @@ public class StreamMapTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 2);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 }

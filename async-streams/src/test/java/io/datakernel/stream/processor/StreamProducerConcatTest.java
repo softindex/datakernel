@@ -17,10 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AsyncIteratorWithSetter;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import static java.util.Arrays.asList;
@@ -43,7 +40,7 @@ public class StreamProducerConcatTest {
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertFalse(consumer.getUpstreamStatus() == StreamProducer.CLOSED);
+		assertFalse(consumer.getUpstreamStatus() == AbstractStreamProducer.CLOSED);
 
 		producerSetter.onNext(source1);
 		eventloop.run();
@@ -55,10 +52,10 @@ public class StreamProducerConcatTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertTrue(consumer.getUpstreamStatus() == StreamProducer.CLOSED);
+		assertTrue(consumer.getUpstreamStatus() == AbstractStreamProducer.CLOSED);
 //		assertNull(source1.getWiredConsumerStatus());
 //		assertNull(source2.getWiredConsumerStatus());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 }

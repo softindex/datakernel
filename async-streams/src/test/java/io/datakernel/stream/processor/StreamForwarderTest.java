@@ -17,10 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamForwarder;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -46,7 +43,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(list, consumer.getList());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -75,7 +72,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(list, consumer.getList());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -97,7 +94,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(Arrays.asList(1), consumer.getList());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -119,7 +116,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(Arrays.asList(), consumer.getList());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 	@Test
@@ -141,7 +138,7 @@ public class StreamForwarderTest {
 
 		eventloop.run();
 
-		assertTrue(consumer.getUpstream().getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertEquals(e, consumer.getUpstream().getError());
 //		assertTrue(((StreamProducerEx<?>) producer).getWiredConsumerStatus().isComplete());
 	}
@@ -171,7 +168,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(Arrays.asList(1), consumer.getList());
-		assertTrue(producer.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
 	}
 
 }

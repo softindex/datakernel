@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -66,8 +67,8 @@ public class StreamSorterStorageImplTest {
 
 		eventloop.run();
 
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
 
 		StreamConsumers.ToList<Integer> consumer1 = StreamConsumers.toListOneByOne(eventloop);
 		StreamConsumers.ToList<Integer> consumer2 = StreamConsumers.toListRandomlySuspending(eventloop);
