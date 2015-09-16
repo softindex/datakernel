@@ -19,7 +19,7 @@ package io.datakernel.examples;
 import io.datakernel.codegen.AsmFunctionFactory;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 /**
  * In this example a Class that implements the specified interface is dynamically created.

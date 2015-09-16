@@ -16,22 +16,21 @@
 
 package io.datakernel.serializer.annotations;
 
-import io.datakernel.serializer.SerializerScanner;
+import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenInt;
 import io.datakernel.serializer.asm.SerializerGenLong;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 public final class SerializeVarLengthHandler implements AnnotationHandler<SerializeVarLength, SerializeVarLengthEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerScanner serializerScanner, SerializeVarLength annotation) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, SerializeVarLength annotation) {
 //        final boolean zigzag = annotation.zigzag();
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				checkArgument(generics.length == 0);
+				Preconditions.check(generics.length == 0);
 				if (type == Integer.TYPE) {
 					return new SerializerGenInt(true);
 				}

@@ -27,6 +27,7 @@ import io.datakernel.cube.api.HttpJsonApiServer;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.stream.StreamProducers;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +77,7 @@ public class CubeHttpApiTest {
 	}
 
 	@Test
+	@Ignore
 	public void testHttpJsonApi() throws Exception {
 		final ExecutorService executor = Executors.newSingleThreadExecutor();
 

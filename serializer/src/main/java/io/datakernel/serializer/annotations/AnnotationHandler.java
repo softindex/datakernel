@@ -16,13 +16,13 @@
 
 package io.datakernel.serializer.annotations;
 
-import io.datakernel.serializer.SerializerScanner;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 
 import java.lang.annotation.Annotation;
 
 public interface AnnotationHandler<A extends Annotation, P extends Annotation> {
-	SerializerGenBuilder createBuilder(SerializerScanner serializerScanner, A annotation);
+	SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, A annotation);
 
 	int[] extractPath(A annotation);
 

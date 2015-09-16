@@ -16,7 +16,7 @@
 
 package io.datakernel.codegen;
 
-import com.google.common.primitives.Primitives;
+import io.datakernel.codegen.utils.Primitives;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
@@ -34,11 +34,11 @@ import static org.objectweb.asm.commons.Method.getMethod;
 /**
  * Defines methods which allow to take field according to the name
  */
-public final class VarField implements FunctionDef, StoreDef {
-	private final FunctionDef owner;
+public final class VarField implements Expression, StoreDef {
+	private final Expression owner;
 	private final String field;
 
-	VarField(FunctionDef owner, String field) {
+	VarField(Expression owner, String field) {
 		this.owner = owner;
 		this.field = field;
 	}

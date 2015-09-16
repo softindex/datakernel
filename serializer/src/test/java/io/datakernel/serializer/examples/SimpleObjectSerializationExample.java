@@ -16,11 +16,12 @@
 
 package io.datakernel.serializer.examples;
 
-import com.google.common.reflect.TypeToken;
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.serializer.asm.SerializerGen;
 
 import java.net.UnknownHostException;
 
@@ -29,8 +30,6 @@ import java.net.UnknownHostException;
  * Example of serialization and deserialization of a simple object (no null fields, generics or complex objects, such as maps or arrays, as fields).
  */
 public class SimpleObjectSerializationExample {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
-
 	public static void main(String[] args) throws UnknownHostException {
 		// Create a test object
 		TestDataSimple testData1 = new TestDataSimple(10, "abc");
@@ -39,7 +38,7 @@ public class SimpleObjectSerializationExample {
 		testData1.setMultiple(40, "123");
 
 		// Serialize testData1 and then deserialize it to testData2
-		TestDataSimple testData2 = serializeAndDeserialize(TypeToken.of(TestDataSimple.class), testData1);
+		TestDataSimple testData2 = serializeAndDeserialize(TestDataSimple.class, testData1);
 
 		// Compare them
 		System.out.println(testData1.finalInt + " " + testData2.finalInt);
@@ -50,10 +49,10 @@ public class SimpleObjectSerializationExample {
 		System.out.println(testData1.getGetterString() + " " + testData2.getGetterString());
 	}
 
-	private static <T> T serializeAndDeserialize(TypeToken<T> typeToken, T testData1) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(typeToken);
-		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
+		BufferSerializer<T> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
 

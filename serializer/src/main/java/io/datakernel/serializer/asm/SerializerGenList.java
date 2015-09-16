@@ -16,25 +16,17 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.*;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.Arrays;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.serializer.asm.Utils.castSourceType;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
+@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenList implements SerializerGen {
-	public static final int VAR_LIST = 0;
-	public static final int VAR_LENGTH = 1;
-	public static final int VAR_I = 2;
-	public static final int VAR_LAST = VAR_I + 1;
-
 	private final SerializerGen valueSerializer;
 
 	public SerializerGenList(SerializerGen valueSerializer) {
@@ -57,65 +49,40 @@ public final class SerializerGenList implements SerializerGen {
 	}
 
 	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		castSourceType(mv, sourceType, List.class);
-
-		mv.visitInsn(DUP);
-		mv.visitVarInsn(ASTORE, locals + VAR_LIST);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(List.class), "size", getMethodDescriptor(INT_TYPE));
-
-		mv.visitInsn(DUP);
-		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH);
-		backend.writeVarIntGen(mv);
-
-		mv.visitInsn(ICONST_0);
-		mv.visitVarInsn(ISTORE, locals + VAR_I);
-		Label loop = new Label();
-		mv.visitLabel(loop);
-		mv.visitVarInsn(ILOAD, locals + VAR_I);
-		mv.visitVarInsn(ILOAD, locals + VAR_LENGTH);
-		Label exit = new Label();
-		mv.visitJumpInsn(IF_ICMPGE, exit);
-		mv.visitVarInsn(ALOAD, varContainer);
-		mv.visitVarInsn(ALOAD, locals + VAR_LIST);
-		mv.visitVarInsn(ILOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(List.class), "get", getMethodDescriptor(getType(Object.class), INT_TYPE));
-		mv.visitTypeInsn(CHECKCAST, getInternalName(valueSerializer.getRawType()));
-		serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
-		mv.visitIincInsn(locals + VAR_I, 1);
-		mv.visitJumpInsn(GOTO, loop);
-		mv.visitLabel(exit);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		checkArgument(targetType.isAssignableFrom(List.class));
+	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(length(value));
+		Expression len = call(arg(0), "writeVarInt", length);
+		ExpressionListForEach forEach = listForEach(value, new ForVar() {
+			@Override
+			public Expression forVar(Expression item) {
+				return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);
+			}
+		});
 
-		backend.readVarIntGen(mv);
-		mv.visitInsn(DUP);
-		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH);
-		mv.visitTypeInsn(ANEWARRAY, getInternalName(Object.class)); // TODO: max length check
-		mv.visitVarInsn(ASTORE, locals + VAR_LIST);
+		return sequence(len, forEach);
+	}
 
-		mv.visitInsn(ICONST_0);
-		mv.visitVarInsn(ISTORE, locals + VAR_I);
-		Label loop = new Label();
-		mv.visitLabel(loop);
-		mv.visitVarInsn(ILOAD, locals + VAR_I);
-		mv.visitVarInsn(ILOAD, locals + VAR_LENGTH);
-		Label exit = new Label();
-		mv.visitJumpInsn(IF_ICMPGE, exit);
-		mv.visitVarInsn(ALOAD, locals + VAR_LIST);
-		mv.visitVarInsn(ILOAD, locals + VAR_I);
-		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
-		mv.visitInsn(AASTORE);
-		mv.visitIincInsn(locals + VAR_I, 1);
-		mv.visitJumpInsn(GOTO, loop);
-		mv.visitLabel(exit);
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+	}
 
-		mv.visitVarInsn(ALOAD, locals + VAR_LIST);
-		mv.visitMethodInsn(INVOKESTATIC, getInternalName(Arrays.class), "asList", getMethodDescriptor(getType(List.class), getType(Object[].class)));
+	@Override
+	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression local = let(Expressions.newArray(Object[].class, call(arg(0), "readVarInt")));
+		ExpressionArrayForEachWithChanges forEach = arrayForEachWithChanges(local, new ForEachWithChanges() {
+			@Override
+			public Expression forEachWithChanges() {
+				return valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods);
+			}
+		});
+
+		return sequence(forEach, set((StoreDef) local, callStatic(Arrays.class, "asList", local)), local);
 	}
 
 	@Override
@@ -125,7 +92,9 @@ public final class SerializerGenList implements SerializerGen {
 
 		SerializerGenList that = (SerializerGenList) o;
 
-		return valueSerializer.equals(that.valueSerializer);
+		if (!valueSerializer.equals(that.valueSerializer)) return false;
+
+		return true;
 	}
 
 	@Override

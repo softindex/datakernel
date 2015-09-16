@@ -16,15 +16,14 @@
 
 package io.datakernel.rpc.client;
 
-import java.net.InetSocketAddress;
-import java.util.*;
+import com.google.common.collect.ImmutableList;
+import io.datakernel.jmx.CompositeDataBuilder;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
-
-import com.google.common.collect.ImmutableList;
-import io.datakernel.jmx.CompositeDataBuilder;
+import java.net.InetSocketAddress;
+import java.util.*;
 
 public final class RpcClientConnectionPool implements RpcClientConnectionPoolMBean {
 	private final List<InetSocketAddress> addresses;

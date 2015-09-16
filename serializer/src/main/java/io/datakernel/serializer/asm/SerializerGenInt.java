@@ -16,7 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
+
+import static io.datakernel.codegen.Expressions.*;
 
 public final class SerializerGenInt extends SerializerGenPrimitive {
 
@@ -28,29 +31,15 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected void doSerialize(MethodVisitor mv, SerializerBackend backend) {
-		if (varLength)
-			backend.writeVarIntGen(mv);
-		else
-			backend.writeIntGen(mv);
-	}
-
-	@Override
-	protected void doDeserialize(MethodVisitor mv, SerializerBackend backend) {
-		if (varLength)
-			backend.readVarIntGen(mv);
-		else
-			backend.readIntGen(mv);
-	}
-
-	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
 		SerializerGenInt that = (SerializerGenInt) o;
 
-		return varLength == that.varLength;
+		if (varLength != that.varLength) return false;
+
+		return true;
 	}
 
 	@Override
@@ -58,5 +47,29 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 		int result = 0;
 		result = 31 * result + (varLength ? 1 : 0);
 		return result;
+	}
+
+	@Override
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+		if (varLength) {
+			return call(arg(0), "writeVarInt", cast(value, int.class));
+		} else {
+			return call(arg(0), "writeInt", cast(value, int.class));
+		}
+	}
+
+	@Override
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+		if (varLength) {
+			if (targetType.isPrimitive())
+				return call(arg(0), "readVarInt");
+			else
+				return cast(call(arg(0), "readVarInt"), Integer.class);
+		} else {
+			if (targetType.isPrimitive())
+				return call(arg(0), "readInt");
+			else
+				return cast(call(arg(0), "readInt"), Integer.class);
+		}
 	}
 }

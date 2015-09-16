@@ -16,30 +16,28 @@
 
 package io.datakernel.codegen;
 
-import com.google.common.reflect.TypeToken;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.utils.DefiningClassWriter;
+import io.datakernel.codegen.utils.Preconditions;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
-import org.slf4j.Logger;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Throwables.propagate;
-import static com.google.common.collect.Iterables.concat;
 import static io.datakernel.codegen.Utils.loadAndCast;
 import static java.util.Arrays.asList;
 import static org.objectweb.asm.Opcodes.*;
 import static org.objectweb.asm.Type.getInternalName;
 import static org.objectweb.asm.Type.getType;
 import static org.objectweb.asm.commons.Method.getMethod;
-import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Intends for dynamic description of the behaviour of the object in runtime
@@ -48,25 +46,36 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 @SuppressWarnings("unchecked")
 public class AsmFunctionFactory<T> {
-	private static final Logger logger = getLogger(AsmFunctionFactory.class);
-
 	public static final String ASM_FUNCTION = "asm.Function";
 	private static final AtomicInteger COUNTER = new AtomicInteger();
 
 	private final DefiningClassLoader classLoader;
 
 	private final Class<T> type;
-	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
-	private final Map<Method, FunctionDef> functionDefMap = new LinkedHashMap<>();
+	private Path bytecodeSaveDir;
+
+	private Map<String, Class<?>> fields = new LinkedHashMap<>();
+	private Map<String, Class<?>> staticFields = new LinkedHashMap<>();
+	private Map<Method, Expression> expressionMap = new LinkedHashMap<>();
+	private Map<Method, Expression> expressionStaticMap = new LinkedHashMap<>();
+
+	public Map<Method, Expression> getExpressionStaticMap() {
+		return expressionStaticMap;
+	}
+
+	public Map<Method, Expression> getExpressionMap() {
+		return expressionMap;
+	}
+
+	public AsmFunctionFactory<T> setBytecodeSaveDir(Path bytecodeSaveDir) {
+		this.bytecodeSaveDir = bytecodeSaveDir;
+		return this;
+	}
 
 	private class AsmFunctionKey {
 		private final Map<String, Class<?>> fields;
-		private final Map<Method, FunctionDef> functionDefMap;
-
-		public AsmFunctionKey(Map<String, Class<?>> fields, Map<Method, FunctionDef> functionDefMap) {
-			this.fields = fields;
-			this.functionDefMap = functionDefMap;
-		}
+		private final Map<Method, Expression> expressionMap;
+		private final Map<Method, Expression> expressionStaticMap;
 
 		@Override
 		public boolean equals(Object o) {
@@ -75,16 +84,27 @@ public class AsmFunctionFactory<T> {
 
 			AsmFunctionKey that = (AsmFunctionKey) o;
 
-			if (!fields.equals(that.fields)) return false;
-			return functionDefMap.equals(that.functionDefMap);
+			if (fields != null ? !fields.equals(that.fields) : that.fields != null) return false;
+			if (expressionMap != null ? !expressionMap.equals(that.expressionMap) : that.expressionMap != null)
+				return false;
+			return !(expressionStaticMap != null ? !expressionStaticMap.equals(that.expressionStaticMap) : that.expressionStaticMap != null);
+
 		}
 
 		@Override
 		public int hashCode() {
-			int result = fields.hashCode();
-			result = 31 * result + functionDefMap.hashCode();
+			int result = fields != null ? fields.hashCode() : 0;
+			result = 31 * result + (expressionMap != null ? expressionMap.hashCode() : 0);
+			result = 31 * result + (expressionStaticMap != null ? expressionStaticMap.hashCode() : 0);
 			return result;
 		}
+
+		public AsmFunctionKey(Map<String, Class<?>> fields, Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
+			this.fields = fields;
+			this.expressionMap = expressionMap;
+			this.expressionStaticMap = expressionStaticMap;
+		}
+
 	}
 
 	/**
@@ -96,11 +116,6 @@ public class AsmFunctionFactory<T> {
 	public AsmFunctionFactory(DefiningClassLoader classLoader, Class<T> type) {
 		this.classLoader = classLoader;
 		this.type = type;
-	}
-
-	public AsmFunctionFactory(DefiningClassLoader classLoader, TypeToken<T> type) {
-		this.classLoader = classLoader;
-		this.type = (Class<T>) type.getRawType();
 	}
 
 	/**
@@ -115,27 +130,20 @@ public class AsmFunctionFactory<T> {
 		return this;
 	}
 
-/*
-	public AsmFunctionFactory<T> method(String methodName, Class<?>[] methodParameters, FunctionDef functionDef) {
-		try {
-			java.lang.reflect.Method method = type.getMethod(methodName, methodParameters);
-			functionDefMap.put(method, functionDef);
-		} catch (NoSuchMethodException e) {
-			throw propagate(e);
-		}
-		return this;
-	}
-*/
-
 	/**
 	 * Creates a new method for a dynamic class
 	 *
-	 * @param method      new method for class
-	 * @param functionDef function which will be processed
+	 * @param method     new method for class
+	 * @param expression function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmFunctionFactory<T> method(Method method, FunctionDef functionDef) {
-		functionDefMap.put(method, functionDef);
+	public AsmFunctionFactory<T> method(Method method, Expression expression) {
+		expressionMap.put(method, expression);
+		return this;
+	}
+
+	public AsmFunctionFactory<T> staticMethod(Method method, Expression expression) {
+		expressionStaticMap.put(method, expression);
 		return this;
 	}
 
@@ -145,42 +153,53 @@ public class AsmFunctionFactory<T> {
 	 * @param methodName    name of method
 	 * @param returnClass   type which returns this method
 	 * @param argumentTypes list of types of arguments
-	 * @param functionDef   function which will be processed
+	 * @param expression    function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmFunctionFactory<T> method(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, FunctionDef functionDef) {
+	public AsmFunctionFactory<T> method(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
 		Type[] types = new Type[argumentTypes.size()];
 		for (int i = 0; i < argumentTypes.size(); i++) {
 			types[i] = getType(argumentTypes.get(i));
 		}
-		return method(new Method(methodName, getType(returnClass), types), functionDef);
+		return method(new Method(methodName, getType(returnClass), types), expression);
+	}
+
+	public AsmFunctionFactory<T> staticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+		Type[] types = new Type[argumentTypes.size()];
+		for (int i = 0; i < argumentTypes.size(); i++) {
+			types[i] = getType(argumentTypes.get(i));
+		}
+		return staticMethod(new Method(methodName, getType(returnClass), types), expression);
 	}
 
 	/**
 	 * CCreates a new method for a dynamic class
 	 *
-	 * @param methodName  name of method
-	 * @param functionDef function which will be processed
+	 * @param methodName name of method
+	 * @param expression function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmFunctionFactory<T> method(String methodName, FunctionDef functionDef) {
+	public AsmFunctionFactory<T> method(String methodName, Expression expression) {
 		if (methodName.contains("(")) {
 			Method method = Method.getMethod(methodName);
-			return method(method, functionDef);
+			return method(method, expression);
 		}
 
 		Method foundMethod = null;
 		LinkedHashSet<java.lang.reflect.Method> methods = new LinkedHashSet<>();
-		for (java.lang.reflect.Method m : concat(asList(type.getMethods()), asList(type.getDeclaredMethods()), asList(Object.class.getMethods()))) {
-			if (m.getName().equals(methodName)) {
-				Method method = getMethod(m);
-				if (foundMethod != null && !method.equals(foundMethod))
-					throw new IllegalArgumentException("Method " + method + " collides with " + foundMethod);
-				foundMethod = method;
+		List<List<java.lang.reflect.Method>> listOfMethods = asList(asList(type.getMethods()), asList(type.getDeclaredMethods()), asList(Object.class.getMethods()));
+		for (List<java.lang.reflect.Method> list : listOfMethods) {
+			for (java.lang.reflect.Method m : list) {
+				if (m.getName().equals(methodName)) {
+					Method method = getMethod(m);
+					if (foundMethod != null && !method.equals(foundMethod))
+						throw new IllegalArgumentException("Method " + method + " collides with " + foundMethod);
+					foundMethod = method;
+				}
 			}
 		}
-		checkArgument(foundMethod != null, "Could not find method '" + methodName + "'");
-		return method(foundMethod, functionDef);
+		Preconditions.check(foundMethod != null, "Could not find method '" + methodName + "'");
+		return method(foundMethod, expression);
 	}
 
 	/**
@@ -190,15 +209,12 @@ public class AsmFunctionFactory<T> {
 	 */
 	public Class<T> defineClass() {
 		synchronized (classLoader) {
-			AsmFunctionKey key = new AsmFunctionKey(fields, functionDefMap);
+			AsmFunctionKey key = new AsmFunctionKey(fields, expressionMap, expressionStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
-				logger.trace("Dynamic class cache hit.");
 				return (Class<T>) cachedClass;
 			}
-
-			logger.trace("Dynamic class cache miss.");
 
 			return defineNewClass(key);
 		}
@@ -217,13 +233,13 @@ public class AsmFunctionFactory<T> {
 		Type classType = getType('L' + className.replace('.', '/') + ';');
 
 		if (type.isInterface()) {
-			cw.visit(V1_1, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
+			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
 					classType.getInternalName(),
 					null,
 					"java/lang/Object",
 					new String[]{getInternalName(type)});
 		} else {
-			cw.visit(V1_1, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
+			cw.visit(V1_6, ACC_PUBLIC + ACC_FINAL + ACC_SUPER,
 					classType.getInternalName(),
 					null,
 					getInternalName(type),
@@ -244,27 +260,45 @@ public class AsmFunctionFactory<T> {
 			cw.visitField(ACC_PUBLIC, field, getType(fieldClass).getDescriptor(), null, null);
 		}
 
-		for (Method m : functionDefMap.keySet()) {
-
+		for (Method m : expressionStaticMap.keySet()) {
 			try {
-				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
+				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, type, fields, functionDefMap.keySet(),
-						m.getArgumentTypes());
+				Context ctx = new Context(classLoader, g, classType, type, staticFields, m.getArgumentTypes(), expressionMap, expressionStaticMap);
 
-				FunctionDef functionDef = functionDefMap.get(m);
-				loadAndCast(ctx, functionDef, m.getReturnType());
+				Expression expression = expressionStaticMap.get(m);
+				loadAndCast(ctx, expression, m.getReturnType());
 				g.returnValue();
 
 				g.endMethod();
 			} catch (Exception e) {
-				logger.error("Could not implement " + m, e);
+				throw new RuntimeException(e);
+			}
+		}
+
+		for (Method m : expressionMap.keySet()) {
+			try {
+				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
+
+				Context ctx = new Context(classLoader, g, classType, type, fields, m.getArgumentTypes(), expressionMap, expressionStaticMap);
+
+				Expression expression = expressionMap.get(m);
+				loadAndCast(ctx, expression, m.getReturnType());
+				g.returnValue();
+
+				g.endMethod();
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+		if (bytecodeSaveDir != null) {
+			try (FileOutputStream fos = new FileOutputStream(bytecodeSaveDir.resolve(className + ".class").toFile())) {
+				fos.write(cw.toByteArray());
+			} catch (IOException ignored) {
 			}
 		}
 
 		cw.visitEnd();
-
-		logger.trace("Defining class " + className);
 
 		Class<?> definedClass = classLoader.defineClass(className, cw.toByteArray());
 
@@ -282,7 +316,7 @@ public class AsmFunctionFactory<T> {
 		try {
 			return defineClass().newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
-			throw propagate(e);
+			throw new RuntimeException(e);
 		}
 	}
 }

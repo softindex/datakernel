@@ -19,7 +19,8 @@ package io.datakernel.cube;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import io.datakernel.codegen.AsmFunctionFactory;
-import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -32,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 @SuppressWarnings("unchecked")
 public class AggregationStorageStub implements AggregationStorage {
@@ -50,18 +51,20 @@ public class AggregationStorageStub implements AggregationStorage {
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> dimensions, List<String> measures, Class<T> recordClass, long id) {
 		Class<?> sourceClass = chunkTypes.get(id);
 		AsmFunctionFactory<Function> factory = new AsmFunctionFactory(classLoader, Function.class);
-		FunctionDefSequence applyDef = sequence(let("RESULT", constructor(recordClass)));
+
+		Expression result = let(constructor(recordClass));
+		ExpressionSequence applyDef = sequence(result);
 		for (String dimension : dimensions) {
 			applyDef.add(set(
-					field(var("RESULT"), dimension),
+					field(result, dimension),
 					field(cast(arg(0), sourceClass), dimension)));
 		}
 		for (String metric : measures) {
 			applyDef.add(set(
-					field(var("RESULT"), metric),
+					field(result, metric),
 					field(cast(arg(0), sourceClass), metric)));
 		}
-		applyDef.add(var("RESULT"));
+		applyDef.add(result);
 		factory.method("apply", applyDef);
 		Function function = factory.newInstance();
 		return (StreamProducer<T>) StreamProducers.ofIterable(eventloop, Iterables.transform(lists.get(id), function));

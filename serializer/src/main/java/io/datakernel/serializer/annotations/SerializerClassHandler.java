@@ -16,20 +16,19 @@
 
 package io.datakernel.serializer.annotations;
 
-import com.google.common.base.Throwables;
-import io.datakernel.serializer.SerializerScanner;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
 public final class SerializerClassHandler implements AnnotationHandler<SerializerClass, SerializerClassEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerScanner serializerScanner, final SerializerClass annotation) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, final SerializerClass annotation) {
 		try {
 			SerializerGen serializer = annotation.value().newInstance();
 			return new SerializerGenBuilderConst(serializer);
 		} catch (InstantiationException | IllegalAccessException e) {
-			throw Throwables.propagate(e);
+			throw new RuntimeException(e);
 		}
 	}
 

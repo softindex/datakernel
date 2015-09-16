@@ -19,5 +19,5 @@ package io.datakernel.codegen;
 /**
  * These are basic methods for predicate that allow to read the state and to process data
  */
-public interface PredicateDef extends FunctionDef {
+public interface PredicateDef extends Expression {
 }

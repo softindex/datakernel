@@ -16,6 +16,8 @@
 
 package io.datakernel.serializer;
 
+import java.io.UnsupportedEncodingException;
+
 public final class SerializationInputBuffer {
 
 	private byte[] buf;
@@ -162,6 +164,41 @@ public final class SerializationInputBuffer {
 		return result;
 	}
 
+	public String readAscii() {
+		int length = readVarInt();
+		return doReadAscii(length);
+	}
+
+	public String readNullableAscii() {
+		int length = readVarInt();
+		if (length == 0)
+			return null;
+		return doReadUTF8(length - 1);
+	}
+
+	public String doReadAscii(int length) {
+		if (length == 0)
+			return "";
+		if (length > remaining())
+			throw new IllegalArgumentException();
+
+		if (length <= 35) {
+			char[] chars = ensureCharArray(length);
+			for (int i = 0; i < length; i++) {
+				int c = readByte() & 0xff;
+				chars[i] = (char) c;
+			}
+			return new String(chars, 0, length);
+		} else {
+			pos += length;
+			try {
+				return new String(buf, pos - length, length, "ISO-8859-1");
+			} catch (UnsupportedEncodingException e) {
+				throw new RuntimeException();
+			}
+		}
+	}
+
 	public String readUTF8() {
 		int length = readVarInt();
 		return doReadUTF8(length);
@@ -207,8 +244,11 @@ public final class SerializationInputBuffer {
 	}
 
 	private String doReadUTF16(int length) {
+		if (length == 0)
+			return "";
 		if (length * 2 > remaining())
 			throw new IllegalArgumentException();
+
 		char[] chars = ensureCharArray(length);
 		for (int i = 0; i < length; i++) {
 			chars[i] = (char) ((readByte() << 8) + (readByte()));
@@ -227,4 +267,30 @@ public final class SerializationInputBuffer {
 		throw new IllegalArgumentException();
 	}
 
+	public String readJavaUTF8() {
+		int length = readVarInt();
+		return doReadJavaUTF8(length);
+	}
+
+	public String readNullableJavaUTF8() {
+		int length = readVarInt();
+		if (length == 0) {
+			return null;
+		}
+		return doReadJavaUTF8(length - 1);
+	}
+
+	public String doReadJavaUTF8(int length) {
+		if (length == 0)
+			return "";
+		if (length > remaining())
+			throw new IllegalArgumentException();
+		pos += length;
+
+		try {
+			return new String(buf, pos - length, length, "UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException();
+		}
+	}
 }

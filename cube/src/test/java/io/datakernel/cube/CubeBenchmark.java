@@ -18,7 +18,6 @@ package io.datakernel.cube;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import com.google.common.reflect.TypeToken;
 import io.datakernel.async.CompletionCallbackObserver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.LogToCubeTest.TestAdvResult;
@@ -27,9 +26,7 @@ import io.datakernel.logfs.LogFileSystemImpl;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerFactory;
-import io.datakernel.serializer.SerializerScanner;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.slf4j.LoggerFactory;
@@ -80,10 +77,9 @@ public class CubeBenchmark {
 			Path dir = Paths.get("test/logs/");
 			deleteRecursivelyQuietly(dir);
 			LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, dir);
-			SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
-			SerializerScanner registry = SerializerScanner.defaultScanner();
-			SerializerGen serializerGen = registry.serializer(TypeToken.of(TestPubRequest.class));
-			BufferSerializer<TestPubRequest> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+			BufferSerializer<TestPubRequest> bufferSerializer = SerializerBuilder
+					.newDefaultInstance(classLoader)
+					.create(TestPubRequest.class);
 
 			LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
 

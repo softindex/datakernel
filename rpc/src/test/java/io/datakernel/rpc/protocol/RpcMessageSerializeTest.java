@@ -18,10 +18,12 @@ package io.datakernel.rpc.protocol;
 
 import com.google.common.reflect.TypeToken;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.serializer.asm.SerializerGen;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,7 +34,6 @@ import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.assertEquals;
 
 public class RpcMessageSerializeTest {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	public static class TestRpcMessageData extends RpcMessage.AbstractRpcMessage {
 		private final String s;
@@ -63,10 +64,10 @@ public class RpcMessageSerializeTest {
 	}
 
 	private static <T> T doTest(TypeToken<T> typeToken, T testData1) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		registry.setExtraSubclasses("extraRpcMessages", TestRpcMessageData.class, TestRpcMessageData2.class);
-		SerializerGen serializerGen = registry.serializer(typeToken);
-		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<T> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.setExtraSubclasses("extraRpcMessages", TestRpcMessageData.class, TestRpcMessageData2.class)
+				.create(typeToken.getRawType());
 		return doTest(testData1, serializer, serializer);
 	}
 

@@ -16,7 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
+
+import static io.datakernel.codegen.Expressions.*;
 
 public final class SerializerGenDouble extends SerializerGenPrimitive {
 
@@ -25,13 +28,16 @@ public final class SerializerGenDouble extends SerializerGenPrimitive {
 	}
 
 	@Override
-	protected void doSerialize(MethodVisitor mv, SerializerBackend backend) {
-		backend.writeDoubleGen(mv);
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+		return call(arg(0), "writeDouble", cast(value, double.class));
 	}
 
 	@Override
-	protected void doDeserialize(MethodVisitor mv, SerializerBackend backend) {
-		backend.readDoubleGen(mv);
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+		if (targetType.isPrimitive())
+			return call(arg(0), "readDouble");
+		else
+			return cast(call(arg(0), "readDouble"), Double.class);
 	}
 }
 

@@ -16,52 +16,51 @@
 
 package io.datakernel.serializer.asm;
 
-import com.google.common.collect.ImmutableMap;
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ForVar;
+import io.datakernel.serializer.SerializerBuilder;
 
-import java.util.Iterator;
+import java.util.HashMap;
+import java.util.Map;
 
-import static com.google.common.base.CaseFormat.LOWER_CAMEL;
-import static com.google.common.base.CaseFormat.UPPER_CAMEL;
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Throwables.propagate;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.utils.Preconditions.check;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
+@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenHppcMap implements SerializerGen {
-	private static final int VAR_MAP = 0;
-	private static final int VAR_I = 1;
-	private static final int VAR_CURSOR = 2;
-	private static final int VAR_LENGTH = 3;
-	private static final int VAR_LAST = 4;
 
-	private static ImmutableMap<Class<?>, SerializerGen> primitiveSerializers = ImmutableMap.<Class<?>, SerializerGen>builder()
-			.put(byte.class, new SerializerGenByte())
-			.put(short.class, new SerializerGenShort())
-			.put(int.class, new SerializerGenInt(true))
-			.put(long.class, new SerializerGenLong(false))
-			.put(float.class, new SerializerGenFloat())
-			.put(double.class, new SerializerGenDouble())
-			.put(char.class, new SerializerGenChar())
-			.build();
+	private static Map<Class<?>, SerializerGen> primitiveSerializers = new HashMap<Class<?>, SerializerGen>() {{
+		put(byte.class, new SerializerGenByte());
+		put(short.class, new SerializerGenShort());
+		put(int.class, new SerializerGenInt(true));
+		put(long.class, new SerializerGenLong(false));
+		put(float.class, new SerializerGenFloat());
+		put(double.class, new SerializerGenDouble());
+		put(char.class, new SerializerGenChar());
+	}};
+
+	private static String toUpperCamel(String s) {
+		StringBuilder sb = new StringBuilder();
+		sb.append(Character.toUpperCase(s.charAt(0)));
+		sb.append(s.substring(1));
+		return sb.toString();
+	}
 
 	public static SerializerGenBuilder serializerGenBuilder(final Class<?> mapType, final Class<?> keyType, final Class<?> valueType) {
-		String prefix = LOWER_CAMEL.to(UPPER_CAMEL, keyType.getSimpleName()) + LOWER_CAMEL.to(UPPER_CAMEL, valueType.getSimpleName());
-		checkArgument(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
+		String prefix = toUpperCamel(keyType.getSimpleName()) + toUpperCamel(valueType.getSimpleName());
+		check(mapType.getSimpleName().startsWith(prefix), "Expected mapType '%s', but was begin '%s'", mapType.getSimpleName(), prefix);
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, final SerializerForType[] generics, SerializerGen fallback) {
 				SerializerGen keySerializer;
 				SerializerGen valueSerializer;
 				if (generics.length == 2) {
-					checkArgument((keyType == Object.class) && (valueType == Object.class), "keyType and valueType must be Object.class");
+					check((keyType == Object.class) && (valueType == Object.class), "keyType and valueType must be Object.class");
 					keySerializer = generics[0].serializer;
 					valueSerializer = generics[1].serializer;
 				} else if (generics.length == 1) {
-					checkArgument((keyType == Object.class) || (valueType == Object.class), "keyType or valueType must be Object.class");
+					check((keyType == Object.class) || (valueType == Object.class), "keyType or valueType must be Object.class");
 					if (keyType == Object.class) {
 						keySerializer = generics[0].serializer;
 						valueSerializer = primitiveSerializers.get(valueType);
@@ -93,93 +92,12 @@ public final class SerializerGenHppcMap implements SerializerGen {
 		this.keySerializer = keySerializer;
 		this.valueSerializer = valueSerializer;
 		try {
-			String prefix = LOWER_CAMEL.to(UPPER_CAMEL, keyType.getSimpleName()) + LOWER_CAMEL.to(UPPER_CAMEL, valueType.getSimpleName());
+			String prefix = toUpperCamel(keyType.getSimpleName()) + toUpperCamel(valueType.getSimpleName());
 			this.iteratorType = Class.forName("com.carrotsearch.hppc.cursors." + prefix + "Cursor");
 			this.hashMapType = Class.forName("com.carrotsearch.hppc." + prefix + "OpenHashMap");
 		} catch (ClassNotFoundException e) {
-			throw propagate(e);
+			throw new RuntimeException(e);
 		}
-	}
-
-	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller,
-	                      Class<?> sourceType) {
-		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(mapType), "size", getMethodDescriptor(INT_TYPE));
-		backend.writeVarIntGen(mv);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(mapType), "iterator", getMethodDescriptor(getType(Iterator.class)));
-		mv.visitVarInsn(ASTORE, locals + VAR_I);
-
-		Label loop = new Label();
-		mv.visitLabel(loop);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Iterator.class), "hasNext", getMethodDescriptor(BOOLEAN_TYPE));
-		Label exit = new Label();
-		mv.visitJumpInsn(IFEQ, exit);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Iterator.class), "next", getMethodDescriptor(getType(Object.class)));
-		mv.visitTypeInsn(CHECKCAST, getInternalName(iteratorType));
-		mv.visitVarInsn(ASTORE, locals + VAR_CURSOR);
-
-		mv.visitVarInsn(ALOAD, varContainer);
-		mv.visitVarInsn(ALOAD, locals + VAR_CURSOR);
-		mv.visitFieldInsn(GETFIELD, getInternalName(iteratorType), "key", getDescriptor(keyType));
-		serializerCaller.serialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, keyType);
-
-		mv.visitVarInsn(ALOAD, varContainer);
-		mv.visitVarInsn(ALOAD, locals + VAR_CURSOR);
-		mv.visitFieldInsn(GETFIELD, getInternalName(iteratorType), "value", getDescriptor(valueType));
-		serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueType);
-
-		mv.visitJumpInsn(GOTO, loop);
-
-		mv.visitLabel(exit);
-	}
-
-	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals,
-	                        SerializerCaller serializerCaller, Class<?> targetType) {
-		mv.visitTypeInsn(NEW, getInternalName(hashMapType));
-		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKESPECIAL, getInternalName(hashMapType), "<init>", getMethodDescriptor(VOID_TYPE));
-
-		backend.readVarIntGen(mv);
-		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH);
-
-		mv.visitInsn(ICONST_0);
-		mv.visitVarInsn(ISTORE, locals + VAR_I);
-		Label loop = new Label();
-		mv.visitLabel(loop);
-		mv.visitVarInsn(ILOAD, locals + VAR_I);
-		mv.visitVarInsn(ILOAD, locals + VAR_LENGTH);
-		Label exit = new Label();
-		mv.visitJumpInsn(IF_ICMPGE, exit);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-
-		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, keyType);
-		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueType);
-
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(hashMapType), "put", getMethodDescriptor(getType(valueType), getType(keyType), getType(valueType)));
-
-		if (getType(valueType).getSize() == 2)
-			mv.visitInsn(POP2);
-		else
-			mv.visitInsn(POP);
-
-		mv.visitIincInsn(locals + VAR_I, 1);
-		mv.visitJumpInsn(GOTO, loop);
-		mv.visitLabel(exit);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
 	}
 
 	@Override
@@ -198,6 +116,54 @@ public final class SerializerGenHppcMap implements SerializerGen {
 	}
 
 	@Override
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+		keySerializer.prepareSerializeStaticMethods(version, staticMethods);
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
+	}
+
+	@Override
+	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = call(arg(0), "writeVarInt", call(value, "size"));
+		return sequence(length, hppcMapForEach(iteratorType, value,
+				new ForVar() {
+					@Override
+					public Expression forVar(Expression local) {
+						return keySerializer.serialize(local, version, staticMethods);
+					}
+				},
+				new ForVar() {
+					@Override
+					public Expression forVar(Expression local) {
+						return valueSerializer.serialize(local, version, staticMethods);
+					}
+				}));
+	}
+
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+		keySerializer.prepareDeserializeStaticMethods(version, staticMethods);
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+	}
+
+	@Override
+	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(call(arg(0), "readVarInt"));
+		final Expression map = let(constructor(hashMapType));
+		final Class<?> valueType = valueSerializer.getRawType();
+		final Class<?> keyType = keySerializer.getRawType();
+		return sequence(length, map, expressionFor(length, new ForVar() {
+			@Override
+			public Expression forVar(Expression local) {
+				return sequence(call(map, "put",
+								cast(keySerializer.deserialize(keyType, version, staticMethods), SerializerGenHppcMap.this.keyType),
+								cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcMap.this.valueType)
+						), voidExp()
+				);
+			}
+		}), map);
+	}
+
+	@Override
 	public boolean equals(Object o) {
 		if (this == o)
 			return true;
@@ -206,12 +172,18 @@ public final class SerializerGenHppcMap implements SerializerGen {
 
 		SerializerGenHppcMap that = (SerializerGenHppcMap) o;
 
-		return (keySerializer.equals(that.keySerializer)) && (valueSerializer.equals(that.valueSerializer));
+		if (!keySerializer.equals(that.keySerializer))
+			return false;
+		if (!valueSerializer.equals(that.valueSerializer))
+			return false;
+
+		return true;
 	}
 
 	@Override
 	public int hashCode() {
 		int result = keySerializer.hashCode();
-		return 31 * result + valueSerializer.hashCode();
+		result = 31 * result + valueSerializer.hashCode();
+		return result;
 	}
 }
