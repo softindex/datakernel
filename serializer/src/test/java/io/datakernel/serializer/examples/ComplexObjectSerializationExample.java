@@ -16,12 +16,13 @@
 
 package io.datakernel.serializer.examples;
 
-import com.google.common.reflect.TypeToken;
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
 import io.datakernel.serializer.annotations.SerializeNullableEx;
-import io.datakernel.serializer.asm.SerializerGen;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -32,7 +33,6 @@ import java.util.Map;
  * Example of serialization and deserialization of a more complex object, which contains nullable fields, map, list and a two-dimensional array.
  */
 public class ComplexObjectSerializationExample {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	public static void main(String[] args) {
 		// Create a test object
@@ -50,7 +50,7 @@ public class ComplexObjectSerializationExample {
 		testData1.mapOfNullableInt2NullableString.put(null, "xyz");
 
 		// Serialize testData1 and then deserialize it to testData2
-		TestDataComplex testData2 = serializeAndDeserialize(TypeToken.of(TestDataComplex.class), testData1);
+		TestDataComplex testData2 = serializeAndDeserialize(TestDataComplex.class, testData1);
 
 		// Compare them
 		System.out.println(testData1.nullableString1 + " " + testData2.nullableString1);
@@ -94,10 +94,10 @@ public class ComplexObjectSerializationExample {
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
-	private static <T> T serializeAndDeserialize(TypeToken<T> typeToken, T testData1) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(typeToken);
-		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+	private static <T> T serializeAndDeserialize(Class<?> typeToken, T testData1) {
+		BufferSerializer<T> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
 

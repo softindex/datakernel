@@ -16,19 +16,18 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
-
-import static com.google.common.collect.Sets.newHashSet;
 
 public interface SerializerGen {
 
 	final class VersionsCollector {
-		private final Set<Integer> versions = newHashSet();
-		private final Set<SerializerGen> collected = newHashSet();
+		private final Set<Integer> versions = new HashSet<>();
+		private final Set<SerializerGen> collected = new HashSet<>();
 
 		public static Set<Integer> versions(SerializerGen serializerGen) {
 			VersionsCollector versions = new VersionsCollector();
@@ -59,7 +58,12 @@ public interface SerializerGen {
 
 	Class<?> getRawType();
 
-	void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType);
+	void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods);
 
-	void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType);
+	Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods);
+
+	void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods);
+
+	Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods);
+
 }

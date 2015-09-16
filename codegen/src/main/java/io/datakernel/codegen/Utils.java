@@ -16,7 +16,8 @@
 
 package io.datakernel.codegen;
 
-import com.google.common.primitives.Primitives;
+import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.codegen.utils.Primitives;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
@@ -24,12 +25,11 @@ import org.objectweb.asm.commons.Method;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Throwables.propagate;
 import static java.lang.ClassLoader.getSystemClassLoader;
+import static org.objectweb.asm.Type.CHAR_TYPE;
 import static org.objectweb.asm.Type.getType;
 
-class Utils {
+public class Utils {
 
 	private static final Map<String, Type> wrapperToPrimitive = new HashMap<>();
 
@@ -39,6 +39,15 @@ class Utils {
 			wrapperToPrimitive.put(wrappedType.getName(), getType(primitiveType));
 		}
 	}
+
+	private static final Method BOOLEAN_VALUE = Method.getMethod("boolean booleanValue()");
+	private static final Method CHAR_VALUE = Method.getMethod("char charValue()");
+	private static final Method INT_VALUE = Method.getMethod("int intValue()");
+	private static final Method FLOAT_VALUE = Method.getMethod("float floatValue()");
+	private static final Method LONG_VALUE = Method.getMethod("long longValue()");
+	private static final Method DOUBLE_VALUE = Method.getMethod("double doubleValue()");
+	private static final Method SHORT_VALUE = Method.getMethod("short shortValue()");
+	private static final Method BYTE_VALUE = Method.getMethod("byte byteValue()");
 
 	private static final Type BOOLEAN_TYPE = getType(Boolean.class);
 	private static final Type CHARACTER_TYPE = getType(Character.class);
@@ -68,6 +77,27 @@ class Utils {
 				wrapperToPrimitive.containsKey(type.getClassName());
 	}
 
+	public static Method primitiveValueMethod(Type type) {
+		if (type.equals(getType(char.class)) || type.equals(CHAR_TYPE))
+			return CHAR_VALUE;
+		if (type.equals(getType(boolean.class)) || type.equals(BOOLEAN_TYPE))
+			return BOOLEAN_VALUE;
+		if (type.equals(getType(double.class)) || type.equals(DOUBLE_TYPE))
+			return DOUBLE_VALUE;
+		if (type.equals(getType(float.class)) || type.equals(FLOAT_TYPE))
+			return FLOAT_VALUE;
+		if (type.equals(getType(long.class)) || type.equals(LONG_TYPE))
+			return LONG_VALUE;
+		if (type.equals(getType(int.class)) || type.equals(INT_TYPE))
+			return INT_VALUE;
+		if (type.equals(getType(short.class)) || type.equals(SHORT_TYPE))
+			return SHORT_VALUE;
+		if (type.equals(getType(byte.class)) || type.equals(BYTE_TYPE))
+			return BYTE_VALUE;
+
+		throw new IllegalArgumentException();
+	}
+
 	public static Type wrap(Type type) {
 		int sort = type.getSort();
 		if (sort == Type.BOOLEAN)
@@ -92,9 +122,9 @@ class Utils {
 	}
 
 	public static Type unwrap(Type type) {
-		checkArgument(type.getSort() == Type.OBJECT);
+		Preconditions.check(type.getSort() == Type.OBJECT);
 		Type result = wrapperToPrimitive.get(type.getClassName());
-		checkArgument(result != null);
+		Preconditions.check(result != null);
 		return result;
 	}
 
@@ -137,11 +167,21 @@ class Utils {
 			try {
 				return classLoader.loadClass(type.getClassName());
 			} catch (ClassNotFoundException e) {
-				throw propagate(e);
+				throw new RuntimeException(e);
 			}
 		}
 		if (sort == Type.ARRAY) {
-			throw new UnsupportedOperationException(); // TODO
+			Class<?> result;
+			if (type.equals(getType(Object[].class))) {
+				result = Object[].class;
+			} else {
+				result = type.getClass();
+			}
+			try {
+				result = Class.forName(type.getDescriptor());
+			} catch (ClassNotFoundException e) {
+			}
+			return result;
 		}
 		throw new IllegalArgumentException();
 	}
@@ -157,7 +197,7 @@ class Utils {
 			g.invokeVirtual(getType(owner), method);
 	}
 
-	public static FunctionDef thisVar() {
+	public static Expression thisVar() {
 		return new VarThis();
 	}
 
@@ -166,18 +206,18 @@ class Utils {
 		return new VarLocal(local);
 	}
 
-	public static VarLocal newLocal(Context ctx, Type type, String name) {
-		VarLocal varLocal = newLocal(ctx, type);
-		ctx.putLocal(name, varLocal);
-		return varLocal;
-	}
+//	public static VarLocal newLocal(Context ctx, Type type, String name) {
+//		VarLocal varLocal = newLocal(ctx, type);
+//		ctx.putLocal(name, varLocal);
+//		return varLocal;
+//	}
 
-	public static FunctionDef argumentVar(int argument) {
+	public static Expression argumentVar(int argument) {
 		return new VarArg(argument);
 	}
 
-	public static void loadAndCast(Context ctx, FunctionDef functionDef, Type targetType) {
-		Type type = functionDef.load(ctx);
+	public static void loadAndCast(Context ctx, Expression expression, Type targetType) {
+		Type type = expression.load(ctx);
 		cast(ctx, type, targetType);
 	}
 
@@ -218,8 +258,8 @@ class Utils {
 			Type targetTypePrimitive = isPrimitiveType(targetType) ? targetType : unwrap(targetType);
 
 			if (isWrapperType(type)) {
-				type = unwrap(type);
-				g.unbox(type);
+				g.invokeVirtual(type, primitiveValueMethod(targetType));
+				return;
 			}
 
 			assert isPrimitiveType(type);

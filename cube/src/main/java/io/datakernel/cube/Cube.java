@@ -52,7 +52,7 @@ import static com.google.common.base.Predicates.not;
 import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static java.util.Arrays.asList;
 
 /**

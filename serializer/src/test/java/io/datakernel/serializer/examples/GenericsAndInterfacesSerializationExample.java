@@ -16,10 +16,11 @@
 
 package io.datakernel.serializer.examples;
 
-import com.google.common.reflect.TypeToken;
-import io.datakernel.serializer.*;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationInputBuffer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.serializer.asm.SerializerGen;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,20 +29,18 @@ import java.util.List;
  * Example of using generics and interfaces with serializers and deserializers.
  */
 public class GenericsAndInterfacesSerializationExample {
-	private static final SerializerFactory bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory();
 
 	public static void main(String[] args) {
 		// Create a test object
-		TestDataGeneric<Integer, String> testData1 = new TestDataGeneric<>();
+		TestDataGenericInterfaceImpl testData1 = new TestDataGenericInterfaceImpl();
 
 		testData1.setList(Arrays.asList(
 				new TestDataGenericNested<>(10, "a"),
 				new TestDataGenericNested<>(20, "b")));
 
 		// Serialize testData1 and then deserialize it to testData2
-		TestDataGenericInterface<Integer, String> testData2 =
-				serializeAndDeserialize(new TypeToken<TestDataGenericInterface<Integer, String>>() {
-				}, testData1);
+		TestDataGenericInterfaceImpl testData2 =
+				serializeAndDeserialize(TestDataGenericInterfaceImpl.class, testData1);
 
 		// Compare them
 		System.out.println(testData1.getList().size() + " " + testData2.getList().size());
@@ -113,10 +112,13 @@ public class GenericsAndInterfacesSerializationExample {
 		}
 	}
 
-	private static <T> T serializeAndDeserialize(TypeToken<T> typeToken, T testData1) {
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(typeToken);
-		BufferSerializer<T> serializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+	public static class TestDataGenericInterfaceImpl extends TestDataGeneric<Integer, String> {
+	}
+
+	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
+		BufferSerializer<T> serializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.create(typeToken);
 		return serializeAndDeserialize(testData1, serializer, serializer);
 	}
 

@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer;
 
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -212,6 +213,56 @@ public class SerializationOutputBuffer {
 		}
 	}
 
+	public void writeAscii(String s) {
+		int length = s.length();
+		writeVarInt(length);
+		ensureSize(length * 3);
+		for (int i = 0; i < length; i++) {
+			int c = s.charAt(i);
+			buf[pos++] = (byte) c;
+		}
+	}
+
+	public void writeNullableAscii(String s) {
+		if (s == null) {
+			writeByte((byte) 0);
+			return;
+		}
+		int length = s.length();
+		writeVarInt(length + 1);
+		ensureSize(length * 3);
+		for (int i = 0; i < length; i++) {
+			int c = s.charAt(i);
+			buf[pos++] = (byte) c;
+		}
+	}
+
+	public void writeJavaUTF8(String s) {
+		try {
+			writeWithLength(s.getBytes("UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException();
+		}
+
+	}
+
+	public void writeNullableJavaUTF8(String s) {
+		if (s == null) {
+			writeByte((byte) 0);
+			return;
+		}
+		try {
+			writeWithLengthNullable(s.getBytes("UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			throw new RuntimeException();
+		}
+	}
+
+	private void writeWithLengthNullable(byte[] bytes) {
+		writeVarInt(bytes.length + 1);
+		write(bytes);
+	}
+
 	public void writeUTF8(String s) {
 		int length = s.length();
 		writeVarInt(length);
@@ -255,6 +306,11 @@ public class SerializationOutputBuffer {
 			buf[pos + 2] = (byte) (0x80 | c & 0x3F);
 			pos += 3;
 		}
+	}
+
+	public final void writeWithLength(byte[] bytes) {
+		writeVarInt(bytes.length);
+		write(bytes);
 	}
 
 	public final void writeUTF16(String s) {
