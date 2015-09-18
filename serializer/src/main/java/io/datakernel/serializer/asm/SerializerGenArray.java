@@ -74,7 +74,7 @@ public final class SerializerGenArray implements SerializerGen {
 		if (type.getComponentType() == Byte.TYPE) {
 			return sequence(len, call(arg(0), "write", value));
 		} else {
-			return sequence(len, arrayForEach(value, new ForVar() {
+			return sequence(len, arrayForEach(value, value(0), len, new ForVar() {
 				@Override
 				public Expression forVar(Expression item) {
 					return valueSerializer.serialize(item, version, staticMethods);
