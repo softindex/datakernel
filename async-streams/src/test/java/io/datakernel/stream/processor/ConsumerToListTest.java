@@ -48,7 +48,7 @@ public class ConsumerToListTest {
 		eventloop.run();
 
 		assertEquals(testList2, consumer.getList());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -70,7 +70,7 @@ public class ConsumerToListTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

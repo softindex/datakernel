@@ -83,7 +83,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	 * Organizes connections between streams for deserializing and serializing
 	 *
 	 * @param socketReader producer which outputs binary data
-	 * @param socketWriter consumer which inputs binary data
+	 * @param socketWriter consumer which internalConsumers binary data
 	 */
 	@Override
 	protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
@@ -172,7 +172,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				messageConsumer.closeUpstream();
+//				messageConsumer.closeUpstream();
 				messageProducer.sendEndOfStream();
 			}
 		});
@@ -184,7 +184,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				messageConsumer.closeUpstream();
+//				messageConsumer.closeUpstream();
 			}
 		});
 	}

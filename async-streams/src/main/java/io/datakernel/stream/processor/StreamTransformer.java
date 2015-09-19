@@ -20,4 +20,8 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 public interface StreamTransformer<I, O> extends StreamConsumer<I>, StreamProducer<O> {
+
+//	StreamConsumer<I> getInput();
+//
+//	StreamProducer<O> getOutput();
 }

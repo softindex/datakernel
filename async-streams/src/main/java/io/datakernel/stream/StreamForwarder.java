@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
@@ -39,11 +40,42 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 	 */
 	public StreamForwarder(Eventloop eventloop) {
 		super(eventloop);
+
+		addConsumerCompletionCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				internalConsumer.getUpstream().onConsumerError(exception);
+				internalProducer.getDownstream().onProducerError(exception);
+			}
+		});
+
+		addProducerCompletionCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				internalConsumer.getUpstream().onConsumerError(exception);
+				internalProducer.getDownstream().onProducerError(exception);
+			}
+		});
+	}
+
+	@Override
+	protected StreamDataReceiver<T> getInternalDataReceiver() {
+		return rewired ? internalProducer.getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
 	}
 
 	@Override
 	public StreamDataReceiver<T> getDataReceiver() {
-		return rewired ? getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
+		return rewired ? internalProducer.getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
 	}
 
 	@Override
@@ -51,11 +83,11 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 		if (rewired) {
 			// Maybe downstreamDataReceiver is cached somewhere in upstream producer, even after rewire?
 			// Anyway, let's just forward items to downstream.
-			send(item);
+			internalProducer.send(item);
 		} else {
 			bufferedItems.add(item);
 			if (getUpstream() != null) {
-				suspendUpstream();
+				internalConsumer.getUpstream().onConsumerSuspended();
 			}
 		}
 	}
@@ -80,7 +112,7 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 		getUpstream().bindDataReceiver();
 
 		if (status == CLOSED) {
-			closeUpstream();
+//			closeUpstream();
 		} else if (status != READY) {
 			suspendUpstream();
 		} else {
@@ -112,31 +144,35 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 	}
 
 	@Override
-	public void onSuspended() {
+	public void onConsumerSuspended() {
 		if (rewired) {
-			suspendUpstream();
+			internalConsumer.getUpstream().onConsumerSuspended();
 		}
 	}
 
 	@Override
-	public void onResumed() {
+	public void onConsumerResumed() {
 		if (rewired) {
-			resumeUpstream();
+			internalConsumer.getUpstream().onConsumerResumed();
 		}
 	}
 
-	@Override
-	public void onClosed() {
-		if (rewired) {
-			closeUpstream();
-		}
-	}
+//	@Override
+//	public void onClosed() {
+//		if (rewired) {
+////			closeUpstream();
+//		}
+//	}
 
 	@Override
 	public void onClosedWithError(Exception e) {
 		if (rewired) {
-			upstreamProducer.onConsumerError(e);
-			downstreamConsumer.onProducerError(e);
+			internalConsumer.getUpstream().onConsumerError(e);
+			internalProducer.getDownstream().onProducerError(e);
+		} else {
+			internalProducer.error = e;
 		}
 	}
+
+
 }

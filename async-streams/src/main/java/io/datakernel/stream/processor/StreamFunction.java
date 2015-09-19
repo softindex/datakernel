@@ -47,14 +47,24 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1_St
 		this.function = function;
 	}
 
+	@Override
+	protected void onUpstreamProducerClosed() {
+		internalProducer.getDownstream().onProducerEndOfStream();
+	}
+
 	/**
 	 * Returns callback for right sending data, if its function is identity, returns dataReceiver
 	 * for sending data without filtering.
 	 */
-	@SuppressWarnings("unchecked")
+//	@SuppressWarnings("unchecked")
+//	@Override
+//	public StreamDataReceiver<I> getDataReceiver() {
+//		return function == Functions.identity() ? (StreamDataReceiver<I>) downstreamDataReceiver : this;
+//	}
+
 	@Override
-	public StreamDataReceiver<I> getDataReceiver() {
-		return function == Functions.identity() ? (StreamDataReceiver<I>) downstreamDataReceiver : this;
+	protected StreamDataReceiver<I> getInternalDataReceiver() {
+		return function == Functions.identity() ? (StreamDataReceiver<I>) internalProducer.getDownstreamDataReceiver() : this;
 	}
 
 	/**
@@ -64,6 +74,6 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1_St
 	 */
 	@Override
 	public void onData(I item) {
-		downstreamDataReceiver.onData(function.apply(item));
+		internalProducer.getDownstreamDataReceiver().onData(function.apply(item));
 	}
 }

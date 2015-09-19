@@ -50,8 +50,8 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(((AbstractStreamProducer)sorter.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)sorter.getSortedStream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 //		assertNull(source.getWiredConsumerStatus());
 	}
 
@@ -104,10 +104,10 @@ public class StreamSorterTest {
 		assertEquals(consumerToList1.getList(), asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
 		assertEquals(consumerToList2.getList(), asList(10, 20, 30, 40, 50));
 
-		assertTrue(((AbstractStreamProducer)iterableSource).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(((AbstractStreamProducer)scheduledSource).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(((AbstractStreamProducer)sorter1.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(((AbstractStreamProducer)sorter2.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)iterableSource).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)scheduledSource).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)sorter1.getSortedStream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)sorter2.getSortedStream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -213,7 +213,8 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertTrue(list.size() == 2);
-		assertTrue(((AbstractStreamProducer)sorter.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		// TODO (vsavchuk) перевірити чи повинен прокидуватись Error аж до source
+		assertTrue(((AbstractStreamProducer) sorter.getSortedStream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 

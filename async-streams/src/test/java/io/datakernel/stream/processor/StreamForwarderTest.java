@@ -43,7 +43,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(list, consumer.getList());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -72,7 +72,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(list, consumer.getList());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -94,7 +94,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(Arrays.asList(1), consumer.getList());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -116,7 +116,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(Arrays.asList(), consumer.getList());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -168,7 +168,7 @@ public class StreamForwarderTest {
 		eventloop.run();
 
 		assertEquals(Arrays.asList(1), consumer.getList());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

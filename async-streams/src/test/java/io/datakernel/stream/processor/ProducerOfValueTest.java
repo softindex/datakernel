@@ -60,7 +60,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_OBJECT, consumer3.getList().get(0));
-		assertTrue(producer3.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(producer3.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -71,7 +71,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertTrue(consumer3.getList().get(0) == null);
-		assertTrue(producer3.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(producer3.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

@@ -81,7 +81,7 @@ public class StreamProducerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 }

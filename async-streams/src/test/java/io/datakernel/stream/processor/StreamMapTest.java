@@ -52,7 +52,7 @@ public class StreamMapTest {
 
 		eventloop.run();
 		assertEquals(asList(11, 12, 13), consumer.getList());
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -90,40 +90,40 @@ public class StreamMapTest {
 		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
-	@Test
-	public void testEndofStream() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
-		List<Integer> list = new ArrayList<>();
-
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
-
-		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
-			@Override
-			public void onData(Integer item) {
-				super.onData(item);
-				if (item == 12) {
-					onProducerEndOfStream();
-					return;
-				}
-				upstreamProducer.onConsumerSuspended();
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						upstreamProducer.onConsumerResumed();
-					}
-				});
-			}
-		};
-
-		source.streamTo(projection);
-		projection.streamTo(consumer);
-
-		eventloop.run();
-
-		assertTrue(list.size() == 2);
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
-	}
+//	@Test
+//	public void testEndofStream() throws Exception {
+//		NioEventloop eventloop = new NioEventloop();
+//		List<Integer> list = new ArrayList<>();
+//
+//		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+//		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
+//
+//		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
+//			@Override
+//			public void onData(Integer item) {
+//				super.onData(item);
+//				if (item == 12) {
+//					onProducerEndOfStream();
+//					return;
+//				}
+//				upstreamProducer.onConsumerSuspended();
+//				eventloop.post(new Runnable() {
+//					@Override
+//					public void run() {
+//						upstreamProducer.onConsumerResumed();
+//					}
+//				});
+//			}
+//		};
+//
+//		source.streamTo(projection);
+//		projection.streamTo(consumer);
+//
+//		eventloop.run();
+//
+//		assertTrue(list.size() == 2);
+//		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+//	}
 
 	@Test
 	public void testProducerWithError() throws Exception {

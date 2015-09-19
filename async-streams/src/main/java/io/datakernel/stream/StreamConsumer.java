@@ -71,5 +71,5 @@ public interface StreamConsumer<T> {
 	 *
 	 * @param completionCallback new instance of CompletionCallback
 	 */
-	void addCompletionCallback(CompletionCallback completionCallback);
+	void addConsumerCompletionCallback(CompletionCallback completionCallback);
 }

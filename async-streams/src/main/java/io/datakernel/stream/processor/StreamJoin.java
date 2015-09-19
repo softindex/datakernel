@@ -18,10 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.AbstractStreamTransformer_M_1;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
@@ -175,7 +172,7 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 
 	@Override
 	protected void doProduce() {
-		if (status == READY && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
+		if (internalProducer.getStatus() == AbstractStreamProducer.READY && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
 			L leftValue = leftDeque.peek();
 			K leftKey = leftKeyFunction.apply(leftValue);
 			R rightValue = rightDeque.peek();
@@ -207,8 +204,9 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 				}
 			}
 		}
-		if (status == READY) {
-			if (left.getUpstreamStatus() == END_OF_STREAM && right.getUpstreamStatus() == END_OF_STREAM) {
+		if (status == AbstractStreamProducer.READY) {
+			if (left.getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM
+					&& right.getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM) {
 				sendEndOfStream();
 			} else {
 				resumeAllUpstreams();
@@ -217,7 +215,7 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 	}
 
 	@Override
-	protected void onSuspended() {
+	protected void onConsumerSuspended() {
 		suspendAllUpstreams();
 	}
 
@@ -261,8 +259,11 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 
 		@Override
 		public void onProducerError(Exception e) {
-			upstreamProducer.onConsumerError(e);
-			onConsumerError(e);
+//			upstreamProducer.onConsumerError(e);
+//			onConsumerError(e);
+			super.onProducerError(e);
+//			StreamJoin.this.onClosedWithError(e);
+			internalProducer.getDownstream().onProducerError(e);
 		}
 
 		@Override

@@ -67,8 +67,8 @@ public class StreamSorterStorageImplTest {
 
 		eventloop.run();
 
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		StreamConsumers.ToList<Integer> consumer1 = StreamConsumers.toListOneByOne(eventloop);
 		StreamConsumers.ToList<Integer> consumer2 = StreamConsumers.toListRandomlySuspending(eventloop);

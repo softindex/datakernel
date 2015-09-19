@@ -49,31 +49,31 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		@Override
 		public void bindDataReceiver() {
 			super.bindDataReceiver();
-			dataReceivers[outputs.indexOf(this)] = downstreamDataReceiver;
+			dataReceivers[internalProducers.indexOf(this)] = downstreamDataReceiver;
 		}
 
 		@Override
 		protected void onSuspended() {
-			suspendUpstream();
+			internalConsumer.getUpstream().onConsumerSuspended();
 		}
 
 		@Override
 		protected void onResumed() {
 			if (allOutputsResumed()) {
-				resumeUpstream();
+				internalConsumer.getUpstream().onConsumerResumed();
 			}
 		}
 
-		@Override
-		protected void onClosed() {
-			closeUpstream();
-		}
+//		@Override
+//		protected void onClosed() {
+////			closeUpstream();
+//		}
 
-		@Override
-		protected void onClosedWithError(Exception e) {
-			onProducerError(e);
-			downstreamConsumer.onProducerError(e);
-		}
+//		@Override
+//		protected void onClosedWithError(Exception e) {
+//			onProducerError(e);
+//			downstreamConsumer.onProducerError(e);
+//		}
 	}
 
 	public StreamSharder(Eventloop eventloop, Sharder<K> sharder, Function<T, K> keyFunction) {
@@ -94,14 +94,19 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 	}
 
 	@Override
-	public void onProducerEndOfStream() {
+	public void onUpstreamProducerEndOfStream() {
 		sendEndOfStreamToDownstreams();
 	}
 
 	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
+	protected StreamDataReceiver<T> getInternalDataReceiver() {
 		return this;
 	}
+
+//	@Override
+//	public StreamDataReceiver<T> getDataReceiver() {
+//		return this;
+//	}
 
 	/**
 	 * After receiving item, finds result for key function for item and streams to corresponding

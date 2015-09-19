@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
 import io.datakernel.stream.StreamDataReceiver;
@@ -112,7 +113,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			byteBuf.limit(size);
 			jmxBytes += size;
 			jmxBufs++;
-			if (status <= SUSPENDED) {
+			if (internalProducer.getStatus() <= AbstractStreamProducer.SUSPENDED) {
 				receiver.onData(byteBuf);
 			}
 		} else {
@@ -123,7 +124,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 	private void ensureSize(int size) {
 		if (outputBuffer.remaining() < size) {
-			flushBuffer(downstreamDataReceiver);
+			flushBuffer(internalProducer.getDownstreamDataReceiver());
 		}
 	}
 
@@ -201,12 +202,19 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		if (skipSerializationErrors) {
 			logger.warn("Skipping serialization error in {} : {}", this, e.toString());
 		} else {
-			onConsumerError(e);
+//			onConsumerError(e);
+//			downstreamConsumer.onProducerError(e);
+			internalProducer.getDownstream().onProducerError(e);
 		}
 	}
 
+//	@Override
+//	public StreamDataReceiver<T> getDataReceiver() {
+//		return this;
+//	}
+
 	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
+	protected StreamDataReceiver<T> getInternalDataReceiver() {
 		return this;
 	}
 
@@ -214,13 +222,13 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	 * After end of stream,  it flushes all received bytes to recipient
 	 */
 	@Override
-	public void onProducerEndOfStream() {
-		flushBuffer(downstreamDataReceiver);
+	public void onUpstreamProducerClosed() {
+		flushBuffer(internalProducer.getDownstreamDataReceiver());
 		byteBuf.recycle();
 		byteBuf = null;
 		outputBuffer.set(null, 0);
-		logger.trace("endOfStream {}, upstream: {}", this, upstreamProducer);
-		sendEndOfStream();
+		logger.trace("endOfStream {}, upstream: {}", this, internalConsumer.getUpstream());
+		internalProducer.sendEndOfStream();
 	}
 
 	/**
@@ -228,7 +236,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	 */
 	@Override
 	public void flush() {
-		flushBuffer(downstreamDataReceiver);
+		flushBuffer(internalProducer.getDownstreamDataReceiver());
 		flushPosted = false;
 	}
 
@@ -238,7 +246,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			eventloop.postLater(new Runnable() {
 				@Override
 				public void run() {
-					if (status < END_OF_STREAM) {
+					if (internalProducer.getStatus() < AbstractStreamProducer.END_OF_STREAM) {
 						flush();
 					}
 				}
@@ -247,7 +255,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			eventloop.scheduleBackground(eventloop.currentTimeMillis() + flushDelayMillis, new Runnable() {
 				@Override
 				public void run() {
-					if (status < END_OF_STREAM) {
+					if (internalProducer.getStatus() < AbstractStreamProducer.END_OF_STREAM) {
 						flush();
 					}
 				}
@@ -255,17 +263,18 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 	}
 
-	@Override
-	public void onClosed() {
-		super.onClosed();
-		recycleBufs();
-	}
+	// TODO (vsavchuk) поставити recycleBufs там де треба
+//	@Override
+//	public void onClosed() {
+//		super.onClosed();
+//		recycleBufs();
+//	}
 
-	@Override
-	protected void onClosedWithError(Exception e) {
-		super.onClosedWithError(e);
-		recycleBufs();
-	}
+//	@Override
+//	protected void onClosedWithError(Exception e) {
+//		super.onClosedWithError(e);
+//		recycleBufs();
+//	}
 
 	private void recycleBufs() {
 		if (byteBuf != null) {

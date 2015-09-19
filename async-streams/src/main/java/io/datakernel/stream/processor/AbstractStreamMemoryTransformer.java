@@ -86,8 +86,9 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 
 		@Override
 		public void onProducerError(Exception e) {
-			upstreamProducer.onConsumerError(e);
-			onConsumerError(e);
+//			upstreamProducer.onConsumerError(e);
+//			onConsumerError(e);
+			downstreamConsumer.onProducerError(e);
 		}
 	}
 
@@ -97,7 +98,7 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 	 */
 	@Override
 	protected void onProducerStarted() {
-		if (inputs.isEmpty()) {
+		if (internalConsumers.isEmpty()) {
 			sendEndOfStream();
 		}
 	}

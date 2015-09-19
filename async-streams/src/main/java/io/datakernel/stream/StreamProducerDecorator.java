@@ -39,11 +39,13 @@ public abstract class StreamProducerDecorator<T> extends AbstractStreamProducer<
 		@Override
 		public void onProducerEndOfStream() {
 			StreamProducerDecorator.this.onEndOfStream();
+			close();
 		}
 
 		@Override
 		public void onProducerError(Exception e) {
 			StreamProducerDecorator.this.onError(e);
+			closeWithError(e);
 		}
 	}
 
@@ -95,7 +97,7 @@ public abstract class StreamProducerDecorator<T> extends AbstractStreamProducer<
 
 	@Override
 	protected void onClosed() {
-		decoratedProducer.close();
+//		decoratedProducer.close();
 	}
 
 	@Override

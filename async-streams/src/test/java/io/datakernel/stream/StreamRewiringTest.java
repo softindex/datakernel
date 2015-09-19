@@ -53,7 +53,7 @@ public class StreamRewiringTest {
 		eventloop.run();
 
 		assertEquals(asList("1", "2", "3"), consumer1.getList());
-		assertTrue(producer.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(producer.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -86,7 +86,7 @@ public class StreamRewiringTest {
 		assertEquals(asList("1", "2", "3"), consumer2.getList());
 		assertNotNull(consumer1.getUpstream());
 		assertFalse(consumer1.getUpstreamStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(producer.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(producer.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -161,6 +161,6 @@ public class StreamRewiringTest {
 		assertEquals(asList("1", "2", "3", "4", "5", "6"), consumer.getList());
 
 //		assertNull(producer1.getWiredConsumerStatus());
-		assertTrue(producer2.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(producer2.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 }

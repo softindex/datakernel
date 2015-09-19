@@ -26,7 +26,6 @@ import io.datakernel.stream.*;
  * @param <T> type of output data
  */
 public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> implements StreamDataReceiver<T> {
-
 	public StreamUnion(Eventloop eventloop) {
 		super(eventloop);
 	}
@@ -38,13 +37,15 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> imple
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return StreamUnion.this.downstreamDataReceiver != null ? StreamUnion.this.downstreamDataReceiver : StreamUnion.this;
+			return internalProducer.getDownstreamDataReceiver() != null
+					? StreamUnion.this.internalProducer.getDownstreamDataReceiver()
+					: StreamUnion.this;
 		}
 
 		@Override
 		public void onProducerEndOfStream() {
 			if (allUpstreamsEndOfStream()) {
-				sendEndOfStream();
+				internalProducer.sendEndOfStream();
 			}
 		}
 
@@ -52,6 +53,8 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> imple
 		public void onProducerError(Exception e) {
 			upstreamProducer.onConsumerError(e);
 			onConsumerError(e);
+//			downstreamConsumer.onProducerError(e);
+			internalProducer.getDownstream().onProducerError(e);
 		}
 	}
 
@@ -59,23 +62,22 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> imple
 	 * This method is called if consumer was changed for changing consumer status and checks if input
 	 * streams are at out.
 	 */
-	@Override
 	protected void onProducerStarted() {
-		for (StreamConsumer<?> input : inputs) {
+		for (StreamConsumer<?> input : internalConsumers) {
 			input.getUpstream().bindDataReceiver();
 		}
-		if (inputs.isEmpty()) {
-			sendEndOfStream();
+		if (internalConsumers.isEmpty()) {
+			internalProducer.sendEndOfStream();
 		}
 	}
 
 	@Override
-	protected void onSuspended() {
+	public void onConsumerSuspended() {
 		suspendAllUpstreams();
 	}
 
 	@Override
-	public void onResumed() {
+	public void onConsumerResumed() {
 		resumeAllUpstreams();
 	}
 
@@ -90,6 +92,8 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> imple
 
 	@Override
 	public void onData(T item) {
-		downstreamDataReceiver.onData(item);
+		internalProducer.getDownstreamDataReceiver().onData(item);
 	}
+
+
 }

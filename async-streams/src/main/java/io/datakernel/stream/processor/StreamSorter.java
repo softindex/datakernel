@@ -90,15 +90,15 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 		this.list = new ArrayList<>(itemsInMemorySize + (itemsInMemorySize >> 4));
 		this.listOfPartitions = new ArrayList<>();
 		this.result = new StreamForwarder<>(eventloop);
-		this.result.addCompletionCallback(new CompletionCallback() {
+		this.result.addProducerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				closeUpstream();
+//				closeUpstream();
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				closeUpstreamWithError(exception);
+				StreamSorter.super.onProducerError(exception);
 			}
 		});
 	}
@@ -142,7 +142,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 			return;
 		}
 
-		if (getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM) {
+		if (((AbstractStreamProducer)upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM) {
 			StreamMerger<K, T> merger = StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate);
 
 			Collections.sort(list, itemComparator);
@@ -165,7 +165,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 			this.listOfPartitions.add(storage.nextPartition());
 			StreamConsumer<T> consumer = storage.streamWriter();
 			saveProducer.streamTo(consumer);
-			saveProducer.addCompletionCallback(new CompletionCallback() {
+			saveProducer.addProducerCompletionCallback(new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					eventloop.post(new Runnable() {

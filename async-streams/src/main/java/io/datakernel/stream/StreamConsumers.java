@@ -183,7 +183,7 @@ public class StreamConsumers {
 		 */
 		@Override
 		public void onConsumerStarted() {
-			upstreamProducer.close();
+//			upstreamProducer.close();
 		}
 
 		@Override
@@ -198,6 +198,7 @@ public class StreamConsumers {
 
 		@Override
 		public void onProducerEndOfStream() {
+			close();
 		}
 	}
 
@@ -211,7 +212,7 @@ public class StreamConsumers {
 
 		@Override
 		public void onConsumerStarted() {
-			upstreamProducer.onConsumerError(exception);
+//			upstreamProducer.onConsumerError(exception);
 		}
 
 		@Override
@@ -226,6 +227,7 @@ public class StreamConsumers {
 
 		@Override
 		public void onProducerEndOfStream() {
+			closeWithError(exception);
 		}
 	}
 
@@ -252,7 +254,8 @@ public class StreamConsumers {
 
 		@Override
 		public void onProducerEndOfStream() {
-			upstreamProducer.close();
+//			upstreamProducer.close();
+			close();
 		}
 	}
 
@@ -288,8 +291,8 @@ public class StreamConsumers {
 		 * Returns list with received items
 		 */
 		public final List<T> getList() {
-			checkState(upstreamProducer.getError() == null, "Upstream error %s: %s", upstreamProducer, upstreamProducer.getError());
-			checkState(((AbstractStreamProducer)upstreamProducer).getStatus() == AbstractStreamProducer.CLOSED, "Upstream %s is not closed", upstreamProducer);
+//			checkState(upstreamProducer.getError() == null, "Upstream error %s: %s", upstreamProducer, upstreamProducer.getError());
+			checkState(((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.CLOSED, "Upstream %s is not closed", upstreamProducer);
 			return list;
 		}
 
@@ -313,7 +316,8 @@ public class StreamConsumers {
 		 */
 		@Override
 		public void onProducerEndOfStream() {
-			upstreamProducer.close();
+//			upstreamProducer.close();
+			close();
 		}
 	}
 }

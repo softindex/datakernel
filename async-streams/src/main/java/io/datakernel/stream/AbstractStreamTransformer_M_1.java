@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
@@ -29,8 +30,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <O> type of sending items
  */
 @SuppressWarnings("unchecked")
-public abstract class AbstractStreamTransformer_M_1<O> extends AbstractStreamProducer<O> {
-	protected final List<AbstractStreamConsumer<?>> inputs = new ArrayList<>();
+public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer<O> {
+	protected final List<AbstractStreamConsumer<?>> internalConsumers = new ArrayList<>();
+	protected final AbstractStreamProducer internalProducer;
+	protected final int countEndOfStreams = 0;
+	protected final Eventloop eventloop;
 
 	/**
 	 * Creates a new instance of this object
@@ -38,46 +42,48 @@ public abstract class AbstractStreamTransformer_M_1<O> extends AbstractStreamPro
 	 * @param eventloop event loop in which this producer will run
 	 */
 	public AbstractStreamTransformer_M_1(Eventloop eventloop) {
-		super(eventloop);
+		this.eventloop = eventloop;
+		internalProducer = new AbstractStreamProducer(eventloop) {};
 	}
 
 	@Override
 	public void bindDataReceiver() {
-		super.bindDataReceiver();
-		for (AbstractStreamConsumer<?> input : inputs) {
+		internalProducer.bindDataReceiver();
+		for (AbstractStreamConsumer<?> input : internalConsumers) {
 			if (input.getUpstream() != null) {
 				input.getUpstream().bindDataReceiver();
 			}
 		}
 	}
 
-	@Override
 	protected void onInternalError(Exception e) {
-		onConsumerError(e);
-		sendError(e);
-		for (AbstractStreamConsumer<?> input : inputs) {
-			input.closeUpstreamWithError(e);
-		}
-	}
-
-	/**
-	 * Action which will take place after changing status to complete
-	 */
-	@Override
-	protected void onClosed() {
-		closeAllUpstreams();
-	}
-
-	/**
-	 * If consumer has exception, all inputs handle this exception
-	 */
-	@Override
-	protected void onClosedWithError(Exception e) {
-		downstreamConsumer.onProducerError(e);
-		for (AbstractStreamConsumer<?> input : inputs) {
+//		onConsumerError(e);
+		internalProducer.getDownstream().onProducerError(e);
+		internalProducer.sendError(e);
+		for (AbstractStreamConsumer<?> input : internalConsumers) {
+//			input.closeUpstreamWithError(e);
 			input.onProducerError(e);
 		}
 	}
+
+//	/**
+//	 * Action which will take place after changing status to complete
+//	 */
+//	@Override
+//	protected void onClosed() {
+////		closeAllUpstreams();
+//	}
+
+//	/**
+//	 * If consumer has exception, all internalConsumers handle this exception
+//	 */
+//	@Override
+//	protected void onClosedWithError(Exception e) {
+//		downstreamConsumer.onProducerError(e);
+//		for (AbstractStreamConsumer<?> input : internalConsumers) {
+//			input.onProducerError(e);
+//		}
+//	}
 
 	/**
 	 * Adds a new stream consumer to this producer
@@ -88,33 +94,66 @@ public abstract class AbstractStreamTransformer_M_1<O> extends AbstractStreamPro
 	 */
 	protected <T extends AbstractStreamConsumer<?>> T addInput(T streamConsumer) {
 		checkNotNull(streamConsumer);
-		inputs.add(streamConsumer);
+		internalConsumers.add(streamConsumer);
 		return streamConsumer;
 	}
 
 	protected void suspendAllUpstreams() {
-		for (AbstractStreamConsumer<?> input : inputs) {
+		for (AbstractStreamConsumer<?> input : internalConsumers) {
 			input.suspendUpstream();
 		}
 	}
 
 	protected void resumeAllUpstreams() {
-		for (AbstractStreamConsumer<?> input : inputs) {
+		for (AbstractStreamConsumer<?> input : internalConsumers) {
 			input.resumeUpstream();
 		}
 	}
 
-	protected void closeAllUpstreams() {
-		for (AbstractStreamConsumer<?> input : inputs) {
-			input.closeUpstream();
-		}
-	}
+//	protected void closeAllUpstreams() {
+//		for (AbstractStreamConsumer<?> input : internalConsumers) {
+//			input.closeUpstream();
+//			input.onProducerError();
+//		}
+//	}
 
+
+	// переробити
 	protected boolean allUpstreamsEndOfStream() {
-		for (AbstractStreamConsumer<?> input : inputs) {
-			if (input.getUpstream() == null || input.getUpstreamStatus() != END_OF_STREAM)
+		for (AbstractStreamConsumer<?> input : internalConsumers) {
+			if (input.getUpstream() == null || countEndOfStreams != internalConsumers.size())
 				return false;
 		}
 		return true;
+	}
+
+	@Override
+	public void streamTo(StreamConsumer<O> downstreamConsumer) {
+		internalProducer.streamTo(downstreamConsumer);
+	}
+
+	@Override
+	public StreamConsumer<O> getDownstream() {
+		return internalProducer.getDownstream();
+	}
+
+	@Override
+	public void onConsumerSuspended() {
+		suspendAllUpstreams();
+	}
+
+	@Override
+	public void onConsumerResumed() {
+		resumeAllUpstreams();
+	}
+
+	@Override
+	public void onConsumerError(Exception e) {
+		internalProducer.onConsumerError(e);
+	}
+
+	@Override
+	public final void addProducerCompletionCallback(CompletionCallback completionCallback) {
+		internalProducer.addProducerCompletionCallback(completionCallback);
 	}
 }

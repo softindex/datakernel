@@ -16,7 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.CompletionCallback;
 
 /**
@@ -60,11 +59,6 @@ public interface StreamProducer<T> {
 	void onConsumerResumed();
 
 	/**
-	 * This method is called for close streaming
-	 */
-	void close();
-
-	/**
 	 * This method is called for close with error
 	 *
 	 * @param e exception which was found
@@ -72,18 +66,11 @@ public interface StreamProducer<T> {
 	void onConsumerError(Exception e);
 
 	/**
-	 * Returns exception which was found
-	 *
-	 * @return exception which was found
-	 */
-	@Nullable
-	Exception getError();
-
-	/**
-	 * Adds new CompletionCallback which will be called when consumer closed or closed with error
+	 * Adds new CompletionCallback which will be called when producer end of stream or closed with error
 	 *
 	 * @param completionCallback new instance of CompletionCallback
 	 */
-	void addCompletionCallback(CompletionCallback completionCallback);
+
+	void addProducerCompletionCallback(CompletionCallback completionCallback);
 
 }

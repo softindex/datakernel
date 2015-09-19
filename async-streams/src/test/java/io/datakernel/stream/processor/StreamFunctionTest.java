@@ -50,8 +50,8 @@ public class StreamFunctionTest {
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(streamFunction.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(streamFunction.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

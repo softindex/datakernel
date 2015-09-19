@@ -43,14 +43,17 @@ public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
 		public void onProducerEndOfStream() {
 			if (this == currentInternalConsumer) {
 				sendEndOfStream();
+				close();
 			}
 		}
 
 		@Override
 		public void onProducerError(Exception e) {
 			if (this == currentInternalConsumer) {
-				upstreamProducer.onConsumerError(e);
-				onConsumerError(e);
+//				upstreamProducer.onConsumerError(e);
+//				onConsumerError(e);
+				downstreamConsumer.onProducerError(e);
+				closeWithError(e);
 			}
 		}
 	}
@@ -70,13 +73,15 @@ public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
 		newUpstreamProducer.streamTo(currentInternalConsumer);
 		if (prevProducer != null && prevProducer.upstreamProducer != null) {
 			prevProducer.upstreamProducer.bindDataReceiver();
-			prevProducer.closeUpstream();
+//			prevProducer.closeUpstream();
 		}
 		if (status == END_OF_STREAM || status == CLOSED) {
-			currentInternalConsumer.closeUpstream();
+//			currentInternalConsumer.closeUpstream();
+			currentInternalConsumer.onProducerEndOfStream();
 		}
 		if (status == CLOSED_WITH_ERROR) {
-			currentInternalConsumer.closeUpstreamWithError(getError());
+//			currentInternalConsumer.closeUpstreamWithError(getError());
+			currentInternalConsumer.onProducerError(getError());
 		}
 	}
 
@@ -104,7 +109,7 @@ public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
 
 	@Override
 	protected void onClosed() {
-		currentInternalConsumer.closeUpstream();
+//		currentInternalConsumer.closeUpstream();
 	}
 
 	@Override

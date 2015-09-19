@@ -167,8 +167,8 @@ public class StreamJoinAsUnsortedStreamTest {
 						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
 						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
 				result.toArray(new DataItemMasterDetail[result.size()]));
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test

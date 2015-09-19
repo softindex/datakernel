@@ -16,6 +16,7 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
@@ -27,8 +28,10 @@ import java.util.List;
  * @param <I> type of receiving items
  */
 @SuppressWarnings("unchecked")
-public abstract class AbstractStreamTransformer_1_N<I> extends AbstractStreamConsumer<I> {
-	protected List<AbstractStreamProducer<?>> outputs = new ArrayList<>();
+public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer<I> {
+	protected final AbstractStreamConsumer<I> internalConsumer;
+	protected final List<AbstractStreamProducer<?>> internalProducers = new ArrayList<>();
+	protected final Eventloop eventloop;
 
 	protected void onDataReceiverChanged(int outputIndex) {
 	}
@@ -39,25 +42,40 @@ public abstract class AbstractStreamTransformer_1_N<I> extends AbstractStreamCon
 	 * @param eventloop event loop in which this consumer will run
 	 */
 	public AbstractStreamTransformer_1_N(Eventloop eventloop) {
-		super(eventloop);
+		this.eventloop = eventloop;
+		this.internalConsumer = new AbstractStreamConsumer<I>(eventloop) {
+			@Override
+			public StreamDataReceiver<I> getDataReceiver() {
+				return AbstractStreamTransformer_1_N.this.getInternalDataReceiver();
+			}
+
+			@Override
+			public void onProducerEndOfStream() {
+				AbstractStreamTransformer_1_N.this.onUpstreamProducerEndOfStream();
+			}
+		};
 	}
 
+	protected abstract void onUpstreamProducerEndOfStream();
+
+	protected abstract StreamDataReceiver<I> getInternalDataReceiver();
+
 	protected <T extends AbstractStreamProducer<?>> T addOutput(T newOutput) {
-		outputs.add(newOutput);
+		internalProducers.add(newOutput);
 		return newOutput;
 	}
 
 	@Override
-	public void onProducerError(Exception e) {
-		upstreamProducer.onConsumerError(e);
+	public final void onProducerError(Exception e) {
 		closeDownstreamsWithError(e);
+		internalConsumer.onProducerError(e);
 	}
 
 	/**
 	 * Returns all producers from this consumer
 	 */
 	public int getOutputsCount() {
-		return outputs.size();
+		return internalProducers.size();
 	}
 
 	/**
@@ -66,7 +84,7 @@ public abstract class AbstractStreamTransformer_1_N<I> extends AbstractStreamCon
 	 * @return true if all are ready, false else
 	 */
 	protected boolean allOutputsResumed() {
-		for (AbstractStreamProducer<?> output : outputs) {
+		for (AbstractStreamProducer<?> output : internalProducers) {
 			if (output.getDownstream() == null)
 				return false;
 			if (output.getStatus() != AbstractStreamProducer.READY) {
@@ -77,14 +95,39 @@ public abstract class AbstractStreamTransformer_1_N<I> extends AbstractStreamCon
 	}
 
 	protected void sendEndOfStreamToDownstreams() {
-		for (AbstractStreamProducer<?> output : outputs) {
-			output.sendEndOfStream();
+		for (AbstractStreamProducer<?> output : internalProducers) {
+			output.getDownstream().onProducerEndOfStream();
 		}
 	}
 
 	protected void closeDownstreamsWithError(Exception e) {
-		for (AbstractStreamProducer<?> output : outputs) {
-			output.onConsumerError(e);
+		for (AbstractStreamProducer<?> output : internalProducers) {
+			output.getDownstream().onProducerError(e);
 		}
+	}
+
+	@Override
+	public final StreamDataReceiver<I> getDataReceiver() {
+		return internalConsumer.getDataReceiver();
+	}
+
+	@Override
+	public final void setUpstream(StreamProducer<I> upstreamProducer) {
+		internalConsumer.setUpstream(upstreamProducer);
+	}
+
+	@Override
+	public final StreamProducer<I> getUpstream() {
+		return internalConsumer.getUpstream();
+	}
+
+	@Override
+	public final void onProducerEndOfStream() {
+		sendEndOfStreamToDownstreams();
+	}
+
+	@Override
+	public final void addConsumerCompletionCallback(CompletionCallback completionCallback) {
+		internalConsumer.addConsumerCompletionCallback(completionCallback);
 	}
 }

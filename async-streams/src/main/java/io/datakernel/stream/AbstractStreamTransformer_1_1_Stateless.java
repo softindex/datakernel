@@ -31,17 +31,20 @@ public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends Abst
 	}
 
 	@Override
-	protected void onSuspended() {
-		suspendUpstream();
+	protected void onDownstreamConsumerSuspended() {
+		super.onConsumerSuspended();
+		internalConsumer.getUpstream().onConsumerSuspended();
 	}
 
 	@Override
-	protected void onResumed() {
-		resumeUpstream();
+	protected void onDownstreamConsumerResumed() {
+		super.onConsumerResumed();
+		internalConsumer.getUpstream().onConsumerResumed();
 	}
 
 	@Override
-	public void onProducerEndOfStream() {
-		sendEndOfStream();
+	protected void onUpstreamProducerEndOfStream() {
+		super.onProducerEndOfStream();
+		internalProducer.getDownstream().onProducerEndOfStream();
 	}
 }

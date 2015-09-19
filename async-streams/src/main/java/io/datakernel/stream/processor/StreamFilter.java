@@ -56,8 +56,8 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Statele
 	 */
 	@SuppressWarnings("unchecked")
 	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return predicate == Predicates.alwaysTrue() ? downstreamDataReceiver : this;
+	protected StreamDataReceiver<T> getInternalDataReceiver() {
+		return predicate == Predicates.alwaysTrue() ? internalProducer.getDownstreamDataReceiver() : this;
 	}
 
 	/**
@@ -70,7 +70,7 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Statele
 		assert jmxInputItems != ++jmxInputItems;
 		if (predicate.apply(item)) {
 			assert jmxOutputItems != ++jmxOutputItems;
-			downstreamDataReceiver.onData(item);
+			internalConsumer.getDataReceiver().onData(item);
 		}
 	}
 

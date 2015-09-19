@@ -54,7 +54,7 @@ public class StreamFilterTest {
 
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test

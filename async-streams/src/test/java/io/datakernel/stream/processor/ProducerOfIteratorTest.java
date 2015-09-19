@@ -45,7 +45,7 @@ public class ProducerOfIteratorTest {
 		eventloop.run();
 
 		assertEquals(list, consumer.getList());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

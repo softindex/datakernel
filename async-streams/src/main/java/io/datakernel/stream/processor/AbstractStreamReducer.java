@@ -95,7 +95,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 	 */
 	@Override
 	protected void onProducerStarted() {
-		if (inputs.isEmpty()) {
+		if (internalConsumers.isEmpty()) {
 			sendEndOfStream();
 		}
 	}
@@ -149,7 +149,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 	}
 
 	private class InternalConsumer<I> extends AbstractStreamConsumer<I> implements StreamDataReceiver<I> {
-		private final int index = inputs.size();
+		private final int index = internalConsumers.size();
 
 		private final PriorityQueue<InternalConsumer> priorityQueue;
 
@@ -203,6 +203,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 		@Override
 		public void onProducerError(Exception e) {
 			upstreamProducer.onConsumerError(e);
+			downstreamConsumer.onProducerError(e);
 			onConsumerError(e);
 		}
 

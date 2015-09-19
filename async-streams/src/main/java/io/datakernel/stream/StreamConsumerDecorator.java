@@ -81,22 +81,24 @@ public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
 		resumeUpstream();
 	}
 
-	protected void onClosed() {
-		closeUpstream();
-	}
+//	protected void onClosed() {
+//		closeUpstream();
+//	}
 
-	protected void onClosedWithError(Exception e) {
-		closeUpstreamWithError(e);
-	}
+//	protected void onClosedWithError(Exception e) {
+//		closeUpstreamWithError(e);
+//	}
 
 	@Override
 	public void onProducerEndOfStream() {
 		decoratedConsumer.onProducerEndOfStream();
+		close();
 	}
 
 	@Override
 	public void onProducerError(Exception e) {
 		decoratedConsumer.onProducerError(e);
+		closeWithError(e);
 	}
 
 }

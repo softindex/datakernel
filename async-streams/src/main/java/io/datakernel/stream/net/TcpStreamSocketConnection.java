@@ -73,7 +73,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		@Override
 		public void onProducerEndOfStream() {
 			if (writeQueue.isEmpty()) {
-				closeUpstream();
+//				closeUpstream();
 				closeIfDone();
 			}
 		}
@@ -200,7 +200,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	@Override
 	protected void onWriteFlushed() {
 		if (socketWriter.getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM) {
-			socketWriter.closeUpstream();
+//			socketWriter.closeUpstream();
 			closeIfDone();
 		} else {
 			socketWriter.resumeUpstream();
@@ -210,14 +210,15 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	@Override
 	protected void onReadException(Exception e) {
 		logger.warn("onReadException", e);
-		socketReader.onConsumerError(e);
+//		socketReader.onConsumerError(e);
+		socketReader.onClosedWithError(e);
 		socketReader.sendError(e);
 	}
 
 	@Override
 	protected void onWriteException(Exception e) {
 		logger.warn("onWriteException", e);
-		socketWriter.closeUpstreamWithError(e);
+//		socketWriter.closeUpstreamWithError(e);
 		closeIfDone();
 	}
 
