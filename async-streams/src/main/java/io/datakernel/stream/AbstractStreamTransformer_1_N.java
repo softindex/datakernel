@@ -29,11 +29,107 @@ import java.util.List;
  */
 @SuppressWarnings("unchecked")
 public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer<I> {
-	protected final AbstractStreamConsumer<I> internalConsumer;
-	protected final List<AbstractStreamProducer<?>> internalProducers = new ArrayList<>();
 	protected final Eventloop eventloop;
 
-	protected void onDataReceiverChanged(int outputIndex) {
+	protected AbstractUpstreamConsumer upstreamConsumer;
+	protected final List<AbstractDownstreamProducer<?>> downstreamProducers = new ArrayList<>();
+	private int suspendedProducersCount;
+
+	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
+		public AbstractUpstreamConsumer() {
+			super(AbstractStreamTransformer_1_N.this.eventloop);
+		}
+
+		@Override
+		protected final void onStarted() {
+			onUpstreamStarted();
+		}
+
+		protected abstract void onUpstreamStarted();
+
+		@Override
+		protected final void onEndOfStream() {
+			onUpstreamEndOfStream();
+		}
+
+		protected abstract void onUpstreamEndOfStream();
+
+		@Override
+		protected void onError(Exception e) {
+			for (AbstractStreamProducer<?> downstreamProducer : downstreamProducers) {
+				downstreamProducer.closeWithError(e);
+			}
+		}
+
+		@Override
+		public final void suspend() {
+			super.suspend();
+		}
+
+		@Override
+		public final void resume() {
+			super.resume();
+		}
+
+		@Override
+		public final void close() {
+			super.close();
+		}
+
+		@Override
+		public final void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+	}
+
+	protected abstract class AbstractDownstreamProducer<O> extends AbstractStreamProducer<O> {
+		protected int index;
+
+		public AbstractDownstreamProducer() {
+			super(AbstractStreamTransformer_1_N.this.eventloop);
+		}
+
+		@Override
+		protected final void onError(Exception e) {
+			for (AbstractStreamProducer<?> downstreamProducer : downstreamProducers) {
+				if (downstreamProducer != this) {
+					downstreamProducer.closeWithError(e);
+				}
+			}
+			upstreamConsumer.closeWithError(e);
+		}
+
+		@Override
+		protected final void onSuspended() {
+			suspendedProducersCount++;
+			onDownstreamSuspended();
+		}
+
+		protected abstract void onDownstreamSuspended();
+
+		@Override
+		protected final void onResumed() {
+			suspendedProducersCount--;
+			onDownstreamResumed();
+		}
+
+		protected abstract void onDownstreamResumed();
+
+		@Override
+		public void produce() {
+			super.produce();
+		}
+
+		@Override
+		public void send(O item) {
+			super.send(item);
+		}
+
+		@Override
+		public void sendEndOfStream() {
+			super.sendEndOfStream();
+		}
+
 	}
 
 	/**
@@ -43,39 +139,16 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	 */
 	public AbstractStreamTransformer_1_N(Eventloop eventloop) {
 		this.eventloop = eventloop;
-		this.internalConsumer = new AbstractStreamConsumer<I>(eventloop) {
-			@Override
-			public StreamDataReceiver<I> getDataReceiver() {
-				return AbstractStreamTransformer_1_N.this.getInternalDataReceiver();
-			}
-
-			@Override
-			public void onProducerEndOfStream() {
-				AbstractStreamTransformer_1_N.this.onUpstreamProducerEndOfStream();
-			}
-		};
 	}
 
-	protected abstract void onUpstreamProducerEndOfStream();
-
-	protected abstract StreamDataReceiver<I> getInternalDataReceiver();
-
-	protected <T extends AbstractStreamProducer<?>> T addOutput(T newOutput) {
-		internalProducers.add(newOutput);
-		return newOutput;
+	protected void setUpstreamConsumer(AbstractUpstreamConsumer upstreamConsumer) {
+		this.upstreamConsumer = upstreamConsumer;
 	}
 
-	@Override
-	public final void onProducerError(Exception e) {
-		closeDownstreamsWithError(e);
-		internalConsumer.onProducerError(e);
-	}
-
-	/**
-	 * Returns all producers from this consumer
-	 */
-	public int getOutputsCount() {
-		return internalProducers.size();
+	protected <T> StreamProducer<T> addOutput(final AbstractDownstreamProducer<T> downstreamProducer) {
+		downstreamProducer.index = downstreamProducers.size();
+		downstreamProducers.add(downstreamProducer);
+		return downstreamProducer;
 	}
 
 	/**
@@ -84,50 +157,52 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	 * @return true if all are ready, false else
 	 */
 	protected boolean allOutputsResumed() {
-		for (AbstractStreamProducer<?> output : internalProducers) {
-			if (output.getDownstream() == null)
-				return false;
-			if (output.getStatus() != AbstractStreamProducer.READY) {
-				return false;
-			}
-		}
-		return true;
+		return suspendedProducersCount == 0;
 	}
 
 	protected void sendEndOfStreamToDownstreams() {
-		for (AbstractStreamProducer<?> output : internalProducers) {
-			output.getDownstream().onProducerEndOfStream();
+		for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+			downstreamProducer.sendEndOfStream();
 		}
 	}
 
-	protected void closeDownstreamsWithError(Exception e) {
-		for (AbstractStreamProducer<?> output : internalProducers) {
-			output.getDownstream().onProducerError(e);
+	protected void closeWithError(Exception e) {
+		upstreamConsumer.closeWithError(e);
+		for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+			downstreamProducer.closeWithError(e);
 		}
 	}
+
+	// consumer
 
 	@Override
 	public final StreamDataReceiver<I> getDataReceiver() {
-		return internalConsumer.getDataReceiver();
+		return upstreamConsumer.getDataReceiver();
 	}
 
 	@Override
 	public final void setUpstream(StreamProducer<I> upstreamProducer) {
-		internalConsumer.setUpstream(upstreamProducer);
+		upstreamConsumer.setUpstream(upstreamProducer);
 	}
 
 	@Override
 	public final StreamProducer<I> getUpstream() {
-		return internalConsumer.getUpstream();
+		return upstreamConsumer.getUpstream();
 	}
 
 	@Override
 	public final void onProducerEndOfStream() {
-		sendEndOfStreamToDownstreams();
+		upstreamConsumer.onProducerEndOfStream();
+	}
+
+	@Override
+	public final void onProducerError(Exception e) {
+		upstreamConsumer.onProducerError(e);
 	}
 
 	@Override
 	public final void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-		internalConsumer.addConsumerCompletionCallback(completionCallback);
+		upstreamConsumer.addConsumerCompletionCallback(completionCallback);
 	}
+
 }

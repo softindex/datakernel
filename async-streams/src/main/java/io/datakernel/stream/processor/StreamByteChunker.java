@@ -22,69 +22,95 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
-public class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf> {
-	private final int minChunkSize;
-	private final int maxChunkSize;
-	private ByteBuf internalBuf;
+public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+
+	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+		@Override
+		protected void onUpstreamEndOfStream() {
+			((DownstreamProducer) downstreamProducer).flush();
+			close();
+		}
+
+		@Override
+		protected void onUpstreamStarted() {
+
+		}
+
+		@Override
+		public StreamDataReceiver<ByteBuf> getDataReceiver() {
+			return ((DownstreamProducer) downstreamProducer);
+		}
+	}
+
+	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<ByteBuf> {
+		private final int minChunkSize;
+		private final int maxChunkSize;
+		private ByteBuf internalBuf;
+
+		public DownstreamProducer(int minChunkSize, int maxChunkSize) {
+			this.minChunkSize = minChunkSize;
+			this.maxChunkSize = maxChunkSize;
+			this.internalBuf = ByteBufPool.allocate(maxChunkSize);
+		}
+
+		@Override
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend(); // TODO ?
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+
+		@Override
+		public void onData(ByteBuf buf) {
+			if (status >= END_OF_STREAM)
+				return;
+			try {
+				while (internalBuf.position() + buf.remaining() >= minChunkSize) {
+					if (internalBuf.position() == 0) {
+						int chunkSize = Math.min(maxChunkSize, buf.remaining());
+						send(buf.slice(buf.position(), chunkSize));
+						buf.advance(chunkSize);
+					} else {
+						buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
+						internalBuf.flip();
+						send(internalBuf);
+						internalBuf = ByteBufPool.allocate(maxChunkSize);
+					}
+				}
+
+				buf.drainTo(internalBuf, buf.remaining());
+				assert internalBuf.position() < minChunkSize;
+
+				buf.recycle();
+			} catch (Exception e) {
+				closeWithError(e);
+			}
+		}
+
+		private void flush() {
+			internalBuf.flip();
+			if (internalBuf.hasRemaining()) {
+				downstreamProducer.send(internalBuf);
+			} else {
+				internalBuf.recycle();
+			}
+			internalBuf = null;
+			downstreamProducer.sendEndOfStream();
+		}
+	}
 
 	public StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
 		super(eventloop);
-		this.minChunkSize = minChunkSize;
-		this.maxChunkSize = maxChunkSize;
-		this.internalBuf = ByteBufPool.allocate(maxChunkSize);
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer(minChunkSize, maxChunkSize);
 	}
 
-	@Override
-	public StreamDataReceiver<ByteBuf> getDataReceiver() {
-		return this;
-	}
-
-	@Override
-	public void onData(ByteBuf buf) {
-		if (status >= END_OF_STREAM)
-			return;
-		try {
-			while (internalBuf.position() + buf.remaining() >= minChunkSize) {
-				if (internalBuf.position() == 0) {
-					int chunkSize = Math.min(maxChunkSize, buf.remaining());
-					send(buf.slice(buf.position(), chunkSize));
-					buf.advance(chunkSize);
-				} else {
-					buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
-					internalBuf.flip();
-					send(internalBuf);
-					internalBuf = ByteBufPool.allocate(maxChunkSize);
-				}
-			}
-
-			buf.drainTo(internalBuf, buf.remaining());
-			assert internalBuf.position() < minChunkSize;
-
-			buf.recycle();
-		} catch (Exception e) {
-			onInternalError(e);
-		}
-	}
-
-	@Override
-	public void onProducerEndOfStream() {
-		internalBuf.flip();
-		if (internalBuf.hasRemaining()) {
-			send(internalBuf);
-		} else {
-			internalBuf.recycle();
-		}
-		internalBuf = null;
-		sendEndOfStream();
-	}
-
-	@Override
-	protected void onSuspended() {
-		suspendUpstream(); // TODO ?
-	}
-
-	@Override
-	protected void onResumed() {
-		resumeUpstream();
-	}
 }

@@ -18,7 +18,9 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamTransformer_M_1;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
@@ -138,8 +140,8 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 	}
 
 	private final Comparator<K> keyComparator;
-	private final InternalConsumer<L> left;
-	private final InternalConsumer<R> right;
+	private final StreamConsumer<L> left;
+	private final StreamConsumer<R> right;
 
 	private final ArrayDeque<L> leftDeque = new ArrayDeque<>();
 	private final ArrayDeque<R> rightDeque = new ArrayDeque<>();
@@ -164,64 +166,101 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 		super(eventloop);
 		this.keyComparator = checkNotNull(keyComparator);
 		this.joiner = checkNotNull(joiner);
-		this.left = addInput(new InternalConsumer<>(eventloop, leftDeque));
-		this.right = addInput(new InternalConsumer<>(eventloop, rightDeque));
+		this.left = addInput(new UpstreamConsumer<>(leftDeque));
+		this.right = addInput(new UpstreamConsumer<>(rightDeque));
 		this.leftKeyFunction = checkNotNull(leftKeyFunction);
 		this.rightKeyFunction = checkNotNull(rightKeyFunction);
 	}
 
-	@Override
-	protected void doProduce() {
-		if (internalProducer.getStatus() == AbstractStreamProducer.READY && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
-			L leftValue = leftDeque.peek();
-			K leftKey = leftKeyFunction.apply(leftValue);
-			R rightValue = rightDeque.peek();
-			K rightKey = rightKeyFunction.apply(rightValue);
-			for (; ; ) {
-				int compare = keyComparator.compare(leftKey, rightKey);
-				if (compare < 0) {
-					leftDeque.poll();
-					if (leftDeque.isEmpty())
-						break;
-					leftValue = leftDeque.peek();
-					leftKey = leftKeyFunction.apply(leftValue);
-				} else if (compare > 0) {
-					joiner.onLeftJoin(leftKey, leftValue, downstreamDataReceiver);
-					rightDeque.poll();
-					if (rightDeque.isEmpty())
-						break;
-					rightValue = rightDeque.peek();
-					rightKey = rightKeyFunction.apply(rightValue);
+	protected final class UpstreamConsumer<I> extends AbstractUpstreamConsumer<I> implements StreamDataReceiver<I> {
+		private final DownstreamProducer downstreamProducer = (DownstreamProducer) StreamJoin.this.downstreamProducer;
+		private final ArrayDeque<I> deque;
+
+		public UpstreamConsumer(ArrayDeque<I> deque) {
+			this.deque = deque;
+		}
+
+		@Override
+		public StreamDataReceiver<I> getDataReceiver() {
+			return this;
+		}
+
+		@Override
+		public void onData(I item) {
+			deque.add(item);
+			downstreamProducer.produce();
+		}
+
+		@Override
+		protected void onUpstreamStarted() {
+			downstreamProducer.produce();
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.produce();
+			close();
+		}
+	}
+
+	protected final class DownstreamProducer extends AbstractDownstreamProducer {
+		@Override
+		protected void onDownstreamStarted() {
+			produce();
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			suspendAllUpstreams();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			resumeProduce();
+		}
+
+		@Override
+		protected void doProduce() {
+			if (status == READY && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
+				L leftValue = leftDeque.peek();
+				K leftKey = leftKeyFunction.apply(leftValue);
+				R rightValue = rightDeque.peek();
+				K rightKey = rightKeyFunction.apply(rightValue);
+				for (; ; ) {
+					int compare = keyComparator.compare(leftKey, rightKey);
+					if (compare < 0) {
+						leftDeque.poll();
+						if (leftDeque.isEmpty())
+							break;
+						leftValue = leftDeque.peek();
+						leftKey = leftKeyFunction.apply(leftValue);
+					} else if (compare > 0) {
+						joiner.onLeftJoin(leftKey, leftValue, getDownstreamDataReceiver());
+						rightDeque.poll();
+						if (rightDeque.isEmpty())
+							break;
+						rightValue = rightDeque.peek();
+						rightKey = rightKeyFunction.apply(rightValue);
+					} else {
+						joiner.onInnerJoin(leftKey, leftValue, rightValue, getDownstreamDataReceiver());
+						leftDeque.poll();
+						if (leftDeque.isEmpty())
+							break;
+						if (status != READY)
+							break;
+						leftValue = leftDeque.peek();
+						leftKey = leftKeyFunction.apply(leftValue);
+					}
+				}
+			}
+			if (status == READY) {
+				if (allUpstreamsEndOfStream()) {
+					sendEndOfStream();
 				} else {
-					joiner.onInnerJoin(leftKey, leftValue, rightValue, downstreamDataReceiver);
-					leftDeque.poll();
-					if (leftDeque.isEmpty())
-						break;
-					if (status != READY)
-						break;
-					leftValue = leftDeque.peek();
-					leftKey = leftKeyFunction.apply(leftValue);
+					resumeAllUpstreams();
 				}
 			}
 		}
-		if (status == AbstractStreamProducer.READY) {
-			if (left.getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM
-					&& right.getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM) {
-				sendEndOfStream();
-			} else {
-				resumeAllUpstreams();
-			}
-		}
-	}
-
-	@Override
-	protected void onConsumerSuspended() {
-		suspendAllUpstreams();
-	}
-
-	@Override
-	protected void onResumed() {
-		resumeProduce();
 	}
 
 	/**
@@ -236,40 +275,6 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 	 */
 	public StreamConsumer<R> getRight() {
 		return right;
-	}
-
-	private final class InternalConsumer<I> extends AbstractStreamConsumer<I> implements StreamDataReceiver<I> {
-		private final ArrayDeque<I> deque;
-
-		public InternalConsumer(Eventloop eventloop, ArrayDeque<I> deque) {
-			super(eventloop);
-			this.deque = checkNotNull(deque);
-		}
-
-		@Override
-		public void onData(I item) {
-			deque.add(item);
-			produce();
-		}
-
-		@Override
-		public void onProducerEndOfStream() {
-			produce();
-		}
-
-		@Override
-		public void onProducerError(Exception e) {
-//			upstreamProducer.onConsumerError(e);
-//			onConsumerError(e);
-			super.onProducerError(e);
-//			StreamJoin.this.onClosedWithError(e);
-			internalProducer.getDownstream().onProducerError(e);
-		}
-
-		@Override
-		public StreamDataReceiver<I> getDataReceiver() {
-			return this;
-		}
 	}
 
 }

@@ -130,12 +130,8 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1_Statele
 		this.mapper = checkNotNull(mapper);
 	}
 
-	/**
-	 * Always return this object
-	 */
-	@SuppressWarnings("unchecked")
 	@Override
-	public StreamDataReceiver<I> getDataReceiver() {
+	protected StreamDataReceiver<I> getUpstreamDataReceiver() {
 		return this;
 	}
 

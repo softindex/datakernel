@@ -18,7 +18,6 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.AbstractStreamTransformer_1_N;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
@@ -34,93 +33,86 @@ import static java.lang.System.arraycopy;
  * @param <T> type of input items
  */
 @SuppressWarnings("unchecked")
-public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> implements StreamDataReceiver<T>, StreamSharderMBean {
-	private final Sharder<K> sharder;
-	private final Function<T, K> keyFunction;
-	private StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[]{};
-
+public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> implements StreamSharderMBean {
 	private long jmxItems;
 
-	public class InternalProducer extends AbstractStreamProducer<T> {
-		public InternalProducer(Eventloop eventloop) {
-			super(eventloop);
+	protected final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
+		protected StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[]{};
+		private final Sharder<K> sharder;
+		private final Function<T, K> keyFunction;
+
+		public UpstreamConsumer(Sharder<K> sharder, Function<T, K> keyFunction) {
+			this.sharder = sharder;
+			this.keyFunction = keyFunction;
+		}
+
+		protected void addDataReceiver() {
+			StreamDataReceiver<T>[] newDataReceivers = new StreamDataReceiver[dataReceivers.length + 1];
+			arraycopy(dataReceivers, 0, newDataReceivers, 0, dataReceivers.length);
+			dataReceivers = newDataReceivers;
+		}
+
+		@SuppressWarnings("AssertWithSideEffects")
+		@Override
+		public void onData(T item) {
+			assert jmxItems != ++jmxItems;
+			K key = keyFunction.apply(item);
+			int shard = sharder.shard(key);
+			StreamDataReceiver<T> streamCallback = dataReceivers[shard];
+			streamCallback.onData(item);
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return this;
+		}
+
+		@Override
+		protected void onUpstreamStarted() {
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			sendEndOfStreamToDownstreams();
+		}
+	}
+
+	protected final class DownstreamProducer extends AbstractDownstreamProducer<T> {
+		private final UpstreamConsumer upstreamConsumer = (UpstreamConsumer) StreamSharder.this.upstreamConsumer;
+
+		@Override
+		protected void onStarted() {
 		}
 
 		@Override
 		public void bindDataReceiver() {
 			super.bindDataReceiver();
-			dataReceivers[internalProducers.indexOf(this)] = downstreamDataReceiver;
+			upstreamConsumer.dataReceivers[index] = downstreamDataReceiver;
 		}
 
 		@Override
-		protected void onSuspended() {
-			internalConsumer.getUpstream().onConsumerSuspended();
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
 		}
 
 		@Override
-		protected void onResumed() {
+		protected void onDownstreamResumed() {
 			if (allOutputsResumed()) {
-				internalConsumer.getUpstream().onConsumerResumed();
+				upstreamConsumer.resume();
 			}
 		}
-
-//		@Override
-//		protected void onClosed() {
-////			closeUpstream();
-//		}
-
-//		@Override
-//		protected void onClosedWithError(Exception e) {
-//			onProducerError(e);
-//			downstreamConsumer.onProducerError(e);
-//		}
 	}
 
 	public StreamSharder(Eventloop eventloop, Sharder<K> sharder, Function<T, K> keyFunction) {
 		super(eventloop);
-		this.sharder = checkNotNull(sharder);
-		this.keyFunction = checkNotNull(keyFunction);
+		checkNotNull(sharder);
+		checkNotNull(keyFunction);
+		setUpstreamConsumer(new UpstreamConsumer(sharder, keyFunction));
 	}
 
 	public StreamProducer<T> newOutput() {
-		InternalProducer newOutput = new InternalProducer(eventloop);
-		addOutput(newOutput);
-
-		StreamDataReceiver<T>[] newDataReceivers = new StreamDataReceiver[dataReceivers.length + 1];
-		arraycopy(dataReceivers, 0, newDataReceivers, 0, dataReceivers.length);
-		dataReceivers = newDataReceivers;
-
-		return newOutput;
-	}
-
-	@Override
-	public void onUpstreamProducerEndOfStream() {
-		sendEndOfStreamToDownstreams();
-	}
-
-	@Override
-	protected StreamDataReceiver<T> getInternalDataReceiver() {
-		return this;
-	}
-
-//	@Override
-//	public StreamDataReceiver<T> getDataReceiver() {
-//		return this;
-//	}
-
-	/**
-	 * After receiving item, finds result for key function for item and streams to corresponding
-	 * it consumer
-	 *
-	 * @param item receiving item
-	 */
-	@Override
-	public void onData(T item) {
-		assert jmxItems != ++jmxItems;
-		K key = keyFunction.apply(item);
-		int shard = sharder.shard(key);
-		StreamDataReceiver<T> streamCallback = dataReceivers[shard];
-		streamCallback.onData(item);
+		((UpstreamConsumer) upstreamConsumer).addDataReceiver();
+		return addOutput(new DownstreamProducer());
 	}
 
 	@Override
@@ -135,4 +127,5 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		assert (items = "" + jmxItems) != null;
 		return '{' + super.toString() + " items:" + items + '}';
 	}
+
 }

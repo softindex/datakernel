@@ -29,208 +29,198 @@ import io.datakernel.stream.processor.StreamTransformer;
  */
 @SuppressWarnings("unchecked")
 public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTransformer<I, O> {
-	protected final AbstractStreamConsumer<I> internalConsumer;
-	protected final AbstractStreamProducer<O> internalProducer;
 	protected final Eventloop eventloop;
+
+	protected AbstractUpstreamConsumer upstreamConsumer;
+	protected AbstractDownstreamProducer downstreamProducer;
+	protected StreamDataReceiver<O> downstreamDataReceiver;
 
 	protected Object tag;
 
-	protected AbstractStreamTransformer_1_1(Eventloop eventloop) {
-		this.eventloop = eventloop;
-		internalConsumer = new AbstractStreamConsumer<I>(eventloop) {
-			@Override
-			public StreamDataReceiver<I> getDataReceiver() {
-				return AbstractStreamTransformer_1_1.this.getInternalDataReceiver();
-			}
+	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
+		protected int index;
 
-			@Override
-			protected void onClosed() {
-				AbstractStreamTransformer_1_1.this.onUpstreamProducerClosed();
-			}
-		};
+		public AbstractUpstreamConsumer() {
+			super(AbstractStreamTransformer_1_1.this.eventloop);
+		}
 
-		internalProducer = new AbstractStreamProducer<O>(eventloop) {
-			@Override
-			protected void onSuspended() {
-				AbstractStreamTransformer_1_1.this.onDownstreamConsumerSuspended();
-			}
+		@Override
+		protected final void onStarted() {
+			onUpstreamStarted();
+		}
 
-			@Override
-			protected void onResumed() {
-				AbstractStreamTransformer_1_1.this.onDownstreamConsumerResumed();
-			}
+		protected abstract void onUpstreamStarted();
 
-			// TODO (vsavchuk) глянути які методи використовуються при наслідуванні
-		};
+		@Override
+		protected final void onEndOfStream() {
+			onUpstreamEndOfStream();
+		}
+
+		protected abstract void onUpstreamEndOfStream();
+
+		@Override
+		protected void onError(Exception e) {
+			downstreamProducer.closeWithError(e);
+		}
+
+		@Override
+		public void suspend() {
+			super.suspend();
+		}
+
+		@Override
+		public void resume() {
+			super.resume();
+		}
+
+		@Override
+		public void close() {
+			super.close();
+		}
+
+		@Override
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
 	}
 
-	protected abstract void onUpstreamProducerClosed();
+	protected abstract class AbstractDownstreamProducer extends AbstractStreamProducer<O> {
+		protected int index;
 
-//	@Override
-//	public StreamConsumer<I> getInput() {
-//		return internalConsumer;
-//	}
-//
-//	@Override
-//	public StreamProducer<O> getOutput() {
-//		return internalProducer;
-//	}
+		public AbstractDownstreamProducer() {
+			super(AbstractStreamTransformer_1_1.this.eventloop);
+		}
 
-	protected abstract StreamDataReceiver<I> getInternalDataReceiver();
+		@Override
+		public final void bindDataReceiver() {
+			super.bindDataReceiver();
+			AbstractStreamTransformer_1_1.this.downstreamDataReceiver = this.downstreamDataReceiver;
+			upstreamConsumer.getUpstream().bindDataReceiver();
+		}
+
+		@Override
+		protected final void onStarted() {
+			upstreamConsumer.getUpstream().bindDataReceiver();
+			onDownstreamStarted();
+		}
+
+		protected abstract void onDownstreamStarted();
+
+		@Override
+		protected final void onError(Exception e) {
+			upstreamConsumer.closeWithError(e);
+		}
+
+		@Override
+		protected final void onSuspended() {
+			onDownstreamSuspended();
+		}
+
+		protected abstract void onDownstreamSuspended();
+
+		@Override
+		protected final void onResumed() {
+			onDownstreamResumed();
+		}
+
+		protected abstract void onDownstreamResumed();
+
+		@Override
+		public void produce() {
+			super.produce();
+		}
+
+		@Override
+		public void send(O item) {
+			super.send(item);
+		}
+
+		@Override
+		public void sendEndOfStream() {
+			super.sendEndOfStream();
+		}
+	}
+
+	protected AbstractStreamTransformer_1_1(Eventloop eventloop) {
+		this.eventloop = eventloop;
+	}
+
+	protected void closeWithError(Exception e) {
+		downstreamProducer.closeWithError(e);
+		upstreamConsumer.closeWithError(e);
+	}
+
+	// upstream
 
 	@Override
 	public final StreamDataReceiver<I> getDataReceiver() {
-		return internalConsumer.getDataReceiver();
+		return upstreamConsumer.getDataReceiver();
 	}
 
 	@Override
 	public final void onProducerEndOfStream() {
-		internalConsumer.onProducerEndOfStream();
+		upstreamConsumer.onProducerEndOfStream();
 	}
 
 	@Override
 	public final void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-		internalConsumer.addConsumerCompletionCallback(completionCallback);
-	}
-
-	@Override
-	public final void streamTo(StreamConsumer<O> downstreamConsumer) {
-		internalProducer.streamTo(downstreamConsumer);
-	}
-
-	@Override
-	public final StreamConsumer<O> getDownstream() {
-		return internalProducer.getDownstream();
-	}
-
-	@Override
-	public final void onConsumerSuspended() {
-		internalProducer.onConsumerSuspended();
-	}
-
-	@Override
-	public final void onConsumerResumed() {
-		internalProducer.onConsumerResumed();
-	}
-
-	@Override
-	public final void onConsumerError(Exception e) {
-		internalProducer.onConsumerError(e);
-	}
-
-	@Override
-	public final void addProducerCompletionCallback(CompletionCallback completionCallback) {
-		internalProducer.addProducerCompletionCallback(completionCallback);
+		upstreamConsumer.addConsumerCompletionCallback(completionCallback);
 	}
 
 	@Override
 	public final void onProducerError(Exception e) {
-		internalConsumer.onProducerError(e);
-	}
-
-	@Override
-	public final void setUpstream(StreamProducer<I> upstreamProducer) {
-		internalConsumer.setUpstream(upstreamProducer);
+		upstreamConsumer.onProducerError(e);
 	}
 
 	@Override
 	public final StreamProducer<I> getUpstream() {
-		return internalConsumer.getUpstream();
+		return upstreamConsumer.getUpstream();
+	}
+
+	@Override
+	public final void setUpstream(StreamProducer<I> upstreamProducer) {
+		upstreamConsumer.setUpstream(upstreamProducer);
+	}
+
+	// downstream
+
+	@Override
+	public final void streamTo(StreamConsumer<O> downstreamConsumer) {
+		downstreamProducer.streamTo(downstreamConsumer);
+	}
+
+	@Override
+	public final StreamConsumer<O> getDownstream() {
+		return downstreamProducer.getDownstream();
+	}
+
+	@Override
+	public final void onConsumerSuspended() {
+		downstreamProducer.onConsumerSuspended();
+	}
+
+	@Override
+	public final void onConsumerResumed() {
+		downstreamProducer.onConsumerResumed();
+	}
+
+	@Override
+	public final void onConsumerError(Exception e) {
+		downstreamProducer.onConsumerError(e);
+	}
+
+	@Override
+	public final void addProducerCompletionCallback(CompletionCallback completionCallback) {
+		downstreamProducer.addProducerCompletionCallback(completionCallback);
 	}
 
 	@Override
 	public final void bindDataReceiver() {
-		internalProducer.bindDataReceiver();
+		downstreamProducer.bindDataReceiver();
+		if (upstreamConsumer.getUpstream() != null) {
+			upstreamConsumer.getUpstream().bindDataReceiver();
+		}
 	}
-
-	//	@Override
-//	public void setUpstream(final StreamProducer<I> upstreamProducer) {
-//		checkNotNull(upstreamProducer);
-//		checkState(this.upstreamProducer == null, "Already wired");
-//		this.upstreamProducer = upstreamProducer;
-//
-//		addConsumerCompletionCallback(new CompletionCallback() {
-//			@Override
-//			public void onComplete() {
-//
-//			}
-//
-//			@Override
-//			public void onException(Exception exception) {
-//				upstreamProducer.onConsumerError(exception);
-//				downstreamConsumer.onProducerError(exception);
-//				closedWithError(exception);
-//			}
-//		});
-//
-//		eventloop.post(new Runnable() {
-//			@Override
-//			public void run() {
-//				onConsumerStarted();
-//			}
-//		});
-//	}
-
-//	protected void onConsumerStarted() {
-//	}
-//
-//	@Override
-//	public void bindDataReceiver() {
-//		super.bindDataReceiver();
-//		if (upstreamProducer != null) {
-//			upstreamProducer.bindDataReceiver();
-//		}
-//	}
-//
-//	@Override
-//	@Nullable
-//	public StreamProducer<I> getUpstream() {
-//		return upstreamProducer;
-//	}
-//
-//	public byte getUpstreamStatus() {
-//		return ((AbstractStreamProducer)upstreamProducer).getStatus();
-//	}
-//
-//	@Override
-//	public void onClosed() {
-////		upstreamProducer.close();
-////		downstreamConsumer.onProducerEndOfStream();
-//		// TODO (vsavchuk) поудаляти всі System.out.println();
-//		System.out.println("Transformer onClosed()");
-//		close();
-//	}
-//
-////	@Override
-////	protected void onClosedWithError(Exception e) {
-////		upstreamProducer.onConsumerError(e);
-////		downstreamConsumer.onProducerError(e);
-////		closedWithError(e);
-////	}
-//
-//	@Override
-//	public void onProducerError(Exception e) {
-//		downstreamConsumer.onProducerError(e);
-//		upstreamProducer.onConsumerError(e);
-//		closedWithError(e);
-//	}
-//
-//	protected final void resumeUpstream() {
-//		upstreamProducer.onConsumerResumed();
-//	}
-//
-//	protected final void suspendUpstream() {
-//		upstreamProducer.onConsumerSuspended();
-//	}
-//
-////	protected final void closeUpstream() {
-////		upstreamProducer.close();
-////	}
-//
-//	protected final void closeUpstreamWithError(Exception e) {
-//		upstreamProducer.onConsumerError(e);
-//		closedWithError(e);
-//	}
 
 	// misc
 
@@ -243,9 +233,4 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		return tag != null ? tag.toString() : super.toString();
 	}
 
-	protected abstract void onDownstreamConsumerSuspended();
-
-	protected abstract void onDownstreamConsumerResumed();
-
-	protected abstract void onUpstreamProducerEndOfStream();
 }

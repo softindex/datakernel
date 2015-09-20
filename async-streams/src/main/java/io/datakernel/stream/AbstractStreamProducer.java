@@ -54,7 +54,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public static final byte READY = 0;
 	public static final byte SUSPENDED = 1;
 	public static final byte END_OF_STREAM = 2;
-	public static final byte CLOSED = 3;
 	public static final byte CLOSED_WITH_ERROR = 4;
 
 	/**
@@ -64,7 +63,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 * @param downstreamConsumer consumer for streaming
 	 */
 	@Override
-	public void streamTo(StreamConsumer<T> downstreamConsumer) {
+	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
 		checkNotNull(downstreamConsumer);
 		checkState(this.downstreamConsumer == null, "Producer is already wired");
 		checkArgument(downstreamConsumer.getUpstream() == null, "Consumer is already wired");
@@ -79,7 +78,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			@Override
 			public void run() {
 				if (status < END_OF_STREAM) {
-					onProducerStarted();
+					onStarted();
 				}
 			}
 		});
@@ -90,34 +89,22 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 *
 	 * @param item item to be sent
 	 */
-	public void send(T item) {
+	protected void send(T item) {
 		assert status < END_OF_STREAM;
 		downstreamDataReceiver.onData(item);
-	}
-
-	public final void sendEndOfStream() {
-		if (status < END_OF_STREAM) {
-			status = END_OF_STREAM;
-			downstreamConsumer.onProducerEndOfStream();
-			close();
-		}
-	}
-
-	public final void sendError(Exception e) {
-		downstreamConsumer.onProducerError(e);
-		closedWithError(e);
 	}
 
 	protected void doProduce() {
 	}
 
-	protected final void produce() {
+	protected void produce() {
 		if (status != READY)
 			return;
 		try {
 			doProduce();
 		} catch (Exception e) {
-			onInternalError(e);
+			closeWithError(e, true);
+			onError(e);
 		}
 	}
 
@@ -130,16 +117,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		});
 	}
 
-	protected void onProducerStarted() {
-	}
-
-	protected void onInternalError(Exception e) {
-		closedWithError(e);
-	}
+	protected abstract void onStarted();
 
 	@Override
 	@Nullable
-	public StreamConsumer<T> getDownstream() {
+	public final StreamConsumer<T> getDownstream() {
 		return downstreamConsumer;
 	}
 
@@ -155,8 +137,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return downstreamDataReceiver;
 	}
 
-	protected void onSuspended() {
-	}
+	abstract protected void onSuspended();
 
 	@Override
 	public final void onConsumerSuspended() {
@@ -166,8 +147,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		onSuspended();
 	}
 
-	protected void onResumed() {
-	}
+	abstract protected void onResumed();
 
 	@Override
 	public final void onConsumerResumed() {
@@ -177,70 +157,58 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		onResumed();
 	}
 
-	// replace with CompletionCallback
-//	protected void onClosed() {
-//	}
-
-//	@Override
-//	public final void close() {
-//	 	if (status >= CLOSED)
-//			return;
-//		logger.trace("StreamProducer {} closed", this);
-//		status = CLOSED;
-//		for (CompletionCallback completionCallback : completionCallbacks) {
-//			completionCallback.onComplete();
-//		}
-//		completionCallbacks.clear();
-//		onClosed();
-//	}
-
-	protected void close() {
-		if (status >= CLOSED)
+	protected void sendEndOfStream() {
+		if (status >= END_OF_STREAM)
 			return;
-		status = CLOSED;
+		status = END_OF_STREAM;
+		downstreamConsumer.onProducerEndOfStream();
 		for (CompletionCallback callback : completionCallbacks) {
 			callback.onComplete();
 		}
 		completionCallbacks.clear();
 	}
 
-	protected void closedWithError(Exception e) {
-		if (status >= CLOSED)
+	private void closeWithError(Exception e, boolean sendToConsumer) {
+		if (status >= END_OF_STREAM)
 			return;
 		status = CLOSED_WITH_ERROR;
-		logger.error("StreamConsumer {} closed with error", this, e);
 		error = e;
-		downstreamConsumer.onProducerError(e);
+		logger.error("StreamProducer {} closed with error", this, e);
+		if (sendToConsumer) {
+			downstreamConsumer.onProducerError(e);
+		}
 		for (CompletionCallback callback : completionCallbacks) {
 			callback.onException(e);
 		}
 		completionCallbacks.clear();
 	}
 
-	// replace with CompletionCallback
-//	protected void onClosedWithError(Exception e) {
-//		downstreamConsumer.onProducerError(e);
-//	}
+	protected final void closeWithError(Exception e) {
+		closeWithError(e, true);
+	}
 
 	@Override
 	public final void onConsumerError(Exception e) {
-		closedWithError(e);
+		closeWithError(e, false);
+		onError(e);
 	}
+
+	protected abstract void onError(Exception e);
 
 	/**
 	 * Returns current status of this producer
 	 *
 	 * @return current status of this producer
 	 */
-	public byte getStatus() {
+	public final byte getStatus() {
 		return status;
 	}
 
 	@Override
-	public void addProducerCompletionCallback(final CompletionCallback completionCallback) {
+	public final void addProducerCompletionCallback(final CompletionCallback completionCallback) {
 		checkNotNull(completionCallback);
 		checkArgument(!completionCallbacks.contains(completionCallback));
-		if (status >= CLOSED) {
+		if (status >= END_OF_STREAM) {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {

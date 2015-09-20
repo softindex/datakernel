@@ -26,25 +26,45 @@ import io.datakernel.eventloop.Eventloop;
  */
 public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends AbstractStreamTransformer_1_1<I, O> {
 
+	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+		@Override
+		protected void onUpstreamStarted() {
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.sendEndOfStream();
+			close();
+		}
+
+		@Override
+		public StreamDataReceiver<I> getDataReceiver() {
+			return AbstractStreamTransformer_1_1_Stateless.this.getUpstreamDataReceiver();
+		}
+	}
+
+	protected final class DownstreamProducer extends AbstractDownstreamProducer {
+		@Override
+		protected void onDownstreamStarted() {
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+	}
+
 	protected AbstractStreamTransformer_1_1_Stateless(Eventloop eventloop) {
 		super(eventloop);
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer();
 	}
 
-	@Override
-	protected void onDownstreamConsumerSuspended() {
-		super.onConsumerSuspended();
-		internalConsumer.getUpstream().onConsumerSuspended();
-	}
+	protected abstract StreamDataReceiver<I> getUpstreamDataReceiver();
 
-	@Override
-	protected void onDownstreamConsumerResumed() {
-		super.onConsumerResumed();
-		internalConsumer.getUpstream().onConsumerResumed();
-	}
-
-	@Override
-	protected void onUpstreamProducerEndOfStream() {
-		super.onProducerEndOfStream();
-		internalProducer.getDownstream().onProducerEndOfStream();
-	}
 }
