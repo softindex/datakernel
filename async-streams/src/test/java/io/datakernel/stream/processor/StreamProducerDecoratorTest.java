@@ -34,14 +34,14 @@ public class StreamProducerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 		List<Integer> list = new ArrayList<>();
 
-		StreamConsumers.ToList consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
+		TestStreamConsumers.TestConsumerToList consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
 				if (item == 3) {
 					upstreamProducer.onConsumerError(new Exception());
 					return;
 				}
-				super.onData(item);
+				list.add(item);
 				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
@@ -71,7 +71,7 @@ public class StreamProducerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList consumer = StreamConsumers.toListOneByOne(eventloop, list);
+		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(eventloop, producer) {
 		};

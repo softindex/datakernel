@@ -137,7 +137,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 
 		if (saveProducer != null) {
 			if (bufferFull) {
-				suspendUpstream();
+				suspend();
 			}
 			return;
 		}
@@ -187,19 +187,21 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 			return;
 		}
 
-		resumeUpstream();
+		resume();
 	}
 
-	/**
-	 * After producer end of stream it sorts elements and stream it to consumer
-	 */
 	@Override
-	public void onProducerEndOfStream() {
+	protected void onStarted() {
+
+	}
+
+	@Override
+	protected void onEndOfStream() {
 		nextState();
 	}
 
 	@Override
-	public void onProducerError(Exception e) {
+	protected void onError(Exception e) {
 		result.onProducerError(e);
 		upstreamProducer.onConsumerError(e);
 	}

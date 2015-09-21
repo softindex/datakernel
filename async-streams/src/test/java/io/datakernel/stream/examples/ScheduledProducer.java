@@ -33,6 +33,11 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 		super(eventloop);
 	}
 
+	@Override
+	protected void onStarted() {
+		scheduleNext();
+	}
+
 	private void cancel() {
 		if (scheduledRunnable != null) {
 			scheduledRunnable.cancel();
@@ -58,10 +63,10 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 		});
 	}
 
-	@Override
-	public void onProducerStarted() {
-		scheduleNext();
-	}
+//	@Override
+//	public void onProducerStarted() {
+//		scheduleNext();
+//	}
 
 	@Override
 	protected void onSuspended() {
@@ -74,12 +79,17 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 	}
 
 	@Override
-	protected void onClosed() {
-		cancel();
+	protected void onError(Exception e) {
+
 	}
 
-	@Override
-	protected void onClosedWithError(Exception e) {
-		cancel();
-	}
+//	@Override
+//	protected void onClosed() {
+//		cancel();
+//	}
+
+//	@Override
+//	protected void onClosedWithError(Exception e) {
+//		cancel();
+//	}
 }

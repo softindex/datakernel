@@ -46,7 +46,7 @@ public class StreamUnionTest {
 		StreamProducer<Integer> source5 = StreamProducers.ofIterable(eventloop, asList(6));
 		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source0.streamTo(streamUnion.newInput());
 		source1.streamTo(streamUnion.newInput());
@@ -82,10 +82,10 @@ public class StreamUnionTest {
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(6, 7));
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
-				super.onData(item);
+				list.add(item);
 				if (item == 5) {
 					onProducerError(new Exception());
 					return;
@@ -175,7 +175,7 @@ public class StreamUnionTest {
 		);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumer<Integer> consumer = StreamConsumers.toListOneByOne(eventloop, list);
+		StreamConsumer<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 
 		source0.streamTo(streamUnion.newInput());
 		source1.streamTo(streamUnion.newInput());

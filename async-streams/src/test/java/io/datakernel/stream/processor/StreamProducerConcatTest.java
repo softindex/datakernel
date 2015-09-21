@@ -35,12 +35,12 @@ public class StreamProducerConcatTest {
 		AsyncIteratorWithSetter<StreamProducer<Integer>> producerSetter = AsyncIteratorWithSetter.createAsyncIteratorWithSetter(eventloop);
 
 		StreamProducer<Integer> producer = new StreamProducers.StreamProducerConcat<>(eventloop, producerSetter);
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertFalse(consumer.getUpstreamStatus() == AbstractStreamProducer.CLOSED);
+		assertFalse(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		producerSetter.onNext(source1);
 		eventloop.run();
@@ -52,10 +52,10 @@ public class StreamProducerConcatTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertTrue(consumer.getUpstreamStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 //		assertNull(source1.getWiredConsumerStatus());
 //		assertNull(source2.getWiredConsumerStatus());
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

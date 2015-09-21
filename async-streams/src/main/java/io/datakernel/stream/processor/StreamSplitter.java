@@ -17,7 +17,6 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.AbstractStreamTransformer_1_N;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
@@ -34,44 +33,37 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 		super(eventloop);
 	}
 
-	public class InternalProducer extends AbstractStreamProducer<T> {
-		public InternalProducer(Eventloop eventloop) {
-			super(eventloop);
+	protected final class DownstreamProducer extends AbstractDownstreamProducer<T> {
+
+		@Override
+		protected final void onDownstreamSuspended() {
+			upstreamConsumer.getUpstream().onConsumerSuspended();
+		}
+
+		@Override
+		protected final void onDownstreamResumed() {
+			if (allOutputsResumed()) {
+				upstreamConsumer.getUpstream().onConsumerResumed();
+			}
+		}
+
+		@Override
+		protected final void onStarted() {
+
 		}
 
 		@Override
 		public void bindDataReceiver() {
 			super.bindDataReceiver();
-			dataReceivers[internalProducers.indexOf(this)] = downstreamDataReceiver;
-			onDataReceiverChanged(internalProducers.indexOf(this));
+			dataReceivers[downstreamProducers.indexOf(this)] = downstreamDataReceiver;
+			onDataReceiverChanged(downstreamProducers.indexOf(this));
 		}
 
-		@Override
-		protected void onSuspended() {
-			internalConsumer.getUpstream().onConsumerSuspended();
-		}
 
-		@Override
-		protected void onResumed() {
-			if (allOutputsResumed()) {
-				internalConsumer.getUpstream().onConsumerResumed();
-			}
-		}
-
-//		@Override
-//		protected void onClosed() {
-////			closeUpstream();
-//		}
-
-//		@Override
-//		protected void onClosedWithError(Exception e) {
-//			onProducerError(e);
-//			downstreamConsumer.onProducerError(e);
-//		}
 	}
 
 	public StreamProducer<T> newOutput() {
-		InternalProducer newOutput = new InternalProducer(eventloop);
+		DownstreamProducer newOutput = new DownstreamProducer();
 		addOutput(newOutput);
 
 		StreamDataReceiver<T>[] newDataReceivers = new StreamDataReceiver[dataReceivers.length + 1];
@@ -80,22 +72,6 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 
 		return newOutput;
 	}
-
-	@Override
-	public void onUpstreamProducerEndOfStream() {
-		sendEndOfStreamToDownstreams();
-//		close();
-	}
-
-	@Override
-	protected StreamDataReceiver<T> getInternalDataReceiver() {
-		return this;
-	}
-
-	//	@Override
-//	public StreamDataReceiver<T> getDataReceiver() {
-//		return this;
-//	}
 
 	@SuppressWarnings("AssertWithSideEffects")
 	@Override

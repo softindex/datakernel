@@ -185,9 +185,25 @@ public class StreamProducers {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			sendEndOfStream();
 		}
+
+		@Override
+		protected void onSuspended() {
+
+		}
+
+		@Override
+		protected void onResumed() {
+
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
+		}
+
 	}
 
 	/**
@@ -204,14 +220,49 @@ public class StreamProducers {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			onConsumerError(exception);
+		}
+
+		@Override
+		protected void onSuspended() {
+
+		}
+
+		@Override
+		protected void onResumed() {
+
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 	}
 
 	public static class Idle<T> extends AbstractStreamProducer<T> {
 		public Idle(Eventloop eventloop) {
 			super(eventloop);
+		}
+
+		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
+		protected void onSuspended() {
+
+		}
+
+		@Override
+		protected void onResumed() {
+
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 	}
 
@@ -255,13 +306,23 @@ public class StreamProducers {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			produce();
+		}
+
+		@Override
+		protected void onSuspended() {
+
 		}
 
 		@Override
 		protected void onResumed() {
 			resumeProduce();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 	}
 
@@ -298,10 +359,30 @@ public class StreamProducers {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void doProduce() {
 			send(value);
 			if (sendEndOfStream)
 				sendEndOfStream();
+		}
+
+		@Override
+		protected void onStarted() {
+			produce();
+		}
+
+		@Override
+		protected void onSuspended() {
+
+		}
+
+		@Override
+		protected void onResumed() {
+			resumeProduce();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 	}
 

@@ -35,6 +35,10 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	protected final List<AbstractDownstreamProducer<?>> downstreamProducers = new ArrayList<>();
 	private int suspendedProducersCount;
 
+	protected void onDataReceiverChanged(int outputIndex) {
+
+	}
+
 	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
 		public AbstractUpstreamConsumer() {
 			super(AbstractStreamTransformer_1_N.this.eventloop);

@@ -39,6 +39,7 @@ import static java.lang.Math.max;
  * @param <T> original type of data
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
+// TODO (vsavchuk) StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1
 public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1_Stateless<T, ByteBuf> implements StreamSerializer<T>, StreamDataReceiver<T>, StreamBinarySerializerMBean {
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinarySerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
@@ -113,7 +114,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			byteBuf.limit(size);
 			jmxBytes += size;
 			jmxBufs++;
-			if (internalProducer.getStatus() <= AbstractStreamProducer.SUSPENDED) {
+			if (downstreamProducer.getStatus() <= AbstractStreamProducer.SUSPENDED) {
 				receiver.onData(byteBuf);
 			}
 		} else {
@@ -124,7 +125,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 	private void ensureSize(int size) {
 		if (outputBuffer.remaining() < size) {
-			flushBuffer(internalProducer.getDownstreamDataReceiver());
+			flushBuffer(downstreamProducer.getDownstreamDataReceiver());
 		}
 	}
 
@@ -202,33 +203,18 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		if (skipSerializationErrors) {
 			logger.warn("Skipping serialization error in {} : {}", this, e.toString());
 		} else {
-//			onConsumerError(e);
-//			downstreamConsumer.onProducerError(e);
-			internalProducer.getDownstream().onProducerError(e);
+			downstreamProducer.getDownstream().onProducerError(e);
 		}
 	}
 
-//	@Override
-//	public StreamDataReceiver<T> getDataReceiver() {
-//		return this;
-//	}
-
 	@Override
-	protected StreamDataReceiver<T> getInternalDataReceiver() {
-		return this;
-	}
-
-	/**
-	 * After end of stream,  it flushes all received bytes to recipient
-	 */
-	@Override
-	public void onUpstreamProducerClosed() {
-		flushBuffer(internalProducer.getDownstreamDataReceiver());
+	protected void onUpstreamEndOfStream() {
+		flushBuffer(downstreamProducer.getDownstreamDataReceiver());
 		byteBuf.recycle();
 		byteBuf = null;
 		outputBuffer.set(null, 0);
-		logger.trace("endOfStream {}, upstream: {}", this, internalConsumer.getUpstream());
-		internalProducer.sendEndOfStream();
+		logger.trace("endOfStream {}, upstream: {}", this, upstreamConsumer.getUpstream());
+		downstreamProducer.sendEndOfStream();
 	}
 
 	/**
@@ -236,7 +222,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	 */
 	@Override
 	public void flush() {
-		flushBuffer(internalProducer.getDownstreamDataReceiver());
+		flushBuffer(downstreamProducer.getDownstreamDataReceiver());
 		flushPosted = false;
 	}
 
@@ -246,7 +232,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			eventloop.postLater(new Runnable() {
 				@Override
 				public void run() {
-					if (internalProducer.getStatus() < AbstractStreamProducer.END_OF_STREAM) {
+					if (downstreamProducer.getStatus() < AbstractStreamProducer.END_OF_STREAM) {
 						flush();
 					}
 				}
@@ -255,26 +241,13 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			eventloop.scheduleBackground(eventloop.currentTimeMillis() + flushDelayMillis, new Runnable() {
 				@Override
 				public void run() {
-					if (internalProducer.getStatus() < AbstractStreamProducer.END_OF_STREAM) {
+					if (downstreamProducer.getStatus() < AbstractStreamProducer.END_OF_STREAM) {
 						flush();
 					}
 				}
 			});
 		}
 	}
-
-	// TODO (vsavchuk) поставити recycleBufs там де треба
-//	@Override
-//	public void onClosed() {
-//		super.onClosed();
-//		recycleBufs();
-//	}
-
-//	@Override
-//	protected void onClosedWithError(Exception e) {
-//		super.onClosedWithError(e);
-//		recycleBufs();
-//	}
 
 	private void recycleBufs() {
 		if (byteBuf != null) {
@@ -316,5 +289,10 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				+ " items:" + (assertOn ? "" + jmxItems : "?")
 				+ " bufs:" + jmxBufs
 				+ " bytes:" + jmxBytes + '}';
+	}
+
+	@Override
+	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
+		return this;
 	}
 }

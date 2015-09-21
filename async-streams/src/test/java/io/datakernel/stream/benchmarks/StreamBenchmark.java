@@ -402,13 +402,28 @@ public class StreamBenchmark {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			produce();
 		}
 
 		@Override
+		protected void onSuspended() {
+
+		}
+
+//		@Override
+//		protected void onProducerStarted() {
+//			produce();
+//		}
+
+		@Override
 		protected void onResumed() {
 			resumeProduce();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 	}
 
@@ -428,20 +443,37 @@ public class StreamBenchmark {
 		}
 
 		@Override
-		public void onProducerEndOfStream() {
-//			upstreamProducer.close();
+		protected void onStarted() {
+
+		}
+
+//		@Override
+//		public void onProducerEndOfStream() {
+////			upstreamProducer.close();
+//			close();
+//		}
+
+		@Override
+		protected void onEndOfStream() {
 			close();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 
 		@Override
 		public void onData(Integer item) {
 			if (receivedValues == suspendPeriod) {
 				receivedValues = 0;
-				suspendUpstream();
+//				suspendUpstream();
+				suspend();
 				this.eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						resumeUpstream();
+//						resumeUpstream();
+						resume();
 					}
 				});
 

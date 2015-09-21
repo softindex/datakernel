@@ -85,7 +85,7 @@ public class StreamRewiringTest {
 
 		assertEquals(asList("1", "2", "3"), consumer2.getList());
 		assertNotNull(consumer1.getUpstream());
-		assertFalse(consumer1.getUpstreamStatus() == AbstractStreamProducer.CLOSED);
+		assertFalse(((AbstractStreamProducer)consumer1.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(producer.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 

@@ -31,6 +31,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 @SuppressWarnings("unchecked")
 public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer<O> {
+	protected final List<AbstractUpstreamConsumer<?>> upstreamConsumers = new ArrayList<>();
+	protected AbstractDownstreamProducer downstreamProducer;
+
+	protected int countEndOfStreams = 0;
+
 	protected final Eventloop eventloop;
 
 	protected abstract class AbstractUpstreamConsumer<I> extends AbstractStreamConsumer<I> {
@@ -150,11 +155,6 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 			super.sendEndOfStream();
 		}
 	}
-
-	protected final List<AbstractUpstreamConsumer<?>> upstreamConsumers = new ArrayList<>();
-	protected AbstractDownstreamProducer downstreamProducer;
-
-	protected int countEndOfStreams = 0;
 
 	/**
 	 * Creates a new instance of this object

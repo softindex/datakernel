@@ -44,7 +44,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_INT, consumer1.getList().get(0));
-		assertTrue(producer1.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(producer1.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		StreamConsumers.ToList<String> consumer2 = new StreamConsumers.ToList<>(eventloop, new LinkedList<String>());
 		StreamProducers.OfValue<String> producer2 = new StreamProducers.OfValue<>(eventloop, TEST_STRING);
@@ -52,7 +52,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_STRING, consumer2.getList().get(0));
-		assertTrue(producer2.getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(producer2.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		StreamConsumers.ToList<DataItem1> consumer3 = new StreamConsumers.ToList<>(eventloop, new LinkedList<DataItem1>());
 		StreamProducers.OfValue<DataItem1> producer3 = new StreamProducers.OfValue<>(eventloop, TEST_OBJECT);

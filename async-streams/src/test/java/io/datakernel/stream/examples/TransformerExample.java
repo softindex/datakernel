@@ -18,10 +18,7 @@ package io.datakernel.stream.examples;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
 
 import static io.datakernel.stream.StreamProducers.ofIterable;
 import static java.util.Arrays.asList;
@@ -41,15 +38,20 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1_Stat
 	}
 
 	@Override
-	public StreamDataReceiver<String> getDataReceiver() {
+	protected StreamDataReceiver<String> getUpstreamDataReceiver() {
 		return this;
+	}
+
+	@Override
+	protected void onUpstreamEndOfStream() {
+		downstreamProducer.sendEndOfStream();
 	}
 
 	@Override
 	public void onData(String item) {
 		int len = item.length();
 		if (len < MAX_LENGTH) {
-			send(len);
+			downstreamProducer.send(len);
 		}
 	}
 
@@ -60,7 +62,7 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1_Stat
 
 		TransformerExample transformer = new TransformerExample(eventloop);
 
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(transformer);
 		transformer.streamTo(consumer);

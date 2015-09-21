@@ -60,6 +60,12 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Statele
 		return predicate == Predicates.alwaysTrue() ? downstreamDataReceiver : this;
 	}
 
+	@Override
+	protected void onUpstreamEndOfStream() {
+		downstreamProducer.sendEndOfStream();
+		upstreamConsumer.close();
+	}
+
 	/**
 	 * Checks  predicate's verity and if it is true, sends data to the destination.
 	 *

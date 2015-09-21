@@ -44,8 +44,8 @@ public class StreamSharderTest {
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
-		StreamConsumers.ToList<Integer> consumer1 = StreamConsumers.toListRandomlySuspending(eventloop);
-		StreamConsumers.ToList<Integer> consumer2 = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(streamSharder);
 		streamSharder.newOutput().streamTo(consumer1);
@@ -65,8 +65,8 @@ public class StreamSharderTest {
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
-		StreamConsumers.ToList<Integer> consumer1 = StreamConsumers.toListRandomlySuspending(eventloop);
-		StreamConsumers.ToList<Integer> consumer2 = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(streamSharder);
 		streamSharder.newOutput().streamTo(consumer1);
@@ -91,10 +91,10 @@ public class StreamSharderTest {
 		StreamConsumers.ToList<Integer> consumer1 = new StreamConsumers.ToList<Integer>(eventloop, list1);
 
 		List<Integer> list2 = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumer2 = new StreamConsumers.ToList<Integer>(eventloop, list2) {
+		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list2) {
 			@Override
 			public void onData(Integer item) {
-				super.onData(item);
+				list.add(item);
 				if (item == 3) {
 					onProducerError(new Exception());
 					return;
@@ -176,9 +176,9 @@ public class StreamSharderTest {
 		);
 
 		List<Integer> list1 = new ArrayList<>();
-		StreamConsumer<Integer> consumer1 = StreamConsumers.toListOneByOne(eventloop, list1);
+		StreamConsumer<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop, list1);
 		List<Integer> list2 = new ArrayList<>();
-		StreamConsumer<Integer> consumer2 = StreamConsumers.toListOneByOne(eventloop, list2);
+		StreamConsumer<Integer> consumer2 = TestStreamConsumers.toListOneByOne(eventloop, list2);
 
 		source.streamTo(streamSharder);
 		streamSharder.newOutput().streamTo(consumer1);

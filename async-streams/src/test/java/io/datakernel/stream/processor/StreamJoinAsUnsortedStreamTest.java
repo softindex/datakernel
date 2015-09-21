@@ -20,10 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -150,7 +147,7 @@ public class StreamJoinAsUnsortedStreamTest {
 						}
 				);
 
-		StreamConsumers.ToList<DataItemMasterDetail> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<DataItemMasterDetail> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
@@ -214,10 +211,10 @@ public class StreamJoinAsUnsortedStreamTest {
 						}
 				);
 
-		StreamConsumers.ToList<DataItemMasterDetail> consumer = new StreamConsumers.ToList<DataItemMasterDetail>(eventloop, list) {
+		TestStreamConsumers.TestConsumerToList<DataItemMasterDetail> consumer = new TestStreamConsumers.TestConsumerToList<DataItemMasterDetail>(eventloop, list) {
 			@Override
 			public void onData(DataItemMasterDetail item) {
-				super.onData(item);
+				list.add(item);
 				if (item.master.equals("masterB+")) {
 					onProducerError(new Exception());
 					return;
@@ -286,10 +283,10 @@ public class StreamJoinAsUnsortedStreamTest {
 						}
 				);
 
-		StreamConsumers.ToList<DataItemMasterDetail> consumer = new StreamConsumers.ToList<DataItemMasterDetail>(eventloop, list) {
+		TestStreamConsumers.TestConsumerToList<DataItemMasterDetail> consumer = new TestStreamConsumers.TestConsumerToList<DataItemMasterDetail>(eventloop, list) {
 			@Override
 			public void onData(DataItemMasterDetail item) {
-				super.onData(item);
+				list.add(item);
 				if (item.master.equals("masterB+")) {
 					onProducerEndOfStream();
 					return;
@@ -311,8 +308,8 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 3);
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -360,7 +357,7 @@ public class StreamJoinAsUnsortedStreamTest {
 				);
 
 		List<DataItemMasterDetail> list = new ArrayList<>();
-		StreamConsumers.ToList<DataItemMasterDetail> consumer = StreamConsumers.toListOneByOne(eventloop, list);
+		TestStreamConsumers.TestConsumerToList<DataItemMasterDetail> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());

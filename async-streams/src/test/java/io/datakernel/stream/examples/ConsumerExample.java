@@ -31,6 +31,11 @@ public class ConsumerExample<T> extends AbstractStreamConsumer<T> implements Str
 	}
 
 	@Override
+	protected void onStarted() {
+
+	}
+
+	@Override
 	public StreamDataReceiver<T> getDataReceiver() {
 		return this;
 	}
@@ -40,16 +45,28 @@ public class ConsumerExample<T> extends AbstractStreamConsumer<T> implements Str
 		System.out.println(item.toString());
 	}
 
+//	@Override
+//	public void onProducerEndOfStream() {
+//		System.out.println("End of stream received. " +
+//				"StreamConsumer must be acked and closed by replying 'finish' to upstream");
+//		close();
+//	}
+
 	@Override
-	public void onProducerEndOfStream() {
+	protected void onEndOfStream() {
 		System.out.println("End of stream received. " +
 				"StreamConsumer must be acked and closed by replying 'finish' to upstream");
 		close();
 	}
 
+//	@Override
+//	public void onProducerError(Exception e) {
+//		System.out.println("Error handling logic must be here. No confirmation to upstream is needed");
+//		closeWithError(e);
+//	}
+
 	@Override
-	public void onProducerError(Exception e) {
+	protected void onError(Exception e) {
 		System.out.println("Error handling logic must be here. No confirmation to upstream is needed");
-		closeWithError(e);
 	}
 }

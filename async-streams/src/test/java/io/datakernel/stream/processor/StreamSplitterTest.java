@@ -34,8 +34,8 @@ public class StreamSplitterTest {
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
-		StreamConsumers.ToList<Integer> consumerToList1 = StreamConsumers.toListRandomlySuspending(eventloop);
-		StreamConsumers.ToList<Integer> consumerToList2 = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(streamConcat);
 		streamConcat.newOutput().streamTo(consumerToList1);
@@ -54,15 +54,15 @@ public class StreamSplitterTest {
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
 
 		List<Integer> toList1 = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumerToList1 = StreamConsumers.toListOneByOne(eventloop, toList1);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList1 = TestStreamConsumers.toListOneByOne(eventloop, toList1);
 		List<Integer> toList2 = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumerToList2 = StreamConsumers.toListOneByOne(eventloop, toList2);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList2 = TestStreamConsumers.toListOneByOne(eventloop, toList2);
 
 		List<Integer> toBadList = new ArrayList<>();
-		StreamConsumers.ToList<Integer> badConsumer = new StreamConsumers.ToList<Integer>(eventloop, toBadList) {
+		TestStreamConsumers.TestConsumerToList<Integer> badConsumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, toBadList) {
 			@Override
 			public void onData(Integer item) {
-				super.onData(item);
+				list.add(item);
 				if (item == 3) {
 					onProducerError(new Exception());
 					return;
@@ -154,11 +154,11 @@ public class StreamSplitterTest {
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
 
 		List<Integer> list1 = new ArrayList<>();
-		StreamConsumer<Integer> consumer1 = StreamConsumers.toListOneByOne(eventloop, list1);
+		StreamConsumer<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop, list1);
 		List<Integer> list2 = new ArrayList<>();
-		StreamConsumer<Integer> consumer2 = StreamConsumers.toListOneByOne(eventloop, list2);
+		StreamConsumer<Integer> consumer2 = TestStreamConsumers.toListOneByOne(eventloop, list2);
 		List<Integer> list3 = new ArrayList<>();
-		StreamConsumer<Integer> consumer3 = StreamConsumers.toListOneByOne(eventloop, list3);
+		StreamConsumer<Integer> consumer3 = TestStreamConsumers.toListOneByOne(eventloop, list3);
 
 		source.streamTo(streamConcat);
 		streamConcat.newOutput().streamTo(consumer1);

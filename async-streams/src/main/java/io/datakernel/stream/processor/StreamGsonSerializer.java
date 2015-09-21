@@ -158,20 +158,6 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		onInternalError(e);
 	}
 
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return this;
-	}
-
-	/**
-	 * After end of stream,  it flushes all received bytes to recipient
-	 */
-	@Override
-	public void onProducerEndOfStream() {
-		flushBuffer(downstreamDataReceiver);
-		sendEndOfStream();
-	}
-
 	/**
 	 * Bytes will be sending immediately.
 	 */
@@ -210,11 +196,6 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		recycleBufs();
 	}
 
-	@Override
-	protected void onClosedWithError(Exception e) {
-		super.onClosedWithError(e);
-		recycleBufs();
-	}
 
 	private void recycleBufs() {
 		if (buf != null) {
@@ -247,5 +228,15 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 				+ " items:" + (assertOn ? "" + jmxItems : "?")
 				+ " bufs:" + jmxBufs
 				+ " bytes:" + jmxBytes + '}';
+	}
+
+	@Override
+	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
+		return this;
+	}
+
+	@Override
+	protected void onUpstreamEndOfStream() {
+
 	}
 }

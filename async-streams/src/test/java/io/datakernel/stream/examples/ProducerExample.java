@@ -44,12 +44,27 @@ public class ProducerExample extends AbstractStreamProducer<Integer> {
 	}
 
 	@Override
-	protected void onProducerStarted() {
+	protected void onStarted() {
 		produce();
 	}
 
 	@Override
+	protected void onSuspended() {
+
+	}
+
+//	@Override
+//	protected void onProducerStarted() {
+//		produce();
+//	}
+
+	@Override
 	public void onResumed() {
 		resumeProduce();
+	}
+
+	@Override
+	protected void onError(Exception e) {
+
 	}
 }

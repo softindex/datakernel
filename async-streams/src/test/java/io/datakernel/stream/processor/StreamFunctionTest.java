@@ -18,10 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import static java.util.Arrays.asList;
@@ -42,7 +39,7 @@ public class StreamFunctionTest {
 		});
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source1.streamTo(streamFunction);
 		streamFunction.streamTo(consumer);
@@ -51,7 +48,7 @@ public class StreamFunctionTest {
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
 		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(streamFunction.getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)streamFunction.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

@@ -56,6 +56,12 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1_St
 		return function == Functions.identity() ? (StreamDataReceiver<I>) downstreamDataReceiver : this;
 	}
 
+	@Override
+	protected void onUpstreamEndOfStream() {
+		downstreamProducer.sendEndOfStream();
+		upstreamConsumer.close();
+	}
+
 	/**
 	 * Applies function to received data and sends result to the destination
 	 *

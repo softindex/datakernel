@@ -41,7 +41,7 @@ public class StreamSorterTest {
 		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
-		StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(sorter);
 		sorter.getSortedStream().streamTo(consumerToList);
@@ -88,9 +88,9 @@ public class StreamSorterTest {
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		List<Integer> list1 = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumerToList1 = StreamConsumers.toListRandomlySuspending(eventloop, list1);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList1 = TestStreamConsumers.toListRandomlySuspending(eventloop, list1);
 		List<Integer> list2 = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumerToList2 = StreamConsumers.toListRandomlySuspending(eventloop, list2);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList2 = TestStreamConsumers.toListRandomlySuspending(eventloop, list2);
 
 		iterableSource.streamTo(sorter2);
 		scheduledSource.streamTo(sorter1);
@@ -133,7 +133,7 @@ public class StreamSorterTest {
 			}
 		};
 		final List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop, list);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop, list);
 
 		source.streamTo(sorter);
 		sorter.getSortedStream().streamTo(consumerToList);
@@ -157,10 +157,10 @@ public class StreamSorterTest {
 			public StreamConsumer streamWriter() {
 				final List<Integer> list = new ArrayList<>();
 				storage.put(partition++, list);
-				return new StreamConsumers.ToList<Integer>(eventloop, list) {
+				return new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 					@Override
 					public void onData(Integer item) {
-						super.onData(item);
+						list.add(item);
 						if (list.size() == 2) {
 							onProducerError(new Exception());
 						}
@@ -172,7 +172,7 @@ public class StreamSorterTest {
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop, list);
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop, list);
 
 		source.streamTo(sorter);
 		sorter.getSortedStream().streamTo(consumerToList);
@@ -196,10 +196,10 @@ public class StreamSorterTest {
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
 
 		final List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumerToList = new StreamConsumers.ToList<Integer>(eventloop, list) {
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
-				super.onData(item);
+				list.add(item);
 				if (list.size() == 2) {
 					onProducerError(new Exception());
 				}

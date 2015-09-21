@@ -147,9 +147,14 @@ public class StreamByteChunkerTest {
 		}
 
 		@Override
-		public void addCompletionCallback(CompletionCallback completionCallback) {
+		public void addConsumerCompletionCallback(CompletionCallback completionCallback) {
 			callbacks.add(completionCallback);
 		}
+
+//		@Override
+//		public void addCompletionCallback(CompletionCallback completionCallback) {
+//			callbacks.add(completionCallback);
+//		}
 
 		@Override
 		public void onData(ByteBuf item) {

@@ -17,7 +17,6 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.AbstractStreamTransformer_M_1;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
@@ -32,9 +31,57 @@ import io.datakernel.stream.StreamDataReceiver;
 public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractStreamTransformer_M_1<O> implements StreamDataReceiver<I> {
 	protected S state;
 
+	private final class DownstreamProducer extends AbstractDownstreamProducer {
+
+		@Override
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			if (state == null) {
+				resumeProduce();
+			}
+		}
+
+	}
+
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer<I> {
+
+		@Override
+		public StreamDataReceiver<I> getDataReceiver() {
+			return AbstractStreamMemoryTransformer.this;
+		}
+
+		@Override
+		protected void onUpstreamStarted() {
+			if (upstreamConsumers.isEmpty()) {
+				downstreamProducer.sendEndOfStream();
+			}
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			if (!allUpstreamsEndOfStream())
+				return;
+
+			afterEndOfStream(state);
+			state = null;
+
+			downstreamProducer.produce();
+		}
+	}
+
 	protected AbstractStreamMemoryTransformer(Eventloop eventloop) {
 		super(eventloop);
 		this.state = newState();
+		this.downstreamProducer = new DownstreamProducer();
 	}
 
 	protected abstract S newState();
@@ -60,64 +107,7 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 	 * @return new consumer
 	 */
 	public final StreamConsumer<I> newInput() {
-		return addInput(new Input(eventloop));
-	}
-
-	private final class Input extends AbstractStreamConsumer<I> {
-		public Input(Eventloop eventloop) {
-			super(eventloop);
-		}
-
-		@Override
-		public StreamDataReceiver<I> getDataReceiver() {
-			return AbstractStreamMemoryTransformer.this;
-		}
-
-		@Override
-		public void onProducerEndOfStream() {
-			if (!allUpstreamsEndOfStream())
-				return;
-
-			afterEndOfStream(state);
-			state = null;
-
-			produce();
-		}
-
-		@Override
-		public void onProducerError(Exception e) {
-//			upstreamProducer.onConsumerError(e);
-//			onConsumerError(e);
-			downstreamConsumer.onProducerError(e);
-		}
-	}
-
-	/**
-	 * This method is called if consumer was changed for changing consumer status
-	 * and its dependencies
-	 */
-	@Override
-	protected void onProducerStarted() {
-		if (internalConsumers.isEmpty()) {
-			sendEndOfStream();
-		}
-	}
-
-	/**
-	 * Action which will take place after changing status to suspend
-	 */
-	@Override
-	protected void onSuspended() {
-	}
-
-	/**
-	 * Action which will take place after changing status to resume
-	 */
-	@Override
-	protected void onResumed() {
-		if (state == null) {
-			resumeProduce();
-		}
+		return addInput(new UpstreamConsumer());
 	}
 
 	/**

@@ -33,8 +33,7 @@ public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends Abst
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.sendEndOfStream();
-			close();
+			AbstractStreamTransformer_1_1_Stateless.this.onUpstreamEndOfStream();
 		}
 
 		@Override
@@ -67,4 +66,5 @@ public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends Abst
 
 	protected abstract StreamDataReceiver<I> getUpstreamDataReceiver();
 
+	protected abstract void onUpstreamEndOfStream();
 }
