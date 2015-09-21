@@ -17,67 +17,72 @@
 package io.datakernel.http;
 
 import com.google.common.collect.ImmutableMap;
-import io.datakernel.bytebuf.ByteBuf;
+import com.google.common.net.MediaType;
+
+import java.nio.charset.Charset;
 
 import static com.google.common.net.MediaType.*;
-import static io.datakernel.util.ByteBufStrings.wrapUTF8;
 
 public final class ContentTypes {
-	public static final ImmutableMap<String, ByteBuf> extensionContentType;
+	public static final ImmutableMap<String, byte[]> extensionContentType;
+
+	private static byte[] wrap(MediaType type) {
+		return type.toString().getBytes(Charset.forName("UTF-8"));
+	}
 
 	/* Content types */
-	private static final ByteBuf CT_HTML = wrapUTF8(HTML_UTF_8.toString());
-	private static final ByteBuf CT_XHTML = wrapUTF8(XHTML_UTF_8.toString());
-	private static final ByteBuf CT_CSS = wrapUTF8(CSS_UTF_8.toString());
-	private static final ByteBuf CT_JS = wrapUTF8(JAVASCRIPT_UTF_8.toString());
+	private static final byte[] CT_HTML = wrap(HTML_UTF_8);
+	private static final byte[] CT_XHTML = wrap(XHTML_UTF_8);
+	private static final byte[] CT_CSS = wrap(CSS_UTF_8);
+	private static final byte[] CT_JS = wrap(JAVASCRIPT_UTF_8);
 
-	private static final ByteBuf CT_JSON = wrapUTF8(JSON_UTF_8.toString());
-	private static final ByteBuf CT_PROTOBUF = wrapUTF8(PROTOBUF.toString());
-	private static final ByteBuf CT_CSV = wrapUTF8(CSV_UTF_8.toString());
-	private static final ByteBuf CT_PLAIN = wrapUTF8(PLAIN_TEXT_UTF_8.toString());
-	private static final ByteBuf CT_XML = wrapUTF8(APPLICATION_XML_UTF_8.toString());
-	private static final ByteBuf CT_OCTET_STREAM = wrapUTF8(OCTET_STREAM.toString());
-	private static final ByteBuf CT_BINARY = wrapUTF8(APPLICATION_BINARY.toString());
-	private static final ByteBuf CT_ATOM = wrapUTF8(ATOM_UTF_8.toString());
+	private static final byte[] CT_JSON = wrap(JSON_UTF_8);
+	private static final byte[] CT_PROTOBUF = wrap(PROTOBUF);
+	private static final byte[] CT_CSV = wrap(CSV_UTF_8);
+	private static final byte[] CT_PLAIN = wrap(PLAIN_TEXT_UTF_8);
+	private static final byte[] CT_XML = wrap(APPLICATION_XML_UTF_8);
+	private static final byte[] CT_OCTET_STREAM = wrap(OCTET_STREAM);
+	private static final byte[] CT_BINARY = wrap(APPLICATION_BINARY);
+	private static final byte[] CT_ATOM = wrap(ATOM_UTF_8);
 
-	private static final ByteBuf CT_BMP = wrapUTF8(BMP.toString());
-	private static final ByteBuf CT_JPEG = wrapUTF8(JPEG.toString());
-	private static final ByteBuf CT_PNG = wrapUTF8(PNG.toString());
-	private static final ByteBuf CT_GIF = wrapUTF8(GIF.toString());
-	private static final ByteBuf CT_ICO = wrapUTF8(ICO.toString());
-	private static final ByteBuf CT_CRW = wrapUTF8(CRW.toString());
-	private static final ByteBuf CT_TIFF = wrapUTF8(TIFF.toString());
-	private static final ByteBuf CT_PSD = wrapUTF8(PSD.toString());
-	private static final ByteBuf CT_WEBP = wrapUTF8(WEBP.toString());
-	private static final ByteBuf CT_SVG = wrapUTF8(SVG_UTF_8.toString());
-	private static final ByteBuf CT_PDF = wrapUTF8(PDF.toString());
-	private static final ByteBuf CT_POSTSCRIPT = wrapUTF8(POSTSCRIPT.toString());
-	private static final ByteBuf CT_EPUB = wrapUTF8(EPUB.toString());
+	private static final byte[] CT_BMP = wrap(BMP);
+	private static final byte[] CT_JPEG = wrap(JPEG);
+	private static final byte[] CT_PNG = wrap(PNG);
+	private static final byte[] CT_GIF = wrap(GIF);
+	private static final byte[] CT_ICO = wrap(ICO);
+	private static final byte[] CT_CRW = wrap(CRW);
+	private static final byte[] CT_TIFF = wrap(TIFF);
+	private static final byte[] CT_PSD = wrap(PSD);
+	private static final byte[] CT_WEBP = wrap(WEBP);
+	private static final byte[] CT_SVG = wrap(SVG_UTF_8);
+	private static final byte[] CT_PDF = wrap(PDF);
+	private static final byte[] CT_POSTSCRIPT = wrap(POSTSCRIPT);
+	private static final byte[] CT_EPUB = wrap(EPUB);
 
-	private static final ByteBuf CT_MP4_AUDIO = wrapUTF8(MP4_AUDIO.toString());
-	private static final ByteBuf CT_MPEG_AUDIO = wrapUTF8(MPEG_AUDIO.toString());
-	private static final ByteBuf CT_OGG_AUDIO = wrapUTF8(OGG_AUDIO.toString());
-	private static final ByteBuf CT_WEBM_AUDIO = wrapUTF8(WEBM_AUDIO.toString());
+	private static final byte[] CT_MP4_AUDIO = wrap(MP4_AUDIO);
+	private static final byte[] CT_MPEG_AUDIO = wrap(MPEG_AUDIO);
+	private static final byte[] CT_OGG_AUDIO = wrap(OGG_AUDIO);
+	private static final byte[] CT_WEBM_AUDIO = wrap(WEBM_AUDIO);
 
-	private static final ByteBuf CT_MP4_VIDEO = wrapUTF8(MP4_VIDEO.toString());
-	private static final ByteBuf CT_MPEG_VIDEO = wrapUTF8(MPEG_VIDEO.toString());
-	private static final ByteBuf CT_OGG_VIDEO = wrapUTF8(OGG_VIDEO.toString());
-	private static final ByteBuf CT_QUICKTIME = wrapUTF8(QUICKTIME.toString());
-	private static final ByteBuf CT_WEBM_VIDEO = wrapUTF8(WEBM_VIDEO.toString());
-	private static final ByteBuf CT_WMV = wrapUTF8(WMV.toString());
+	private static final byte[] CT_MP4_VIDEO = wrap(MP4_VIDEO);
+	private static final byte[] CT_MPEG_VIDEO = wrap(MPEG_VIDEO);
+	private static final byte[] CT_OGG_VIDEO = wrap(OGG_VIDEO);
+	private static final byte[] CT_QUICKTIME = wrap(QUICKTIME);
+	private static final byte[] CT_WEBM_VIDEO = wrap(WEBM_VIDEO);
+	private static final byte[] CT_WMV = wrap(WMV);
 
-	private static final ByteBuf CT_ZIP = wrapUTF8(ZIP.toString());
-	private static final ByteBuf CT_GZIP = wrapUTF8(GZIP.toString());
-	private static final ByteBuf CT_BZIP2 = wrapUTF8(BZIP2.toString());
-	private static final ByteBuf CT_TAR = wrapUTF8(TAR.toString());
-	private static final ByteBuf CT_KEY_ARCHIVE = wrapUTF8(KEY_ARCHIVE.toString());
+	private static final byte[] CT_ZIP = wrap(ZIP);
+	private static final byte[] CT_GZIP = wrap(GZIP);
+	private static final byte[] CT_BZIP2 = wrap(BZIP2);
+	private static final byte[] CT_TAR = wrap(TAR);
+	private static final byte[] CT_KEY_ARCHIVE = wrap(KEY_ARCHIVE);
 
-	private static final ByteBuf CT_WOFF = wrapUTF8(WOFF.toString());
-	private static final ByteBuf CT_EOT = wrapUTF8(EOT.toString());
-	private static final ByteBuf CT_SFNT = wrapUTF8(SFNT.toString());
+	private static final byte[] CT_WOFF = wrap(WOFF);
+	private static final byte[] CT_EOT = wrap(EOT);
+	private static final byte[] CT_SFNT = wrap(SFNT);
 
-	private static final ByteBuf CT_RDF = wrapUTF8(RDF_XML_UTF_8.toString());
-	private static final ByteBuf CT_XRD = wrapUTF8(XRD_UTF_8.toString());
+	private static final byte[] CT_RDF = wrap(RDF_XML_UTF_8);
+	private static final byte[] CT_XRD = wrap(XRD_UTF_8);
 
 	/* File extensions */
 	private static final String HTML_EXT = "html";
@@ -138,7 +143,7 @@ public final class ContentTypes {
 	private static final String XRD_EXT = "xrd";
 
 	static {
-		extensionContentType = ImmutableMap.<String, ByteBuf>builder()
+		extensionContentType = ImmutableMap.<String, byte[]>builder()
 				.put(HTML_EXT, CT_HTML)
 				.put(XHTML_EXT, CT_XHTML)
 				.put(CSS_EXT, CT_CSS)
