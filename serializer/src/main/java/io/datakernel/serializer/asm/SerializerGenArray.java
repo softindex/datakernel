@@ -68,13 +68,18 @@ public final class SerializerGenArray implements SerializerGen {
 	@Override
 	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		value = cast(value, type);
-		Expression len = call(arg(0), "writeVarInt", length(value));
-		if (fixedSize != -1) len = value(fixedSize);
-
-		if (type.getComponentType() == Byte.TYPE) {
-			return sequence(len, call(arg(0), "write", value));
+		Expression length;
+		if (fixedSize != -1) {
+			length = value(fixedSize);
 		} else {
-			return sequence(len, arrayForEach(value, value(0), len, new ForVar() {
+			length = length(value);
+		}
+
+		Expression writeLength = call(arg(0), "writeVarInt", length);
+		if (type.getComponentType() == Byte.TYPE) {
+			return sequence(writeLength, call(arg(0), "write", value));
+		} else {
+			return sequence(writeLength, arrayForEach(value, value(0), length, new ForVar() {
 				@Override
 				public Expression forVar(Expression item) {
 					return valueSerializer.serialize(item, version, staticMethods);
@@ -91,7 +96,6 @@ public final class SerializerGenArray implements SerializerGen {
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		Expression len = call(arg(0), "readVarInt");
-		if (fixedSize != -1) len = value(fixedSize);
 
 		Expression array = let(Expressions.newArray(type, len));
 		if (type.getComponentType() == Byte.TYPE) {
