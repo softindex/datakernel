@@ -19,8 +19,10 @@ package io.datakernel.codegen;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.Method;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
 /**
@@ -76,10 +78,19 @@ public final class PredicateDefCmp implements PredicateDef {
 		Label labelTrue = new Label();
 		Label labelExit = new Label();
 
-		checkArgument(left.type(ctx).equals(right.type(ctx)));
+		Type leftFieldType = left.type(ctx);
+		Type rightFieldType = right.type(ctx);
+		checkArgument(leftFieldType.equals(rightFieldType));
 		left.load(ctx);
 		right.load(ctx);
-		g.ifCmp(left.type(ctx), operation.opCode, labelTrue);
+
+		if (operation == Operation.EQ && !isPrimitiveType(leftFieldType)) {
+			g.invokeVirtual(leftFieldType, new Method("equals", BOOLEAN_TYPE, new Type[]{Type.getType(Object.class)}));
+			g.push(true);
+			g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelTrue);
+		} else {
+			g.ifCmp(leftFieldType, operation.opCode, labelTrue);
+		}
 
 		g.push(false);
 		g.goTo(labelExit);
@@ -114,4 +125,7 @@ public final class PredicateDefCmp implements PredicateDef {
 		return result;
 	}
 
+	public int getOperationOpCode() {
+		return operation.opCode;
+	}
 }

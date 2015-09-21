@@ -346,7 +346,7 @@ public class SimpleFsServerTest {
 	private void prepareServer(NioEventloop eventloop) throws IOException {
 
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, serverStorage, executor);
+		SimpleFsServer fileServer = SimpleFsServer.createServerAndInitialize(eventloop, serverStorage, executor);
 		fileServer.setListenPort(LISTEN_PORT);
 		fileServer.acceptOnce();
 		try {

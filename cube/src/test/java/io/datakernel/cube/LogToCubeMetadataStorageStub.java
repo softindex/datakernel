@@ -16,11 +16,13 @@
 
 package io.datakernel.cube;
 
-import com.google.common.base.Function;
 import com.google.common.collect.Multimap;
+import io.datakernel.aggregation_db.AggregationChunk;
+import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.logfs.LogPosition;
+import io.datakernel.logfs.LogToCubeMetadataStorage;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -54,66 +56,26 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	}
 
 	@Override
-	public void commit(Cube cube, String log, Map<String, LogPosition> oldPositions, Map<String, LogPosition> newPositions, Multimap<Aggregation, AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
+	public void commit(Cube cube, String log, Map<String, LogPosition> oldPositions,
+	                   Map<String, LogPosition> newPositions, Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
+	                   CompletionCallback callback) {
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
 		callback.onComplete();
 		cube.incrementLastRevisionId();
-		for (Map.Entry<Aggregation, AggregationChunk.NewChunk> entry : newChunks.entries()) {
-			Aggregation aggregation = entry.getKey();
+		for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
+			AggregationMetadata aggregation = entry.getKey();
 			AggregationChunk.NewChunk newChunk = entry.getValue();
 			aggregation.addToIndex(AggregationChunk.createCommitChunk(cube.getLastRevisionId(), newChunk));
 		}
 	}
 
 	@Override
-	public void saveAggregations(Cube cube, CompletionCallback callback) {
-	}
-
-	@Override
-	public void saveChunks(Aggregation aggregation, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
-
-	}
-
-	@Override
-	public void loadChunks(Cube cube, int lastRevisionId, int maxRevisionId, ResultCallback<Integer> callback) {
-	}
-
-	@Override
-	public void reloadAllChunkConsolidations(Cube cube, CompletionCallback callback) {
-
-	}
-
-	@Override
-	public void saveConsolidatedChunks(Cube cube, Aggregation aggregation, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
-	}
-
-	@Override
-	public void performConsolidation(Cube cube, Function<List<Long>, List<AggregationChunk>> chunkConsolidator, CompletionCallback callback) {
-
-	}
-
-	@Override
-	public void refreshNotConsolidatedChunks(Cube cube, CompletionCallback callback) {
-
-	}
-
-	@Override
-	public void removeChunk(long chunkId, CompletionCallback callback) {
-
-	}
-
-	@Override
-	public void newChunkId(ResultCallback<Long> callback) {
-		callback.onResult(++chunkId);
-	}
-
-	@Override
-	public long newChunkId() {
-		return ++chunkId;
-	}
-
-	@Override
 	public void loadAggregations(Cube cube, CompletionCallback callback) {
+	}
+
+	@Override
+	public void saveAggregations(Cube cube, CompletionCallback callback) {
+
 	}
 }

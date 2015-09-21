@@ -49,6 +49,8 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 	private final LZ4Compressor compressor;
 	private final StreamingXXHash32 checksum = XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED);
 
+	private boolean sendEndOfStreamBlock = true;
+
 	private long jmxBytesInput;
 	private long jmxBytesOutput;
 	private int jmxBufs;
@@ -105,6 +107,16 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 		this.compressor = compressor;
 	}
 
+	public StreamLZ4Compressor withEndOfStreamBlock() {
+		this.sendEndOfStreamBlock = true;
+		return this;
+	}
+
+	public StreamLZ4Compressor withoutEndOfStreamBlock() {
+		this.sendEndOfStreamBlock = false;
+		return this;
+	}
+
 	private static int compressionLevel(int blockSize) {
 		int compressionLevel = 32 - Integer.numberOfLeadingZeros(blockSize - 1); // ceil of log2
 		assert (1 << compressionLevel) >= blockSize;
@@ -121,8 +133,8 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 		buf[off] = (byte) (i >>> 24);
 	}
 
-	public static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum,
-	                                    byte[] buffer, int off, int len) {
+	private static ByteBuf compressBlock(LZ4Compressor compressor, StreamingXXHash32 checksum,
+	                                     byte[] buffer, int off, int len) {
 		int compressionLevel = compressionLevel(len < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : len);
 
 		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));
@@ -159,7 +171,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 		return outputBuf;
 	}
 
-	public static ByteBuf createEndOfStreamBlock() {
+	private static ByteBuf createEndOfStreamBlock() {
 		int compressionLevel = compressionLevel(MIN_BLOCK_SIZE);
 
 		ByteBuf outputBuf = ByteBufPool.allocate(HEADER_LENGTH);
@@ -198,7 +210,8 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 
 	@Override
 	public void onEndOfStream() {
-		send(createEndOfStreamBlock());
+		if (sendEndOfStreamBlock)
+			send(createEndOfStreamBlock());
 		sendEndOfStream();
 	}
 

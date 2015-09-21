@@ -40,7 +40,7 @@ public class SimpleFsServersSetupExample {
 		final NioEventloop eventloop = new NioEventloop();
 
 		// Create server
-		SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, SERVER_STORAGE_PATH, executor);
+		SimpleFsServer fileServer = SimpleFsServer.createServerAndInitialize(eventloop, SERVER_STORAGE_PATH, executor);
 
 		// Start listening
 		fileServer.setListenPort(SERVER_PORT);

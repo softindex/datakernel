@@ -16,7 +16,9 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.logfs.LogCommitTransaction;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
@@ -24,6 +26,11 @@ import io.datakernel.stream.processor.StreamSplitter;
 
 import java.util.List;
 
+/**
+ * Represents a logic for input records pre-processing and splitting across multiple cube inputs.
+ *
+ * @param <T> type of input records
+ */
 public abstract class AggregatorSplitter<T> extends StreamSplitter<T> implements StreamDataReceiver<T> {
 	public interface Factory<T> {
 		AggregatorSplitter<T> create(Eventloop eventloop);
@@ -42,10 +49,17 @@ public abstract class AggregatorSplitter<T> extends StreamSplitter<T> implements
 		return this;
 	}
 
-	@SuppressWarnings("unchecked")
+
 	protected <O> StreamDataReceiver<O> addOutput(Class<?> aggregationItemType, List<String> dimensions, List<String> measures) {
+		return addOutput(aggregationItemType, dimensions, measures, null);
+	}
+
+	@SuppressWarnings("unchecked")
+	protected <O> StreamDataReceiver<O> addOutput(Class<?> aggregationItemType, List<String> dimensions, List<String> measures,
+	                                              AggregationQuery.QueryPredicates predicates) {
 		StreamProducer streamProducer = newOutput();
-		StreamConsumer streamConsumer = cube.consumer(aggregationItemType, dimensions, measures, transaction.addCommitCallback());
+		StreamConsumer streamConsumer = cube.consumer(aggregationItemType, dimensions, measures, predicates,
+				transaction.addCommitCallback());
 		streamProducer.streamTo(streamConsumer);
 		return (StreamDataReceiver<O>) streamConsumer;
 	}

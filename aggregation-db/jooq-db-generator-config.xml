@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<configuration xmlns="http://www.jooq.org/xsd/jooq-codegen-3.6.0.xsd">
+
+    <jdbc>
+        <driver>com.mysql.jdbc.Driver</driver>
+        <url>jdbc:mysql://localhost/test</url>
+        <user>root</user>
+        <password>root</password>
+    </jdbc>
+
+    <generator>
+        <name>org.jooq.util.JavaGenerator</name>
+        <database>
+            <name>org.jooq.util.mysql.MySQLDatabase</name>
+            <inputSchema>test</inputSchema>
+            <outputSchemaToDefault>true</outputSchemaToDefault>
+
+            <includeExcludeColumns>true</includeExcludeColumns>
+            <includes>
+                aggregation_db_log(\..*)? |
+                aggregation_db_revision(\..*)? |
+                aggregation_db_structure(\..*)? |
+                aggregation_db_chunk(\..*)?
+            </includes>
+            <!--<excludes>-->
+            <!--index_chunk\.d[0-9]+_min |-->
+            <!--index_chunk\.d[0-9]+_max |-->
+            <!--</excludes>-->
+        </database>
+
+        <target>
+            <packageName>io.datakernel.aggregation_db.sql</packageName>
+            <directory>src/main/java</directory>
+        </target>
+
+        <generate>
+            <!-- Primary key / foreign key relations should be generated and used. This is a prerequisite for various advanced features.
+                Defaults to true -->
+            <relations>true</relations>
+
+            <!-- Generate deprecated code for backwards compatibility.
+                Defaults to true -->
+            <deprecated>false</deprecated>
+
+            <!-- Generate instance inputFields in your tables, as opposed to static inputFields. This simplifies aliasing.
+                Defaults to true -->
+            <instanceFields>true</instanceFields>
+
+            <!-- Generate the javax.annotation.Generated annotation to indicate jOOQ version used for source code.
+                Defaults to true -->
+            <generatedAnnotation>true</generatedAnnotation>
+
+            <!-- Generate jOOQ Record classes for type-safe querying. You can turn this off, if you don't need "active records" for CRUD.
+                Defaults to true -->
+            <records>true</records>
+
+            <!-- Generate POJOs in addition to Record classes for usage of the ResultQuery.fetchInto(Class) API.
+                Defaults to false -->
+            <pojos>false</pojos>
+
+            <!-- Generate immutable POJOs for usage of the ResultQuery.fetchInto(Class) API. This overrides any value set in <pojos/>.
+                Defaults to false -->
+            <immutablePojos>false</immutablePojos>
+
+            <!-- Generate interfaces that will be implemented by records and/or pojos.
+                You can also use these interfaces in Record.into(Class<?>) and similar methods,	to let jOOQ return proxy objects for them.
+                Defaults to false -->
+            <interfaces>false</interfaces>
+
+            <!-- Generate DAOs in addition to POJO classes.
+                Defaults to false -->
+            <daos>false</daos>
+
+            <!-- Annotate POJOs and Records with JPA annotations for increased compatibility and better integration with JPA/Hibernate, etc.
+                Defaults to false -->
+            <jpaAnnotations>false</jpaAnnotations>
+
+            <!-- Annotate POJOs and Records with JSR-303 validation annotations.
+                Defaults to false -->
+            <validationAnnotations>false</validationAnnotations>
+        </generate>
+    </generator>
+</configuration>

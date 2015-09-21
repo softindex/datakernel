@@ -28,6 +28,7 @@
         <module>eventloop</module>
         <module>guice</module>
         <module>http</module>
+        <module>aggregation-db</module>
         <module>cube</module>
         <module>rpc</module>
         <module>serializer</module>

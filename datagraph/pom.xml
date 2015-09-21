@@ -22,7 +22,7 @@
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>async-streams</artifactId>
-            <version>${version-snapshot}</version>
+            <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>

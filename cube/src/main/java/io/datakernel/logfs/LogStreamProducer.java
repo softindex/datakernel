@@ -16,16 +16,14 @@
 
 package io.datakernel.logfs;
 
+
 import io.datakernel.async.AsyncIterator;
 import io.datakernel.async.IteratorCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.StreamForwarder;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerDecorator;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Decompressor;
@@ -40,8 +38,8 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	private final LogPosition startPosition;
 	private LogFile currentLogFile;
 	private StreamLZ4Decompressor currentDecompressor;
-	private final LogFileSystem fileSystem;
-	private final BufferSerializer<T> serializer;
+	private LogFileSystem fileSystem;
+	private BufferSerializer<T> serializer;
 	private final ResultCallback<LogPosition> positionCallback;
 	private final StreamForwarder<T> forwarder;
 
@@ -100,11 +98,13 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 						first ? startPosition.getPosition() : 0L);
 				currentDecompressor = new StreamLZ4Decompressor(eventloop);
 				StreamBinaryDeserializer<T> currentDeserializer = new StreamBinaryDeserializer<>(eventloop, serializer, StreamBinarySerializer.MAX_SIZE);
+				ErrorIgnoringTransformer<T> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
 
 				currentReader.streamTo(currentDecompressor);
 				currentDecompressor.streamTo(currentDeserializer);
+				currentDeserializer.streamTo(errorIgnoringTransformer);
 
-				callback.onNext(currentDeserializer);
+				callback.onNext(errorIgnoringTransformer);
 			}
 		});
 	}

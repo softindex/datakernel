@@ -51,31 +51,39 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> {
 	private final Path fileStorage;
 	private final int bufferSize;
 
-	private SimpleFsServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor, int bufferSize) {
+	public SimpleFsServer(NioEventloop eventloop, Path fileStorage, ExecutorService executor, int bufferSize) {
 		super(eventloop);
 		this.fileStorage = fileStorage;
 		this.executor = executor;
 		this.bufferSize = bufferSize;
 	}
 
-	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor) throws IOException {
-		return createServer(eventloop, fileStorage, executor, 256 * 1024);
+	public SimpleFsServer(NioEventloop eventloop, Path fileStorage, ExecutorService executor) {
+		this(eventloop, fileStorage, executor, 256 * 1024);
 	}
 
-	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor, int bufferSize) throws IOException {
+	public static SimpleFsServer createServerAndInitialize(NioEventloop eventloop, Path fileStorage,
+	                                                       ExecutorService executor) throws IOException {
+		return createServerAndInitialize(eventloop, fileStorage, executor, 256 * 1024);
+	}
+
+	public static SimpleFsServer createServerAndInitialize(NioEventloop eventloop, Path fileStorage,
+	                                                       ExecutorService executor, int bufferSize) throws IOException {
 		SimpleFsServer server = new SimpleFsServer(eventloop, fileStorage, executor, bufferSize);
+		server.prepareStorage();
+		return server;
+	}
+
+	public void prepareStorage() throws IOException {
 		Files.createDirectories(fileStorage);
 		// Delete not uploaded files.
-		List<String> files = server.fileList();
+		List<String> files = fileList();
 		for (String fileName : files) {
 			if (fileName.endsWith(IN_PROGRESS_EXTENSION)) {
-				Path destination = server.fileStorage.resolve(fileName);
+				Path destination = fileStorage.resolve(fileName);
 				Files.delete(destination);
 			}
 		}
-
-		logger.info("Start simple fs server");
-		return server;
 	}
 
 	@Override

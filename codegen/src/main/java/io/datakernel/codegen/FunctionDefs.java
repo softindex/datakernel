@@ -409,4 +409,12 @@ public final class FunctionDefs {
 		return new FunctionDefCall(owner, methodName, arguments);
 	}
 
+	public static FunctionDefIf choice(PredicateDefCmp condition, FunctionDef ifTrue, FunctionDef ifFalse) {
+		return new FunctionDefIf(condition, ifTrue, ifFalse);
+	}
+
+	public static FunctionDefIf ifTrue(PredicateDefCmp condition, FunctionDef ifTrue) {
+		return choice(condition, ifTrue, null);
+	}
+
 }
