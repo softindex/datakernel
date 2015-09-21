@@ -16,25 +16,20 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ForVar;
+import io.datakernel.serializer.SerializerBuilder;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.serializer.asm.Utils.castSourceType;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static org.objectweb.asm.Type.getType;
 
+@SuppressWarnings("PointlessArithmeticExpression")
 public final class SerializerGenMap implements SerializerGen {
-	public static final int VAR_MAP = 0;
-	public static final int VAR_LENGTH = 1;
-	public static final int VAR_I = 2;
-	public static final int VAR_ENTRY = 3;
-	public static final int VAR_LAST = 4;
-
 	private final SerializerGen keySerializer;
 	private final SerializerGen valueSerializer;
 
@@ -59,96 +54,72 @@ public final class SerializerGenMap implements SerializerGen {
 	}
 
 	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		castSourceType(mv, sourceType, Map.class);
-
-		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Map.class), "size", getMethodDescriptor(INT_TYPE));
-		backend.writeVarIntGen(mv);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Map.class), "entrySet", getMethodDescriptor(getType(Set.class)));
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Set.class), "iterator", getMethodDescriptor(getType(Iterator.class)));
-		mv.visitVarInsn(ASTORE, locals + VAR_I);
-
-		Label loop = new Label();
-		mv.visitLabel(loop);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Iterator.class), "hasNext", getMethodDescriptor(BOOLEAN_TYPE));
-		Label exit = new Label();
-		mv.visitJumpInsn(IFEQ, exit);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_I);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Iterator.class), "next", getMethodDescriptor(getType(Object.class)));
-		mv.visitTypeInsn(CHECKCAST, getInternalName(Map.Entry.class));
-		mv.visitVarInsn(ASTORE, locals + VAR_ENTRY);
-
-		mv.visitVarInsn(ALOAD, varContainer);
-		mv.visitVarInsn(ALOAD, locals + VAR_ENTRY);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Map.Entry.class), "getKey", getMethodDescriptor(getType(Object.class)));
-		mv.visitTypeInsn(CHECKCAST, getInternalName(keySerializer.getRawType()));
-		serializerCaller.serialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, keySerializer.getRawType());
-
-		mv.visitVarInsn(ALOAD, varContainer);
-		mv.visitVarInsn(ALOAD, locals + VAR_ENTRY);
-		mv.visitMethodInsn(INVOKEINTERFACE, getInternalName(Map.Entry.class), "getValue", getMethodDescriptor(getType(Object.class)));
-		mv.visitTypeInsn(CHECKCAST, getInternalName(valueSerializer.getRawType()));
-		serializerCaller.serialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
-
-		mv.visitJumpInsn(GOTO, loop);
-
-		mv.visitLabel(exit);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+		keySerializer.prepareSerializeStaticMethods(version, staticMethods);
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
+	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = call(arg(0), "writeVarInt", length(value));
+
+		return sequence(length, mapForEach(value,
+						new ForVar() {
+							@Override
+							public Expression forVar(Expression item) {return keySerializer.serialize(cast(item, keySerializer.getRawType()), version, staticMethods);}
+						},
+						new ForVar() {
+							@Override
+							public Expression forVar(Expression item) {return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);}
+						})
+		);
+	}
+
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+		keySerializer.prepareDeserializeStaticMethods(version, staticMethods);
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+	}
+
+	@Override
+	public Expression deserialize(Class<?> targetType, final int version, SerializerBuilder.StaticMethods staticMethods) {
 		boolean isEnum = keySerializer.getRawType().isEnum();
-		Class<?> targetInstance = isEnum ? EnumMap.class : LinkedHashMap.class;
-		checkArgument(targetType.isAssignableFrom(targetInstance));
 
-		backend.readVarIntGen(mv);
-		mv.visitVarInsn(ISTORE, locals + VAR_LENGTH);
-
-		mv.visitTypeInsn(NEW, getInternalName(targetInstance));
-		mv.visitInsn(DUP);
-		if (isEnum) {
-			mv.visitLdcInsn(getType(keySerializer.getRawType()));
-			mv.visitMethodInsn(INVOKESPECIAL, getInternalName(targetInstance), "<init>", getMethodDescriptor(VOID_TYPE, getType(Class.class)));
+		if (!isEnum) {
+			return deserializeSimple(version, staticMethods);
 		} else {
-			mv.visitVarInsn(ILOAD, locals + VAR_LENGTH);
-			mv.visitMethodInsn(INVOKESPECIAL, getInternalName(targetInstance), "<init>", getMethodDescriptor(VOID_TYPE, INT_TYPE));
+			return deserializeEnum(version, staticMethods);
 		}
-		mv.visitVarInsn(ASTORE, locals + VAR_MAP);
+	}
 
-		mv.visitInsn(ICONST_0);
-		mv.visitVarInsn(ISTORE, locals + VAR_I);
+	public Expression deserializeSimple(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(call(arg(0), "readVarInt"));
+		final Expression local = let(constructor(LinkedHashMap.class, length));
+		Expression forEach = expressionFor(length, new ForVar() {
+			@Override
+			public Expression forVar(Expression eachNumber) {
+				return sequence(call(local, "put",
+						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
+						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
+				), voidExp());
+			}
+		});
+		return sequence(length, local, forEach, local);
+	}
 
-		Label loop = new Label();
-		mv.visitLabel(loop);
-		mv.visitVarInsn(ILOAD, locals + VAR_I);
-		mv.visitVarInsn(ILOAD, locals + VAR_LENGTH);
-		Label exit = new Label();
-		mv.visitJumpInsn(IF_ICMPGE, exit);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
-
-		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(keySerializer, version, mv, locals + VAR_LAST, varContainer, keySerializer.getRawType());
-		mv.visitVarInsn(ALOAD, varContainer);
-		serializerCaller.deserialize(valueSerializer, version, mv, locals + VAR_LAST, varContainer, valueSerializer.getRawType());
-
-		mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(targetInstance), "put",
-				getMethodDescriptor(getType(Object.class), getType(Object.class), getType(Object.class)));
-		mv.visitInsn(POP);
-
-		mv.visitIincInsn(locals + VAR_I, 1);
-		mv.visitJumpInsn(GOTO, loop);
-
-		mv.visitLabel(exit);
-
-		mv.visitVarInsn(ALOAD, locals + VAR_MAP);
+	public Expression deserializeEnum(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = let(call(arg(0), "readVarInt"));
+		final Expression localMap = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
+		Expression forEach = expressionFor(length, new ForVar() {
+			@Override
+			public Expression forVar(Expression eachNumber) {
+				return sequence(call(localMap, "put",
+						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
+						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
+				), voidExp());
+			}
+		});
+		return sequence(length, localMap, forEach, localMap);
 	}
 
 	@Override
@@ -158,7 +129,10 @@ public final class SerializerGenMap implements SerializerGen {
 
 		SerializerGenMap that = (SerializerGenMap) o;
 
-		return (keySerializer.equals(that.keySerializer)) && (valueSerializer.equals(that.valueSerializer));
+		if (!keySerializer.equals(that.keySerializer)) return false;
+		if (!valueSerializer.equals(that.valueSerializer)) return false;
+
+		return true;
 	}
 
 	@Override

@@ -23,7 +23,6 @@ import org.objectweb.asm.commons.Method;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Contains information about a dynamic class
@@ -35,17 +34,20 @@ public final class Context {
 	private final Class<?> thisSuperclass;
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
-	private final Map<FunctionDef, Integer> cache = new HashMap<>();
-	private final Map<String, Integer> namedLocals = new HashMap<>();
+	private final Map<Method, Expression> expressionMap;
+	private final Map<Method, Expression> expressionStaticMap;
+	private final Map<Expression, Integer> cache = new HashMap<>();
 
 	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> thisSuperclass, Map<String, Class<?>> thisFields,
-	               Set<Method> methods, Type[] argumentTypes) {
+	               Type[] argumentTypes, Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
 		this.classLoader = classLoader;
 		this.g = g;
 		this.thisSuperclass = thisSuperclass;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
 		this.thisFields = thisFields;
+		this.expressionMap = expressionMap;
+		this.expressionStaticMap = expressionStaticMap;
 	}
 
 	public DefiningClassLoader getClassLoader() {
@@ -76,31 +78,19 @@ public final class Context {
 		return argumentTypes[argument];
 	}
 
-	public void putCache(FunctionDef functionDef, Integer localVar) {
-		this.cache.put(functionDef, localVar);
+	public void putCache(Expression expression, Integer localVar) {
+		this.cache.put(expression, localVar);
 	}
 
-	public Integer getCache(FunctionDef functionDef) {
-		return cache.get(functionDef);
+	public Integer getCache(Expression expression) {
+		return cache.get(expression);
 	}
 
-	public void putLocal(String name, VarLocal varLocal) {
-		this.namedLocals.put(name, varLocal.getLocal());
+	public Map<Method, Expression> getExpressionStaticMap() {
+		return expressionStaticMap;
 	}
 
-	public VarLocal newLocal(String name, Type type) {
-		int local = g.newLocal(type);
-		VarLocal var = new VarLocal(local);
-		putLocal(name, var);
-		return var;
-	}
-
-	public VarLocal getLocal(String name) {
-		int local = this.namedLocals.get(name);
-		return new VarLocal(local);
-	}
-
-	public boolean hasLocal(String name) {
-		return this.namedLocals.containsKey(name);
+	public Map<Method, Expression> getExpressionMap() {
+		return expressionMap;
 	}
 }

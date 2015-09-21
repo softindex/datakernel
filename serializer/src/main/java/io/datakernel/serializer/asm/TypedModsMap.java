@@ -16,26 +16,17 @@
 
 package io.datakernel.serializer.asm;
 
-import com.google.common.base.Objects;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-
-import java.util.List;
-import java.util.Map;
-
-import static io.datakernel.serializer.asm.SerializerGenBuilder.SerializerForType;
+import java.util.*;
 
 public final class TypedModsMap {
 	private static final TypedModsMap EMPTY = new TypedModsMap();
 
-	private final ImmutableList<SerializerGenBuilder> mods;
-	private final ImmutableMap<Integer, TypedModsMap> children;
+	private final List<SerializerGenBuilder> mods;
+	private final Map<Integer, TypedModsMap> children;
 
 	public static class Builder {
-		private List<SerializerGenBuilder> mods = Lists.newArrayList();
-		private Map<Integer, Builder> children = Maps.newLinkedHashMap();
+		private List<SerializerGenBuilder> mods = new ArrayList<>();
+		private Map<Integer, Builder> children = new LinkedHashMap<>();
 
 		public void add(SerializerGenBuilder serializerGenBuilder) {
 			this.mods.add(serializerGenBuilder);
@@ -75,24 +66,24 @@ public final class TypedModsMap {
 	}
 
 	private TypedModsMap() {
-		this.mods = ImmutableList.of();
-		this.children = ImmutableMap.of();
+		this.mods = new ArrayList<>();
+		this.children = new HashMap<>();
 	}
 
 	private TypedModsMap(Builder builder) {
-		this.mods = ImmutableList.copyOf(builder.mods);
-		ImmutableMap.Builder<Integer, TypedModsMap> childrenBuilder = ImmutableMap.builder();
+		this.mods = new ArrayList<>(builder.mods);
+		Map<Integer, TypedModsMap> childrenBuilder = new HashMap<>();
 		for (Integer key : builder.children.keySet()) {
 			childrenBuilder.put(key, new TypedModsMap(builder.children.get(key)));
 		}
-		this.children = childrenBuilder.build();
+		this.children = childrenBuilder;
 	}
 
 	public boolean hasChildren() {
 		return !children.isEmpty();
 	}
 
-	public ImmutableList<SerializerGenBuilder> getMods() {
+	public List<SerializerGenBuilder> getMods() {
 		return mods;
 	}
 
@@ -105,7 +96,7 @@ public final class TypedModsMap {
 		return result == null ? empty() : result;
 	}
 
-	public SerializerGen rewrite(final Class<?> type, final SerializerForType[] generics, final SerializerGen serializer) {
+	public SerializerGen rewrite(final Class<?> type, final SerializerGenBuilder.SerializerForType[] generics, final SerializerGen serializer) {
 		SerializerGen result = serializer;
 		for (SerializerGenBuilder mod : mods) {
 			result = mod.serializer(type, generics, result);
@@ -115,10 +106,19 @@ public final class TypedModsMap {
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
-				.add("mods", mods)
-				.add("children", children)
-				.toString();
+		StringBuilder sb = new StringBuilder(32).append(simpleName(this.getClass())).append("{");
+		sb.append("mods=").append(mods);
+		sb.append("children=").append(children);
+		return sb.append("}").toString();
 	}
 
+	private static String simpleName(Class<?> clazz) {
+		String name = clazz.getName();
+		name = name.replaceAll("\\$[0-9]+", "\\$");
+		int start = name.lastIndexOf('$');
+		if (start == -1) {
+			start = name.lastIndexOf('.');
+		}
+		return name.substring(start + 1);
+	}
 }

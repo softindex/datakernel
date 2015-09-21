@@ -16,11 +16,11 @@
 
 package io.datakernel.serializer.asm;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 public interface SerializerGenBuilder {
 
-	final class SerializerForType {
+	public final class SerializerForType {
 		public final Class<?> rawType;
 		public final SerializerGen serializer;
 
@@ -36,7 +36,10 @@ public interface SerializerGenBuilder {
 
 			SerializerForType that = (SerializerForType) o;
 
-			return (rawType.equals(that.rawType)) && (serializer.equals(that.serializer));
+			if (!rawType.equals(that.rawType)) return false;
+			if (!serializer.equals(that.serializer)) return false;
+
+			return true;
 		}
 
 		@Override

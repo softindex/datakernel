@@ -17,7 +17,6 @@
 package io.datakernel.examples;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.reflect.TypeToken;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.aggregation_db.*;
@@ -36,9 +35,7 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.logfs.*;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerFactory;
-import io.datakernel.serializer.SerializerScanner;
-import io.datakernel.serializer.asm.SerializerGen;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamProducers;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
@@ -165,11 +162,9 @@ public class CubeExample {
 	private static LogManager<LogItem> getLogManager(NioEventloop eventloop, ExecutorService executor,
 	                                                 DefiningClassLoader classLoader, Path logsDir) {
 		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, logsDir);
-		SerializerFactory bufferSerializerFactory =
-				SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
-		SerializerScanner registry = SerializerScanner.defaultScanner();
-		SerializerGen serializerGen = registry.serializer(TypeToken.of(LogItem.class));
-		BufferSerializer<LogItem> bufferSerializer = bufferSerializerFactory.createBufferSerializer(serializerGen);
+		BufferSerializer<LogItem> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(classLoader)
+				.create(LogItem.class);
 
 		LogManager<LogItem> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
 

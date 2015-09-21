@@ -16,20 +16,18 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.serializer.SerializerCaller;
-import org.objectweb.asm.MethodVisitor;
+import io.datakernel.codegen.Expression;
+import io.datakernel.serializer.SerializerBuilder;
+import org.objectweb.asm.Type;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static org.objectweb.asm.Opcodes.*;
-import static org.objectweb.asm.Type.*;
+import static io.datakernel.codegen.Expressions.*;
 
 @SuppressWarnings("StatementWithEmptyBody")
 public class SerializerGenEnum implements SerializerGen {
-	private static final int VAR_I = 1;
-	private final Class<?> enumType;
+	private Class<?> nameOfEnum;
 
-	public SerializerGenEnum(Class<?> enumType) {
-		this.enumType = enumType;
+	public SerializerGenEnum(Class<?> c) {
+		nameOfEnum = c;
 	}
 
 	@Override
@@ -43,37 +41,27 @@ public class SerializerGenEnum implements SerializerGen {
 
 	@Override
 	public Class<?> getRawType() {
-		return enumType;
+		return nameOfEnum;
 	}
 
 	@Override
-	public void serialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> sourceType) {
-		if (sourceType.isEnum()) {
-			mv.visitMethodInsn(INVOKEVIRTUAL, getInternalName(Enum.class), "ordinal", getMethodDescriptor(INT_TYPE));
-		} else if (sourceType == byte.class) {
-			// do nothing
-		} else if (sourceType == Byte.class) {
-			Utils.unbox(mv, byte.class);
-		} else
-			throw new IllegalArgumentException("Unrelated type " + sourceType);
-		backend.writeByteGen(mv);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+
 	}
 
 	@Override
-	public void deserialize(int version, MethodVisitor mv, SerializerBackend backend, int varContainer, int locals, SerializerCaller serializerCaller, Class<?> targetType) {
-		backend.readByteGen(mv);
-		if (targetType.isEnum()) {
-			checkArgument(targetType.getEnumConstants().length <= Byte.MAX_VALUE);
-			mv.visitVarInsn(ISTORE, locals + VAR_I);
-			mv.visitMethodInsn(INVOKESTATIC, getInternalName(targetType), "values", "()[" + getDescriptor(targetType));
-			mv.visitVarInsn(ILOAD, locals + VAR_I);
-			mv.visitInsn(AALOAD);
-		} else if (targetType == byte.class) {
-			// do nothing
-		} else if (targetType == Byte.class) {
-			Utils.box(mv, byte.class);
-		} else
-			throw new IllegalArgumentException("Unrelated type " + targetType);
+	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+		return call(arg(0), "writeByte", cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE));
+	}
+
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+
+	}
+
+	@Override
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+		return get(callStatic(nameOfEnum, "values"), call(arg(0), "readByte"));
 	}
 
 	@Override
