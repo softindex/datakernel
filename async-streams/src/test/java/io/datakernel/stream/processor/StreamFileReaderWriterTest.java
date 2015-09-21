@@ -26,6 +26,7 @@ import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -87,6 +88,7 @@ public class StreamFileReaderWriterTest {
 	}
 
 	@Test
+	@Ignore
 	public void testStreamReaderOnCloseWithError() throws IOException {
 
 		File tempFile = tempFolder.newFile("outReaderWithError.dat");

@@ -738,8 +738,6 @@ public class AsmSerializerTest {
 		testData1.strings = new String[]{"abc", null, "123", "superfluous"};
 		testData1.bytes = new byte[]{1, 2, 3, 4};
 		TestDataFixedSize testData2 = doTest(TestDataFixedSize.class, testData1);
-		System.out.println(Arrays.toString(testData2.strings));
-		System.out.println(Arrays.toString(testData2.bytes));
 		assertArrayEquals(new String[]{testData1.strings[0], testData1.strings[1], testData1.strings[2]}, testData2.strings);
 		assertArrayEquals(testData1.bytes, testData2.bytes);
 	}
