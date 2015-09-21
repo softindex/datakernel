@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
+import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -85,7 +85,7 @@ public final class ParallelService implements ConcurrentService {
 							future.set(true);
 						}
 					}
-				}, sameThreadExecutor());
+				}, newDirectExecutorService());
 			}
 		}
 		return future;

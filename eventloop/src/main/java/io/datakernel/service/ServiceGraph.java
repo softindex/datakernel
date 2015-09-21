@@ -34,7 +34,7 @@ import static com.google.common.base.Strings.repeat;
 import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Sets.difference;
 import static com.google.common.util.concurrent.Futures.immediateFuture;
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
+import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -399,7 +399,7 @@ public class ServiceGraph implements ConcurrentService {
 				public void run() {
 					logFutureWhenDone(future, node, sw, done, failed);
 				}
-			}, sameThreadExecutor());
+			}, newDirectExecutorService());
 		}
 	}
 
@@ -446,7 +446,7 @@ public class ServiceGraph implements ConcurrentService {
 				}
 				started = true;
 			}
-		}, sameThreadExecutor());
+		}, newDirectExecutorService());
 		return future;
 	}
 
@@ -482,7 +482,7 @@ public class ServiceGraph implements ConcurrentService {
 					logger.error("Services stopped with failed services: {}", failedServices.keySet());
 				}
 			}
-		}, sameThreadExecutor());
+		}, newDirectExecutorService());
 		return future;
 	}
 

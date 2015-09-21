@@ -17,7 +17,8 @@
 package io.datakernel.aggregation_db;
 
 import io.datakernel.codegen.AsmFunctionFactory;
-import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.stream.processor.StreamReducers;
 
@@ -25,7 +26,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 public class InvertedIndexProcessorFactory implements ProcessorFactory {
 	private final DefiningClassLoader classLoader;
@@ -39,31 +40,31 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 	                                                 List<String> inputFields, List<String> outputFields) {
 		AsmFunctionFactory<StreamReducers.Reducer> factory = new AsmFunctionFactory<>(classLoader, StreamReducers.Reducer.class);
 
-		String accumulatorVariableName = "ACCUMULATOR";
 		String listFieldName = outputFields.get(0);
 		String addAllMethodName = "addAll";
 
 		// Define the function that constructs the accumulator.
-		FunctionDefSequence onFirstItemDef = sequence(let(accumulatorVariableName, constructor(outputClass)));
-		onFirstItemDef.add(set(field(var(accumulatorVariableName), listFieldName),
+		Expression accumulator = let(constructor(outputClass));
+		ExpressionSequence onFirstItemDef = sequence(accumulator);
+		onFirstItemDef.add(set(field(accumulator, listFieldName),
 				constructor(ArrayList.class))); // call ArrayList constructor
 		// Copy names and values of keys from the record passed as the third argument
 		for (String key : keys) {
 			onFirstItemDef.add(set(
-					field(var(accumulatorVariableName), key),
+					field(accumulator, key),
 					field(cast(arg(2), inputClass), key)));
 		}
 		// Call <listName>.addAll(firstValue.<listName>);
 		onFirstItemDef.add(call(
-				field(var(accumulatorVariableName), listFieldName),
+				field(accumulator, listFieldName),
 				addAllMethodName,
 				cast(field(cast(arg(2), inputClass), listFieldName), Collection.class)
 		));
-		onFirstItemDef.add(var(accumulatorVariableName));
+		onFirstItemDef.add(accumulator);
 		factory.method("onFirstItem", onFirstItemDef);
 
 		// Call <listName>.addAll(nextValue.<listName>);
-		FunctionDefSequence onNextItemDef = sequence();
+		ExpressionSequence onNextItemDef = sequence();
 		onNextItemDef.add(call(
 				field(cast(arg(3), outputClass), listFieldName),
 				addAllMethodName,
@@ -83,28 +84,28 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 	                                     List<String> inputFields, List<String> outputFields) {
 		AsmFunctionFactory<Aggregate> factory = new AsmFunctionFactory<>(classLoader, Aggregate.class);
 
-		String resultVariableName = "RESULT";
 		String listFieldName = outputFields.get(0);
 		String addMethodName = "add";
 
-		FunctionDefSequence createAccumulatorDef = sequence(let(resultVariableName, constructor(outputClass)));
+		Expression result = let(constructor(outputClass));
+		ExpressionSequence createAccumulatorDef = sequence(result);
 
 		// call ArrayList constructor
-		createAccumulatorDef.add(set(field(var(resultVariableName), listFieldName), constructor(ArrayList.class)));
+		createAccumulatorDef.add(set(field(result, listFieldName), constructor(ArrayList.class)));
 		// Copy names and values of keys from the record passed as the third argument
 		for (String key : keys) {
 			createAccumulatorDef.add(set(
-					field(var(resultVariableName), key),
+					field(result, key),
 					field(cast(arg(0), inputClass), key)));
 		}
 
 		// Call <listName>.add(record.<valueName>)
 		createAccumulatorDef.add(call(
-				field(var(resultVariableName), listFieldName),
+				field(result, listFieldName),
 				addMethodName,
 				cast(field(cast(arg(0), inputClass), inputFields.get(0)), Object.class)
 		));
-		createAccumulatorDef.add(var(resultVariableName));
+		createAccumulatorDef.add(result);
 		factory.method("createAccumulator", createAccumulatorDef);
 
 		// Call <listName>.add(record.<valueName>)

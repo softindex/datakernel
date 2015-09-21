@@ -406,6 +406,10 @@ public final class Expressions {
 		return new ExpressionIf(condition, left, right);
 	}
 
+	public static ExpressionIf ifTrue(PredicateDefCmp condition, Expression ifTrue) {
+		return choice(condition, ifTrue, null);
+	}
+
 	public static ExpressionLength length(Expression field) {
 		return new ExpressionLength(field);
 	}

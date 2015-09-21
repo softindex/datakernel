@@ -73,13 +73,12 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	public int nextRevisionId(DSLContext jooq) {
-		Integer id = jooq
+		return jooq
 				.insertInto(AggregationDbRevision.AGGREGATION_DB_REVISION)
 				.defaultValues()
 				.returning(AggregationDbRevision.AGGREGATION_DB_REVISION.ID)
 				.fetchOne()
 				.getId();
-		return id;
 	}
 
 	@Override
@@ -95,14 +94,13 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	@Override
 	public long newChunkId() {
 		DSLContext jooq = DSL.using(jooqConfiguration);
-		Long id = jooq
+		return jooq
 				.insertInto(AGGREGATION_DB_CHUNK, AGGREGATION_DB_CHUNK.REVISION_ID, AGGREGATION_DB_CHUNK.MIN_REVISION_ID,
 						AGGREGATION_DB_CHUNK.MAX_REVISION_ID, AGGREGATION_DB_CHUNK.COUNT)
 				.values(0, 0, 0, 0)
 				.returning(AGGREGATION_DB_CHUNK.ID)
 				.fetchOne()
 				.getId();
-		return id;
 	}
 
 	private void saveAggregationMetadata(DSLContext jooq, Aggregation aggregation, AggregationStructure structure) {

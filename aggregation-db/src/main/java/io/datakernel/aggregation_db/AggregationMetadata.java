@@ -72,7 +72,7 @@ public class AggregationMetadata {
 	 * @param keys         list of key names
 	 * @param inputFields  list of input field names
 	 * @param outputFields list of output field names
-	 * @param predicates
+	 * @param predicates   list of predicates
 	 */
 	@SuppressWarnings("unchecked")
 	public AggregationMetadata(String id, Collection<String> keys, Collection<String> inputFields,

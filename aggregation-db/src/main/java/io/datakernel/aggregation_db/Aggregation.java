@@ -17,7 +17,6 @@
 package io.datakernel.aggregation_db;
 
 import com.google.common.base.*;
-import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
@@ -41,7 +40,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 import static java.util.Arrays.asList;
 
 /**

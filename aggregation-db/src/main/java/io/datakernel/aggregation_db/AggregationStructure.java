@@ -19,16 +19,16 @@ package io.datakernel.aggregation_db;
 
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.codegen.AsmFunctionFactory;
-import io.datakernel.codegen.FunctionDefComparator;
-import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionComparator;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerFactory;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
 import io.datakernel.stream.processor.StreamReducers;
 import org.slf4j.Logger;
@@ -42,7 +42,7 @@ import java.util.Map;
 import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Iterables.concat;
 import static com.google.common.collect.Lists.newArrayList;
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 /**
  * Defines a structure of an aggregation.
@@ -57,7 +57,6 @@ public class AggregationStructure {
 	private final Map<String, FieldType> fields;
 	private final Map<String, FieldType> outputFields;
 	private final AggregationKeyRelationships parentChildRelationships;
-	private final SerializerFactory bufferSerializerFactory;
 
 	private final static Logger logger = LoggerFactory.getLogger(AggregationStructure.class);
 
@@ -84,7 +83,6 @@ public class AggregationStructure {
 		this.fields = fields;
 		this.outputFields = outputFields;
 		this.parentChildRelationships = new AggregationKeyRelationships(parentChildRelationships);
-		this.bufferSerializerFactory = SerializerFactory.createBufferSerializerFactory(classLoader, true, true);
 	}
 
 	public void checkThatKeysExist(List<String> keys) {
@@ -141,15 +139,16 @@ public class AggregationStructure {
 	public Function createFieldFunction(Class<?> recordClass, Class<?> fieldClass, List<String> fields) {
 		logger.trace("Creating field function for fields {}", fields);
 		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Function.class);
-		FunctionDefSequence applyDef = sequence(let("FIELD", constructor(fieldClass)));
+		Expression field = let(constructor(fieldClass));
+		ExpressionSequence applyDef = sequence(field);
 
-		for (String field : fields) {
+		for (String fieldString : fields) {
 			applyDef.add(set(
-					field(var("FIELD"), field),
-					field(cast(arg(0), recordClass), field)));
+					field(field, fieldString),
+					field(cast(arg(0), recordClass), fieldString)));
 		}
 
-		applyDef.add(var("FIELD"));
+		applyDef.add(field);
 		factory.method("apply", applyDef);
 
 		return (Function) factory.newInstance();
@@ -186,7 +185,7 @@ public class AggregationStructure {
 	public Comparator createFieldComparator(AggregationQuery query, Class<?> fieldClass) {
 		logger.trace("Creating field comparator for query {}", query.toString());
 		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Comparator.class);
-		FunctionDefComparator comparator = comparator();
+		ExpressionComparator comparator = comparator();
 		List<AggregationQuery.AggregationOrdering> orderings = query.getOrderings();
 
 		for (AggregationQuery.AggregationOrdering ordering : orderings) {
@@ -210,13 +209,14 @@ public class AggregationStructure {
 	public Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> keys) {
 		logger.trace("Creating key function for keys {}", keys);
 		AsmFunctionFactory factory = new AsmFunctionFactory<>(classLoader, Function.class);
-		FunctionDefSequence applyDef = sequence(let("KEY", constructor(keyClass)));
-		for (String key : keys) {
+		Expression key = let(constructor(keyClass));
+		ExpressionSequence applyDef = sequence(key);
+		for (String keyString : keys) {
 			applyDef.add(set(
-					field(var("KEY"), key),
-					field(cast(arg(0), recordClass), key)));
+					field(key, keyString),
+					field(cast(arg(0), recordClass), keyString)));
 		}
-		applyDef.add(var("KEY"));
+		applyDef.add(key);
 		factory.method("apply", applyDef);
 		return (Function) factory.newInstance();
 	}
@@ -265,30 +265,32 @@ public class AggregationStructure {
 		logger.trace("Creating merge fields reducer for keys {}, fields {}", keys, recordFields);
 		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, StreamReducers.Reducer.class);
 
-		FunctionDefSequence onFirstItemDef = sequence(let("ACCUMULATOR", constructor(outputClass)));
+		Expression accumulator1 = let(constructor(outputClass));
+		ExpressionSequence onFirstItemDef = sequence(accumulator1);
 		for (String key : keys) {
 			onFirstItemDef.add(set(
-					field(var("ACCUMULATOR"), key),
+					field(accumulator1, key),
 					field(cast(arg(2), inputClass), key)));
 		}
 		for (String field : recordFields) {
 			onFirstItemDef.add(set(
-					field(var("ACCUMULATOR"), field),
+					field(accumulator1, field),
 					field(cast(arg(2), inputClass), field)));
 		}
-		onFirstItemDef.add(var("ACCUMULATOR"));
+		onFirstItemDef.add(accumulator1);
 		factory.method("onFirstItem", onFirstItemDef);
 
-		FunctionDefSequence onNextItemDef = sequence(let("ACCUMULATOR", cast(arg(3), outputClass)));
+		Expression accumulator2 = let(cast(arg(3), outputClass));
+		ExpressionSequence onNextItemDef = sequence(accumulator2);
 		for (String field : recordFields) {
 			onNextItemDef.add(set(
-					field(var("ACCUMULATOR"), field),
+					field(accumulator2, field),
 					add(
 							field(cast(arg(2), inputClass), field),
 							field(cast(arg(3), outputClass), field)
 					)));
 		}
-		onNextItemDef.add(var("ACCUMULATOR"));
+		onNextItemDef.add(accumulator2);
 		factory.method("onNextItem", onNextItemDef);
 
 		factory.method("onComplete", call(arg(0), "onData", arg(2)));
@@ -316,7 +318,7 @@ public class AggregationStructure {
 				throw propagate(e);
 			}
 		}
-		return bufferSerializerFactory.createBufferSerializer(serializerGenClass);
+		return SerializerBuilder.newDefaultInstance(classLoader).create(serializerGenClass);
 	}
 
 	@Override

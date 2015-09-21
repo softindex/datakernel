@@ -22,7 +22,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
@@ -77,7 +76,8 @@ public final class PredicateDefCmp implements PredicateDef {
 		Label labelTrue = new Label();
 		Label labelExit = new Label();
 
-		Preconditions.check(left.type(ctx).equals(right.type(ctx)));
+		Type leftFieldType = left.type(ctx);
+		Preconditions.check(leftFieldType.equals(right.type(ctx)));
 		left.load(ctx);
 		right.load(ctx);
 

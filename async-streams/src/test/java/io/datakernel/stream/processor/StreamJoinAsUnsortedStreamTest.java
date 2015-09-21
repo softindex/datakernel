@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
@@ -47,7 +48,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("id", id)
 					.add("detailId", detailId)
 					.add("master", master)
@@ -66,7 +67,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("id", id)
 					.add("detail", detail)
 					.toString();
@@ -98,7 +99,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("id", id)
 					.add("detailId", detailId)
 					.add("master", master)

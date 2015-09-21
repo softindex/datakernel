@@ -846,8 +846,8 @@ public final class SerializerBuilder {
 		}
 	}
 
-	synchronized private Object createSerializer(SerializerGen serializerGen, int serializeVersion) {
-		AsmFunctionFactory asmFactory = new AsmFunctionFactory(definingClassLoader, BufferSerializer.class);
+	synchronized private BufferSerializer createSerializer(SerializerGen serializerGen, int serializeVersion) {
+		AsmFunctionFactory<BufferSerializer> asmFactory = new AsmFunctionFactory<>(definingClassLoader, BufferSerializer.class);
 
 		Preconditions.check(serializeVersion >= 0, "serializerVersion is negative");
 		Class<?> dataType = serializerGen.getRawType();

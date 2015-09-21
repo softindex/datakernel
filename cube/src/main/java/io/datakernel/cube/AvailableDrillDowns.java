@@ -16,7 +16,7 @@
 
 package io.datakernel.cube;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 
 import java.util.List;
 import java.util.Set;
@@ -58,7 +58,7 @@ public final class AvailableDrillDowns {
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("drillDowns", drillDowns)
 				.add("measures", measures)
 				.toString();

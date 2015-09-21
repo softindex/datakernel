@@ -166,9 +166,7 @@ public class CubeExample {
 				.newDefaultInstance(classLoader)
 				.create(LogItem.class);
 
-		LogManager<LogItem> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
-
-		return logManager;
+		return new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
 	}
 
 	/* Generate some test data and wrap it in StreamProducer. */

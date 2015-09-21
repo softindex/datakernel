@@ -17,7 +17,7 @@
 package io.datakernel.cube;
 
 import com.google.common.base.Function;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
@@ -540,7 +540,7 @@ public final class Cube {
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("structure", structure)
 				.add("aggregations", aggregations)
 				.add("lastRevisionId", lastRevisionId)

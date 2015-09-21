@@ -17,14 +17,15 @@
 package io.datakernel.aggregation_db;
 
 import io.datakernel.codegen.AsmFunctionFactory;
-import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.PredicateDefCmp;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.stream.processor.StreamReducers;
 
 import java.util.List;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 public class KeyValueProcessorFactory implements ProcessorFactory {
 	private final DefiningClassLoader classLoader;
@@ -42,18 +43,19 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		/* Define the function that creates the accumulator object
 		by copying all properties from object in the third argument.
 		*/
-		FunctionDefSequence onFirstItemDef = sequence(let("ACCUMULATOR", constructor(outputClass)));
+		Expression accumulator = let(constructor(outputClass));
+		ExpressionSequence onFirstItemDef = sequence(accumulator);
 		for (String key : keys) {
 			onFirstItemDef.add(set(
-					field(var("ACCUMULATOR"), key),
+					field(accumulator, key),
 					field(cast(arg(2), inputClass), key)));
 		}
 		for (String field : inputFields) {
 			onFirstItemDef.add(set(
-					field(var("ACCUMULATOR"), field),
+					field(accumulator, field),
 					field(cast(arg(2), inputClass), field)));
 		}
-		onFirstItemDef.add(var("ACCUMULATOR"));
+		onFirstItemDef.add(accumulator);
 		factory.method("onFirstItem", onFirstItemDef);
 
 		/* Define the function that accumulates record specified in the third argument
@@ -61,7 +63,7 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		Specifically, we generate a code that compares timestamps of the accumulator
 		and the record and replace the value in the accumulator if the record has later timestamp.
 		*/
-		FunctionDefSequence onNextItemDef = sequence();
+		ExpressionSequence onNextItemDef = sequence();
 		for (String field : inputFields) {
 			onNextItemDef.add(ifTrue(cmp(PredicateDefCmp.Operation.LT,
 							field(cast(arg(3), outputClass), "timestamp"),
@@ -86,18 +88,19 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		Define the function that creates the accumulator object
 		by copying all properties from object in the first argument.
 		*/
-		FunctionDefSequence createAccumulatorDef = sequence(let("RESULT", constructor(outputClass)));
+		Expression result = let(constructor(outputClass));
+		ExpressionSequence createAccumulatorDef = sequence(result);
 		for (String key : keys) {
 			createAccumulatorDef.add(set(
-					field(var("RESULT"), key),
+					field(result, key),
 					field(cast(arg(0), inputClass), key)));
 		}
 		for (String field : inputFields) {
 			createAccumulatorDef.add(set(
-					field(var("RESULT"), field),
+					field(result, field),
 					field(cast(arg(0), inputClass), field)));
 		}
-		createAccumulatorDef.add(var("RESULT"));
+		createAccumulatorDef.add(result);
 		factory.method("createAccumulator", createAccumulatorDef);
 
 		/*
@@ -106,7 +109,7 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		Specifically, we generate a code that compares timestamps of the accumulator
 		and the record and replace the value in the accumulator if the record has later timestamp.
 		*/
-		FunctionDefSequence accumulateDef = sequence();
+		ExpressionSequence accumulateDef = sequence();
 		for (String field : inputFields) {
 			accumulateDef.add(
 					ifTrue(cmp(PredicateDefCmp.Operation.LT,

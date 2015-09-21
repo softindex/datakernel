@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import io.datakernel.async.AsyncCancellable;
 
 public class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCancellable {
@@ -94,7 +94,7 @@ public class ScheduledRunnable implements Comparable<ScheduledRunnable>, AsyncCa
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("timestamp", timestamp)
 				.add("cancelled", cancelled)
 				.add("complete", complete)

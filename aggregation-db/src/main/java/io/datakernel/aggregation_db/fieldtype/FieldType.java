@@ -53,7 +53,6 @@ public abstract class FieldType {
 
 	@Override
 	public int hashCode() {
-		int result = dataType.hashCode();
-		return result;
+		return dataType.hashCode();
 	}
 }

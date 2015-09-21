@@ -16,7 +16,7 @@
 
 package io.datakernel.cube.bean;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
@@ -65,7 +65,7 @@ public class DataItemResult2 {
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("key2", key2)
 				.add("metric1", metric1)
 				.add("metric2", metric2)

@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Maps.newConcurrentMap;
 import static com.google.common.collect.Maps.newHashMap;
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
+import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 /**
  * It is abstract class which represents non-asynchronous resolving. It resolves each domain
@@ -101,7 +101,7 @@ public abstract class BlockingDnsResolver {
 							});
 						}
 					}
-				}, sameThreadExecutor());
+				}, newDirectExecutorService());
 			}
 
 			@Override

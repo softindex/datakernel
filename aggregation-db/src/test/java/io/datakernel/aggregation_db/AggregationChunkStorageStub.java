@@ -19,7 +19,8 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
 import io.datakernel.codegen.AsmFunctionFactory;
-import io.datakernel.codegen.FunctionDefSequence;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -32,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.codegen.FunctionDefs.*;
+import static io.datakernel.codegen.Expressions.*;
 
 @SuppressWarnings("unchecked")
 public class AggregationChunkStorageStub implements AggregationChunkStorage {
@@ -50,24 +51,25 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
 		Class<?> sourceClass = chunkTypes.get(id);
 		AsmFunctionFactory<Function> factory = new AsmFunctionFactory(classLoader, Function.class);
-		FunctionDefSequence applyDef = sequence(let("RESULT", constructor(recordClass)));
+		Expression result = let(constructor(recordClass));
+		ExpressionSequence applyDef = sequence(result);
 		for (String key : keys) {
 			applyDef.add(set(
-					field(var("RESULT"), key),
+					field(result, key),
 					field(cast(arg(0), sourceClass), key)));
 		}
 
 //		applyDef.add(set(
-//				field(var("RESULT"), "list"),
+//				field(result, "list"),
 //				field(cast(arg(0), sourceClass), "list")
 //		));
 		for (String metric : fields) {
 			applyDef.add(set(
-					field(var("RESULT"), metric),
+					field(result, metric),
 					field(cast(arg(0), sourceClass), metric)));
 		}
 
-		applyDef.add(var("RESULT"));
+		applyDef.add(result);
 		factory.method("apply", applyDef);
 		Function function = factory.newInstance();
 		StreamProducers.OfIterator<T> chunkReader = (StreamProducers.OfIterator<T>) StreamProducers.ofIterable(eventloop, Iterables.transform(lists.get(id), function));

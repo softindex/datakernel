@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import static com.google.common.collect.Lists.reverse;
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
+import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -77,7 +77,7 @@ public final class SequentialService implements ConcurrentService {
 						}
 						next(future, it, action);
 					}
-				}, sameThreadExecutor());
+				}, newDirectExecutorService());
 				return;
 			}
 		}

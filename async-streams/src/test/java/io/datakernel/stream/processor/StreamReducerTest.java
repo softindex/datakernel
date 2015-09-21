@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
@@ -410,7 +411,7 @@ public class StreamReducerTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("key", key)
 					.add("metric1", metric1)
 					.add("metric2", metric2)
