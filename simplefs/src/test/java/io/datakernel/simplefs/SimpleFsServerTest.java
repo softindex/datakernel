@@ -17,11 +17,9 @@
 package io.datakernel.simplefs;
 
 import com.google.common.base.Charsets;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
@@ -42,76 +40,71 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static junit.framework.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class SimpleFsServerTest {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServerTest.class);
 
 	private static final int LISTEN_PORT = 6432;
 	private static final InetSocketAddress address = new InetSocketAddress("127.0.0.1", LISTEN_PORT);
+
 	@Rule
-	public final TemporaryFolder folder = new TemporaryFolder();
-	private Path dirPath;
+	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+	private Path clientStorage;
 	private Path serverStorage;
 
 	@Before
 	public void before() throws Exception {
+		clientStorage = Paths.get(temporaryFolder.newFolder("test").toURI());
+		serverStorage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
 
-		dirPath = Paths.get(folder.newFolder("test").toURI());
-		serverStorage = Paths.get(folder.newFolder("server_storage").toURI());
+		Files.createDirectories(clientStorage);
+		Files.createDirectories(serverStorage);
 
-		Files.createDirectories(dirPath);
-
-		Path t1 = dirPath.resolve("t1");
+		Path t1 = clientStorage.resolve("t1");
 		Files.write(t1, ("some text\n\nmore text\t\n\n\r").getBytes(Charsets.UTF_8));
 
-		Path t2 = dirPath.resolve("t2");
+		Path t2 = clientStorage.resolve("t2");
 		Files.write(t2, ("\n\raaa\nbbb").getBytes(Charsets.UTF_8));
 
-		Path t3 = dirPath.resolve("empty_file");
-		Files.createFile(t3);
+		Path emptyFile = clientStorage.resolve("empty_file");
+		Files.createFile(emptyFile);
 
-		Path t4 = dirPath.resolve("a b");
-		Files.write(t4, ("a\nb\nc").getBytes(Charsets.UTF_8));
+		Path ab = clientStorage.resolve("a b");
+		Files.write(ab, ("a\nb\nc").getBytes(Charsets.UTF_8));
 
-		Path t5 = dirPath.resolve("big_file");
-
+		Path bigFile = clientStorage.resolve("big_file");
 		StringBuilder testFileContentBuilder = new StringBuilder();
 		for (int i = 0; i < 1000000; i++) {
-			testFileContentBuilder.append(i);
-			testFileContentBuilder.append("\n");
+			testFileContentBuilder.append(i).append("\n");
 		}
-		Files.write(t5, testFileContentBuilder.toString().getBytes(Charsets.UTF_8));
+		Files.write(bigFile, testFileContentBuilder.toString().getBytes(Charsets.UTF_8));
 	}
 
 	@Test
 	public void testDeleteFile() throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
+		NioEventloop eventloop = new NioEventloop();
+		String requestedFile = "big_file";
 
-		Files.createDirectories(serverStorage);
-		Files.copy(dirPath.resolve("big_file"), serverStorage.resolve("big_file"));
+		Files.copy(clientStorage.resolve(requestedFile), serverStorage.resolve(requestedFile));
 
-		prepareServer(eventloop);
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		SimpleFsClient client = new SimpleFsClient(eventloop);
-
-		final String requestedFile = "big_file";
-
-		final ResultCallback<Boolean> callback = new ResultCallback<Boolean>() {
+		final CompletionCallback callback = new CompletionCallback() {
 			@Override
-			public void onResult(Boolean result) {
-
+			public void onComplete() {
+				logger.info("File deleted");
+				stop(fileServer);
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.error(exception.getMessage(), exception);
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
 			}
 		};
-
-		client.deleteFile(address, requestedFile, callback);
+		client.deleteFile(requestedFile, callback);
 		eventloop.run();
 
 		Path pathDeleted = serverStorage.resolve(requestedFile);
@@ -119,241 +112,262 @@ public class SimpleFsServerTest {
 	}
 
 	@Test
-	public void testDeleteNotExistsFile() throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
-		prepareServer(eventloop);
+	public void testDeleteMissingFile() throws Exception {
+		NioEventloop eventloop = new NioEventloop();
+		String requestedFile = "big_file_not_exist";
 
-		SimpleFsClient client = new SimpleFsClient(eventloop);
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		final String requestedFile = "big_file_1";
-
-		final ResultCallback<Boolean> callback = new ResultCallback<Boolean>() {
+		final CompletionCallback callback = new CompletionCallback() {
 			@Override
-			public void onResult(Boolean result) {
-				logger.info("File delete status\t" + result);
+			public void onComplete() {
+				stop(fileServer);
+				assertFalse(true);
+				logger.info("Should not end there");
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.info(exception.getMessage());
+			public void onException(Exception e) {
+				stop(fileServer);
+				logger.info(e.getMessage());
 			}
 		};
+		client.deleteFile(requestedFile, callback);
 
-		client.deleteFile(address, requestedFile, callback);
 		eventloop.run();
 	}
 
 	@Test
 	public void testFileList() throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
+		NioEventloop eventloop = new NioEventloop();
+		uploadFiles(eventloop, "t1", "t2", "a b", "empty_file", "big_file");
 
-		Files.createDirectories(serverStorage);
-
-		uploadFile(eventloop, "t1");
-		uploadFile(eventloop, "t2");
-		uploadFile(eventloop, "a b");
-		uploadFile(eventloop, "empty_file");
-		uploadFile(eventloop, "big_file");
-
-		prepareServer(eventloop);
-
-		SimpleFsClient client = new SimpleFsClient(eventloop);
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		final ResultCallback<List<String>> callback = new ResultCallback<List<String>>() {
 			@Override
 			public void onResult(List<String> result) {
-
+				stop(fileServer);
 				Collections.sort(result);
 				List<String> expected = Arrays.asList("t1", "t2", "a b", "empty_file", "big_file");
 				Collections.sort(expected);
-
 				assertEquals(expected, result);
 			}
 
 			@Override
 			public void onException(Exception exception) {
+				stop(fileServer);
 				logger.error("Can't get file list", exception);
 			}
 		};
 
-		client.fileList(address, callback);
-
+		client.listFiles(callback);
 		eventloop.run();
 	}
 
 	@Test
 	public void testUpload() throws Exception {
+		String requestedFile = "t2";
+		String resultFile = "t2_uploaded";
 
-		final String requestedFile = "t2";
-		final String resultFile = "t2_uploaded";
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
 
-		final ExecutorService executor = Executors.newCachedThreadPool();
-
-		final NioEventloop eventloop = new NioEventloop();
-		prepareServer(eventloop);
-
-		SimpleFsClient client = new SimpleFsClient(eventloop);
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
-				16 * 1024, dirPath.resolve(requestedFile));
+				16 * 1024, clientStorage.resolve(requestedFile));
 
-		client.write(address, resultFile, new ResultCallback<StreamConsumer<ByteBuf>>() {
+		client.upload(resultFile, producer, new CompletionCallback() {
 			@Override
-			public void onResult(StreamConsumer<ByteBuf> result) {
-				producer.streamTo(result);
+			public void onComplete() {
+				logger.info("File uploaded");
+				stop(fileServer);
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.error("Can't upload", exception);
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
 			}
 		});
 
 		eventloop.run();
 		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), serverStorage.resolve(resultFile).toFile()));
 	}
 
 	@Test
 	public void testUploadBig() throws Exception {
+		String requestedFile = "big_file";
+		String resultFile = "big_file_uploaded";
 
-		final String requestedFile = "big_file";
-		final String resultFile = "big_file_uploaded";
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
 
-		final ExecutorService executor = Executors.newCachedThreadPool();
-
-		final NioEventloop eventloop = new NioEventloop();
-		prepareServer(eventloop);
-
-		SimpleFsClient client = new SimpleFsClient(eventloop);
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
-				16 * 1024, dirPath.resolve(requestedFile));
+				16 * 1024, clientStorage.resolve(requestedFile));
 
-		client.write(address, resultFile, new ResultCallback<StreamConsumer<ByteBuf>>() {
+		client.upload(resultFile, producer, new CompletionCallback() {
 			@Override
-			public void onResult(StreamConsumer<ByteBuf> result) {
-				producer.streamTo(result);
+			public void onComplete() {
+				logger.info("Big file uploaded");
+				stop(fileServer);
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.error("Can't upload", exception);
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
 			}
 		});
 
 		eventloop.run();
 		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), serverStorage.resolve(resultFile).toFile()));
 	}
 
 	@Test
 	public void testDownload() throws Exception {
+		String requestedFile = "big_file";
+		String resultFile = "big_file_downloaded";
 
-		final String requestedFile = "big_file";
-		final String resultFile = "big_file_downloaded";
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
 
-		final ExecutorService executor = Executors.newCachedThreadPool();
+		Files.copy(clientStorage.resolve(requestedFile), serverStorage.resolve(requestedFile));
 
-		final NioEventloop eventloop = new NioEventloop();
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		Files.createDirectories(serverStorage);
-
-		uploadFile(eventloop, "big_file");
-
-		prepareServer(eventloop);
-
-		SimpleFsClient client = new SimpleFsClient(eventloop);
-
-		final ResultCallback<StreamProducer<ByteBuf>> callback = new ResultCallback<StreamProducer<ByteBuf>>() {
+		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
+		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
-			public void onResult(StreamProducer<ByteBuf> result) {
-				StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, dirPath.resolve(resultFile));
-				result.streamTo(consumer);
+			public void onComplete() {
+				logger.error("File downloaded");
+				stop(fileServer);
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.error(exception.getMessage());
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
 			}
-		};
+		});
 
-		client.read(address, requestedFile, callback);
+		client.download(requestedFile, consumer);
 
 		eventloop.run();
 		executor.shutdownNow();
 
-		assertTrue(com.google.common.io.Files.equal(dirPath.resolve(requestedFile).toFile(), dirPath.resolve(resultFile).toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile).toFile()));
 	}
 
 	@Test
 	public void testDownloadNotExistsFile() throws Exception {
+		String requestedFile = "t2_not_exist";
+		String resultFile = "t2_downloaded";
 
-		final String requestedFile = "t2_not_exist";
-		final String resultFile = "t2_downloaded";
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+		final SimpleFsServer fileServer = prepareServer(eventloop);
 
-		final ExecutorService executor = Executors.newCachedThreadPool();
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		final NioEventloop eventloop = new NioEventloop();
-		prepareServer(eventloop);
-
-		SimpleFsClient client = new SimpleFsClient(eventloop);
-
-		final ResultCallback<StreamProducer<ByteBuf>> callback = new ResultCallback<StreamProducer<ByteBuf>>() {
+		final StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
+		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
-			public void onResult(StreamProducer<ByteBuf> result) {
-				logger.info("Start download file {}", requestedFile);
-				StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, dirPath.resolve(resultFile));
-				result.streamTo(consumer);
+			public void onComplete() {
+				// file server won't be stopped
+				fail("Can't download non existing file");
+				stop(fileServer);
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				logger.error("Exception on client: {}", exception.getMessage());
+				logger.info(exception.getMessage());
+				stop(fileServer);
 			}
-		};
+		});
 
-		client.read(address, requestedFile, callback);
+		client.download(requestedFile, consumer);
 
 		eventloop.run();
 		executor.shutdown();
 	}
 
-	private void uploadFile(NioEventloop eventloop, String fileName) throws IOException {
-		prepareServer(eventloop);
+	private void uploadFiles(NioEventloop eventloop, final String... fileNames) throws IOException {
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		ExecutorService executor = Executors.newCachedThreadPool();
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		final ExecutorService executor = Executors.newCachedThreadPool();
+		for (int i = 0; i < fileNames.length; i++) {
+			final String fileName = fileNames[i];
+			final int counter = i + 1;
+			final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
+					16 * 1024, clientStorage.resolve(fileName));
 
-		SimpleFsClient client = new SimpleFsClient(eventloop);
+			client.upload(fileName, producer, new CompletionCallback() {
+				@Override
+				public void onComplete() {
+					logger.info("Uploaded file: {}", fileName);
+					if (counter == fileNames.length)
+						stop(fileServer);
+				}
 
-		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
-				16 * 1024, dirPath.resolve(fileName));
-
-		client.write(address, fileName, new ResultCallback<StreamConsumer<ByteBuf>>() {
-			@Override
-			public void onResult(StreamConsumer<ByteBuf> result) {
-				producer.streamTo(result);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.error("Can't upload", exception);
-			}
-		});
+				@Override
+				public void onException(Exception exception) {
+					logger.error("Can't upload: {}", fileName, exception);
+				}
+			});
+		}
 
 		eventloop.run();
 		executor.shutdownNow();
 	}
 
-	private void prepareServer(NioEventloop eventloop) throws IOException {
-
+	private SimpleFsServer prepareServer(NioEventloop eventloop) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, serverStorage, executor);
 		fileServer.setListenPort(LISTEN_PORT);
-		fileServer.acceptOnce();
 		try {
 			fileServer.listen();
 		} catch (IOException e) {
 			logger.error("Can't start listen", e);
 		}
+		fileServer.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Started server");
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Failed to start server", e);
+			}
+		});
+		return fileServer;
 	}
 
+	private void stop(SimpleFsServer server) {
+		server.stop(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Server has been stopped");
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				logger.info("Failed to stop server");
+			}
+		});
+	}
 }

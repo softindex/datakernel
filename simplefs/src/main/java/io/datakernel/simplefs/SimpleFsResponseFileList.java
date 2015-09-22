@@ -19,10 +19,14 @@ package io.datakernel.simplefs;
 import java.util.List;
 
 public class SimpleFsResponseFileList extends SimpleFsResponse {
+    public final List<String> fileList;
 
-	public final List<String> fileList;
+    public SimpleFsResponseFileList(List<String> fileList) {
+        this.fileList = fileList;
+    }
 
-	public SimpleFsResponseFileList(List<String> fileList) {
-		this.fileList = fileList;
-	}
+    @Override
+    public String toString() {
+        return "List{size=" + fileList.size() + "}";
+    }
 }
