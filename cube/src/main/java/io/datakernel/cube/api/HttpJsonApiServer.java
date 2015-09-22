@@ -16,19 +16,23 @@
 
 package io.datakernel.cube.api;
 
-import com.google.common.collect.Sets;
+import com.google.common.base.Predicate;
+import com.google.common.collect.Iterables;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
+import io.datakernel.aggregation_db.AggregationException;
+import io.datakernel.aggregation_db.AggregationQuery;
+import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.aggregation_db.gson.AggregationQueryGsonSerializer;
+import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
+import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.cube.*;
-import io.datakernel.cube.dimensiontype.DimensionType;
-import io.datakernel.cube.dimensiontype.DimensionTypeDate;
+import io.datakernel.cube.AvailableDrillDowns;
+import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.*;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.stream.StreamConsumers;
 import org.slf4j.Logger;
@@ -57,130 +61,191 @@ public final class HttpJsonApiServer {
 	 * @param port      port to listen
 	 * @return server instance (not started)
 	 */
-	public static AsyncHttpServer httpServer(final Cube cube, NioEventloop eventloop, int port) {
+	public static AsyncHttpServer httpServer(Cube cube, NioEventloop eventloop, int port) {
 		final Gson gson = new GsonBuilder()
-				.registerTypeAdapter(CubeQuery.class, new CubeQueryGsonSerializer())
-				.registerTypeAdapter(CubeQuery.CubePredicates.class, new CubePredicatesGsonSerializer(cube.getStructure()))
+				.registerTypeAdapter(AggregationQuery.class, new AggregationQueryGsonSerializer())
+				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
 				.create();
 
 		MiddlewareServlet servlet = new MiddlewareServlet();
 
-		servlet.get(INFO_REQUEST_PATH, new AsyncHttpServlet() {
-			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
-				logger.info("Got request for available drill downs.");
-				try {
-					Set<String> dimensions = getStringsFromJsonArray(gson, request.getParameter("dimensions"));
-					Set<String> measures = getStringsFromJsonArray(gson, request.getParameter("measures"));
-					CubeQuery.CubePredicates cubePredicates = gson.fromJson(request.getParameter("filters"), CubeQuery.CubePredicates.class);
-					AvailableDrillDowns availableDrillDowns =
-							cube.getAvailableDrillDowns(dimensions, Sets.newHashSet(cubePredicates.predicates()), measures);
+		servlet.get(INFO_REQUEST_PATH, infoRequestHandler(gson, cube));
 
-					String responseJson = gson.toJson(availableDrillDowns);
+		servlet.get(QUERY_REQUEST_PATH, queryHandler(gson, cube, eventloop));
 
-					callback.onResult(HttpResponse.create().body(wrapUTF8(responseJson)));
-				} catch (Exception e) {
-					callback.onResult(processException(e));
-				}
-			}
-		});
-
-		servlet.get(QUERY_REQUEST_PATH, queryHandler(gson, cube, eventloop, false));
-
-		servlet.get(DIMENSIONS_REQUEST_PATH, queryHandler(gson, cube, eventloop, true));
+		servlet.get(DIMENSIONS_REQUEST_PATH, dimensionsRequestHandler(gson, cube, eventloop));
 
 		return new AsyncHttpServer(eventloop, servlet).setListenPort(port);
 	}
 
-	private static AsyncHttpServlet queryHandler(final Gson gson, final Cube cube, final NioEventloop eventloop,
-	                                             final boolean ignoreMeasures) {
+	private static HttpResponse createResponse(String body) {
+		return HttpResponse.create()
+				.body(wrapUTF8(body))
+				.header(HttpHeader.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+	}
+
+	private static AsyncHttpServlet dimensionsRequestHandler(final Gson gson, final Cube cube, final NioEventloop eventloop) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				try {
-					final String queryJson = request.getParameter("query");
-					logger.trace("Got query: {}", queryJson);
-					final CubeQuery receivedQuery = gson.fromJson(queryJson, CubeQuery.class);
-					Set<String> availableMeasures = cube.getAvailableMeasures(receivedQuery.getResultDimensions(), receivedQuery.getResultMeasures());
+			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				logger.info("Got request {} for dimensions.", request);
+				String predicatesJson = request.getParameter("filters");
+				String measuresJson = request.getParameter("measures");
+				final String dimension = request.getParameter("dimension");
 
-					final CubeQuery finalQuery = new CubeQuery()
-							.dimensions(receivedQuery.getResultDimensions())
-							.measures(newArrayList(availableMeasures))
-							.predicates(receivedQuery.getPredicates());
+				AggregationQuery.QueryPredicates queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
+				List<String> measures = getListOfStringsFromJsonArray(gson, measuresJson);
+				List<String> chain = cube.buildDrillDownChain(queryPredicates.keys(), dimension);
+				final Set<String> childrenDimensions = cube.findChildrenDimensions(dimension);
+				List<AggregationQuery.QueryPredicate> filteredPredicates = newArrayList(Iterables.filter(queryPredicates.asCollection(), new Predicate<AggregationQuery.QueryPredicate>() {
+					@Override
+					public boolean apply(AggregationQuery.QueryPredicate predicate) {
+						return !childrenDimensions.contains(predicate.key) && !predicate.key.equals(dimension);
+					}
+				}));
 
-					Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
-					final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
+				final AggregationQuery query = new AggregationQuery()
+						.keys(chain)
+						.fields(measures)
+						.predicates(filteredPredicates);
 
-					consumerStream.addCompletionCallback(new CompletionCallback() {
-						@Override
-						public void onComplete() {
-							String jsonResult = constructJson(gson, cube, consumerStream.getList(), finalQuery, ignoreMeasures);
-							callback.onResult(HttpResponse.create().body(wrapUTF8(jsonResult)));
-							logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
-						}
+				Class<?> resultClass = cube.getStructure().createResultClass(query);
+				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, query, cube, eventloop);
 
-						@Override
-						public void onException(Exception e) {
-							logger.error("Sending response to query {} failed.", finalQuery, e);
-						}
-					});
-				} catch (Exception e) {
-					callback.onResult(processException(e));
-				}
+				consumerStream.addCompletionCallback(new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						String jsonResult = constructJson(gson, cube, consumerStream.getList(), query, true);
+						callback.onResult(createResponse(jsonResult));
+						logger.trace("Sending response {} to /dimensions query. Constructed query: {}", jsonResult, query);
+					}
+
+					@Override
+					public void onException(Exception e) {
+						processException(e);
+						logger.error("Sending response to /dimensions query failed. Constructed query: {}", query, e);
+					}
+				});
 			}
 		};
 	}
 
-	private static <T> StreamConsumers.ToList<T> queryCube(Class<T> resultClass, CubeQuery query, Cube cube,
+	private static AsyncHttpServlet infoRequestHandler(final Gson gson, final Cube cube) {
+		return new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				logger.info("Got request {} for available drill downs.", request);
+				Set<String> dimensions = getSetOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
+				Set<String> measures = getSetOfStringsFromJsonArray(gson, request.getParameter("measures"));
+				AggregationQuery.QueryPredicates queryPredicates = gson.fromJson(request.getParameter("filters"), AggregationQuery.QueryPredicates.class);
+				AvailableDrillDowns availableDrillDowns =
+						cube.getAvailableDrillDowns(dimensions, queryPredicates, measures);
+
+				String responseJson = gson.toJson(availableDrillDowns);
+
+				callback.onResult(createResponse(responseJson));
+			}
+		};
+	}
+
+	private static AsyncHttpServlet queryHandler(final Gson gson, final Cube cube, final NioEventloop eventloop) {
+		return new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				logger.info("Got query {}", request);
+				List<String> dimensions = getListOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
+				List<String> measures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
+				String predicatesJson = request.getParameter("filters");
+				AggregationQuery.QueryPredicates queryPredicates = null;
+				if (predicatesJson != null) {
+					queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
+				}
+
+				Set<String> availableMeasures = cube.getAvailableMeasures(dimensions, measures);
+
+				final AggregationQuery finalQuery = new AggregationQuery()
+						.keys(dimensions)
+						.fields(newArrayList(availableMeasures));
+
+				if (queryPredicates != null) {
+					finalQuery.predicates(queryPredicates);
+				}
+
+				Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
+				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
+
+				consumerStream.addCompletionCallback(new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						String jsonResult = constructJson(gson, cube, consumerStream.getList(), finalQuery, false);
+						callback.onResult(createResponse(jsonResult));
+						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
+					}
+
+					@Override
+					public void onException(Exception e) {
+						processException(e);
+						logger.error("Sending response to query {} failed.", finalQuery, e);
+					}
+				});
+			}
+		};
+	}
+
+	private static <T> StreamConsumers.ToList<T> queryCube(Class<T> resultClass, AggregationQuery query, Cube cube,
 	                                                       NioEventloop eventloop) {
 		StreamConsumers.ToList<T> consumerStream = StreamConsumers.toList(eventloop);
 		cube.query(0, resultClass, query).streamTo(consumerStream);
 		return consumerStream;
 	}
 
-	private static Set<String> getStringsFromJsonArray(Gson gson, String json) {
+	private static Set<String> getSetOfStringsFromJsonArray(Gson gson, String json) {
 		Type type = new TypeToken<Set<String>>() {
 		}.getType();
 		return gson.fromJson(json, type);
 	}
 
-	private static <T> String constructJson(Gson gson, Cube cube, List<T> results, CubeQuery query, boolean ignoreMeasures) {
-		List<String> resultDimensions = query.getResultDimensions();
-		List<String> resultMeasures = query.getResultMeasures();
+	private static List<String> getListOfStringsFromJsonArray(Gson gson, String json) {
+		Type type = new TypeToken<List<String>>() {
+		}.getType();
+		return gson.fromJson(json, type);
+	}
+
+	private static <T> String constructJson(Gson gson, Cube cube, List<T> results, AggregationQuery query, boolean ignoreMeasures) {
+		List<String> resultKeys = query.getResultKeys();
+		List<String> resultFields = query.getResultFields();
 		JsonArray jsonResults = new JsonArray();
-		CubeStructure structure = cube.getStructure();
+		AggregationStructure structure = cube.getStructure();
 
 		try {
 			for (T result : results) {
 				Class<?> resultClass = result.getClass();
 				JsonObject resultJsonObject = new JsonObject();
 
-				for (String dimension : resultDimensions) {
-					DimensionType dimensionType = structure.getDimensionType(dimension);
-					Field dimensionField = resultClass.getDeclaredField(dimension);
-					dimensionField.setAccessible(true);
+				for (String key : resultKeys) {
+					KeyType keyType = structure.getKeyType(key);
+					Field dimensionField = resultClass.getField(key);
 					Object fieldValue = dimensionField.get(result);
-					if (dimensionType instanceof DimensionTypeDate) {
-						String fieldValueString = dimensionType.toString(fieldValue);
-						resultJsonObject.add(dimension, new JsonPrimitive(fieldValueString));
+					if (keyType instanceof KeyTypeDate) {
+						String fieldValueString = keyType.toString(fieldValue);
+						resultJsonObject.add(key, new JsonPrimitive(fieldValueString));
 					} else {
-						resultJsonObject.add(dimension, gson.toJsonTree(fieldValue));
+						resultJsonObject.add(key, gson.toJsonTree(fieldValue));
 					}
 				}
 
 				if (!ignoreMeasures) {
-					for (String measure : resultMeasures) {
-						Field measureField = resultClass.getDeclaredField(measure);
-						measureField.setAccessible(true);
+					for (String field : resultFields) {
+						Field measureField = resultClass.getField(field);
 						Object measureValue = measureField.get(result);
-						resultJsonObject.add(measure, gson.toJsonTree(measureValue));
+						resultJsonObject.add(field, gson.toJsonTree(measureValue));
 					}
 				}
 
 				jsonResults.add(resultJsonObject);
 			}
 		} catch (Exception e) {
-			logger.trace("Reflection exception thrown while trying to serialize fields. Query: {}. Cube: {}", query, e);
+			logger.trace("Reflection exception thrown while trying to serialize fields. Query: {}. Cube: {}", query, cube, e);
 		}
 
 		return jsonResults.toString();
@@ -188,7 +253,7 @@ public final class HttpJsonApiServer {
 
 	private static HttpResponse processException(Exception exception) {
 		HttpResponse internalServerError = HttpResponse.internalServerError500();
-		if (exception instanceof CubeException) {
+		if (exception instanceof AggregationException) {
 			internalServerError.body(wrapUTF8(exception.getMessage()));
 		}
 		return internalServerError;
