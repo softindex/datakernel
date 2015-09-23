@@ -39,6 +39,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.send(createEndOfStreamBlock());
 			downstreamProducer.sendEndOfStream();
+
 		}
 
 		@Override

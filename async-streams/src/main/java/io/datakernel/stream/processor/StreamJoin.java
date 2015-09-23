@@ -170,10 +170,10 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 		this.right = addInput(new UpstreamConsumer<>(rightDeque));
 		this.leftKeyFunction = checkNotNull(leftKeyFunction);
 		this.rightKeyFunction = checkNotNull(rightKeyFunction);
+		this.downstreamProducer = new DownstreamProducer();
 	}
 
 	protected final class UpstreamConsumer<I> extends AbstractUpstreamConsumer<I> implements StreamDataReceiver<I> {
-		private final DownstreamProducer downstreamProducer = (DownstreamProducer) StreamJoin.this.downstreamProducer;
 		private final ArrayDeque<I> deque;
 
 		public UpstreamConsumer(ArrayDeque<I> deque) {

@@ -32,6 +32,7 @@ public interface StreamMergeSorterStorage<T> {
 	 *
 	 * @return consumer for streaming to storage
 	 */
+	// TODO (vsavchuk) make CompletionCallback previos other version?
 	StreamConsumer<T> streamWriter();
 
 	/**

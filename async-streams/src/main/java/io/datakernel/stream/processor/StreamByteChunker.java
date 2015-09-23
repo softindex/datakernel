@@ -22,12 +22,17 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
-public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf> {
+
+	@Override
+	public void onData(ByteBuf item) {
+		((DownstreamProducer)downstreamProducer).onData(item);
+	}
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
 		@Override
 		protected void onUpstreamEndOfStream() {
-			((DownstreamProducer) downstreamProducer).flush();
+			((DownstreamProducer) downstreamProducer).onEndOfStream();
 			close();
 		}
 
@@ -38,7 +43,7 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return ((DownstreamProducer) downstreamProducer);
+			return StreamByteChunker.this;
 		}
 	}
 
@@ -60,12 +65,12 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend(); // TODO ?
+//			upstreamConsumer.suspend(); // TODO ?
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+//			upstreamConsumer.resume();
 		}
 
 		@Override
@@ -95,7 +100,7 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 			}
 		}
 
-		private void flush() {
+		private void onEndOfStream() {
 			internalBuf.flip();
 			if (internalBuf.hasRemaining()) {
 				downstreamProducer.send(internalBuf);

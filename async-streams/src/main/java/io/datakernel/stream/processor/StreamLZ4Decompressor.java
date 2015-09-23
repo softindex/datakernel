@@ -46,11 +46,18 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.sendEndOfStream();
+			((DownstreamProducer)downstreamProducer).recycleBufs();
 		}
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
 			return StreamLZ4Decompressor.this;
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			super.onError(e);
+			((DownstreamProducer)downstreamProducer).recycleBufs();
 		}
 	}
 

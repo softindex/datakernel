@@ -47,6 +47,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.produce();
+//			((DownstreamProducer)downstreamProducer).recycleBufs();
 		}
 
 		@Override
@@ -55,8 +56,8 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		}
 
 		@Override
-		public void closeWithError(Exception e) {
-			closeWithError(e);
+		protected void onError(Exception e) {
+			super.onError(e);
 			((DownstreamProducer)downstreamProducer).recycleBufs();
 		}
 	}
@@ -107,12 +108,11 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			resumeProduce();
 		}
 
 		@Override
