@@ -22,8 +22,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.Iterator;
 
-import static io.datakernel.codegen.Expressions.call;
-import static io.datakernel.codegen.Expressions.cast;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.Utils.newLocal;
 import static io.datakernel.codegen.Utils.tryGetJavaType;
 import static org.objectweb.asm.Type.getType;
@@ -55,6 +54,17 @@ public class ExpressionIteratorForEach implements Expression {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		Label labelLoop = new Label();
 		Label labelExit = new Label();
+
+		if (collection.type(ctx).getSort() == Type.ARRAY) {
+			expressionFor(length(collection), new ForVar() {
+				@Override
+				public Expression forVar(Expression it) {
+					return forCollection.forVar(get(collection, it));
+				}
+			}).load(ctx);
+			return Type.VOID_TYPE;
+		}
+
 		VarLocal varIter = newLocal(ctx, getType(Iterator.class));
 
 		Class<?> t = tryGetJavaType(collection.type(ctx));

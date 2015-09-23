@@ -488,6 +488,10 @@ public final class Expressions {
 		return call(list, "get", position);
 	}
 
+	public static Expression addListItem(Expression list, Expression value) {
+		return call(list, "add", value);
+	}
+
 	public static ExpressionIteratorForEach forEach(Expression collection, ForVar forCollection) {
 		return new ExpressionIteratorForEach(collection, forCollection);
 	}

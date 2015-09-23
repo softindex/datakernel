@@ -499,7 +499,7 @@ public class ExpressionTest {
 		assertTrue(testClass.write(new WriteFirstElement(), 1000).equals(1000));
 	}
 
-	public interface WriteAllElement {
+	public interface WriteAllListElement {
 		void write(List listFrom, List listTo);
 
 		void writeIter(Iterator iteratorFrom, List listTo);
@@ -511,17 +511,17 @@ public class ExpressionTest {
 		List<Integer> listTo1 = new ArrayList<>();
 		List<Integer> listTo2 = new ArrayList<>();
 
-		WriteAllElement testClass = new AsmBuilder<>(new DefiningClassLoader(), WriteAllElement.class)
+		WriteAllListElement testClass = new AsmBuilder<>(new DefiningClassLoader(), WriteAllListElement.class)
 				.method("write", forEach(arg(0), new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
-						return sequence(call(arg(1), "add", it), voidExp());
+						return sequence(addListItem(arg(1), it), voidExp());
 					}
 				}))
 				.method("writeIter", forEach(arg(0), new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
-						return sequence(call(arg(1), "add", it), voidExp());
+						return sequence(addListItem(arg(1), it), voidExp());
 					}
 				}))
 				.newInstance();
@@ -537,6 +537,30 @@ public class ExpressionTest {
 		assertEquals(listFrom.size(), listTo2.size());
 		for (int i = 0; i < listFrom.size(); i++) {
 			assertEquals(listFrom.get(i), (listTo2.get(i)));
+		}
+	}
+
+	public interface WriteArrayElements {
+		void write(Long[] a, List<Long> b);
+	}
+
+	@org.junit.Test
+	public void testIteratorForArray() {
+		Long[] intsFrom = new Long[]{1L, 1L, 2L, 3L, 5L, 8L};
+		List<Long> list = new ArrayList<>();
+
+		WriteArrayElements testClass = new AsmBuilder<>(new DefiningClassLoader(), WriteArrayElements.class)
+				.method("write", forEach(arg(0), new ForVar() {
+					@Override
+					public Expression forVar(Expression it) {
+						return sequence(addListItem(arg(1), cast(it, Object.class)), voidExp());
+					}
+				}))
+				.newInstance();
+
+		testClass.write(intsFrom, list);
+		for (int i = 0; i < intsFrom.length; i++) {
+			assertEquals(intsFrom[i], list.get(i));
 		}
 	}
 }
