@@ -26,7 +26,7 @@ import com.google.common.collect.Sets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -294,7 +294,7 @@ public final class Cube {
 			dimensionsAlreadyInChunk.add(dimension);
 		}
 
-		AsmFunctionFactory functionFactory = new AsmFunctionFactory(classLoader, Predicate.class);
+		AsmBuilder functionFactory = new AsmBuilder(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 
 		for (CubeQuery.CubePredicate predicate : predicates.predicates()) {

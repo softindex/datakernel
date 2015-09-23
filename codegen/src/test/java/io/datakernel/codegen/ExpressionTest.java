@@ -18,8 +18,7 @@ package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Arrays.asList;
@@ -169,7 +168,7 @@ public class ExpressionTest {
 	@org.junit.Test
 	public void test() throws IllegalAccessException, InstantiationException {
 		Expression local = let(constructor(TestPojo.class, value(1)));
-		Class<Test> testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), Test.class)
+		Class<Test> testClass = new AsmBuilder<>(new DefiningClassLoader(), Test.class)
 				.field("x", int.class)
 				.field("y", Long.class)
 				.method("compare", int.class, asList(TestPojo.class, TestPojo.class),
@@ -188,8 +187,8 @@ public class ExpressionTest {
 				.method("field1",
 						field(arg(0), "field1"))
 				.method("setter", sequence(
-						set(field(cache(arg(0)), "field1"), value(10)),
-						set(field(cache(arg(0)), "field2"), value(20)),
+						set(field(arg(0), "field1"), value(10)),
+						set(field(arg(0), "field2"), value(20)),
 						arg(0)))
 				.method("ctor", sequence(
 						local,
@@ -260,7 +259,7 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void test2() throws IllegalAccessException, InstantiationException {
-		Class<Test2> testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), Test2.class)
+		Class<Test2> testClass = new AsmBuilder<>(new DefiningClassLoader(), Test2.class)
 				.method("hash",
 						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2"), field(arg(0), "field3"),
 								field(arg(0), "field4"), field(arg(0), "field5"), field(arg(0), "field6"),
@@ -275,7 +274,7 @@ public class ExpressionTest {
 	@SuppressWarnings("unchecked")
 	@org.junit.Test
 	public void testComparator() {
-		Comparator<TestPojo> comparator = new AsmFunctionFactory<>(new DefiningClassLoader(), Comparator.class)
+		Comparator<TestPojo> comparator = new AsmBuilder<>(new DefiningClassLoader(), Comparator.class)
 				.method("compare",
 						compare(TestPojo.class, "field1", "field2"))
 				.newInstance();
@@ -311,7 +310,7 @@ public class ExpressionTest {
 		float f = Float.MAX_VALUE;
 		double d = Double.MAX_VALUE;
 
-		TestNeg testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestNeg.class)
+		TestNeg testClass = new AsmBuilder<>(new DefiningClassLoader(), TestNeg.class)
 				.method("negBoolean", neg(value(z)))
 				.method("negShort", neg(value(s)))
 				.method("negByte", neg(value(b)))
@@ -358,7 +357,7 @@ public class ExpressionTest {
 		float f = Float.MAX_VALUE;
 		double d = Double.MAX_VALUE;
 
-		TestOperation testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestOperation.class)
+		TestOperation testClass = new AsmBuilder<>(new DefiningClassLoader(), TestOperation.class)
 				.method("remB", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(b), value(20)))
 				.method("remS", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(s), value(20)))
 				.method("remC", arithmeticOp(ExpressionArithmeticOp.Operation.REM, value(c), value(20)))
@@ -395,7 +394,7 @@ public class ExpressionTest {
 		int i = 2;
 		long l = 4;
 
-		TestSH testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestSH.class)
+		TestSH testClass = new AsmBuilder<>(new DefiningClassLoader(), TestSH.class)
 				.method("shlInt", bitOp(ExpressionBitOp.Operation.SHL, value(b), value(i)))
 				.method("shlLong", bitOp(ExpressionBitOp.Operation.SHL, value(l), value(b)))
 				.method("shrInt", bitOp(ExpressionBitOp.Operation.SHR, value(b), value(i)))
@@ -426,7 +425,7 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testBitMask() {
-		TestBitMask testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestBitMask.class)
+		TestBitMask testClass = new AsmBuilder<>(new DefiningClassLoader(), TestBitMask.class)
 				.method("andInt", bitOp(ExpressionBitOp.Operation.AND, value(2), value(4)))
 				.method("orInt", bitOp(ExpressionBitOp.Operation.OR, value(2), value(4)))
 				.method("xorInt", bitOp(ExpressionBitOp.Operation.XOR, value(2), value(4)))
@@ -455,7 +454,7 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testCall() {
-		TestCall testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestCall.class)
+		TestCall testClass = new AsmBuilder<>(new DefiningClassLoader(), TestCall.class)
 				.method("callOther1", call(self(), "method", arg(0)))
 				.method("callOther2", call(self(), "method"))
 				.method("method", int.class, asList(int.class), arg(0))
@@ -491,12 +490,53 @@ public class ExpressionTest {
 
 	@org.junit.Test
 	public void testArgument() {
-		TestArgument testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), TestArgument.class)
+		TestArgument testClass = new AsmBuilder<>(new DefiningClassLoader(), TestArgument.class)
 				.method("array", call(arg(0), "writeFirst", arg(1)))
 				.method("write", call(arg(0), "write", arg(1)))
 				.newInstance();
 
 		assertTrue(testClass.array(new WriteFirstElement(), new Object[]{1000, 2, 3, 4}).equals(1000));
 		assertTrue(testClass.write(new WriteFirstElement(), 1000).equals(1000));
+	}
+
+	public interface WriteAllElement {
+		void write(List listFrom, List listTo);
+
+		void writeIter(Iterator iteratorFrom, List listTo);
+	}
+
+	@org.junit.Test
+	public void testIterator() {
+		List<Integer> listFrom = asList(1, 1, 2, 3, 5, 8);
+		List<Integer> listTo1 = new ArrayList<>();
+		List<Integer> listTo2 = new ArrayList<>();
+
+		WriteAllElement testClass = new AsmBuilder<>(new DefiningClassLoader(), WriteAllElement.class)
+				.method("write", forEach(arg(0), new ForVar() {
+					@Override
+					public Expression forVar(Expression it) {
+						return sequence(call(arg(1), "add", it), voidExp());
+					}
+				}))
+				.method("writeIter", forEach(arg(0), new ForVar() {
+					@Override
+					public Expression forVar(Expression it) {
+						return sequence(call(arg(1), "add", it), voidExp());
+					}
+				}))
+				.newInstance();
+
+		testClass.write(listFrom, listTo1);
+		testClass.writeIter(listFrom.iterator(), listTo2);
+
+		assertEquals(listFrom.size(), listTo1.size());
+		for (int i = 0; i < listFrom.size(); i++) {
+			assertEquals(listFrom.get(i), (listTo1.get(i)));
+		}
+
+		assertEquals(listFrom.size(), listTo2.size());
+		for (int i = 0; i < listFrom.size(); i++) {
+			assertEquals(listFrom.get(i), (listTo2.get(i)));
+		}
 	}
 }

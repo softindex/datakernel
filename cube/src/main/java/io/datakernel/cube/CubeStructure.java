@@ -18,7 +18,7 @@ package io.datakernel.cube;
 
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.ExpressionSequence;
@@ -99,7 +99,7 @@ public class CubeStructure {
 
 	public Class<?> createKeyClass(List<String> dimensions) {
 		logger.trace("Creating key class for dimensions {}", dimensions);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Comparable.class);
+		AsmBuilder factory = new AsmBuilder(classLoader, Comparable.class);
 		for (String dimension : dimensions) {
 			DimensionType d = this.dimensions.get(dimension);
 			factory.field(dimension, d.getDataType());
@@ -114,7 +114,7 @@ public class CubeStructure {
 
 	public Function createFieldFunction(Class<?> recordClass, Class<?> fieldClass, List<String> fields) {
 		logger.trace("Creating field function for fields {}", fields);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Function.class);
+		AsmBuilder factory = new AsmBuilder(classLoader, Function.class);
 		Expression letField = let(constructor(fieldClass));
 		ExpressionSequence applyDef = sequence(letField);
 
@@ -132,7 +132,7 @@ public class CubeStructure {
 
 	public Class<?> createFieldClass(List<String> fields) {
 		logger.trace("Creating field class for fields {}", fields);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Comparable.class);
+		AsmBuilder factory = new AsmBuilder(classLoader, Comparable.class);
 
 		for (String field : fields) {
 			Class<?> dataType = null;
@@ -160,7 +160,7 @@ public class CubeStructure {
 
 	public Comparator createFieldComparator(CubeQuery query, Class<?> fieldClass) {
 		logger.trace("Creating field comparator for query {}", query.toString());
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Comparator.class);
+		AsmBuilder factory = new AsmBuilder(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();
 		List<CubeQuery.CubeOrdering> orderings = query.getOrderings();
 
@@ -184,7 +184,7 @@ public class CubeStructure {
 
 	public Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> dimensions) {
 		logger.trace("Creating key function for dimensions {}", dimensions);
-		AsmFunctionFactory factory = new AsmFunctionFactory<>(classLoader, Function.class);
+		AsmBuilder factory = new AsmBuilder<>(classLoader, Function.class);
 		Expression key = let(constructor(keyClass));
 		ExpressionSequence applyDef = sequence(key);
 		for (String dimension : dimensions) {
@@ -199,7 +199,7 @@ public class CubeStructure {
 
 	public Class<?> createRecordClass(List<String> dimensions, List<String> measures) {
 		logger.trace("Creating record class for dimensions {}, measures {}", dimensions, measures);
-		AsmFunctionFactory<Object> factory = new AsmFunctionFactory<>(classLoader, Object.class);
+		AsmBuilder<Object> factory = new AsmBuilder<>(classLoader, Object.class);
 		for (String dimension : dimensions) {
 			DimensionType d = this.dimensions.get(dimension);
 			factory.field(dimension, d.getDataType());
@@ -214,7 +214,7 @@ public class CubeStructure {
 
 	public Class<?> createResultClass(CubeQuery query) {
 		logger.trace("Creating result class for query {}", query.toString());
-		AsmFunctionFactory<Object> factory = new AsmFunctionFactory<>(classLoader, Object.class);
+		AsmBuilder<Object> factory = new AsmBuilder<>(classLoader, Object.class);
 		List<String> resultDimensions = query.getResultDimensions();
 		List<String> resultMeasures = query.getResultMeasures();
 		for (String dimension : resultDimensions) {
@@ -238,7 +238,7 @@ public class CubeStructure {
 	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass,
 	                                                 List<String> recordDimensions, List<String> recordMeasures) {
 		logger.trace("Creating aggregation reducer for dimensions {}, measures {}", recordDimensions, recordMeasures);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, StreamReducers.Reducer.class);
+		AsmBuilder factory = new AsmBuilder(classLoader, StreamReducers.Reducer.class);
 
 		Expression accumulator = let(constructor(outputClass));
 		ExpressionSequence onFirstItemDef = sequence(accumulator);
@@ -274,7 +274,7 @@ public class CubeStructure {
 	public StreamReducers.Reducer mergeMeasuresReducer(Class<?> inputClass, Class<?> outputClass,
 	                                                   List<String> dimensions, List<String> recordMeasures) {
 		logger.trace("Creating merge measures reducer for dimensions {}, measures {}", dimensions, recordMeasures);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, StreamReducers.Reducer.class);
+		AsmBuilder factory = new AsmBuilder(classLoader, StreamReducers.Reducer.class);
 
 		Expression accumulator1 = let(constructor(outputClass));
 		ExpressionSequence onFirstItemDef = sequence(accumulator1);
@@ -312,7 +312,7 @@ public class CubeStructure {
 	public Aggregate createAggregate(Class<?> inputClass, Class<?> outputClass,
 	                                 List<String> recordDimensions, List<String> recordMeasures) {
 		logger.trace("Creating aggregate for dimensions {}, measures {}", recordDimensions, recordMeasures);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Aggregate.class);
+		AsmBuilder factory = new AsmBuilder(classLoader, Aggregate.class);
 
 		Expression result = let(constructor(outputClass));
 		ExpressionSequence createAccumulatorDef = sequence(result);

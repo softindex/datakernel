@@ -59,7 +59,6 @@ public class ForEachHppcSet implements Expression {
 		this.forVar = forVar;
 	}
 
-
 	@Override
 	public Type type(Context ctx) {
 		return Type.VOID_TYPE;

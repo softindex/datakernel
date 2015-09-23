@@ -18,7 +18,6 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
-import io.datakernel.codegen.ForEachWithChanges;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -67,22 +66,22 @@ public final class SerializerGenArray implements SerializerGen {
 
 	@Override
 	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		value = cast(value, type);
+		final Expression castedValue = cast(value, type);
 		Expression length;
 		if (fixedSize != -1) {
 			length = value(fixedSize);
 		} else {
-			length = length(value);
+			length = length(castedValue);
 		}
 
 		Expression writeLength = call(arg(0), "writeVarInt", length);
 		if (type.getComponentType() == Byte.TYPE) {
-			return sequence(writeLength, call(arg(0), "write", value));
+			return sequence(writeLength, call(arg(0), "write", castedValue));
 		} else {
-			return sequence(writeLength, arrayForEach(value, value(0), length, new ForVar() {
+			return sequence(writeLength, expressionFor(length, new ForVar() {
 				@Override
-				public Expression forVar(Expression item) {
-					return valueSerializer.serialize(item, version, staticMethods);
+				public Expression forVar(Expression it) {
+					return valueSerializer.serialize(get(castedValue, it), version, staticMethods);
 				}
 			}));
 		}
@@ -95,16 +94,16 @@ public final class SerializerGenArray implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression len = call(arg(0), "readVarInt");
+		final Expression len = let(call(arg(0), "readVarInt"));
 
-		Expression array = let(Expressions.newArray(type, len));
+		final Expression array = let(Expressions.newArray(type, len));
 		if (type.getComponentType() == Byte.TYPE) {
 			return sequence(call(arg(0), "read", array), array);
 		} else {
-			return sequence(arrayForEachWithChanges(array, new ForEachWithChanges() {
+			return sequence(array, expressionFor(len, new ForVar() {
 				@Override
-				public Expression forEachWithChanges() {
-					return cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), type.getComponentType());
+				public Expression forVar(Expression it) {
+					return setArrayItem(array, it, cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), type.getComponentType()));
 				}
 			}), array);
 		}

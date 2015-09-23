@@ -67,16 +67,6 @@ public final class Expressions {
 	}
 
 	/**
-	 * Adds expression to the context cache
-	 *
-	 * @param expression expression which will be cached
-	 * @return new instance of the Expression
-	 */
-	public static Expression cache(Expression expression) {
-		return new ExpressionCache(expression);
-	}
-
-	/**
 	 * Casts expression to the type
 	 *
 	 * @param expression expressions which will be casted
@@ -458,16 +448,8 @@ public final class Expressions {
 		return new ExpressionSwitchForKey(key, listKey, listValue);
 	}
 
-	public static ExpressionArraySet setForArray(Expression array, Expression position, Expression newElement) {
+	public static ExpressionArraySet setArrayItem(Expression array, Expression position, Expression newElement) {
 		return new ExpressionArraySet(array, position, newElement);
-	}
-
-	public static ExpressionArrayForEachWithChanges arrayForEachWithChanges(Expression field, ForEachWithChanges forEachWithChanges) {
-		return new ExpressionArrayForEachWithChanges(field, forEachWithChanges);
-	}
-
-	public static ExpressionArrayForEachWithChanges arrayForEachWithChanges(Expression field, Expression start, Expression length, ForEachWithChanges forEachWithChanges) {
-		return new ExpressionArrayForEachWithChanges(field, start, length, forEachWithChanges);
 	}
 
 	public static ExpressionFor expressionFor(Expression start, Expression length, ForVar forVar) {
@@ -478,24 +460,8 @@ public final class Expressions {
 		return new ExpressionFor(length, forVar);
 	}
 
-	public static ExpressionForEach arrayForEach(Expression field, ForVar forVar) {
-		return new ExpressionForEach(field, forVar);
-	}
-
-	public static ExpressionForEach arrayForEach(Expression field, Expression start, Expression length, ForVar forVar) {
-		return new ExpressionForEach(field, start, length, forVar);
-	}
-
-	public static ExpressionListForEach listForEach(Expression field, ForVar forVar) {
-		return new ExpressionListForEach(field, forVar);
-	}
-
 	public static ExpressionMapForEach mapForEach(Expression field, ForVar forKey, ForVar forValue) {
 		return new ExpressionMapForEach(field, forKey, forValue);
-	}
-
-	public static ExpressionSetForEach setForEach(Expression field, ForVar forVar) {
-		return new ExpressionSetForEach(field, forVar);
 	}
 
 	public static ForEachHppcMap hppcMapForEach(Class<?> iteratorType, Expression value, ForVar forKey, ForVar forValue) {
@@ -512,5 +478,21 @@ public final class Expressions {
 
 	public static ExpressionBitOp bitOp(ExpressionBitOp.Operation op, Expression value, Expression shift) {
 		return new ExpressionBitOp(op, value, shift);
+	}
+
+	public static Expression setListItem(Expression list, Expression position, Expression value) {
+		return call(list, "set", position, value);
+	}
+
+	public static Expression getListItem(Expression list, Expression position) {
+		return call(list, "get", position);
+	}
+
+	public static ExpressionIteratorForEach forEach(Expression collection, ForVar forCollection) {
+		return new ExpressionIteratorForEach(collection, forCollection);
+	}
+
+	public static ExpressionIteratorForEach forEach(Expression collection, Class<?> type, ForVar forCollection) {
+		return new ExpressionIteratorForEach(collection, type, forCollection);
 	}
 }

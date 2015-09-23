@@ -45,8 +45,8 @@ import static org.objectweb.asm.commons.Method.getMethod;
  * @param <T> type of item
  */
 @SuppressWarnings("unchecked")
-public class AsmFunctionFactory<T> {
-	public static final String ASM_FUNCTION = "asm.Function";
+public class AsmBuilder<T> {
+	public static final String DEFAULT_CLASS_NAME = AsmBuilder.class.getPackage().getName() + ".Class";
 	private static final AtomicInteger COUNTER = new AtomicInteger();
 
 	private final DefiningClassLoader classLoader;
@@ -67,7 +67,7 @@ public class AsmFunctionFactory<T> {
 		return expressionMap;
 	}
 
-	public AsmFunctionFactory<T> setBytecodeSaveDir(Path bytecodeSaveDir) {
+	public AsmBuilder<T> setBytecodeSaveDir(Path bytecodeSaveDir) {
 		this.bytecodeSaveDir = bytecodeSaveDir;
 		return this;
 	}
@@ -113,7 +113,7 @@ public class AsmFunctionFactory<T> {
 	 * @param classLoader class loader
 	 * @param type        type of dynamic class
 	 */
-	public AsmFunctionFactory(DefiningClassLoader classLoader, Class<T> type) {
+	public AsmBuilder(DefiningClassLoader classLoader, Class<T> type) {
 		this.classLoader = classLoader;
 		this.type = type;
 	}
@@ -125,7 +125,7 @@ public class AsmFunctionFactory<T> {
 	 * @param fieldClass type of field
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmFunctionFactory<T> field(String field, Class<?> fieldClass) {
+	public AsmBuilder<T> field(String field, Class<?> fieldClass) {
 		fields.put(field, fieldClass);
 		return this;
 	}
@@ -137,12 +137,12 @@ public class AsmFunctionFactory<T> {
 	 * @param expression function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmFunctionFactory<T> method(Method method, Expression expression) {
+	public AsmBuilder<T> method(Method method, Expression expression) {
 		expressionMap.put(method, expression);
 		return this;
 	}
 
-	public AsmFunctionFactory<T> staticMethod(Method method, Expression expression) {
+	public AsmBuilder<T> staticMethod(Method method, Expression expression) {
 		expressionStaticMap.put(method, expression);
 		return this;
 	}
@@ -156,7 +156,7 @@ public class AsmFunctionFactory<T> {
 	 * @param expression    function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmFunctionFactory<T> method(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+	public AsmBuilder<T> method(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
 		Type[] types = new Type[argumentTypes.size()];
 		for (int i = 0; i < argumentTypes.size(); i++) {
 			types[i] = getType(argumentTypes.get(i));
@@ -164,7 +164,7 @@ public class AsmFunctionFactory<T> {
 		return method(new Method(methodName, getType(returnClass), types), expression);
 	}
 
-	public AsmFunctionFactory<T> staticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
+	public AsmBuilder<T> staticMethod(String methodName, Class<?> returnClass, List<? extends Class<?>> argumentTypes, Expression expression) {
 		Type[] types = new Type[argumentTypes.size()];
 		for (int i = 0; i < argumentTypes.size(); i++) {
 			types[i] = getType(argumentTypes.get(i));
@@ -179,7 +179,7 @@ public class AsmFunctionFactory<T> {
 	 * @param expression function which will be processed
 	 * @return changed AsmFunctionFactory
 	 */
-	public AsmFunctionFactory<T> method(String methodName, Expression expression) {
+	public AsmBuilder<T> method(String methodName, Expression expression) {
 		if (methodName.contains("(")) {
 			Method method = Method.getMethod(methodName);
 			return method(method, expression);
@@ -208,6 +208,10 @@ public class AsmFunctionFactory<T> {
 	 * @return completed class
 	 */
 	public Class<T> defineClass() {
+		return defineClass(null);
+	}
+
+	public Class<T> defineClass(String className) {
 		synchronized (classLoader) {
 			AsmFunctionKey key = new AsmFunctionKey(fields, expressionMap, expressionStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
@@ -216,7 +220,7 @@ public class AsmFunctionFactory<T> {
 				return (Class<T>) cachedClass;
 			}
 
-			return defineNewClass(key);
+			return defineNewClass(key, className);
 		}
 	}
 
@@ -226,10 +230,16 @@ public class AsmFunctionFactory<T> {
 	 * @param key key
 	 * @return completed class
 	 */
-	private Class<T> defineNewClass(AsmFunctionKey key) {
+	private Class<T> defineNewClass(AsmFunctionKey key, String newClassName) {
 		DefiningClassWriter cw = new DefiningClassWriter(classLoader);
 
-		String className = ASM_FUNCTION + COUNTER.incrementAndGet();
+		String className;
+		if (newClassName == null) {
+			className = DEFAULT_CLASS_NAME + COUNTER.incrementAndGet();
+		} else {
+			className = newClassName;
+		}
+
 		Type classType = getType('L' + className.replace('.', '/') + ';');
 
 		if (type.isInterface()) {

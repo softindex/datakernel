@@ -17,7 +17,7 @@
 package io.datakernel.serializer;
 
 import io.datakernel.asm.Annotations;
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.utils.Preconditions;
@@ -27,6 +27,7 @@ import io.datakernel.serializer.asm.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.net.InetAddress;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -45,6 +46,7 @@ public final class SerializerBuilder {
 	private String profile;
 	private int version = Integer.MAX_VALUE;
 	private StringFormat defaultFormat = StringFormat.UTF8;
+	private Path saveBytecodePath;
 
 	private final Map<Class<?>, SerializerGenBuilder> typeMap = new LinkedHashMap<>();
 
@@ -66,6 +68,11 @@ public final class SerializerBuilder {
 
 	public static SerializerBuilder newDefaultInstance(String profile, DefiningClassLoader definingClassLoader) {
 		return newDefaultInstance(definingClassLoader).setProfile(profile);
+	}
+
+	public SerializerBuilder setSaveBytecodePath(Path path) {
+		this.saveBytecodePath = path;
+		return this;
 	}
 
 	public SerializerBuilder version(int version) {
@@ -847,7 +854,10 @@ public final class SerializerBuilder {
 	}
 
 	synchronized private Object createSerializer(SerializerGen serializerGen, int serializeVersion) {
-		AsmFunctionFactory asmFactory = new AsmFunctionFactory(definingClassLoader, BufferSerializer.class);
+		AsmBuilder asmFactory = new AsmBuilder(definingClassLoader, BufferSerializer.class);
+		if (saveBytecodePath != null) {
+			asmFactory.setBytecodeSaveDir(saveBytecodePath);
+		}
 
 		Preconditions.check(serializeVersion >= 0, "serializerVersion is negative");
 		Class<?> dataType = serializerGen.getRawType();
@@ -895,7 +905,7 @@ public final class SerializerBuilder {
 		return asmFactory.newInstance();
 	}
 
-	private void defineDeserialize(final SerializerGen serializerGen, final AsmFunctionFactory asmFactory, final List<Integer> allVersions, StaticMethods staticMethods) {
+	private void defineDeserialize(final SerializerGen serializerGen, final AsmBuilder asmFactory, final List<Integer> allVersions, StaticMethods staticMethods) {
 		defineDeserializeLatest(serializerGen, asmFactory, getLatestVersion(allVersions), staticMethods);
 
 		defineDeserializeEarlierVersion(serializerGen, asmFactory, allVersions, staticMethods);
@@ -905,11 +915,11 @@ public final class SerializerBuilder {
 		}
 	}
 
-	private void defineDeserializeVersion(SerializerGen serializerGen, AsmFunctionFactory asmFactory, int version, StaticMethods staticMethods) {
+	private void defineDeserializeVersion(SerializerGen serializerGen, AsmBuilder asmFactory, int version, StaticMethods staticMethods) {
 		asmFactory.method("deserializeVersion" + String.valueOf(version), serializerGen.getRawType(), asList(SerializationInputBuffer.class), sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods)));
 	}
 
-	private void defineDeserializeEarlierVersion(SerializerGen serializerGen, AsmFunctionFactory asmFactory, List<Integer> allVersions, StaticMethods staticMethods) {
+	private void defineDeserializeEarlierVersion(SerializerGen serializerGen, AsmBuilder asmFactory, List<Integer> allVersions, StaticMethods staticMethods) {
 		List<Expression> listKey = new ArrayList<>();
 		List<Expression> listValue = new ArrayList<>();
 		for (int i = allVersions.size() - 2; i >= 0; i--) {
@@ -922,7 +932,7 @@ public final class SerializerBuilder {
 				switchForKey(arg(1), listKey, listValue));
 	}
 
-	private void defineDeserializeLatest(final SerializerGen serializerGen, final AsmFunctionFactory asmFactory, final Integer latestVersion, StaticMethods staticMethods) {
+	private void defineDeserializeLatest(final SerializerGen serializerGen, final AsmBuilder asmFactory, final Integer latestVersion, StaticMethods staticMethods) {
 		if (latestVersion == null) {
 			serializerGen.prepareDeserializeStaticMethods(0, staticMethods);
 			asmFactory.method("deserialize", serializerGen.deserialize(serializerGen.getRawType(), 0, staticMethods));

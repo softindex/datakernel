@@ -127,14 +127,14 @@ public final class SerializerGenHppcMap implements SerializerGen {
 		return sequence(length, hppcMapForEach(iteratorType, value,
 				new ForVar() {
 					@Override
-					public Expression forVar(Expression local) {
-						return keySerializer.serialize(local, version, staticMethods);
+					public Expression forVar(Expression it) {
+						return keySerializer.serialize(it, version, staticMethods);
 					}
 				},
 				new ForVar() {
 					@Override
-					public Expression forVar(Expression local) {
-						return valueSerializer.serialize(local, version, staticMethods);
+					public Expression forVar(Expression it) {
+						return valueSerializer.serialize(it, version, staticMethods);
 					}
 				}));
 	}
@@ -153,7 +153,7 @@ public final class SerializerGenHppcMap implements SerializerGen {
 		final Class<?> keyType = keySerializer.getRawType();
 		return sequence(length, map, expressionFor(length, new ForVar() {
 			@Override
-			public Expression forVar(Expression local) {
+			public Expression forVar(Expression it) {
 				return sequence(call(map, "put",
 								cast(keySerializer.deserialize(keyType, version, staticMethods), SerializerGenHppcMap.this.keyType),
 								cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcMap.this.valueType)

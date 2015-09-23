@@ -21,7 +21,6 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -34,20 +33,19 @@ public final class Context {
 	private final Class<?> thisSuperclass;
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
-	private final Map<Method, Expression> expressionMap;
-	private final Map<Method, Expression> expressionStaticMap;
-	private final Map<Expression, Integer> cache = new HashMap<>();
+	private final Map<Method, Expression> methodToExpression;
+	private final Map<Method, Expression> staticMethodToExpression;
 
 	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> thisSuperclass, Map<String, Class<?>> thisFields,
-	               Type[] argumentTypes, Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
+	               Type[] argumentTypes, Map<Method, Expression> methodToExpression, Map<Method, Expression> staticMethodToExpression) {
 		this.classLoader = classLoader;
 		this.g = g;
 		this.thisSuperclass = thisSuperclass;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
 		this.thisFields = thisFields;
-		this.expressionMap = expressionMap;
-		this.expressionStaticMap = expressionStaticMap;
+		this.methodToExpression = methodToExpression;
+		this.staticMethodToExpression = staticMethodToExpression;
 	}
 
 	public DefiningClassLoader getClassLoader() {
@@ -78,19 +76,11 @@ public final class Context {
 		return argumentTypes[argument];
 	}
 
-	public void putCache(Expression expression, Integer localVar) {
-		this.cache.put(expression, localVar);
+	public Map<Method, Expression> getStaticMethodToExpression() {
+		return staticMethodToExpression;
 	}
 
-	public Integer getCache(Expression expression) {
-		return cache.get(expression);
-	}
-
-	public Map<Method, Expression> getExpressionStaticMap() {
-		return expressionStaticMap;
-	}
-
-	public Map<Method, Expression> getExpressionMap() {
-		return expressionMap;
+	public Map<Method, Expression> getMethodToExpression() {
+		return methodToExpression;
 	}
 }
