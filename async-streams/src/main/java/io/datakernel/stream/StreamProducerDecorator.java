@@ -32,20 +32,35 @@ public abstract class StreamProducerDecorator<T> extends AbstractStreamProducer<
 		}
 
 		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
 			return StreamProducerDecorator.this.getDataReceiver();
 		}
 
-		@Override
-		public void onProducerEndOfStream() {
-			StreamProducerDecorator.this.onEndOfStream();
-			close();
-		}
+//		@Override
+//		public void onProducerEndOfStream() {
+//			StreamProducerDecorator.this.onEndOfStream();
+//			close();
+//		}
 
 		@Override
-		public void onProducerError(Exception e) {
-			StreamProducerDecorator.this.onError(e);
-			closeWithError(e);
+		protected void onEndOfStream() {
+
+		}
+
+//		@Override
+//		public void onProducerError(Exception e) {
+//			StreamProducerDecorator.this.onError(e);
+//			closeWithError(e);
+//		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 	}
 
@@ -81,9 +96,9 @@ public abstract class StreamProducerDecorator<T> extends AbstractStreamProducer<
 		sendEndOfStream();
 	}
 
-	protected void onError(Exception e) {
-		sendError(e);
-	}
+//	protected void onError(Exception e) {
+//		sendError(e);
+//	}
 
 	@Override
 	protected void onSuspended() {
@@ -95,13 +110,13 @@ public abstract class StreamProducerDecorator<T> extends AbstractStreamProducer<
 		decoratedProducer.onConsumerResumed();
 	}
 
-	@Override
-	protected void onClosed() {
-//		decoratedProducer.close();
-	}
+//	@Override
+//	protected void onClosed() {
+////		decoratedProducer.close();
+//	}
 
-	@Override
-	protected void onClosedWithError(Exception e) {
-		decoratedProducer.onConsumerError(e);
-	}
+//	@Override
+//	protected void onClosedWithError(Exception e) {
+//		decoratedProducer.onConsumerError(e);
+//	}
 }

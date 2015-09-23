@@ -220,6 +220,7 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 	@Override
 	public final void onConsumerResumed() {
 		downstreamProducer.onConsumerResumed();
+		resumeAllUpstreams();
 	}
 
 	@Override

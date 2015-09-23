@@ -134,19 +134,19 @@ public class StreamBenchmark {
 		eventloop.run();
 	}
 
-	@Benchmark
-	public void testForwarder() {
-		NioEventloop eventloop = new NioEventloop();
-		SequenceGenerator generator = new SequenceGenerator(eventloop, sequenceLength);
-
-		StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
-
-		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
-		generator.streamTo(forwarder);
-		forwarder.streamTo(consumer);
-
-		eventloop.run();
-	}
+//	@Benchmark
+//	public void testForwarder() {
+//		NioEventloop eventloop = new NioEventloop();
+//		SequenceGenerator generator = new SequenceGenerator(eventloop, sequenceLength);
+//
+//		StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
+//
+//		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
+//		generator.streamTo(forwarder);
+//		forwarder.streamTo(consumer);
+//
+//		eventloop.run();
+//	}
 
 	@Benchmark
 	public void simpleTransformer() {

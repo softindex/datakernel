@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.AbstractStreamProducer;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -54,6 +55,20 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 		this.keyFunction = checkNotNull(keyFunction);
 		this.reducer = checkNotNull(reducer);
 
+	}
+
+	@Override
+	protected void downstreamProducerDoProduce() {
+		while (true) {
+			if (!iterator.hasNext())
+				break;
+			if (downstreamProducer.getStatus() != AbstractStreamProducer.READY)
+				return;
+			A accumulator = iterator.next();
+//			downstreamDataReceiver.onData(reducer.produceResult(accumulator));
+			downstreamProducer.getDownstreamDataReceiver().onData(reducer.produceResult(accumulator));
+		}
+		downstreamProducer.sendEndOfStream();
 	}
 
 	/**
@@ -94,22 +109,6 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 	@Override
 	protected void afterEndOfStream(HashMap<K, A> state) {
 		this.iterator = state.values().iterator();
-	}
-
-	/**
-	 * Produces each intermediate state and streams it
-	 */
-	@Override
-	protected void doProduce() {
-		while (true) {
-			if (!iterator.hasNext())
-				break;
-			if (status != READY)
-				return;
-			A accumulator = iterator.next();
-			downstreamDataReceiver.onData(reducer.produceResult(accumulator));
-		}
-		sendEndOfStream();
 	}
 
 	@Override

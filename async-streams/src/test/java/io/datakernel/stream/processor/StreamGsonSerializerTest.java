@@ -90,7 +90,7 @@ public class StreamGsonSerializerTest {
 		serializerStream.streamTo(deserializerStream);
 
 		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop);
-		deserializerStream.streamTo(consumerToList);
+ 		deserializerStream.streamTo(consumerToList);
 		eventloop.run();
 
 		assertEquals(items, consumerToList.getList());

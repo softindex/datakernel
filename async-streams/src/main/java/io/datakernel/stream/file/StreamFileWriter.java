@@ -139,7 +139,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				pendingAsyncOperation = false;
 				position += len;
 				if (queue.size() <= 1) {
-					resumeUpstream();
+					resume();
 				}
 				postFlush();
 			}
@@ -150,12 +150,12 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				doCleanup(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						closeUpstreamWithError(e);
+						closeWithError(e);
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						closeUpstreamWithError(e);
+						closeWithError(e);
 					}
 				});
 			}
@@ -163,16 +163,15 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void postFlush() {
-		if (getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM && queue.isEmpty()) {
+		if (((AbstractStreamProducer)upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM && queue.isEmpty()) {
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					closeUpstream();
 				}
 
 				@Override
 				public void onException(Exception exception) {
-					closeUpstreamWithError(new Exception("Can't do cleanap for file\t" + path.getFileName()));
+					closeWithError(new Exception("Can't do cleanap for file\t" + path.getFileName()));
 				}
 			});
 		}
@@ -188,7 +187,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	protected void onConsumerStarted() {
+	protected void onStarted() {
 		if (asyncFile != null || pendingAsyncOperation)
 			return;
 		pendingAsyncOperation = true;
@@ -202,17 +201,17 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 			@Override
 			public void onException(Exception e) {
-				closeUpstreamWithError(e);
+				closeWithError(e);
 			}
 		});
 	}
 
 	@Override
 	public void onData(ByteBuf buf) {
-		checkState(getUpstreamStatus() < AbstractStreamProducer.END_OF_STREAM, "Unexpected buf after end-of-stream %s : %s", this, buf);
+		checkState(((AbstractStreamProducer)upstreamProducer).getStatus() < AbstractStreamProducer.END_OF_STREAM, "Unexpected buf after end-of-stream %s : %s", this, buf);
 		queue.offer(buf);
 		if (queue.size() > 1) {
-			suspendUpstream();
+			suspend();
 		}
 		postFlush();
 	}
@@ -232,14 +231,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	public void onProducerEndOfStream() {
+	protected void onEndOfStream() {
 		logger.trace("endOfStream for {}, upstream: {}", this, upstreamProducer);
 		postFlush();
 	}
 
 	@Override
-	public void onProducerError(final Exception e) {
-
+	protected void onError(final Exception e) {
 		doCleanup(new CompletionCallback() {
 
 			private void tryRemoveFile() {
@@ -250,7 +248,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 						logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
 					}
 				}
-				closeUpstreamWithError(e);
+				closeWithError(e);
 			}
 
 			@Override

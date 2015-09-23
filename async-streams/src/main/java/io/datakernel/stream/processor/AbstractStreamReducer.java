@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.AbstractStreamTransformer_M_1;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayDeque;
 import java.util.Comparator;
@@ -45,8 +48,6 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 	private UpstreamConsumer<?> lastInput;
 	private K key = null;
 	private A accumulator;
-
-	private final DownstreamProducer downstreamProducer;
 
 	private final PriorityQueue<UpstreamConsumer> priorityQueue;
 	private int streamsAwaiting;
@@ -93,7 +94,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 			}
 			if (deque.size() == bufferSize && streamsAwaiting == 0) {
 				downstreamProducer.produce();
-				if (downstreamProducer.getDownstreamStatus() != READY) {
+				if (((DownstreamProducer)downstreamProducer).getDownstreamStatus() != READY) {
 					suspendAllUpstreams();
 				}
 			}
@@ -124,17 +125,17 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 
 		@Override
 		protected void onDownstreamStarted() {
-
 		}
 
 		@Override
 		protected void onDownstreamSuspended() {
-
+			AbstractStreamReducer.this.onConsumerSuspended();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-
+			AbstractStreamReducer.this.onConsumerResumed();
+			resumeProduce();
 		}
 
 		protected byte getDownstreamStatus() {

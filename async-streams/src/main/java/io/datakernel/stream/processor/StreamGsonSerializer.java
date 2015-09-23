@@ -20,7 +20,7 @@ import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,69 @@ import static java.lang.Math.min;
  * @param <T> type of received objects
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1_Stateless<T, ByteBuf> implements StreamSerializer<T>, StreamDataReceiver<T>, StreamGsonSerializerMBean {
+public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements StreamSerializer<T>, StreamDataReceiver<T>, StreamGsonSerializerMBean {
+
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+
+		@Override
+		protected void onUpstreamStarted() {
+
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			flushBuffer(downstreamDataReceiver);
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return null;
+		}
+	}
+
+	private final class DownstreamProducer extends AbstractDownstreamProducer {
+
+		@Override
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+
+		private void postFlush() {
+			flushPosted = true;
+			if (flushDelayMillis == 0) {
+				eventloop.postLater(new Runnable() {
+					@Override
+					public void run() {
+						if (status < END_OF_STREAM) {
+							flush();
+						}
+					}
+				});
+			} else {
+				eventloop.schedule(eventloop.currentTimeMillis() + (long) flushDelayMillis, new Runnable() {
+					@Override
+					public void run() {
+						if (status < END_OF_STREAM) {
+							flush();
+						}
+					}
+				});
+			}
+		}
+
+	}
+
 	private static final Logger logger = LoggerFactory.getLogger(StreamGsonSerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 
@@ -79,6 +141,8 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		this.defaultBufferSize = defaultBufferSize;
 		this.estimatedMessageSize = 1;
 		this.flushDelayMillis = flushDelayMillis;
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer();
 		allocateBuffer();
 	}
 
@@ -150,12 +214,13 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 			}
 		}
 		if (!flushPosted) {
-			postFlush();
+			((DownstreamProducer)downstreamProducer).postFlush();
 		}
 	}
 
 	private void onSerializationError(Exception e) {
-		onInternalError(e);
+		upstreamConsumer.onProducerError(e);
+		downstreamProducer.onConsumerError(e);
 	}
 
 	/**
@@ -166,36 +231,6 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		flushBuffer(downstreamDataReceiver);
 		flushPosted = false;
 	}
-
-	private void postFlush() {
-		flushPosted = true;
-		if (flushDelayMillis == 0) {
-			eventloop.postLater(new Runnable() {
-				@Override
-				public void run() {
-					if (status < END_OF_STREAM) {
-						flush();
-					}
-				}
-			});
-		} else {
-			eventloop.schedule(eventloop.currentTimeMillis() + (long) flushDelayMillis, new Runnable() {
-				@Override
-				public void run() {
-					if (status < END_OF_STREAM) {
-						flush();
-					}
-				}
-			});
-		}
-	}
-
-	@Override
-	public void onClosed() {
-		super.onClosed();
-		recycleBufs();
-	}
-
 
 	private void recycleBufs() {
 		if (buf != null) {
@@ -230,13 +265,13 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 				+ " bytes:" + jmxBytes + '}';
 	}
 
-	@Override
-	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
-		return this;
-	}
+//	@Override
+//	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
+//		return this;
+//	}
 
-	@Override
-	protected void onUpstreamEndOfStream() {
-
-	}
+//	@Override
+//	protected void onUpstreamEndOfStream() {
+//
+//	}
 }

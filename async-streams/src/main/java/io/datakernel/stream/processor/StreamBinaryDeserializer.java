@@ -37,10 +37,7 @@ import static java.lang.Math.min;
  * @param <T> original type of data
  */
 public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamDataReceiver<ByteBuf>, StreamBinaryDeserializerMBean {
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
-
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<ByteBuf> {
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
 
 		@Override
 		protected void onUpstreamStarted() {
@@ -50,23 +47,17 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.produce();
-			downstreamProducer.recycleBufs();
 		}
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return StreamBinaryDeserializer.this.getDataReceiver();
+			return StreamBinaryDeserializer.this;
 		}
 
 		@Override
 		public void closeWithError(Exception e) {
-			super.closeWithError(e);
-			downstreamProducer.recycleBufs();
-		}
-
-		@Override
-		public void onData(ByteBuf buf) {
-			downstreamProducer.onData(buf);
+			closeWithError(e);
+			((DownstreamProducer)downstreamProducer).recycleBufs();
 		}
 	}
 
@@ -100,10 +91,10 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		private void onData(ByteBuf buf) {
 			jmxBufs++;
 			jmxBytes += buf.remaining();
-			downstreamProducer.byteBufs.offer(buf);
+			this.byteBufs.offer(buf);
 //			produce();
 			downstreamProducer.produce();
-			if (downstreamProducer.byteBufs.size() == downstreamProducer.buffersPoolSize) {
+			if (this.byteBufs.size() == this.buffersPoolSize) {
 //	    		suspendUpstream();
 				upstreamConsumer.suspend();
 			}
@@ -116,10 +107,12 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		@Override
 		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
 		}
 
 		@Override
@@ -212,6 +205,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			if (byteBufs.isEmpty()) {
 				if (((AbstractStreamProducer) upstreamConsumer.getUpstream()).getStatus() == END_OF_STREAM) {
 					downstreamProducer.sendEndOfStream();
+					recycleBufs();
 				} else {
 					resumeProduce();
 				}
@@ -312,10 +306,10 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 	@Override
 	public void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver) {
-		for (ByteBuf byteBuf : downstreamProducer.byteBufs) {
+		for (ByteBuf byteBuf : ((DownstreamProducer)downstreamProducer).byteBufs) {
 			dataReceiver.onData(byteBuf);
 		}
-		downstreamProducer.byteBufs.clear();
+		((DownstreamProducer)downstreamProducer).byteBufs.clear();
 		downstreamProducer.sendEndOfStream();
 	}
 
@@ -326,7 +320,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	 */
 	@Override
 	public void onData(ByteBuf buf) {
-		upstreamConsumer.onData(buf);
+		((DownstreamProducer)downstreamProducer).onData(buf);
 	}
 
 	@Override

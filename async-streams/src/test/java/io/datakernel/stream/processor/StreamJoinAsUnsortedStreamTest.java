@@ -315,19 +315,22 @@ public class StreamJoinAsUnsortedStreamTest {
 	@Test
 	public void testProducerWithError() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
-		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
-				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofValue(eventloop, new DataItemMaster(20, 10, "masterB")),
-				StreamProducers.ofValue(eventloop, new DataItemMaster(25, 15, "masterB+")),
-				StreamProducers.ofValue(eventloop, new DataItemMaster(30, 20, "masterC")),
-				StreamProducers.ofValue(eventloop, new DataItemMaster(40, 20, "masterD"))
-		);
+//		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
+//				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
+//				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception()),
+//				StreamProducers.ofValue(eventloop, new DataItemMaster(20, 10, "masterB")),
+//				StreamProducers.ofValue(eventloop, new DataItemMaster(25, 15, "masterB+")),
+//				StreamProducers.ofValue(eventloop, new DataItemMaster(30, 20, "masterC")),
+//				StreamProducers.ofValue(eventloop, new DataItemMaster(40, 20, "masterD"))
+//		);
+		StreamProducer<DataItemMaster> source1 = StreamProducers.closingWithError(eventloop, new Exception());
 
-		StreamProducer<DataItemDetail> source2 = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, new DataItemDetail(10, "detailX")),
-				StreamProducers.ofValue(eventloop, new DataItemDetail(20, "detailY"))
-		);
+//		StreamProducer<DataItemDetail> source2 = StreamProducers.concat(eventloop,
+//				StreamProducers.ofValue(eventloop, new DataItemDetail(10, "detailX")),
+//				StreamProducers.ofValue(eventloop, new DataItemDetail(20, "detailY"))
+//		);
+		StreamProducer<DataItemDetail> source2 = StreamProducers.ofIterable(eventloop,
+				asList(new DataItemDetail(10, "detailX"), new DataItemDetail(20, "detailY")));
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
 				new StreamJoin<>(eventloop, Ordering.<Integer>natural(),

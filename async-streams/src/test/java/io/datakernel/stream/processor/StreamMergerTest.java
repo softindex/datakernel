@@ -182,7 +182,7 @@ public class StreamMergerTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (item == 8) {
-					onProducerError(new Exception());
+					closeWithError(new Exception("Consumer Error"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -203,7 +203,7 @@ public class StreamMergerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 5);
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 //		source2.getStatus() should be equals to CLOSE?
 //		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
@@ -212,20 +212,22 @@ public class StreamMergerTest {
 	@Test
 	public void testProducerDeduplicateWithError() {
 		NioEventloop eventloop = new NioEventloop();
-		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, 7),
-				StreamProducers.ofValue(eventloop, 8),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofValue(eventloop, 3),
-				StreamProducers.ofValue(eventloop, 9)
-		);
+//		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
+//				StreamProducers.ofValue(eventloop, 7),
+//				StreamProducers.ofValue(eventloop, 8),
+//				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
+//				StreamProducers.ofValue(eventloop, 3),
+//				StreamProducers.ofValue(eventloop, 9)
+//		);
+		StreamProducer source1 = StreamProducers.closingWithError(eventloop, new Exception());
 
-		StreamProducer<Integer> source2 = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, 3),
-				StreamProducers.ofValue(eventloop, 4),
-				StreamProducers.ofValue(eventloop, 6),
-				StreamProducers.ofValue(eventloop, 9)
-		);
+//		StreamProducer<Integer> source2 = StreamProducers.concat(eventloop,
+//				StreamProducers.ofValue(eventloop, 3),
+//				StreamProducers.ofValue(eventloop, 4),
+//				StreamProducers.ofValue(eventloop, 6),
+//				StreamProducers.ofValue(eventloop, 9)
+//		);
+		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3,4,6,9));
 
 		StreamMerger<Integer, Integer> merger = new StreamMerger<>(eventloop, Functions.<Integer>identity(), Ordering.<Integer>natural(), true);
 

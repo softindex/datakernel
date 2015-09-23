@@ -176,19 +176,7 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
-	public void onClosed() {
-		logger.trace("{}: downstream consumer {} closed.", this, downstreamConsumer);
-		doCleanup();
-	}
-
-	@Override
-	protected void onClosedWithError(Exception e) {
-		logger.error("{}: downstream consumer {} exception.", this, downstreamConsumer);
-		downstreamConsumer.onProducerError(e);
-	}
-
-	@Override
-	protected void onProducerStarted() {
+	protected void onStarted() {
 		if (asyncFile != null || pendingAsyncOperation)
 			return;
 		pendingAsyncOperation = true;
@@ -202,9 +190,15 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 			@Override
 			public void onException(Exception exception) {
-				sendError(exception);
+				closeWithError(exception);
 			}
 		});
+	}
+
+	@Override
+	protected void onError(Exception e) {
+		logger.error("{}: downstream consumer {} exception.", this, downstreamConsumer);
+		downstreamConsumer.onProducerError(e);
 	}
 
 	protected void doCleanup() {

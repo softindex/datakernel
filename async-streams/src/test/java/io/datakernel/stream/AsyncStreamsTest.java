@@ -16,37 +16,29 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.AsyncGetterWithSetter;
-import io.datakernel.eventloop.NioEventloop;
-import org.junit.Test;
-
-import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
-import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
-
-public class AsyncStreamsTest {
-	@Test
-	public void testDelayedProducer() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
-
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-
-		AsyncGetterWithSetter<StreamProducer<Integer>> producerSetter = createAsyncGetterWithSetter(eventloop);
-
-		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, producerSetter);
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
-
-		producer.streamTo(consumer);
-
-		eventloop.run();
-		assertFalse(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-
-		producerSetter.onResult(source);
-		eventloop.run();
-		assertEquals(asList(1, 2, 3), consumer.getList());
-		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-////		assertNull(producer.getWiredConsumerStatus());
-	}
-
-}
+//public class AsyncStreamsTest {
+//	@Test
+//	public void testDelayedProducer() throws Exception {
+//		NioEventloop eventloop = new NioEventloop();
+//
+//		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+//
+//		AsyncGetterWithSetter<StreamProducer<Integer>> producerSetter = createAsyncGetterWithSetter(eventloop);
+//
+//		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, producerSetter);
+//		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+//
+//		producer.streamTo(consumer);
+//
+//		eventloop.run();
+//		assertFalse(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+//
+//		producerSetter.onResult(source);
+//		eventloop.run();
+//		assertEquals(asList(1, 2, 3), consumer.getList());
+//		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+//		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+//////		assertNull(producer.getWiredConsumerStatus());
+//	}
+//
+//}

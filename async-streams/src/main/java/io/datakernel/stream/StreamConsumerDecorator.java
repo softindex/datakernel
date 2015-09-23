@@ -32,6 +32,11 @@ public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
 		}
 
 		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
 		protected void onSuspended() {
 			StreamConsumerDecorator.this.onSuspended();
 		}
@@ -42,18 +47,38 @@ public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
 		}
 
 		@Override
-		protected void onClosed() {
-			StreamConsumerDecorator.this.onClosed();
+		protected void onError(Exception e) {
+
 		}
 
-		@Override
-		protected void onClosedWithError(Exception e) {
-			StreamConsumerDecorator.this.onClosedWithError(e);
-		}
+//		@Override
+//		protected void onClosed() {
+//			StreamConsumerDecorator.this.onClosed();
+//		}
+
+//		@Override
+//		protected void onClosedWithError(Exception e) {
+//			StreamConsumerDecorator.this.onClosedWithError(e);
+//		}
 	}
 
 	protected StreamConsumerDecorator(Eventloop eventloop) {
 		super(eventloop);
+	}
+
+	@Override
+	protected void onStarted() {
+
+	}
+
+	@Override
+	protected void onEndOfStream() {
+
+	}
+
+	@Override
+	protected void onError(Exception e) {
+
 	}
 
 	public StreamConsumerDecorator(Eventloop eventloop, StreamConsumer<T> decoratedConsumer) {
@@ -74,11 +99,11 @@ public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
 	}
 
 	protected void onSuspended() {
-		suspendUpstream();
+//		suspendUpstream();
 	}
 
 	protected void onResumed() {
-		resumeUpstream();
+//		resumeUpstream();
 	}
 
 //	protected void onClosed() {
@@ -89,16 +114,16 @@ public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
 //		closeUpstreamWithError(e);
 //	}
 
-	@Override
-	public void onProducerEndOfStream() {
-		decoratedConsumer.onProducerEndOfStream();
-		close();
-	}
+//	@Override
+//	public void onProducerEndOfStream() {
+//		decoratedConsumer.onProducerEndOfStream();
+//		close();
+//	}
 
-	@Override
-	public void onProducerError(Exception e) {
-		decoratedConsumer.onProducerError(e);
-		closeWithError(e);
-	}
+//	@Override
+//	public void onProducerError(Exception e) {
+//		decoratedConsumer.onProducerError(e);
+//		closeWithError(e);
+//	}
 
 }

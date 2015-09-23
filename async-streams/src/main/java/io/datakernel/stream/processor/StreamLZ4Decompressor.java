@@ -35,15 +35,126 @@ import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
 
 public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4DecompressorMBean {
-	private static final int INITIAL_BUFFER_SIZE = 256;
 
-	private final LZ4FastDecompressor decompressor;
-	private final StreamingXXHash32 checksum;
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
 
-	private final ByteBuf headerBuf = ByteBuf.allocate(HEADER_LENGTH);
+		@Override
+		protected void onUpstreamStarted() {
 
-	private ByteBuf inputBuf;
-	private long inputStreamPosition;
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@Override
+		public StreamDataReceiver<ByteBuf> getDataReceiver() {
+			return StreamLZ4Decompressor.this;
+		}
+	}
+
+	private final class DownstreamProducer extends AbstractDownstreamProducer {
+		private static final int INITIAL_BUFFER_SIZE = 256;
+
+		private final LZ4FastDecompressor decompressor;
+		private final StreamingXXHash32 checksum;
+
+		private final ByteBuf headerBuf = ByteBuf.allocate(HEADER_LENGTH);
+
+		private ByteBuf inputBuf;
+		private long inputStreamPosition;
+
+		private DownstreamProducer(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
+			this.decompressor = decompressor;
+			this.checksum = checksum;
+			this.inputBuf = ByteBufPool.allocate(INITIAL_BUFFER_SIZE);
+		}
+
+		@Override
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+
+		private void onData(ByteBuf buf) {
+			try {
+				checkState(!header.finished, "Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf);
+				if (status <= SUSPENDED) {
+					consumeInputByteBuffer(buf);
+				}
+			} catch (Exception e) {
+//				onInternalError(e);
+				upstreamConsumer.closeWithError(e);
+			} finally {
+				buf.recycle();
+			}
+		}
+
+		private void consumeInputByteBuffer(ByteBuf buf) throws Exception {
+			while (buf.hasRemaining()) {
+				if (isReadingHeader()) {
+					// read message header:
+					if (headerBuf.position() == 0 && buf.remaining() >= HEADER_LENGTH) {
+						readHeader(header, buf.array(), buf.position());
+						buf.advance(HEADER_LENGTH);
+						headerBuf.position(HEADER_LENGTH);
+					} else {
+						buf.drainTo(headerBuf, min(headerBuf.remaining(), buf.remaining()));
+						if (isReadingHeader())
+							break;
+						readHeader(header, headerBuf.array(), 0);
+					}
+					assert !isReadingHeader();
+					inputBuf.position(0);
+				}
+
+				if (header.finished) {
+					break;
+				}
+
+				// read message body:
+				assert !isReadingHeader();
+				ByteBuf outputBuf;
+				if (inputBuf.position() == 0 && buf.remaining() >= header.compressedLen) {
+					outputBuf = readBody(decompressor, checksum, header, buf.array(), buf.position());
+					buf.advance(header.compressedLen);
+				} else {
+					inputBuf = ByteBufPool.resize(inputBuf, header.compressedLen);
+					buf.drainTo(inputBuf, min(inputBuf.remaining(), buf.remaining()));
+					if (inputBuf.hasRemaining())
+						break;
+					outputBuf = readBody(decompressor, checksum, header, inputBuf.array(), 0);
+				}
+				inputStreamPosition += HEADER_LENGTH + header.compressedLen;
+				jmxBufsOutput++;
+				jmxBytesOutput += outputBuf.remaining();
+				downstreamDataReceiver.onData(outputBuf);
+				headerBuf.position(0);
+				assert isReadingHeader();
+			}
+		}
+
+		private void recycleBufs() {
+			if (inputBuf != null) {
+				inputBuf.recycle();
+				inputBuf = null;
+			}
+		}
+
+		private boolean isReadingHeader() {
+			return headerBuf.hasRemaining();
+		}
+	}
 
 	private long jmxBytesInput;
 	private long jmxBytesOutput;
@@ -62,42 +173,41 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 
 	public StreamLZ4Decompressor(Eventloop eventloop, LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 		super(eventloop);
-		this.decompressor = decompressor;
-		this.checksum = checksum;
-		this.inputBuf = ByteBufPool.allocate(INITIAL_BUFFER_SIZE);
+		this.downstreamProducer = new DownstreamProducer(decompressor, checksum);
+		this.upstreamConsumer = new UpstreamConsumer();
 	}
 
 	public StreamLZ4Decompressor(Eventloop eventloop) {
 		this(eventloop, LZ4Factory.fastestInstance().fastDecompressor(), XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED));
 	}
 
-	@Override
-	public StreamDataReceiver<ByteBuf> getDataReceiver() {
-		return this;
-	}
-
-	@Override
-	public void onProducerEndOfStream() {
-		sendEndOfStream();
-	}
-
-	@Override
-	public void onClosed() {
-		super.onClosed();
-		recycleBufs();
-	}
-
-	@Override
-	protected void onClosedWithError(Exception e) {
-		super.onClosedWithError(e);
-		recycleBufs();
-	}
-
-	private void recycleBufs() {
-		if (inputBuf != null) {
-			inputBuf.recycle();
-			inputBuf = null;
+	private static ByteBuf readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
+	                                byte[] buf, int off) throws Exception {
+		ByteBuf outputBuf = ByteBufPool.allocate(header.originalLen);
+		outputBuf.limit(header.originalLen);
+		switch (header.compressionMethod) {
+			case COMPRESSION_METHOD_RAW:
+				System.arraycopy(buf, off, outputBuf.array(), 0, header.originalLen);
+				break;
+			case COMPRESSION_METHOD_LZ4:
+				try {
+					int compressedLen2 = decompressor.decompress(buf, off, outputBuf.array(), 0, header.originalLen);
+					if (header.compressedLen != compressedLen2) {
+						throw new IOException("Stream is corrupted");
+					}
+				} catch (LZ4Exception e) {
+					throw new IOException("Stream is corrupted", e);
+				}
+				break;
+			default:
+				throw new AssertionError();
 		}
+		checksum.reset();
+		checksum.update(outputBuf.array(), 0, header.originalLen);
+		if (checksum.getValue() != header.check) {
+			throw new IOException("Stream is corrupted");
+		}
+		return outputBuf;
 	}
 
 	private static void readHeader(Header header, byte[] buf, int off) throws Exception {
@@ -130,101 +240,15 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		}
 	}
 
-	private static ByteBuf readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
-	                                byte[] buf, int off) throws Exception {
-		ByteBuf outputBuf = ByteBufPool.allocate(header.originalLen);
-		outputBuf.limit(header.originalLen);
-		switch (header.compressionMethod) {
-			case COMPRESSION_METHOD_RAW:
-				System.arraycopy(buf, off, outputBuf.array(), 0, header.originalLen);
-				break;
-			case COMPRESSION_METHOD_LZ4:
-				try {
-					int compressedLen2 = decompressor.decompress(buf, off, outputBuf.array(), 0, header.originalLen);
-					if (header.compressedLen != compressedLen2) {
-						throw new IOException("Stream is corrupted");
-					}
-				} catch (LZ4Exception e) {
-					throw new IOException("Stream is corrupted", e);
-				}
-				break;
-			default:
-				throw new AssertionError();
-		}
-		checksum.reset();
-		checksum.update(outputBuf.array(), 0, header.originalLen);
-		if (checksum.getValue() != header.check) {
-			throw new IOException("Stream is corrupted");
-		}
-		return outputBuf;
-	}
-
-	private boolean isReadingHeader() {
-		return headerBuf.hasRemaining();
-	}
-
-	private void consumeInputByteBuffer(ByteBuf buf) throws Exception {
-		while (buf.hasRemaining()) {
-			if (isReadingHeader()) {
-				// read message header:
-				if (headerBuf.position() == 0 && buf.remaining() >= HEADER_LENGTH) {
-					readHeader(header, buf.array(), buf.position());
-					buf.advance(HEADER_LENGTH);
-					headerBuf.position(HEADER_LENGTH);
-				} else {
-					buf.drainTo(headerBuf, min(headerBuf.remaining(), buf.remaining()));
-					if (isReadingHeader())
-						break;
-					readHeader(header, headerBuf.array(), 0);
-				}
-				assert !isReadingHeader();
-				inputBuf.position(0);
-			}
-
-			if (header.finished) {
-				break;
-			}
-
-			// read message body:
-			assert !isReadingHeader();
-			ByteBuf outputBuf;
-			if (inputBuf.position() == 0 && buf.remaining() >= header.compressedLen) {
-				outputBuf = readBody(decompressor, checksum, header, buf.array(), buf.position());
-				buf.advance(header.compressedLen);
-			} else {
-				inputBuf = ByteBufPool.resize(inputBuf, header.compressedLen);
-				buf.drainTo(inputBuf, min(inputBuf.remaining(), buf.remaining()));
-				if (inputBuf.hasRemaining())
-					break;
-				outputBuf = readBody(decompressor, checksum, header, inputBuf.array(), 0);
-			}
-			inputStreamPosition += HEADER_LENGTH + header.compressedLen;
-			jmxBufsOutput++;
-			jmxBytesOutput += outputBuf.remaining();
-			downstreamDataReceiver.onData(outputBuf);
-			headerBuf.position(0);
-			assert isReadingHeader();
-		}
-	}
-
 	@Override
 	public void onData(ByteBuf buf) {
 		jmxBufsInput++;
 		jmxBytesInput += buf.remaining();
-		try {
-			checkState(!header.finished, "Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf);
-			if (status <= SUSPENDED) {
-				consumeInputByteBuffer(buf);
-			}
-		} catch (Exception e) {
-			onInternalError(e);
-		} finally {
-			buf.recycle();
-		}
+		((DownstreamProducer)downstreamProducer).onData(buf);
 	}
 
 	public long getInputStreamPosition() {
-		return inputStreamPosition;
+		return ((DownstreamProducer)downstreamProducer).inputStreamPosition;
 	}
 
 	@Override

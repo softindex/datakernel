@@ -16,14 +16,11 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
 
-import java.util.Arrays;
 import java.util.Iterator;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.async.AsyncIterators.asyncIteratorOfIterator;
 
 public class StreamProducers {
 	private StreamProducers() {
@@ -104,26 +101,26 @@ public class StreamProducers {
 	 * @param producerGetter getter with producer
 	 * @param <T>            type of output data
 	 */
-	public static <T> StreamProducer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncGetter<StreamProducer<T>> producerGetter) {
-		final StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				producerGetter.get(new ResultCallback<StreamProducer<T>>() {
-					@Override
-					public void onResult(StreamProducer<T> actualProducer) {
-						actualProducer.streamTo(forwarder);
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						new ClosingWithError<T>(eventloop, exception).streamTo(forwarder);
-					}
-				});
-			}
-		});
-		return forwarder;
-	}
+//	public static <T> StreamProducer<T> asynchronouslyResolving(final Eventloop eventloop, final AsyncGetter<StreamProducer<T>> producerGetter) {
+//		final StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
+//		eventloop.post(new Runnable() {
+//			@Override
+//			public void run() {
+//				producerGetter.get(new ResultCallback<StreamProducer<T>>() {
+//					@Override
+//					public void onResult(StreamProducer<T> actualProducer) {
+//						actualProducer.streamTo(forwarder);
+//					}
+//
+//					@Override
+//					public void onException(Exception exception) {
+//						new ClosingWithError<T>(eventloop, exception).streamTo(forwarder);
+//					}
+//				});
+//			}
+//		});
+//		return forwarder;
+//	}
 
 	/**
 	 * Returns {@link StreamProducerConcat} with producers from asyncIterator  which will stream to this
@@ -132,9 +129,9 @@ public class StreamProducers {
 	 * @param asyncIterator iterator with producers
 	 * @param <T>           type of output data
 	 */
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> asyncIterator) {
-		return new StreamProducerConcat<>(eventloop, asyncIterator);
-	}
+//	public static <T> StreamProducer<T> concat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> asyncIterator) {
+//		return new StreamProducerConcat<>(eventloop, asyncIterator);
+//	}
 
 	/**
 	 * Returns  {@link StreamProducerConcat} with producers from AsyncIterable  which will stream to this
@@ -143,9 +140,9 @@ public class StreamProducers {
 	 * @param asyncIterator iterable with producers
 	 * @param <T>           type of output data
 	 */
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, AsyncIterable<StreamProducer<T>> asyncIterator) {
-		return concat(eventloop, asyncIterator.asyncIterator());
-	}
+//	public static <T> StreamProducer<T> concat(Eventloop eventloop, AsyncIterable<StreamProducer<T>> asyncIterator) {
+//		return concat(eventloop, asyncIterator.asyncIterator());
+//	}
 
 	/**
 	 * Returns  {@link StreamProducerConcat} with producers from Iterator  which will stream to this
@@ -154,25 +151,25 @@ public class StreamProducers {
 	 * @param iterator  iterator with producers
 	 * @param <T>       type of output data
 	 */
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, Iterator<StreamProducer<T>> iterator) {
-		return concat(eventloop, asyncIteratorOfIterator(iterator));
-	}
+//	public static <T> StreamProducer<T> concat(Eventloop eventloop, Iterator<StreamProducer<T>> iterator) {
+//		return concat(eventloop, asyncIteratorOfIterator(iterator));
+//	}
 
-	/**
-	 * Returns  {@link StreamProducerConcat} with producers from Iterable which will stream to this
-	 *
-	 * @param eventloop event loop in which will run it
-	 * @param iterable  iterator with producers
-	 * @param <T>       type of output data
-	 */
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, Iterable<StreamProducer<T>> iterable) {
-		return concat(eventloop, iterable.iterator());
-	}
+//	/**
+//	 * Returns  {@link StreamProducerConcat} with producers from Iterable which will stream to this
+//	 *
+//	 * @param eventloop event loop in which will run it
+//	 * @param iterable  iterator with producers
+//	 * @param <T>       type of output data
+//	 */
+//	public static <T> StreamProducer<T> concat(Eventloop eventloop, Iterable<StreamProducer<T>> iterable) {
+//		return concat(eventloop, iterable.iterator());
+//	}
 
-	@SafeVarargs
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, StreamProducer<T>... producers) {
-		return concat(eventloop, Arrays.asList(producers));
-	}
+//	@SafeVarargs
+//	public static <T> StreamProducer<T> concat(Eventloop eventloop, StreamProducer<T>... producers) {
+//		return concat(eventloop, Arrays.asList(producers));
+//	}
 
 	/**
 	 * Represent a {@link AbstractStreamProducer} which once sends to consumer end of stream.
@@ -386,60 +383,60 @@ public class StreamProducers {
 		}
 	}
 
-	/**
-	 * Represents {@link AbstractStreamTransformer_1_1}, which created with iterator with {@link AbstractStreamProducer}
-	 * which will stream to this
-	 *
-	 * @param <T> type of received data
-	 */
-	public static class StreamProducerConcat<T> extends StreamProducerDecorator<T> {
-		private final AsyncIterator<StreamProducer<T>> iterator;
-		private final StreamProducerSwitcher<T> switcher;
-
-		public StreamProducerConcat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> iterator) {
-			super(eventloop);
-			this.iterator = checkNotNull(iterator);
-			this.switcher = new StreamProducerSwitcher<>(eventloop);
-			decorate(switcher);
-		}
-
-		/**
-		 * This method is called if consumer was changed for changing consumer status. It begins streaming
-		 * from producers from iterator
-		 */
-		@Override
-		protected void onProducerStarted() {
-			doNext();
-		}
-
-		private void doNext() {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					iterator.next(new IteratorCallback<StreamProducer<T>>() {
-						@Override
-						public void onNext(StreamProducer<T> actualProducer) {
-							switcher.switchProducerTo(new StreamProducerDecorator<T>(eventloop, actualProducer) {
-								@Override
-								public void onEndOfStream() {
-									doNext();
-								}
-							});
-						}
-
-						@Override
-						public void onEnd() {
-							switcher.switchProducerTo(new EndOfStream<T>(eventloop));
-						}
-
-						@Override
-						public void onException(Exception e) {
-							switcher.switchProducerTo(new ClosingWithError<T>(eventloop, e));
-						}
-					});
-				}
-			});
-		}
-
-	}
+//	/**
+//	 * Represents {@link AbstractStreamTransformer_1_1}, which created with iterator with {@link AbstractStreamProducer}
+//	 * which will stream to this
+//	 *
+//	 * @param <T> type of received data
+//	 */
+//	public static class StreamProducerConcat<T> extends StreamProducerDecorator<T> {
+//		private final AsyncIterator<StreamProducer<T>> iterator;
+//		private final StreamProducerSwitcher<T> switcher;
+//
+//		public StreamProducerConcat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> iterator) {
+//			super(eventloop);
+//			this.iterator = checkNotNull(iterator);
+//			this.switcher = new StreamProducerSwitcher<>(eventloop);
+//			decorate(switcher);
+//		}
+//
+//		/**
+//		 * This method is called if consumer was changed for changing consumer status. It begins streaming
+//		 * from producers from iterator
+//		 */
+//		@Override
+//		protected void onProducerStarted() {
+//			doNext();
+//		}
+//
+//		private void doNext() {
+//			eventloop.post(new Runnable() {
+//				@Override
+//				public void run() {
+//					iterator.next(new IteratorCallback<StreamProducer<T>>() {
+//						@Override
+//						public void onNext(StreamProducer<T> actualProducer) {
+//							switcher.switchProducerTo(new StreamProducerDecorator<T>(eventloop, actualProducer) {
+//								@Override
+//								public void onEndOfStream() {
+//									doNext();
+//								}
+//							});
+//						}
+//
+//						@Override
+//						public void onEnd() {
+//							switcher.switchProducerTo(new EndOfStream<T>(eventloop));
+//						}
+//
+//						@Override
+//						public void onException(Exception e) {
+//							switcher.switchProducerTo(new ClosingWithError<T>(eventloop, e));
+//						}
+//					});
+//				}
+//			});
+//		}
+//
+//	}
 }

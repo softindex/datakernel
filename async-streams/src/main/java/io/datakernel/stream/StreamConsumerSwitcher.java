@@ -27,6 +27,11 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		}
 
 		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
 		public void bindDataReceiver() {
 			super.bindDataReceiver();
 			if (getUpstream() != null) {
@@ -37,36 +42,46 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		@Override
 		public void onSuspended() {
 			if (this == currentInternalProducer) {
-				suspendUpstream();
+//				suspendUpstream();
 			}
 		}
 
 		@Override
 		public void onResumed() {
 			if (this == currentInternalProducer) {
-				resumeUpstream();
+//				resumeUpstream();
 			}
 		}
 
 		@Override
-		public void onClosed() {
-			if (this == currentInternalProducer) {
+		protected void onError(Exception e) {
+
+		}
+
+//		@Override
+//		public void onClosed() {
+//			if (this == currentInternalProducer) {
 //				closeUpstream();
-			}
-		}
+//			}
+//		}
 
-		@Override
-		protected void onClosedWithError(Exception e) {
-			if (this == currentInternalProducer) {
-				StreamConsumerSwitcher.this.onProducerError(e);
-				downstreamConsumer.onProducerError(e);
-				closeWithError(e);
-			}
-		}
+//		@Override
+//		protected void onClosedWithError(Exception e) {
+//			if (this == currentInternalProducer) {
+//				StreamConsumerSwitcher.this.onProducerError(e);
+//				downstreamConsumer.onProducerError(e);
+//				closeWithError(e);
+//			}
+//		}
 	}
 
 	public StreamConsumerSwitcher(Eventloop eventloop) {
 		super(eventloop);
+	}
+
+	@Override
+	protected void onStarted() {
+
 	}
 
 	public StreamConsumerSwitcher(Eventloop eventloop, StreamConsumer<T> initialConsumer) {
@@ -80,7 +95,7 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					prevProducer.close();
+//					prevProducer.close();
 				}
 			});
 		}
@@ -97,21 +112,31 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		return currentInternalProducer != null ? currentInternalProducer.getDownstreamDataReceiver() : null;
 	}
 
-	@Override
-	public void onProducerEndOfStream() {
-		currentInternalProducer.sendEndOfStream();
-		close();
-	}
+//	@Override
+//	public void onProducerEndOfStream() {
+//		currentInternalProducer.sendEndOfStream();
+//		close();
+//	}
 
 	@Override
-	public void onProducerError(Exception e) {
-//		upstreamProducer.onConsumerError(e);
-//		upstreamProducer
-		if (currentInternalProducer != null) {
-//			currentInternalProducer.onConsumerError(e);
-			currentInternalProducer.onClosedWithError(e);
-		}
-		closeWithError(e);
+	protected void onEndOfStream() {
+
+	}
+
+//	@Override
+//	public void onProducerError(Exception e) {
+////		upstreamProducer.onConsumerError(e);
+////		upstreamProducer
+//		if (currentInternalProducer != null) {
+////			currentInternalProducer.onConsumerError(e);
+//			currentInternalProducer.onClosedWithError(e);
+//		}
+//		closeWithError(e);
+//	}
+
+	@Override
+	protected void onError(Exception e) {
+
 	}
 
 }

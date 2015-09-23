@@ -31,6 +31,27 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 
 	public StreamSplitter(Eventloop eventloop) {
 		super(eventloop);
+		this.upstreamConsumer = new UpstreamConsumer();
+	}
+
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+
+		@Override
+		protected void onUpstreamStarted() {
+
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+				downstreamProducer.sendEndOfStream();
+			}
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return StreamSplitter.this;
+		}
 	}
 
 	protected final class DownstreamProducer extends AbstractDownstreamProducer<T> {

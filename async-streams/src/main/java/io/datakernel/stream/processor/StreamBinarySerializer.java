@@ -23,7 +23,6 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
 import io.datakernel.stream.StreamDataReceiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +38,49 @@ import static java.lang.Math.max;
  * @param <T> original type of data
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-// TODO (vsavchuk) StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1
-public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1_Stateless<T, ByteBuf> implements StreamSerializer<T>, StreamDataReceiver<T>, StreamBinarySerializerMBean {
+public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements StreamSerializer<T>, StreamDataReceiver<T>, StreamBinarySerializerMBean {
+
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+
+		@Override
+		protected void onUpstreamStarted() {
+
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			flushBuffer(downstreamProducer.getDownstreamDataReceiver());
+			byteBuf.recycle();
+			byteBuf = null;
+			outputBuffer.set(null, 0);
+			logger.trace("endOfStream {}, upstream: {}", this, upstreamConsumer.getUpstream());
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return StreamBinarySerializer.this;
+		}
+	}
+
+	private final class DownstreamProducer extends AbstractDownstreamProducer {
+
+		@Override
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+	}
+
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinarySerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 
@@ -91,6 +131,8 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		this.estimatedMessageSize = 1;
 		this.defaultBufferSize = defaultBufferSize;
 		this.flushDelayMillis = flushDelayMillis;
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer();
 		allocateBuffer();
 	}
 
@@ -207,16 +249,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 	}
 
-	@Override
-	protected void onUpstreamEndOfStream() {
-		flushBuffer(downstreamProducer.getDownstreamDataReceiver());
-		byteBuf.recycle();
-		byteBuf = null;
-		outputBuffer.set(null, 0);
-		logger.trace("endOfStream {}, upstream: {}", this, upstreamConsumer.getUpstream());
-		downstreamProducer.sendEndOfStream();
-	}
-
 	/**
 	 * Bytes will be sent immediately.
 	 */
@@ -289,10 +321,5 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				+ " items:" + (assertOn ? "" + jmxItems : "?")
 				+ " bufs:" + jmxBufs
 				+ " bytes:" + jmxBytes + '}';
-	}
-
-	@Override
-	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
-		return this;
 	}
 }

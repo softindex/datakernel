@@ -96,7 +96,7 @@ public class StreamSharderTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (item == 3) {
-					onProducerError(new Exception());
+					closeWithError(new Exception());
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -167,13 +167,14 @@ public class StreamSharderTest {
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
-		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, 1),
-				StreamProducers.ofValue(eventloop, 2),
-				StreamProducers.ofValue(eventloop, 3),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofValue(eventloop, 4)
-		);
+//		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
+//				StreamProducers.ofValue(eventloop, 1),
+//				StreamProducers.ofValue(eventloop, 2),
+//				StreamProducers.ofValue(eventloop, 3),
+//				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
+//				StreamProducers.ofValue(eventloop, 4)
+//		);
+		StreamProducer<Integer> source = StreamProducers.closingWithError(eventloop, new Exception());
 
 		List<Integer> list1 = new ArrayList<>();
 		StreamConsumer<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop, list1);

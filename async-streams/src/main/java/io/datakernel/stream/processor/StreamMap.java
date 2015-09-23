@@ -135,6 +135,11 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1_Statele
 		return this;
 	}
 
+	@Override
+	protected void onUpstreamEndOfStream() {
+		downstreamProducer.sendEndOfStream();
+	}
+
 	/**
 	 * Changes input data and receive it to the destination
 	 *

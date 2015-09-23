@@ -50,7 +50,13 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 			}
 		}
 
+		@Override
+		protected void doProduce() {
+			AbstractStreamMemoryTransformer.this.downstreamProducerDoProduce();
+		}
 	}
+
+	protected abstract void downstreamProducerDoProduce();
 
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer<I> {
 

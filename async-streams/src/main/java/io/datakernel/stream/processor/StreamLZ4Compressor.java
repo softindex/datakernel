@@ -19,14 +19,72 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import net.jpountz.lz4.LZ4Compressor;
 import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
-public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Stateless<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4CompressorMBean {
+public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4CompressorMBean {
+
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+
+		@Override
+		protected void onUpstreamStarted() {
+
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.send(createEndOfStreamBlock());
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@Override
+		public StreamDataReceiver<ByteBuf> getDataReceiver() {
+			return StreamLZ4Compressor.this;
+		}
+	}
+
+	private final class DownstreamProducer extends AbstractDownstreamProducer {
+
+		@Override
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+
+		private void onData(ByteBuf buf) {
+			if (status >= END_OF_STREAM)
+				return;
+			try {
+				jmxBufs++;
+				jmxBytesInput += buf.remaining();
+
+				ByteBuf outputBuffer = compressBlock(compressor, checksum,
+						buf.array(), buf.position(), buf.remaining());
+				jmxBytesOutput += outputBuffer.remaining();
+
+				send(outputBuffer);
+
+				buf.recycle();
+			} catch (Exception e) {
+//				onInternalError(e);
+				upstreamConsumer.closeWithError(e);
+			}
+		}
+	}
+
 	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
 
@@ -103,6 +161,9 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
 		super(eventloop);
 		this.compressor = compressor;
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer();
+
 	}
 
 	private static int compressionLevel(int blockSize) {
@@ -178,33 +239,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1_Sta
 
 	@Override
 	public void onData(ByteBuf buf) {
-		if (status >= END_OF_STREAM)
-			return;
-		try {
-			jmxBufs++;
-			jmxBytesInput += buf.remaining();
-
-			ByteBuf outputBuffer = compressBlock(compressor, checksum,
-					buf.array(), buf.position(), buf.remaining());
-			jmxBytesOutput += outputBuffer.remaining();
-
-			send(outputBuffer);
-
-			buf.recycle();
-		} catch (Exception e) {
-			onInternalError(e);
-		}
-	}
-
-	@Override
-	public void onProducerEndOfStream() {
-		send(createEndOfStreamBlock());
-		sendEndOfStream();
-	}
-
-	@Override
-	public StreamDataReceiver<ByteBuf> getDataReceiver() {
-		return this;
+		((DownstreamProducer)downstreamProducer).onData(buf);
 	}
 
 	@Override

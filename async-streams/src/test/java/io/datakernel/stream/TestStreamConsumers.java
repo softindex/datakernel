@@ -51,7 +51,6 @@ public class TestStreamConsumers {
 
 		@Override
 		protected final void onError(Exception e) {
-
 		}
 
 		@Override
@@ -60,7 +59,7 @@ public class TestStreamConsumers {
 		}
 
 		public final List<T> getList() {
-			checkState(((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM, "Upstream %s is not closed", upstreamProducer);
+			checkState(((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM, "Upstream %s is not end of stream", upstreamProducer);
 			return list;
 		}
 	}
