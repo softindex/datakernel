@@ -53,6 +53,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeTest {
 	private static Logger root = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
 	private static final org.slf4j.Logger logger = LoggerFactory.getLogger(CubeTest.class);
@@ -144,35 +145,56 @@ public class CubeTest {
 		assertEquals(expected, actual);
 	}
 
-	private static final int LISTEN_PORT = 45555;
 
-	private SimpleFsServer prepareServer(NioEventloop eventloop, ExecutorService executor) throws IOException {
-		SimpleFsServer fileServer = SimpleFsServer.createServerAndInitialize(eventloop, temporaryFolder.newFolder().toPath(), executor);
+	private static final int LISTEN_PORT = 45555;
+	private SimpleFsServer prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
+		final ExecutorService executor = Executors.newCachedThreadPool();
+		SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, serverStorage, executor);
 		fileServer.setListenPort(LISTEN_PORT);
-//		fileServer.acceptOnce();
 		try {
 			fileServer.listen();
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.error("Can't start listen", e);
 		}
+		fileServer.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Started server");
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Failed to start server", e);
+			}
+		});
 		return fileServer;
 	}
 
-	@SuppressWarnings("ResultOfMethodCallIgnored")
+	private void stop(SimpleFsServer server) {
+		server.stop(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Server has been stopped");
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				logger.info("Failed to stop server");
+			}
+		});
+	}
+
 	@Test
 	public void testSimpleFsAggregationStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		final NioEventloop eventloop = new NioEventloop();
-		final ExecutorService executor = Executors.newCachedThreadPool();
 
-		final SimpleFsServer simpleFsServer = prepareServer(eventloop, executor);
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 
-		Path aggregationsDir = temporaryFolder.newFolder().toPath();
+		Path serverStorage = temporaryFolder.newFolder().toPath();
+		final SimpleFsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
 		AggregationChunkStorage storage = new SimpleFsAggregationStorage(eventloop, aggregationStructure);
-//		AggregationChunkStorage storage = new LocalFsChunkStorage(eventloop, executor, aggregationStructure,
-//				aggregationsDir);
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
 
 		final StreamConsumer<DataItem1> cubeConsumer1 = cube.consumer(DataItem1.class, DataItem1.DIMENSIONS, DataItem1.METRICS, new MyCommitCallback(cube));
@@ -187,11 +209,14 @@ public class CubeTest {
 		final CompletionCallback allConsumersDoneCallback = waitAll(consumers, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				simpleFsServer.close();
+				logger.info("Streaming to SimpleFS succeeded.");
+				stop(simpleFsServer1);
 			}
 
 			@Override
 			public void onException(Exception exception) {
+				logger.error("Streaming to SimpleFS failed.", exception);
+				stop(simpleFsServer1);
 			}
 		});
 
@@ -200,10 +225,8 @@ public class CubeTest {
 
 		eventloop.run();
 
-		simpleFsServer.setListenPort(LISTEN_PORT);
-		simpleFsServer.listen();
-
-		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
+		final SimpleFsServer simpleFsServer2 = prepareServer(eventloop, serverStorage);
+		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
 		final AggregationQuery query = new AggregationQuery()
 				.keys("key1", "key2")
 				.fields("metric1", "metric2", "metric3")
@@ -214,12 +237,14 @@ public class CubeTest {
 		queryResultProducer.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				simpleFsServer.close();
+				logger.info("Streaming query {} result from SimpleFS succeeded.", query);
+				stop(simpleFsServer2);
 			}
 
 			@Override
 			public void onException(Exception e) {
-				logger.error("Exception thrown while streaming query {} result.", query, e);
+				logger.error("Exception thrown while streaming query {} result from SimpleFS.", query, e);
+				stop(simpleFsServer2);
 			}
 		});
 		eventloop.run();
@@ -231,6 +256,7 @@ public class CubeTest {
 
 		assertEquals(expected, actual);
 	}
+
 
 	@Test
 	public void testOrdering() throws Exception {

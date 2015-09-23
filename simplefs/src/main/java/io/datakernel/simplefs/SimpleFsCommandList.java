@@ -16,9 +16,13 @@
 
 package io.datakernel.simplefs;
 
-public class SimpleFsCommandList extends SimpleFsCommand {
+public final class SimpleFsCommandList extends SimpleFsCommand {
 
 	public SimpleFsCommandList() {
 	}
 
+	@Override
+	public String toString() {
+		return "List{all files}";
+	}
 }

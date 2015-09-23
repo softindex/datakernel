@@ -20,15 +20,16 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
-public class SimpleFsCommandSerialization {
+public final class SimpleFsCommandSerialization {
 
 	public static final Gson GSON = new GsonBuilder()
 			.registerTypeAdapter(SimpleFsCommand.class, GsonSubclassesAdapter.builder()
 					.subclassField("commandType")
 					.subclass("Download", SimpleFsCommandDownload.class)
 					.subclass("Upload", SimpleFsCommandUpload.class)
-					.subclass("List", SimpleFsCommandList.class)
+					.subclass("Commit", SimpleFsCommandCommit.class)
 					.subclass("Delete", SimpleFsCommandDelete.class)
+					.subclass("List", SimpleFsCommandList.class)
 					.build())
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()

@@ -14,23 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs;
+package io.datakernel.simplefs.stress;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import java.io.IOException;
 
-import java.util.List;
-
-public interface SimpleFs {
-
-	void upload(String destinationFileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
-
-	void download(String path, StreamConsumer<ByteBuf> consumer);
-
-	void listFiles(ResultCallback<List<String>> callback);
-
-	void deleteFile(String fileName, CompletionCallback callback);
+public class StressTest {
+	// first should start server form StressServer, then call main as many times as you like
+	public static void main(String[] args) {
+		try {
+			StressClient client = new StressClient();
+			client.setup();
+			client.start(100, 360_000);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }

@@ -16,8 +16,7 @@
 
 package io.datakernel.simplefs;
 
-public class SimpleFsCommandDelete extends SimpleFsCommand {
-
+public final class SimpleFsCommandDelete extends SimpleFsCommand {
 	public final String fileName;
 
 	public SimpleFsCommandDelete(String fileName) {
@@ -26,8 +25,6 @@ public class SimpleFsCommandDelete extends SimpleFsCommand {
 
 	@Override
 	public String toString() {
-		return "SimpleFsCommandDelete{" +
-				"fileName='" + fileName + '\'' +
-				'}';
+		return "Delete{fileName=\'" + fileName + "\'}";
 	}
 }
