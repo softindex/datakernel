@@ -49,6 +49,11 @@ public class ProducerExample extends AbstractStreamProducer<Integer> {
 	}
 
 	@Override
+	protected void onDataReceiverChanged() {
+
+	}
+
+	@Override
 	protected void onSuspended() {
 
 	}

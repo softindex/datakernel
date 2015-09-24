@@ -16,11 +16,7 @@
 
 package io.datakernel.stream;
 
-import com.google.common.base.Function;
-import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Provides you apply function before sending data to the destination. It is a {@link AbstractStreamTransformer_1_1}

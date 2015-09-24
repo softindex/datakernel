@@ -129,10 +129,10 @@ public class StreamByteChunkerTest {
 
 		}
 
-		@Override
-		public StreamProducer<ByteBuf> getUpstream() {
-			return null;
-		}
+//		@Override
+//		public StreamProducer<ByteBuf> getUpstream() {
+//			return null;
+//		}
 
 		@Override
 		public void onProducerEndOfStream() {

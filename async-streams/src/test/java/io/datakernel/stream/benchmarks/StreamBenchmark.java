@@ -407,6 +407,11 @@ public class StreamBenchmark {
 		}
 
 		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
 		protected void onSuspended() {
 
 		}

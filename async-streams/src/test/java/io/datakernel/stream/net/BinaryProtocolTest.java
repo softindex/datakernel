@@ -285,7 +285,7 @@ public class BinaryProtocolTest {
 								messaging.binarySocketReader().streamTo(streamDeserializer);
 								streamDeserializer.streamTo(consumerToList);
 
-								consumerToList.addCompletionCallback(new CompletionCallback() {
+								consumerToList.addConsumerCompletionCallback(new CompletionCallback() {
 									@Override
 									public void onComplete() {
 										System.out.println("send ack");

@@ -38,6 +38,11 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 		scheduleNext();
 	}
 
+	@Override
+	protected void onDataReceiverChanged() {
+
+	}
+
 	private void cancel() {
 		if (scheduledRunnable != null) {
 			scheduledRunnable.cancel();

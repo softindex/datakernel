@@ -26,7 +26,6 @@ import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 
 /**
  * It is wrapper for  Binary protocol which deserializes received stream to type of input object,
@@ -63,8 +62,12 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		super(eventloop, socketChannel);
 		this.streamDeserializer = streamDeserializer;
 		this.streamSerializer = streamSerializer;
-		this.socketReaderSwitcher = new StreamConsumerSwitcher<>(eventloop, this.streamDeserializer);
-		this.socketWriterSwitcher = new StreamProducerSwitcher<>(eventloop, this.streamSerializer);
+//		this.socketReaderSwitcher = new StreamConsumerSwitcher<>(eventloop, this.streamDeserializer);
+		this.socketReaderSwitcher = new StreamConsumerSwitcher<>(eventloop);
+		this.socketReaderSwitcher.streamTo(this.streamDeserializer);
+//		this.socketWriterSwitcher = new StreamProducerSwitcher<>(eventloop, this.streamSerializer);
+		this.socketWriterSwitcher.streamFrom(this.streamSerializer);
+		this.socketWriterSwitcher = new StreamProducerSwitcher<>(eventloop);
 		this.streamDeserializer.streamTo(this.messageConsumer);
 		this.messageProducer.streamTo(this.streamSerializer);
 	}
@@ -137,6 +140,11 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		}
 
 		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
 		protected void onSuspended() {
 		}
 
@@ -147,6 +155,11 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		@Override
 		protected void onError(Exception e) {
 
+		}
+
+		@Override
+		public void sendEndOfStream() {
+			super.sendEndOfStream();
 		}
 	}
 
@@ -168,14 +181,16 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	public StreamConsumer<ByteBuf> binarySocketWriter() {
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		streamSerializer.flush();
-		socketWriterSwitcher.switchProducerTo(forwarder);
+//		socketWriterSwitcher.switchProducerTo(forwarder);
+		socketWriterSwitcher.streamFrom(forwarder);
 		return forwarder;
 	}
 
 	@Override
 	public StreamProducer<ByteBuf> binarySocketReader() {
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-		socketReaderSwitcher.switchConsumerTo(forwarder);
+//		socketReaderSwitcher.switchConsumerTo(forwarder);
+		socketReaderSwitcher.streamTo(forwarder);
 		streamDeserializer.drainBuffersTo(forwarder);
 		return forwarder;
 	}
@@ -185,7 +200,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				messageConsumer.closeUpstream();
+//				messageConsumer.closeUpstream();
+//				messageProducer.sendEndOfStream();
 				messageProducer.sendEndOfStream();
 			}
 		});
@@ -193,21 +209,22 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 	@Override
 	public void shutdownReader() {
-		checkState(socketReaderSwitcher.getCurrentConsumer() == streamDeserializer, "SocketReader is rewired to another stream");
+//		checkState(socketReaderSwitcher.getCurrentConsumer() == streamDeserializer, "SocketReader is rewired to another stream");
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				messageConsumer.closeUpstream();
+//				messageConsumer.closeUpstream();
 			}
 		});
 	}
 
 	@Override
 	public void shutdownWriter() {
-		checkState(socketWriterSwitcher.getCurrentProducer() == streamSerializer, "SocketWriter is rewired to another stream");
+//		checkState(socketWriterSwitcher.getCurrentProducer() == streamSerializer, "SocketWriter is rewired to another stream");
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
+//				messageProducer.sendEndOfStream();
 				messageProducer.sendEndOfStream();
 			}
 		});

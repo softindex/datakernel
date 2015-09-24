@@ -225,7 +225,7 @@ public class StreamProducers {
 
 		@Override
 		protected void onStarted() {
-			onConsumerError(exception);
+			closeWithError(exception);
 		}
 
 		@Override

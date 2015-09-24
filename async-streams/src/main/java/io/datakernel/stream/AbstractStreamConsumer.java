@@ -87,9 +87,9 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					if (status < END_OF_STREAM) {
+//					if (status < END_OF_STREAM) {
 						onStarted();
-					}
+//					}
 				}
 			});
 		}

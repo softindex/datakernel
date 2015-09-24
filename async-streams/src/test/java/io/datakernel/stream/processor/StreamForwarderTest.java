@@ -54,7 +54,8 @@ public class StreamForwarderTest {
 
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, list);
 		final StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
-		final StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<>(eventloop, new ArrayList<Integer>());
+		List<Integer> resultList = new ArrayList<>();
+		final StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<>(eventloop, resultList);
 		producer.streamTo(forwarder);
 
 		eventloop.postLater(new Runnable() {
@@ -71,7 +72,7 @@ public class StreamForwarderTest {
 
 		eventloop.run();
 
-		assertEquals(list, consumer.getList());
+		assertEquals(list, resultList);
 		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 

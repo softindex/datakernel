@@ -256,4 +256,66 @@ public class StreamConsumers {
 			list.add(item);
 		}
 	}
+
+
+	public static final class ToListSuspend<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+		private List<T> list;
+		private boolean endOfStream;
+
+		protected ToListSuspend(Eventloop eventloop) {
+			this(eventloop, new ArrayList<T>());
+		}
+
+		public ToListSuspend(Eventloop eventloop, List<T> list) {
+			super(eventloop);
+			this.list = list;
+		}
+
+		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			endOfStream = true;
+			close();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			closeWithError(e);
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return this;
+		}
+
+		@Override
+		public void onData(T item) {
+			list.add(item);
+			suspend();
+		}
+
+		public final List<T> getList() {
+			return list;
+		}
+
+		public boolean isEndOfStream() {
+			return endOfStream;
+		}
+
+		public Exception getOnError() {
+			return error;
+		}
+	}
+
+	public static <T> ToListSuspend<T> toListSuspend(Eventloop eventloop, List<T> list) {
+		return new ToListSuspend<T>(eventloop, list);
+	}
+
+	public static <T> ToListSuspend<T> toListSuspend(Eventloop eventloop) {
+		return toListSuspend(eventloop, new ArrayList<T>());
+	}
 }

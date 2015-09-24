@@ -34,7 +34,7 @@ public class StreamConsumerDecoratorTest {
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<>(eventloop, consumer);
+		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<>(consumer);
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
@@ -54,7 +54,7 @@ public class StreamConsumerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
-		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<>(eventloop, consumer);
+		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<>(consumer);
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 
 		producer.streamTo(decorator);
