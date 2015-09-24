@@ -51,15 +51,6 @@ public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
 
 		}
 
-//		@Override
-//		protected void onClosed() {
-//			StreamConsumerDecorator.this.onClosed();
-//		}
-
-//		@Override
-//		protected void onClosedWithError(Exception e) {
-//			StreamConsumerDecorator.this.onClosedWithError(e);
-//		}
 	}
 
 	protected StreamConsumerDecorator(Eventloop eventloop) {
@@ -99,31 +90,11 @@ public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
 	}
 
 	protected void onSuspended() {
-//		suspendUpstream();
+		suspendUpstream();
 	}
 
 	protected void onResumed() {
-//		resumeUpstream();
+		resumeUpstream();
 	}
-
-//	protected void onClosed() {
-//		closeUpstream();
-//	}
-
-//	protected void onClosedWithError(Exception e) {
-//		closeUpstreamWithError(e);
-//	}
-
-//	@Override
-//	public void onProducerEndOfStream() {
-//		decoratedConsumer.onProducerEndOfStream();
-//		close();
-//	}
-
-//	@Override
-//	public void onProducerError(Exception e) {
-//		decoratedConsumer.onProducerError(e);
-//		closeWithError(e);
-//	}
 
 }

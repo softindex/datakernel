@@ -242,7 +242,6 @@ public class StreamConsumers {
 		 * Returns list with received items
 		 */
 		public final List<T> getList() {
-//			checkState(upstreamProducer.getError() == null, "Upstream error %s: %s", upstreamProducer, upstreamProducer.getError());
 			checkState(((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM, "Upstream %s is not closed", upstreamProducer);
 			return list;
 		}
@@ -256,58 +255,5 @@ public class StreamConsumers {
 		public void onData(T item) {
 			list.add(item);
 		}
-
-		//		/**
-//		 * Creates a new instance of ConsumerToList with empty list and event loop from argument, in which
-//		 * this customer will run
-//		 */
-//		public ToList(Eventloop eventloop) {
-//			this(eventloop, new ArrayList<T>());
-//		}
-//
-//		/**
-//		 * Creates a new instance of ConsumerToList with
-//		 *
-//		 * @param eventloop event loop in which this customer will run
-//		 * @param list      list for adding received items
-//		 */
-//		public ToList(Eventloop eventloop, List<T> list) {
-//			super(eventloop);
-//			checkNotNull(list);
-//			this.list = list;
-//		}
-//
-//		/**
-//		 * Returns list with received items
-//		 */
-//		public final List<T> getList() {
-////			checkState(upstreamProducer.getError() == null, "Upstream error %s: %s", upstreamProducer, upstreamProducer.getError());
-//			checkState(((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM, "Upstream %s is not closed", upstreamProducer);
-//			return list;
-//		}
-//
-//		@Override
-//		public StreamDataReceiver<T> getDataReceiver() {
-//			return this;
-//		}
-//
-//		/**
-//		 * Processes received item and adds it to list
-//		 *
-//		 * @param item received item
-//		 */
-//		@Override
-//		public void onData(T item) {
-//			list.add(item);
-//		}
-//
-//		/**
-//		 * Sets the flag complete as true
-//		 */
-//		@Override
-//		public void onProducerEndOfStream() {
-////			upstreamProducer.close();
-//			close();
-//		}
 	}
 }

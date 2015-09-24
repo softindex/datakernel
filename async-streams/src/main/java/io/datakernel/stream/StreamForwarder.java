@@ -49,8 +49,8 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 
 			@Override
 			public void onException(Exception exception) {
-//				internalConsumer.getUpstream().onConsumerError(exception);
-//				internalProducer.getDownstream().onProducerError(exception);
+				internalConsumer.getUpstream().onConsumerError(exception);
+				internalProducer.getDownstream().onProducerError(exception);
 			}
 		});
 
@@ -62,119 +62,117 @@ public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> impl
 
 			@Override
 			public void onException(Exception exception) {
-//				internalConsumer.getUpstream().onConsumerError(exception);
-//				internalProducer.getDownstream().onProducerError(exception);
+				internalConsumer.getUpstream().onConsumerError(exception);
+				internalProducer.getDownstream().onProducerError(exception);
 			}
 		});
 	}
 
-//	@Override
-//	protected StreamDataReceiver<T> getInternalDataReceiver() {
-////		return rewired ? internalProducer.getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
-//		return this;
-//	}
-
-//	@Override
-//	public StreamDataReceiver<T> getDataReceiver() {
-//		return rewired ? internalProducer.getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
-//		return this;
-//	}
+	@Override
+	protected StreamDataReceiver<T> getInternalDataReceiver() {
+		return rewired ? internalProducer.getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
+	}
+//
+	@Override
+	public StreamDataReceiver<T> getDataReceiver() {
+		return rewired ? internalProducer.getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
+	}
 
 	@Override
 	public void onData(T item) {
 		if (rewired) {
 			// Maybe downstreamDataReceiver is cached somewhere in upstream producer, even after rewire?
 			// Anyway, let's just forward items to downstream.
-//			internalProducer.send(item);
+			internalProducer.send(item);
 		} else {
 			bufferedItems.add(item);
 			if (getUpstream() != null) {
-//				internalConsumer.getUpstream().onConsumerSuspended();
+				internalConsumer.getUpstream().onConsumerSuspended();
 			}
 		}
 	}
 
 	private void flushAndRewire() {
-//		if (error != null) {
-//			upstreamProducer.onConsumerError(error);
-//			downstreamConsumer.onProducerError(error);
-//			return;
-//		}
+		if (error != null) {
+			upstreamProducer.onConsumerError(error);
+			downstreamConsumer.onProducerError(error);
+			return;
+		}
 
 		for (T item : bufferedItems) {
-//			send(item);
+			send(item);
 		}
 		bufferedItems.clear();
 
 		if (bufferedEndOfStream) {
-//			sendEndOfStream();
+			sendEndOfStream();
 		}
 
 		rewired = true;
 		getUpstream().bindDataReceiver();
 
-//		if (status == CLOSED) {
-//			closeUpstream();
-//		} else if (status != READY) {
-//			suspendUpstream();
-//		} else {
-//			resumeUpstream();
-//		}
+		if (status == CLOSED) {
+			closeUpstream();
+		} else if (status != READY) {
+			suspendUpstream();
+		} else {
+			resumeUpstream();
+		}
 	}
 
-//	@Override
-//	protected void onConsumerStarted() {
-//		if (getUpstream() != null && getDownstream() != null) {
-//			flushAndRewire();
-//		}
-//	}
-//
-//	@Override
-//	protected void onProducerStarted() {
-//		if (getUpstream() != null && getDownstream() != null) {
-//			flushAndRewire();
-//		}
-//	}
+	@Override
+	protected void onConsumerStarted() {
+		if (getUpstream() != null && getDownstream() != null) {
+			flushAndRewire();
+		}
+	}
 
-//	@Override
-//	public void onProducerEndOfStream() {
-//		if (rewired) {
-//			sendEndOfStream();
-//		} else {
-//			bufferedEndOfStream = true;
-//		}
-//	}
-//
-//	@Override
-//	public void onConsumerSuspended() {
-//		if (rewired) {
-//			internalConsumer.getUpstream().onConsumerSuspended();
-//		}
-//	}
+	@Override
+	protected void onProducerStarted() {
+		if (getUpstream() != null && getDownstream() != null) {
+			flushAndRewire();
+		}
+	}
 
-//	@Override
-//	public void onConsumerResumed() {
-//		if (rewired) {
-//			internalConsumer.getUpstream().onConsumerResumed();
-//		}
-//	}
+	@Override
+	public void onProducerEndOfStream() {
+		if (rewired) {
+			sendEndOfStream();
+		} else {
+			bufferedEndOfStream = true;
+		}
+	}
 
-//	@Override
-//	public void onClosed() {
-//		if (rewired) {
-////			closeUpstream();
-//		}
-//	}
+	@Override
+	public void onConsumerSuspended() {
+		if (rewired) {
+			internalConsumer.getUpstream().onConsumerSuspended();
+		}
+	}
 
-//	@Override
-//	public void onClosedWithError(Exception e) {
-//		if (rewired) {
-////			internalConsumer.getUpstream().onConsumerError(e);
-////			internalProducer.getDownstream().onProducerError(e);
-//		} else {
-////			internalProducer.error = e;
-//		}
-//	}
+	@Override
+	public void onConsumerResumed() {
+		if (rewired) {
+			internalConsumer.getUpstream().onConsumerResumed();
+		}
+	}
+
+	@Override
+	public void onClosed() {
+		if (rewired) {
+			closeUpstream();
+		}
+	}
+
+	@Override
+	public void onClosedWithError(Exception e) {
+		if (rewired) {
+			internalConsumer.getUpstream().onConsumerError(e);
+			internalProducer.getDownstream().onProducerError(e);
+		} else {
+			internalProducer.error = e;
+		}
+	}
 
 
 }

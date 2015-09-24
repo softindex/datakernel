@@ -16,41 +16,52 @@
 
 package io.datakernel.stream.processor;
 
-//public class StreamConsumerDecoratorTest {
-//	@Test
-//	public void test2() {
-//		NioEventloop eventloop = new NioEventloop();
-//
-//		List<Integer> list = new ArrayList<>();
-//		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-//		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<>(eventloop, consumer);
-//
-//		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
-//				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2, 3)),
-//				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-//				StreamProducers.ofValue(eventloop, 1),
-//				StreamProducers.ofValue(eventloop, 2));
-//
-//		producer.streamTo(consumerDecorator);
-//		eventloop.run();
-//
-//		assertEquals(list, asList(1, 2, 3));
-//		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-//	}
-//
-//	@Test
-//	public void test1() {
-//		NioEventloop eventloop = new NioEventloop();
-//
-//		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
-//		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<>(eventloop, consumer);
-//		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-//
-//		producer.streamTo(decorator);
-//
-//		eventloop.run();
-//
-//		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
-//	}
-//
-//}
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.*;
+import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+public class StreamConsumerDecoratorTest {
+	@Test
+	public void test2() {
+		NioEventloop eventloop = new NioEventloop();
+
+		List<Integer> list = new ArrayList<>();
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<>(eventloop, consumer);
+
+		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
+				StreamProducers.ofValue(eventloop, 1),
+				StreamProducers.ofValue(eventloop, 2));
+
+		producer.streamTo(consumerDecorator);
+		eventloop.run();
+
+		assertEquals(list, asList(1, 2, 3));
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+	}
+
+	@Test
+	public void test1() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
+		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<>(eventloop, consumer);
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+
+		producer.streamTo(decorator);
+
+		eventloop.run();
+
+		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
+	}
+
+}

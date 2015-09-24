@@ -115,22 +115,10 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 		}
 
-//		@Override
-//		public void onProducerEndOfStream() {
-//			if (socketReaderSwitcher.getCurrentConsumer() == streamDeserializer) {
-//				shutdown();
-//			}
-//		}
-
 		@Override
 		protected void onEndOfStream() {
 
 		}
-
-//		@Override
-//		public void onProducerError(Exception e) {
-//
-//		}
 
 		@Override
 		protected void onError(Exception e) {
@@ -197,8 +185,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-//				messageConsumer.closeUpstream();
-//				messageProducer.sendEndOfStream();
+				messageConsumer.closeUpstream();
+				messageProducer.sendEndOfStream();
 			}
 		});
 	}
@@ -209,7 +197,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-//				messageConsumer.closeUpstream();
+				messageConsumer.closeUpstream();
 			}
 		});
 	}
@@ -220,7 +208,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-//				messageProducer.sendEndOfStream();
+				messageProducer.sendEndOfStream();
 			}
 		});
 	}

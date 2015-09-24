@@ -44,28 +44,10 @@ public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
 			return downstreamDataReceiver;
 		}
 
-//		@Override
-//		public void onProducerEndOfStream() {
-//			if (this == currentInternalConsumer) {
-//				sendEndOfStream();
-//				close();
-//			}
-//		}
-
 		@Override
 		protected void onEndOfStream() {
 
 		}
-
-//		@Override
-//		public void onProducerError(Exception e) {
-//			if (this == currentInternalConsumer) {
-////				upstreamProducer.onConsumerError(e);
-////				onConsumerError(e);
-//				downstreamConsumer.onProducerError(e);
-//				closeWithError(e);
-//			}
-//		}
 
 		@Override
 		protected void onError(Exception e) {
@@ -93,16 +75,14 @@ public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
 		newUpstreamProducer.streamTo(currentInternalConsumer);
 		if (prevProducer != null && prevProducer.upstreamProducer != null) {
 			prevProducer.upstreamProducer.bindDataReceiver();
-//			prevProducer.closeUpstream();
+			prevProducer.closeUpstream();
 		}
-//		if (status == END_OF_STREAM || status == CLOSED) {
-////			currentInternalConsumer.closeUpstream();
-//			currentInternalConsumer.onProducerEndOfStream();
-//		}
-//		if (status == CLOSED_WITH_ERROR) {
-////			currentInternalConsumer.closeUpstreamWithError(getError());
-//			currentInternalConsumer.onProducerError(getError());
-//		}
+		if (status == END_OF_STREAM || status == CLOSED) {
+			currentInternalConsumer.closeUpstream();
+		}
+		if (status == CLOSED_WITH_ERROR) {
+			currentInternalConsumer.closeUpstreamWithError(getError());
+		}
 	}
 
 	public StreamProducer<T> getCurrentProducer() {
@@ -127,31 +107,8 @@ public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
 
 	}
 
-//	@Override
-//	protected void onSuspended() {
-//		currentInternalConsumer.suspendUpstream();
-//	}
-
-//	@Override
-//	protected void onResumed() {
-//		currentInternalConsumer.resumeUpstream();
-//	}
-
 	@Override
 	protected void onError(Exception e) {
 
 	}
-
-//	@Override
-//	protected void onClosed() {
-////		currentInternalConsumer.closeUpstream();
-//	}
-
-//	@Override
-//	protected void onClosedWithError(Exception e) {
-//		downstreamConsumer.onProducerError(e);
-//		if (currentInternalConsumer != null) {
-//			currentInternalConsumer.onProducerError(e);
-//		}
-//	}
 }

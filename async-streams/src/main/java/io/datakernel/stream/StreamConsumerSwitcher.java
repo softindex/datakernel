@@ -49,7 +49,7 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		@Override
 		public void onResumed() {
 			if (this == currentInternalProducer) {
-//				resumeUpstream();
+				resumeUpstream();
 			}
 		}
 
@@ -58,21 +58,6 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 
 		}
 
-//		@Override
-//		public void onClosed() {
-//			if (this == currentInternalProducer) {
-//				closeUpstream();
-//			}
-//		}
-
-//		@Override
-//		protected void onClosedWithError(Exception e) {
-//			if (this == currentInternalProducer) {
-//				StreamConsumerSwitcher.this.onProducerError(e);
-//				downstreamConsumer.onProducerError(e);
-//				closeWithError(e);
-//			}
-//		}
 	}
 
 	public StreamConsumerSwitcher(Eventloop eventloop) {
@@ -112,27 +97,10 @@ public class StreamConsumerSwitcher<T> extends AbstractStreamConsumer<T> {
 		return currentInternalProducer != null ? currentInternalProducer.getDownstreamDataReceiver() : null;
 	}
 
-//	@Override
-//	public void onProducerEndOfStream() {
-//		currentInternalProducer.sendEndOfStream();
-//		close();
-//	}
-
 	@Override
 	protected void onEndOfStream() {
 
 	}
-
-//	@Override
-//	public void onProducerError(Exception e) {
-////		upstreamProducer.onConsumerError(e);
-////		upstreamProducer
-//		if (currentInternalProducer != null) {
-////			currentInternalProducer.onConsumerError(e);
-//			currentInternalProducer.onClosedWithError(e);
-//		}
-//		closeWithError(e);
-//	}
 
 	@Override
 	protected void onError(Exception e) {

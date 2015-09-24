@@ -16,61 +16,72 @@
 
 package io.datakernel.stream.processor;
 
-//public class StreamProducerDecoratorTest {
-//	@SuppressWarnings("unchecked")
-//	@Test
-//	public void test2() {
-//		NioEventloop eventloop = new NioEventloop();
-//		List<Integer> list = new ArrayList<>();
-//
-//		TestStreamConsumers.TestConsumerToList consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
-//			@Override
-//			public void onData(Integer item) {
-//				if (item == 3) {
-//					upstreamProducer.onConsumerError(new Exception());
-//					return;
-//				}
-//				list.add(item);
-//				upstreamProducer.onConsumerSuspended();
-//				eventloop.post(new Runnable() {
-//					@Override
-//					public void run() {
-//						upstreamProducer.onConsumerResumed();
-//					}
-//				});
-//			}
-//		};
-//
-//		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-//		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(eventloop, producer) {
-//		};
-//
-//		producerDecorator.streamTo(consumer);
-//
-//		eventloop.run();
-//
-//		assertEquals(list, asList(1, 2));
-//		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-//		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-//	}
-//
-//	@SuppressWarnings("unchecked")
-//	@Test
-//	public void test1() {
-//		NioEventloop eventloop = new NioEventloop();
-//
-//		List<Integer> list = new ArrayList<>();
-//		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-//		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-//		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(eventloop, producer) {
-//		};
-//
-//		producerDecorator.streamTo(consumer);
-//
-//		eventloop.run();
-//
-//		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
-//		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-//		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.END_OF_STREAM);
-//	}
-//}
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.*;
+import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+public class StreamProducerDecoratorTest {
+	@SuppressWarnings("unchecked")
+	@Test
+	public void test2() {
+		NioEventloop eventloop = new NioEventloop();
+		List<Integer> list = new ArrayList<>();
+
+		TestStreamConsumers.TestConsumerToList consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
+			@Override
+			public void onData(Integer item) {
+				if (item == 3) {
+					upstreamProducer.onConsumerError(new Exception());
+					return;
+				}
+				list.add(item);
+				upstreamProducer.onConsumerSuspended();
+				eventloop.post(new Runnable() {
+					@Override
+					public void run() {
+						upstreamProducer.onConsumerResumed();
+					}
+				});
+			}
+		};
+
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(eventloop, producer) {
+		};
+
+		producerDecorator.streamTo(consumer);
+
+		eventloop.run();
+
+		assertEquals(list, asList(1, 2));
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void test1() {
+		NioEventloop eventloop = new NioEventloop();
+
+		List<Integer> list = new ArrayList<>();
+		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(eventloop, producer) {
+		};
+
+		producerDecorator.streamTo(consumer);
+
+		eventloop.run();
+
+		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.END_OF_STREAM);
+	}
+}
