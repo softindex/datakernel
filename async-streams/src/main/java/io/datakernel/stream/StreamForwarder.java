@@ -16,163 +16,51 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
+import com.google.common.base.Function;
+import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
 
-import java.util.ArrayList;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
- * Simple no-op forwarder of stream data, which supports wiring of itself to upstream producer or to downstream consumer at later time.
- * <p>After both upstream producer and downstream consumer are connected, StreamForwarder switches to zero-overhead 'short-circuit' mode, which directly forwards StreamDataReceiver from downstream to upstream.
+ * Provides you apply function before sending data to the destination. It is a {@link AbstractStreamTransformer_1_1}
+ * which receives specified type and streams set of function's result  to the destination .
  *
  * @param <T> type of data
  */
-public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> implements StreamDataReceiver<T> {
-	private final ArrayList<T> bufferedItems = new ArrayList<>();
-	private boolean bufferedEndOfStream;
-
-	private boolean rewired;
+public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1_Stateless<T, T> implements StreamDataReceiver<T> {
 
 	/**
 	 * Creates a new instance of this class
 	 *
-	 * @param eventloop eventloop in which forwarder will be running
+	 * @param eventloop eventloop in which filter will be running
 	 */
 	public StreamForwarder(Eventloop eventloop) {
 		super(eventloop);
+	}
 
-		addConsumerCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				internalConsumer.getUpstream().onConsumerError(exception);
-				internalProducer.getDownstream().onProducerError(exception);
-			}
-		});
-
-		addProducerCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				internalConsumer.getUpstream().onConsumerError(exception);
-				internalProducer.getDownstream().onProducerError(exception);
-			}
-		});
+	/**
+	 * Returns callback for right sending data, if its function is identity, returns dataReceiver
+	 * for sending data without filtering.
+	 */
+	@Override
+	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
+		return downstreamDataReceiver;
 	}
 
 	@Override
-	protected StreamDataReceiver<T> getInternalDataReceiver() {
-		return rewired ? internalProducer.getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
-	}
-//
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return rewired ? internalProducer.getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
+	protected void onUpstreamEndOfStream() {
+		downstreamProducer.sendEndOfStream();
+		upstreamConsumer.close();
 	}
 
+	/**
+	 * Applies function to received data and sends result to the destination
+	 *
+	 * @param item received data
+	 */
 	@Override
 	public void onData(T item) {
-		if (rewired) {
-			// Maybe downstreamDataReceiver is cached somewhere in upstream producer, even after rewire?
-			// Anyway, let's just forward items to downstream.
-			internalProducer.send(item);
-		} else {
-			bufferedItems.add(item);
-			if (getUpstream() != null) {
-				internalConsumer.getUpstream().onConsumerSuspended();
-			}
-		}
+		downstreamDataReceiver.onData(item);
 	}
-
-	private void flushAndRewire() {
-		if (error != null) {
-			upstreamProducer.onConsumerError(error);
-			downstreamConsumer.onProducerError(error);
-			return;
-		}
-
-		for (T item : bufferedItems) {
-			send(item);
-		}
-		bufferedItems.clear();
-
-		if (bufferedEndOfStream) {
-			sendEndOfStream();
-		}
-
-		rewired = true;
-		getUpstream().bindDataReceiver();
-
-		if (status == CLOSED) {
-			closeUpstream();
-		} else if (status != READY) {
-			suspendUpstream();
-		} else {
-			resumeUpstream();
-		}
-	}
-
-	@Override
-	protected void onConsumerStarted() {
-		if (getUpstream() != null && getDownstream() != null) {
-			flushAndRewire();
-		}
-	}
-
-	@Override
-	protected void onProducerStarted() {
-		if (getUpstream() != null && getDownstream() != null) {
-			flushAndRewire();
-		}
-	}
-
-	@Override
-	public void onProducerEndOfStream() {
-		if (rewired) {
-			sendEndOfStream();
-		} else {
-			bufferedEndOfStream = true;
-		}
-	}
-
-	@Override
-	public void onConsumerSuspended() {
-		if (rewired) {
-			internalConsumer.getUpstream().onConsumerSuspended();
-		}
-	}
-
-	@Override
-	public void onConsumerResumed() {
-		if (rewired) {
-			internalConsumer.getUpstream().onConsumerResumed();
-		}
-	}
-
-	@Override
-	public void onClosed() {
-		if (rewired) {
-			closeUpstream();
-		}
-	}
-
-	@Override
-	public void onClosedWithError(Exception e) {
-		if (rewired) {
-			internalConsumer.getUpstream().onConsumerError(e);
-			internalProducer.getDownstream().onProducerError(e);
-		} else {
-			internalProducer.error = e;
-		}
-	}
-
-
 }

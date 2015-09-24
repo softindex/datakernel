@@ -125,7 +125,7 @@ public class StreamByteChunkerTest {
 		}
 
 		@Override
-		public void setUpstream(StreamProducer<ByteBuf> upstreamProducer) {
+		public void streamFrom(StreamProducer<ByteBuf> upstreamProducer) {
 
 		}
 

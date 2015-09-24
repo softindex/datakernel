@@ -42,13 +42,6 @@ public interface StreamProducer<T> {
 	void bindDataReceiver();
 
 	/**
-	 * Returns consumer for this producer
-	 *
-	 * @return consumer for this producer
-	 */
-	StreamConsumer<T> getDownstream();
-
-	/**
 	 * This method is called for stop streaming of this producer
 	 */
 	void onConsumerSuspended();

@@ -24,7 +24,6 @@ import io.datakernel.stream.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
 /**
@@ -41,7 +40,10 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 		@Override
 		protected void onStarted() {
+		}
 
+		@Override
+		protected void onDataReceiverChanged() {
 		}
 
 		@Override
@@ -56,8 +58,28 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 		@Override
 		protected void onError(Exception e) {
-
+			TcpStreamSocketConnection.this.onInternalException(e);
 		}
+
+		@Override
+		public void send(ByteBuf item) {
+			super.send(item);
+		}
+
+		@Override
+		public void sendEndOfStream() {
+			super.sendEndOfStream();
+		}
+
+		@Override
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+
+		//		@Override
+//		protected void onClosed() {
+//			closeIfDone();
+//		}
 
 	}
 
@@ -68,7 +90,6 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 		@Override
 		protected void onStarted() {
-
 		}
 
 		@Override
@@ -77,13 +98,16 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		}
 
 		@Override
-		protected void onEndOfStream() {
-
+		public void onEndOfStream() {
+			if (writeQueue.isEmpty()) {
+//				closeUpstream();
+				closeIfDone();
+			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
-
+			onInternalException(e);
 		}
 
 		/**
@@ -95,10 +119,30 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		public void onData(ByteBuf buf) {
 			write(buf);
 			if (writeQueue.isEmpty()) {
-				resumeUpstream();
+				resume();
 			} else {
-				suspendUpstream();
+				suspend();
 			}
+		}
+
+		@Override
+		public void suspend() {
+			super.suspend();
+		}
+
+		@Override
+		public void resume() {
+			super.resume();
+		}
+
+		@Override
+		public void close() {
+			super.close();
+		}
+
+		@Override
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
 		}
 	}
 
@@ -159,25 +203,24 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	private void closeIfDone() {
 		if (!isRegistered())
 			return;
-		if (socketReader.getStatus() >= AbstractStreamProducer.CLOSED && socketWriter.getUpstreamStatus() >= AbstractStreamProducer.CLOSED) {
+		if (socketWriter.getStatus() >= AbstractStreamConsumer.CLOSED) {
 			logger.trace("done, closing {}", this);
 			close();
-			return;
 		}
-		if (socketReader.getStatus() >= AbstractStreamProducer.CLOSED) {
-			try {
-				channel.shutdownInput();
-			} catch (IOException e) {
-				logger.error("shutdownInput error {} for {}", e.toString(), this);
-			}
-		}
-		if (socketWriter.getUpstreamStatus() >= AbstractStreamProducer.CLOSED) {
-			try {
-				channel.shutdownOutput();
-			} catch (IOException e) {
-				logger.error("shutdownOutput error {} for {}", e.toString(), this);
-			}
-		}
+//		if (socketReader.getStatus() >= AbstractStreamProducer.CLOSED) {
+//			try {
+//				channel.shutdownInput();
+//			} catch (IOException e) {
+//				logger.error("shutdownInput error {} for {}", e.toString(), this);
+//			}
+//		}
+//		if (socketWriter.getUpstreamStatus() >= AbstractStreamProducer.CLOSED) {
+//			try {
+//				channel.shutdownOutput();
+//			} catch (IOException e) {
+//				logger.error("shutdownOutput error {} for {}", e.toString(), this);
+//			}
+//		}
 	}
 
 	/**
@@ -202,25 +245,25 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 	@Override
 	protected void onWriteFlushed() {
-		if (socketWriter.getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM) {
-			socketWriter.closeUpstream();
+		if (socketWriter.getStatus() == AbstractStreamConsumer.END_OF_STREAM) {
+//			socketWriter.closeUpstream();
 			closeIfDone();
 		} else {
-			socketWriter.resumeUpstream();
+			socketWriter.resume();
 		}
 	}
 
 	@Override
 	protected void onReadException(Exception e) {
 		logger.warn("onReadException", e);
-		socketReader.onClosedWithError(e);
-		socketReader.sendError(e);
+//		socketReader.onConsumerError(e);
+		socketReader.closeWithError(e);
 	}
 
 	@Override
 	protected void onWriteException(Exception e) {
 		logger.warn("onWriteException", e);
-		socketWriter.closeUpstreamWithError(e);
+//		socketWriter.closeUpstreamWithError(e);
 		closeIfDone();
 	}
 

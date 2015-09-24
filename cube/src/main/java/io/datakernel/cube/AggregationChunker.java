@@ -60,7 +60,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
 		this.chunkSize = chunkSize;
-		decorate(switcher);
+		setActualConsumer(switcher);
 		startNewChunk();
 	}
 

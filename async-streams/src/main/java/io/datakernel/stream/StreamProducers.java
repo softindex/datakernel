@@ -190,6 +190,10 @@ public class StreamProducers {
 		}
 
 		@Override
+		protected void onDataReceiverChanged() {
+		}
+
+		@Override
 		protected void onSuspended() {
 
 		}
@@ -225,6 +229,11 @@ public class StreamProducers {
 		}
 
 		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
 		protected void onSuspended() {
 
 		}
@@ -247,6 +256,11 @@ public class StreamProducers {
 
 		@Override
 		protected void onStarted() {
+
+		}
+
+		@Override
+		protected void onDataReceiverChanged() {
 
 		}
 
@@ -311,6 +325,11 @@ public class StreamProducers {
 		}
 
 		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
 		protected void onSuspended() {
 
 		}
@@ -371,6 +390,10 @@ public class StreamProducers {
 		}
 
 		@Override
+		protected void onDataReceiverChanged() {
+		}
+
+		@Override
 		protected void onSuspended() {
 
 		}
@@ -400,7 +423,7 @@ public class StreamProducers {
 			super(eventloop);
 			this.iterator = checkNotNull(iterator);
 			this.switcher = new StreamProducerSwitcher<>(eventloop);
-			decorate(switcher);
+			setActualProducer(switcher);
 		}
 
 		/**
@@ -419,9 +442,9 @@ public class StreamProducers {
 					iterator.next(new IteratorCallback<StreamProducer<T>>() {
 						@Override
 						public void onNext(StreamProducer<T> actualProducer) {
-							switcher.switchProducerTo(new StreamProducerDecorator<T>(eventloop, actualProducer) {
+							switcher.streamFrom(new StreamProducerDecorator<T>(eventloop, actualProducer) {
 								@Override
-								public void onEndOfStream() {
+								protected void onProducerEndOfStream() {
 									doNext();
 								}
 							});
@@ -429,12 +452,12 @@ public class StreamProducers {
 
 						@Override
 						public void onEnd() {
-							switcher.switchProducerTo(new EndOfStream<T>(eventloop));
+							switcher.streamFrom(new EndOfStream<T>(eventloop));
 						}
 
 						@Override
 						public void onException(Exception e) {
-							switcher.switchProducerTo(new ClosingWithError<T>(eventloop, e));
+							switcher.streamFrom(new ClosingWithError<T>(eventloop, e));
 						}
 					});
 				}

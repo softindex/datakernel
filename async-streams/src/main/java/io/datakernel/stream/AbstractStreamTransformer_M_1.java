@@ -63,7 +63,7 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		@Override
 		protected void onError(Exception e) {
 			countEndOfStreams++;
-			for (AbstractStreamConsumer<?> input : upstreamConsumers) {
+			for (AbstractUpstreamConsumer<?> input : upstreamConsumers) {
 				if (input != this) {
 					input.closeWithError(e);
 				}
@@ -100,9 +100,8 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		}
 
 		@Override
-		public final void bindDataReceiver() {
-			super.bindDataReceiver();
-			for (AbstractStreamConsumer<?> input : upstreamConsumers) {
+		protected final void onDataReceiverChanged() {
+			for (AbstractUpstreamConsumer<?> input : upstreamConsumers) {
 				if (input.getUpstream() != null) {
 					input.getUpstream().bindDataReceiver();
 				}
@@ -111,7 +110,7 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 
 		@Override
 		protected final void onStarted() {
-			for (StreamConsumer<?> input : upstreamConsumers) {
+			for (AbstractUpstreamConsumer<?> input : upstreamConsumers) {
 				input.getUpstream().bindDataReceiver();
 			}
 			onDownstreamStarted();
@@ -121,7 +120,7 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 
 		@Override
 		protected final void onError(Exception e) {
-			for (AbstractStreamConsumer<?> input : upstreamConsumers) {
+			for (AbstractUpstreamConsumer<?> input : upstreamConsumers) {
 				input.closeWithError(e);
 			}
 		}
@@ -179,13 +178,13 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 	}
 
 	protected void suspendAllUpstreams() {
-		for (AbstractStreamConsumer<?> upstreamConsumer : upstreamConsumers) {
+		for (AbstractUpstreamConsumer<?> upstreamConsumer : upstreamConsumers) {
 			upstreamConsumer.suspend();
 		}
 	}
 
 	protected void resumeAllUpstreams() {
-		for (AbstractStreamConsumer<?> upstreamConsumer : upstreamConsumers) {
+		for (AbstractUpstreamConsumer<?> upstreamConsumer : upstreamConsumers) {
 			upstreamConsumer.resume();
 		}
 	}
@@ -206,7 +205,6 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		downstreamProducer.streamTo(downstreamConsumer);
 	}
 
-	@Override
 	public final StreamConsumer<O> getDownstream() {
 		return downstreamProducer.getDownstream();
 	}

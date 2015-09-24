@@ -45,7 +45,7 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 		this.streamCompressor.setTag(streamId);
 		this.streamBinarySerializer.setTag(streamId);
 
-		decorate(streamBinarySerializer);
+		setActualConsumer(streamBinarySerializer);
 		streamBinarySerializer.streamTo(streamCompressor);
 		streamCompressor.streamTo(logStreamConsumer_byteBuffer);
 	}

@@ -24,9 +24,7 @@ import io.datakernel.stream.StreamProducer;
 import static java.lang.System.arraycopy;
 
 @SuppressWarnings("unchecked")
-public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implements StreamDataReceiver<T>, StreamSplitterMBean {
-	protected StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[]{};
-
+public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implements StreamSplitterMBean {
 	private int jmxItems;
 
 	public StreamSplitter(Eventloop eventloop) {
@@ -34,7 +32,7 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 		this.upstreamConsumer = new UpstreamConsumer();
 	}
 
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T>{
 
 		@Override
 		protected void onUpstreamStarted() {
@@ -50,7 +48,15 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return StreamSplitter.this;
+			return this;
+		}
+
+		@Override
+		public void onData(T item) {
+			assert jmxItems != ++jmxItems;
+			for (StreamDataReceiver<T> streamCallback : (StreamDataReceiver<T>[]) dataReceivers) {
+				streamCallback.onData(item);
+			}
 		}
 	}
 
@@ -72,35 +78,10 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 		protected final void onStarted() {
 
 		}
-
-		@Override
-		public void bindDataReceiver() {
-			super.bindDataReceiver();
-			dataReceivers[downstreamProducers.indexOf(this)] = downstreamDataReceiver;
-			onDataReceiverChanged(downstreamProducers.indexOf(this));
-		}
-
-
 	}
 
 	public StreamProducer<T> newOutput() {
-		DownstreamProducer newOutput = new DownstreamProducer();
-		addOutput(newOutput);
-
-		StreamDataReceiver<T>[] newDataReceivers = new StreamDataReceiver[dataReceivers.length + 1];
-		arraycopy(dataReceivers, 0, newDataReceivers, 0, dataReceivers.length);
-		dataReceivers = newDataReceivers;
-
-		return newOutput;
-	}
-
-	@SuppressWarnings("AssertWithSideEffects")
-	@Override
-	public void onData(T item) {
-		assert jmxItems != ++jmxItems;
-		for (StreamDataReceiver<T> streamCallback : dataReceivers) {
-			streamCallback.onData(item);
-		}
+		return addOutput(new DownstreamProducer());
 	}
 
 	@Override

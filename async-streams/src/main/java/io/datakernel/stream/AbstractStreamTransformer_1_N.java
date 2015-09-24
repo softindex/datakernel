@@ -22,6 +22,8 @@ import io.datakernel.eventloop.Eventloop;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.lang.System.arraycopy;
+
 /**
  * Represents a {@link AbstractStreamConsumer} with several {@link AbstractStreamProducer} .
  *
@@ -40,6 +42,8 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	}
 
 	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
+		protected StreamDataReceiver<?>[] dataReceivers = new StreamDataReceiver[0];
+
 		public AbstractUpstreamConsumer() {
 			super(AbstractStreamTransformer_1_N.this.eventloop);
 		}
@@ -60,7 +64,7 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 
 		@Override
 		protected void onError(Exception e) {
-			for (AbstractStreamProducer<?> downstreamProducer : downstreamProducers) {
+			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
 				downstreamProducer.closeWithError(e);
 			}
 		}
@@ -84,6 +88,7 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 		public final void closeWithError(Exception e) {
 			super.closeWithError(e);
 		}
+
 	}
 
 	protected abstract class AbstractDownstreamProducer<O> extends AbstractStreamProducer<O> {
@@ -95,12 +100,17 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 
 		@Override
 		protected final void onError(Exception e) {
-			for (AbstractStreamProducer<?> downstreamProducer : downstreamProducers) {
+			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
 				if (downstreamProducer != this) {
 					downstreamProducer.closeWithError(e);
 				}
 			}
 			upstreamConsumer.closeWithError(e);
+		}
+
+		@Override
+		protected final void onDataReceiverChanged() {
+			upstreamConsumer.dataReceivers[index] = downstreamDataReceiver;
 		}
 
 		@Override
@@ -133,7 +143,6 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 		public void sendEndOfStream() {
 			super.sendEndOfStream();
 		}
-
 	}
 
 	/**
@@ -150,6 +159,11 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	}
 
 	protected <T> StreamProducer<T> addOutput(final AbstractDownstreamProducer<T> downstreamProducer) {
+		StreamDataReceiver<?>[] oldDataReceivers = upstreamConsumer.dataReceivers;
+		StreamDataReceiver<?>[] newDataReceivers = new StreamDataReceiver[oldDataReceivers.length + 1];
+		arraycopy(oldDataReceivers, 0, newDataReceivers, 0, oldDataReceivers.length);
+		upstreamConsumer.dataReceivers = newDataReceivers;
+
 		downstreamProducer.index = downstreamProducers.size();
 		downstreamProducers.add(downstreamProducer);
 		return downstreamProducer;
@@ -185,14 +199,10 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	}
 
 	@Override
-	public final void setUpstream(StreamProducer<I> upstreamProducer) {
-		upstreamConsumer.setUpstream(upstreamProducer);
+	public final void streamFrom(StreamProducer<I> upstreamProducer) {
+		upstreamConsumer.streamFrom(upstreamProducer);
 	}
 
-	@Override
-	public final StreamProducer<I> getUpstream() {
-		return upstreamConsumer.getUpstream();
-	}
 
 	@Override
 	public final void onProducerEndOfStream() {

@@ -92,8 +92,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		}
 
 		@Override
-		public final void bindDataReceiver() {
-			super.bindDataReceiver();
+		protected final void onDataReceiverChanged() {
 			AbstractStreamTransformer_1_1.this.downstreamDataReceiver = this.downstreamDataReceiver;
 			upstreamConsumer.getUpstream().bindDataReceiver();
 		}
@@ -173,13 +172,8 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	}
 
 	@Override
-	public final StreamProducer<I> getUpstream() {
-		return upstreamConsumer.getUpstream();
-	}
-
-	@Override
-	public final void setUpstream(StreamProducer<I> upstreamProducer) {
-		upstreamConsumer.setUpstream(upstreamProducer);
+	public final void streamFrom(StreamProducer<I> upstreamProducer) {
+		upstreamConsumer.streamFrom(upstreamProducer);
 	}
 
 	// downstream
@@ -187,11 +181,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	@Override
 	public final void streamTo(StreamConsumer<O> downstreamConsumer) {
 		downstreamProducer.streamTo(downstreamConsumer);
-	}
-
-	@Override
-	public final StreamConsumer<O> getDownstream() {
-		return downstreamProducer.getDownstream();
 	}
 
 	@Override
@@ -220,6 +209,14 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		if (upstreamConsumer.getUpstream() != null) {
 			upstreamConsumer.getUpstream().bindDataReceiver();
 		}
+	}
+
+	public AbstractUpstreamConsumer getUpstreamConsumer() {
+		return upstreamConsumer;
+	}
+
+	public AbstractDownstreamProducer getDownstreamProducer() {
+		return downstreamProducer;
 	}
 
 	// misc

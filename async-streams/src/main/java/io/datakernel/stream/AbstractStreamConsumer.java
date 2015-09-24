@@ -19,11 +19,14 @@ package io.datakernel.stream;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * It is basic implementation of {@link StreamConsumer}
@@ -31,6 +34,7 @@ import static com.google.common.base.Preconditions.*;
  * @param <T> type of received item
  */
 public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
+	private static final Logger logger = LoggerFactory.getLogger(AbstractStreamConsumer.class);
 
 	protected final Eventloop eventloop;
 
@@ -52,29 +56,48 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	public static final byte CLOSED = 3;
 	public static final byte CLOSED_WITH_ERROR = 4;
 
+	private boolean rewiring;
+
 	/**
 	 * Sets wired producer. It will sent data to this consumer
 	 *
 	 * @param upstreamProducer stream producer for setting
 	 */
 
+
 	@Override
-	public final void setUpstream(final StreamProducer<T> upstreamProducer) {
+	public final void streamFrom(StreamProducer<T> upstreamProducer) {
 		checkNotNull(upstreamProducer);
-		checkState(this.upstreamProducer == null, "Already wired");
+		if (rewiring || this.upstreamProducer == upstreamProducer)
+			return;
+		rewiring = true;
+
+		boolean firstTime = this.upstreamProducer == null;
+
+		if (this.upstreamProducer != null) {
+			this.upstreamProducer.streamTo(StreamConsumers.<T>closingWithError(eventloop,
+					new Exception("Downstream disconnected")));
+		}
+
 		this.upstreamProducer = upstreamProducer;
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-					onStarted();
-			}
-		});
+		upstreamProducer.streamTo(this);
+
+		if (firstTime) {
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					if (status < END_OF_STREAM) {
+						onStarted();
+					}
+				}
+			});
+		}
+		rewiring = false;
 	}
 
 	abstract protected void onStarted();
 
-	@Override
 	@Nullable
 	public final StreamProducer<T> getUpstream() {
 		return upstreamProducer;
@@ -154,6 +177,10 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		status = END_OF_STREAM;
 
 		onEndOfStream();
+	}
+
+	public byte getStatus() {
+		return status;
 	}
 
 	abstract protected void onEndOfStream();

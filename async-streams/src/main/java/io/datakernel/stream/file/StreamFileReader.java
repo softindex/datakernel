@@ -196,6 +196,11 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
+	protected void onDataReceiverChanged() {
+
+	}
+
+	@Override
 	protected void onError(Exception e) {
 		logger.error("{}: downstream consumer {} exception.", this, downstreamConsumer);
 		downstreamConsumer.onProducerError(e);

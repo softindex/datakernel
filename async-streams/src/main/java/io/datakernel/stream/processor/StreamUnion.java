@@ -73,6 +73,7 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> {
 		protected void onDownstreamResumed() {
 			resumeAllUpstreams();
 		}
+
 	}
 
 	public StreamConsumer<T> newInput() {

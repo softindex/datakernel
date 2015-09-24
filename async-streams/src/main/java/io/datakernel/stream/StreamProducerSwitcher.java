@@ -18,97 +18,45 @@ package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
 
-public class StreamProducerSwitcher<T> extends AbstractStreamProducer<T> {
+/**
+ * Provides you apply function before sending data to the destination. It is a {@link AbstractStreamTransformer_1_1}
+ * which receives specified type and streams set of function's result  to the destination .
+ *
+ * @param <T> type of data
+ */
+public final class StreamProducerSwitcher<T> extends AbstractStreamTransformer_1_1_Stateless<T, T> implements StreamDataReceiver<T> {
 
-	private InternalConsumer currentInternalConsumer;
-
-	private class InternalConsumer extends AbstractStreamConsumer<T> {
-		protected InternalConsumer(Eventloop eventloop) {
-			super(eventloop);
-		}
-
-		@Override
-		protected void onStarted() {
-
-		}
-
-		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			if (this != currentInternalConsumer || status >= END_OF_STREAM) {
-				return new StreamDataReceiver<T>() {
-					@Override
-					public void onData(T item) {
-					}
-				};
-			}
-			return downstreamDataReceiver;
-		}
-
-		@Override
-		protected void onEndOfStream() {
-
-		}
-
-		@Override
-		protected void onError(Exception e) {
-
-		}
-	}
-
+	/**
+	 * Creates a new instance of this class
+	 *
+	 * @param eventloop eventloop in which filter will be running
+	 */
 	public StreamProducerSwitcher(Eventloop eventloop) {
-		this(eventloop, new StreamProducers.Idle<T>(eventloop));
-	}
-
-	@Override
-	protected void onStarted() {
-
-	}
-
-	public StreamProducerSwitcher(Eventloop eventloop, StreamProducer<T> initialProducer) {
 		super(eventloop);
-		switchProducerTo(initialProducer);
 	}
 
-	public void switchProducerTo(StreamProducer<T> newUpstreamProducer) {
-		InternalConsumer prevProducer = currentInternalConsumer;
-		currentInternalConsumer = new InternalConsumer(eventloop);
-		newUpstreamProducer.streamTo(currentInternalConsumer);
-		if (prevProducer != null && prevProducer.upstreamProducer != null) {
-			prevProducer.upstreamProducer.bindDataReceiver();
-			prevProducer.closeUpstream();
-		}
-		if (status == END_OF_STREAM || status == CLOSED) {
-			currentInternalConsumer.closeUpstream();
-		}
-		if (status == CLOSED_WITH_ERROR) {
-			currentInternalConsumer.closeUpstreamWithError(getError());
-		}
-	}
-
-	public StreamProducer<T> getCurrentProducer() {
-		return currentInternalConsumer == null ? null : currentInternalConsumer.getUpstream();
+	/**
+	 * Returns callback for right sending data, if its function is identity, returns dataReceiver
+	 * for sending data without filtering.
+	 */
+	@Override
+	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
+		return downstreamDataReceiver;
 	}
 
 	@Override
-	public void bindDataReceiver() {
-		super.bindDataReceiver();
-		if (currentInternalConsumer != null && currentInternalConsumer.getUpstream() != null) {
-			currentInternalConsumer.getUpstream().bindDataReceiver();
-		}
+	protected void onUpstreamEndOfStream() {
+		downstreamProducer.sendEndOfStream();
+		upstreamConsumer.close();
 	}
 
+	/**
+	 * Applies function to received data and sends result to the destination
+	 *
+	 * @param item received data
+	 */
 	@Override
-	protected void onSuspended() {
-
-	}
-
-	@Override
-	protected void onResumed() {
-
-	}
-
-	@Override
-	protected void onError(Exception e) {
-
+	public void onData(T item) {
+		downstreamDataReceiver.onData(item);
 	}
 }

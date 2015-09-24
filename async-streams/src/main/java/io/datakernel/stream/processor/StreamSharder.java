@@ -37,7 +37,6 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 	private long jmxItems;
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
-		protected StreamDataReceiver<T>[] dataReceivers = new StreamDataReceiver[]{};
 		private final Sharder<K> sharder;
 		private final Function<T, K> keyFunction;
 
@@ -46,19 +45,13 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 			this.keyFunction = keyFunction;
 		}
 
-		protected void addDataReceiver() {
-			StreamDataReceiver<T>[] newDataReceivers = new StreamDataReceiver[dataReceivers.length + 1];
-			arraycopy(dataReceivers, 0, newDataReceivers, 0, dataReceivers.length);
-			dataReceivers = newDataReceivers;
-		}
-
 		@SuppressWarnings("AssertWithSideEffects")
 		@Override
 		public void onData(T item) {
 			assert jmxItems != ++jmxItems;
 			K key = keyFunction.apply(item);
 			int shard = sharder.shard(key);
-			StreamDataReceiver<T> streamCallback = dataReceivers[shard];
+			StreamDataReceiver<T> streamCallback = (StreamDataReceiver<T>) dataReceivers[shard];
 			streamCallback.onData(item);
 		}
 
@@ -85,12 +78,6 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		}
 
 		@Override
-		public void bindDataReceiver() {
-			super.bindDataReceiver();
-			upstreamConsumer.dataReceivers[index] = downstreamDataReceiver;
-		}
-
-		@Override
 		protected void onDownstreamSuspended() {
 			upstreamConsumer.suspend();
 		}
@@ -111,7 +98,6 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 	}
 
 	public StreamProducer<T> newOutput() {
-		((UpstreamConsumer) upstreamConsumer).addDataReceiver();
 		return addOutput(new DownstreamProducer());
 	}
 

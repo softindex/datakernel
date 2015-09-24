@@ -25,7 +25,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * It is basic implementation of {@link StreamProducer}
@@ -56,6 +57,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	public static final byte END_OF_STREAM = 2;
 	public static final byte CLOSED_WITH_ERROR = 4;
 
+	private boolean rewiring;
+
 	/**
 	 * Sets consumer for this producer. At the moment of calling this method producer shouldn't have consumer,
 	 * as well as consumer shouldn't have producer, otherwise there will be error
@@ -65,23 +68,34 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	@Override
 	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
 		checkNotNull(downstreamConsumer);
-		checkState(this.downstreamConsumer == null, "Producer is already wired");
-		checkArgument(downstreamConsumer.getUpstream() == null, "Consumer is already wired");
+		if (rewiring || this.downstreamConsumer == downstreamConsumer)
+			return;
+		rewiring = true;
+
+		boolean firstTime = this.downstreamConsumer == null;
+
+		if (this.downstreamConsumer != null) {
+			this.downstreamConsumer.streamFrom(StreamProducers.<T>closingWithError(eventloop,
+					new Exception("Downstream disconnected")));
+		}
 
 		this.downstreamConsumer = downstreamConsumer;
 
-		downstreamConsumer.setUpstream(this);
+		downstreamConsumer.streamFrom(this);
 
 		bindDataReceiver();
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				if (status < END_OF_STREAM) {
-					onStarted();
+		if (firstTime) {
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					if (status < END_OF_STREAM) {
+						onStarted();
+					}
 				}
-			}
-		});
+			});
+		}
+		rewiring = false;
 	}
 
 	/**
@@ -119,7 +133,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 	protected abstract void onStarted();
 
-	@Override
 	@Nullable
 	public final StreamConsumer<T> getDownstream() {
 		return downstreamConsumer;
@@ -129,9 +142,15 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 * Connects consumer's {@link StreamDataReceiver} to producer
 	 */
 	@Override
-	public void bindDataReceiver() {
-		downstreamDataReceiver = downstreamConsumer.getDataReceiver();
+	public final void bindDataReceiver() {
+		StreamDataReceiver<T> newDataReceiver = downstreamConsumer.getDataReceiver();
+		if (downstreamDataReceiver != newDataReceiver) {
+			downstreamDataReceiver = newDataReceiver;
+			onDataReceiverChanged();
+		}
 	}
+
+	protected abstract void onDataReceiverChanged();
 
 	public StreamDataReceiver<T> getDownstreamDataReceiver() {
 		return downstreamDataReceiver;
@@ -183,7 +202,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		completionCallbacks.clear();
 	}
 
-	protected final void closeWithError(Exception e) {
+	protected void closeWithError(Exception e) {
 		closeWithError(e, true);
 	}
 
