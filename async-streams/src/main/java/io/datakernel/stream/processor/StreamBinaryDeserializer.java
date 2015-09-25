@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
-import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -108,10 +107,12 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		@Override
 		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
 			resumeProduce();
 		}
 
@@ -203,11 +204,14 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			}
 
 			if (byteBufs.isEmpty()) {
-				if (((AbstractStreamProducer) upstreamConsumer.getUpstream()).getStatus() == END_OF_STREAM) {
+				if (upstreamConsumer.getStatus() == END_OF_STREAM) {
 					downstreamProducer.sendEndOfStream();
 					recycleBufs();
 				} else {
-					resumeProduce();
+					// TODO (vsavchuk) without getStatus?
+					if (downstreamProducer.getStatus() != READY) {
+						resumeProduce();
+					}
 				}
 			}
 		}

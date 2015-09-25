@@ -62,6 +62,8 @@ public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends Abst
 		super(eventloop);
 		this.upstreamConsumer = new UpstreamConsumer();
 		this.downstreamProducer = new DownstreamProducer();
+		// TODO (vsavchuk) ???
+		this.downstreamDataReceiver = downstreamProducer.getDownstreamDataReceiver();
 	}
 
 	protected abstract StreamDataReceiver<I> getUpstreamDataReceiver();

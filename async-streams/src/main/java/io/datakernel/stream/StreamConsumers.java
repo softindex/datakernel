@@ -34,10 +34,6 @@ public class StreamConsumers {
 		return new Idle<>(eventloop);
 	}
 
-	public static <T> Closing<T> closing(Eventloop eventloop) {
-		return new Closing<>(eventloop);
-	}
-
 	public static <T> ClosingWithError<T> closingWithError(Eventloop eventloop, Exception exception) {
 		return new ClosingWithError<>(eventloop, exception);
 	}
@@ -82,46 +78,6 @@ public class StreamConsumers {
 			}
 		});
 		return forwarder;
-	}
-
-	/**
-	 * Represents a simple {@link AbstractStreamConsumer} which with changing producer sets its status as complete.
-	 *
-	 * @param <T> type of received data
-	 */
-	public static final class Closing<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
-		public Closing(Eventloop eventloop) {
-			super(eventloop);
-		}
-
-		/**
-		 * With changing producer sets its status as complete.
-		 */
-
-		@Override
-		protected void onStarted() {
-			close();
-		}
-
-		@Override
-		protected void onEndOfStream() {
-
-		}
-
-		@Override
-		protected void onError(Exception e) {
-
-		}
-
-		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
-		}
-
-		@Override
-		public void onData(T item) {
-
-		}
 	}
 
 	public static final class ClosingWithError<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {

@@ -64,7 +64,6 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	 * @param upstreamProducer stream producer for setting
 	 */
 
-
 	@Override
 	public final void streamFrom(StreamProducer<T> upstreamProducer) {
 		checkNotNull(upstreamProducer);
@@ -79,17 +78,24 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 					new Exception("Downstream disconnected")));
 		}
 
+		if (status >= END_OF_STREAM) {
+			upstreamProducer.onConsumerError(new Exception("Extra item"));
+			return;
+		}
+
 		this.upstreamProducer = upstreamProducer;
 
 		upstreamProducer.streamTo(this);
+
+		if (status == SUSPENDED) {
+			this.upstreamProducer.onConsumerSuspended();
+		}
 
 		if (firstTime) {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-//					if (status < END_OF_STREAM) {
-						onStarted();
-//					}
+					onStarted();
 				}
 			});
 		}

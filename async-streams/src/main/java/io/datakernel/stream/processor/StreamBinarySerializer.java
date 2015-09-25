@@ -78,6 +78,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		@Override
 		protected void onDownstreamResumed() {
 			upstreamConsumer.resume();
+			resumeProduce();
 		}
 	}
 

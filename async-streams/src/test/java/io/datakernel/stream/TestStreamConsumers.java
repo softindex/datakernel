@@ -69,11 +69,11 @@ public class TestStreamConsumers {
 			@Override
 			public void onData(T item) {
 				list.add(item);
-				this.getUpstream().onConsumerSuspended();
+				this.suspend();
 				this.eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						getUpstream().onConsumerResumed();
+						resume();
 					}
 				});
 			}
@@ -84,8 +84,6 @@ public class TestStreamConsumers {
 		return toListOneByOne(eventloop, new ArrayList<T>());
 	}
 
-	// TODO (vsavchuk) винести в тести, зробити кучу таких класів, таких класів не повинно бути тут, тільки в тестах,
-	// TODO (vsavchuk) всі Consumer які викидують помилку мають бути в тестах окремим класом
 	public static <T> TestConsumerToList<T> toListRandomlySuspending(Eventloop eventloop, List<T> list, final Random random) {
 		return new TestConsumerToList<T>(eventloop, list) {
 			@Override

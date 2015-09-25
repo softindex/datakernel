@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -44,6 +43,9 @@ public class StreamForwarderTest {
 
 		assertEquals(list, consumer.getList());
 		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(forwarder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(forwarder.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamConsumer)consumer).getStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 	@Test
@@ -74,6 +76,9 @@ public class StreamForwarderTest {
 
 		assertEquals(list, resultList);
 		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(forwarder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(forwarder.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamConsumer)consumer).getStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 	@Test
@@ -96,6 +101,10 @@ public class StreamForwarderTest {
 
 		assertEquals(Arrays.asList(1), consumer.getList());
 		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		// TODO (vsavchuk) add test like this for all
+		assertTrue(forwarder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(forwarder.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamConsumer)consumer).getStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 	@Test
@@ -118,6 +127,9 @@ public class StreamForwarderTest {
 
 		assertEquals(Arrays.asList(), consumer.getList());
 		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(forwarder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(forwarder.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamConsumer)consumer).getStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 	@Test
@@ -139,9 +151,10 @@ public class StreamForwarderTest {
 
 		eventloop.run();
 
-		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-//		assertEquals(e, consumer.getUpstream().getError());
-//		assertTrue(((StrseamProducerEx<?>) producer).getWiredConsumerStatus().isComplete());
+		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(forwarder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertTrue(forwarder.getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamConsumer)consumer).getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -170,6 +183,9 @@ public class StreamForwarderTest {
 
 		assertEquals(Arrays.asList(1), consumer.getList());
 		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(forwarder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(forwarder.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamConsumer)consumer).getStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 }

@@ -93,7 +93,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 		this.result.addProducerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-//				closeUpstream();
+
 			}
 
 			@Override

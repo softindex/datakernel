@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -39,7 +40,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	protected final Eventloop eventloop;
 
 	protected StreamConsumer<T> downstreamConsumer;
-	protected StreamDataReceiver<T> downstreamDataReceiver;
+	protected StreamDataReceiver<T> downstreamDataReceiver = new BufferDataReceiver<>();
 
 	protected byte status = READY;
 	protected Exception error;
@@ -74,6 +75,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 		boolean firstTime = this.downstreamConsumer == null;
 
+		List<T> list = Collections.emptyList();
+		if (firstTime) {
+			list = ((BufferDataReceiver<T>) downstreamDataReceiver).getList();
+		}
+
 		if (this.downstreamConsumer != null) {
 			this.downstreamConsumer.streamFrom(StreamProducers.<T>closingWithError(eventloop,
 					new Exception("Downstream disconnected")));
@@ -84,6 +90,20 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		downstreamConsumer.streamFrom(this);
 
 		bindDataReceiver();
+
+		if (firstTime) {
+			onConsumerResumed();
+			for (T item : list) {
+				downstreamDataReceiver.onData(item);
+			}
+		}
+
+		if (status == END_OF_STREAM) {
+			downstreamConsumer.onProducerEndOfStream();
+		}
+		if (status == CLOSED_WITH_ERROR) {
+			downstreamConsumer.onProducerError(error);
+		}
 
 		if (firstTime) {
 			eventloop.post(new Runnable() {
@@ -143,7 +163,14 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 */
 	@Override
 	public final void bindDataReceiver() {
+		// TODO (vsavchuk) if END_OF_STREAM or CLOSE_WITH_ERROR
+		if ((status == END_OF_STREAM || status == CLOSED_WITH_ERROR) && !(downstreamDataReceiver instanceof BufferDataReceiver)) {
+			this.downstreamDataReceiver = new ClosedDataReceiver<>();
+			return;
+		}
+
 		StreamDataReceiver<T> newDataReceiver = downstreamConsumer.getDataReceiver();
+		assert newDataReceiver != null;
 		if (downstreamDataReceiver != newDataReceiver) {
 			downstreamDataReceiver = newDataReceiver;
 			onDataReceiverChanged();
@@ -177,10 +204,15 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	protected void sendEndOfStream() {
+		if (!(downstreamDataReceiver instanceof BufferDataReceiver)) {
+			this.downstreamDataReceiver = new ClosedDataReceiver<>();
+		}
 		if (status >= END_OF_STREAM)
 			return;
 		status = END_OF_STREAM;
-		downstreamConsumer.onProducerEndOfStream();
+		if (downstreamConsumer != null) {
+			downstreamConsumer.onProducerEndOfStream();
+		}
 		for (CompletionCallback callback : completionCallbacks) {
 			callback.onComplete();
 		}
@@ -188,13 +220,19 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	private void closeWithError(Exception e, boolean sendToConsumer) {
+		if (!(downstreamDataReceiver instanceof BufferDataReceiver)) {
+			this.downstreamDataReceiver = new ClosedDataReceiver<>();
+		}
 		if (status >= END_OF_STREAM)
 			return;
 		status = CLOSED_WITH_ERROR;
 		error = e;
 		logger.error("StreamProducer {} closed with error", this, e);
 		if (sendToConsumer) {
-			downstreamConsumer.onProducerError(e);
+			if (downstreamConsumer != null) {
+				downstreamConsumer.onProducerError(e);
+			}
+			onError(e);
 		}
 		for (CompletionCallback callback : completionCallbacks) {
 			callback.onException(e);
@@ -254,5 +292,29 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	@Override
 	public String toString() {
 		return tag != null ? tag.toString() : super.toString();
+	}
+
+	private class BufferDataReceiver<T> implements StreamDataReceiver<T> {
+		private final List<T> list = new ArrayList<>();
+
+		@Override
+		public void onData(T item) {
+			if (list.isEmpty()) {
+				onConsumerSuspended();
+			}
+			list.add(item);
+		}
+
+		public List<T> getList() {
+			return list;
+		}
+	}
+
+	private class ClosedDataReceiver<T> implements StreamDataReceiver<T> {
+
+		@Override
+		public void onData(T item) {
+			logger.warn("Extra item");
+		}
 	}
 }

@@ -176,7 +176,8 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	public void onRegistered() {
 		wire(socketReader, socketWriter);
 		if (socketReader.getDownstream() == null)
-			socketReader.streamTo(new StreamConsumers.Closing<ByteBuf>(eventloop));
+			// TODO (vsavchuk) chenge closing to idle???
+			socketReader.streamTo(StreamConsumers.<ByteBuf>idle(eventloop));
 		if (socketWriter.getUpstream() == null)
 			new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(socketWriter);
 	}

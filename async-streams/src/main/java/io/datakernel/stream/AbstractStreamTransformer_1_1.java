@@ -60,7 +60,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected void onError(Exception e) {
-			downstreamProducer.closeWithError(e);
+			upstreamProducer.onConsumerError(e);
 		}
 
 		@Override
@@ -85,14 +85,11 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	}
 
 	protected abstract class AbstractDownstreamProducer extends AbstractStreamProducer<O> {
-		// TODO (vsavchuk) make initialConsumer for 1_N, M_1
-		StreamConsumers.ToListSuspend<O> initialConsumer = StreamConsumers.toListSuspend(eventloop);
 
 		protected int index;
 
 		public AbstractDownstreamProducer() {
 			super(AbstractStreamTransformer_1_1.this.eventloop);
-			this.streamTo(initialConsumer);
 		}
 
 		@Override
@@ -101,25 +98,13 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 			if (upstreamConsumer.getUpstream() != null) {
 				upstreamConsumer.getUpstream().bindDataReceiver();
 			}
-			if (initialConsumer != null) {
-				for (O item : initialConsumer.getList()) {
-					downstreamConsumer.getDataReceiver().onData(item);
-				}
-				if (initialConsumer.getOnError() != null) {
-					downstreamConsumer.onProducerError(initialConsumer.getOnError());
-				} else if (initialConsumer.isEndOfStream()) {
-					downstreamConsumer.onProducerEndOfStream();
-				}
-
-				upstreamConsumer.resume();
-				resumeProduce();
-				initialConsumer = null;
-			}
 		}
 
 		@Override
 		protected final void onStarted() {
-			upstreamConsumer.getUpstream().bindDataReceiver();
+			if (upstreamConsumer.getUpstream() != null) {
+				upstreamConsumer.getUpstream().bindDataReceiver();
+			}
 			onDownstreamStarted();
 		}
 
@@ -189,6 +174,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	@Override
 	public final void onProducerError(Exception e) {
 		upstreamConsumer.onProducerError(e);
+		downstreamProducer.closeWithError(e);
 	}
 
 	@Override
