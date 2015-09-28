@@ -79,8 +79,6 @@ public class StreamMemoryReducerTest {
 
 		eventloop.run();
 
-		System.out.println(consumer.getList());
-
 		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
@@ -163,9 +161,9 @@ public class StreamMemoryReducerTest {
 
 		eventloop.run();
 
-//		assertTrue(list.size() == 2);
-		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(list.size() == 2);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 //	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
@@ -295,7 +293,7 @@ public class StreamMemoryReducerTest {
 
 //		assertTrue(list.size() == 0);
 		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

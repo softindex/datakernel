@@ -25,7 +25,6 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamConsumerDecoratorTest {
 	@Test
@@ -46,14 +45,14 @@ public class StreamConsumerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3));
-		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
 	public void test1() {
 		NioEventloop eventloop = new NioEventloop();
 
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
+		List<Integer> list = new ArrayList<>();
+		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
 		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<>(consumer);
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 
@@ -61,7 +60,7 @@ public class StreamConsumerDecoratorTest {
 
 		eventloop.run();
 
-		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
+		assertEquals(list, asList(1, 2, 3, 4, 5));
 	}
 
 }

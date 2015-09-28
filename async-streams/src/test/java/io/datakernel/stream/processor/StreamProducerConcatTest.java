@@ -20,10 +20,11 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamProducerConcatTest {
 
@@ -42,7 +43,6 @@ public class StreamProducerConcatTest {
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertFalse(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		producerSetter.onNext(source1);
 		eventloop.run();
@@ -54,10 +54,82 @@ public class StreamProducerConcatTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 //		assertNull(source1.getWiredConsumerStatus());
 //		assertNull(source2.getWiredConsumerStatus());
 //		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+	}
+
+	@Test
+	public void testSequenceException() throws Exception {
+		NioEventloop eventloop = new NioEventloop();
+		List<Integer> list = new ArrayList<>();
+
+		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(4, 5, 6));
+
+		AsyncIteratorWithSetter<StreamProducer<Integer>> producerSetter = AsyncIteratorWithSetter.createAsyncIteratorWithSetter(eventloop);
+
+		StreamProducer<Integer> producer = new StreamProducers.StreamProducerConcat<>(eventloop, producerSetter);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop, list);
+
+		producer.streamTo(consumer);
+
+		eventloop.run();
+
+		producerSetter.onNext(source1);
+		eventloop.run();
+
+		producerSetter.onNext(source2);
+		eventloop.run();
+
+		producerSetter.onException(new Exception());
+		eventloop.run();
+
+		producerSetter.onNext(StreamProducers.ofIterable(eventloop, asList(1, 2, 3)));
+
+		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
+//		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+//		assertNull(source1.getWiredConsumerStatus());
+//		assertNull(source2.getWiredConsumerStatus());
+//		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+	}
+
+	@Test
+	public void testConcat() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
+				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
+				StreamProducers.<Integer>closing(eventloop));
+
+		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
+
+		producer.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
+	}
+
+	@Test
+	public void testConcatException() {
+		NioEventloop eventloop = new NioEventloop();
+		List<Integer> list = new ArrayList<>();
+
+		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
+				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
+				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)));
+
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+
+		producer.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
+
 	}
 
 }

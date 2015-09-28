@@ -33,11 +33,17 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 	protected StreamProducer<T> actualProducer;
 
 	public StreamConsumerDecorator(final StreamConsumer<T> actualConsumer) {
-		setActualConsumer(actualConsumer);
+		this.actualConsumer = checkNotNull(actualConsumer);
 	}
 
-	public final void setActualConsumer(final StreamConsumer<T> actualConsumer) {
-		this.actualConsumer = checkNotNull(actualConsumer);
+	@Override
+	public final StreamDataReceiver<T> getDataReceiver() {
+		return actualConsumer.getDataReceiver();
+	}
+
+	@Override
+	public final void streamFrom(StreamProducer<T> actualProducer) {
+		this.actualProducer = actualProducer;
 		this.actualConsumer.streamFrom(new StreamProducer<T>() {
 			@Override
 			public void streamTo(StreamConsumer<T> downstreamConsumer) {
@@ -69,16 +75,6 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 				throw new UnsupportedOperationException(); // not needed, it will not be called from outside
 			}
 		});
-	}
-
-	@Override
-	public final StreamDataReceiver<T> getDataReceiver() {
-		return actualConsumer.getDataReceiver();
-	}
-
-	@Override
-	public final void streamFrom(StreamProducer<T> actualProducer) {
-		this.actualProducer = actualProducer;
 	}
 
 	// extension hooks, intended for override:

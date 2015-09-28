@@ -46,6 +46,9 @@ public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 
 	public final void setActualProducer(StreamProducer<T> actualProducer) {
 		this.actualProducer = checkNotNull(actualProducer);
+		if (this.actualConsumer != null) {
+			this.actualProducer.streamTo(decoratorStreamConsumer());
+		}
 	}
 
 	@Override
@@ -53,33 +56,11 @@ public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 		checkNotNull(actualConsumer);
 		boolean firstTime = this.actualConsumer == null;
 		this.actualConsumer = actualConsumer;
-		this.actualProducer.streamTo(new StreamConsumer<T>() {
-			@Override
-			public StreamDataReceiver<T> getDataReceiver() {
-				return actualConsumer.getDataReceiver();
-			}
+		if (this.actualProducer != null) {
+			this.actualProducer.streamTo(decoratorStreamConsumer());
+		}
 
-			@Override
-			public void streamFrom(StreamProducer<T> upstreamProducer) {
-				actualConsumer.streamFrom(upstreamProducer);
-			}
-
-			@Override
-			public void onProducerEndOfStream() {
-				StreamProducerDecorator.this.onProducerEndOfStream();
-			}
-
-			@Override
-			public void onProducerError(Exception e) {
-				StreamProducerDecorator.this.onProducerError(e);
-			}
-
-			@Override
-			public void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-				throw new UnsupportedOperationException(); // not needed, it will not be called from outside
-			}
-		});
-
+		// TODO (vsavchuk) bug?
 		if (firstTime) {
 			eventloop.post(new Runnable() {
 				@Override
@@ -120,7 +101,7 @@ public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 		actualProducer.onConsumerError(e);
 	}
 
-	private void onProducerError(Exception e) {
+	protected void onProducerError(Exception e) {
 		actualConsumer.onProducerError(e);
 	}
 
@@ -128,4 +109,32 @@ public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 		actualConsumer.onProducerEndOfStream();
 	}
 
+	private StreamConsumer<T> decoratorStreamConsumer() {
+		return new StreamConsumer<T>() {
+			@Override
+			public StreamDataReceiver<T> getDataReceiver() {
+				return actualConsumer.getDataReceiver();
+			}
+
+			@Override
+			public void streamFrom(StreamProducer<T> upstreamProducer) {
+				actualConsumer.streamFrom(upstreamProducer);
+			}
+
+			@Override
+			public void onProducerEndOfStream() {
+				StreamProducerDecorator.this.onProducerEndOfStream();
+			}
+
+			@Override
+			public void onProducerError(Exception e) {
+				StreamProducerDecorator.this.onProducerError(e);
+			}
+
+			@Override
+			public void addConsumerCompletionCallback(CompletionCallback completionCallback) {
+				throw new UnsupportedOperationException(); // not needed, it will not be called from outside
+			}
+		};
+	}
 }

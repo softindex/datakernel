@@ -146,7 +146,7 @@ public class StreamReducerTest {
 		System.out.println(((AbstractStreamProducer)source2).getStatus());
 		System.out.println(((AbstractStreamProducer)source3).getStatus());
 
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
@@ -242,7 +242,7 @@ public class StreamReducerTest {
 //		assertTrue(list.size() == 0);
 		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	private static final class KeyValue1 {

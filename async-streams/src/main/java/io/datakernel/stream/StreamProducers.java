@@ -417,13 +417,10 @@ public class StreamProducers {
 	 */
 	public static class StreamProducerConcat<T> extends StreamProducerDecorator<T> {
 		private final AsyncIterator<StreamProducer<T>> iterator;
-		private final StreamProducerSwitcher<T> switcher;
 
 		public StreamProducerConcat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> iterator) {
 			super(eventloop);
 			this.iterator = checkNotNull(iterator);
-			this.switcher = new StreamProducerSwitcher<>(eventloop);
-			setActualProducer(switcher);
 		}
 
 		/**
@@ -435,6 +432,11 @@ public class StreamProducers {
 			doNext();
 		}
 
+		@Override
+		protected void onProducerEndOfStream() {
+			doNext();
+		}
+
 		private void doNext() {
 			eventloop.post(new Runnable() {
 				@Override
@@ -442,22 +444,17 @@ public class StreamProducers {
 					iterator.next(new IteratorCallback<StreamProducer<T>>() {
 						@Override
 						public void onNext(StreamProducer<T> actualProducer) {
-							switcher.streamFrom(new StreamProducerDecorator<T>(eventloop, actualProducer) {
-								@Override
-								protected void onProducerEndOfStream() {
-									doNext();
-								}
-							});
+							StreamProducerConcat.this.setActualProducer(actualProducer);
 						}
 
 						@Override
 						public void onEnd() {
-							switcher.streamFrom(new EndOfStream<T>(eventloop));
+							actualConsumer.onProducerEndOfStream();
 						}
 
 						@Override
 						public void onException(Exception e) {
-							switcher.streamFrom(new ClosingWithError<T>(eventloop, e));
+							actualConsumer.onProducerError(e);
 						}
 					});
 				}
