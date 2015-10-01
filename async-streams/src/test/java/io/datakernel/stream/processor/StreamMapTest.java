@@ -126,12 +126,11 @@ public class StreamMapTest {
 	public void testProducerWithError() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
 
-//		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
-//				StreamProducers.ofValue(eventloop, 1),
-//				StreamProducers.ofValue(eventloop, 2),
-//				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-//				StreamProducers.ofValue(eventloop, 3));
-		StreamProducer<Integer> source = StreamProducers.closingWithError(eventloop, new Exception());
+		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, 1),
+				StreamProducers.ofValue(eventloop, 2),
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
+				StreamProducers.ofValue(eventloop, 3));
 
 		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
 
@@ -142,8 +141,8 @@ public class StreamMapTest {
 		projection.streamTo(consumer);
 
 		eventloop.run();
-//		assertTrue(list.size() == 2);
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(list.size() == 2);
+		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 }

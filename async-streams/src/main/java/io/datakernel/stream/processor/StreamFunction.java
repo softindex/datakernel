@@ -71,4 +71,14 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1_St
 	public void onData(I item) {
 		downstreamDataReceiver.onData(function.apply(item));
 	}
+
+	//for test only
+	byte upstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	//for test only
+	byte downstreamProducerStatus() {
+		return downstreamProducer.getStatus();
+	}
 }

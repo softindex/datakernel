@@ -31,7 +31,6 @@ import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -56,7 +55,6 @@ public final class TcpStreamSocketConnectionTest {
 	}
 
 	@Test
-	@Ignore
 	public void test() throws Exception {
 		final List<Integer> source = Lists.newArrayList();
 		for (int i = 0; i < 5; i++) {
@@ -111,7 +109,6 @@ public final class TcpStreamSocketConnectionTest {
 	}
 
 	@Test
-	@Ignore
 	public void testLoopback() throws Exception {
 		final List<Integer> source = Lists.newArrayList();
 		for (int i = 0; i < 1; i++) {

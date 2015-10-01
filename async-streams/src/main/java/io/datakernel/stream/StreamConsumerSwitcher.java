@@ -59,4 +59,8 @@ public final class StreamConsumerSwitcher<T> extends AbstractStreamTransformer_1
 	public void onData(T item) {
 		downstreamDataReceiver.onData(item);
 	}
+
+	public StreamConsumer<T> getCurrentConsumer() {
+		return downstreamProducer == null ? null : downstreamProducer.getDownstream();
+	}
 }

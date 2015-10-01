@@ -24,6 +24,7 @@ import io.datakernel.stream.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
 /**
@@ -146,6 +147,10 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		}
 	}
 
+	// TODO (vsavchuk) shotdownNow все закриває
+	// TODO (vsavchuk) showdown чекає поки зафлашиться ... потім
+	// endofStream from producer call shotdown
+
 	public static final int DEFAULT_STREAM_BUFFER_SIZE = 256 * 1024;
 
 	protected final Reader socketReader;
@@ -199,29 +204,31 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	protected void onReadEndOfStream() {
 		logger.trace("onReadEndOfStream for {}", this);
 		socketReader.sendEndOfStream();
+		closeIfDone();
 	}
 
 	private void closeIfDone() {
 		if (!isRegistered())
 			return;
-		if (socketWriter.getStatus() >= AbstractStreamConsumer.CLOSED) {
+		// TODO (vsavchuk) check this
+		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.END_OF_STREAM && writeQueue.isEmpty()) {
 			logger.trace("done, closing {}", this);
 			close();
+			try {
+				channel.close();
+			} catch (IOException e) {
+				logger.error("close error in {} : {}", this, e.toString());
+			}
+			return;
 		}
-//		if (socketReader.getStatus() >= AbstractStreamProducer.CLOSED) {
-//			try {
-//				channel.shutdownInput();
-//			} catch (IOException e) {
-//				logger.error("shutdownInput error {} for {}", e.toString(), this);
-//			}
-//		}
-//		if (socketWriter.getUpstreamStatus() >= AbstractStreamProducer.CLOSED) {
-//			try {
-//				channel.shutdownOutput();
-//			} catch (IOException e) {
-//				logger.error("shutdownOutput error {} for {}", e.toString(), this);
-//			}
-//		}
+
+		if (socketWriter.getStatus() >= AbstractStreamConsumer.END_OF_STREAM && writeQueue.isEmpty()) {
+			try {
+				channel.shutdownOutput();
+			} catch (IOException e) {
+				logger.error("shutdownOutput error {} for {}", e.toString(), this);
+			}
+		}
 	}
 
 	/**
@@ -242,6 +249,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 	@Override
 	protected void onRead() {
+
 	}
 
 	@Override
@@ -249,6 +257,11 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		if (socketWriter.getStatus() == AbstractStreamConsumer.END_OF_STREAM) {
 //			socketWriter.closeUpstream();
 			closeIfDone();
+			try {
+				shutdownOutput();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		} else {
 			socketWriter.resume();
 		}
@@ -257,14 +270,15 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	@Override
 	protected void onReadException(Exception e) {
 		logger.warn("onReadException", e);
-//		socketReader.onConsumerError(e);
-		socketReader.closeWithError(e);
+		socketReader.onConsumerError(e);
+//		socketReader.closeWithError(e);
 	}
 
 	@Override
 	protected void onWriteException(Exception e) {
 		logger.warn("onWriteException", e);
 //		socketWriter.closeUpstreamWithError(e);
+		socketWriter.onError(e);
 		closeIfDone();
 	}
 
@@ -275,5 +289,9 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	@Override
 	public String toString() {
 		return name != null ? name : super.toString();
+	}
+
+	public void shutdown() {
+		closeIfDone();
 	}
 }

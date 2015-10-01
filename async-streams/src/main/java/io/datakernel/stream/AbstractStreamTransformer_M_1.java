@@ -55,6 +55,8 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		@Override
 		protected final void onEndOfStream() {
 			countEndOfStreams++;
+			// TODO (vsavchuk) close() or not to close()?
+			close();
 			onUpstreamEndOfStream();
 		}
 

@@ -124,4 +124,17 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 		return '{' + super.toString() + " items:" + items + '}';
 	}
 
+	// for test only
+	byte downstreamProducerStatus() {
+		return downstreamProducer.getStatus();
+	}
+
+	// for test only
+	byte[] upstreamConsumersStatus() {
+		byte[] bytes = new byte[upstreamConsumers.size()];
+		for (int i = 0; i < bytes.length; i++) {
+			bytes[i] = upstreamConsumers.get(i).getStatus();
+		}
+		return bytes;
+	}
 }

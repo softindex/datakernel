@@ -66,8 +66,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		this.socketReaderSwitcher = new StreamConsumerSwitcher<>(eventloop);
 		this.socketReaderSwitcher.streamTo(this.streamDeserializer);
 //		this.socketWriterSwitcher = new StreamProducerSwitcher<>(eventloop, this.streamSerializer);
-		this.socketWriterSwitcher.streamFrom(this.streamSerializer);
 		this.socketWriterSwitcher = new StreamProducerSwitcher<>(eventloop);
+		this.socketWriterSwitcher.streamFrom(this.streamSerializer);
 		this.streamDeserializer.streamTo(this.messageConsumer);
 		this.messageProducer.streamTo(this.streamSerializer);
 	}
@@ -120,7 +120,9 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 		@Override
 		protected void onEndOfStream() {
-
+			if (socketReaderSwitcher.getCurrentConsumer() == streamDeserializer) {
+				shutdown();
+			}
 		}
 
 		@Override
@@ -201,8 +203,10 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 			@Override
 			public void run() {
 //				messageConsumer.closeUpstream();
-//				messageProducer.sendEndOfStream();
+//				messageConsumer.getUpstream().
 				messageProducer.sendEndOfStream();
+				StreamMessagingConnection.super.shutdown();
+				// shutdown == flush and shutdownNow, shutdownNow
 			}
 		});
 	}
@@ -214,6 +218,12 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 			@Override
 			public void run() {
 //				messageConsumer.closeUpstream();
+//				StreamMessagingConnection.super.shutdown();
+//				try {
+//					channel.shutdownOutput();
+//				} catch (IOException e) {
+//					e.printStackTrace();
+//				}
 			}
 		});
 	}
@@ -224,8 +234,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-//				messageProducer.sendEndOfStream();
 				messageProducer.sendEndOfStream();
+//				StreamMessagingConnection.super.shutdown();
 			}
 		});
 	}

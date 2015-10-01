@@ -105,7 +105,14 @@ public class StreamConsumers {
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return null;
+			// TODO (vsavchuk) producer.stremTo(closingWithError) then downstreamConsumer.getDataReceiver will return null?
+//			return null;
+			return new StreamDataReceiver<T>() {
+				@Override
+				public void onData(T item) {
+					throw new RuntimeException("Extra item to ClosingWithError consumer");
+				}
+			};
 		}
 
 		@Override

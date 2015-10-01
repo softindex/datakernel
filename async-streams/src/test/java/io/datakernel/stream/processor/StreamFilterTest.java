@@ -18,13 +18,11 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Predicate;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static java.util.Arrays.asList;
@@ -147,13 +145,12 @@ public class StreamFilterTest {
 	public void testProducerDisconnectWithError() {
 		NioEventloop eventloop = new NioEventloop();
 
-//		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
-//				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2, 3)),
-//				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-//				StreamProducers.ofValue(eventloop, 4),
-//				StreamProducers.ofValue(eventloop, 5)
-//		);
-		StreamProducer<Integer> source = StreamProducers.<Integer>closingWithError(eventloop, new Exception());
+		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
+				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2, 3)),
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
+				StreamProducers.ofValue(eventloop, 4),
+				StreamProducers.ofValue(eventloop, 5)
+		);
 
 		Predicate<Integer> predicate = new Predicate<Integer>() {
 			@Override
@@ -171,7 +168,7 @@ public class StreamFilterTest {
 
 		eventloop.run();
 
-//		assertTrue(list.size() == 3);
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(list.size() == 3);
+		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 }

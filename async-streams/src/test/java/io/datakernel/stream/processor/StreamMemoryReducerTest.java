@@ -240,24 +240,19 @@ public class StreamMemoryReducerTest {
 	public void testProducerWithError() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
 
-//		StreamProducer<DataItem1> source1 = StreamProducers.concat(eventloop,
-//				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
-//				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
-//				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
-//				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
-//				StreamProducers.<DataItem1>closingWithError(eventloop, new Exception())
-//		);
-		StreamProducer<DataItem1> source1 = StreamProducers.closingWithError(eventloop, new Exception());
-//		StreamProducer<DataItem1> source2 = StreamProducers.concat(eventloop,
-//				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
-//				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
-//				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
-//				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30))
-//		);
-		StreamProducer<DataItem1> source2 = StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 1, 10, 20),
-				new DataItem1(1, 2, 20, 30),
-				new DataItem1(1, 1, 10, 20),
-				new DataItem1(1, 2, 20, 30)));
+		StreamProducer<DataItem1> source1 = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
+				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
+				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
+				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
+				StreamProducers.<DataItem1>closingWithError(eventloop, new Exception())
+		);
+		StreamProducer<DataItem1> source2 = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
+				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
+				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
+				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30))
+		);
 
 		StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult> reducer = new StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult>() {
 			@Override
@@ -291,9 +286,12 @@ public class StreamMemoryReducerTest {
 
 		eventloop.run();
 
-//		assertTrue(list.size() == 0);
-		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(list.size() == 0);
+		assertArrayEquals(new byte[]{AbstractStreamConsumer.CLOSED_WITH_ERROR, AbstractStreamConsumer.CLOSED}, sorter.upstreamConsumersStatus());
+		assertTrue(sorter.downstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+
+//		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+//		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }
