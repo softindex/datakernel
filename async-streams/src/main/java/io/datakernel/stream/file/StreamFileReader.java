@@ -214,5 +214,8 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		}
 	}
 
+	public long getPosition() {
+		return position;
+	}
 }
 

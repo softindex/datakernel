@@ -432,7 +432,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	private void lockTablesForConsolidation(DSLContext jooq) {
-		jooq.execute("LOCK TABLES AGGREGATION_DB_CHUNK WRITE");
+		jooq.execute("LOCK TABLES aggregation_db_chunk WRITE");
 	}
 
 	private void unlockTablesForConsolidation(DSLContext jooq) {

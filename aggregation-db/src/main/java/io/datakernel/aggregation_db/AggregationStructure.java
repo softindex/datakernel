@@ -56,7 +56,7 @@ public class AggregationStructure {
 	private final Map<String, KeyType> keys;
 	private final Map<String, FieldType> fields;
 	private final Map<String, FieldType> outputFields;
-	private final AggregationKeyRelationships parentChildRelationships;
+	private final AggregationKeyRelationships childParentRelationships;
 
 	private final static Logger logger = LoggerFactory.getLogger(AggregationStructure.class);
 
@@ -72,17 +72,17 @@ public class AggregationStructure {
 	}
 
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields,
-	                            Map<String, String> parentChildRelationships) {
-		this(classLoader, keys, fields, fields, parentChildRelationships);
+	                            Map<String, String> childParentRelationships) {
+		this(classLoader, keys, fields, fields, childParentRelationships);
 	}
 
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys,
-	                            Map<String, FieldType> fields, Map<String, FieldType> outputFields, Map<String, String> parentChildRelationships) {
+	                            Map<String, FieldType> fields, Map<String, FieldType> outputFields, Map<String, String> childParentRelationships) {
 		this.classLoader = classLoader;
 		this.keys = keys;
 		this.fields = fields;
 		this.outputFields = outputFields;
-		this.parentChildRelationships = new AggregationKeyRelationships(parentChildRelationships);
+		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
 	}
 
 	public void checkThatKeysExist(List<String> keys) {
@@ -117,8 +117,8 @@ public class AggregationStructure {
 		return outputFields;
 	}
 
-	public AggregationKeyRelationships getParentChildRelationships() {
-		return parentChildRelationships;
+	public AggregationKeyRelationships getChildParentRelationships() {
+		return childParentRelationships;
 	}
 
 	public Class<?> createKeyClass(List<String> keys) {

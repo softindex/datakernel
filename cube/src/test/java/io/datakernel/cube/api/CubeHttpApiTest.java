@@ -117,7 +117,7 @@ public class CubeHttpApiTest {
 			public void run() {
 				Map<String, String> parameters = new HashMap<>();
 				parameters.put("dimensions", gson.toJson(new String[]{"key1", "key2"}));
-				parameters.put("measures", gson.toJson(new String[] {"metric1", "metric2", "metric3"}));
+				parameters.put("measures", gson.toJson(new String[]{"metric1", "metric2", "metric3"}));
 				parameters.put("filters", gson.toJson(new AggregationQuery.QueryPredicates().eq("key1", 1).eq("key2", 3)));
 				sendGet("", parameters, responseCallback);
 				eventloop.postConcurrently(new Runnable() {

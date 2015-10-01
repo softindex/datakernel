@@ -33,6 +33,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.base.Predicates.not;
 import static com.google.common.collect.Iterables.all;
+import static com.google.common.collect.Iterables.concat;
 import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Lists.newArrayList;
 
@@ -97,8 +98,21 @@ public class AggregationMetadata {
 	}
 
 	public boolean matchQueryPredicates(QueryPredicates predicates) {
-		return this.predicates != null && this.predicates.equals(predicates);
+		if (this.predicates == null)
+			return true;
+
+		Map<String, QueryPredicate> aggregationPredicateMap = this.predicates.asMap();
+		Map<String, QueryPredicate> predicateMap = predicates.asMap();
+
+		for (Map.Entry<String, QueryPredicate> predicateEntry : predicateMap.entrySet()) {
+			String predicateKey = predicateEntry.getKey();
+			if (aggregationPredicateMap.get(predicateKey) != null && !aggregationPredicateMap.get(predicateKey).equals(predicateEntry.getValue()))
+				return false;
+		}
+
+		return true;
 	}
+
 
 	/**
 	 * Checks whether this aggregation satisfies predicates of the given query.
@@ -110,9 +124,9 @@ public class AggregationMetadata {
 	 * @param query query
 	 * @return true if this aggregation satisfies given query predicates
 	 */
-	public boolean applyQueryPredicates(AggregationQuery query, AggregationStructure structure) {
+	public AggregationFilteringResult applyQueryPredicates(AggregationQuery query, AggregationStructure structure) {
 		if (this.predicates == null)
-			return false;
+			return new AggregationFilteringResult(false);
 
 		Map<String, QueryPredicate> queryPredicates = query.getPredicates().asMap();
 		Map<String, QueryPredicate> aggregationPredicates = this.predicates.asMap();
@@ -123,7 +137,7 @@ public class AggregationMetadata {
 			QueryPredicate queryPredicate = queryPredicates.get(aggregationPredicateKey);
 			QueryPredicate aggregationPredicate = aggregationPredicatesEntry.getValue();
 			if (queryPredicate == null)
-				return false; // no corresponding query predicate for this aggregation predicate
+				return new AggregationFilteringResult(false); // no corresponding query predicate for this aggregation predicate
 
 			KeyType keyType = structure.getKeyType(aggregationPredicateKey);
 
@@ -132,7 +146,7 @@ public class AggregationMetadata {
 				if (aggregationPredicate instanceof QueryPredicateEq) {
 					Object aggregationPredicateEq = ((QueryPredicateEq) aggregationPredicate).value;
 					if (keyType.compare(queryPredicateEq, aggregationPredicateEq) != 0)
-						return false;
+						return new AggregationFilteringResult(false);
 					else
 						appliedPredicateKeys.add(aggregationPredicateKey); // no longer need this predicate as it is already applied
 				} else if (aggregationPredicate instanceof QueryPredicateBetween) {
@@ -141,10 +155,10 @@ public class AggregationMetadata {
 					// queryPredicateEq ∉ [aggregationPredicateFrom; aggregationPredicateTo]
 					if (keyType.compare(queryPredicateEq, aggregationPredicateFrom) < 0
 							|| keyType.compare(queryPredicateEq, aggregationPredicateTo) > 0)
-						return false;
+						return new AggregationFilteringResult(false);
 					// else aggregation may contain the requested value, but we still need to apply the predicate for this key
 				} else
-					return false; // unsupported predicate type
+					return new AggregationFilteringResult(false); // unsupported predicate type
 			} else if (queryPredicate instanceof QueryPredicateBetween) {
 				Object queryPredicateFrom = ((QueryPredicateBetween) queryPredicate).from;
 				Object queryPredicateTo = ((QueryPredicateBetween) queryPredicate).to;
@@ -155,7 +169,7 @@ public class AggregationMetadata {
 					Query is for data throughout the entire month (June).
 					So we reject this aggregation hoping some other aggregation has all the requested data.
 					 */
-					return false;
+					return new AggregationFilteringResult(false);
 				} else if (aggregationPredicate instanceof QueryPredicateBetween) {
 					Object aggregationPredicateFrom = ((QueryPredicateBetween) aggregationPredicate).from;
 					Object aggregationPredicateTo = ((QueryPredicateBetween) aggregationPredicate).to;
@@ -163,19 +177,14 @@ public class AggregationMetadata {
 					if (keyType.compare(queryPredicateFrom, aggregationPredicateFrom) < 0 ||
 							keyType.compare(queryPredicateTo, aggregationPredicateTo) > 0) {
 						// only accept aggregation if it fully contains the requested range of values of the specific key
-						return false;
+						return new AggregationFilteringResult(false);
 					}
 				} else
-					return false;
+					return new AggregationFilteringResult(false);
 			}
 		}
 
-		for (String appliedPredicateKey : appliedPredicateKeys) {
-			if (!keys.contains(appliedPredicateKey) && !query.getResultKeys().contains(appliedPredicateKey))
-				queryPredicates.remove(appliedPredicateKey);
-		}
-
-		return true;
+		return new AggregationFilteringResult(true, appliedPredicateKeys);
 	}
 
 	public void addToIndex(AggregationChunk chunk) {
@@ -223,6 +232,13 @@ public class AggregationMetadata {
 		return all(requestedKeys, in(keys));
 	}
 
+	public boolean containsKeysInKeysAndPredicatesKeys(List<String> requestedKeys) {
+		if (this.predicates == null)
+			return containsKeys(requestedKeys);
+
+		return all(requestedKeys, in(newArrayList(concat(keys, predicates.keys()))));
+	}
+
 	public double getCost(AggregationQuery query) {
 		int unfilteredKeyCost = 100;
 
@@ -236,7 +252,7 @@ public class AggregationMetadata {
 					}
 				}));
 
-		if (!this.containsKeys(query.getAllKeys()) || equalsPredicates.size() > keys.size()) {
+		if (!this.containsKeysInKeysAndPredicatesKeys(query.getAllKeys()) || equalsPredicates.size() > keys.size()) {
 			return Double.MAX_VALUE;
 		}
 

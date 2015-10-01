@@ -65,6 +65,12 @@ public final class LogFileSystemImpl implements LogFileSystem {
 		this.dir = dir;
 	}
 
+	public LogFileSystemImpl(Eventloop eventloop, ExecutorService executorService, Path dir, String logName) {
+		this.eventloop = eventloop;
+		this.executorService = executorService;
+		this.dir = dir.resolve(logName);
+	}
+
 	private static final class PartitionAndFile {
 		private final String logPartition;
 		private final LogFile logFile;
@@ -180,12 +186,12 @@ public final class LogFileSystemImpl implements LogFileSystem {
 	}
 
 	@Override
-	public StreamProducer<ByteBuf> reader(String logPartition, LogFile logFile, long positionFrom) {
+	public StreamFileReader reader(String logPartition, LogFile logFile, long positionFrom) {
 		return StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024, path(logPartition, logFile), positionFrom);
 	}
 
 	@Override
-	public StreamConsumer<ByteBuf> writer(String logPartition, LogFile logFile) {
+	public StreamFileWriter writer(String logPartition, LogFile logFile) {
 		return StreamFileWriter.createFile(eventloop, executorService, path(logPartition, logFile));
 	}
 

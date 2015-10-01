@@ -41,11 +41,15 @@ import org.jooq.DSLContext;
 import org.jooq.Result;
 import org.jooq.TransactionalRunnable;
 import org.jooq.impl.DSL;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Stores cube and logs metadata in relational database.
  */
 public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStorage {
+	private static final Logger logger = LoggerFactory.getLogger(LogToCubeMetadataStorageSql.class);
+
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final Configuration jooqConfiguration;
@@ -128,6 +132,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 
 				for (String partition : newPositions.keySet()) {
 					LogPosition logPosition = newPositions.get(partition);
+					logger.info("Finished reading logs at position {}", logPosition);
 
 					if (logPosition.getLogFile() == null)
 						continue;

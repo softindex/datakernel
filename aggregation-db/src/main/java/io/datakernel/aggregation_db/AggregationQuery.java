@@ -186,7 +186,7 @@ public final class AggregationQuery {
 	public static class QueryPredicateEq extends QueryPredicate {
 		public final Object value;
 
-		protected QueryPredicateEq(String key, Object value) {
+		public QueryPredicateEq(String key, Object value) {
 			super(key);
 			this.value = value;
 		}
@@ -223,7 +223,7 @@ public final class AggregationQuery {
 		public final Object from;
 		public final Object to;
 
-		protected QueryPredicateBetween(String key, Object from, Object to) {
+		public QueryPredicateBetween(String key, Object from, Object to) {
 			super(key);
 			this.from = from;
 			this.to = to;
@@ -359,6 +359,13 @@ public final class AggregationQuery {
 
 	public AggregationQuery predicates(List<QueryPredicate> predicates) {
 		this.predicates = new QueryPredicates();
+		for (QueryPredicate predicate : predicates) {
+			this.predicates.add(predicate);
+		}
+		return this;
+	}
+
+	public AggregationQuery addPredicates(List<QueryPredicate> predicates) {
 		for (QueryPredicate predicate : predicates) {
 			this.predicates.add(predicate);
 		}

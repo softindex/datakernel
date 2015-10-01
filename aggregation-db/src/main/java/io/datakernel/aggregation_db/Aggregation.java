@@ -167,7 +167,7 @@ public class Aggregation {
 		return aggregationMetadata.matchQueryPredicates(predicates);
 	}
 
-	public boolean applyQueryPredicates(AggregationQuery query, AggregationStructure structure) {
+	public AggregationFilteringResult applyQueryPredicates(AggregationQuery query, AggregationStructure structure) {
 		return aggregationMetadata.applyQueryPredicates(query, structure);
 	}
 

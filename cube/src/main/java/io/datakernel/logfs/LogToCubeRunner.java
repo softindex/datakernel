@@ -105,6 +105,7 @@ public final class LogToCubeRunner<T> {
 			}
 			logCommitTransaction.logProducer(logPartition, logPosition)
 					.streamTo(streamUnion.newInput());
+			logger.info("Started reading logs for partition {} from position {}", logPartition, logPosition);
 		}
 
 		AggregatorSplitter<T> aggregator = aggregatorSplitterFactory.create(eventloop);

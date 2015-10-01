@@ -24,16 +24,16 @@ import java.util.*;
 import static com.google.common.collect.Sets.newHashSet;
 
 public class AggregationKeyRelationships {
-	private final Map<String, String> parentChildRelationships;
-	private final Multimap<String, String> childParentRelationships;
+	private final Map<String, String> childParentRelationships;
+	private final Multimap<String, String> parentChildRelationships;
 
-	public AggregationKeyRelationships(Map<String, String> parentChildRelationships) {
-		this.parentChildRelationships = parentChildRelationships;
-		this.childParentRelationships = HashMultimap.create();
-		for (Map.Entry<String, String> parentChildEntry : parentChildRelationships.entrySet()) {
+	public AggregationKeyRelationships(Map<String, String> childParentRelationships) {
+		this.childParentRelationships = childParentRelationships;
+		this.parentChildRelationships = HashMultimap.create();
+		for (Map.Entry<String, String> parentChildEntry : childParentRelationships.entrySet()) {
 			String parent = parentChildEntry.getKey();
 			String child = parentChildEntry.getValue();
-			childParentRelationships.put(child, parent);
+			parentChildRelationships.put(child, parent);
 		}
 	}
 
@@ -51,7 +51,7 @@ public class AggregationKeyRelationships {
 		drillDown.add(dimension);
 		String child = dimension;
 		String parent;
-		while ((parent = parentChildRelationships.get(child)) != null && !usedDimensions.contains(parent)) {
+		while ((parent = childParentRelationships.get(child)) != null && !usedDimensions.contains(parent)) {
 			drillDown.addFirst(parent);
 			child = parent;
 		}
@@ -65,7 +65,7 @@ public class AggregationKeyRelationships {
 	}
 
 	private void findChildren(Set<String> children, String parent) {
-		Collection<String> childrenOfParent = childParentRelationships.get(parent);
+		Collection<String> childrenOfParent = parentChildRelationships.get(parent);
 		children.addAll(childrenOfParent);
 		for (String child : childrenOfParent)
 			findChildren(children, child);

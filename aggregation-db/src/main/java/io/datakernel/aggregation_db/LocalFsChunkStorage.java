@@ -111,15 +111,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
-		StreamByteChunker streamByteChunkerBefore = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamByteChunker streamByteChunkerAfter = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(aggregationId, id));
 
-		serializer.streamTo(streamByteChunkerBefore);
-		streamByteChunkerBefore.streamTo(compressor);
-		compressor.streamTo(streamByteChunkerAfter);
-		streamByteChunkerAfter.streamTo(writer);
+		serializer.streamTo(compressor);
+		compressor.streamTo(writer);
 
 		return serializer;
 	}
