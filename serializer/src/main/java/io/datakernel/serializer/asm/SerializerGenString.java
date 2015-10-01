@@ -96,11 +96,11 @@ public class SerializerGenString implements SerializerGen {
 				list.add(call(arg(0), "writeNullableUTF16", expression));
 			else
 				list.add(call(arg(0), "writeUTF16", expression));
-		} else if (format == StringFormat.ASCII) {
+		} else if (format == StringFormat.ISO_8859_1) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableAscii", expression));
+				list.add(call(arg(0), "writeNullableIso88591", expression));
 			else
-				list.add(call(arg(0), "writeAscii", expression));
+				list.add(call(arg(0), "writeIso88591", expression));
 		} else if (format == StringFormat.UTF8) {
 			if (nullable)
 				list.add(call(arg(0), "writeNullableJavaUTF8", expression));
@@ -129,11 +129,11 @@ public class SerializerGenString implements SerializerGen {
 				return call(arg(0), "readNullableUTF16");
 			else
 				return call(arg(0), "readUTF16");
-		} else if (format == StringFormat.ASCII) {
+		} else if (format == StringFormat.ISO_8859_1) {
 			if (nullable)
-				return call(arg(0), "readNullableAscii");
+				return call(arg(0), "readNullableIso88591");
 			else
-				return call(arg(0), "readAscii");
+				return call(arg(0), "readIso88591");
 		} else if (format == StringFormat.UTF8) {
 			if (nullable)
 				return call(arg(0), "readNullableJavaUTF8");

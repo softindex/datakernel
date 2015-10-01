@@ -213,7 +213,7 @@ public class SerializationOutputBuffer {
 		}
 	}
 
-	public void writeAscii(String s) {
+	public void writeIso88591(String s) {
 		int length = s.length();
 		writeVarInt(length);
 		ensureSize(length * 3);
@@ -223,7 +223,7 @@ public class SerializationOutputBuffer {
 		}
 	}
 
-	public void writeNullableAscii(String s) {
+	public void writeNullableIso88591(String s) {
 		if (s == null) {
 			writeByte((byte) 0);
 			return;

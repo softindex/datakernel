@@ -164,19 +164,19 @@ public final class SerializationInputBuffer {
 		return result;
 	}
 
-	public String readAscii() {
+	public String readIso88591() {
 		int length = readVarInt();
-		return doReadAscii(length);
+		return doReadIso88591(length);
 	}
 
-	public String readNullableAscii() {
+	public String readNullableIso88591() {
 		int length = readVarInt();
 		if (length == 0)
 			return null;
-		return doReadAscii(length - 1);
+		return doReadIso88591(length - 1);
 	}
 
-	public String doReadAscii(int length) {
+	public String doReadIso88591(int length) {
 		if (length == 0)
 			return "";
 		if (length > remaining())
