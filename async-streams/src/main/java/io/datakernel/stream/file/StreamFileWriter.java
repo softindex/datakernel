@@ -167,6 +167,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
+					close();
 				}
 
 				@Override
