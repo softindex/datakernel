@@ -28,8 +28,6 @@ public final class DnsMessage {
 	private byte[] message;
 	private int idx = 0;
 
-	private static final int IPV4_ADDRESS_SIZE = 4;
-	private static final int IPV6_ADDRESS_SIZE = 16;
 	private static final int RR_TTL_SIZE = 4;
 	private static final int RR_NAME_SIZE = 2;
 	private static final int RR_TYPE_SIZE = 2;
@@ -49,13 +47,13 @@ public final class DnsMessage {
 	private static final byte IN_CLASS_CODE = 1;
 
 	public static final short A_RECORD_TYPE = 1;
-	public static final short CNAME_RECORD_TYPE = 5;
 	public static final short AAAA_RECORD_TYPE = 28;
 
 	private final static Random random = new Random();
 
 	public enum ResponseErrorCode {
 		NO_ERROR,
+		NO_DATA,
 		FORMAT_ERROR,
 		SERVER_FAILURE,
 		NAME_ERROR,
@@ -287,7 +285,10 @@ public final class DnsMessage {
 
 		if (errorCode == ResponseErrorCode.NO_ERROR) {
 			DnsResourceRecord record = getRecords(domainName, response);
-			result = DnsQueryResult.successfulQuery(domainName, record.getIps(), record.getMinTtl(), record.getType());
+			if (record.hasData())
+				result = DnsQueryResult.successfulQuery(domainName, record.getIps(), record.getMinTtl(), record.getType());
+			else
+				result = DnsQueryResult.failedQuery(domainName, ResponseErrorCode.NO_DATA);
 		} else {
 			result = DnsQueryResult.failedQuery(domainName, errorCode);
 		}

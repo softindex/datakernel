@@ -43,9 +43,13 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 	private static final InetSocketAddress address = new InetSocketAddress("127.0.0.1", LISTEN_PORT);
 
 	public SimpleFsAggregationStorage(NioEventloop eventloop, AggregationStructure aggregationStructure) {
+		this(eventloop, aggregationStructure, address);
+	}
+
+	public SimpleFsAggregationStorage(NioEventloop eventloop, AggregationStructure aggregationStructure, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
 		this.aggregationStructure = aggregationStructure;
-		this.client = new SimpleFsClient(eventloop, address);
+		this.client = new SimpleFsClient(eventloop, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")

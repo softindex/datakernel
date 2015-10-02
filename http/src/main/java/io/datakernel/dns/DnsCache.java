@@ -25,10 +25,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.datakernel.dns.DnsMessage.AAAA_RECORD_TYPE;
@@ -238,7 +238,7 @@ public final class DnsCache {
 	}
 
 	public String[] getSuccessfullyResolvedDomainNames() {
-		ArrayList<String> domainNames = Lists.newArrayList();
+		List<String> domainNames = Lists.newArrayList();
 
 		for (Map.Entry<String, CachedDnsLookupResult> entry : cache.entrySet()) {
 			if (entry.getValue().isSuccessful()) {
@@ -250,7 +250,7 @@ public final class DnsCache {
 	}
 
 	public String[] getDomainNamesOfFailedRequests() {
-		ArrayList<String> domainNames = Lists.newArrayList();
+		List<String> domainNames = Lists.newArrayList();
 
 		for (Map.Entry<String, CachedDnsLookupResult> entry : cache.entrySet()) {
 			if (!entry.getValue().isSuccessful()) {
@@ -261,8 +261,20 @@ public final class DnsCache {
 		return domainNames.toArray(new String[domainNames.size()]);
 	}
 
-	public String[] getAllCachedDomainNames() {
-		Set<String> domainNames = cache.keySet();
-		return domainNames.toArray(new String[domainNames.size()]);
+	public String[] getAllCacheEntries() {
+		List<String> cacheEntries = Lists.newArrayList();
+		StringBuilder sb = new StringBuilder();
+
+		for (Map.Entry<String, CachedDnsLookupResult> detailedCacheEntry : cache.entrySet()) {
+			String domainName = detailedCacheEntry.getKey();
+			InetAddress[] ips = detailedCacheEntry.getValue().getIps();
+			sb.append(domainName);
+			sb.append(";");
+			sb.append(Arrays.toString(ips));
+			cacheEntries.add(sb.toString());
+			sb.setLength(0);
+		}
+
+		return cacheEntries.toArray(new String[cacheEntries.size()]);
 	}
 }

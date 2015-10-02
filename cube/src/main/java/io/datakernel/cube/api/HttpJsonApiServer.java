@@ -58,10 +58,9 @@ public final class HttpJsonApiServer {
 	 *
 	 * @param cube      cube to query
 	 * @param eventloop event loop, in which HTTP server is to run
-	 * @param port      port to listen
 	 * @return server instance (not started)
 	 */
-	public static AsyncHttpServer httpServer(Cube cube, NioEventloop eventloop, int port) {
+	public static AsyncHttpServer httpServer(Cube cube, NioEventloop eventloop) {
 		final Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.class, new AggregationQueryGsonSerializer())
 				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
@@ -75,7 +74,11 @@ public final class HttpJsonApiServer {
 
 		servlet.get(DIMENSIONS_REQUEST_PATH, dimensionsRequestHandler(gson, cube, eventloop));
 
-		return new AsyncHttpServer(eventloop, servlet).setListenPort(port);
+		return new AsyncHttpServer(eventloop, servlet);
+	}
+
+	public static AsyncHttpServer httpServer(Cube cube, NioEventloop eventloop, int port) {
+		return httpServer(cube, eventloop).setListenPort(port);
 	}
 
 	private static HttpResponse createResponse(String body) {

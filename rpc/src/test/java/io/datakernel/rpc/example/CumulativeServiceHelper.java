@@ -37,6 +37,9 @@ import io.datakernel.serializer.annotations.Serialize;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+/**
+ * This class contains static factory methods to setup RPC client and server.
+ */
 public final class CumulativeServiceHelper {
 	public static final class ValueMessage extends RpcMessage.AbstractRpcMessage {
 		@Serialize(order = 0)
@@ -109,5 +112,4 @@ public final class CumulativeServiceHelper {
 		}
 		return output.position();
 	}
-
 }

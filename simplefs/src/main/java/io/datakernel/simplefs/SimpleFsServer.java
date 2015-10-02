@@ -79,6 +79,10 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 		return createServer(eventloop, fileStorage, executor, 256 * 1024);
 	}
 
+	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, final Path tmpStorage, ExecutorService executor) {
+		return new SimpleFsServer(eventloop, fileStorage, tmpStorage, executor, 256 * 1024);
+	}
+
 	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor, int bufferSize) {
 		Path tmpStorage = fileStorage.resolve(TMP_DIRECTORY);
 		return new SimpleFsServer(eventloop, fileStorage, tmpStorage, executor, bufferSize);

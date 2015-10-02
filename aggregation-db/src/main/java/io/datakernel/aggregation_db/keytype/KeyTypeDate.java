@@ -16,16 +16,16 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import static org.joda.time.format.DateTimeFormat.forPattern;
+
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenInt;
 import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormatter;
 
-import static org.joda.time.format.DateTimeFormat.forPattern;
-
 public class KeyTypeDate extends KeyType implements KeyTypeEnumerable {
-	private static final LocalDate EPOCH_DATE = new LocalDate(0);
+	private static final LocalDate EPOCH_DATE = LocalDate.parse("1970-01-01");
 	private static final DateTimeFormatter FORMATTER = forPattern("yyyy-MM-dd");
 
 	public KeyTypeDate() {
@@ -39,8 +39,7 @@ public class KeyTypeDate extends KeyType implements KeyTypeEnumerable {
 
 	@Override
 	public String toString(Object numberOfDaysSinceEpoch) {
-		Days days = Days.days((Integer) numberOfDaysSinceEpoch);
-		LocalDate date = EPOCH_DATE.plus(days);
+		LocalDate date = EPOCH_DATE.plusDays((Integer) numberOfDaysSinceEpoch);
 		return FORMATTER.print(date);
 	}
 
@@ -66,3 +65,4 @@ public class KeyTypeDate extends KeyType implements KeyTypeEnumerable {
 		return ((Integer) o1) - ((Integer) o2);
 	}
 }
+

@@ -289,8 +289,8 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 	}
 
 	@Override
-	public String[] getAllCachedDomainNames() {
-		return cache.getAllCachedDomainNames();
+	public String[] getAllCacheEntries() {
+		return cache.getAllCacheEntries();
 	}
 
 	@Override

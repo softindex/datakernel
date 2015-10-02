@@ -5,6 +5,9 @@
 /target
 */build
 */bin
-build.gradle
 .DS_Store
 logback.xml
+/.gradle
+/buildSrc/.gradle
+/buildSrc/build
+/build

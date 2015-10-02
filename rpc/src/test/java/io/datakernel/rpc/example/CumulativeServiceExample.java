@@ -30,6 +30,9 @@ import java.net.InetSocketAddress;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static java.util.Collections.singletonList;
 
+/**
+ * Here we construct and launch both server and client.
+ */
 public class CumulativeServiceExample {
 	private static final int SERVICE_PORT = 12345;
 
@@ -75,7 +78,7 @@ public class CumulativeServiceExample {
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						client.sendRequest(new ValueMessage(10), 100, resultCallback);
+						client.sendRequest(new ValueMessage(10), 1000, resultCallback);
 					}
 				});
 			}
