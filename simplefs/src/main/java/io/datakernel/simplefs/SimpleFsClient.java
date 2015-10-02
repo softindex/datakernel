@@ -81,7 +81,7 @@ public class SimpleFsClient implements SimpleFs {
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
 
-								consumer.addCompletionCallback(new CompletionCallback() {
+								consumer.addConsumerCompletionCallback(new CompletionCallback() {
 									@Override
 									public void onComplete() {
 										logger.info("File {} send, trying to commit");

@@ -102,7 +102,7 @@ public class StressClient {
 
 				StreamFileWriter consumer =
 						StreamFileWriter.createFile(eventloop, executor, downloads.resolve(fileName));
-				consumer.addCompletionCallback(new CompletionCallback() {
+				consumer.addConsumerCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.info("Downloaded: " + fileName);

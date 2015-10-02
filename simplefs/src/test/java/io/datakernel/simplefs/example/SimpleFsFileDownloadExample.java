@@ -53,7 +53,7 @@ public class SimpleFsFileDownloadExample {
 
 		StreamFileWriter consumer =
 				StreamFileWriter.createFile(eventloop, executor, DOWNLOAD_PATH.resolve("downloaded_" + downloadFileName));
-		consumer.addCompletionCallback(new CompletionCallback() {
+		consumer.addConsumerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Client finished downloading file {}", downloadFileName);

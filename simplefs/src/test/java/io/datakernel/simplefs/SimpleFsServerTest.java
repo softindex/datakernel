@@ -249,7 +249,7 @@ public class SimpleFsServerTest {
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
-		consumer.addCompletionCallback(new CompletionCallback() {
+		consumer.addConsumerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.error("File downloaded");
@@ -283,7 +283,7 @@ public class SimpleFsServerTest {
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		final StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
-		consumer.addCompletionCallback(new CompletionCallback() {
+		consumer.addConsumerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				// file server won't be stopped

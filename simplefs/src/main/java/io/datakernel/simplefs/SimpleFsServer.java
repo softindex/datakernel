@@ -186,7 +186,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, inProgress, true);
 				producer.streamTo(diskWrite);
 
-				diskWrite.addCompletionCallback(new CompletionCallback() {
+				diskWrite.addConsumerCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.trace("{} upload finished", fileName);
@@ -314,7 +314,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
 
 				producer.streamTo(consumer);
-				producer.addCompletionCallback(new CompletionCallback() {
+				producer.addProducerCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						register.remove(fileName);
