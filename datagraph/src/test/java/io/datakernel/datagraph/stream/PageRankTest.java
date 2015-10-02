@@ -262,14 +262,14 @@ public class PageRankTest {
 			}
 		});
 
-		result1.addCompletionCallback(new SimpleCompletionCallback() {
+		result1.addConsumerCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			public void onCompleteOrException() {
 				waitAllCallback.onComplete();
 			}
 		});
 
-		result2.addCompletionCallback(new SimpleCompletionCallback() {
+		result2.addConsumerCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
 				waitAllCallback.onComplete();

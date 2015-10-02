@@ -127,8 +127,8 @@ public class DatagraphExample {
 		server2.listen();
 
 		// Add callbacks that close server once result streaming is done
-		result1.addCompletionCallback(getServerClosingCallback(server1));
-		result2.addCompletionCallback(getServerClosingCallback(server2));
+		result1.addConsumerCompletionCallback(getServerClosingCallback(server1));
+		result2.addConsumerCompletionCallback(getServerClosingCallback(server2));
 
 		// Execute task graph
 		graph.execute();

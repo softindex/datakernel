@@ -102,6 +102,12 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		public void onEndOfStream() {
 			if (writeQueue.isEmpty()) {
 //				closeUpstream();
+//				closeIfDone();
+				try {
+					shutdownOutput();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 				closeIfDone();
 			}
 		}
@@ -214,13 +220,20 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.END_OF_STREAM && writeQueue.isEmpty()) {
 			logger.trace("done, closing {}", this);
 			close();
-			try {
-				channel.close();
-			} catch (IOException e) {
-				logger.error("close error in {} : {}", this, e.toString());
-			}
 			return;
 		}
+
+		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.CLOSED) {
+			logger.trace("done, closing {}", this);
+			close();
+			return;
+		}
+
+//		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.END_OF_STREAM && writeQueue.isEmpty()) {
+//			logger.trace("done, closing {}", this);
+//			close();
+//			return;
+//		}
 
 		if (socketWriter.getStatus() >= AbstractStreamConsumer.END_OF_STREAM && writeQueue.isEmpty()) {
 			try {
@@ -256,12 +269,13 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	protected void onWriteFlushed() {
 		if (socketWriter.getStatus() == AbstractStreamConsumer.END_OF_STREAM) {
 //			socketWriter.closeUpstream();
-			closeIfDone();
 			try {
+				socketWriter.close();
 				shutdownOutput();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
+			closeIfDone();
 		} else {
 			socketWriter.resume();
 		}
@@ -279,6 +293,11 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		logger.warn("onWriteException", e);
 //		socketWriter.closeUpstreamWithError(e);
 		socketWriter.onError(e);
+		try {
+			shutdownOutput();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		}
 		closeIfDone();
 	}
 
