@@ -14,47 +14,50 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs.example;
+package io.datakernel.simplefs.stress;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.simplefs.SimpleFsServer;
+import io.datakernel.simplefs.StopAndHugeFileUploadTest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * To start using SimpleFS, we have to setup our server first.
- * In this example file server, which stores its files in `./test/server_storage/`, is started at port 6732 (this settings may be changed in constants below).
- * Upon successful completion of main() method, you may proceed to file upload example.
- */
-public class SimpleFsServersSetupExample {
+public class StressServer {
+	private static final Logger logger = LoggerFactory.getLogger(StopAndHugeFileUploadTest.class);
+
 	private static final int SERVER_PORT = 6732;
-	private static final Path SERVER_STORAGE_PATH = Paths.get("./test/server_storage");
+
+	// Specify path. Should be manually deleted after server stop
+	private static final String tmpPath = "";
+	private static final Path SERVER_STORAGE_PATH = Paths.get(tmpPath);
+
+	private static final ExecutorService executor = Executors.newCachedThreadPool();
+	private static final NioEventloop eventloop = new NioEventloop();
+
+	public static SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, SERVER_STORAGE_PATH, executor);
 
 	public static void main(String[] args) throws IOException {
-		final ExecutorService executor = Executors.newCachedThreadPool();
+		Files.createDirectories(SERVER_STORAGE_PATH);
 
-		final NioEventloop eventloop = new NioEventloop();
-
-		// Create server
-		SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, SERVER_STORAGE_PATH, executor);
-
-		// Start listening
 		fileServer.setListenPort(SERVER_PORT);
 		fileServer.listen();
 		fileServer.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				System.out.println("Started");
+				logger.info("Started");
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				System.out.println("Failed to start");
+			public void onException(Exception e) {
+				logger.error(e.getMessage());
 			}
 		});
 
