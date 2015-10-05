@@ -111,8 +111,10 @@ public class ExpressionBitOp implements Expression {
 			case Type.BYTE:
 				g.cast(right.type(ctx), Type.INT_TYPE);
 				break;
-			case Type.INT: break;
-			default: throw new IllegalArgumentException();
+			case Type.INT:
+				break;
+			default:
+				throw new IllegalArgumentException();
 		}
 		varIntShift.store(ctx);
 

@@ -23,7 +23,6 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 
 import java.util.Map;
 
-
 public class DataItemResult2 {
 	public int key2;
 

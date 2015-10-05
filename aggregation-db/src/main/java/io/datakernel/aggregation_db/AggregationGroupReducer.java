@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation_db;
 
-
 import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;

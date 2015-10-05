@@ -66,8 +66,8 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		ExpressionSequence onNextItemDef = sequence();
 		for (String field : inputFields) {
 			onNextItemDef.add(ifTrue(cmp(PredicateDefCmp.Operation.LT,
-							field(cast(arg(3), outputClass), "timestamp"),
-							field(cast(arg(2), inputClass), "timestamp")),
+					field(cast(arg(3), outputClass), "timestamp"),
+					field(cast(arg(2), inputClass), "timestamp")),
 					set(field(cast(arg(3), outputClass), field), field(cast(arg(2), inputClass), field))));
 		}
 		onNextItemDef.add(arg(3));
@@ -113,8 +113,8 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		for (String field : inputFields) {
 			accumulateDef.add(
 					ifTrue(cmp(PredicateDefCmp.Operation.LT,
-									field(cast(arg(0), outputClass), "timestamp"),
-									field(cast(arg(1), inputClass), "timestamp")),
+							field(cast(arg(0), outputClass), "timestamp"),
+							field(cast(arg(1), inputClass), "timestamp")),
 							set(field(cast(arg(0), outputClass), field), field(cast(arg(1), inputClass), field))));
 		}
 		factory.method("accumulate", accumulateDef);

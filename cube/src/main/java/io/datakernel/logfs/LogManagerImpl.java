@@ -16,7 +16,6 @@
 
 package io.datakernel.logfs;
 
-
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;

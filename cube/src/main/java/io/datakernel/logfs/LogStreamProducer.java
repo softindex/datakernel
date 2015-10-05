@@ -16,7 +16,6 @@
 
 package io.datakernel.logfs;
 
-
 import io.datakernel.async.AsyncIterator;
 import io.datakernel.async.IteratorCallback;
 import io.datakernel.async.ResultCallback;

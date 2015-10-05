@@ -18,8 +18,8 @@ package io.datakernel.simplefs;
 
 public class SimpleFsResponseOperationOk extends SimpleFsResponse {
 
-    @Override
-    public String toString() {
-        return "Operation{OK}";
-    }
+	@Override
+	public String toString() {
+		return "Operation{OK}";
+	}
 }

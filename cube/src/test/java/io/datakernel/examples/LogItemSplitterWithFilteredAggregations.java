@@ -83,7 +83,7 @@ public class LogItemSplitterWithFilteredAggregations extends AggregatorSplitter<
 	@Override
 	public void onData(LogItemWithFilteredAggregations item) {
 		logItemAggregator.onData(item);
-		
+
 		switch (item.impressionType) {
 			case BANNER:
 				logItemBannerAggregator.onData(item);

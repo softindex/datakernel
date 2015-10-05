@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation_db;
 
-
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
@@ -235,7 +234,6 @@ public class AggregationStructure {
 		factory.method("toString", asString(newArrayList(concat(keys, fields))));
 		return factory.defineClass();
 	}
-
 
 	public Class<?> createResultClass(AggregationQuery query) {
 		logger.trace("Creating result class for query {}", query.toString());

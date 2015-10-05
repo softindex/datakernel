@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation_db;
 
-
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;

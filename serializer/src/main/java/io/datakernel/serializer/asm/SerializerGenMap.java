@@ -64,14 +64,14 @@ public final class SerializerGenMap implements SerializerGen {
 		Expression length = call(arg(0), "writeVarInt", length(value));
 
 		return sequence(length, mapForEach(value,
-						new ForVar() {
-							@Override
-							public Expression forVar(Expression item) {return keySerializer.serialize(cast(item, keySerializer.getRawType()), version, staticMethods);}
-						},
-						new ForVar() {
-							@Override
-							public Expression forVar(Expression item) {return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);}
-						})
+				new ForVar() {
+					@Override
+					public Expression forVar(Expression item) {return keySerializer.serialize(cast(item, keySerializer.getRawType()), version, staticMethods);}
+				},
+				new ForVar() {
+					@Override
+					public Expression forVar(Expression item) {return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);}
+				})
 		);
 	}
 

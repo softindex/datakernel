@@ -445,9 +445,9 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(
-						new KeyValueResult(1, 10.0, 10.0, 0.0),
-						new KeyValueResult(2, 0.0, 10.0, 20.0),
-						new KeyValueResult(3, 30.0, 40.0, 20.0)),
+				new KeyValueResult(1, 10.0, 10.0, 0.0),
+				new KeyValueResult(2, 0.0, 10.0, 20.0),
+				new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
 		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
 		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
@@ -479,9 +479,9 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(
-						new KeyValueResult(1, 10.0, 10.0, 0.0),
-						new KeyValueResult(2, 0.0, 10.0, 20.0),
-						new KeyValueResult(3, 30.0, 40.0, 20.0)),
+				new KeyValueResult(1, 10.0, 10.0, 0.0),
+				new KeyValueResult(2, 0.0, 10.0, 20.0),
+				new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
 		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
 		assertTrue(source2.getStatus() == StreamProducer.CLOSED);

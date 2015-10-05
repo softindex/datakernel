@@ -145,8 +145,8 @@ public class CubeTest {
 		assertEquals(expected, actual);
 	}
 
-
 	private static final int LISTEN_PORT = 45555;
+
 	private SimpleFsServer prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, serverStorage, executor);
@@ -256,7 +256,6 @@ public class CubeTest {
 
 		assertEquals(expected, actual);
 	}
-
 
 	@Test
 	public void testOrdering() throws Exception {

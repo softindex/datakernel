@@ -49,7 +49,6 @@ public abstract class AggregatorSplitter<T> extends StreamSplitter<T> implements
 		return this;
 	}
 
-
 	protected <O> StreamDataReceiver<O> addOutput(Class<?> aggregationItemType, List<String> dimensions, List<String> measures) {
 		return addOutput(aggregationItemType, dimensions, measures, null);
 	}

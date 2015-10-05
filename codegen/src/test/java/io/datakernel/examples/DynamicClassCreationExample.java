@@ -32,13 +32,13 @@ public class DynamicClassCreationExample {
 				// declare fields
 				.field("x", int.class)
 				.field("y", String.class)
-						// setter for both fields - a sequence of actions
+				// setter for both fields - a sequence of actions
 				.method("setXY", sequence(
 						set(field(self(), "x"), arg(0)),
 						set(field(self(), "y"), arg(1))))
 				.method("getX", field(self(), "x"))
 				.method("getY", field(self(), "y"))
-						// compareTo, equals, hashCode and toString methods implementations follow the standard convention
+				// compareTo, equals, hashCode and toString methods implementations follow the standard convention
 				.method("int compareTo(Test)", compareTo("x", "y"))
 				.method("equals", asEquals("x", "y"))
 				.method("hashOfPojo", hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))

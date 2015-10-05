@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation_db;
 
-
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;

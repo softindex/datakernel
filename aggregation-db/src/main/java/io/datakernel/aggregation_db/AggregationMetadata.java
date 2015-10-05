@@ -113,7 +113,6 @@ public class AggregationMetadata {
 		return true;
 	}
 
-
 	/**
 	 * Checks whether this aggregation satisfies predicates of the given query.
 	 * Returns true if query has predicates for every key, which has corresponding aggregation predicate

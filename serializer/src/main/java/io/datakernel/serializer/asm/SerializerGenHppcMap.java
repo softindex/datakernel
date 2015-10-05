@@ -155,8 +155,8 @@ public final class SerializerGenHppcMap implements SerializerGen {
 			@Override
 			public Expression forVar(Expression local) {
 				return sequence(call(map, "put",
-								cast(keySerializer.deserialize(keyType, version, staticMethods), SerializerGenHppcMap.this.keyType),
-								cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcMap.this.valueType)
+						cast(keySerializer.deserialize(keyType, version, staticMethods), SerializerGenHppcMap.this.keyType),
+						cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcMap.this.valueType)
 						), voidExp()
 				);
 			}

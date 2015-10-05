@@ -16,7 +16,6 @@
 
 package io.datakernel.logfs;
 
-
 import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;

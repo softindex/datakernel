@@ -16,7 +16,6 @@
 
 package io.datakernel.aggregation_db.keytype;
 
-
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenEnum;
 

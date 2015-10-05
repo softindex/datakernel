@@ -41,6 +41,7 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 	                         String streamId, int bufferSize) {
 		this(eventloop, fileSystem, serializer, streamId, bufferSize, DEFAULT_FLUSH_DELAY);
 	}
+
 	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
 	                         String streamId, int bufferSize, int flushDelayMillis) {
 		super(eventloop);
