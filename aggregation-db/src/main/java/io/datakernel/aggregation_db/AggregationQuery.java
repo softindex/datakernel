@@ -29,30 +29,30 @@ public final class AggregationQuery {
 	private List<String> keys = new ArrayList<>();
 	private List<String> fields = new ArrayList<>();
 	private QueryPredicates predicates = new QueryPredicates();
-	private List<AggregationOrdering> orderings = new ArrayList<>();
+	private List<QueryOrdering> orderings = new ArrayList<>();
 
 	/**
-	 * Represents a query result ordering. Contains a field name and ordering (ascending or descending).
+	 * Represents a query result ordering. Contains a propertyName name and ordering (ascending or descending).
 	 */
-	public static final class AggregationOrdering {
-		private final String field;
+	public static final class QueryOrdering {
+		private final String propertyName;
 		private final boolean desc;
 
-		private AggregationOrdering(String field, boolean desc) {
-			this.field = field;
+		private QueryOrdering(String propertyName, boolean desc) {
+			this.propertyName = propertyName;
 			this.desc = desc;
 		}
 
-		public static AggregationOrdering asc(String field) {
-			return new AggregationOrdering(field, false);
+		public static QueryOrdering asc(String field) {
+			return new QueryOrdering(field, false);
 		}
 
-		public static AggregationOrdering desc(String field) {
-			return new AggregationOrdering(field, true);
+		public static QueryOrdering desc(String field) {
+			return new QueryOrdering(field, true);
 		}
 
-		public String getField() {
-			return field;
+		public String getPropertyName() {
+			return propertyName;
 		}
 
 		public boolean isAsc() {
@@ -68,24 +68,24 @@ public final class AggregationQuery {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 
-			AggregationOrdering that = (AggregationOrdering) o;
+			QueryOrdering that = (QueryOrdering) o;
 
 			if (desc != that.desc) return false;
-			if (!field.equals(that.field)) return false;
+			if (!propertyName.equals(that.propertyName)) return false;
 
 			return true;
 		}
 
 		@Override
 		public int hashCode() {
-			int result = field.hashCode();
+			int result = propertyName.hashCode();
 			result = 31 * result + (desc ? 1 : 0);
 			return result;
 		}
 
 		@Override
 		public String toString() {
-			return field + " " + (desc ? "desc" : "asc");
+			return propertyName + " " + (desc ? "desc" : "asc");
 		}
 	}
 
@@ -270,7 +270,7 @@ public final class AggregationQuery {
 	}
 
 	public AggregationQuery(List<String> keys, List<String> fields, QueryPredicates predicates,
-	                        List<AggregationOrdering> orderings) {
+	                        List<QueryOrdering> orderings) {
 		this.keys = keys;
 		this.fields = fields;
 		this.predicates = predicates;
@@ -308,7 +308,7 @@ public final class AggregationQuery {
 		return predicates;
 	}
 
-	public List<AggregationOrdering> getOrderings() {
+	public List<QueryOrdering> getOrderings() {
 		return unmodifiableList(orderings);
 	}
 
@@ -342,13 +342,13 @@ public final class AggregationQuery {
 		return this;
 	}
 
-	public AggregationQuery orderAsc(String field) {
-		this.orderings.add(AggregationOrdering.asc(field));
+	public AggregationQuery orderAsc(String propertyName) {
+		this.orderings.add(QueryOrdering.asc(propertyName));
 		return this;
 	}
 
-	public AggregationQuery orderDesc(String field) {
-		this.orderings.add(AggregationOrdering.desc(field));
+	public AggregationQuery orderDesc(String propertyName) {
+		this.orderings.add(QueryOrdering.desc(propertyName));
 		return this;
 	}
 
@@ -384,8 +384,8 @@ public final class AggregationQuery {
 
 	public Set<String> getOrderingFields() {
 		LinkedHashSet<String> result = new LinkedHashSet<>();
-		for (AggregationOrdering ordering : orderings) {
-			result.add(ordering.field);
+		for (QueryOrdering ordering : orderings) {
+			result.add(ordering.propertyName);
 		}
 		return result;
 	}
