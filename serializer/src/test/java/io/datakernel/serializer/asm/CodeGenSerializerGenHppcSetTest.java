@@ -171,4 +171,76 @@ public class CodeGenSerializerGenHppcSetTest {
 		assertEquals(testData1.set, testData2.set);
 
 	}
+
+	public static class TestObject {
+		@Serialize(order = 0)
+		public String i;
+
+		public TestObject(String i) {
+			this.i = i;
+		}
+		public TestObject() {}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			TestObject that = (TestObject) o;
+
+			return !(i != null ? !i.equals(that.i) : that.i != null);
+
+		}
+
+		@Override
+		public int hashCode() {
+			return i != null ? i.hashCode() : 0;
+		}
+	}
+
+	public static class ManyMapHolder {
+		@Serialize(order = 0)
+		public ObjectSet<String> set;
+		@Serialize(order = 1)
+		public ObjectSet<Integer> setI;
+		@Serialize(order = 2)
+		public ObjectSet<TestObject> setO;
+	}
+
+	@Test
+	public void testMult() {
+		BufferSerializer<ManyMapHolder> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(ObjectSet.class, SerializerGenHppcSet.serializerGenBuilder(ObjectSet.class, Object.class))
+				.create(ManyMapHolder.class);
+
+		ManyMapHolder testMap1 = new ManyMapHolder();
+		testMap1.set = new ObjectOpenHashSet<>();
+		testMap1.setI = new ObjectOpenHashSet<>();
+		testMap1.setO = new ObjectOpenHashSet<>();
+		ManyMapHolder testMap2 = doTest(testMap1, bufferSerializer);
+		assertNotNull(testMap1.set);
+		assertNotNull(testMap1.setI);
+		assertNotNull(testMap1.setO);
+		assertEquals(testMap1.set, testMap2.set);
+		assertEquals(testMap1.setI, testMap2.setI);
+		assertEquals(testMap1.setO, testMap2.setO);
+
+		testMap1.set.add("123");
+		testMap1.set.add("345");
+
+		testMap1.setI.add(5);
+		testMap1.setI.add(25);
+
+		testMap1.setO.add(new TestObject("2"));
+		testMap1.setO.add(new TestObject("22"));
+		ManyMapHolder testMap3 = doTest(testMap1, bufferSerializer);
+		assertNotNull(testMap3.set);
+		assertNotNull(testMap3.setI);
+		assertNotNull(testMap3.setO);
+		assertEquals(testMap1.set, testMap3.set);
+		assertEquals(testMap1.setI, testMap3.setI);
+		assertEquals(testMap1.setO, testMap3.setO);
+
+	}
 }
