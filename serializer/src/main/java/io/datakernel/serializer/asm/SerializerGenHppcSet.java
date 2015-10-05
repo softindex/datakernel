@@ -109,7 +109,7 @@ public class SerializerGenHppcSet implements SerializerGen {
 		return sequence(length, hppcSetForEach(iteratorType, value, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return valueSerializer.serialize(it, version, staticMethods);
+				return valueSerializer.serialize(cast(it, valueSerializer.getRawType()), version, staticMethods);
 			}
 		}));
 	}

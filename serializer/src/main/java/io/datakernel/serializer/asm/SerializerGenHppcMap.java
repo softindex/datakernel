@@ -128,13 +128,13 @@ public final class SerializerGenHppcMap implements SerializerGen {
 				new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
-						return keySerializer.serialize(it, version, staticMethods);
+						return keySerializer.serialize(cast(it, keySerializer.getRawType()), version, staticMethods);
 					}
 				},
 				new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
-						return valueSerializer.serialize(it, version, staticMethods);
+						return valueSerializer.serialize(cast(it, valueSerializer.getRawType()), version, staticMethods);
 					}
 				}));
 	}

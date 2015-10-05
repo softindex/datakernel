@@ -1439,4 +1439,50 @@ public class AsmSerializerTest {
 		assertTrue(gc.holder1.item.equals(_gc.holder1.item));
 		assertTrue(gc.holder2.item.equals(_gc.holder2.item));
 	}
+
+	public static class TestObj {
+		@Serialize(order = 0)
+		public String string;
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			TestObj testObj = (TestObj) o;
+
+			if (string != null ? !string.equals(testObj.string) : testObj.string != null) return false;
+			return !(integer != null ? !integer.equals(testObj.integer) : testObj.integer != null);
+
+		}
+
+		@Override
+		public int hashCode() {
+			int result = string != null ? string.hashCode() : 0;
+			result = 31 * result + (integer != null ? integer.hashCode() : 0);
+			return result;
+		}
+
+		@Serialize(order = 1)
+		public Integer integer;
+
+
+		public TestObj(@Deserialize("string") String string, @Deserialize("integer") Integer integer) {
+			this.string = string;
+			this.integer = integer;
+		}
+	}
+
+	public static class ListOfObjectHolder {
+		@Serialize(order = 0)
+		public List<TestObj> list;
+	}
+
+	@Test
+	public void testListObj() {
+		ListOfObjectHolder testData1 = new ListOfObjectHolder();
+		testData1.list = Arrays.asList(new TestObj("a", 1), new TestObj("b", 2), new TestObj("c", 3));
+		ListOfObjectHolder testData2 = doTest(ListOfObjectHolder.class, testData1);
+		assertEquals(testData1.list, testData2.list);
+	}
 }
