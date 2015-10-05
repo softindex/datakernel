@@ -282,14 +282,14 @@ public class StreamConsumers {
 		return toListSuspend(eventloop, new ArrayList<T>());
 	}
 
-	public static class TransformerWithoutEnd<I, O> extends AbstractStreamTransformer_1_1_Stateless<I, O> {
-		protected TransformerWithoutEnd(Eventloop eventloop) {
+	public static class TransformerWithoutEnd<I, O> extends AbstractStreamTransformer_1_1_Stateless<I, O> implements StreamDataReceiver<I> {
+		public TransformerWithoutEnd(Eventloop eventloop) {
 			super(eventloop);
 		}
 
 		@Override
 		protected StreamDataReceiver<I> getUpstreamDataReceiver() {
-			return upstreamConsumer.getDataReceiver();
+			return this;
 		}
 
 		@Override
@@ -305,6 +305,10 @@ public class StreamConsumers {
 			upstreamConsumer.closeWithError(e);
 		}
 
+		@Override
+		public void onData(I item) {
+			downstreamDataReceiver.onData((O) item);
+		}
 	}
 
 	public static <I, O> TransformerWithoutEnd<I, O> transformerWithoutEnd(Eventloop eventloop) {

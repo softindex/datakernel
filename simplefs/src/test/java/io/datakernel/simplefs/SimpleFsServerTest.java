@@ -19,7 +19,9 @@ package io.datakernel.simplefs;
 import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
@@ -181,7 +183,8 @@ public class SimpleFsServerTest {
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
 				16 * 1024, clientStorage.resolve(requestedFile));
 
-		client.upload(resultFile, producer, new CompletionCallback() {
+		StreamConsumer<ByteBuf> consumer = client.upload(resultFile);
+		consumer.addConsumerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("File uploaded");
@@ -189,11 +192,12 @@ public class SimpleFsServerTest {
 			}
 
 			@Override
-			public void onException(Exception e) {
-				logger.error(e.getMessage(), e);
+			public void onException(Exception exception) {
+				logger.error(exception.getMessage(), exception);
 				stop(fileServer);
 			}
 		});
+		producer.streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdownNow();
@@ -215,7 +219,8 @@ public class SimpleFsServerTest {
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
 				16 * 1024, clientStorage.resolve(requestedFile));
 
-		client.upload(resultFile, producer, new CompletionCallback() {
+		StreamConsumer<ByteBuf> consumer = client.upload(resultFile);
+		consumer.addConsumerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Big file uploaded");
@@ -228,6 +233,7 @@ public class SimpleFsServerTest {
 				stop(fileServer);
 			}
 		});
+		producer.streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdownNow();
@@ -315,7 +321,8 @@ public class SimpleFsServerTest {
 			final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
 					16 * 1024, clientStorage.resolve(fileName));
 
-			client.upload(fileName, producer, new CompletionCallback() {
+			StreamConsumer<ByteBuf> consumer = client.upload(fileName);
+			consumer.addConsumerCompletionCallback(new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.info("Uploaded file: {}", fileName);
@@ -328,6 +335,7 @@ public class SimpleFsServerTest {
 					logger.error("Can't upload: {}", fileName, exception);
 				}
 			});
+			producer.streamTo(consumer);
 		}
 
 		eventloop.run();

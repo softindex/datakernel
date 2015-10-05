@@ -17,8 +17,10 @@
 package io.datakernel.simplefs.example;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.simplefs.SimpleFsClient;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.file.StreamFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +55,8 @@ public class SimpleFsFileUploadExample {
 		final StreamFileReader producer =
 				StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, Paths.get(uploadFileName));
 
-		client.upload(uploadFileName, producer, new CompletionCallback() {
+		StreamConsumer<ByteBuf> consumer = client.upload(uploadFileName);
+		consumer.addConsumerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Client uploaded file {}", uploadFileName);
@@ -64,6 +67,7 @@ public class SimpleFsFileUploadExample {
 				logger.error("Can't upload file {}", uploadFileName, exception);
 			}
 		});
+		producer.streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdown();
