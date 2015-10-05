@@ -257,4 +257,74 @@ public class CodeGenSerializerGenHppcMapTest {
 		assertNotNull(testMap3.map);
 		assertEquals(testMap1.map, testMap3.map);
 	}
+
+	public static class TestObject {
+		@Serialize(order = 0)
+		public String i;
+
+		public TestObject(String i) {
+			this.i = i;
+		}
+		public TestObject() {}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			TestObject that = (TestObject) o;
+
+			return !(i != null ? !i.equals(that.i) : that.i != null);
+
+		}
+
+		@Override
+		public int hashCode() {
+			return i != null ? i.hashCode() : 0;
+		}
+	}
+
+	public static class ManyMapHolder {
+		@Serialize(order = 0)
+		public IntObjectMap<String> map;
+		@Serialize(order = 1)
+		public IntObjectMap<Integer> mapI;
+		@Serialize(order = 2)
+		public IntObjectMap<TestObject> mapO;
+	}
+
+	@Test
+	public void testMult() {
+		BufferSerializer<ManyMapHolder> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.registry(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
+				.create(ManyMapHolder.class);
+
+		ManyMapHolder testMap1 = new ManyMapHolder();
+		testMap1.map = new IntObjectOpenHashMap<>();
+		testMap1.mapI = new IntObjectOpenHashMap<>();
+		testMap1.mapO = new IntObjectOpenHashMap<>();
+		ManyMapHolder testMap2 = doTest(testMap1, bufferSerializer);
+		assertNotNull(testMap2.map);
+		assertEquals(testMap1.map, testMap2.map);
+		assertEquals(testMap1.mapI, testMap2.mapI);
+		assertEquals(testMap1.mapO, testMap2.mapO);
+
+		testMap1.map.put(10, "123");
+		testMap1.map.put(11, "345");
+
+		testMap1.mapI.put(20, 5);
+		testMap1.mapI.put(25, 25);
+
+		testMap1.mapO.put(42, new TestObject("2"));
+		testMap1.mapO.put(42, new TestObject("22"));
+		ManyMapHolder testMap3 = doTest(testMap1, bufferSerializer);
+		assertNotNull(testMap3.map);
+		assertNotNull(testMap3.mapI);
+		assertNotNull(testMap3.mapO);
+		assertEquals(testMap1.map, testMap3.map);
+		assertEquals(testMap1.mapI, testMap3.mapI);
+		assertEquals(testMap1.mapO, testMap3.mapO);
+
+	}
 }
