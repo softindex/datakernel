@@ -281,4 +281,37 @@ public class StreamConsumers {
 	public static <T> ToListSuspend<T> toListSuspend(Eventloop eventloop) {
 		return toListSuspend(eventloop, new ArrayList<T>());
 	}
+
+	public static class TransformerWithoutEnd<I, O> extends AbstractStreamTransformer_1_1_Stateless<I, O> implements StreamDataReceiver<I> {
+		public TransformerWithoutEnd(Eventloop eventloop) {
+			super(eventloop);
+		}
+
+		@Override
+		protected StreamDataReceiver<I> getUpstreamDataReceiver() {
+			return this;
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.sendEndOfStream();
+		}
+
+		public void closeOnComplete() {
+			upstreamConsumer.close();
+		}
+
+		public void closeOnError(Exception e) {
+			upstreamConsumer.closeWithError(e);
+		}
+
+		@Override
+		public void onData(I item) {
+			downstreamDataReceiver.onData((O) item);
+		}
+	}
+
+	public static <I, O> TransformerWithoutEnd<I, O> transformerWithoutEnd(Eventloop eventloop) {
+		return new TransformerWithoutEnd<>(eventloop);
+	}
 }

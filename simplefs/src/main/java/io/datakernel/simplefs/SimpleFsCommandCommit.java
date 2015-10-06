@@ -16,20 +16,15 @@
 
 package io.datakernel.simplefs;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
+public class SimpleFsCommandCommit extends SimpleFsCommand {
+    public final String fileName;
 
-import java.util.List;
+    public SimpleFsCommandCommit(String fileName) {
+        this.fileName = fileName;
+    }
 
-public interface SimpleFs {
-
-	StreamConsumer<ByteBuf> upload(String destinationFileName);
-
-	void download(String path, StreamConsumer<ByteBuf> consumer);
-
-	void listFiles(ResultCallback<List<String>> callback);
-
-	void deleteFile(String fileName, CompletionCallback callback);
+    @Override
+    public String toString() {
+        return "Commit{filename=\'" + fileName + "\'} ";
+    }
 }

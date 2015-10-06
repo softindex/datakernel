@@ -16,11 +16,9 @@
 
 package io.datakernel.simplefs.example;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.simplefs.SimpleFsClient;
-import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +37,7 @@ import java.util.concurrent.Executors;
  */
 public class SimpleFsFileDownloadExample {
 	private static final int SERVER_PORT = 6732;
-	private static final Path DOWNLOAD_PATH = Paths.get("./test/");
+	private static final Path DOWNLOAD_PATH = Paths.get("./test/client_storage");
 
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsFileDownloadExample.class);
 
@@ -51,15 +49,14 @@ public class SimpleFsFileDownloadExample {
 
 		final NioEventloop eventloop = new NioEventloop();
 
-		SimpleFsClient client = new SimpleFsClient(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, serverAddress);
 
-		client.read(serverAddress, downloadFileName, new ResultCallback<StreamProducer<ByteBuf>>() {
+		StreamFileWriter consumer =
+				StreamFileWriter.createFile(eventloop, executor, DOWNLOAD_PATH.resolve("downloaded_" + downloadFileName));
+		consumer.addConsumerCompletionCallback(new CompletionCallback() {
 			@Override
-			public void onResult(StreamProducer<ByteBuf> result) {
-				logger.info("Client started downloading file {}", downloadFileName);
-				StreamFileWriter consumer =
-						StreamFileWriter.createFile(eventloop, executor, DOWNLOAD_PATH.resolve(downloadFileName));
-				result.streamTo(consumer);
+			public void onComplete() {
+				logger.info("Client finished downloading file {}", downloadFileName);
 			}
 
 			@Override
@@ -67,6 +64,8 @@ public class SimpleFsFileDownloadExample {
 				logger.error("Can't download file {}", downloadFileName, exception);
 			}
 		});
+
+		client.download(downloadFileName, consumer);
 
 		eventloop.run();
 		executor.shutdown();

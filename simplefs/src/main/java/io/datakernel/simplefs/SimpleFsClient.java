@@ -16,53 +16,245 @@
 
 package io.datakernel.simplefs;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.*;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.MessagingStarter;
 import io.datakernel.stream.net.StreamMessagingConnection;
-import io.datakernel.stream.processor.*;
+import io.datakernel.stream.processor.StreamByteChunker;
+import io.datakernel.stream.processor.StreamGsonDeserializer;
+import io.datakernel.stream.processor.StreamGsonSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 
-import static io.datakernel.stream.processor.StreamLZ4Compressor.fastCompressor;
-
 public class SimpleFsClient implements SimpleFs {
-	public interface StreamLZ4CompressorFactory {
-		StreamLZ4Compressor getInstance(Eventloop eventloop);
-	}
+	private static final Logger logger = LoggerFactory.getLogger(SimpleFsClient.class);
 
+	private final InetSocketAddress address;
 	private final NioEventloop eventloop;
 	private final int bufferSize;
-	private final StreamLZ4CompressorFactory compressorFactory;
 
-	public SimpleFsClient(NioEventloop eventloop, int bufferSize) {
-		this(eventloop, bufferSize, new StreamLZ4CompressorFactory() {
+	public SimpleFsClient(NioEventloop eventloop, int bufferSize, InetSocketAddress address) {
+		this.eventloop = eventloop;
+		this.bufferSize = bufferSize;
+		this.address = address;
+	}
+
+	public SimpleFsClient(NioEventloop eventloop, InetSocketAddress address) {
+		this(eventloop, 128 * 1024, address);
+	}
+
+	@Override
+	public StreamConsumer<ByteBuf> upload(final String fileName) {
+		final StreamConsumers.TransformerWithoutEnd<ByteBuf, ByteBuf> transformer = new StreamConsumers.TransformerWithoutEnd<>(eventloop);
+		final CompletionCallback callback = new CompletionCallback() {
 			@Override
-			public StreamLZ4Compressor getInstance(Eventloop eventloop) {
-				return fastCompressor(eventloop);
+			public void onComplete() {
+				transformer.closeOnComplete();
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				transformer.closeOnError(exception);
+			}
+		};
+
+		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				SocketConnection connection = createConnection(socketChannel)
+						.addStarter(new MessagingStarter<SimpleFsCommand>() {
+							@Override
+							public void onStart(Messaging<SimpleFsCommand> messaging) {
+								logger.info("Request for file {} upload sent", fileName);
+								messaging.sendMessage(new SimpleFsCommandUpload(fileName));
+							}
+						})
+						.addHandler(SimpleFsResponseOperationOk.class, new MessagingHandler<SimpleFsResponseOperationOk, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
+								logger.info("Uploading file {}", fileName);
+								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
+								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
+
+								consumer.addConsumerCompletionCallback(new CompletionCallback() {
+									@Override
+									public void onComplete() {
+										logger.info("File {} send, trying to commit");
+										commit(fileName, callback);
+									}
+
+									@Override
+									public void onException(final Exception e) {
+										logger.error("Can't send file {}", fileName, e);
+										callback.onException(e);
+									}
+								});
+
+								transformer.streamTo(streamByteChunker);
+								streamByteChunker.streamTo(consumer);
+								messaging.shutdownReader();
+							}
+						})
+						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> messaging) {
+								Exception e = new Exception(item.exceptionMsg);
+								messaging.shutdown();
+								logger.info("Can't upload file {}", fileName, e);
+								callback.onException(e);
+							}
+						});
+				connection.register();
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Can't connect", e);
+				callback.onException(e);
+			}
+		});
+
+		return transformer;
+	}
+
+	@Override
+	public void download(final String fileName, final StreamConsumer<ByteBuf> consumer) {
+		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				final SocketConnection connection = createConnection(socketChannel)
+						.addStarter(new MessagingStarter<SimpleFsCommand>() {
+							@Override
+							public void onStart(Messaging<SimpleFsCommand> messaging) {
+								logger.info("Request for file {} download sent", fileName);
+								SimpleFsCommandDownload commandDownload = new SimpleFsCommandDownload(fileName);
+								messaging.sendMessage(commandDownload);
+							}
+						})
+						.addHandler(SimpleFsResponseOperationOk.class, new MessagingHandler<SimpleFsResponseOperationOk, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
+								logger.info("Downloading file {}", fileName);
+								StreamProducer<ByteBuf> producer = messaging.binarySocketReader();
+								producer.streamTo(consumer);
+								messaging.shutdownWriter();
+							}
+						})
+						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> messaging) {
+								Exception e = new Exception(item.exceptionMsg);
+								logger.error("Can't download {}", fileName, e);
+								StreamProducers.<ByteBuf>closingWithError(eventloop, e)
+										.streamTo(consumer);
+							}
+						});
+				connection.register();
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Can't connect", e);
+				StreamProducers.<ByteBuf>closingWithError(eventloop, e)
+						.streamTo(consumer);
 			}
 		});
 	}
 
-	public SimpleFsClient(NioEventloop eventloop, int bufferSize, StreamLZ4CompressorFactory compressorFactory) {
-		this.eventloop = eventloop;
-		this.bufferSize = bufferSize;
-		this.compressorFactory = compressorFactory;
+	@Override
+	public void listFiles(final ResultCallback<List<String>> callback) {
+		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				SocketConnection connection = createConnection(socketChannel)
+						.addStarter(new MessagingStarter<SimpleFsCommand>() {
+							@Override
+							public void onStart(Messaging<SimpleFsCommand> messaging) {
+								logger.info("Request to list files sent");
+								SimpleFsCommand commandList = new SimpleFsCommandList();
+								messaging.sendMessage(commandList);
+							}
+						})
+						.addHandler(SimpleFsResponseFileList.class, new MessagingHandler<SimpleFsResponseFileList, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseFileList item, Messaging<SimpleFsCommand> messaging) {
+								logger.info("Received list of files");
+								messaging.shutdown();
+								callback.onResult(item.fileList);
+							}
+						})
+						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> messaging) {
+								Exception e = new Exception(item.exceptionMsg);
+								messaging.shutdown();
+								logger.error("Can't list files", e);
+								callback.onException(e);
+							}
+						});
+				connection.register();
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Can't connect", e);
+				callback.onException(e);
+			}
+		});
 	}
 
-	public SimpleFsClient(NioEventloop eventloop) {
-		this(eventloop, 128 * 1024);
+	@Override
+	public void deleteFile(final String fileName, final CompletionCallback callback) {
+		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				final SocketConnection connection = createConnection(socketChannel)
+						.addStarter(new MessagingStarter<SimpleFsCommand>() {
+							@Override
+							public void onStart(Messaging<SimpleFsCommand> messaging) {
+								logger.info("Request to delete file {} sent", fileName);
+								SimpleFsCommand commandDelete = new SimpleFsCommandDelete(fileName);
+								messaging.sendMessage(commandDelete);
+							}
+						})
+						.addHandler(SimpleFsResponseOperationOk.class, new MessagingHandler<SimpleFsResponseOperationOk, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
+								logger.info("File {} deleted", fileName);
+								messaging.shutdown();
+								callback.onComplete();
+							}
+						})
+						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> messaging) {
+								Exception e = new Exception(item.exceptionMsg);
+								logger.error("Can't delete {}", fileName, e);
+								messaging.shutdown();
+								callback.onException(e);
+							}
+						});
+				connection.register();
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Can't connect", e);
+				callback.onException(e);
+			}
+		});
 	}
 
 	private StreamMessagingConnection<SimpleFsResponse, SimpleFsCommand> createConnection(SocketChannel socketChannel) {
@@ -71,161 +263,41 @@ public class SimpleFsClient implements SimpleFs {
 				new StreamGsonSerializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 256 * 1024, 256 * (1 << 20), 0));
 	}
 
-	@Override
-	public void write(InetSocketAddress address, final String destinationFileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
+	private void commit(final String fileName, final CompletionCallback callback) {
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
-					@Override
-					public void onConnect(SocketChannel socketChannel) {
-						SocketConnection connection = createConnection(socketChannel)
-								.addStarter(new MessagingStarter<SimpleFsCommand>() {
-									@Override
-									public void onStart(Messaging<SimpleFsCommand> messaging) {
-										SimpleFsCommandUpload commandUpload = new SimpleFsCommandUpload(destinationFileName);
-										messaging.sendMessage(commandUpload);
-									}
-								})
-								.addHandler(SimpleFsResponseOperationOk.class, new MessagingHandler<SimpleFsResponseOperationOk, SimpleFsCommand>() {
-									@Override
-									public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
-										StreamByteChunker streamByteChunkerBefore = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
-										StreamLZ4Compressor compressor = compressorFactory.getInstance(eventloop);
-										StreamByteChunker streamByteChunkerAfter = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				SocketConnection connection = createConnection(socketChannel)
+						.addStarter(new MessagingStarter<SimpleFsCommand>() {
+							@Override
+							public void onStart(Messaging<SimpleFsCommand> messaging) {
+								SimpleFsCommandCommit commandCommit = new SimpleFsCommandCommit(fileName);
+								messaging.sendMessage(commandCommit);
+							}
+						})
+						.addHandler(SimpleFsResponseOperationOk.class, new MessagingHandler<SimpleFsResponseOperationOk, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
+								logger.trace("File {} approved for commit", fileName);
+								messaging.shutdown();
+								callback.onComplete();
+							}
+						})
+						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> messaging) {
+								logger.trace("Can't commit {}: {}", fileName, item.exceptionMsg);
+								messaging.shutdown();
+								callback.onException(new Exception(item.exceptionMsg));
+							}
+						});
+				connection.register();
+			}
 
-										streamByteChunkerBefore.streamTo(compressor);
-										compressor.streamTo(streamByteChunkerAfter);
-										streamByteChunkerAfter.streamTo(messaging.binarySocketWriter());
-
-										callback.onResult(streamByteChunkerBefore);
-										messaging.shutdownReader();
-									}
-								})
-								.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
-									@Override
-									public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> messaging) {
-										messaging.shutdown();
-										callback.onException(new Exception(item.exceptionName));
-									}
-								});
-						connection.register();
-					}
-
-					@Override
-					public void onException(Exception e) {
-						callback.onException(e);
-					}
-				}
-		);
+			@Override
+			public void onException(Exception e) {
+				callback.onException(e);
+			}
+		});
 	}
-
-	@Override
-	public void read(InetSocketAddress address, final String path, final ResultCallback<StreamProducer<ByteBuf>> callback) {
-		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
-					@Override
-					public void onConnect(SocketChannel socketChannel) {
-						SocketConnection connection = createConnection(socketChannel)
-								.addStarter(new MessagingStarter<SimpleFsCommand>() {
-									@Override
-									public void onStart(Messaging<SimpleFsCommand> messaging) {
-										SimpleFsCommandDownload commandDownload = new SimpleFsCommandDownload(path);
-										messaging.sendMessage(commandDownload);
-									}
-								})
-								.addHandler(SimpleFsResponseOperationOk.class, new MessagingHandler<SimpleFsResponseOperationOk, SimpleFsCommand>() {
-									@Override
-									public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
-										StreamLZ4Decompressor lz4Decompressor = new StreamLZ4Decompressor(eventloop);
-										messaging.binarySocketReader().streamTo(lz4Decompressor);
-										callback.onResult(lz4Decompressor);
-										messaging.shutdownWriter();
-									}
-								})
-								.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
-									@Override
-									public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> messaging) {
-										callback.onException(new Exception(item.exceptionName));
-										messaging.shutdown();
-									}
-								});
-						connection.register();
-					}
-
-					@Override
-					public void onException(Exception e) {
-						callback.onException(e);
-					}
-				}
-		);
-	}
-
-	@Override
-	public void fileList(InetSocketAddress address, final ResultCallback<List<String>> callback) {
-		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
-					@Override
-					public void onConnect(SocketChannel socketChannel) {
-						SocketConnection connection = createConnection(socketChannel)
-								.addStarter(new MessagingStarter<SimpleFsCommand>() {
-									@Override
-									public void onStart(Messaging<SimpleFsCommand> messaging) {
-										SimpleFsCommand commandList = new SimpleFsCommandList();
-										messaging.sendMessage(commandList);
-									}
-								})
-								.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
-									@Override
-									public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> output) {
-										callback.onException(new Exception(item.exceptionName));
-										output.shutdown();
-									}
-								})
-								.addHandler(SimpleFsResponseFileList.class, new MessagingHandler<SimpleFsResponseFileList, SimpleFsCommand>() {
-									@Override
-									public void onMessage(SimpleFsResponseFileList item, Messaging<SimpleFsCommand> output) {
-										callback.onResult(item.fileList);
-										output.shutdown();
-									}
-								});
-						connection.register();
-					}
-
-					@Override
-					public void onException(Exception e) {
-						callback.onException(e);
-					}
-				}
-		);
-	}
-
-	@Override
-	public void deleteFile(InetSocketAddress address, final String fileName, final ResultCallback<Boolean> callback) {
-		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
-					@Override
-					public void onConnect(SocketChannel socketChannel) {
-						SocketConnection connection = createConnection(socketChannel)
-								.addStarter(new MessagingStarter<SimpleFsCommand>() {
-									@Override
-									public void onStart(Messaging<SimpleFsCommand> messaging) {
-										SimpleFsCommand commandDelete = new SimpleFsCommandDelete(fileName);
-										messaging.sendMessage(commandDelete);
-										messaging.shutdown();
-									}
-								})
-								.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
-									@Override
-									public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> output) {
-										output.shutdown();
-										callback.onException(new Exception(item.exceptionName));
-									}
-								});
-						connection.register();
-					}
-
-					@Override
-					public void onException(Exception e) {
-						callback.onException(e);
-					}
-				}
-		);
-
-	}
-
 }

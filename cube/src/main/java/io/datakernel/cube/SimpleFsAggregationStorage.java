@@ -16,12 +16,14 @@
 
 package io.datakernel.cube;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamForwarder;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.slf4j.Logger;
@@ -43,7 +45,7 @@ public class SimpleFsAggregationStorage implements AggregationStorage {
 	public SimpleFsAggregationStorage(NioEventloop eventloop, CubeStructure cubeStructure) {
 		this.eventloop = eventloop;
 		this.cubeStructure = cubeStructure;
-		this.client = new SimpleFsClient(eventloop);
+		this.client = new SimpleFsClient(eventloop, address);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -56,19 +58,7 @@ public class SimpleFsAggregationStorage implements AggregationStorage {
 		final StreamForwarder forwarder = new StreamForwarder<>(eventloop);
 
 		forwarder.streamTo(deserializer);
-
-		client.read(address, path(id), new ResultCallback<StreamProducer<ByteBuf>>() {
-			@Override
-			public void onResult(StreamProducer<ByteBuf> result) {
-				result.streamTo(forwarder);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.error("Opening stream for reading chunk #{} from SimpleFS failed.", id, exception);
-				StreamProducers.closingWithError(eventloop, exception).streamTo(forwarder);
-			}
-		});
+		client.download(path(id), forwarder);
 
 		return deserializer;
 	}
@@ -84,10 +74,10 @@ public class SimpleFsAggregationStorage implements AggregationStorage {
 
 		serializer.streamTo(forwarder);
 
-		client.write(address, path(id), new ResultCallback<StreamConsumer<ByteBuf>>() {
+		client.upload(path(id), forwarder, new CompletionCallback() {
 			@Override
-			public void onResult(StreamConsumer<ByteBuf> result) {
-				forwarder.streamTo(result);
+			public void onComplete() {
+				logger.info("Uploaded successfully");
 			}
 
 			@Override
@@ -106,9 +96,9 @@ public class SimpleFsAggregationStorage implements AggregationStorage {
 
 	@Override
 	public void removeChunk(final String aggregationId, final long id) {
-		client.deleteFile(address, path(id), new ResultCallback<Boolean>() {
+		client.deleteFile(path(id), new CompletionCallback() {
 			@Override
-			public void onResult(Boolean result) {
+			public void onComplete() {
 				logger.trace("Removing chunk #{} completed successfully.", id);
 			}
 
