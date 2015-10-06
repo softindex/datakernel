@@ -22,7 +22,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -463,7 +463,7 @@ public class Aggregation {
 			keysAlreadyInChunk.add(key);
 		}
 
-		AsmFunctionFactory functionFactory = new AsmFunctionFactory(classLoader, Predicate.class);
+		AsmBuilder builder = new AsmBuilder(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 
 		for (AggregationQuery.QueryPredicate predicate : predicates.asCollection()) {
@@ -490,8 +490,8 @@ public class Aggregation {
 				throw new IllegalArgumentException("Unsupported predicate " + predicate);
 			}
 		}
-		functionFactory.method("apply", boolean.class, asList(Object.class), predicateDefAnd);
-		return (Predicate) functionFactory.newInstance();
+		builder.method("apply", boolean.class, asList(Object.class), predicateDefAnd);
+		return (Predicate) builder.newInstance();
 	}
 
 	public void consolidate(final CompletionCallback callback) {

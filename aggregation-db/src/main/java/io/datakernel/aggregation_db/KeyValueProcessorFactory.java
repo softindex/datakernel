@@ -16,7 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.PredicateDefCmp;
@@ -37,7 +37,7 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 	@Override
 	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass, List<String> keys,
 	                                                 List<String> inputFields, List<String> outputFields) {
-		AsmFunctionFactory<StreamReducers.Reducer> factory = new AsmFunctionFactory<>(classLoader,
+		AsmBuilder<StreamReducers.Reducer> builder = new AsmBuilder<>(classLoader,
 				StreamReducers.Reducer.class);
 
 		/* Define the function that creates the accumulator object
@@ -56,7 +56,7 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 					field(cast(arg(2), inputClass), field)));
 		}
 		onFirstItemDef.add(accumulator);
-		factory.method("onFirstItem", onFirstItemDef);
+		builder.method("onFirstItem", onFirstItemDef);
 
 		/* Define the function that accumulates record specified in the third argument
 		to the accumulator in the fourth argument.
@@ -71,18 +71,18 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 					set(field(cast(arg(3), outputClass), field), field(cast(arg(2), inputClass), field))));
 		}
 		onNextItemDef.add(arg(3));
-		factory.method("onNextItem", onNextItemDef);
+		builder.method("onNextItem", onNextItemDef);
 
 		// Define the function that passes the accumulator object to the data receiver.
-		factory.method("onComplete", call(arg(0), "onData", arg(2)));
+		builder.method("onComplete", call(arg(0), "onData", arg(2)));
 
-		return factory.newInstance();
+		return builder.newInstance();
 	}
 
 	@Override
 	public Aggregate createPreaggregator(Class<?> inputClass, Class<?> outputClass, List<String> keys,
 	                                     List<String> inputFields, List<String> outputFields) {
-		AsmFunctionFactory<Aggregate> factory = new AsmFunctionFactory<>(classLoader, Aggregate.class);
+		AsmBuilder<Aggregate> builder = new AsmBuilder<>(classLoader, Aggregate.class);
 
 		/*
 		Define the function that creates the accumulator object
@@ -101,7 +101,7 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 					field(cast(arg(0), inputClass), field)));
 		}
 		createAccumulatorDef.add(result);
-		factory.method("createAccumulator", createAccumulatorDef);
+		builder.method("createAccumulator", createAccumulatorDef);
 
 		/*
 		Define the function that accumulates record specified in the second argument
@@ -117,8 +117,8 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 							field(cast(arg(1), inputClass), "timestamp")),
 							set(field(cast(arg(0), outputClass), field), field(cast(arg(1), inputClass), field))));
 		}
-		factory.method("accumulate", accumulateDef);
+		builder.method("accumulate", accumulateDef);
 
-		return factory.newInstance();
+		return builder.newInstance();
 	}
 }

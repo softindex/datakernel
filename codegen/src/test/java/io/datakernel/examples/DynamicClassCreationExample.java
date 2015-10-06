@@ -16,7 +16,7 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -28,7 +28,7 @@ import static io.datakernel.codegen.Expressions.*;
 public class DynamicClassCreationExample {
 	public static void main(String[] args) throws IllegalAccessException, InstantiationException {
 		// Construct a Class that implements Test interface
-		Class<Test> testClass = new AsmFunctionFactory<>(new DefiningClassLoader(), Test.class)
+		Class<Test> testClass = new AsmBuilder<>(new DefiningClassLoader(), Test.class)
 				// declare fields
 				.field("x", int.class)
 				.field("y", String.class)

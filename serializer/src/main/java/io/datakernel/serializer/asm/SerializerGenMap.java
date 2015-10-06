@@ -64,14 +64,14 @@ public final class SerializerGenMap implements SerializerGen {
 		Expression length = call(arg(0), "writeVarInt", length(value));
 
 		return sequence(length, mapForEach(value,
-				new ForVar() {
-					@Override
-					public Expression forVar(Expression item) {return keySerializer.serialize(cast(item, keySerializer.getRawType()), version, staticMethods);}
-				},
-				new ForVar() {
-					@Override
-					public Expression forVar(Expression item) {return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);}
-				})
+						new ForVar() {
+							@Override
+							public Expression forVar(Expression it) {return keySerializer.serialize(cast(it, keySerializer.getRawType()), version, staticMethods);}
+						},
+						new ForVar() {
+							@Override
+							public Expression forVar(Expression it) {return valueSerializer.serialize(cast(it, valueSerializer.getRawType()), version, staticMethods);}
+						})
 		);
 	}
 
@@ -97,7 +97,7 @@ public final class SerializerGenMap implements SerializerGen {
 		final Expression local = let(constructor(LinkedHashMap.class, length));
 		Expression forEach = expressionFor(length, new ForVar() {
 			@Override
-			public Expression forVar(Expression eachNumber) {
+			public Expression forVar(Expression it) {
 				return sequence(call(local, "put",
 						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
 						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
@@ -112,7 +112,7 @@ public final class SerializerGenMap implements SerializerGen {
 		final Expression localMap = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
 		Expression forEach = expressionFor(length, new ForVar() {
 			@Override
-			public Expression forVar(Expression eachNumber) {
+			public Expression forVar(Expression it) {
 				return sequence(call(localMap, "put",
 						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
 						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)

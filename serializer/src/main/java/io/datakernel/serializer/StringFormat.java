@@ -17,5 +17,5 @@
 package io.datakernel.serializer;
 
 public enum StringFormat {
-	UTF8, UTF16, ASCII, @Deprecated UTF8_CUSTOM;
+	UTF8, UTF16, ISO_8859_1, @Deprecated UTF8_CUSTOM;
 }

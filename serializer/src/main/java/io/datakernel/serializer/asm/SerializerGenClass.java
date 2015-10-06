@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.VarField;
 import io.datakernel.codegen.utils.Preconditions;
@@ -417,7 +417,7 @@ public class SerializerGenClass implements SerializerGen {
 	}
 
 	private Expression deserializeInterface(Class<?> targetType, final int version, SerializerBuilder.StaticMethods staticMethods) {
-		final AsmFunctionFactory<Object> asmFactory = new AsmFunctionFactory(staticMethods.getDefiningClassLoader(), targetType);
+		final AsmBuilder<Object> asmFactory = new AsmBuilder(staticMethods.getDefiningClassLoader(), targetType);
 		for (String fieldName : fields.keySet()) {
 			FieldGen fieldGen = fields.get(fieldName);
 

@@ -18,7 +18,7 @@ package io.datakernel.aggregation_db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -50,7 +50,8 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	@Override
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
 		Class<?> sourceClass = chunkTypes.get(id);
-		AsmFunctionFactory<Function> factory = new AsmFunctionFactory(classLoader, Function.class);
+		AsmBuilder<Function> factory = new AsmBuilder(classLoader, Function.class);
+
 		Expression result = let(constructor(recordClass));
 		ExpressionSequence applyDef = sequence(result);
 		for (String key : keys) {

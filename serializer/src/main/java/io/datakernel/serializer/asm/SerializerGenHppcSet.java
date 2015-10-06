@@ -108,8 +108,8 @@ public class SerializerGenHppcSet implements SerializerGen {
 		Expression length = call(arg(0), "writeVarInt", call(value, "size"));
 		return sequence(length, hppcSetForEach(iteratorType, value, new ForVar() {
 			@Override
-			public Expression forVar(Expression local) {
-				return valueSerializer.serialize(cast(local, valueSerializer.getRawType()), version, staticMethods);
+			public Expression forVar(Expression it) {
+				return valueSerializer.serialize(cast(it, valueSerializer.getRawType()), version, staticMethods);
 			}
 		}));
 	}
@@ -126,7 +126,7 @@ public class SerializerGenHppcSet implements SerializerGen {
 		final Expression set = let(constructor(hashSetType));
 		return sequence(set, expressionFor(length, new ForVar() {
 			@Override
-			public Expression forVar(Expression local) {
+			public Expression forVar(Expression it) {
 				return sequence(
 						call(set, "add", cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcSet.this.valueType)),
 						voidExp()

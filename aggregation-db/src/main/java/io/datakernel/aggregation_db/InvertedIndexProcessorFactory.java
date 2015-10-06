@@ -16,7 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -38,7 +38,7 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 	@Override
 	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass, List<String> keys,
 	                                                 List<String> inputFields, List<String> outputFields) {
-		AsmFunctionFactory<StreamReducers.Reducer> factory = new AsmFunctionFactory<>(classLoader, StreamReducers.Reducer.class);
+		AsmBuilder<StreamReducers.Reducer> builder = new AsmBuilder<>(classLoader, StreamReducers.Reducer.class);
 
 		String listFieldName = outputFields.get(0);
 		String addAllMethodName = "addAll";
@@ -61,7 +61,7 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 				cast(field(cast(arg(2), inputClass), listFieldName), Collection.class)
 		));
 		onFirstItemDef.add(accumulator);
-		factory.method("onFirstItem", onFirstItemDef);
+		builder.method("onFirstItem", onFirstItemDef);
 
 		// Call <listName>.addAll(nextValue.<listName>);
 		ExpressionSequence onNextItemDef = sequence();
@@ -71,18 +71,18 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 				cast(field(cast(arg(2), inputClass), listFieldName), Collection.class)
 		));
 		onNextItemDef.add(arg(3));
-		factory.method("onNextItem", onNextItemDef);
+		builder.method("onNextItem", onNextItemDef);
 
 		// Pass the accumulator object to the data receiver.
-		factory.method("onComplete", call(arg(0), "onData", arg(2)));
+		builder.method("onComplete", call(arg(0), "onData", arg(2)));
 
-		return factory.newInstance();
+		return builder.newInstance();
 	}
 
 	@Override
 	public Aggregate createPreaggregator(Class<?> inputClass, Class<?> outputClass, List<String> keys,
 	                                     List<String> inputFields, List<String> outputFields) {
-		AsmFunctionFactory<Aggregate> factory = new AsmFunctionFactory<>(classLoader, Aggregate.class);
+		AsmBuilder<Aggregate> builder = new AsmBuilder<>(classLoader, Aggregate.class);
 
 		String listFieldName = outputFields.get(0);
 		String addMethodName = "add";
@@ -106,15 +106,15 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 				cast(field(cast(arg(0), inputClass), inputFields.get(0)), Object.class)
 		));
 		createAccumulatorDef.add(result);
-		factory.method("createAccumulator", createAccumulatorDef);
+		builder.method("createAccumulator", createAccumulatorDef);
 
 		// Call <listName>.add(record.<valueName>)
-		factory.method("accumulate", call(
+		builder.method("accumulate", call(
 				field(cast(arg(0), outputClass), listFieldName),
 				addMethodName,
 				cast(field(cast(arg(1), inputClass), inputFields.get(0)), Object.class)
 		));
 
-		return factory.newInstance();
+		return builder.newInstance();
 	}
 }

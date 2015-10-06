@@ -1428,10 +1428,8 @@ public class AsmSerializerTest {
 	@Test
 	public void testGenericHolder() {
 		GenericComplex gc = new GenericComplex();
-		GenericHolder1 g1 = new GenericHolder1();
-		g1.item = 42;
-		GenericHolder2 g2 = new GenericHolder2();
-		g2.item = "abcd";
+		GenericHolder1 g1 = new GenericHolder1(); g1.item = 42;
+		GenericHolder2 g2 = new GenericHolder2(); g2.item = "abcd";
 
 		gc.holder1 = g1;
 		gc.holder2 = g2;
@@ -1487,5 +1485,4 @@ public class AsmSerializerTest {
 		ListOfObjectHolder testData2 = doTest(ListOfObjectHolder.class, testData1);
 		assertEquals(testData1.list, testData2.list);
 	}
-
 }

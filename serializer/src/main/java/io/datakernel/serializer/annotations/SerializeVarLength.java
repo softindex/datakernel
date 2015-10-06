@@ -27,6 +27,4 @@ import java.lang.annotation.Target;
 		ElementType.METHOD})
 public @interface SerializeVarLength {
 	int[] path() default {};
-
-	boolean zigzag() default false; // TODO
 }

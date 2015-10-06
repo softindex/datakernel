@@ -21,7 +21,7 @@ import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.codegen.AsmFunctionFactory;
+import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.ExpressionSequence;
@@ -122,22 +122,22 @@ public class AggregationStructure {
 
 	public Class<?> createKeyClass(List<String> keys) {
 		logger.trace("Creating key class for keys {}", keys);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Comparable.class);
+		AsmBuilder builder = new AsmBuilder(classLoader, Comparable.class);
 		for (String key : keys) {
 			KeyType d = this.keys.get(key);
-			factory.field(key, d.getDataType());
+			builder.field(key, d.getDataType());
 		}
-		factory.method("compareTo", compareTo(keys));
-		factory.method("equals", asEquals(keys));
-		factory.method("hashCode", hashCodeOfThis(keys));
-		factory.method("toString", asString(keys));
+		builder.method("compareTo", compareTo(keys));
+		builder.method("equals", asEquals(keys));
+		builder.method("hashCode", hashCodeOfThis(keys));
+		builder.method("toString", asString(keys));
 
-		return factory.defineClass();
+		return builder.defineClass();
 	}
 
 	public Function createFieldFunction(Class<?> recordClass, Class<?> fieldClass, List<String> fields) {
 		logger.trace("Creating field function for fields {}", fields);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Function.class);
+		AsmBuilder builder = new AsmBuilder(classLoader, Function.class);
 		Expression field = let(constructor(fieldClass));
 		ExpressionSequence applyDef = sequence(field);
 
@@ -148,14 +148,14 @@ public class AggregationStructure {
 		}
 
 		applyDef.add(field);
-		factory.method("apply", applyDef);
+		builder.method("apply", applyDef);
 
-		return (Function) factory.newInstance();
+		return (Function) builder.newInstance();
 	}
 
 	public Class<?> createFieldClass(List<String> fields) {
 		logger.trace("Creating field class for fields {}", fields);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Comparable.class);
+		AsmBuilder builder = new AsmBuilder(classLoader, Comparable.class);
 
 		for (String field : fields) {
 			Class<?> dataType = null;
@@ -170,20 +170,20 @@ public class AggregationStructure {
 				}
 			}
 
-			factory.field(field, dataType);
+			builder.field(field, dataType);
 		}
 
-		factory.method("compareTo", compareTo(fields));
-		factory.method("equals", asEquals(fields));
-		factory.method("toString", asString(fields));
-		factory.method("hashCode", hashCodeOfThis(fields));
+		builder.method("compareTo", compareTo(fields));
+		builder.method("equals", asEquals(fields));
+		builder.method("toString", asString(fields));
+		builder.method("hashCode", hashCodeOfThis(fields));
 
-		return factory.defineClass();
+		return builder.defineClass();
 	}
 
 	public Comparator createFieldComparator(AggregationQuery query, Class<?> fieldClass) {
 		logger.trace("Creating field comparator for query {}", query.toString());
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, Comparator.class);
+		AsmBuilder builder = new AsmBuilder(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();
 		List<AggregationQuery.QueryOrdering> orderings = query.getOrderings();
 
@@ -200,14 +200,14 @@ public class AggregationStructure {
 						field(cast(arg(0), fieldClass), field));
 		}
 
-		factory.method("compare", comparator);
+		builder.method("compare", comparator);
 
-		return (Comparator) factory.newInstance();
+		return (Comparator) builder.newInstance();
 	}
 
 	public Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> keys) {
 		logger.trace("Creating key function for keys {}", keys);
-		AsmFunctionFactory factory = new AsmFunctionFactory<>(classLoader, Function.class);
+		AsmBuilder factory = new AsmBuilder<>(classLoader, Function.class);
 		Expression key = let(constructor(keyClass));
 		ExpressionSequence applyDef = sequence(key);
 		for (String keyString : keys) {
@@ -222,22 +222,22 @@ public class AggregationStructure {
 
 	public Class<?> createRecordClass(List<String> keys, List<String> fields) {
 		logger.trace("Creating record class for keys {}, fields {}", keys, fields);
-		AsmFunctionFactory<Object> factory = new AsmFunctionFactory<>(classLoader, Object.class);
+		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
 		for (String key : keys) {
 			KeyType d = this.keys.get(key);
-			factory.field(key, d.getDataType());
+			builder.field(key, d.getDataType());
 		}
 		for (String field : fields) {
 			FieldType m = this.outputFields.get(field);
-			factory.field(field, m.getDataType());
+			builder.field(field, m.getDataType());
 		}
-		factory.method("toString", asString(newArrayList(concat(keys, fields))));
-		return factory.defineClass();
+		builder.method("toString", asString(newArrayList(concat(keys, fields))));
+		return builder.defineClass();
 	}
 
 	public Class<?> createResultClass(AggregationQuery query) {
 		logger.trace("Creating result class for query {}", query.toString());
-		AsmFunctionFactory<Object> factory = new AsmFunctionFactory<>(classLoader, Object.class);
+		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
 		for (String key : resultKeys) {
@@ -245,23 +245,23 @@ public class AggregationStructure {
 			if (d == null) {
 				throw new AggregationException("Key with the name '" + key + "' not found.");
 			}
-			factory.field(key, d.getDataType());
+			builder.field(key, d.getDataType());
 		}
 		for (String field : resultFields) {
 			FieldType m = this.fields.get(field);
 			if (m == null) {
 				throw new AggregationException("Field with the name '" + field + "' not found.");
 			}
-			factory.field(field, m.getDataType());
+			builder.field(field, m.getDataType());
 		}
-		factory.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
-		return factory.defineClass();
+		builder.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
+		return builder.defineClass();
 	}
 
 	public StreamReducers.Reducer mergeFieldsReducer(Class<?> inputClass, Class<?> outputClass,
 	                                                 List<String> keys, List<String> recordFields) {
 		logger.trace("Creating merge fields reducer for keys {}, fields {}", keys, recordFields);
-		AsmFunctionFactory factory = new AsmFunctionFactory(classLoader, StreamReducers.Reducer.class);
+		AsmBuilder builder = new AsmBuilder(classLoader, StreamReducers.Reducer.class);
 
 		Expression accumulator1 = let(constructor(outputClass));
 		ExpressionSequence onFirstItemDef = sequence(accumulator1);
@@ -276,7 +276,7 @@ public class AggregationStructure {
 					field(cast(arg(2), inputClass), field)));
 		}
 		onFirstItemDef.add(accumulator1);
-		factory.method("onFirstItem", onFirstItemDef);
+		builder.method("onFirstItem", onFirstItemDef);
 
 		Expression accumulator2 = let(cast(arg(3), outputClass));
 		ExpressionSequence onNextItemDef = sequence(accumulator2);
@@ -289,11 +289,11 @@ public class AggregationStructure {
 					)));
 		}
 		onNextItemDef.add(accumulator2);
-		factory.method("onNextItem", onNextItemDef);
+		builder.method("onNextItem", onNextItemDef);
 
-		factory.method("onComplete", call(arg(0), "onData", arg(2)));
+		builder.method("onComplete", call(arg(0), "onData", arg(2)));
 
-		return (StreamReducers.Reducer) factory.newInstance();
+		return (StreamReducers.Reducer) builder.newInstance();
 	}
 
 	public <T> BufferSerializer<T> createBufferSerializer(Class<T> recordClass, List<String> keys, List<String> fields) {
