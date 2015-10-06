@@ -563,4 +563,17 @@ public class ExpressionTest {
 			assertEquals(intsFrom[i], list.get(i));
 		}
 	}
+
+	public interface CastPrimitive {
+		Object a();
+	}
+
+	@org.junit.Test
+	public void testCastPrimitive() {
+		CastPrimitive testClass = new AsmBuilder<>(new DefiningClassLoader(), CastPrimitive.class)
+				.method("a", value(1))
+				.newInstance();
+
+		assertEquals(testClass.a(), 1);
+	}
 }

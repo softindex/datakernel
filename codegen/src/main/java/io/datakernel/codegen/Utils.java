@@ -299,6 +299,12 @@ public class Utils {
 			return;
 		}
 
+		if (targetType.equals(getType(Object.class)) && isPrimitiveType(type)) {
+			g.box(type);
+			g.cast(wrap(type), getType(Object.class));
+			return;
+		}
+
 		if ((isPrimitiveType(type) || isWrapperType(type)) &&
 				(isPrimitiveType(targetType) || isWrapperType(targetType))) {
 
