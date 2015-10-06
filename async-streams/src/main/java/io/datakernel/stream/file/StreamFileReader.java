@@ -42,11 +42,10 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
 
 	private final ExecutorService executor;
-
-	protected final int bufferSize;
+	protected AsyncFile asyncFile;
 	private Path path;
 
-	protected AsyncFile asyncFile;
+	protected final int bufferSize;
 	protected long position;
 	protected long length;
 
@@ -57,17 +56,17 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	                        Path path, long position, long length) {
 		super(eventloop);
 		this.executor = checkNotNull(executor);
+		this.bufferSize = bufferSize;
 		this.path = path;
 		this.position = position;
 		this.length = length;
-		this.bufferSize = bufferSize;
 	}
 
 	/**
 	 * Returns new StreamFileReader for reading file segment
 	 *
 	 * @param eventloop  event loop in which it will work
-	 * @param executor   executor it which file will be opened
+	 * @param executor   executor in which file will be opened
 	 * @param bufferSize size of buffer, size of data which can be read at once
 	 * @param path       location of file
 	 * @param position   position after which reader will read file

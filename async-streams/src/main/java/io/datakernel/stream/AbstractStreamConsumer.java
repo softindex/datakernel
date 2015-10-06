@@ -171,9 +171,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 			callback.onException(e);
 		}
 		completionCallbacks.clear();
-		if (!internal) {
-			onError(e);
-		}
+
+		onError(e);
 	}
 
 	protected void closeWithError(Exception e) {

@@ -19,6 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
@@ -63,7 +64,7 @@ public class StreamFileReaderWriterTest {
 			@Override
 			public void send(ByteBuf item) {
 				if (item.toString().equals("1")) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Intentionally closed with exception"));
 					return;
 				}
 				super.send(item);
@@ -87,17 +88,16 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamReaderOnCloseWithError() throws IOException {
-
-		File tempFile = tempFolder.newFile("outReaderWithError.dat");
-		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executor,
+		final File tempFile = tempFolder.newFile("outReaderWithError.dat");
+		final StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executor,
 				Paths.get(tempFile.getAbsolutePath()));
 
 		reader.streamTo(writer);
 		eventloop.run();
 
-		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
 		assertTrue(reader.getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertTrue(writer.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
 	}
 
 	@Test
@@ -111,6 +111,78 @@ public class StreamFileReaderWriterTest {
 
 		List<ByteBuf> list = new ArrayList<>();
 		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop, list);
+
+		reader.streamTo(consumer);
+		eventloop.run();
+
+		ByteBufQueue byteQueue = new ByteBufQueue();
+		for (ByteBuf buf : list) {
+			byteQueue.add(buf);
+		}
+
+		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
+		byteQueue.drainTo(buf);
+
+		assertArrayEquals(fileBytes, buf.array());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testStreamFileReaderWithSuspends() throws IOException {
+		NioEventloop eventloop = new NioEventloop();
+		ExecutorService executor = Executors.newCachedThreadPool();
+
+		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
+		StreamFileReader reader = StreamFileReader.readFileFully(eventloop, executor,
+				1, Paths.get("test_data/in.dat"));
+
+		final List<ByteBuf> list = new ArrayList<>();
+
+		class MockConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
+			protected MockConsumer(Eventloop eventloop) {
+				super(eventloop);
+			}
+
+			@Override
+			protected void onStarted() {
+				suspend();
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
+					@Override
+					public void run() {
+						resume();
+					}
+				});
+			}
+
+			@Override
+			protected void onEndOfStream() {
+				close();
+			}
+
+			@Override
+			protected void onError(Exception e) {
+
+			}
+
+			@Override
+			public StreamDataReceiver<ByteBuf> getDataReceiver() {
+				return this;
+			}
+
+			@Override
+			public void onData(ByteBuf item) {
+				list.add(item);
+				suspend();
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
+					@Override
+					public void run() {
+						resume();
+					}
+				});
+			}
+		}
+
+		StreamConsumer<ByteBuf> consumer = new MockConsumer(eventloop);
 
 		reader.streamTo(consumer);
 		eventloop.run();
