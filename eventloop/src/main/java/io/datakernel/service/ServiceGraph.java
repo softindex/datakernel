@@ -97,6 +97,8 @@ public class ServiceGraph implements ConcurrentService {
 	 * exists edge from N1 to N2, it can be represent as adding to this SetMultimap element <N1,N2>.
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
+
+	// TODO (vsavchuk) bug?, this is not the same as old version(LinkedHashMultiMap), search other
 	private final Map<Node, Set<Node>> forwards = new HashMap<Node, Set<Node>>() {
 		@Override
 		public Set<Node> get(final Object key) {
@@ -120,6 +122,8 @@ public class ServiceGraph implements ConcurrentService {
 	 * exists edge from N1 to N2, it can be represent as adding to this SetMultimap element <N2,N1>
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
+
+	// TODO (vsavchuk) bug?, this is not the same as old version
 	private final Map<Node, Set<Node>> backwards = new HashMap<Node, Set<Node>>() {
 		@Override
 		public Set<Node> get(final Object key) {

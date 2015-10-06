@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -64,8 +67,8 @@ public class StreamSorterStorageImplTest {
 
 		eventloop.run();
 
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);

@@ -19,6 +19,8 @@ package io.datakernel.stream;
 import io.datakernel.async.AsyncGetter;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -81,6 +83,7 @@ public class StreamConsumers {
 	}
 
 	public static final class ClosingWithError<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+		protected static final Logger logger = LoggerFactory.getLogger(ClosingWithError.class);
 		private final Exception exception;
 
 		public ClosingWithError(Eventloop eventloop, Exception exception) {
@@ -90,7 +93,9 @@ public class StreamConsumers {
 
 		@Override
 		protected void onStarted() {
+			logger.info("{}", exception.getMessage());
 			upstreamProducer.onConsumerError(exception);
+			close();
 		}
 
 		@Override
@@ -105,8 +110,6 @@ public class StreamConsumers {
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			// TODO (vsavchuk) producer.stremTo(closingWithError) then downstreamConsumer.getDataReceiver will return null?
-//			return null;
 			return new StreamDataReceiver<T>() {
 				@Override
 				public void onData(T item) {
@@ -219,7 +222,6 @@ public class StreamConsumers {
 			list.add(item);
 		}
 	}
-
 
 	public static final class ToListSuspend<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		private List<T> list;

@@ -121,7 +121,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 				}
 			}
 			if (byteBufs.isEmpty()) {
-				if (((AbstractStreamProducer)upstreamConsumer.getUpstream()).getStatus() == END_OF_STREAM) {
+				if (((AbstractStreamProducer) upstreamConsumer.getUpstream()).getStatus() == END_OF_STREAM) {
 					sendEndOfStream();
 					buf.recycle();
 					buf = null;
@@ -175,16 +175,16 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 
 	@Override
 	public void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver) {
-		for (ByteBuf byteBuf : ((DownstreamProducer)downstreamProducer).byteBufs) {
+		for (ByteBuf byteBuf : ((DownstreamProducer) downstreamProducer).byteBufs) {
 			dataReceiver.onData(byteBuf);
 		}
-		((DownstreamProducer)downstreamProducer).byteBufs.clear();
+		((DownstreamProducer) downstreamProducer).byteBufs.clear();
 		downstreamProducer.sendEndOfStream();
 	}
 
 	@Override
 	public void onData(ByteBuf buf) {
-		((DownstreamProducer)downstreamProducer).onData(buf);
+		((DownstreamProducer) downstreamProducer).onData(buf);
 	}
 
 	@Override

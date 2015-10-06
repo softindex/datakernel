@@ -138,7 +138,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			doProduce();
 		} catch (Exception e) {
 			closeWithError(e, true);
-			onError(e);
 		}
 	}
 
@@ -227,17 +226,20 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			return;
 		status = CLOSED_WITH_ERROR;
 		error = e;
-		logger.error("StreamProducer {} closed with error", this, e);
 		if (sendToConsumer) {
+			logger.info("StreamProducer {} closed with error", this);
+
 			if (downstreamConsumer != null) {
 				downstreamConsumer.onProducerError(e);
 			}
-			onError(e);
+		} else {
+			logger.info("StreamConsumer {} close with error", downstreamConsumer);
 		}
 		for (CompletionCallback callback : completionCallbacks) {
 			callback.onException(e);
 		}
 		completionCallbacks.clear();
+		onError(e);
 	}
 
 	protected void closeWithError(Exception e) {
@@ -247,7 +249,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	@Override
 	public final void onConsumerError(Exception e) {
 		closeWithError(e, false);
-		onError(e);
 	}
 
 	protected abstract void onError(Exception e);

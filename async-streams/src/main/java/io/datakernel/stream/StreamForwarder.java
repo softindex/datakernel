@@ -60,7 +60,6 @@ public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1_Stat
 		downstreamDataReceiver.onData(item);
 	}
 
-
 	// for test only
 	byte getUpstreamConsumerStatus() {
 		return upstreamConsumer.getStatus();

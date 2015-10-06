@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Predicate;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -51,7 +54,7 @@ public class StreamFilterTest {
 
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -93,7 +96,7 @@ public class StreamFilterTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3), list);
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 
 	}
 
@@ -147,10 +150,7 @@ public class StreamFilterTest {
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2, 3)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofValue(eventloop, 4),
-				StreamProducers.ofValue(eventloop, 5)
-		);
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
 
 		Predicate<Integer> predicate = new Predicate<Integer>() {
 			@Override
@@ -169,6 +169,6 @@ public class StreamFilterTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 3);
-		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 }

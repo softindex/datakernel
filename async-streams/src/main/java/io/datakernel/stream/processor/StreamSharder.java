@@ -23,7 +23,6 @@ import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static java.lang.System.arraycopy;
 
 /**
  * It is {@link AbstractStreamTransformer_1_N} which divides input stream  into groups with some key

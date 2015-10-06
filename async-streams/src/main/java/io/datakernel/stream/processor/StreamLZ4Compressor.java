@@ -240,7 +240,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 	@Override
 	public void onData(ByteBuf buf) {
-		((DownstreamProducer)downstreamProducer).onData(buf);
+		((DownstreamProducer) downstreamProducer).onData(buf);
 	}
 
 	@Override

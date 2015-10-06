@@ -22,7 +22,10 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.processor.*;
 import org.openjdk.jmh.annotations.*;
 

@@ -203,7 +203,6 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 		upstreamConsumer.streamFrom(upstreamProducer);
 	}
 
-
 	@Override
 	public final void onProducerEndOfStream() {
 		upstreamConsumer.onProducerEndOfStream();

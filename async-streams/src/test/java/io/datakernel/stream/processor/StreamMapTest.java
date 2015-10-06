@@ -17,7 +17,10 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -49,7 +52,7 @@ public class StreamMapTest {
 
 		eventloop.run();
 		assertEquals(asList(11, 12, 13), consumer.getList());
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -84,7 +87,7 @@ public class StreamMapTest {
 		eventloop.run();
 		System.out.println(list.size());
 		assertTrue(list.size() == 2);
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 //	@Test
@@ -129,8 +132,7 @@ public class StreamMapTest {
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofValue(eventloop, 3));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
 
 		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
 
@@ -142,7 +144,7 @@ public class StreamMapTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 2);
-		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 }

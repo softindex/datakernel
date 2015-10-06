@@ -79,6 +79,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		}
 
 		if (status >= END_OF_STREAM) {
+			// TODO (vsavchuk) fix
 			upstreamProducer.onConsumerError(new Exception("Extra item"));
 			return;
 		}
@@ -165,13 +166,16 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		status = CLOSED_WITH_ERROR;
 		error = e;
 		if (internal) {
+			logger.info("StreamConsumer {} closed with error", this);
 			upstreamProducer.onConsumerError(e);
 		}
 		for (CompletionCallback callback : completionCallbacks) {
 			callback.onException(e);
 		}
 		completionCallbacks.clear();
-
+		if (!internal) {
+			logger.info("StreamProducer {} closed with error", upstreamProducer);
+		}
 		onError(e);
 	}
 

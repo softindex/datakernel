@@ -23,7 +23,7 @@ import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamFilter;
 
 import static io.datakernel.stream.StreamProducers.ofIterable;
-import static io.datakernel.stream.TestStreamConsumers.*;
+import static io.datakernel.stream.TestStreamConsumers.TestConsumerToList;
 import static java.util.Arrays.asList;
 
 /**

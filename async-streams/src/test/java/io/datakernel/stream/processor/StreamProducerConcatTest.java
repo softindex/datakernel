@@ -24,7 +24,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamProducerConcatTest {
 
@@ -120,8 +121,7 @@ public class StreamProducerConcatTest {
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 

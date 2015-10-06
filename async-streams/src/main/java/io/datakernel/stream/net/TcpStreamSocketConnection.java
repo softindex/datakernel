@@ -77,7 +77,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 			super.closeWithError(e);
 		}
 
-		//		@Override
+//		@Override
 //		protected void onClosed() {
 //			closeIfDone();
 //		}
@@ -101,8 +101,6 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		@Override
 		public void onEndOfStream() {
 			if (writeQueue.isEmpty()) {
-//				closeUpstream();
-//				closeIfDone();
 				try {
 					shutdownOutput();
 				} catch (IOException e) {
@@ -223,25 +221,11 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 			return;
 		}
 
-		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.CLOSED) {
-			logger.trace("done, closing {}", this);
-			close();
-			return;
-		}
-
-//		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.END_OF_STREAM && writeQueue.isEmpty()) {
+//		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.CLOSED) {
 //			logger.trace("done, closing {}", this);
 //			close();
 //			return;
 //		}
-
-		if (socketWriter.getStatus() >= AbstractStreamConsumer.END_OF_STREAM && writeQueue.isEmpty()) {
-			try {
-				channel.shutdownOutput();
-			} catch (IOException e) {
-				logger.error("shutdownOutput error {} for {}", e.toString(), this);
-			}
-		}
 	}
 
 	/**
@@ -268,14 +252,11 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	@Override
 	protected void onWriteFlushed() {
 		if (socketWriter.getStatus() == AbstractStreamConsumer.END_OF_STREAM) {
-//			socketWriter.closeUpstream();
 			try {
-				socketWriter.close();
 				shutdownOutput();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			closeIfDone();
 		} else {
 			socketWriter.resume();
 		}
@@ -284,15 +265,13 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	@Override
 	protected void onReadException(Exception e) {
 		logger.warn("onReadException", e);
-		socketReader.onConsumerError(e);
-//		socketReader.closeWithError(e);
+		socketReader.closeWithError(e);
 	}
 
 	@Override
 	protected void onWriteException(Exception e) {
 		logger.warn("onWriteException", e);
-//		socketWriter.closeUpstreamWithError(e);
-		socketWriter.onError(e);
+		socketWriter.closeWithError(e);
 		try {
 			shutdownOutput();
 		} catch (IOException e1) {

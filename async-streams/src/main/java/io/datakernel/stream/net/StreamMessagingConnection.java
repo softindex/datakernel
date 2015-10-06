@@ -38,8 +38,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	private MessagingStarter<O> starter;
 	protected final HashMap<Class<? extends I>, MessagingHandler<? extends I, O>> handlers = new HashMap<>();
 
-	private StreamConsumerSwitcher<ByteBuf> socketReaderSwitcher;
-	private StreamProducerSwitcher<ByteBuf> socketWriterSwitcher;
+	private StreamConsumer<ByteBuf> currentConsumer;
 
 	private final StreamDeserializer<I> streamDeserializer;
 	private final StreamSerializer<O> streamSerializer;
@@ -48,6 +47,9 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	private final MessageProducer messageProducer = new MessageProducer();
 
 	private StreamDataReceiver<O> output;
+
+	private StreamProducer<ByteBuf> socketReader;
+	private StreamConsumer<ByteBuf> socketWriter;
 
 	/**
 	 * Creates a new instance of BinaryProtocolMessaging
@@ -62,12 +64,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		super(eventloop, socketChannel);
 		this.streamDeserializer = streamDeserializer;
 		this.streamSerializer = streamSerializer;
-//		this.socketReaderSwitcher = new StreamConsumerSwitcher<>(eventloop, this.streamDeserializer);
-		this.socketReaderSwitcher = new StreamConsumerSwitcher<>(eventloop);
-		this.socketReaderSwitcher.streamTo(this.streamDeserializer);
-//		this.socketWriterSwitcher = new StreamProducerSwitcher<>(eventloop, this.streamSerializer);
-		this.socketWriterSwitcher = new StreamProducerSwitcher<>(eventloop);
-		this.socketWriterSwitcher.streamFrom(this.streamSerializer);
+		currentConsumer = streamDeserializer;
 		this.streamDeserializer.streamTo(this.messageConsumer);
 		this.messageProducer.streamTo(this.streamSerializer);
 	}
@@ -90,8 +87,10 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	 */
 	@Override
 	protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-		socketReader.streamTo(socketReaderSwitcher);
-		socketWriterSwitcher.streamTo(socketWriter);
+		this.socketReader = socketReader;
+		this.socketWriter = socketWriter;
+		socketReader.streamTo(currentConsumer);
+		streamSerializer.streamTo(socketWriter);
 
 		output = messageProducer.getDownstreamDataReceiver();
 		onStart();
@@ -120,7 +119,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 		@Override
 		protected void onEndOfStream() {
-			if (socketReaderSwitcher.getCurrentConsumer() == streamDeserializer) {
+			if (currentConsumer == streamDeserializer) {
 				shutdown();
 			}
 		}
@@ -183,16 +182,15 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	public StreamConsumer<ByteBuf> binarySocketWriter() {
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		streamSerializer.flush();
-//		socketWriterSwitcher.switchProducerTo(forwarder);
-		socketWriterSwitcher.streamFrom(forwarder);
+		socketWriter.streamFrom(forwarder);
 		return forwarder;
 	}
 
 	@Override
 	public StreamProducer<ByteBuf> binarySocketReader() {
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-//		socketReaderSwitcher.switchConsumerTo(forwarder);
-		socketReaderSwitcher.streamTo(forwarder);
+		socketReader.streamTo(forwarder);
+		currentConsumer = forwarder;
 		streamDeserializer.drainBuffersTo(forwarder);
 		return forwarder;
 	}
@@ -202,8 +200,6 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-//				messageConsumer.closeUpstream();
-//				messageConsumer.getUpstream().
 				messageProducer.sendEndOfStream();
 				StreamMessagingConnection.super.shutdown();
 				// shutdown == flush and shutdownNow, shutdownNow
@@ -213,29 +209,14 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 	@Override
 	public void shutdownReader() {
-//		checkState(socketReaderSwitcher.getCurrentConsumer() == streamDeserializer, "SocketReader is rewired to another stream");
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-//				messageConsumer.closeUpstream();
-//				StreamMessagingConnection.super.shutdown();
-//				try {
-//					channel.shutdownOutput();
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//				}
-			}
-		});
 	}
 
 	@Override
 	public void shutdownWriter() {
-//		checkState(socketWriterSwitcher.getCurrentProducer() == streamSerializer, "SocketWriter is rewired to another stream");
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				messageProducer.sendEndOfStream();
-//				StreamMessagingConnection.super.shutdown();
 			}
 		});
 	}

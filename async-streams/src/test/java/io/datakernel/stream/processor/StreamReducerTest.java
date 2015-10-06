@@ -52,7 +52,7 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -86,14 +86,14 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
-		assertTrue(((AbstractStreamProducer)source0).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source4).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source5).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source6).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source7).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source0).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source4).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source5).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source6).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source7).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -142,13 +142,13 @@ public class StreamReducerTest {
 		assertTrue(list.size() == 1);
 		// TODO (vsavchuk) add method to see streamReducer status? streamReducer.getStatus() for test only
 
-		System.out.println(((AbstractStreamProducer)source1).getStatus());
-		System.out.println(((AbstractStreamProducer)source2).getStatus());
-		System.out.println(((AbstractStreamProducer)source3).getStatus());
+		System.out.println(((AbstractStreamProducer) source1).getStatus());
+		System.out.println(((AbstractStreamProducer) source2).getStatus());
+		System.out.println(((AbstractStreamProducer) source3).getStatus());
 
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 //	@Test
@@ -220,7 +220,7 @@ public class StreamReducerTest {
 //				StreamProducers.ofValue(eventloop, new KeyValue3(3, 10.0, 20.0))
 //		);
 		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop,
-				asList(new KeyValue3(2,10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
+				asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
 
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
 
@@ -240,9 +240,8 @@ public class StreamReducerTest {
 
 		eventloop.run();
 //		assertTrue(list.size() == 0);
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	private static final class KeyValue1 {
@@ -460,9 +459,9 @@ public class StreamReducerTest {
 						new KeyValueResult(2, 0.0, 10.0, 20.0),
 						new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -494,8 +493,8 @@ public class StreamReducerTest {
 						new KeyValueResult(2, 0.0, 10.0, 20.0),
 						new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 }

@@ -129,11 +129,6 @@ public class StreamByteChunkerTest {
 
 		}
 
-//		@Override
-//		public StreamProducer<ByteBuf> getUpstream() {
-//			return null;
-//		}
-
 		@Override
 		public void onProducerEndOfStream() {
 			for (CompletionCallback callback : callbacks) {
@@ -150,11 +145,6 @@ public class StreamByteChunkerTest {
 		public void addConsumerCompletionCallback(CompletionCallback completionCallback) {
 			callbacks.add(completionCallback);
 		}
-
-//		@Override
-//		public void addCompletionCallback(CompletionCallback completionCallback) {
-//			callbacks.add(completionCallback);
-//		}
 
 		@Override
 		public void onData(ByteBuf item) {

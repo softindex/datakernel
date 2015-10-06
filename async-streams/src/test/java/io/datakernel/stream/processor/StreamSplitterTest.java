@@ -43,7 +43,7 @@ public class StreamSplitterTest {
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumerToList1.getList());
 		assertEquals(asList(1, 2, 3), consumerToList2.getList());
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -142,15 +142,12 @@ public class StreamSplitterTest {
 	public void testProducerDisconnectWithError() {
 		NioEventloop eventloop = new NioEventloop();
 
-//		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
-//				StreamProducers.ofValue(eventloop, 1),
-//				StreamProducers.ofValue(eventloop, 2),
-//				StreamProducers.ofValue(eventloop, 3),
-//				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-//				StreamProducers.ofValue(eventloop, 4),
-//				StreamProducers.ofValue(eventloop, 5)
-//		);
-		StreamProducer<Integer> source = StreamProducers.closingWithError(eventloop, new Exception());
+		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, 1),
+				StreamProducers.ofValue(eventloop, 2),
+				StreamProducers.ofValue(eventloop, 3),
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
+		);
 
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
 
@@ -168,9 +165,8 @@ public class StreamSplitterTest {
 
 		eventloop.run();
 
-//		assertTrue(list1.size() == 3);
-//		assertTrue(list2.size() == 3);
-//		assertTrue(list3.size() == 3);
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(list1.size() == 3);
+		assertTrue(list2.size() == 3);
+		assertTrue(list3.size() == 3);
 	}
 }

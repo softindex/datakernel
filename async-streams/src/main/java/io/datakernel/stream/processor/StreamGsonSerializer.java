@@ -221,7 +221,7 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 			}
 		}
 		if (!flushPosted) {
-			((DownstreamProducer)downstreamProducer).postFlush();
+			((DownstreamProducer) downstreamProducer).postFlush();
 		}
 	}
 

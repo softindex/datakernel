@@ -98,7 +98,8 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 
 			@Override
 			public void onException(Exception exception) {
-				StreamSorter.super.onProducerError(exception);
+//				StreamSorter.super.onProducerError(exception);
+				StreamSorter.this.closeWithError(exception);
 			}
 		});
 	}
@@ -143,8 +144,8 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 			return;
 		}
 
-		if (((AbstractStreamProducer)upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM) {
-			StreamMerger<K, T> merger = StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate);
+		if (((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM) {
+			final StreamMerger<K, T> merger = StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate);
 
 			Collections.sort(list, itemComparator);
 			StreamProducer<T> queueProducer = StreamProducers.ofIterable(eventloop, list);
@@ -157,6 +158,17 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 			}
 
 			merger.streamTo(result);
+			result.addProducerCompletionCallback(new CompletionCallback() {
+				@Override
+				public void onComplete() {
+
+				}
+
+				@Override
+				public void onException(Exception exception) {
+					merger.onConsumerError(exception);
+				}
+			});
 			return;
 		}
 

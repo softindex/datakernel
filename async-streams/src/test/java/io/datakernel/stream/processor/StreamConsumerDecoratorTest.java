@@ -37,9 +37,7 @@ public class StreamConsumerDecoratorTest {
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofValue(eventloop, 1),
-				StreamProducers.ofValue(eventloop, 2));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
 
 		producer.streamTo(consumerDecorator);
 		eventloop.run();

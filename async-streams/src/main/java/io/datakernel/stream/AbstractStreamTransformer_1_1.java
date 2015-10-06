@@ -60,7 +60,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected void onError(Exception e) {
-			upstreamProducer.onConsumerError(e);
+			downstreamProducer.closeWithError(e);
 		}
 
 		@Override

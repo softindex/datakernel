@@ -18,6 +18,8 @@ package io.datakernel.stream;
 
 import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.Iterator;
@@ -216,6 +218,7 @@ public class StreamProducers {
 	 * @param <T>
 	 */
 	public static class ClosingWithError<T> extends AbstractStreamProducer<T> {
+		private static final Logger logger = LoggerFactory.getLogger(ClosingWithError.class);
 		private final Exception exception;
 
 		public ClosingWithError(Eventloop eventloop, Exception exception) {
@@ -225,7 +228,9 @@ public class StreamProducers {
 
 		@Override
 		protected void onStarted() {
-			closeWithError(exception);
+			logger.info("{} close with error {}", this, exception.getMessage());
+			downstreamConsumer.onProducerError(exception);
+			sendEndOfStream();
 		}
 
 		@Override

@@ -18,7 +18,10 @@ package io.datakernel.stream.examples;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
+import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.TestStreamConsumers;
 
 import static io.datakernel.stream.StreamProducers.ofIterable;
 import static java.util.Arrays.asList;

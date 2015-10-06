@@ -94,7 +94,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 			}
 			if (deque.size() == bufferSize && streamsAwaiting == 0) {
 				downstreamProducer.produce();
-				if (((DownstreamProducer)downstreamProducer).getDownstreamStatus() != READY) {
+				if (((DownstreamProducer) downstreamProducer).getDownstreamStatus() != READY) {
 					suspendAllUpstreams();
 				}
 			}
@@ -167,7 +167,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 					input.headKey = input.keyFunction.apply(input.headItem);
 					priorityQueue.offer(input);
 				} else {
-					if (((AbstractStreamProducer)input.getUpstream()).getStatus() < END_OF_STREAM) {
+					if (((AbstractStreamProducer) input.getUpstream()).getStatus() < END_OF_STREAM) {
 						streamsAwaiting++;
 						break;
 					}

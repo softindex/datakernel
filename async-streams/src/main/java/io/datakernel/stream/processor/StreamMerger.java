@@ -89,5 +89,4 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 		return bytes;
 	}
 
-
 }

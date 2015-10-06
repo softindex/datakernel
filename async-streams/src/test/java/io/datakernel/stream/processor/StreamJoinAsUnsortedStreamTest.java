@@ -20,7 +20,10 @@ import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -164,8 +167,8 @@ public class StreamJoinAsUnsortedStreamTest {
 						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
 						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
 				result.toArray(new DataItemMasterDetail[result.size()]));
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -315,22 +318,19 @@ public class StreamJoinAsUnsortedStreamTest {
 	@Test
 	public void testProducerWithError() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
-//		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
-//				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
-//				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception()),
-//				StreamProducers.ofValue(eventloop, new DataItemMaster(20, 10, "masterB")),
-//				StreamProducers.ofValue(eventloop, new DataItemMaster(25, 15, "masterB+")),
-//				StreamProducers.ofValue(eventloop, new DataItemMaster(30, 20, "masterC")),
-//				StreamProducers.ofValue(eventloop, new DataItemMaster(40, 20, "masterD"))
-//		);
-		StreamProducer<DataItemMaster> source1 = StreamProducers.closingWithError(eventloop, new Exception());
+		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
+				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception()),
+				StreamProducers.ofValue(eventloop, new DataItemMaster(20, 10, "masterB")),
+				StreamProducers.ofValue(eventloop, new DataItemMaster(25, 15, "masterB+")),
+				StreamProducers.ofValue(eventloop, new DataItemMaster(30, 20, "masterC")),
+				StreamProducers.ofValue(eventloop, new DataItemMaster(40, 20, "masterD"))
+		);
 
-//		StreamProducer<DataItemDetail> source2 = StreamProducers.concat(eventloop,
-//				StreamProducers.ofValue(eventloop, new DataItemDetail(10, "detailX")),
-//				StreamProducers.ofValue(eventloop, new DataItemDetail(20, "detailY"))
-//		);
-		StreamProducer<DataItemDetail> source2 = StreamProducers.ofIterable(eventloop,
-				asList(new DataItemDetail(10, "detailX"), new DataItemDetail(20, "detailY")));
+		StreamProducer<DataItemDetail> source2 = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, new DataItemDetail(10, "detailX")),
+				StreamProducers.ofValue(eventloop, new DataItemDetail(20, "detailY"))
+		);
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
 				new StreamJoin<>(eventloop, Ordering.<Integer>natural(),
@@ -368,7 +368,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		streamJoin.streamTo(consumer);
 
 		eventloop.run();
-		assertTrue(list.size() == 0);
+		assertTrue(list.size() == 1);
 //		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 //		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}

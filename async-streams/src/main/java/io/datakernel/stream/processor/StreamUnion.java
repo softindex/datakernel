@@ -17,7 +17,10 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
+import io.datakernel.stream.AbstractStreamTransformer_M_1;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
 
 /**
  * It is {@link AbstractStreamTransformer_1_1} which unions all input streams and streams it
@@ -79,6 +82,5 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> {
 	public StreamConsumer<T> newInput() {
 		return addInput(new UpstreamConsumer());
 	}
-
 
 }

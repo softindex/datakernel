@@ -46,7 +46,7 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.sendEndOfStream();
-			((DownstreamProducer)downstreamProducer).recycleBufs();
+			((DownstreamProducer) downstreamProducer).recycleBufs();
 		}
 
 		@Override
@@ -57,7 +57,7 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		@Override
 		protected void onError(Exception e) {
 			super.onError(e);
-			((DownstreamProducer)downstreamProducer).recycleBufs();
+			((DownstreamProducer) downstreamProducer).recycleBufs();
 		}
 	}
 
@@ -251,11 +251,11 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 	public void onData(ByteBuf buf) {
 		jmxBufsInput++;
 		jmxBytesInput += buf.remaining();
-		((DownstreamProducer)downstreamProducer).onData(buf);
+		((DownstreamProducer) downstreamProducer).onData(buf);
 	}
 
 	public long getInputStreamPosition() {
-		return ((DownstreamProducer)downstreamProducer).inputStreamPosition;
+		return ((DownstreamProducer) downstreamProducer).inputStreamPosition;
 	}
 
 	@Override

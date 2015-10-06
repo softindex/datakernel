@@ -26,7 +26,7 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 	@Override
 	public void onData(ByteBuf item) {
-		((DownstreamProducer)downstreamProducer).onData(item);
+		((DownstreamProducer) downstreamProducer).onData(item);
 	}
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {

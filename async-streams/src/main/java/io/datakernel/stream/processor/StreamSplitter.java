@@ -21,8 +21,6 @@ import io.datakernel.stream.AbstractStreamTransformer_1_N;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 
-import static java.lang.System.arraycopy;
-
 @SuppressWarnings("unchecked")
 public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implements StreamSplitterMBean {
 	private int jmxItems;
@@ -32,7 +30,7 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 		this.upstreamConsumer = new UpstreamConsumer();
 	}
 
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T>{
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
 
 		@Override
 		protected void onUpstreamStarted() {

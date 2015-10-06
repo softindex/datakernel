@@ -51,7 +51,7 @@ public class StreamFunctionTest {
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(streamFunction.upstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
 		assertTrue(streamFunction.downstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
@@ -93,7 +93,7 @@ public class StreamFunctionTest {
 
 		assertEquals(asList(1, 4), list);
 
-		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertTrue(streamFunction.upstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
 		assertTrue(streamFunction.downstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
@@ -113,8 +113,7 @@ public class StreamFunctionTest {
 		StreamProducer<Integer> source1 = concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
 
@@ -124,7 +123,7 @@ public class StreamFunctionTest {
 
 		assertEquals(asList(1, 4, 9, 16, 25, 36), list);
 
-		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertTrue(streamFunction.upstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
 		assertTrue(streamFunction.downstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}

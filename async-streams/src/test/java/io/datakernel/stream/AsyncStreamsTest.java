@@ -22,9 +22,7 @@ import org.junit.Test;
 
 import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class AsyncStreamsTest {
 	@Test
@@ -41,13 +39,13 @@ public class AsyncStreamsTest {
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertFalse(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertFalse(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		producerSetter.onResult(source);
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
-		assertTrue(((AbstractStreamProducer)consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 //		assertNull(producer.getWiredConsumerStatus());
 	}
 
