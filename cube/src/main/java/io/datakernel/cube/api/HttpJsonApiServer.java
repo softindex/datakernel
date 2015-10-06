@@ -28,6 +28,8 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.AvailableDrillDowns;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.NioEventloop;
@@ -37,13 +39,13 @@ import io.datakernel.stream.StreamConsumers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.ByteBufStrings.wrapUTF8;
 
 public final class HttpJsonApiServer {
@@ -60,7 +62,7 @@ public final class HttpJsonApiServer {
 	 * @param eventloop event loop, in which HTTP server is to run
 	 * @return server instance (not started)
 	 */
-	public static AsyncHttpServer httpServer(Cube cube, NioEventloop eventloop) {
+	public static AsyncHttpServer httpServer(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
 		final Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
 				.create();
@@ -69,15 +71,15 @@ public final class HttpJsonApiServer {
 
 		servlet.get(INFO_REQUEST_PATH, infoRequestHandler(gson, cube));
 
-		servlet.get(QUERY_REQUEST_PATH, queryHandler(gson, cube, eventloop));
+		servlet.get(QUERY_REQUEST_PATH, queryHandler(gson, cube, eventloop, classLoader));
 
-		servlet.get(DIMENSIONS_REQUEST_PATH, dimensionsRequestHandler(gson, cube, eventloop));
+		servlet.get(DIMENSIONS_REQUEST_PATH, dimensionsRequestHandler(gson, cube, eventloop, classLoader));
 
 		return new AsyncHttpServer(eventloop, servlet);
 	}
 
-	public static AsyncHttpServer httpServer(Cube cube, NioEventloop eventloop, int port) {
-		return httpServer(cube, eventloop).setListenPort(port);
+	public static AsyncHttpServer httpServer(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader, int port) {
+		return httpServer(cube, eventloop, classLoader).setListenPort(port);
 	}
 
 	private static HttpResponse createResponse(String body) {
@@ -86,7 +88,8 @@ public final class HttpJsonApiServer {
 				.header(HttpHeader.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 	}
 
-	private static AsyncHttpServlet dimensionsRequestHandler(final Gson gson, final Cube cube, final NioEventloop eventloop) {
+	private static AsyncHttpServlet dimensionsRequestHandler(final Gson gson, final Cube cube, final NioEventloop eventloop,
+	                                                         final DefiningClassLoader classLoader) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
@@ -117,7 +120,7 @@ public final class HttpJsonApiServer {
 				consumerStream.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						String jsonResult = constructJson(gson, cube, consumerStream.getList(), query, true);
+						String jsonResult = constructDimensionsJson(gson, cube, consumerStream.getList(), query, classLoader);
 						callback.onResult(createResponse(jsonResult));
 						logger.trace("Sending response {} to /dimensions query. Constructed query: {}", jsonResult, query);
 					}
@@ -150,7 +153,8 @@ public final class HttpJsonApiServer {
 		};
 	}
 
-	private static AsyncHttpServlet queryHandler(final Gson gson, final Cube cube, final NioEventloop eventloop) {
+	private static AsyncHttpServlet queryHandler(final Gson gson, final Cube cube, final NioEventloop eventloop,
+	                                             final DefiningClassLoader classLoader) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
@@ -159,6 +163,8 @@ public final class HttpJsonApiServer {
 				List<String> measures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
 				String predicatesJson = request.getParameter("filters");
 				String orderingsJson = request.getParameter("sort");
+				String limitString = request.getParameter("limit");
+				String offsetString = request.getParameter("offset");
 
 				AggregationQuery.QueryPredicates queryPredicates = null;
 				if (predicatesJson != null) {
@@ -184,10 +190,14 @@ public final class HttpJsonApiServer {
 				Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
 				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
+				final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
+				final Integer offset = offsetString == null ? null : Integer.valueOf(offsetString);
+
 				consumerStream.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						String jsonResult = constructJson(gson, cube, consumerStream.getList(), finalQuery, false);
+						String jsonResult = constructQueryJson(gson, cube, consumerStream.getList(), finalQuery,
+								classLoader, limit, offset);
 						callback.onResult(createResponse(jsonResult));
 						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
 					}
@@ -227,55 +237,82 @@ public final class HttpJsonApiServer {
 	}
 
 	private static Set<String> getSetOfStringsFromJsonArray(Gson gson, String json) {
-		Type type = new TypeToken<Set<String>>() {
-		}.getType();
+		Type type = new TypeToken<Set<String>>() {}.getType();
 		return gson.fromJson(json, type);
 	}
 
 	private static List<String> getListOfStringsFromJsonArray(Gson gson, String json) {
-		Type type = new TypeToken<List<String>>() {
-		}.getType();
+		Type type = new TypeToken<List<String>>() {}.getType();
 		return gson.fromJson(json, type);
 	}
 
-	private static <T> String constructJson(Gson gson, Cube cube, List<T> results, AggregationQuery query, boolean ignoreMeasures) {
+	private static <T> String constructQueryJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
+	                                             DefiningClassLoader classLoader, Integer limit, Integer offset) {
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
 		JsonArray jsonResults = new JsonArray();
 		AggregationStructure structure = cube.getStructure();
 
-		try {
-			for (T result : results) {
-				Class<?> resultClass = result.getClass();
-				JsonObject resultJsonObject = new JsonObject();
+		int start = offset == null ? 0 : offset;
+		int end = limit == null ? results.size() : start + limit;
 
-				for (String key : resultKeys) {
-					KeyType keyType = structure.getKeyType(key);
-					Field dimensionField = resultClass.getField(key);
-					Object fieldValue = dimensionField.get(result);
-					if (keyType instanceof KeyTypeDate) {
-						String fieldValueString = keyType.toString(fieldValue);
-						resultJsonObject.add(key, new JsonPrimitive(fieldValueString));
-					} else {
-						resultJsonObject.add(key, gson.toJsonTree(fieldValue));
-					}
-				}
+		for (int i = start; i < end; ++i) {
+			T result = results.get(i);
+			Class<?> resultClass = result.getClass();
+			JsonObject resultJsonObject = new JsonObject();
 
-				if (!ignoreMeasures) {
-					for (String field : resultFields) {
-						Field measureField = resultClass.getField(field);
-						Object measureValue = measureField.get(result);
-						resultJsonObject.add(field, gson.toJsonTree(measureValue));
-					}
-				}
-
-				jsonResults.add(resultJsonObject);
+			for (String key : resultKeys) {
+				addValueOfKey(resultJsonObject, result, resultClass, key, structure, classLoader, gson);
 			}
-		} catch (Exception e) {
-			logger.trace("Reflection exception thrown while trying to serialize fields. Query: {}. Cube: {}", query, cube, e);
+
+			for (String field : resultFields) {
+				Object fieldValue = generateGetter(classLoader, resultClass, field).get(result);
+				resultJsonObject.add(field, gson.toJsonTree(fieldValue));
+			}
+
+			jsonResults.add(resultJsonObject);
 		}
 
 		return jsonResults.toString();
+	}
+
+	private static <T> String constructDimensionsJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
+	                                                  DefiningClassLoader classLoader) {
+		List<String> resultKeys = query.getResultKeys();
+		List<String> resultFields = query.getResultFields();
+		JsonArray jsonResults = new JsonArray();
+		AggregationStructure structure = cube.getStructure();
+
+		for (T result : results) {
+			Class<?> resultClass = result.getClass();
+			JsonObject resultJsonObject = new JsonObject();
+
+			for (String key : resultKeys) {
+				addValueOfKey(resultJsonObject, result, resultClass, key, structure, classLoader, gson);
+			}
+
+			jsonResults.add(resultJsonObject);
+		}
+
+		return jsonResults.toString();
+	}
+
+	private static void addValueOfKey(JsonObject resultJsonObject, Object result, Class<?> resultClass, String key,
+	                                  AggregationStructure structure, DefiningClassLoader classLoader, Gson gson) {
+		KeyType keyType = structure.getKeyType(key);
+		Object valueOfKey = generateGetter(classLoader, resultClass, key).get(result);
+		if (keyType instanceof KeyTypeDate) {
+			String fieldValueString = keyType.toString(valueOfKey);
+			resultJsonObject.add(key, new JsonPrimitive(fieldValueString));
+		} else {
+			resultJsonObject.add(key, gson.toJsonTree(valueOfKey));
+		}
+	}
+
+	private static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
+		AsmBuilder<FieldGetter> builder = new AsmBuilder<>(classLoader, FieldGetter.class);
+		builder.method("get", field(cast(arg(0), objClass), propertyName));
+		return builder.newInstance();
 	}
 
 	private static HttpResponse processException(Exception exception) {

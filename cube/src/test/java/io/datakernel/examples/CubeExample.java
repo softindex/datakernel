@@ -214,7 +214,7 @@ public class CubeExample {
 		eventloop.run();
 
 		/* Launch HTTP server, that accepts JSON queries to cube. */
-		AsyncHttpServer server = httpServer(cube, eventloop, HTTP_SERVER_PORT);
+		AsyncHttpServer server = httpServer(cube, eventloop, classLoader, HTTP_SERVER_PORT);
 		server.listen();
 		eventloop.run();
 

@@ -576,4 +576,29 @@ public class ExpressionTest {
 
 		assertEquals(testClass.a(), 1);
 	}
+
+	public interface Initializable {
+		void init();
+	}
+
+	public interface Getter {
+		Object get(Object obj);
+	}
+
+	@org.junit.Test
+	public void testGetter() throws Exception {
+		DefiningClassLoader classLoader = new DefiningClassLoader();
+		Initializable intHolder = new AsmBuilder<>(classLoader, Initializable.class)
+				.field("x", int.class)
+				.method("init", set(field(self(), "x"), value(42)))
+				.newInstance();
+
+		intHolder.init();
+
+		Getter getter = new AsmBuilder<>(classLoader, Getter.class)
+				.method("get", field(cast(arg(0), intHolder.getClass()), "x"))
+				.newInstance();
+
+		assertEquals(42, getter.get(intHolder));
+	}
 }
