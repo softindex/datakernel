@@ -20,6 +20,7 @@ import com.google.common.collect.Sets;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.*;
 import io.datakernel.cube.dimensiontype.DimensionType;
 import io.datakernel.cube.dimensiontype.DimensionTypeDate;
@@ -27,7 +28,8 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.http.middleware.*;
+import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.stream.StreamConsumers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -63,19 +65,23 @@ public final class HttpJsonApiServer {
 
 		MiddlewareServlet servlet = new MiddlewareServlet();
 
-		servlet.get(INFO_REQUEST_PATH, new HttpSuccessHandler() {
+		servlet.get(INFO_REQUEST_PATH, new AsyncHttpServlet() {
 			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
 				logger.info("Got request for available drill downs.");
-				Set<String> dimensions = getStringsFromJsonArray(gson, request.getParameter("dimensions"));
-				Set<String> measures = getStringsFromJsonArray(gson, request.getParameter("measures"));
-				CubeQuery.CubePredicates cubePredicates = gson.fromJson(request.getParameter("filters"), CubeQuery.CubePredicates.class);
-				AvailableDrillDowns availableDrillDowns =
-						cube.getAvailableDrillDowns(dimensions, Sets.newHashSet(cubePredicates.predicates()), measures);
+				try {
+					Set<String> dimensions = getStringsFromJsonArray(gson, request.getParameter("dimensions"));
+					Set<String> measures = getStringsFromJsonArray(gson, request.getParameter("measures"));
+					CubeQuery.CubePredicates cubePredicates = gson.fromJson(request.getParameter("filters"), CubeQuery.CubePredicates.class);
+					AvailableDrillDowns availableDrillDowns =
+							cube.getAvailableDrillDowns(dimensions, Sets.newHashSet(cubePredicates.predicates()), measures);
 
-				String responseJson = gson.toJson(availableDrillDowns);
+					String responseJson = gson.toJson(availableDrillDowns);
 
-				context.send(HttpResponse.create().body(wrapUTF8(responseJson)));
+					callback.onResult(HttpResponse.create().body(wrapUTF8(responseJson)));
+				} catch (Exception e) {
+					callback.onResult(processException(e));
+				}
 			}
 		});
 
@@ -83,51 +89,44 @@ public final class HttpJsonApiServer {
 
 		servlet.get(DIMENSIONS_REQUEST_PATH, queryHandler(gson, cube, eventloop, true));
 
-		servlet.use(new HttpErrorHandler() {
-			@Override
-			public void handle(Exception exception, HttpRequest request, MiddlewareRequestErrorContext context) {
-				if (exception instanceof CubeException) {
-					context.send(HttpResponse.create(500).body(wrapUTF8(exception.getMessage())));
-				} else {
-					context.send(HttpResponse.internalServerError500());
-				}
-			}
-		});
-
 		return new AsyncHttpServer(eventloop, servlet).setListenPort(port);
 	}
 
-	private static HttpSuccessHandler queryHandler(final Gson gson, final Cube cube, final NioEventloop eventloop,
-	                                               final boolean ignoreMeasures) {
-		return new HttpSuccessHandler() {
+	private static AsyncHttpServlet queryHandler(final Gson gson, final Cube cube, final NioEventloop eventloop,
+	                                             final boolean ignoreMeasures) {
+		return new AsyncHttpServlet() {
 			@Override
-			public void handle(final HttpRequest request, final MiddlewareRequestContext context) {
-				final String queryJson = request.getParameter("query");
-				logger.trace("Got query: {}", queryJson);
-				final CubeQuery receivedQuery = gson.fromJson(queryJson, CubeQuery.class);
-				Set<String> availableMeasures = cube.getAvailableMeasures(receivedQuery.getResultDimensions(), receivedQuery.getResultMeasures());
+			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				try {
+					final String queryJson = request.getParameter("query");
+					logger.trace("Got query: {}", queryJson);
+					final CubeQuery receivedQuery = gson.fromJson(queryJson, CubeQuery.class);
+					Set<String> availableMeasures = cube.getAvailableMeasures(receivedQuery.getResultDimensions(), receivedQuery.getResultMeasures());
 
-				final CubeQuery finalQuery = new CubeQuery()
-						.dimensions(receivedQuery.getResultDimensions())
-						.measures(newArrayList(availableMeasures))
-						.predicates(receivedQuery.getPredicates());
+					final CubeQuery finalQuery = new CubeQuery()
+							.dimensions(receivedQuery.getResultDimensions())
+							.measures(newArrayList(availableMeasures))
+							.predicates(receivedQuery.getPredicates());
 
-				Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
-				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
+					Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
+					final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
-				consumerStream.addCompletionCallback(new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						String jsonResult = constructJson(gson, cube, consumerStream.getList(), finalQuery, ignoreMeasures);
-						context.send(HttpResponse.create().body(wrapUTF8(jsonResult)));
-						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
-					}
+					consumerStream.addCompletionCallback(new CompletionCallback() {
+						@Override
+						public void onComplete() {
+							String jsonResult = constructJson(gson, cube, consumerStream.getList(), finalQuery, ignoreMeasures);
+							callback.onResult(HttpResponse.create().body(wrapUTF8(jsonResult)));
+							logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
+						}
 
-					@Override
-					public void onException(Exception e) {
-						logger.error("Sending response to query {} failed.", finalQuery, e);
-					}
-				});
+						@Override
+						public void onException(Exception e) {
+							logger.error("Sending response to query {} failed.", finalQuery, e);
+						}
+					});
+				} catch (Exception e) {
+					callback.onResult(processException(e));
+				}
 			}
 		};
 	}
@@ -185,5 +184,13 @@ public final class HttpJsonApiServer {
 		}
 
 		return jsonResults.toString();
+	}
+
+	private static HttpResponse processException(Exception exception) {
+		HttpResponse internalServerError = HttpResponse.internalServerError500();
+		if (exception instanceof CubeException) {
+			internalServerError.body(wrapUTF8(exception.getMessage()));
+		}
+		return internalServerError;
 	}
 }
