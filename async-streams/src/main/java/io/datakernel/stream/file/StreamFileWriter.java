@@ -56,6 +56,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	private boolean pendingAsyncOperation;
 
+	private static int i = 0;
+
 	/**
 	 * Creates a new instance of StreamFileWriter
 	 *
@@ -114,23 +116,36 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void doFlush() {
+
 		final ByteBuf buf = queue.poll();
 		final int len = buf.remaining();
+
+		logger.info("In doFlush: {}, {}, {}, {}", buf, pendingAsyncOperation, queue.size(), getStatus());
 
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
+				logger.info("Completed writing in file: {}", buf);
+
 				buf.recycle();
 				pendingAsyncOperation = false;
 				position += len;
 				if (queue.size() <= 1) {
 					resume();
 				}
-				postFlush();
+				eventloop.post(new Runnable() {
+					@Override
+					public void run() {
+						postFlush();
+					}
+				});
 			}
 
 			@Override
 			public void onException(final Exception e) {
+				logger.info("Failed to write in file: {}", buf);
+
+				pendingAsyncOperation = false;
 				logger.error("Can't write data in file", e);
 				buf.recycle();
 				closeWithError(e);
@@ -139,7 +154,9 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void postFlush() {
-		if (getStatus() == END_OF_STREAM && queue.isEmpty()) {
+		logger.info("In PostFlash: {}, {}, {}", pendingAsyncOperation, queue.size(), getStatus());
+		if (getStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
+			logger.info("Finishing success");
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
@@ -153,6 +170,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			});
 		}
 		if (!queue.isEmpty() && !pendingAsyncOperation && asyncFile != null) {
+			logger.info("writing in file");
 			pendingAsyncOperation = true;
 			eventloop.post(new Runnable() {
 				@Override
@@ -166,21 +184,34 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onStarted() {
+		logger.info("StreamFileWriter  onStarted");
 		if (asyncFile != null || pendingAsyncOperation)
 			return;
 		pendingAsyncOperation = true;
 		AsyncFile.open(eventloop, executor, path, options, new ResultCallback<AsyncFile>() {
 			@Override
 			public void onResult(AsyncFile result) {
+				logger.info("File {} is opened for writing!", path.getFileName());
 				pendingAsyncOperation = false;
 				asyncFile = result;
-				postFlush();
+				eventloop.post(new Runnable() {
+					@Override
+					public void run() {
+						postFlush();
+					}
+				});
 			}
 
 			@Override
-			public void onException(Exception e) {
+			public void onException(final Exception e) {
 				logger.error("Can't open file {} for writing", path.getFileName(), e);
-				closeWithError(e);
+				pendingAsyncOperation = false;
+				eventloop.post(new Runnable() {
+					@Override
+					public void run() {
+						closeWithError(e);
+					}
+				});
 			}
 		});
 	}
@@ -188,6 +219,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	@Override
 	public void onData(ByteBuf buf) {
 		checkState(getStatus() < END_OF_STREAM, "Unexpected buf after end-of-stream %s : %s", this, buf);
+		logger.info("Receiving data item {}", buf);
 		queue.offer(buf);
 		if (queue.size() > 1) {
 			suspend();
@@ -204,34 +236,47 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onEndOfStream() {
-		logger.trace("endOfStream for {}, upstream: {}", this, upstreamProducer);
+		logger.info("endOfStream for {}, upstream: {}", this, upstreamProducer);
 		postFlush();
 	}
 
 	@Override
 	protected void onError(final Exception e) {
-		logger.info("Closing with error!");
-		doCleanup(new CompletionCallback() {
-			private void tryRemoveFile() {
-				if (removeFileOnException) {
-					try {
-						Files.delete(path);
-					} catch (IOException e1) {
-						logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
-					}
+		if (pendingAsyncOperation) {
+			while (i++ < 10) {
+				logger.info("Closing with error! Still there is pendingAsyncOperation");
+			}
+
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					onError(e);
 				}
-				closeWithError(e);
-			}
+			});
+		} else {
+			logger.info("Closing with error!");
+			doCleanup(new CompletionCallback() {
+				private void tryRemoveFile() {
+					if (removeFileOnException) {
+						try {
+							Files.delete(path);
+						} catch (IOException e1) {
+							logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
+						}
+					}
+					closeWithError(e);
+				}
 
-			@Override
-			public void onComplete() {
-				tryRemoveFile();
-			}
+				@Override
+				public void onComplete() {
+					tryRemoveFile();
+				}
 
-			@Override
-			public void onException(Exception ignored) {
-				tryRemoveFile();
-			}
-		});
+				@Override
+				public void onException(Exception ignored) {
+					tryRemoveFile();
+				}
+			});
+		}
 	}
 }
