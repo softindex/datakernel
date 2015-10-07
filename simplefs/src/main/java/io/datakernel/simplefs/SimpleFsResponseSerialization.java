@@ -28,6 +28,7 @@ public class SimpleFsResponseSerialization {
 					.subclass("Error", SimpleFsResponseError.class)
 					.subclass("FileList", SimpleFsResponseFileList.class)
 					.subclass("ResponseOk", SimpleFsResponseOperationOk.class)
+					.subclass("Acknowledge", SimpleFsResponseAcknowledge.class)
 					.build())
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()

@@ -323,7 +323,8 @@ public class SimpleFsServerTest {
 		consumer1.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.error("File 1 downloaded");
+				logger.info("File 1 downloaded");
+				stop(fileServer);
 			}
 
 			@Override
@@ -334,7 +335,7 @@ public class SimpleFsServerTest {
 		consumer2.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.error("File 2 downloaded");
+				logger.info("File 2 downloaded");
 				stop(fileServer);
 			}
 
