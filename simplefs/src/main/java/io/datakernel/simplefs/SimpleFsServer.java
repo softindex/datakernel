@@ -299,7 +299,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 					return;
 				}
 
-				if (register.isRegistered(fileName)) {
+				if (register.isModified(fileName)) {
 					refuse(messaging, "File is being processed now");
 					return;
 				}
@@ -313,6 +313,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				messaging.sendMessage(new SimpleFsResponseOperationOk());
 
 				register.ensureStatus(fileName, DOWNLOADING);
+				register.onStartDownload(fileName);
 
 				StreamProducer<ByteBuf> producer = StreamFileReader.readFileFrom(eventloop, executor, bufferSize, source, 0L);
 				StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
@@ -321,13 +322,13 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				producer.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						register.remove(fileName);
+						register.onEndDownload(fileName);
 						logger.trace("File {} send", fileName);
 					}
 
 					@Override
 					public void onException(Exception e) {
-						register.remove(fileName);
+						register.onEndDownload(fileName);
 						logger.error("File {} was not send", fileName, e);
 					}
 				});
