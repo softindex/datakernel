@@ -52,7 +52,7 @@ public class StressClient {
 
 	private static Random rand = new Random();
 
-	private static final Path clientStorage = Paths.get("./tmp/stress_test/clients_storage");
+	private static final Path clientStorage = Paths.get("./test/clients_storage");
 	private static Path downloads;
 
 	List<String> existingClientFiles = new ArrayList<>();
@@ -135,6 +135,7 @@ public class StressClient {
 				client.deleteFile(fileName, new CompletionCallback() {
 					@Override
 					public void onComplete() {
+						existingClientFiles.remove(fileName);
 						logger.info("Deleted: " + fileName);
 					}
 

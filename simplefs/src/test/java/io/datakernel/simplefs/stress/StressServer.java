@@ -36,7 +36,7 @@ public class StressServer {
 	private static final int SERVER_PORT = 6732;
 
 	// Specify path. Should be manually deleted after server stop
-	private static final String tmpPath = "";
+	private static final String tmpPath = "./test/server_storage";
 	private static final Path SERVER_STORAGE_PATH = Paths.get(tmpPath);
 
 	private static final ExecutorService executor = Executors.newCachedThreadPool();

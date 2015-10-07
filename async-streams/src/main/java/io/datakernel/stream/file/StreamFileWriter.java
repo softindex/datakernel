@@ -133,17 +133,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			public void onException(final Exception e) {
 				logger.error("Can't write data in file", e);
 				buf.recycle();
-				doCleanup(new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						closeWithError(e);
-					}
-
-					@Override
-					public void onException(Exception ignored) {
-						closeWithError(e);
-					}
-				});
+				closeWithError(e);
 			}
 		});
 	}
@@ -220,8 +210,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onError(final Exception e) {
+		logger.info("Closing with error!");
 		doCleanup(new CompletionCallback() {
-
 			private void tryRemoveFile() {
 				if (removeFileOnException) {
 					try {
