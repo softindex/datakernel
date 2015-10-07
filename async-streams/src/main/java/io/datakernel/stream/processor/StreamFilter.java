@@ -99,4 +99,13 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Statele
 		assert (out = "" + jmxOutputItems) != null;
 		return '{' + super.toString() + " in:" + in + " out:" + out + '}';
 	}
+
+	//for test only
+	byte getUpstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
+	}
 }

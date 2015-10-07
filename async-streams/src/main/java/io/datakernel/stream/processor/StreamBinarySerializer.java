@@ -55,6 +55,8 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			outputBuffer.set(null, 0);
 			logger.trace("endOfStream {}, upstream: {}", this, upstreamConsumer.getUpstream());
 			downstreamProducer.sendEndOfStream();
+			// TODO (vsavchuk) close?
+			close();
 		}
 
 		@Override
@@ -322,5 +324,15 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				+ " items:" + (assertOn ? "" + jmxItems : "?")
 				+ " bufs:" + jmxBufs
 				+ " bytes:" + jmxBytes + '}';
+	}
+
+	//for test only
+	byte getUpstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	// for test only
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
 	}
 }

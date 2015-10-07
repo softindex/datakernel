@@ -19,6 +19,8 @@ package io.datakernel.stream.processor;
 import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
@@ -29,6 +31,7 @@ import java.util.List;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamGsonSerializerTest {
 
@@ -94,8 +97,14 @@ public class StreamGsonSerializerTest {
 		eventloop.run();
 
 		assertEquals(items, consumerToList.getList());
+		assertTrue(serializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(serializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+
+		assertTrue(deserializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(deserializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
+	// TODO (vsavchuk) test with error
 }

@@ -138,6 +138,7 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1_Statele
 	@Override
 	protected void onUpstreamEndOfStream() {
 		downstreamProducer.sendEndOfStream();
+		upstreamConsumer.close();
 	}
 
 	/**
@@ -162,5 +163,15 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1_Statele
 		String items = "?";
 		assert (items = "" + jmxItems) != null;
 		return '{' + super.toString() + " items:" + items + '}';
+	}
+
+	//for test only
+	byte getUpstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	// for test only
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
 	}
 }

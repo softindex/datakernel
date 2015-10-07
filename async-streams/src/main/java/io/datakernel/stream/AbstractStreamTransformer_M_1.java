@@ -55,7 +55,6 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		@Override
 		protected final void onEndOfStream() {
 			countEndOfStreams++;
-			// TODO (vsavchuk) close() or not to close()?
 			close();
 			onUpstreamEndOfStream();
 		}
@@ -179,13 +178,13 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		return upstreamConsumer;
 	}
 
-	protected void suspendAllUpstreams() {
+	protected final void suspendAllUpstreams() {
 		for (AbstractUpstreamConsumer<?> upstreamConsumer : upstreamConsumers) {
 			upstreamConsumer.suspend();
 		}
 	}
 
-	protected void resumeAllUpstreams() {
+	protected final void resumeAllUpstreams() {
 		for (AbstractUpstreamConsumer<?> upstreamConsumer : upstreamConsumers) {
 			upstreamConsumer.resume();
 		}
@@ -214,13 +213,11 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 	@Override
 	public final void onConsumerSuspended() {
 		downstreamProducer.onConsumerSuspended();
-		suspendAllUpstreams();
 	}
 
 	@Override
 	public final void onConsumerResumed() {
 		downstreamProducer.onConsumerResumed();
-		resumeAllUpstreams();
 	}
 
 	@Override

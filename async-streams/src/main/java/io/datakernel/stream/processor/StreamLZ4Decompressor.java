@@ -47,6 +47,7 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.sendEndOfStream();
 			((DownstreamProducer) downstreamProducer).recycleBufs();
+			close();
 		}
 
 		@Override
@@ -287,5 +288,15 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 				" inBufs:" + jmxBufsInput +
 				" outBufs:" + jmxBufsOutput +
 				'}';
+	}
+
+	//for test only
+	byte getUpstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	// for test only
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
 	}
 }

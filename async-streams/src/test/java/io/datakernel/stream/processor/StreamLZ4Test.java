@@ -100,6 +100,19 @@ public class StreamLZ4Test {
 		assertArrayEquals(expected, actual);
 		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+
+		assertTrue(preBuf.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(preBuf.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+
+		assertTrue(compressor.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(compressor.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+
+		assertTrue(postBuf.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(postBuf.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+
+		assertTrue(decompressor.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(decompressor.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+
 	}
 
 	@Test

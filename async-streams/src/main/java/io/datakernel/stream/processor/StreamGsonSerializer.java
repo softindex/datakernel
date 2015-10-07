@@ -51,6 +51,7 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 			flushBuffer(downstreamDataReceiver);
 			downstreamProducer.sendEndOfStream();
 			recycleBufs();
+			close();
 		}
 
 		@Override
@@ -272,4 +273,12 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 				+ " bytes:" + jmxBytes + '}';
 	}
 
+	// for test only
+	byte getUpstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
+	}
 }

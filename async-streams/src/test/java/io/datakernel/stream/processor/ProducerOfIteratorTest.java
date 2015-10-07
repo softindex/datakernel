@@ -17,10 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -46,6 +43,7 @@ public class ProducerOfIteratorTest {
 
 		assertEquals(list, consumer.getList());
 		assertTrue(((AbstractStreamProducer) producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(consumer.getStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 }

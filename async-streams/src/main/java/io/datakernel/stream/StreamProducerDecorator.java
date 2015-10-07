@@ -19,7 +19,7 @@ package io.datakernel.stream;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * See also:

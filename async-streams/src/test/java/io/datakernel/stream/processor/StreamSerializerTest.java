@@ -19,10 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.*;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,6 +65,8 @@ public class StreamSerializerTest {
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertTrue(serializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(serializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -88,6 +87,13 @@ public class StreamSerializerTest {
 		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+
+		assertTrue(serializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(serializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+
+		// TODO (vsavchuk) fix
+//		assertTrue(deserializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(deserializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 }

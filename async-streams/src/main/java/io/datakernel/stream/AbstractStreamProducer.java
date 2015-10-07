@@ -98,6 +98,9 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			}
 		}
 
+		// TODO (vsavchuk) if not firstTime and firstTime too, when connect and in Suspend go to Resume
+		// TODO (vsavchuk) make test with different status fo Consumer and Producer
+
 		if (status == END_OF_STREAM) {
 			downstreamConsumer.onProducerEndOfStream();
 		}

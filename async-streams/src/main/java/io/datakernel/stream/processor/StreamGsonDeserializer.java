@@ -38,6 +38,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.produce();
+			close();
 		}
 
 		@Override
@@ -213,4 +214,13 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 				+ " bytes:" + jmxBytes + '}';
 	}
 
+	//for test only
+	byte getUpstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	//for test only
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
+	}
 }

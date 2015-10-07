@@ -39,7 +39,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.send(createEndOfStreamBlock());
 			downstreamProducer.sendEndOfStream();
-
+			close();
 		}
 
 		@Override
@@ -266,5 +266,15 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 				" outBytes:" + jmxBytesOutput +
 				" bufs:" + jmxBufs +
 				'}';
+	}
+
+	//for test only
+	byte getUpstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	// for test only
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
 	}
 }

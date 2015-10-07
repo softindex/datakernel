@@ -163,6 +163,8 @@ public class StreamUnionTest {
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
+		// TODO (vsavchuk) проблема в concat, source1 вже почав стрімити, а source0, ще не почав, того в нього і нема реального Producer
+		// TODO (vsavchuk) коли консюмер робити suspend він прокидується кожному UpstreamConsumer а він в свою чергу продюсеру, але для source0 продюсера нема на цей момент, того і вилітав NullPointerException;
 		StreamProducer<Integer> source0 = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2)),
 				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
@@ -181,7 +183,6 @@ public class StreamUnionTest {
 		streamUnion.streamTo(consumer);
 		eventloop.run();
 
-		System.out.println(list.size());
-//		assertTrue(list.size() == 3);
+		assertTrue(list.size() == 3);
 	}
 }

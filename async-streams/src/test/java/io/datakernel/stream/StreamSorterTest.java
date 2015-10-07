@@ -71,7 +71,10 @@ public class StreamSorterTest {
 
 			@Override
 			public void scheduleNext() {
-				if (numberToSend > 9) abort();
+				if (numberToSend > 9) {
+					abort();
+					return;
+				}
 				if (scheduledRunnable != null && status >= END_OF_STREAM)
 					return;
 				if (numberToSend >= 5) {
@@ -228,7 +231,6 @@ public class StreamSorterTest {
 		eventloop.run();
 		storage.cleanup();
 
-		System.out.println(list.size());
 		assertTrue(list.size() == 2);
 		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(((StreamForwarder) sorter.getSortedStream()).getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
@@ -242,8 +244,7 @@ public class StreamSorterTest {
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofIterable(eventloop, asList(5, 1, 4, 3, 2))
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
 		);
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);

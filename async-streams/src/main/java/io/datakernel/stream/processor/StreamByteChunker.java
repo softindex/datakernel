@@ -118,4 +118,14 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		this.downstreamProducer = new DownstreamProducer(minChunkSize, maxChunkSize);
 	}
 
+	// for test only
+	byte getUpstreamConsumerStatus() {
+		return upstreamConsumer.getStatus();
+	}
+
+	// for test only
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
+	}
+
 }

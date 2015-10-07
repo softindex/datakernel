@@ -133,14 +133,18 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected void suspend() {
 		if (status == READY) {
 			status = SUSPENDED;
-			upstreamProducer.onConsumerSuspended();
+			if (upstreamProducer != null) {
+				upstreamProducer.onConsumerSuspended();
+			}
 		}
 	}
 
 	protected void resume() {
 		if (status == SUSPENDED) {
 			status = READY;
-			upstreamProducer.onConsumerResumed();
+			if (upstreamProducer != null) {
+				upstreamProducer.onConsumerResumed();
+			}
 		}
 	}
 
@@ -167,7 +171,9 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		error = e;
 		if (internal) {
 			logger.info("StreamConsumer {} closed with error", this);
-			upstreamProducer.onConsumerError(e);
+			if (upstreamProducer != null) {
+				upstreamProducer.onConsumerError(e);
+			}
 		}
 		for (CompletionCallback callback : completionCallbacks) {
 			callback.onException(e);

@@ -18,10 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Predicate;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -55,6 +52,8 @@ public class StreamFilterTest {
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
 		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(filter.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(filter.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 	@Test
@@ -97,6 +96,9 @@ public class StreamFilterTest {
 
 		assertEquals(asList(1, 2, 3), list);
 		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(consumer1.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertTrue(streamFilter.getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(streamFilter.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
 
 	}
 
@@ -170,5 +172,8 @@ public class StreamFilterTest {
 
 		assertTrue(list.size() == 3);
 		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(consumer.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertTrue(streamFilter.getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(streamFilter.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
 	}
 }
