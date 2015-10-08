@@ -163,8 +163,6 @@ public final class HttpJsonApiServer {
 				List<String> measures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
 				String predicatesJson = request.getParameter("filters");
 				String orderingsJson = request.getParameter("sort");
-				String limitString = request.getParameter("limit");
-				String offsetString = request.getParameter("offset");
 
 				AggregationQuery.QueryPredicates queryPredicates = null;
 				if (predicatesJson != null) {
@@ -190,14 +188,11 @@ public final class HttpJsonApiServer {
 				Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
 				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
-				final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
-				final Integer offset = offsetString == null ? null : Integer.valueOf(offsetString);
-
 				consumerStream.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						String jsonResult = constructQueryJson(gson, cube, consumerStream.getList(), finalQuery,
-								classLoader, limit, offset);
+								classLoader);
 						callback.onResult(createResponse(jsonResult));
 						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
 					}
@@ -247,25 +242,13 @@ public final class HttpJsonApiServer {
 	}
 
 	private static <T> String constructQueryJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
-	                                             DefiningClassLoader classLoader, Integer limit, Integer offset) {
+	                                             DefiningClassLoader classLoader) {
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
-		JsonObject jsonResult = new JsonObject();
-		JsonArray jsonRecords = new JsonArray();
+		JsonArray jsonResults = new JsonArray();
 		AggregationStructure structure = cube.getStructure();
 
-		int start = offset == null ? 0 : offset;
-		int end;
-
-		if (limit == null)
-			end = results.size();
-		else if (start + limit > results.size())
-			end = results.size();
-		else
-			end = start + limit;
-
-		for (int i = start; i < end; ++i) {
-			T result = results.get(i);
+		for (T result : results) {
 			Class<?> resultClass = result.getClass();
 			JsonObject resultJsonObject = new JsonObject();
 
@@ -278,19 +261,15 @@ public final class HttpJsonApiServer {
 				resultJsonObject.add(field, gson.toJsonTree(fieldValue));
 			}
 
-			jsonRecords.add(resultJsonObject);
+			jsonResults.add(resultJsonObject);
 		}
 
-		jsonResult.add("records", jsonRecords);
-		jsonResult.addProperty("count", results.size());
-
-		return jsonResult.toString();
+		return jsonResults.toString();
 	}
 
 	private static <T> String constructDimensionsJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
 	                                                  DefiningClassLoader classLoader) {
 		List<String> resultKeys = query.getResultKeys();
-		List<String> resultFields = query.getResultFields();
 		JsonArray jsonResults = new JsonArray();
 		AggregationStructure structure = cube.getStructure();
 
