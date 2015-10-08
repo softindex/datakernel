@@ -162,24 +162,17 @@ public final class HttpJsonApiServer {
 				List<String> dimensions = getListOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
 				List<String> measures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
 				String predicatesJson = request.getParameter("filters");
-				String orderingsJson = request.getParameter("sort");
 
 				AggregationQuery.QueryPredicates queryPredicates = null;
 				if (predicatesJson != null) {
 					queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
 				}
 
-				Map<String, String> orderings = getMapFromJsonArray(gson, orderingsJson);
-
 				Set<String> availableMeasures = cube.getAvailableMeasures(dimensions, measures);
 
 				final AggregationQuery finalQuery = new AggregationQuery()
 						.keys(dimensions)
 						.fields(newArrayList(availableMeasures));
-
-				if (orderings != null) {
-					addOrderingsFromMap(finalQuery, orderings);
-				}
 
 				if (queryPredicates != null) {
 					finalQuery.predicates(queryPredicates);
@@ -207,28 +200,11 @@ public final class HttpJsonApiServer {
 		};
 	}
 
-	private static AggregationQuery addOrderingsFromMap(AggregationQuery query, Map<String, String> orderings) {
-		for (Map.Entry<String, String> entry : orderings.entrySet()) {
-			String propertyName = entry.getKey();
-			String direction = entry.getValue();
-			if (direction.equals("asc"))
-				query.orderAsc(propertyName);
-			else if (direction.equals("desc"))
-				query.orderDesc(propertyName);
-		}
-		return query;
-	}
-
 	private static <T> StreamConsumers.ToList<T> queryCube(Class<T> resultClass, AggregationQuery query, Cube cube,
 	                                                       NioEventloop eventloop) {
 		StreamConsumers.ToList<T> consumerStream = StreamConsumers.toList(eventloop);
 		cube.query(0, resultClass, query).streamTo(consumerStream);
 		return consumerStream;
-	}
-
-	private static Map<String, String> getMapFromJsonArray(Gson gson, String json) {
-		Type type = new TypeToken<Map<String, String>>() {}.getType();
-		return gson.fromJson(json, type);
 	}
 
 	private static Set<String> getSetOfStringsFromJsonArray(Gson gson, String json) {
