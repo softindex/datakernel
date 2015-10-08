@@ -149,7 +149,34 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void postFlush() {
-		if (getStatus() == END_OF_STREAM && queue.isEmpty()) {
+		if (error != null && !pendingAsyncOperation && queue.isEmpty()) {
+			doCleanup(new CompletionCallback() {
+
+				private void tryRemoveFile() {
+					if (removeFileOnException) {
+						try {
+							Files.delete(path);
+						} catch (IOException e1) {
+							logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
+						}
+					}
+					closeWithError(error);
+				}
+
+				@Override
+				public void onComplete() {
+					tryRemoveFile();
+				}
+
+				@Override
+				public void onException(Exception ignored) {
+					tryRemoveFile();
+				}
+			});
+			return;
+		}
+
+		if (getStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
@@ -220,28 +247,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onError(final Exception e) {
-		doCleanup(new CompletionCallback() {
-
-			private void tryRemoveFile() {
-				if (removeFileOnException) {
-					try {
-						Files.delete(path);
-					} catch (IOException e1) {
-						logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
-					}
-				}
-				closeWithError(e);
-			}
-
-			@Override
-			public void onComplete() {
-				tryRemoveFile();
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-				tryRemoveFile();
-			}
-		});
+		error = e;
+		postFlush();
 	}
 }

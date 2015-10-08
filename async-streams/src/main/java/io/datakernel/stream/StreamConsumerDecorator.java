@@ -36,45 +36,57 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 		this.actualConsumer = checkNotNull(actualConsumer);
 	}
 
+	public StreamConsumerDecorator() {
+	}
+
 	@Override
 	public final StreamDataReceiver<T> getDataReceiver() {
 		return actualConsumer.getDataReceiver();
 	}
 
+	public final void setActualConsumer(StreamConsumer<T> actualConsumer) {
+		this.actualConsumer = actualConsumer;
+		if (actualProducer != null) {
+			streamFrom(actualProducer);
+		}
+	}
+
 	@Override
 	public final void streamFrom(StreamProducer<T> actualProducer) {
 		this.actualProducer = actualProducer;
-		this.actualConsumer.streamFrom(new StreamProducer<T>() {
-			@Override
-			public void streamTo(StreamConsumer<T> downstreamConsumer) {
-				StreamConsumerDecorator.this.actualProducer.streamTo(actualConsumer);
-			}
+		if (actualConsumer != null) {
+			this.actualConsumer.streamFrom(new StreamProducer<T>() {
+				@Override
+				public void streamTo(StreamConsumer<T> downstreamConsumer) {
+					StreamConsumerDecorator.this.actualProducer.streamTo(actualConsumer);
+				}
 
-			@Override
-			public void bindDataReceiver() {
-				StreamConsumerDecorator.this.actualProducer.bindDataReceiver();
-			}
+				@Override
+				public void bindDataReceiver() {
+					StreamConsumerDecorator.this.actualProducer.bindDataReceiver();
+				}
 
-			@Override
-			public void onConsumerSuspended() {
-				StreamConsumerDecorator.this.onConsumerSuspended();
-			}
+				@Override
+				public void onConsumerSuspended() {
+					StreamConsumerDecorator.this.onConsumerSuspended();
+				}
 
-			@Override
-			public void onConsumerResumed() {
-				StreamConsumerDecorator.this.onConsumerResumed();
-			}
+				@Override
+				public void onConsumerResumed() {
+					StreamConsumerDecorator.this.onConsumerResumed();
+				}
 
-			@Override
-			public void onConsumerError(Exception e) {
-				StreamConsumerDecorator.this.onConsumerError(e);
-			}
+				@Override
+				public void onConsumerError(Exception e) {
+					StreamConsumerDecorator.this.onConsumerError(e);
+				}
 
-			@Override
-			public void addProducerCompletionCallback(CompletionCallback completionCallback) {
-				throw new UnsupportedOperationException(); // not needed, it will not be called from outside
-			}
-		});
+				@Override
+				public void addProducerCompletionCallback(CompletionCallback completionCallback) {
+					throw new UnsupportedOperationException(); // not needed, it will not be called from outside
+				}
+			});
+		}
 	}
 
 	// extension hooks, intended for override:

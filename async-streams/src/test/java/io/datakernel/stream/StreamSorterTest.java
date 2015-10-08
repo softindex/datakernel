@@ -262,5 +262,10 @@ public class StreamSorterTest {
 
 		assertTrue(list.size() == 0);
 		assertTrue(sorter.getItems() == 4);
+
+		assertTrue(consumerToList.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertTrue(sorter.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertTrue(((StreamForwarder)sorter.getSortedStream()).getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((StreamForwarder)sorter.getSortedStream()).getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
 	}
 }

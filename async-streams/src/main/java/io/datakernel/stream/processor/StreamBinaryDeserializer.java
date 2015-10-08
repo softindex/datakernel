@@ -47,8 +47,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.produce();
 //			((DownstreamProducer)downstreamProducer).recycleBufs();
-			// TODO (vsavchuk) fix
-//			close();
+			close();
 		}
 
 		@Override
@@ -206,7 +205,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			}
 
 			if (byteBufs.isEmpty()) {
-				if (upstreamConsumer.getStatus() == END_OF_STREAM) {
+				if (upstreamConsumer.getStatus() >= END_OF_STREAM) {
 					downstreamProducer.sendEndOfStream();
 					recycleBufs();
 				} else {

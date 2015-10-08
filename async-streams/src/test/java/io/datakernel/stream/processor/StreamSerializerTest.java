@@ -24,6 +24,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -73,10 +74,11 @@ public class StreamSerializerTest {
 	public void test2() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
 
+		List<Integer> list = new ArrayList<>();
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamBinarySerializer<Integer> serializerStream = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
 		StreamBinaryDeserializer<Integer> deserializerStream = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 12);
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 
 		source.streamTo(serializerStream);
 		serializerStream.streamTo(deserializerStream);
@@ -91,8 +93,7 @@ public class StreamSerializerTest {
 		assertTrue(serializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
 		assertTrue(serializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
 
-		// TODO (vsavchuk) fix
-//		assertTrue(deserializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(deserializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
 		assertTrue(deserializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
