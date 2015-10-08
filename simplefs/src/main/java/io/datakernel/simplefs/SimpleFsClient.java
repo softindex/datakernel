@@ -76,28 +76,20 @@ public class SimpleFsClient implements SimpleFs {
 						})
 						.addHandler(SimpleFsResponseOperationOk.class, new MessagingHandler<SimpleFsResponseOperationOk, SimpleFsCommand>() {
 							@Override
-							public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
+							public void onMessage(SimpleFsResponseOperationOk item, final Messaging<SimpleFsCommand> messaging) {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
-
-								consumer.addCompletionCallback(new CompletionCallback() {
-									@Override
-									public void onComplete() {
-										logger.info("File {} send, trying to commit");
-										commit(fileName, callback);
-									}
-
-									@Override
-									public void onException(final Exception e) {
-										logger.error("Can't send file {}", fileName, e);
-										callback.onException(e);
-									}
-								});
-
 								streamForwarder.streamTo(streamByteChunker);
 								streamByteChunker.streamTo(consumer);
-								messaging.shutdownReader();
+							}
+						})
+						.addHandler(SimpleFsResponseAcknowledge.class, new MessagingHandler<SimpleFsResponseAcknowledge, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseAcknowledge item, Messaging<SimpleFsCommand> messaging) {
+								logger.info("Received acknowledgement for {}", fileName);
+								messaging.shutdown();
+								commit(fileName, callback);
 							}
 						})
 						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {

@@ -44,18 +44,20 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.simplefs.FileStatusRegister.FileStatus.*;
-import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.*;
+import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.RUNNING;
+import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.SHUTDOWN;
 
 public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements NioService {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServer.class);
 
 	private static final String IN_PROGRESS_EXTENSION = ".partial";
 	private static final String TMP_DIRECTORY = "tmp";
-	private static final long DELAY_BEFORE_DELETE = 10 * 1000;
 
 	private final ExecutorService executor;
-	private final FileStatusRegister register;
+
+	private int pendingOperationsCounter;
+	private CompletionCallback callbackOnStop;
+
 	private final Path fileStorage;
 	private final Path tmpStorage;
 	private final int bufferSize;
@@ -63,7 +65,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 	private ServerStatus serverStatus;
 
 	enum ServerStatus {
-		RUNNING, SHUTDOWN, STOPPED
+		RUNNING, SHUTDOWN
 	}
 
 	private SimpleFsServer(final NioEventloop eventloop, final Path fileStorage, final Path tmpStorage, ExecutorService executor, int bufferSize) {
@@ -72,7 +74,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 		this.tmpStorage = tmpStorage;
 		this.executor = executor;
 		this.bufferSize = bufferSize;
-		this.register = new FileStatusRegister();
 	}
 
 	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor) {
@@ -93,7 +94,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 		logger.info("Starting SimpleFS");
 
 		if (serverStatus == RUNNING) {
-			logger.warn("Already running");
 			callback.onComplete();
 			return;
 		}
@@ -113,32 +113,13 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 	@Override
 	public void stop(final CompletionCallback callback) {
 		logger.info("Stopping SimpleFS");
-		if (serverStatus != RUNNING) {
-			logger.warn("Already stopped");
+		if (serverStatus == SHUTDOWN || pendingOperationsCounter == 0) {
 			callback.onComplete();
+			self().close();
 			return;
 		}
+		callbackOnStop = callback;
 		serverStatus = SHUTDOWN;
-		register.executeOnUploadsComplete(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				try {
-					clearFolder(tmpStorage);
-				} catch (IOException e) {
-					callback.onException(e);
-				}
-				serverStatus = STOPPED;
-				self().close();
-				callback.onComplete();
-				logger.trace("SimpleFS stopped");
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("Failed to stop SimpleFS", e);
-				callback.onException(e);
-			}
-		});
 	}
 
 	@Override
@@ -159,14 +140,16 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 		return new MessagingHandler<SimpleFsCommandUpload, SimpleFsResponse>() {
 			@Override
 			public void onMessage(final SimpleFsCommandUpload item, final Messaging<SimpleFsResponse> messaging) {
-				final String fileName = getFileName(item.filename);
 
+				final String fileName = getFileName(item.filename);
 				logger.info("Server received command to upload file {}", fileName);
 
-				if (serverStatus != RUNNING && !register.isApproved(fileName)) {
+				if (serverStatus != RUNNING) {
 					refuse(messaging, "Server is being shut down");
 					return;
 				}
+
+				startOperation();
 
 				Path destination = fileStorage.resolve(fileName);
 				Path inProgress = tmpStorage.resolve(fileName + IN_PROGRESS_EXTENSION);
@@ -178,13 +161,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 
 				messaging.sendMessage(new SimpleFsResponseOperationOk());
 
-				// status == approved ? ready : uploading
-				if (register.isApproved(fileName)) {
-					register.ensureStatus(fileName, READY);
-				} else {
-					register.ensureStatus(fileName, UPLOADING);
-				}
-
 				logger.trace("Starting uploading file {}", fileName);
 				StreamProducer<ByteBuf> producer = messaging.binarySocketReader();
 				StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, inProgress, true);
@@ -193,53 +169,19 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				diskWrite.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						logger.trace("{} upload finished", fileName);
-
-						if (register.isReady(fileName) || register.isApproved(fileName)) {
-							try {
-								commit(fileName);
-							} catch (IOException e) {
-								messaging.sendMessage(new SimpleFsResponseError("Exception thrown while trying to commit: " + e.getMessage()));
-								logger.error("Exception thrown while trying to commit {}", fileName, e);
-							}
-							register.remove(fileName);
-						} else {
-							register.ensureStatus(fileName, READY);
-							long timestamp = eventloop.currentTimeMillis();
-							eventloop.scheduleBackground(timestamp + DELAY_BEFORE_DELETE, defineScheduledTermination(fileName));
-							logger.trace("File {} scheduled for deletion", fileName);
-						}
+						logger.info("Uploaded file {}", fileName);
+						messaging.sendMessage(new SimpleFsResponseAcknowledge());
+						messaging.shutdown();
 					}
 
 					@Override
 					public void onException(Exception e) {
+						logger.error("Can't upload file {}", fileName, e);
 						messaging.sendMessage(new SimpleFsResponseError("Can't upload file: " + e.getMessage()));
-						logger.error("Can't upload file {}", item.filename, e);
+						messaging.shutdown();
 					}
 				});
-
-				messaging.shutdownWriter();
 			}
-
-			private Runnable defineScheduledTermination(final String fileName) {
-				return new Runnable() {
-					@Override
-					public void run() {
-						logger.trace("File {} timed out (uploaded but not commited)", fileName);
-						Path file = tmpStorage.resolve(fileName + IN_PROGRESS_EXTENSION);
-						if (register.isRegistered(fileName) && Files.exists(file)) {
-							try {
-								Files.delete(file);
-								logger.trace("Deleted temporary file {}", fileName);
-							} catch (IOException e) {
-								logger.error("Can't delete temporary file {}", fileName, e);
-							}
-						}
-						register.remove(fileName);
-					}
-				};
-			}
-
 		};
 	}
 
@@ -250,37 +192,26 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				final String fileName = getFileName(item.fileName);
 				logger.info("Server received command to commit file {}", fileName);
 
-				if (serverStatus != RUNNING
-						&& !register.isReady(fileName) && !register.isUploading(fileName)) {
+				if (serverStatus != RUNNING) {
 					refuse(messaging, "Server is being shut down");
 					return;
 				}
 
-				if (register.isApproved(fileName)) {
-					refuse(messaging, "Already approved for commit");
-				}
-
-				if (register.isReady(fileName)) {
+				final Path destination = fileStorage.resolve(fileName);
+				final Path inProgress = tmpStorage.resolve(fileName + IN_PROGRESS_EXTENSION);
+				try {
+					Files.move(inProgress, destination);
+					logger.trace("File {} commited", fileName);
+				} catch (IOException e) {
 					try {
-						commit(fileName);
-					} catch (IOException e) {
-						messaging.sendMessage(new SimpleFsResponseError("Exception while trying to commit: " + e.getMessage()));
-						logger.error("Exception while trying to commit {}", fileName, e);
+						Files.delete(inProgress);
+						logger.trace("Temporary file {} removed(impossible to commit)", inProgress.toAbsolutePath());
+					} catch (IOException e1) {
+						logger.trace("Can't remove temporary file {} (impossible to commit) ", inProgress.toAbsolutePath());
 					}
-					register.remove(fileName);
-				} else {
-					register.ensureStatus(fileName, APPROVED);
-					eventloop.scheduleBackground(eventloop.currentTimeMillis() + DELAY_BEFORE_DELETE, new Runnable() {
-						@Override
-						public void run() {
-							logger.trace("Commit timed out. File approved but not uploaded");
-							if (register.isApproved(fileName)) {
-								register.remove(fileName);
-							}
-						}
-					});
-					logger.trace("File {} approved for commit", fileName);
+					messaging.sendMessage(new SimpleFsResponseError(e.getMessage()));
 				}
+				operationFinished();
 				messaging.sendMessage(new SimpleFsResponseOperationOk());
 				messaging.shutdown();
 			}
@@ -299,35 +230,28 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 					return;
 				}
 
-				if (register.isRegistered(fileName)) {
-					refuse(messaging, "File is being processed now");
-					return;
-				}
-
 				Path source = fileStorage.resolve(fileName);
 				if (!Files.exists(source)) {
 					refuse(messaging, "File not found");
 					return;
 				}
-
+				startOperation();
 				messaging.sendMessage(new SimpleFsResponseOperationOk());
-
-				register.ensureStatus(fileName, DOWNLOADING);
 
 				StreamProducer<ByteBuf> producer = StreamFileReader.readFileFrom(eventloop, executor, bufferSize, source, 0L);
 				StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
 
 				producer.streamTo(consumer);
-				producer.addCompletionCallback(new CompletionCallback() {
+				consumer.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						register.remove(fileName);
+						operationFinished();
 						logger.trace("File {} send", fileName);
 					}
 
 					@Override
 					public void onException(Exception e) {
-						register.remove(fileName);
+						operationFinished();
 						logger.error("File {} was not send", fileName, e);
 					}
 				});
@@ -346,11 +270,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 
 				if (serverStatus != RUNNING) {
 					refuse(messaging, "Server is being shut down");
-					return;
-				}
-
-				if (register.isRegistered(fileName)) {
-					refuse(messaging, "File is being processed now");
 					return;
 				}
 
@@ -403,23 +322,14 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 		messaging.shutdown();
 	}
 
-	private void commit(String fileName) throws IOException {
-		final Path destination = fileStorage.resolve(fileName);
-		final Path inProgress = tmpStorage.resolve(fileName + IN_PROGRESS_EXTENSION);
-		try {
-			Files.move(inProgress, destination);
-			logger.trace("File {} commited", fileName);
-		} catch (IOException e) {
-			logger.trace("Can't commit file {}", destination.toAbsolutePath());
-			String errorMsg = e.getMessage();
-			try {
-				Files.delete(inProgress);
-				logger.trace("Temporary file {} removed(impossible to commit)", inProgress.toAbsolutePath());
-			} catch (IOException e1) {
-				errorMsg = errorMsg + " / " + e1.getMessage();
-				logger.trace("Can't remove temporary file {} (impossible to commit) ", inProgress.toAbsolutePath());
-			}
-			throw new IOException(errorMsg);
+	private void startOperation() {
+		pendingOperationsCounter++;
+	}
+
+	private void operationFinished() {
+		pendingOperationsCounter--;
+		if (pendingOperationsCounter == 0 && callbackOnStop != null) {
+			callbackOnStop.onComplete();
 		}
 	}
 

@@ -304,6 +304,57 @@ public class SimpleFsServerTest {
 		executor.shutdown();
 	}
 
+	@Test
+	public void testTwoSimultaneousDownloads() throws IOException {
+		String requestedFile = "big_file";
+		String resultFile1 = "big_file_downloaded1";
+		String resultFile2 = "big_file_downloaded2";
+
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+
+		Files.copy(clientStorage.resolve(requestedFile), serverStorage.resolve(requestedFile));
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		StreamFileWriter consumer1 = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile1));
+		StreamFileWriter consumer2 = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile2));
+		consumer1.addCompletionCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("File 1 downloaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+			}
+		});
+		consumer2.addCompletionCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("File 2 downloaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
+			}
+		});
+
+		client.download(requestedFile, consumer1);
+		client.download(requestedFile, consumer2);
+
+		eventloop.run();
+		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile1).toFile()));
+	}
+
 	private void uploadFiles(NioEventloop eventloop, final String... fileNames) throws IOException {
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		ExecutorService executor = Executors.newCachedThreadPool();

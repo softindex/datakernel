@@ -25,6 +25,7 @@ import static io.datakernel.simplefs.FileStatusRegister.FileStatus.*;
 
 class FileStatusRegister {
 	private final Map<String, FileStatus> file2status = new HashMap<>();
+	private final Map<String, Integer> pendingDownloadsStatus = new HashMap<>();
 	private CompletionCallback callback;
 
 	void executeOnUploadsComplete(CompletionCallback callback) {
@@ -67,6 +68,32 @@ class FileStatusRegister {
 
 	void ensureStatus(String fileName, FileStatus state) {
 		file2status.put(fileName, state);
+	}
+
+	public boolean isModified(String fileName) {
+		FileStatus status = file2status.get(fileName);
+		return status != null && status != DOWNLOADING;
+	}
+
+	public void onStartDownload(String fileName) {
+		Integer downloadsQuantity = pendingDownloadsStatus.get(fileName);
+		if (downloadsQuantity == null) {
+			pendingDownloadsStatus.put(fileName, 1);
+		} else {
+			pendingDownloadsStatus.put(fileName, downloadsQuantity + 1);
+		}
+	}
+
+	public void onEndDownload(String fileName) {
+		Integer downloadsQuantity = pendingDownloadsStatus.get(fileName);
+		if (downloadsQuantity == null) {
+			throw new RuntimeException("This file is not being downloaded now");
+		} else {
+			if (downloadsQuantity == 1) {
+				remove(fileName);
+			}
+			pendingDownloadsStatus.put(fileName, downloadsQuantity - 1);
+		}
 	}
 
 	enum FileStatus {
