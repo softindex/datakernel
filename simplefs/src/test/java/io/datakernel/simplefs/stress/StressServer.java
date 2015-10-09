@@ -19,7 +19,6 @@ package io.datakernel.simplefs.stress;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.simplefs.SimpleFsServer;
-import io.datakernel.simplefs.StopAndHugeFileUploadTest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class StressServer {
-	private static final Logger logger = LoggerFactory.getLogger(StopAndHugeFileUploadTest.class);
+	private static final Logger logger = LoggerFactory.getLogger(StressServer.class);
 
 	private static final int SERVER_PORT = 6732;
 

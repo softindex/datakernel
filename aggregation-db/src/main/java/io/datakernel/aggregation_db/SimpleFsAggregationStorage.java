@@ -17,6 +17,7 @@
 package io.datakernel.aggregation_db;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
@@ -75,7 +76,8 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		serializer.streamTo(compressor);
 
-		client.upload(path(id), compressor, new CompletionCallback() {
+		StreamConsumer<ByteBuf> consumer = client.upload(path(id));
+		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Uploaded chunk #{} to SimpleFS successfully", id);
@@ -86,6 +88,8 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 				logger.error("Uploading chunk #{} to SimpleFS failed", id, exception);
 			}
 		});
+
+		compressor.streamTo(consumer);
 
 		return serializer;
 	}
