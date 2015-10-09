@@ -113,7 +113,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 	@Override
 	public void stop(final CompletionCallback callback) {
 		logger.info("Stopping SimpleFS");
-		if (serverStatus == SHUTDOWN || pendingOperationsCounter == 0) {
+		if (pendingOperationsCounter == 0) {
 			callback.onComplete();
 			self().close();
 			return;
@@ -192,7 +192,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				final String fileName = getFileName(item.fileName);
 				logger.info("Server received command to commit file {}", fileName);
 
-				if (serverStatus != RUNNING) {
+				if (serverStatus == SHUTDOWN && pendingOperationsCounter != 0) {
 					refuse(messaging, "Server is being shut down");
 					return;
 				}

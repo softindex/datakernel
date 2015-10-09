@@ -16,19 +16,6 @@
 
 package io.datakernel.cube;
 
-import static io.datakernel.async.AsyncCallbacks.waitAll;
-import static java.util.Arrays.asList;
-import static java.util.concurrent.Executors.newSingleThreadExecutor;
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.google.common.collect.ImmutableMap;
@@ -52,6 +39,19 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static io.datakernel.async.AsyncCallbacks.waitAll;
+import static java.util.Arrays.asList;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
+import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeTest {
@@ -145,7 +145,7 @@ public class CubeTest {
 		assertEquals(expected, actual);
 	}
 
-	private static final int LISTEN_PORT = 45555;
+	private static final int LISTEN_PORT = 45578;
 
 	private SimpleFsServer prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();

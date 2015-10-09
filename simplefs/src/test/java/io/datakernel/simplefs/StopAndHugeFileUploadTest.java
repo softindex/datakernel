@@ -17,7 +17,9 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.file.StreamFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,7 +88,8 @@ public class StopAndHugeFileUploadTest {
 				final StreamFileReader producer3 = StreamFileReader.readFileFully(eventloop, executor,
 						16 * 1024, clientStorage.resolve(rejectedFile));
 
-				client1.upload(hugeFile, producer1, new CompletionCallback() {
+				final StreamConsumer<ByteBuf> consumer1 = client1.upload(hugeFile);
+				consumer1.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.info(hugeFile + " downloaded successfully");
@@ -97,11 +100,13 @@ public class StopAndHugeFileUploadTest {
 						logger.error(hugeFile + " can't upload", e);
 					}
 				});
+				producer1.streamTo(consumer1);
 
 				eventloop.schedule(eventloop.currentTimeMillis() + 5000, new Runnable() {
 					@Override
 					public void run() {
-						client2.upload(rejectedFile, producer3, new CompletionCallback() {
+						StreamConsumer<ByteBuf> consumer3 = client2.upload(rejectedFile);
+						consumer3.addCompletionCallback(new CompletionCallback() {
 							@Override
 							public void onComplete() {
 								logger.info("Should not happen");
@@ -112,13 +117,15 @@ public class StopAndHugeFileUploadTest {
 								logger.error("Can't upload " + rejectedFile, e);
 							}
 						});
+						producer3.streamTo(consumer3);
 					}
 				});
 
 				eventloop.schedule(eventloop.currentTimeMillis() + 2800, new Runnable() {
 					@Override
 					public void run() {
-						client2.upload(downloadedFile, producer2, new CompletionCallback() {
+						StreamConsumer<ByteBuf> consumer2 = client2.upload(downloadedFile);
+						consumer2.addCompletionCallback(new CompletionCallback() {
 							@Override
 							public void onComplete() {
 								logger.info(downloadedFile + " downloaded successfully");
@@ -129,6 +136,7 @@ public class StopAndHugeFileUploadTest {
 								logger.error(downloadedFile + " can't upload", e);
 							}
 						});
+						producer2.streamTo(consumer2);
 					}
 				});
 
