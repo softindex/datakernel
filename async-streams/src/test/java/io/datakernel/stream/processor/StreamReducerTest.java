@@ -30,6 +30,7 @@ import java.util.List;
 import static io.datakernel.stream.processor.StreamReducers.mergeDeduplicateReducer;
 import static java.util.Arrays.asList;
 import static java.util.Collections.EMPTY_LIST;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -53,6 +54,10 @@ public class StreamReducerTest {
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
 		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(streamReducer.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertArrayEquals(streamReducer.getUpstreamConsumersStatus(), new byte[]{
+				AbstractStreamConsumer.CLOSED,
+		});
 	}
 
 	@Test
@@ -94,6 +99,18 @@ public class StreamReducerTest {
 		assertTrue(((AbstractStreamProducer) source5).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(((AbstractStreamProducer) source6).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(((AbstractStreamProducer) source7).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+
+		assertTrue(streamReducer.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertArrayEquals(streamReducer.getUpstreamConsumersStatus(), new byte[]{
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED
+		});
 	}
 
 	@Test
@@ -140,15 +157,17 @@ public class StreamReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 1);
-		// TODO (vsavchuk) add method to see streamReducer status? streamReducer.getStatus() for test only
-
-		System.out.println(((AbstractStreamProducer) source1).getStatus());
-		System.out.println(((AbstractStreamProducer) source2).getStatus());
-		System.out.println(((AbstractStreamProducer) source3).getStatus());
 
 		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(((AbstractStreamProducer) source3).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+
+		assertTrue(streamReducer.getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertArrayEquals(streamReducer.getUpstreamConsumersStatus(), new byte[]{
+				AbstractStreamConsumer.CLOSED_WITH_ERROR,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED
+		});
 	}
 
 //	@Test

@@ -57,6 +57,7 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 
 		@Override
 		protected final void onEndOfStream() {
+			close();
 			onUpstreamEndOfStream();
 		}
 

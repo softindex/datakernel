@@ -58,7 +58,6 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> {
 			if (allUpstreamsEndOfStream()) {
 				downstreamProducer.sendEndOfStream();
 			}
-			close();
 		}
 	}
 
@@ -81,6 +80,20 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> {
 
 	public StreamConsumer<T> newInput() {
 		return addInput(new UpstreamConsumer());
+	}
+
+	// for test only
+	byte[] getUpstreamConsumersStatus() {
+		byte[] bytes = new byte[upstreamConsumers.size()];
+		for (int i = 0; i < upstreamConsumers.size(); i++) {
+			bytes[i] = upstreamConsumers.get(i).getStatus();
+		}
+		return bytes;
+	}
+
+	// for test only
+	byte getDownstreamProducerStatus() {
+		return downstreamProducer.getStatus();
 	}
 
 }

@@ -27,8 +27,7 @@ import java.util.List;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.EMPTY_LIST;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("unchecked")
 public class StreamUnionTest {
@@ -69,6 +68,17 @@ public class StreamUnionTest {
 		assertTrue(((AbstractStreamProducer) source4).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(((AbstractStreamProducer) source5).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 		assertTrue(((AbstractStreamProducer) source6).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+
+		assertTrue(streamUnion.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertArrayEquals(streamUnion.getUpstreamConsumersStatus(), new byte[]{
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED,
+				AbstractStreamConsumer.CLOSED
+		});
 	}
 
 	@Test
@@ -112,6 +122,13 @@ public class StreamUnionTest {
 		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 //		source2.getStatus() should be equals to CLOSE
 //		assertTrue(source2.getStatus() == CLOSED_WITH_ERROR);
+
+		assertTrue(streamUnion.getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertArrayEquals(streamUnion.getUpstreamConsumersStatus(), new byte[]{
+				AbstractStreamConsumer.CLOSED_WITH_ERROR,
+				AbstractStreamConsumer.CLOSED_WITH_ERROR,
+				AbstractStreamConsumer.CLOSED
+		});
 	}
 
 //	@Test
@@ -163,8 +180,6 @@ public class StreamUnionTest {
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
-		// TODO (vsavchuk) проблема в concat, source1 вже почав стрімити, а source0, ще не почав, того в нього і нема реального Producer
-		// TODO (vsavchuk) коли консюмер робити suspend він прокидується кожному UpstreamConsumer а він в свою чергу продюсеру, але для source0 продюсера нема на цей момент, того і вилітав NullPointerException;
 		StreamProducer<Integer> source0 = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2)),
 				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
@@ -184,5 +199,10 @@ public class StreamUnionTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 3);
+		assertTrue(streamUnion.getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertArrayEquals(streamUnion.getUpstreamConsumersStatus(), new byte[]{
+				AbstractStreamConsumer.CLOSED_WITH_ERROR,
+				AbstractStreamConsumer.CLOSED_WITH_ERROR
+		});
 	}
 }

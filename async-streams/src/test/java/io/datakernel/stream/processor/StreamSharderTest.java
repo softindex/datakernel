@@ -24,7 +24,9 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.stream.AbstractStreamProducer.*;
 import static java.util.Arrays.asList;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -55,7 +57,11 @@ public class StreamSharderTest {
 		assertEquals(asList(2, 4), consumer1.getList());
 		assertEquals(asList(1, 3), consumer2.getList());
 
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == END_OF_STREAM);
+		assertTrue(streamSharder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertArrayEquals(streamSharder.getDownstreamProducersStatus(), new byte[]{END_OF_STREAM, END_OF_STREAM});
+		assertTrue(((AbstractStreamConsumer) consumer1).getStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(((AbstractStreamConsumer) consumer1).getStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 	@Test
@@ -76,7 +82,11 @@ public class StreamSharderTest {
 		assertEquals(asList(2, 4), consumer1.getList());
 		assertEquals(asList(1, 3), consumer2.getList());
 
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == END_OF_STREAM);
+		assertTrue(streamSharder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertArrayEquals(streamSharder.getDownstreamProducersStatus(), new byte[]{END_OF_STREAM, END_OF_STREAM});
+		assertTrue(((AbstractStreamConsumer) consumer1).getStatus() == AbstractStreamConsumer.CLOSED);
+		assertTrue(((AbstractStreamConsumer) consumer1).getStatus() == AbstractStreamConsumer.CLOSED);
 	}
 
 	@Test
@@ -117,7 +127,11 @@ public class StreamSharderTest {
 
 		assertTrue(list1.size() == 1);
 		assertTrue(list2.size() == 2);
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamProducer) source).getStatus() == CLOSED_WITH_ERROR);
+		assertTrue(streamSharder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertArrayEquals(streamSharder.getDownstreamProducersStatus(), new byte[]{CLOSED_WITH_ERROR, CLOSED_WITH_ERROR});
+		assertTrue(((AbstractStreamConsumer) consumer1).getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamConsumer) consumer1).getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
 	}
 
 //	@Test
@@ -187,5 +201,10 @@ public class StreamSharderTest {
 
 		assertTrue(list1.size() == 1);
 		assertTrue(list2.size() == 2);
+
+		assertTrue(streamSharder.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertArrayEquals(streamSharder.getDownstreamProducersStatus(), new byte[]{CLOSED_WITH_ERROR, CLOSED_WITH_ERROR});
+		assertTrue(((AbstractStreamConsumer) consumer1).getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertTrue(((AbstractStreamConsumer) consumer1).getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
 	}
 }

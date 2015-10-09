@@ -99,15 +99,15 @@ public class ServiceGraph implements ConcurrentService {
 	 */
 
 	// TODO (vsavchuk) bug?, this is not the same as old version(LinkedHashMultiMap), search other
-	private final Map<Node, Set<Node>> forwards = new HashMap<Node, Set<Node>>() {
+	private final Map<Node, Set<Node>> forwards = new LinkedHashMap<Node, Set<Node>>() {
 		@Override
 		public Set<Node> get(final Object key) {
 			if (!this.containsKey(key)) {
-				return new HashSet<Node>() {
+				return new LinkedHashSet<Node>() {
 					@Override
 					public boolean add(Node o) {
-						if (!backwards.containsKey(key)) {
-							backwards.put((Node) key, this);
+						if (!forwards.containsKey(key)) {
+							forwards.put((Node) key, this);
 						}
 						return super.add(o);
 					}
@@ -124,11 +124,11 @@ public class ServiceGraph implements ConcurrentService {
 	 */
 
 	// TODO (vsavchuk) bug?, this is not the same as old version
-	private final Map<Node, Set<Node>> backwards = new HashMap<Node, Set<Node>>() {
+	private final Map<Node, Set<Node>> backwards = new LinkedHashMap<Node, Set<Node>>() {
 		@Override
 		public Set<Node> get(final Object key) {
 			if (!this.containsKey(key)) {
-				return new HashSet<Node>() {
+				return new LinkedHashSet<Node>() {
 					@Override
 					public boolean add(Node o) {
 						if (!backwards.containsKey(key)) {
