@@ -80,16 +80,6 @@ public class CubeHttpApiTest {
 		}
 	}
 
-	public static class QueryResult {
-		private final DataItemResult[] records;
-		private final int count;
-
-		public QueryResult(DataItemResult[] records, int count) {
-			this.records = records;
-			this.count = count;
-		}
-	}
-
 	@Test
 	public void testHttpJsonApi() throws Exception {
 		final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -143,9 +133,7 @@ public class CubeHttpApiTest {
 
 		String response = responseCallback.awaitAndGetResult();
 
-		QueryResult queryResult = gson.fromJson(response, QueryResult.class);
-
-		DataItemResult[] responseEntries = queryResult.records;
+		DataItemResult[] responseEntries = gson.fromJson(response, DataItemResult[].class);
 
 		assertEquals(1, responseEntries.length);
 

@@ -41,6 +41,8 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
@@ -194,7 +196,7 @@ public class CubeTest {
 		Path serverStorage = temporaryFolder.newFolder().toPath();
 		final SimpleFsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
-		AggregationChunkStorage storage = new SimpleFsAggregationStorage(eventloop, aggregationStructure);
+		AggregationChunkStorage storage = new SimpleFsAggregationStorage(eventloop, aggregationStructure, new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
 
 		final StreamConsumer<DataItem1> cubeConsumer1 = cube.consumer(DataItem1.class, DataItem1.DIMENSIONS, DataItem1.METRICS, new MyCommitCallback(cube));
