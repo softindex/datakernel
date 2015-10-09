@@ -346,7 +346,7 @@ public class StreamProducers {
 
 		@Override
 		protected void onError(Exception e) {
-			closeWithError(e);
+
 		}
 	}
 

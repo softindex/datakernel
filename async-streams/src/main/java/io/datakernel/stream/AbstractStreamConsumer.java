@@ -79,18 +79,21 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		}
 
 		if (status >= END_OF_STREAM) {
-			// TODO (vsavchuk) fix
-			upstreamProducer.onConsumerError(new Exception("Extra item"));
+			upstreamProducer.onConsumerError(new Exception("Connection to closed consumer"));
 			return;
 		}
 
 		this.upstreamProducer = upstreamProducer;
 
-		upstreamProducer.streamTo(this);
+		if (status == READY) {
+			this.upstreamProducer.onConsumerResumed();
+		}
 
 		if (status == SUSPENDED) {
 			this.upstreamProducer.onConsumerSuspended();
 		}
+
+		upstreamProducer.streamTo(this);
 
 		if (firstTime) {
 			eventloop.post(new Runnable() {
