@@ -437,7 +437,7 @@ public final class Expressions {
 	}
 
 	public static ExpressionVoid voidExp() {
-		return new ExpressionVoid();
+		return ExpressionVoid.instance;
 	}
 
 	public static ExpressionSwitch switchForPosition(Expression position, List<Expression> list) {

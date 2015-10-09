@@ -67,15 +67,12 @@ public class ExpressionLet implements Expression, StoreDef {
 
 		ExpressionLet that = (ExpressionLet) o;
 
-		if (field != null ? !field.equals(that.field) : that.field != null) return false;
-		return !(var != null ? !var.equals(that.var) : that.var != null);
+		return !(field != null ? !field.equals(that.field) : that.field != null);
 
 	}
 
 	@Override
 	public int hashCode() {
-		int result = field != null ? field.hashCode() : 0;
-		result = 31 * result + (var != null ? var.hashCode() : 0);
-		return result;
+		return field != null ? field.hashCode() : 0;
 	}
 }

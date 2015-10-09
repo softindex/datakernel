@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer;
 
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.serializer.annotations.*;
 import org.junit.Test;
 
@@ -28,10 +29,11 @@ import static org.junit.Assert.*;
 
 @SuppressWarnings("serial")
 public class AsmSerializerTest {
+	private static final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 
 	private static <T> T doTest(Class<?> type, T testData1) {
 		BufferSerializer<T> serializer = SerializerBuilder
-				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.newDefaultInstance(definingClassLoader)
 				.create(type);
 		return doTest(testData1, serializer, serializer);
 	}

@@ -88,8 +88,7 @@ public class ExpressionFor implements Expression {
 		ExpressionFor that = (ExpressionFor) o;
 
 		if (length != null ? !length.equals(that.length) : that.length != null) return false;
-		if (start != null ? !start.equals(that.start) : that.start != null) return false;
-		return !(forVar != null ? !forVar.equals(that.forVar) : that.forVar != null);
+		return !(start != null ? !start.equals(that.start) : that.start != null);
 
 	}
 
@@ -97,7 +96,6 @@ public class ExpressionFor implements Expression {
 	public int hashCode() {
 		int result = length != null ? length.hashCode() : 0;
 		result = 31 * result + (start != null ? start.hashCode() : 0);
-		result = 31 * result + (forVar != null ? forVar.hashCode() : 0);
 		return result;
 	}
 }

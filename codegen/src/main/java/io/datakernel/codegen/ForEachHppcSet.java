@@ -40,8 +40,7 @@ public class ForEachHppcSet implements Expression {
 		ForEachHppcSet that = (ForEachHppcSet) o;
 
 		if (iteratorType != null ? !iteratorType.equals(that.iteratorType) : that.iteratorType != null) return false;
-		if (value != null ? !value.equals(that.value) : that.value != null) return false;
-		return !(forVar != null ? !forVar.equals(that.forVar) : that.forVar != null);
+		return !(value != null ? !value.equals(that.value) : that.value != null);
 
 	}
 
@@ -49,7 +48,6 @@ public class ForEachHppcSet implements Expression {
 	public int hashCode() {
 		int result = iteratorType != null ? iteratorType.hashCode() : 0;
 		result = 31 * result + (value != null ? value.hashCode() : 0);
-		result = 31 * result + (forVar != null ? forVar.hashCode() : 0);
 		return result;
 	}
 

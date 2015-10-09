@@ -102,8 +102,6 @@ public class ExpressionIteratorForEach implements Expression {
 		ExpressionIteratorForEach that = (ExpressionIteratorForEach) o;
 
 		if (collection != null ? !collection.equals(that.collection) : that.collection != null) return false;
-		if (forCollection != null ? !forCollection.equals(that.forCollection) : that.forCollection != null)
-			return false;
 		return !(type != null ? !type.equals(that.type) : that.type != null);
 
 	}
@@ -111,7 +109,6 @@ public class ExpressionIteratorForEach implements Expression {
 	@Override
 	public int hashCode() {
 		int result = collection != null ? collection.hashCode() : 0;
-		result = 31 * result + (forCollection != null ? forCollection.hashCode() : 0);
 		result = 31 * result + (type != null ? type.hashCode() : 0);
 		return result;
 	}
