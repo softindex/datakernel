@@ -24,10 +24,7 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.TransformerNoEnd;
+import io.datakernel.stream.*;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.MessagingStarter;
@@ -63,7 +60,8 @@ public class SimpleFsClient implements SimpleFs {
 	@Override
 	public StreamConsumer<ByteBuf> upload(final String fileName) {
 		final TransformerNoEnd transformer = new TransformerNoEnd(eventloop);
-
+		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+		transformer.streamTo(forwarder);
 		final CompletionCallback closeCallback = transformer.getCloseCallback();
 
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
@@ -83,7 +81,7 @@ public class SimpleFsClient implements SimpleFs {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
-								transformer.streamTo(streamByteChunker);
+								forwarder.streamTo(streamByteChunker);
 								streamByteChunker.streamTo(consumer);
 							}
 						})
@@ -113,8 +111,9 @@ public class SimpleFsClient implements SimpleFs {
 				closeCallback.onException(e);
 			}
 		});
-		StreamFilter<ByteBuf> filter = new StreamFilter<ByteBuf>(eventloop, Predicates.<ByteBuf>alwaysTrue());
-		return transformer;
+		StreamFilter<ByteBuf> filter = new StreamFilter<>(eventloop, Predicates.<ByteBuf>alwaysTrue());
+		filter.streamTo(transformer);
+		return filter;
 	}
 
 	@Override

@@ -393,7 +393,6 @@ public class SimpleFsServerTest {
 					logger.error("Can't upload: {}", fileName, exception);
 				}
 			});
-
 		}
 
 		eventloop.run();
