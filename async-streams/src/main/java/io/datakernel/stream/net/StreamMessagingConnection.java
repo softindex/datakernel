@@ -191,7 +191,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		socketReader.streamTo(forwarder);
 		currentConsumer = forwarder;
-		streamDeserializer.drainBuffersTo(forwarder);
+		streamDeserializer.drainBuffersTo(forwarder.getDataReceiver());
 		return forwarder;
 	}
 

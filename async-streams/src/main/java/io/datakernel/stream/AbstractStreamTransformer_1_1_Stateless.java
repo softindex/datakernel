@@ -29,6 +29,7 @@ public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends Abst
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
 		@Override
 		protected void onUpstreamStarted() {
+			AbstractStreamTransformer_1_1_Stateless.this.onUpstreamStarted();
 		}
 
 		@Override
@@ -45,6 +46,7 @@ public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends Abst
 	protected final class DownstreamProducer extends AbstractDownstreamProducer {
 		@Override
 		protected void onDownstreamStarted() {
+			AbstractStreamTransformer_1_1_Stateless.this.onDownstreamStarted();
 		}
 
 		@Override
@@ -64,6 +66,12 @@ public abstract class AbstractStreamTransformer_1_1_Stateless<I, O> extends Abst
 		this.downstreamProducer = new DownstreamProducer();
 		// TODO (vsavchuk) ???
 		this.downstreamDataReceiver = downstreamProducer.getDownstreamDataReceiver();
+	}
+
+	protected void onUpstreamStarted() {
+	}
+
+	protected void onDownstreamStarted() {
 	}
 
 	protected abstract StreamDataReceiver<I> getUpstreamDataReceiver();

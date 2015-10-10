@@ -433,7 +433,7 @@ public class StreamProducers {
 		 * from producers from iterator
 		 */
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			doNext();
 		}
 
@@ -454,12 +454,12 @@ public class StreamProducers {
 
 						@Override
 						public void onEnd() {
-							actualConsumer.onProducerEndOfStream();
+							sendEndOfStream();
 						}
 
 						@Override
 						public void onException(Exception e) {
-							actualConsumer.onProducerError(e);
+							closeWithError(e);
 						}
 					});
 				}

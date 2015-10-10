@@ -212,9 +212,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	@Override
 	public final void bindDataReceiver() {
 		downstreamProducer.bindDataReceiver();
-		if (upstreamConsumer.getUpstream() != null) {
-			upstreamConsumer.getUpstream().bindDataReceiver();
-		}
+		upstreamConsumer.bindUpstream();
 	}
 
 	public AbstractUpstreamConsumer getUpstreamConsumer() {

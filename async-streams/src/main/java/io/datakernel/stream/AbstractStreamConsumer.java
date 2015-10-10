@@ -113,6 +113,12 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return upstreamProducer;
 	}
 
+	protected void bindUpstream() {
+		if (upstreamProducer != null) {
+			upstreamProducer.bindDataReceiver();
+		}
+	}
+
 	@Override
 	public final void addConsumerCompletionCallback(final CompletionCallback completionCallback) {
 		checkNotNull(completionCallback);

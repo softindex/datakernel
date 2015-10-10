@@ -24,7 +24,7 @@ import io.datakernel.eventloop.Eventloop;
  *
  * @param <T> type of data
  */
-public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1_Stateless<T, T> implements StreamDataReceiver<T> {
+public class StreamForwarder<T> extends AbstractStreamTransformer_1_1_Stateless<T, T> {
 
 	/**
 	 * Creates a new instance of this class
@@ -48,16 +48,6 @@ public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1_Stat
 	protected void onUpstreamEndOfStream() {
 		downstreamProducer.sendEndOfStream();
 		upstreamConsumer.close();
-	}
-
-	/**
-	 * Applies function to received data and sends result to the destination
-	 *
-	 * @param item received data
-	 */
-	@Override
-	public void onData(T item) {
-		downstreamDataReceiver.onData(item);
 	}
 
 	// for test only
