@@ -26,6 +26,8 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -48,7 +50,7 @@ public class ConsumerToListTest {
 		eventloop.run();
 
 		assertEquals(testList2, consumer.getList());
-		assertTrue(((AbstractStreamProducer) producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamProducerStatus.END_OF_STREAM, producer);
 	}
 
 	@Test
@@ -70,7 +72,7 @@ public class ConsumerToListTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertTrue(((AbstractStreamProducer) producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamProducerStatus.END_OF_STREAM, producer);
 	}
 
 }

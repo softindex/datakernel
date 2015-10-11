@@ -221,7 +221,7 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 
 		@Override
 		protected void doProduce() {
-			if (status == READY && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
+			if (isStatusReady() && !leftDeque.isEmpty() && !rightDeque.isEmpty()) {
 				L leftValue = leftDeque.peek();
 				K leftKey = leftKeyFunction.apply(leftValue);
 				R rightValue = rightDeque.peek();
@@ -246,14 +246,14 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
-						if (status != READY)
+						if (!isStatusReady())
 							break;
 						leftValue = leftDeque.peek();
 						leftKey = leftKeyFunction.apply(leftValue);
 					}
 				}
 			}
-			if (status == READY) {
+			if (isStatusReady()) {
 				if (allUpstreamsEndOfStream()) {
 					sendEndOfStream();
 				} else {

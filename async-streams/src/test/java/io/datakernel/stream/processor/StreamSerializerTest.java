@@ -29,6 +29,9 @@ import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
+import static io.datakernel.stream.AbstractStreamConsumer.*;
+import static io.datakernel.stream.AbstractStreamProducer.*;
+import static io.datakernel.stream.processor.Utils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -66,8 +69,8 @@ public class StreamSerializerTest {
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-		assertTrue(serializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
-		assertTrue(serializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamConsumerStatus.CLOSED, serializerStream.getUpstreamConsumer());
+		assertStatus(StreamProducerStatus.END_OF_STREAM, serializerStream.getDownstreamProducer());
 	}
 
 	@Test
@@ -86,15 +89,15 @@ public class StreamSerializerTest {
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamProducerStatus.END_OF_STREAM, source);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 
-		assertTrue(serializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
-		assertTrue(serializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamConsumerStatus.CLOSED, serializerStream.getUpstreamConsumer());
+		assertStatus(StreamProducerStatus.END_OF_STREAM, serializerStream.getDownstreamProducer());
 
-		assertTrue(deserializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
-		assertTrue(deserializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamConsumerStatus.CLOSED, deserializerStream.getUpstreamConsumer());
+		assertStatus(StreamProducerStatus.END_OF_STREAM, deserializerStream.getDownstreamProducer());
 	}
 
 }

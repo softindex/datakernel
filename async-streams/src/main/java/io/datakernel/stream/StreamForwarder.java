@@ -16,7 +16,11 @@
 
 package io.datakernel.stream;
 
+import com.google.common.base.Function;
+import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
+
+import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Provides you apply function before sending data to the destination. It is a {@link AbstractStreamTransformer_1_1}
@@ -24,39 +28,47 @@ import io.datakernel.eventloop.Eventloop;
  *
  * @param <T> type of data
  */
-public class StreamForwarder<T> extends AbstractStreamTransformer_1_1_Stateless<T, T> {
+public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> {
 
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param eventloop eventloop in which filter will be running
-	 */
+	private final UpstreamConsumer upstreamConsumer;
+	private final DownstreamProducer downstreamProducer;
+
+	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+		@Override
+		protected void onUpstreamStarted() {
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return downstreamProducer.getDownstreamDataReceiver();
+		}
+	}
+
+	protected final class DownstreamProducer extends AbstractDownstreamProducer {
+		@Override
+		protected void onDownstreamStarted() {
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+	}
+
 	public StreamForwarder(Eventloop eventloop) {
 		super(eventloop);
-	}
-
-	/**
-	 * Returns callback for right sending data, if its function is identity, returns dataReceiver
-	 * for sending data without filtering.
-	 */
-	@Override
-	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
-		return downstreamDataReceiver;
-	}
-
-	@Override
-	protected void onUpstreamEndOfStream() {
-		downstreamProducer.sendEndOfStream();
-		upstreamConsumer.close();
-	}
-
-	// for test only
-	byte getUpstreamConsumerStatus() {
-		return upstreamConsumer.getStatus();
-	}
-
-	// for test only
-	byte getDownstreamProducerStatus() {
-		return downstreamProducer.getStatus();
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer();
 	}
 }

@@ -20,34 +20,32 @@ import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayDeque;
 
-public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamDataReceiver<ByteBuf>, StreamGsonDeserializerMBean {
+public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamGsonDeserializerMBean {
+	private final UpstreamConsumer upstreamConsumer;
+	private final DownstreamProducer downstreamProducer;
 
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
-
 		@Override
 		protected void onUpstreamStarted() {
-
 		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.produce();
-			close();
 		}
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return StreamGsonDeserializer.this;
+			return downstreamProducer;
 		}
 	}
 
-	private final class DownstreamProducer extends AbstractDownstreamProducer {
+	private final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<ByteBuf> {
 		private static final int INITIAL_BUFFER_SIZE = 1;
 
 		private final BufferReader bufferReader = new BufferReader();
@@ -58,6 +56,10 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 		private final Class<T> type;
 
 		private ByteBuf buf;
+
+		private int jmxItems;
+		private int jmxBufs;
+		private long jmxBytes;
 
 		private DownstreamProducer(ArrayDeque<ByteBuf> byteBufs, int buffersPoolSize, Gson gson, Class<T> type) {
 			this.byteBufs = byteBufs;
@@ -84,10 +86,10 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 
 		@Override
 		protected void doProduce() {
-			while (status == READY && !byteBufs.isEmpty()) {
+			while (isStatusReady() && !byteBufs.isEmpty()) {
 				ByteBuf srcBuf = byteBufs.peek();
 
-				while (status == READY && srcBuf.hasRemaining()) {
+				while (isStatusReady() && srcBuf.hasRemaining()) {
 					// read message body:
 					int zeroPos = findZero(srcBuf.array(), srcBuf.position(), srcBuf.remaining());
 
@@ -113,7 +115,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 					downstreamDataReceiver.onData(item);
 				}
 
-				if (status >= END_OF_STREAM)
+				if (getStatus().isClosed())
 					return;
 
 				if (!srcBuf.hasRemaining()) {
@@ -121,8 +123,9 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 					srcBuf.recycle();
 				}
 			}
+
 			if (byteBufs.isEmpty()) {
-				if (((AbstractStreamProducer) upstreamConsumer.getUpstream()).getStatus() == END_OF_STREAM) {
+				if (upstreamConsumer.getStatus().isEnded()) {
 					sendEndOfStream();
 					buf.recycle();
 					buf = null;
@@ -133,7 +136,8 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 			}
 		}
 
-		private void onData(ByteBuf buf) {
+		@Override
+		public void onData(ByteBuf buf) {
 			jmxBufs++;
 			jmxBytes += buf.remaining();
 			byteBufs.offer(buf);
@@ -155,10 +159,6 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 		}
 	}
 
-	private int jmxItems;
-	private int jmxBufs;
-	private long jmxBytes;
-
 	public StreamGsonDeserializer(Eventloop eventloop, Gson gson, Class<T> type, int buffersPoolSize) {
 		super(eventloop);
 		this.downstreamProducer = new DownstreamProducer(new ArrayDeque<ByteBuf>(buffersPoolSize), buffersPoolSize, gson, type);
@@ -176,31 +176,26 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 
 	@Override
 	public void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver) {
-		for (ByteBuf byteBuf : ((DownstreamProducer) downstreamProducer).byteBufs) {
+		for (ByteBuf byteBuf : downstreamProducer.byteBufs) {
 			dataReceiver.onData(byteBuf);
 		}
-		((DownstreamProducer) downstreamProducer).byteBufs.clear();
+		downstreamProducer.byteBufs.clear();
 		downstreamProducer.sendEndOfStream();
 	}
 
 	@Override
-	public void onData(ByteBuf buf) {
-		((DownstreamProducer) downstreamProducer).onData(buf);
-	}
-
-	@Override
 	public int getItems() {
-		return jmxItems;
+		return downstreamProducer.jmxItems;
 	}
 
 	@Override
 	public int getBufs() {
-		return jmxBufs;
+		return downstreamProducer.jmxBufs;
 	}
 
 	@Override
 	public long getBytes() {
-		return jmxBytes;
+		return downstreamProducer.jmxBytes;
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
@@ -209,18 +204,8 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 		boolean assertOn = false;
 		assert assertOn = true;
 		return '{' + super.toString()
-				+ " items:" + (assertOn ? "" + jmxItems : "?")
-				+ " bufs:" + jmxBufs
-				+ " bytes:" + jmxBytes + '}';
-	}
-
-	//for test only
-	byte getUpstreamConsumerStatus() {
-		return upstreamConsumer.getStatus();
-	}
-
-	//for test only
-	byte getDownstreamProducerStatus() {
-		return downstreamProducer.getStatus();
+				+ " items:" + (assertOn ? "" + downstreamProducer.jmxItems : "?")
+				+ " bufs:" + downstreamProducer.jmxBufs
+				+ " bytes:" + downstreamProducer.jmxBytes + '}';
 	}
 }

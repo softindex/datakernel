@@ -34,7 +34,7 @@ import java.util.ArrayDeque;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus.END_OF_STREAM;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
@@ -224,7 +224,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	public void onData(ByteBuf buf) {
-		checkState(getStatus() < END_OF_STREAM, "Unexpected buf after end-of-stream %s : %s", this, buf);
 		queue.offer(buf);
 		if (queue.size() > 1) {
 			suspend();
@@ -241,7 +240,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onEndOfStream() {
-		logger.trace("endOfStream for {}, upstream: {}", this, upstreamProducer);
+		logger.trace("endOfStream for {}, upstream: {}", this, getUpstream());
 		postFlush();
 	}
 

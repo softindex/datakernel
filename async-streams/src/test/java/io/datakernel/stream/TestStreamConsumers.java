@@ -59,7 +59,7 @@ public class TestStreamConsumers {
 		}
 
 		public final List<T> getList() {
-			checkState(((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM, "Upstream %s is not end of stream", upstreamProducer);
+			checkState(getStatus() == StreamConsumerStatus.CLOSED, "ToList consumer is not closed");
 			return list;
 		}
 	}

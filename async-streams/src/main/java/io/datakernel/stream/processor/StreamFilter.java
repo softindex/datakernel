@@ -20,7 +20,6 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
 import io.datakernel.stream.StreamDataReceiver;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -32,11 +31,61 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @param <T>
  */
-public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Stateless<T, T> implements StreamDataReceiver<T>, StreamFilterMBean {
-	private final Predicate<T> predicate;
+public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> implements StreamFilterMBean {
+	private final UpstreamConsumer upstreamConsumer;
+	private final DownstreamProducer downstreamProducer;
 
-	private int jmxInputItems;
-	private int jmxOutputItems;
+	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+		@Override
+		protected void onUpstreamStarted() {
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return downstreamProducer.predicate == Predicates.alwaysTrue() ?
+					downstreamProducer.getDownstreamDataReceiver() :
+					downstreamProducer;
+		}
+	}
+
+	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<T> {
+		private final Predicate<T> predicate;
+
+		private int jmxInputItems;
+		private int jmxOutputItems;
+
+		public DownstreamProducer(Predicate<T> predicate) {this.predicate = predicate;}
+
+		@Override
+		protected void onDownstreamStarted() {
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+
+		@SuppressWarnings("AssertWithSideEffects")
+		@Override
+		public void onData(T item) {
+			assert jmxInputItems != ++jmxInputItems;
+			if (predicate.apply(item)) {
+				assert jmxOutputItems != ++jmxOutputItems;
+				send(item);
+			}
+		}
+	}
 
 	/**
 	 * Creates a new instance of this class
@@ -47,47 +96,18 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Statele
 	public StreamFilter(Eventloop eventloop, Predicate<T> predicate) {
 		super(eventloop);
 		checkNotNull(predicate);
-		this.predicate = predicate;
-	}
-
-	/**
-	 * Returns callback for right sending data, if its predicate always is true, returns dataReceiver
-	 * for sending data without filtering.
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	protected StreamDataReceiver<T> getUpstreamDataReceiver() {
-		return predicate == Predicates.alwaysTrue() ? downstreamDataReceiver : this;
-	}
-
-	@Override
-	protected void onUpstreamEndOfStream() {
-		downstreamProducer.sendEndOfStream();
-		upstreamConsumer.close();
-	}
-
-	/**
-	 * Checks  predicate's verity and if it is true, sends data to the destination.
-	 *
-	 * @param item received data
-	 */
-	@Override
-	public void onData(T item) {
-		assert jmxInputItems != ++jmxInputItems;
-		if (predicate.apply(item)) {
-			assert jmxOutputItems != ++jmxOutputItems;
-			downstreamDataReceiver.onData(item);
-		}
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer(predicate);
 	}
 
 	@Override
 	public int getInputItems() {
-		return jmxInputItems;
+		return downstreamProducer.jmxInputItems;
 	}
 
 	@Override
 	public int getOutputItems() {
-		return jmxOutputItems;
+		return downstreamProducer.jmxOutputItems;
 	}
 
 	@SuppressWarnings("AssertWithSideEffects")
@@ -95,17 +115,8 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Statele
 	public String toString() {
 		String in = "?";
 		String out = "?";
-		assert (in = "" + jmxInputItems) != null;
-		assert (out = "" + jmxOutputItems) != null;
+		assert (in = "" + downstreamProducer.jmxInputItems) != null;
+		assert (out = "" + downstreamProducer.jmxOutputItems) != null;
 		return '{' + super.toString() + " in:" + in + " out:" + out + '}';
-	}
-
-	//for test only
-	byte getUpstreamConsumerStatus() {
-		return upstreamConsumer.getStatus();
-	}
-
-	byte getDownstreamProducerStatus() {
-		return downstreamProducer.getStatus();
 	}
 }

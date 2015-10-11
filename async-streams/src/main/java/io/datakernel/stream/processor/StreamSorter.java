@@ -28,6 +28,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus.END_OF_STREAM;
 
 /**
  * Represent {@link AbstractStreamTransformer_1_1} which receives data and saves it in collection, when it
@@ -51,7 +52,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 
 	private StreamProducer<T> saveProducer;
 
-	private StreamForwarder<T> result;
+	private StreamForwarder<T> downstream;
 
 	protected long jmxItems;
 
@@ -89,23 +90,22 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 		};
 		this.list = new ArrayList<>(itemsInMemorySize + (itemsInMemorySize >> 4));
 		this.listOfPartitions = new ArrayList<>();
-		this.result = new StreamForwarder<>(eventloop);
-		this.result.addProducerCompletionCallback(new CompletionCallback() {
+		this.downstream = new StreamForwarder<>(eventloop);
+		this.downstream.addProducerCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-
+				close();
 			}
 
 			@Override
 			public void onException(Exception exception) {
-//				StreamSorter.super.onProducerError(exception);
-				StreamSorter.this.closeWithError(exception);
+				closeWithError(exception);
 			}
 		});
 	}
 
 	public StreamProducer<T> getSortedStream() {
-		return result;
+		return downstream;
 	}
 
 	@Override
@@ -144,7 +144,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 			return;
 		}
 
-		if (((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM) {
+		if (getStatus() == END_OF_STREAM) {
 			final StreamMerger<K, T> merger = StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate);
 
 			Collections.sort(list, itemComparator);
@@ -157,27 +157,15 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 				storage.streamReader(partition).streamTo(merger.newInput());
 			}
 
-			merger.streamTo(result);
-			result.addProducerCompletionCallback(new CompletionCallback() {
-				@Override
-				public void onComplete() {
-
-				}
-
-				@Override
-				public void onException(Exception exception) {
-					merger.onConsumerError(exception);
-				}
-			});
+			merger.streamTo(downstream);
 			return;
 		}
 
 		if (bufferFull) {
 			Collections.sort(list, itemComparator);
 			saveProducer = StreamProducers.ofIterable(eventloop, list);
-			this.listOfPartitions.add(storage.nextPartition());
-			StreamConsumer<T> consumer = storage.streamWriter();
-			saveProducer.streamTo(consumer);
+			listOfPartitions.add(storage.nextPartition());
+			saveProducer.streamTo(storage.streamWriter());
 			saveProducer.addProducerCompletionCallback(new CompletionCallback() {
 				@Override
 				public void onComplete() {
@@ -193,7 +181,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 				@Override
 				public void onException(Exception e) {
 //					onConsumerError(e);
-					new StreamProducers.ClosingWithError<T>(eventloop, e).streamTo(result);
+					new StreamProducers.ClosingWithError<T>(eventloop, e).streamTo(downstream);
 				}
 			});
 			this.list = new ArrayList<>(list.size() + (list.size() >> 4));
@@ -205,7 +193,6 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 
 	@Override
 	protected void onStarted() {
-
 	}
 
 	@Override
@@ -215,8 +202,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 
 	@Override
 	protected void onError(Exception e) {
-		result.onProducerError(e);
-		upstreamProducer.onConsumerError(e);
+		StreamProducers.<T>closingWithError(eventloop, e).streamTo(downstream);
 	}
 
 	@Override

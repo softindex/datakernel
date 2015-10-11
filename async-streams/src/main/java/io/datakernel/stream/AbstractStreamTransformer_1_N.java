@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static java.lang.System.arraycopy;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * Represents a {@link AbstractStreamConsumer} with several {@link AbstractStreamProducer} .
@@ -217,6 +218,14 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	@Override
 	public final void addConsumerCompletionCallback(CompletionCallback completionCallback) {
 		upstreamConsumer.addConsumerCompletionCallback(completionCallback);
+	}
+
+	public StreamConsumer getUpstreamConsumer() {
+		return upstreamConsumer;
+	}
+
+	public List<? extends StreamProducer<?>> getDownstreamProducers() {
+		return unmodifiableList(downstreamProducers);
 	}
 
 }

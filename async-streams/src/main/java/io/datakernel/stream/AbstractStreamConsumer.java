@@ -27,6 +27,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus.*;
 
 /**
  * It is basic implementation of {@link StreamConsumer}
@@ -39,24 +40,35 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected final Eventloop eventloop;
 
 	protected StreamProducer<T> upstreamProducer;
+
+	public enum StreamConsumerStatus {
+		READY, SUSPENDED, END_OF_STREAM, CLOSED, CLOSED_WITH_ERROR;
+
+		public boolean isOpen() {
+			return this.ordinal() <= SUSPENDED.ordinal();
+		}
+
+		public boolean isEnded() {
+			return this.ordinal() >= END_OF_STREAM.ordinal();
+		}
+
+		public boolean isClosed() {
+			return this.ordinal() >= CLOSED.ordinal();
+		}
+	}
+
+	private StreamConsumerStatus status = READY;
 	protected Exception error;
 
 	private final List<CompletionCallback> completionCallbacks = new ArrayList<>();
 
-	private byte status;
+	private boolean rewiring;
+
 	protected Object tag;
 
 	protected AbstractStreamConsumer(Eventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
 	}
-
-	public static final byte READY = 0;
-	public static final byte SUSPENDED = 1;
-	public static final byte END_OF_STREAM = 2;
-	public static final byte CLOSED = 3;
-	public static final byte CLOSED_WITH_ERROR = 4;
-
-	private boolean rewiring;
 
 	/**
 	 * Sets wired producer. It will sent data to this consumer
@@ -78,7 +90,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 					new Exception("Downstream disconnected")));
 		}
 
-		if (status >= END_OF_STREAM) {
+		if (status.isEnded()) {
 			upstreamProducer.onConsumerError(new Exception("Connection to closed consumer"));
 			return;
 		}
@@ -113,7 +125,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		return upstreamProducer;
 	}
 
-	protected void bindUpstream() {
+	protected final void bindUpstream() {
 		if (upstreamProducer != null) {
 			upstreamProducer.bindDataReceiver();
 		}
@@ -123,7 +135,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	public final void addConsumerCompletionCallback(final CompletionCallback completionCallback) {
 		checkNotNull(completionCallback);
 		checkArgument(!completionCallbacks.contains(completionCallback));
-		if (status >= CLOSED) {
+		if (status.isClosed()) {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
@@ -158,8 +170,13 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	protected void close() {
-		if (status >= CLOSED)
+		if (status.isClosed())
 			return;
+		if (status != END_OF_STREAM) {
+			logger.warn("Cancelling consumer {}", this);
+			closeWithError(new Exception("Cancel"), true);
+			return;
+		}
 
 		status = CLOSED;
 		for (CompletionCallback callback : completionCallbacks) {
@@ -172,14 +189,14 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	protected void onClosed() {
 	}
 
-	private void closeWithError(Exception e, boolean internal) {
-		if (status >= CLOSED)
+	private void closeWithError(Exception e, boolean sendToProducer) {
+		if (status.isClosed())
 			return;
 
 		status = CLOSED_WITH_ERROR;
 		error = e;
-		if (internal) {
-			logger.info("StreamConsumer {} closed with error", this);
+		logger.info("StreamConsumer {} closed with error {}", this, e.toString());
+		if (sendToProducer) {
 			if (upstreamProducer != null) {
 				upstreamProducer.onConsumerError(e);
 			}
@@ -188,9 +205,6 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 			callback.onException(e);
 		}
 		completionCallbacks.clear();
-		if (!internal) {
-			logger.info("StreamProducer {} closed with error", upstreamProducer);
-		}
 		onError(e);
 	}
 
@@ -200,14 +214,14 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	@Override
 	public final void onProducerEndOfStream() {
-		if (status >= END_OF_STREAM)
+		if (status.isEnded())
 			return;
 		status = END_OF_STREAM;
 
 		onEndOfStream();
 	}
 
-	public byte getStatus() {
+	public final StreamConsumerStatus getStatus() {
 		return status;
 	}
 

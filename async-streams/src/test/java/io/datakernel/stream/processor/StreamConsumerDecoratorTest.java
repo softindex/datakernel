@@ -23,6 +23,8 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -44,7 +46,7 @@ public class StreamConsumerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3));
-		assertTrue(consumer.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, consumer);
 	}
 
 	@Test
@@ -61,7 +63,7 @@ public class StreamConsumerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3, 4, 5));
-		assertTrue(consumer.getStatus() == AbstractStreamConsumer.CLOSED);
+		assertStatus(StreamConsumerStatus.CLOSED, consumer);
 	}
 
 }

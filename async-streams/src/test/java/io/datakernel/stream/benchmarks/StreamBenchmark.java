@@ -393,7 +393,7 @@ public class StreamBenchmark {
 		protected void doProduce() {
 
 			while (currentValue < maxValue) {
-				if (status != READY) {
+				if (!isStatusReady()) {
 					return;
 				}
 

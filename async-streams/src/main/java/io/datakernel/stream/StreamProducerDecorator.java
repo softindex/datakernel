@@ -27,7 +27,7 @@ import io.datakernel.eventloop.Eventloop;
  *
  * @param <T> item type
  */
-public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
+public class StreamProducerDecorator<T> implements StreamProducer<T> {
 	protected final Eventloop eventloop;
 	private final AbstractStreamConsumer<T> upstreamConsumer;
 	private final AbstractStreamProducer<T> downstreamProducer;
@@ -131,11 +131,11 @@ public abstract class StreamProducerDecorator<T> implements StreamProducer<T> {
 		downstreamProducer.addProducerCompletionCallback(completionCallback);
 	}
 
-	protected void sendEndOfStream() {
+	public void sendEndOfStream() {
 		downstreamProducer.sendEndOfStream();
 	}
 
-	protected void closeWithError(Exception e) {
+	public void closeWithError(Exception e) {
 		upstreamConsumer.closeWithError(e);
 		downstreamProducer.closeWithError(e);
 	}

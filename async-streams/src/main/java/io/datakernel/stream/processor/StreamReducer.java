@@ -67,18 +67,4 @@ public class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A> {
 	public <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
 		return super.newInput(keyFunction, reducer);
 	}
-
-	// for test only
-	byte[] getUpstreamConsumersStatus() {
-		byte[] bytes = new byte[upstreamConsumers.size()];
-		for (int i = 0; i < upstreamConsumers.size(); i++) {
-			bytes[i] = upstreamConsumers.get(i).getStatus();
-		}
-		return bytes;
-	}
-
-	// for test only
-	byte getDownstreamProducerStatus() {
-		return downstreamProducer.getStatus();
-	}
 }

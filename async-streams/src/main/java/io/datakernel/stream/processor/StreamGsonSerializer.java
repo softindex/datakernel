@@ -37,36 +37,60 @@ import static java.lang.Math.min;
  * @param <T> type of received objects
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements StreamSerializer<T>, StreamDataReceiver<T>, StreamGsonSerializerMBean {
+public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements StreamSerializer<T>, StreamGsonSerializerMBean {
+	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
+
+	private final UpstreamConsumer upstreamConsumer;
+	private final DownstreamProducer downstreamProducer;
 
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
-
 		@Override
 		protected void onUpstreamStarted() {
-
 		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			flushBuffer(downstreamDataReceiver);
+			downstreamProducer.flushBuffer(downstreamProducer.getDownstreamDataReceiver());
 			downstreamProducer.sendEndOfStream();
-			recycleBufs();
-			close();
 		}
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return StreamGsonSerializer.this;
-		}
-
-		@Override
-		protected void onError(Exception e) {
-			super.onError(e);
-			recycleBufs();
+			return downstreamProducer;
 		}
 	}
 
-	private final class DownstreamProducer extends AbstractDownstreamProducer {
+	private final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<T> {
+		private final BufferAppendable appendable = new BufferAppendable();
+		private final int defaultBufferSize;
+		private final int maxMessageSize;
+
+		private final Gson gson;
+		private final Class<T> type;
+
+		private int estimatedMessageSize;
+
+		private final int flushDelayMillis;
+		private boolean flushPosted;
+
+		private ByteBuf buf;
+
+		private int jmxItems;
+		private int jmxBufs;
+		private long jmxBytes;
+
+		public DownstreamProducer(Gson gson, Class<T> type, int defaultBufferSize, int maxMessageSize, int flushDelayMillis) {
+			checkArgument(maxMessageSize > 0, "maxMessageSize must be positive value, got %s", maxMessageSize);
+			checkArgument(defaultBufferSize > 0, "defaultBufferSize must be positive value, got %s", defaultBufferSize);
+
+			this.maxMessageSize = maxMessageSize;
+			this.gson = checkNotNull(gson);
+			this.type = checkNotNull(type);
+			this.defaultBufferSize = defaultBufferSize;
+			this.estimatedMessageSize = 1;
+			this.flushDelayMillis = flushDelayMillis;
+			allocateBuffer();
+		}
 
 		@Override
 		protected void onDownstreamStarted() {
@@ -83,13 +107,71 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 			upstreamConsumer.resume();
 		}
 
+		/**
+		 * After receiving data it serialize it to json and adds it to the appendable,
+		 * and flushes bytes depending on the autoFlushDelay
+		 *
+		 * @param value received value
+		 */
+		@Override
+		public void onData(T value) {
+			//noinspection AssertWithSideEffects
+			assert jmxItems != ++jmxItems;
+			for (; ; ) {
+				ensureSize(estimatedMessageSize);
+				int positionBegin = appendable.position();
+				try {
+					gson.toJson(value, type, appendable);
+					appendable.append((char) 0);
+					int positionEnd = appendable.position();
+					int size = positionEnd - positionBegin;
+					assert size != 0;
+					if (size > maxMessageSize) {
+						closeWithError(OUT_OF_BOUNDS_EXCEPTION);
+						return;
+					}
+					size += size >>> 2;
+					if (size > estimatedMessageSize)
+						estimatedMessageSize = size;
+					else
+						estimatedMessageSize -= estimatedMessageSize >>> 8;
+					break;
+				} catch (BufferAppendableException e) {
+					appendable.position(positionBegin);
+					int size = appendable.array().length - positionBegin;
+					if (size >= maxMessageSize) {
+						closeWithError(e);
+						return;
+					}
+					estimatedMessageSize = size + 1 + (size >>> 1);
+				} catch (Exception e) {
+					closeWithError(e);
+					return;
+				}
+			}
+			if (!flushPosted) {
+				postFlush();
+			}
+		}
+
+		private void allocateBuffer() {
+			buf = ByteBufPool.allocate(min(maxMessageSize, max(defaultBufferSize, estimatedMessageSize)));
+			appendable.set(buf.array(), 0);
+		}
+
+		private void ensureSize(int size) {
+			if (appendable.remaining() < size) {
+				flushBuffer(downstreamDataReceiver);
+			}
+		}
+
 		private void postFlush() {
 			flushPosted = true;
 			if (flushDelayMillis == 0) {
 				eventloop.postLater(new Runnable() {
 					@Override
 					public void run() {
-						if (status < END_OF_STREAM) {
+						if (isStatusReady()) {
 							flush();
 						}
 					}
@@ -98,7 +180,7 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 				eventloop.schedule(eventloop.currentTimeMillis() + (long) flushDelayMillis, new Runnable() {
 					@Override
 					public void run() {
-						if (status < END_OF_STREAM) {
+						if (isStatusReady()) {
 							flush();
 						}
 					}
@@ -106,28 +188,37 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 			}
 		}
 
+		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
+			buf.position(0);
+			int size = appendable.position();
+			if (size != 0) {
+				buf.limit(size);
+				jmxBytes += size;
+				jmxBufs++;
+				receiver.onData(buf);
+			} else {
+				buf.recycle();
+			}
+			allocateBuffer();
+		}
+
+		/**
+		 * Bytes will be sending immediately.
+		 */
+		private void flush() {
+			flushBuffer(downstreamDataReceiver);
+			flushPosted = false;
+		}
+
+		@Override
+		protected void doCleanup() {
+			if (buf != null) {
+				buf.recycle();
+				buf = null;
+			}
+		}
+
 	}
-
-	private static final Logger logger = LoggerFactory.getLogger(StreamGsonSerializer.class);
-	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
-
-	private final BufferAppendable appendable = new BufferAppendable();
-	private final int defaultBufferSize;
-	private final int maxMessageSize;
-
-	private final Gson gson;
-	private final Class<T> type;
-
-	private int estimatedMessageSize;
-
-	private final int flushDelayMillis;
-	private boolean flushPosted;
-
-	private ByteBuf buf;
-
-	private int jmxItems;
-	private int jmxBufs;
-	private long jmxBytes;
 
 	/**
 	 * Creates a new instance of this class
@@ -140,95 +231,8 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 	 */
 	public StreamGsonSerializer(Eventloop eventloop, Gson gson, Class<T> type, int defaultBufferSize, int maxMessageSize, int flushDelayMillis) {
 		super(eventloop);
-		checkArgument(maxMessageSize > 0, "maxMessageSize must be positive value, got %s", maxMessageSize);
-		checkArgument(defaultBufferSize > 0, "defaultBufferSize must be positive value, got %s", defaultBufferSize);
-
-		this.maxMessageSize = maxMessageSize;
-		this.gson = checkNotNull(gson);
-		this.type = checkNotNull(type);
-		this.defaultBufferSize = defaultBufferSize;
-		this.estimatedMessageSize = 1;
-		this.flushDelayMillis = flushDelayMillis;
 		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer();
-		allocateBuffer();
-	}
-
-	private void allocateBuffer() {
-		buf = ByteBufPool.allocate(min(maxMessageSize, max(defaultBufferSize, estimatedMessageSize)));
-		appendable.set(buf.array(), 0);
-	}
-
-	private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
-		buf.position(0);
-		int size = appendable.position();
-		if (size != 0) {
-			buf.limit(size);
-			jmxBytes += size;
-			jmxBufs++;
-			receiver.onData(buf);
-		} else {
-			buf.recycle();
-		}
-		allocateBuffer();
-	}
-
-	private void ensureSize(int size) {
-		if (appendable.remaining() < size) {
-			flushBuffer(downstreamDataReceiver);
-		}
-	}
-
-	/**
-	 * After receiving data it serialize it to json and adds it to the appendable,
-	 * and flushes bytes depending on the autoFlushDelay
-	 *
-	 * @param value received value
-	 */
-	@Override
-	public void onData(T value) {
-		//noinspection AssertWithSideEffects
-		assert jmxItems != ++jmxItems;
-		for (; ; ) {
-			ensureSize(estimatedMessageSize);
-			int positionBegin = appendable.position();
-			try {
-				gson.toJson(value, type, appendable);
-				appendable.append((char) 0);
-				int positionEnd = appendable.position();
-				int size = positionEnd - positionBegin;
-				assert size != 0;
-				if (size > maxMessageSize) {
-					onSerializationError(OUT_OF_BOUNDS_EXCEPTION);
-					return;
-				}
-				size += size >>> 2;
-				if (size > estimatedMessageSize)
-					estimatedMessageSize = size;
-				else
-					estimatedMessageSize -= estimatedMessageSize >>> 8;
-				break;
-			} catch (BufferAppendableException e) {
-				appendable.position(positionBegin);
-				int size = appendable.array().length - positionBegin;
-				if (size >= maxMessageSize) {
-					onSerializationError(e);
-					return;
-				}
-				estimatedMessageSize = size + 1 + (size >>> 1);
-			} catch (Exception e) {
-				onSerializationError(e);
-				return;
-			}
-		}
-		if (!flushPosted) {
-			((DownstreamProducer) downstreamProducer).postFlush();
-		}
-	}
-
-	private void onSerializationError(Exception e) {
-		upstreamConsumer.onProducerError(e);
-		downstreamProducer.onConsumerError(e);
+		this.downstreamProducer = new DownstreamProducer(gson, type, defaultBufferSize, maxMessageSize, flushDelayMillis);
 	}
 
 	/**
@@ -236,30 +240,22 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 	 */
 	@Override
 	public void flush() {
-		flushBuffer(downstreamDataReceiver);
-		flushPosted = false;
-	}
-
-	private void recycleBufs() {
-		if (buf != null) {
-			buf.recycle();
-			buf = null;
-		}
+		downstreamProducer.flush();
 	}
 
 	@Override
 	public int getItems() {
-		return jmxItems;
+		return downstreamProducer.jmxItems;
 	}
 
 	@Override
 	public int getBufs() {
-		return jmxBufs;
+		return downstreamProducer.jmxBufs;
 	}
 
 	@Override
 	public long getBytes() {
-		return jmxBytes;
+		return downstreamProducer.jmxBytes;
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
@@ -268,17 +264,9 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		boolean assertOn = false;
 		assert assertOn = true;
 		return '{' + super.toString()
-				+ " items:" + (assertOn ? "" + jmxItems : "?")
-				+ " bufs:" + jmxBufs
-				+ " bytes:" + jmxBytes + '}';
+				+ " items:" + (assertOn ? "" + downstreamProducer.jmxItems : "?")
+				+ " bufs:" + downstreamProducer.jmxBufs
+				+ " bytes:" + downstreamProducer.jmxBytes + '}';
 	}
 
-	// for test only
-	byte getUpstreamConsumerStatus() {
-		return upstreamConsumer.getStatus();
-	}
-
-	byte getDownstreamProducerStatus() {
-		return downstreamProducer.getStatus();
-	}
 }

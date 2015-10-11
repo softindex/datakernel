@@ -93,19 +93,16 @@ public class StreamConsumers {
 
 		@Override
 		protected void onStarted() {
-			logger.info("{}", exception.getMessage());
-			upstreamProducer.onConsumerError(exception);
-			close();
+			logger.info("Closing with error {}", exception.toString());
+			closeWithError(exception);
 		}
 
 		@Override
 		protected void onEndOfStream() {
-
 		}
 
 		@Override
 		protected void onError(Exception e) {
-
 		}
 
 		@Override
@@ -189,7 +186,6 @@ public class StreamConsumers {
 
 		@Override
 		protected void onError(Exception e) {
-
 		}
 
 		/**
@@ -208,7 +204,7 @@ public class StreamConsumers {
 		 * Returns list with received items
 		 */
 		public final List<T> getList() {
-			checkState(((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM, "Upstream %s is not closed", upstreamProducer);
+			checkState(getStatus() == StreamConsumerStatus.CLOSED, "ToList consumer is not closed");
 			return list;
 		}
 
@@ -284,6 +280,7 @@ public class StreamConsumers {
 		return toListSuspend(eventloop, new ArrayList<T>());
 	}
 
+/*
 	public static class TransformerWithoutEnd<I, O> extends AbstractStreamTransformer_1_1_Stateless<I, O> implements StreamDataReceiver<I> {
 		public TransformerWithoutEnd(Eventloop eventloop) {
 			super(eventloop);
@@ -316,4 +313,5 @@ public class StreamConsumers {
 	public static <I, O> TransformerWithoutEnd<I, O> transformerWithoutEnd(Eventloop eventloop) {
 		return new TransformerWithoutEnd<>(eventloop);
 	}
+*/
 }

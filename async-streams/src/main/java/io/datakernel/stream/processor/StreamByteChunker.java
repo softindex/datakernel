@@ -22,28 +22,23 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
-public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf> {
-
-	@Override
-	public void onData(ByteBuf item) {
-		((DownstreamProducer) downstreamProducer).onData(item);
-	}
+public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+	private final UpstreamConsumer upstreamConsumer;
+	private final DownstreamProducer downstreamProducer;
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
 		@Override
-		protected void onUpstreamEndOfStream() {
-			((DownstreamProducer) downstreamProducer).onEndOfStream();
-			close();
+		protected void onUpstreamStarted() {
 		}
 
 		@Override
-		protected void onUpstreamStarted() {
-
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.flushAndClose();
 		}
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return StreamByteChunker.this;
+			return downstreamProducer;
 		}
 	}
 
@@ -60,23 +55,20 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		protected void onDownstreamStarted() {
-
 		}
 
 		@Override
 		protected void onDownstreamSuspended() {
-//			upstreamConsumer.suspend(); // TODO ?
+			upstreamConsumer.suspend(); // TODO ?
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-//			upstreamConsumer.resume();
+			upstreamConsumer.resume();
 		}
 
 		@Override
 		public void onData(ByteBuf buf) {
-			if (status >= END_OF_STREAM)
-				return;
 			try {
 				while (internalBuf.position() + buf.remaining() >= minChunkSize) {
 					if (internalBuf.position() == 0) {
@@ -100,7 +92,7 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 			}
 		}
 
-		private void onEndOfStream() {
+		private void flushAndClose() {
 			internalBuf.flip();
 			if (internalBuf.hasRemaining()) {
 				downstreamProducer.send(internalBuf);
@@ -116,16 +108,6 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		super(eventloop);
 		this.upstreamConsumer = new UpstreamConsumer();
 		this.downstreamProducer = new DownstreamProducer(minChunkSize, maxChunkSize);
-	}
-
-	// for test only
-	byte getUpstreamConsumerStatus() {
-		return upstreamConsumer.getStatus();
-	}
-
-	// for test only
-	byte getDownstreamProducerStatus() {
-		return downstreamProducer.getStatus();
 	}
 
 }

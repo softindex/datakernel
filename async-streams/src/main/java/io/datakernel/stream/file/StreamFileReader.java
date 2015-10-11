@@ -108,7 +108,7 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	protected void doFlush() {
-		if (status >= END_OF_STREAM || asyncFile == null)
+		if (getStatus().isClosed() || asyncFile == null)
 			return;
 
 		if (length == 0L) {
@@ -122,7 +122,7 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		asyncFile.read(buf, position, new ResultCallback<Integer>() {
 			@Override
 			public void onResult(Integer result) {
-				if (status >= END_OF_STREAM) {
+				if (getStatus().isClosed()) {
 					buf.recycle();
 					doCleanup();
 					return;
@@ -140,7 +140,7 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					if (length != Long.MAX_VALUE)
 						length -= result;
 				}
-				if (status == READY)
+				if (isStatusReady())
 					postFlush();
 			}
 

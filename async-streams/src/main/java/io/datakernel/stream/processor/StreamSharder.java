@@ -112,16 +112,4 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		assert (items = "" + jmxItems) != null;
 		return '{' + super.toString() + " items:" + items + '}';
 	}
-
-	byte getUpstreamConsumerStatus() {
-		return upstreamConsumer.getStatus();
-	}
-
-	byte[] getDownstreamProducersStatus() {
-		byte[] bytes = new byte[downstreamProducers.size()];
-		for (int i = 0; i < downstreamProducers.size(); i++) {
-			bytes[i] = downstreamProducers.get(i).getStatus();
-		}
-		return bytes;
-	}
 }

@@ -18,11 +18,14 @@ package io.datakernel.stream;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.processor.StreamJoin;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * Represents {@link AbstractStreamProducer} with few {@link AbstractStreamConsumer}.
@@ -31,12 +34,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
  */
 @SuppressWarnings("unchecked")
 public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer<O> {
+	protected final Eventloop eventloop;
+
 	protected final List<AbstractUpstreamConsumer<?>> upstreamConsumers = new ArrayList<>();
 	protected AbstractDownstreamProducer downstreamProducer;
 
 	protected int countEndOfStreams = 0;
-
-	protected final Eventloop eventloop;
 
 	protected abstract class AbstractUpstreamConsumer<I> extends AbstractStreamConsumer<I> {
 		protected int index;
@@ -55,14 +58,13 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		@Override
 		protected final void onEndOfStream() {
 			countEndOfStreams++;
-			close();
 			onUpstreamEndOfStream();
 		}
 
 		protected abstract void onUpstreamEndOfStream();
 
 		@Override
-		protected void onError(Exception e) {
+		protected final void onError(Exception e) {
 			countEndOfStreams++;
 			for (AbstractUpstreamConsumer<?> input : upstreamConsumers) {
 				if (input != this) {
@@ -73,29 +75,27 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		}
 
 		@Override
-		public void suspend() {
+		public final void suspend() {
 			super.suspend();
 		}
 
 		@Override
-		public void resume() {
+		public final void resume() {
 			super.resume();
 		}
 
 		@Override
-		public void close() {
+		public final void close() {
 			super.close();
 		}
 
 		@Override
-		public void closeWithError(Exception e) {
+		public final void closeWithError(Exception e) {
 			super.closeWithError(e);
 		}
 	}
 
 	protected abstract class AbstractDownstreamProducer extends AbstractStreamProducer<O> {
-		protected int index;
-
 		public AbstractDownstreamProducer() {
 			super(AbstractStreamTransformer_M_1.this.eventloop);
 		}
@@ -144,18 +144,25 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 		protected abstract void onDownstreamResumed();
 
 		@Override
-		public void produce() {
+		public final void produce() {
 			super.produce();
 		}
 
 		@Override
-		public void send(O item) {
+		public final void send(O item) {
 			super.send(item);
 		}
 
 		@Override
-		public void sendEndOfStream() {
+		public final void sendEndOfStream() {
 			super.sendEndOfStream();
+		}
+
+		@Override
+		protected final void onEndOfStream() {
+			for (AbstractUpstreamConsumer<?> upstreamConsumer : upstreamConsumers) {
+				upstreamConsumer.close();
+			}
 		}
 	}
 
@@ -232,4 +239,13 @@ public abstract class AbstractStreamTransformer_M_1<O> implements StreamProducer
 	public final void addProducerCompletionCallback(CompletionCallback completionCallback) {
 		downstreamProducer.addProducerCompletionCallback(completionCallback);
 	}
+
+	public final StreamProducer getDownstreamProducer() {
+		return downstreamProducer;
+	}
+
+	public final List<? extends StreamConsumer<?>> getUpstreamConsumers() {
+		return unmodifiableList(upstreamConsumers);
+	}
+
 }

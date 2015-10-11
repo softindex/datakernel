@@ -62,7 +62,7 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 		while (true) {
 			if (!iterator.hasNext())
 				break;
-			if (downstreamProducer.getStatus() != AbstractStreamProducer.READY)
+			if (!downstreamProducer.isStatusReady())
 				return;
 			A accumulator = iterator.next();
 //			downstreamDataReceiver.onData(reducer.produceResult(accumulator));
@@ -85,6 +85,7 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 	 * @param state collections which is storage of states
 	 * @param item  received item
 	 */
+	@SuppressWarnings("AssertWithSideEffects")
 	@Override
 	protected void apply(HashMap<K, A> state, I item) {
 		assert jmxItems != ++jmxItems;
@@ -122,19 +123,5 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 		String items = "?";
 		assert (items = "" + jmxItems) != null;
 		return '{' + super.toString() + " items:" + items + '}';
-	}
-
-	// for test only
-	byte downstreamProducerStatus() {
-		return downstreamProducer.getStatus();
-	}
-
-	// for test only
-	byte[] upstreamConsumersStatus() {
-		byte[] bytes = new byte[upstreamConsumers.size()];
-		for (int i = 0; i < bytes.length; i++) {
-			bytes[i] = upstreamConsumers.get(i).getStatus();
-		}
-		return bytes;
 	}
 }

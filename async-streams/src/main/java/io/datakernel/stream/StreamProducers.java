@@ -315,7 +315,7 @@ public class StreamProducers {
 			for (; ; ) {
 				if (!iterator.hasNext())
 					break;
-				if (status != READY)
+				if (!isStatusReady())
 					return;
 				T item = iterator.next();
 				send(item);

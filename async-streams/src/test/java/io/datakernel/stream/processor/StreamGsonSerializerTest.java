@@ -29,6 +29,9 @@ import org.junit.Test;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.stream.AbstractStreamConsumer.*;
+import static io.datakernel.stream.AbstractStreamProducer.*;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -97,11 +100,11 @@ public class StreamGsonSerializerTest {
 		eventloop.run();
 
 		assertEquals(items, consumerToList.getList());
-		assertTrue(serializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
-		assertTrue(serializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamConsumerStatus.CLOSED, serializerStream.getUpstreamConsumer());
+		assertStatus(StreamProducerStatus.END_OF_STREAM, serializerStream.getDownstreamProducer());
 
-		assertTrue(deserializerStream.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
-		assertTrue(deserializerStream.getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamConsumerStatus.CLOSED, deserializerStream.getUpstreamConsumer());
+		assertStatus(StreamProducerStatus.END_OF_STREAM, deserializerStream.getDownstreamProducer());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

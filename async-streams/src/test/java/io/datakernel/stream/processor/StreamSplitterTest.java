@@ -23,8 +23,9 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.AbstractStreamProducer.CLOSED_WITH_ERROR;
-import static io.datakernel.stream.AbstractStreamProducer.END_OF_STREAM;
+import static io.datakernel.stream.AbstractStreamConsumer.*;
+import static io.datakernel.stream.AbstractStreamProducer.*;
+import static io.datakernel.stream.processor.Utils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
@@ -44,9 +45,9 @@ public class StreamSplitterTest {
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumerToList1.getList());
 		assertEquals(asList(1, 2, 3), consumerToList2.getList());
-		assertTrue(((AbstractStreamProducer) source).getStatus() == END_OF_STREAM);
-		assertTrue(streamConcat.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
-		assertArrayEquals(streamConcat.getDownstreamProducersStatus(), new byte[]{END_OF_STREAM, END_OF_STREAM});
+		assertStatus(StreamProducerStatus.END_OF_STREAM, source);
+		assertStatus(StreamConsumerStatus.CLOSED, streamConcat.getUpstreamConsumer());
+		assertStatuses(StreamProducerStatus.END_OF_STREAM, streamConcat.getDownstreamProducers());
 	}
 
 	@Test
@@ -92,9 +93,9 @@ public class StreamSplitterTest {
 		assertTrue(toList2.size() == 3);
 		assertTrue(toBadList.size() == 3);
 
-		assertTrue(((AbstractStreamProducer) source).getStatus() == CLOSED_WITH_ERROR);
-		assertTrue(streamConcat.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
-		assertArrayEquals(streamConcat.getDownstreamProducersStatus(), new byte[]{CLOSED_WITH_ERROR, CLOSED_WITH_ERROR, CLOSED_WITH_ERROR});
+		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, source);
+		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, streamConcat.getUpstreamConsumer());
+		assertStatuses(StreamProducerStatus.CLOSED_WITH_ERROR, streamConcat.getDownstreamProducers());
 	}
 
 //	@Test
@@ -174,7 +175,7 @@ public class StreamSplitterTest {
 		assertTrue(list2.size() == 3);
 		assertTrue(list3.size() == 3);
 
-		assertTrue(streamConcat.getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
-		assertArrayEquals(streamConcat.getDownstreamProducersStatus(), new byte[]{CLOSED_WITH_ERROR, CLOSED_WITH_ERROR, CLOSED_WITH_ERROR});
+		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, streamConcat.getUpstreamConsumer());
+		assertStatuses(StreamProducerStatus.CLOSED_WITH_ERROR, streamConcat.getDownstreamProducers());
 	}
 }

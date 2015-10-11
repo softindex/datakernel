@@ -26,6 +26,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import static io.datakernel.stream.AbstractStreamConsumer.*;
+import static io.datakernel.stream.AbstractStreamProducer.*;
+import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
@@ -79,8 +83,8 @@ public class StreamMemoryReducerTest {
 
 		eventloop.run();
 
-		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamProducerStatus.END_OF_STREAM, source1);
+		assertStatus(StreamProducerStatus.END_OF_STREAM, source2);
 
 		List<DataItemResult> result = consumer.getList();
 		Collections.sort(result, new Comparator<DataItemResult>() {
@@ -162,8 +166,8 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 2);
-		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertStatus(StreamProducerStatus.END_OF_STREAM, source1);
+		assertStatus(StreamProducerStatus.END_OF_STREAM, source2);
 	}
 
 //	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
@@ -287,8 +291,9 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
-		assertArrayEquals(new byte[]{AbstractStreamConsumer.CLOSED_WITH_ERROR, AbstractStreamConsumer.CLOSED}, sorter.upstreamConsumersStatus());
-		assertTrue(sorter.downstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertArrayEquals(new StreamConsumerStatus[]{StreamConsumerStatus.CLOSED_WITH_ERROR, StreamConsumerStatus.CLOSED},
+				consumerStatuses(sorter.getUpstreamConsumers()));
+		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, sorter.getDownstreamProducer());
 	}
 
 }

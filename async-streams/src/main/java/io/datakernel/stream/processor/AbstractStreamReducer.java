@@ -94,7 +94,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 			}
 			if (deque.size() == bufferSize && streamsAwaiting == 0) {
 				downstreamProducer.produce();
-				if (((DownstreamProducer) downstreamProducer).getDownstreamStatus() != READY) {
+				if (!downstreamProducer.isStatusReady()) {
 					suspendAllUpstreams();
 				}
 			}
@@ -138,14 +138,10 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 			resumeProduce();
 		}
 
-		protected byte getDownstreamStatus() {
-			return status;
-		}
-
 		// TODO (vsavchuk) перенести всі поля які використовує doProduce, в цей клас
 		@Override
 		protected void doProduce() {
-			while (status == READY && streamsAwaiting == 0) {
+			while (isStatusReady() && streamsAwaiting == 0) {
 				UpstreamConsumer<Object> input = priorityQueue.poll();
 				if (input == null)
 					break;
@@ -167,18 +163,18 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 					input.headKey = input.keyFunction.apply(input.headItem);
 					priorityQueue.offer(input);
 				} else {
-					if (((AbstractStreamProducer) input.getUpstream()).getStatus() < END_OF_STREAM) {
+					if (input.getStatus().isOpen()) {
 						streamsAwaiting++;
 						break;
 					}
 				}
 			}
 
-			if (status == READY) {
+			if (isStatusReady()) {
 				resumeAllUpstreams();
 			}
 
-			if (status == READY && priorityQueue.isEmpty() && streamsAwaiting == 0) {
+			if (isStatusReady() && priorityQueue.isEmpty() && streamsAwaiting == 0) {
 				if (lastInput != null) {
 					assert jmxOnComplete != ++jmxOnComplete;
 					lastInput.reducer.onComplete(downstreamDataReceiver, key, accumulator);

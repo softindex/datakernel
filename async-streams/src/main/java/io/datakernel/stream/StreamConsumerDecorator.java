@@ -27,7 +27,7 @@ import io.datakernel.eventloop.Eventloop;
  *
  * @param <T> item type
  */
-public abstract class StreamConsumerDecorator<T> implements StreamConsumer<T> {
+public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 	protected final Eventloop eventloop;
 	protected final AbstractStreamConsumer<T> upstreamConsumer;
 	protected final AbstractStreamProducer<T> downstreamProducer;
