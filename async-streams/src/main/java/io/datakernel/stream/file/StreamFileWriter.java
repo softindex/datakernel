@@ -44,6 +44,7 @@ import static java.nio.file.StandardOpenOption.*;
  */
 public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileWriter.class);
+	private Exception error;
 
 	private final ExecutorService executor;
 	private final Path path;
@@ -163,7 +164,34 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void postFlush() {
-		if (getUpstreamStatus() == StreamProducer.END_OF_STREAM && queue.isEmpty()) {
+		if (error != null && !pendingAsyncOperation && queue.isEmpty()) {
+			doCleanup(new CompletionCallback() {
+
+				private void tryRemoveFile() {
+					if (removeFileOnException) {
+						try {
+							Files.delete(path);
+						} catch (IOException e1) {
+							logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
+						}
+					}
+					closeUpstreamWithError(error);
+				}
+
+				@Override
+				public void onComplete() {
+					tryRemoveFile();
+				}
+
+				@Override
+				public void onException(Exception ignored) {
+					tryRemoveFile();
+				}
+			});
+			return;
+		}
+
+		if (getUpstreamStatus() == StreamProducer.END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
@@ -239,29 +267,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	public void onError(final Exception e) {
-
-		doCleanup(new CompletionCallback() {
-
-			private void tryRemoveFile() {
-				if (removeFileOnException) {
-					try {
-						Files.delete(path);
-					} catch (IOException e1) {
-						logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
-					}
-				}
-				closeUpstreamWithError(e);
-			}
-
-			@Override
-			public void onComplete() {
-				tryRemoveFile();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				tryRemoveFile();
-			}
-		});
+		error = e;
+		postFlush();
 	}
 }
