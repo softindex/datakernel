@@ -54,10 +54,10 @@ public class AsmBuilder<T> {
 	private final Class<T> type;
 	private Path bytecodeSaveDir;
 
-	private Map<String, Class<?>> fields = new LinkedHashMap<>();
-	private Map<String, Class<?>> staticFields = new LinkedHashMap<>();
-	private Map<Method, Expression> expressionMap = new LinkedHashMap<>();
-	private Map<Method, Expression> expressionStaticMap = new LinkedHashMap<>();
+	private final Map<String, Class<?>> fields = new LinkedHashMap<>();
+	private final Map<String, Class<?>> staticFields = new LinkedHashMap<>();
+	private final Map<Method, Expression> expressionMap = new LinkedHashMap<>();
+	private final Map<Method, Expression> expressionStaticMap = new LinkedHashMap<>();
 
 	public Map<Method, Expression> getExpressionStaticMap() {
 		return expressionStaticMap;

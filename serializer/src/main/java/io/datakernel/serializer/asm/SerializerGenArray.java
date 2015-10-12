@@ -103,7 +103,7 @@ public final class SerializerGenArray implements SerializerGen {
 			return sequence(array, expressionFor(len, new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return setArrayItem(array, it, cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), type.getComponentType()));
+					return setArrayItem(array, it, cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods), type.getComponentType()));
 				}
 			}), array);
 		}

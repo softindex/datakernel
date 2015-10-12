@@ -1468,7 +1468,6 @@ public class AsmSerializerTest {
 		@Serialize(order = 1)
 		public Integer integer;
 
-
 		public TestObj(@Deserialize("string") String string, @Deserialize("integer") Integer integer) {
 			this.string = string;
 			this.integer = integer;

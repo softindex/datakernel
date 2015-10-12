@@ -41,7 +41,7 @@ import static java.util.Arrays.asList;
  * Scans fields of classes for serialization.
  */
 public final class SerializerBuilder {
-	private AtomicInteger counter = new AtomicInteger();
+	private final AtomicInteger counter = new AtomicInteger();
 	private final DefiningClassLoader definingClassLoader;
 	private String profile;
 	private int version = Integer.MAX_VALUE;
