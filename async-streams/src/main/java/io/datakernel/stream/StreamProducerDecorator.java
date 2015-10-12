@@ -110,8 +110,8 @@ public class StreamProducerDecorator<T> implements StreamProducer<T> {
 			}
 
 			@Override
-			public void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-				upstreamConsumer.addConsumerCompletionCallback(completionCallback);
+			public StreamStatus getConsumerStatus() {
+				return upstreamConsumer.getConsumerStatus();
 			}
 		});
 	}
@@ -124,11 +124,6 @@ public class StreamProducerDecorator<T> implements StreamProducer<T> {
 	@Override
 	public final void bindDataReceiver() {
 		downstreamProducer.bindDataReceiver();
-	}
-
-	@Override
-	public final void addProducerCompletionCallback(CompletionCallback completionCallback) {
-		downstreamProducer.addProducerCompletionCallback(completionCallback);
 	}
 
 	public void sendEndOfStream() {
@@ -168,4 +163,8 @@ public class StreamProducerDecorator<T> implements StreamProducer<T> {
 		downstreamProducer.onConsumerError(e);
 	}
 
+	@Override
+	public final StreamStatus getProducerStatus() {
+		return downstreamProducer.getProducerStatus();
+	}
 }

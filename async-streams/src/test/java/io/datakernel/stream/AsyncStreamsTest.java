@@ -21,8 +21,8 @@ import io.datakernel.eventloop.NioEventloop;
 import org.junit.Test;
 
 import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
-import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -41,14 +41,14 @@ public class AsyncStreamsTest {
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertStatus(StreamProducerStatus.READY, consumer.getUpstream());
+		assertEquals(READY, consumer.getUpstream().getProducerStatus());
 
 		producerSetter.onResult(source);
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, consumer.getUpstream());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, source);
-//		assertNull(producer.getWiredConsumerStatus());
+		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		//		assertNull(producer.getWiredConsumerStatus());
 	}
 
 }

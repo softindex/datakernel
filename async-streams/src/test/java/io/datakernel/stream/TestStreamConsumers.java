@@ -46,7 +46,6 @@ public class TestStreamConsumers {
 
 		@Override
 		protected final void onEndOfStream() {
-			close();
 		}
 
 		@Override
@@ -59,7 +58,7 @@ public class TestStreamConsumers {
 		}
 
 		public final List<T> getList() {
-			checkState(getStatus() == StreamConsumerStatus.CLOSED, "ToList consumer is not closed");
+			checkState(getConsumerStatus() == StreamStatus.END_OF_STREAM, "ToList consumer is not closed");
 			return list;
 		}
 	}

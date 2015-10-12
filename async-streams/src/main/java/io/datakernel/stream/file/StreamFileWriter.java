@@ -34,7 +34,7 @@ import java.util.ArrayDeque;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus.END_OF_STREAM;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
@@ -55,6 +55,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	private long position;
 
 	private boolean pendingAsyncOperation;
+
+	private CompletionCallback flushCallback;
 
 	/**
 	 * Creates a new instance of StreamFileWriter
@@ -77,6 +79,10 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		this.path = path;
 		this.options = options;
 		this.removeFileOnException = removeFileOnException;
+	}
+
+	public void setFlushCallback(CompletionCallback flushCallback) {
+		this.flushCallback = flushCallback;
 	}
 
 	/**
@@ -176,11 +182,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			return;
 		}
 
-		if (getStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
+		if (getConsumerStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					close();
+					if (flushCallback != null) {
+						flushCallback.onComplete();
+					}
 				}
 
 				@Override
@@ -198,7 +206,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				}
 			});
 		}
-
 	}
 
 	@Override
@@ -248,5 +255,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	protected void onError(final Exception e) {
 		error = e;
 		postFlush();
+		if (flushCallback != null) {
+			flushCallback.onException(e);
+		}
 	}
 }

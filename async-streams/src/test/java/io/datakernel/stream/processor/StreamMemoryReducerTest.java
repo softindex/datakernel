@@ -26,12 +26,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static io.datakernel.stream.AbstractStreamConsumer.*;
-import static io.datakernel.stream.AbstractStreamProducer.*;
+import static io.datakernel.stream.StreamStatus.*;
 import static io.datakernel.stream.processor.Utils.*;
-import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class StreamMemoryReducerTest {
@@ -83,8 +82,8 @@ public class StreamMemoryReducerTest {
 
 		eventloop.run();
 
-		assertStatus(StreamProducerStatus.END_OF_STREAM, source1);
-		assertStatus(StreamProducerStatus.END_OF_STREAM, source2);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 
 		List<DataItemResult> result = consumer.getList();
 		Collections.sort(result, new Comparator<DataItemResult>() {
@@ -166,8 +165,8 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 2);
-		assertStatus(StreamProducerStatus.END_OF_STREAM, source1);
-		assertStatus(StreamProducerStatus.END_OF_STREAM, source2);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 	}
 
 //	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
@@ -291,9 +290,9 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
-		assertArrayEquals(new StreamConsumerStatus[]{StreamConsumerStatus.CLOSED_WITH_ERROR, StreamConsumerStatus.CLOSED_WITH_ERROR},
+		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, CLOSED_WITH_ERROR},
 				consumerStatuses(sorter.getUpstreamConsumers()));
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, sorter.getDownstreamProducer());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getDownstreamProducer().getProducerStatus());
 	}
 
 }

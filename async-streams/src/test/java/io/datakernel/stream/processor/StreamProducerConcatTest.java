@@ -23,7 +23,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -55,8 +55,8 @@ public class StreamProducerConcatTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
-		assertStatus(AbstractStreamProducer.StreamProducerStatus.END_OF_STREAM, consumer.getUpstream());
-//		assertNull(source1.getWiredConsumerStatus());
+		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
+		//		assertNull(source1.getWiredConsumerStatus());
 //		assertNull(source2.getWiredConsumerStatus());
 //		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}

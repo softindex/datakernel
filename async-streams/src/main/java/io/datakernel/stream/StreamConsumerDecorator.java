@@ -115,8 +115,8 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 			}
 
 			@Override
-			public void addProducerCompletionCallback(CompletionCallback completionCallback) {
-				downstreamProducer.addProducerCompletionCallback(completionCallback);
+			public StreamStatus getProducerStatus() {
+				return downstreamProducer.getProducerStatus();
 			}
 		}.streamTo(actualConsumer);
 	}
@@ -129,11 +129,6 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 	@Override
 	public final void streamFrom(StreamProducer<T> upstreamProducer) {
 		upstreamConsumer.streamFrom(upstreamProducer);
-	}
-
-	@Override
-	public final void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-		upstreamConsumer.addConsumerCompletionCallback(completionCallback);
 	}
 
 	// extension hooks, intended for override:
@@ -163,4 +158,8 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 		upstreamConsumer.onProducerError(e);
 	}
 
+	@Override
+	public final StreamStatus getConsumerStatus() {
+		return upstreamConsumer.getConsumerStatus();
+	}
 }

@@ -20,10 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -142,8 +139,8 @@ public class StreamByteChunkerTest {
 		}
 
 		@Override
-		public void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-			callbacks.add(completionCallback);
+		public StreamStatus getConsumerStatus() {
+			return null;
 		}
 
 		@Override

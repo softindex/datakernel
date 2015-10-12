@@ -17,6 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.AsyncGetter;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
@@ -165,6 +166,8 @@ public class StreamConsumers {
 	 */
 	public static final class ToList<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected final List<T> list;
+		private CompletionCallback completionCallback;
+		private ResultCallback<List<T>> resultCallback;
 
 		/**
 		 * Creates a new instance of ConsumerToList with empty list and event loop from argument, in which
@@ -174,6 +177,14 @@ public class StreamConsumers {
 			this(eventloop, new ArrayList<T>());
 		}
 
+		public void setCompletionCallback(CompletionCallback completionCallback) {
+			this.completionCallback = completionCallback;
+		}
+
+		public void setResultCallback(ResultCallback<List<T>> resultCallback) {
+			this.resultCallback = resultCallback;
+		}
+
 		@Override
 		protected void onStarted() {
 
@@ -181,11 +192,22 @@ public class StreamConsumers {
 
 		@Override
 		protected void onEndOfStream() {
-			close();
+			if (completionCallback != null) {
+				completionCallback.onComplete();
+			}
+			if (resultCallback != null) {
+				resultCallback.onResult(list);
+			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
+			if (completionCallback != null) {
+				completionCallback.onException(e);
+			}
+			if (resultCallback != null) {
+				resultCallback.onException(e);
+			}
 		}
 
 		/**
@@ -204,7 +226,7 @@ public class StreamConsumers {
 		 * Returns list with received items
 		 */
 		public final List<T> getList() {
-			checkState(getStatus() == StreamConsumerStatus.CLOSED, "ToList consumer is not closed");
+			checkState(getConsumerStatus() == StreamStatus.END_OF_STREAM, "ToList consumer is not closed");
 			return list;
 		}
 
@@ -240,7 +262,6 @@ public class StreamConsumers {
 		@Override
 		protected void onEndOfStream() {
 			endOfStream = true;
-			close();
 		}
 
 		@Override

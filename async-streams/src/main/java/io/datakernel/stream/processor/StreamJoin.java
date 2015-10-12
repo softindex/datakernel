@@ -18,7 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_M_1;
+import io.datakernel.stream.AbstractStreamTransformer_N_1;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -30,7 +30,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 /**
  * Represents a object which has left and right consumers, and one producer. After receiving data
  * it can join it, available are inner join and left join. It work analogous joins from SQL.
- * It is a {@link AbstractStreamTransformer_M_1} which receives specified type and streams
+ * It is a {@link AbstractStreamTransformer_N_1} which receives specified type and streams
  * set of join's result  to the destination .
  *
  * @param <K> type of  keys
@@ -38,7 +38,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <R> type of data from right stream
  * @param <V> type of output data
  */
-public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<V> {
+public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<V> {
 
 	/**
 	 * It is primary interface of joiner. It contains methods which will join streams
@@ -199,7 +199,6 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_M_1<
 		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.produce();
-			close();
 		}
 	}
 

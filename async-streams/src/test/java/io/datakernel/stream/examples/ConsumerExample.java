@@ -56,7 +56,6 @@ public class ConsumerExample<T> extends AbstractStreamConsumer<T> implements Str
 	protected void onEndOfStream() {
 		System.out.println("End of stream received. " +
 				"StreamConsumer must be acked and closed by replying 'finish' to upstream");
-		close();
 	}
 
 //	@Override

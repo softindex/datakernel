@@ -24,10 +24,8 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.AbstractStreamConsumer.*;
-import static io.datakernel.stream.AbstractStreamProducer.*;
 import static io.datakernel.stream.StreamProducers.concat;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -54,10 +52,10 @@ public class StreamFunctionTest {
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
-		assertStatus(StreamProducerStatus.END_OF_STREAM, source1);
-		assertStatus(StreamConsumerStatus.CLOSED, consumer);
-		assertStatus(StreamConsumerStatus.CLOSED, streamFunction);
-		assertStatus(StreamProducerStatus.END_OF_STREAM, streamFunction);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, streamFunction.getConsumerStatus());
+		assertEquals(END_OF_STREAM, streamFunction.getProducerStatus());
+		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 	}
 
 	@Test
@@ -97,10 +95,10 @@ public class StreamFunctionTest {
 
 		assertEquals(asList(1, 4), list);
 
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, source1);
-		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, consumer);
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, streamFunction);
-		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, streamFunction);
+		assertEquals(CLOSED_WITH_ERROR, source1.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
 	}
 
 	@Test
@@ -128,9 +126,9 @@ public class StreamFunctionTest {
 
 		assertEquals(asList(1, 4, 9, 16, 25, 36), list);
 
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, consumer.getUpstream());
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, streamFunction);
-		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, streamFunction);
+		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
 	}
 
 }

@@ -97,7 +97,7 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 			jmxBytesInput += buf.remaining();
 			try {
 				checkState(!header.finished, "Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf);
-				if (getStatus().isOpen()) {
+				if (getProducerStatus().isOpen()) {
 					consumeInputByteBuffer(buf);
 				}
 			} catch (Exception e) {

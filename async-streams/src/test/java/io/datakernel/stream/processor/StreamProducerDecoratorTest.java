@@ -23,8 +23,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -62,9 +61,9 @@ public class StreamProducerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2));
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, consumer.getUpstream());
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, producer);
-//		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, producer.getProducerStatus());
+		//		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -83,8 +82,8 @@ public class StreamProducerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
-		assertStatus(StreamProducerStatus.END_OF_STREAM, consumer.getUpstream());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, producer);
-//		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
+		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		//		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 }

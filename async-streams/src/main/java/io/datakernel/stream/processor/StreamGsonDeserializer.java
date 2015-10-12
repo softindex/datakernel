@@ -115,7 +115,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 					downstreamDataReceiver.onData(item);
 				}
 
-				if (getStatus().isClosed())
+				if (getProducerStatus().isClosed())
 					return;
 
 				if (!srcBuf.hasRemaining()) {
@@ -125,7 +125,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 			}
 
 			if (byteBufs.isEmpty()) {
-				if (upstreamConsumer.getStatus().isEnded()) {
+				if (upstreamConsumer.getConsumerStatus().isClosed()) {
 					sendEndOfStream();
 					buf.recycle();
 					buf = null;

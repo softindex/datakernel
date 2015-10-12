@@ -42,7 +42,6 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
 				downstreamProducer.sendEndOfStream();
 			}
-			close();
 		}
 
 		@Override

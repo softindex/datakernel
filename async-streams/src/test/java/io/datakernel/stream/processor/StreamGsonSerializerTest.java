@@ -19,19 +19,14 @@ package io.datakernel.stream.processor;
 import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.stream.AbstractStreamConsumer.*;
-import static io.datakernel.stream.AbstractStreamProducer.*;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -100,11 +95,11 @@ public class StreamGsonSerializerTest {
 		eventloop.run();
 
 		assertEquals(items, consumerToList.getList());
-		assertStatus(StreamConsumerStatus.CLOSED, serializerStream.getUpstreamConsumer());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, serializerStream.getDownstreamProducer());
+		assertEquals(END_OF_STREAM, serializerStream.getConsumerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getProducerStatus());
 
-		assertStatus(StreamConsumerStatus.CLOSED, deserializerStream.getUpstreamConsumer());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, deserializerStream.getDownstreamProducer());
+		assertEquals(END_OF_STREAM, deserializerStream.getConsumerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getProducerStatus());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

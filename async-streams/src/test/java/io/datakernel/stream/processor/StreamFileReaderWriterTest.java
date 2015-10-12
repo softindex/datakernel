@@ -40,9 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.stream.AbstractStreamConsumer.*;
-import static io.datakernel.stream.AbstractStreamProducer.*;
-import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.StreamStatus.*;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.*;
@@ -84,8 +82,8 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(writer);
 
 		eventloop.run();
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, reader);
-		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, writer);
+		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
 	}
 
@@ -98,8 +96,8 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(writer);
 		eventloop.run();
 
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, reader);
-		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, writer);
+		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
 	}
 
@@ -159,7 +157,7 @@ public class StreamFileReaderWriterTest {
 
 			@Override
 			protected void onEndOfStream() {
-				close();
+
 			}
 
 			@Override

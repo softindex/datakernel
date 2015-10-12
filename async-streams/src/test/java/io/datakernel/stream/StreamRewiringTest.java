@@ -25,9 +25,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus;
-import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -57,7 +55,7 @@ public class StreamRewiringTest {
 		eventloop.run();
 
 		assertEquals(asList("1", "2", "3"), consumer1.getList());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, producer);
+		assertEquals(END_OF_STREAM, producer.getProducerStatus());
 	}
 
 	@Test
@@ -87,9 +85,9 @@ public class StreamRewiringTest {
 
 		assertEquals(asList("1", "2", "3"), consumer2.getList());
 		assertNotNull(consumer1.getUpstream());
-		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, consumer1.getUpstream());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, consumer2.getUpstream());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, producer);
+		assertEquals(CLOSED_WITH_ERROR, consumer1.getUpstream().getProducerStatus());
+		assertEquals(END_OF_STREAM, consumer2.getUpstream().getProducerStatus());
+		assertEquals(END_OF_STREAM, producer.getProducerStatus());
 	}
 
 	@Test
@@ -120,7 +118,7 @@ public class StreamRewiringTest {
 
 		eventloop.run();
 		assertEquals(asList(), consumer2.getList());
-		assertStatus(StreamConsumerStatus.CLOSED, consumer2);
+		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
 	}
 
 	@Test
@@ -159,7 +157,7 @@ public class StreamRewiringTest {
 		assertEquals(asList("1", "2", "3", "4", "5", "6"), consumer.getList());
 
 //		assertNull(producer1.getWiredConsumerStatus());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, producer2);
+		assertEquals(END_OF_STREAM, producer2.getProducerStatus());
 	}
 
 	@Test

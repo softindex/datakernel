@@ -16,7 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.StreamTransformer;
 
@@ -75,11 +74,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		}
 
 		@Override
-		public final void close() {
-			super.close();
-		}
-
-		@Override
 		public void closeWithError(Exception e) {
 			super.closeWithError(e);
 		}
@@ -107,11 +101,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		}
 
 		protected abstract void onDownstreamStarted();
-
-		@Override
-		protected void onEndOfStream() {
-			upstreamConsumer.close();
-		}
 
 		@Override
 		protected final void onError(Exception e) {
@@ -165,19 +154,18 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	}
 
 	@Override
-	public final void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-		upstreamConsumer.addConsumerCompletionCallback(completionCallback);
-	}
-
-	@Override
 	public final void onProducerError(Exception e) {
 		upstreamConsumer.onProducerError(e);
-		downstreamProducer.closeWithError(e);
 	}
 
 	@Override
 	public final void streamFrom(StreamProducer<I> upstreamProducer) {
 		upstreamConsumer.streamFrom(upstreamProducer);
+	}
+
+	@Override
+	public StreamStatus getConsumerStatus() {
+		return upstreamConsumer.getConsumerStatus();
 	}
 
 	// downstream
@@ -203,41 +191,23 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	}
 
 	@Override
-	public final void addProducerCompletionCallback(CompletionCallback completionCallback) {
-		downstreamProducer.addProducerCompletionCallback(completionCallback);
-	}
-
-	@Override
 	public final void bindDataReceiver() {
 		downstreamProducer.bindDataReceiver();
 	}
 
-	protected void suspendUpstream() {
-		upstreamConsumer.suspend();
+	@Override
+	public StreamStatus getProducerStatus() {
+		return downstreamProducer.getProducerStatus();
 	}
-
-	protected void resumeUpstream() {
-		upstreamConsumer.resume();
-	}
-
-	public AbstractUpstreamConsumer getUpstreamConsumer() {
-		return upstreamConsumer;
-	}
-
-	public AbstractDownstreamProducer getDownstreamProducer() {
-		return downstreamProducer;
-	}
-
-	// misc
 
 	//for test only
-	AbstractStreamConsumer.StreamConsumerStatus getUpstreamConsumerStatus() {
-		return upstreamConsumer.getStatus();
+	StreamStatus getUpstreamConsumerStatus() {
+		return upstreamConsumer.getConsumerStatus();
 	}
 
 	// for test only
-	AbstractStreamProducer.StreamProducerStatus getDownstreamProducerStatus() {
-		return downstreamProducer.getStatus();
+	StreamStatus getDownstreamProducerStatus() {
+		return downstreamProducer.getProducerStatus();
 	}
 
 	public void setTag(Object tag) {

@@ -17,7 +17,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,9 +24,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus.*;
+import static io.datakernel.stream.StreamStatus.*;
 
 /**
  * It is basic implementation of {@link StreamProducer}
@@ -43,23 +41,9 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	protected StreamConsumer<T> downstreamConsumer;
 	protected StreamDataReceiver<T> downstreamDataReceiver = new DataReceiverBeforeStart<>(this, bufferedList);
 
-	public enum StreamProducerStatus {
-		READY, SUSPENDED, END_OF_STREAM, CLOSED_WITH_ERROR;
-
-		public boolean isOpen() {
-			return this.ordinal() <= SUSPENDED.ordinal();
-		}
-
-		public boolean isClosed() {
-			return !isOpen();
-		}
-	}
-
-	private StreamProducerStatus status = READY;
+	private StreamStatus status = READY;
 	private boolean ready = true;
 	protected Exception error;
-
-	private final List<CompletionCallback> completionCallbacks = new ArrayList<>();
 
 	protected Object tag;
 
@@ -217,15 +201,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		if (downstreamConsumer != null) {
 			downstreamConsumer.onProducerEndOfStream();
 		}
-		for (CompletionCallback callback : completionCallbacks) {
-			callback.onComplete();
-		}
-		completionCallbacks.clear();
-		onEndOfStream();
 		doCleanup();
-	}
-
-	protected void onEndOfStream() {
 	}
 
 	private void closeWithError(Exception e, boolean sendToConsumer) {
@@ -238,10 +214,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		if (sendToConsumer && downstreamConsumer != null) {
 			downstreamConsumer.onProducerError(e);
 		}
-		for (CompletionCallback callback : completionCallbacks) {
-			callback.onException(e);
-		}
-		completionCallbacks.clear();
 		onError(e);
 		doCleanup();
 	}
@@ -260,42 +232,18 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	protected void doCleanup() {
 	}
 
-	/**
-	 * Returns current status of this producer
-	 *
-	 * @return current status of this producer
-	 */
-	public final StreamProducerStatus getStatus() {
+	@Override
+	public final StreamStatus getProducerStatus() {
 		return status;
 	}
 
-	private void setStatus(StreamProducerStatus status) {
+	private void setStatus(StreamStatus status) {
 		this.status = status;
 		this.ready = status == READY;
 	}
 
 	public final boolean isStatusReady() {
 		return ready;
-	}
-
-	@Override
-	public final void addProducerCompletionCallback(final CompletionCallback completionCallback) {
-		checkNotNull(completionCallback);
-		checkArgument(!completionCallbacks.contains(completionCallback));
-		if (status.isClosed()) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					if (status != CLOSED_WITH_ERROR) {
-						completionCallback.onComplete();
-					} else {
-						completionCallback.onException(error);
-					}
-				}
-			});
-			return;
-		}
-		completionCallbacks.add(completionCallback);
 	}
 
 	public final Object getTag() {

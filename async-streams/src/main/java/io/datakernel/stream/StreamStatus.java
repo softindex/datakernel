@@ -14,10 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream;
 
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+public enum StreamStatus {
+	READY,
+	SUSPENDED,
+	END_OF_STREAM,
+	CLOSED_WITH_ERROR;
 
-public interface StreamTransformer<I, O> extends StreamConsumer<I>, StreamProducer<O> {
+	public boolean isOpen() {
+		return this.ordinal() <= SUSPENDED.ordinal();
+	}
+
+	public boolean isClosed() {
+		return this.ordinal() >= END_OF_STREAM.ordinal();
+	}
 }

@@ -455,16 +455,16 @@ public class StreamBenchmark {
 
 		}
 
+		@Override
+		protected void onEndOfStream() {
+
+		}
+
 //		@Override
 //		public void onProducerEndOfStream() {
 ////			upstreamProducer.close();
 //			close();
 //		}
-
-		@Override
-		protected void onEndOfStream() {
-			close();
-		}
 
 		@Override
 		protected void onError(Exception e) {

@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus.*;
+import static io.datakernel.stream.StreamStatus.*;
 
 /**
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
@@ -143,11 +143,6 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		}
 
 		@Override
-		public final void close() {
-			super.close();
-		}
-
-		@Override
 		public void closeWithError(Exception e) {
 			super.closeWithError(e);
 		}
@@ -217,7 +212,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		if (!isRegistered())
 			return;
 		// TODO (vsavchuk) check this
-		if (!socketReader.getStatus().isOpen() && !socketWriter.getStatus().isOpen() && writeQueue.isEmpty()) {
+		if (!socketReader.getProducerStatus().isOpen() && !socketWriter.getConsumerStatus().isOpen() && writeQueue.isEmpty()) {
 			logger.trace("done, closing {}", this);
 			close();
 			return;
@@ -253,7 +248,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 	@Override
 	protected void onWriteFlushed() {
-		if (socketWriter.getStatus() == END_OF_STREAM) {
+		if (socketWriter.getConsumerStatus() == END_OF_STREAM) {
 			try {
 				shutdownOutput();
 			} catch (IOException e) {

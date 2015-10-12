@@ -17,18 +17,14 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus;
-import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus;
-import static io.datakernel.stream.processor.Utils.assertStatus;
+import static io.datakernel.stream.StreamStatus.*;
 import static org.junit.Assert.assertEquals;
 
 public class ProducerOfIteratorTest {
@@ -46,8 +42,8 @@ public class ProducerOfIteratorTest {
 		eventloop.run();
 
 		assertEquals(list, consumer.getList());
-		assertStatus(StreamProducerStatus.END_OF_STREAM, producer);
-		assertStatus(StreamConsumerStatus.CLOSED, consumer);
+		assertEquals(END_OF_STREAM, producer.getProducerStatus());
+		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 	}
 
 }

@@ -194,7 +194,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 					downstreamDataReceiver.onData(item);
 				}
 
-				if (getStatus().isClosed())
+				if (getProducerStatus().isClosed())
 					return;
 
 				if (len != 0) {
@@ -208,7 +208,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			}
 
 			if (byteBufs.isEmpty()) {
-				if (upstreamConsumer.getStatus().isEnded()) {
+				if (upstreamConsumer.getConsumerStatus().isClosed()) {
 					downstreamProducer.sendEndOfStream();
 				} else {
 					// TODO (vsavchuk) without getStatus?

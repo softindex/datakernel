@@ -138,7 +138,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				byteBuf.limit(size);
 				jmxBytes += size;
 				jmxBufs++;
-				if (downstreamProducer.getStatus().isOpen()) {
+				if (downstreamProducer.getProducerStatus().isOpen()) {
 					receiver.onData(byteBuf);
 				}
 			} else {
@@ -254,7 +254,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				eventloop.postLater(new Runnable() {
 					@Override
 					public void run() {
-						if (downstreamProducer.getStatus().isOpen()) {
+						if (downstreamProducer.getProducerStatus().isOpen()) {
 							flush();
 						}
 					}
@@ -263,7 +263,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				eventloop.scheduleBackground(eventloop.currentTimeMillis() + flushDelayMillis, new Runnable() {
 					@Override
 					public void run() {
-						if (downstreamProducer.getStatus().isOpen()) {
+						if (downstreamProducer.getProducerStatus().isOpen()) {
 							flush();
 						}
 					}
