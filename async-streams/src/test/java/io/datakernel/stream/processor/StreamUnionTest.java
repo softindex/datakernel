@@ -125,7 +125,7 @@ public class StreamUnionTest {
 		assertArrayEquals(new StreamConsumerStatus[]{
 				StreamConsumerStatus.CLOSED_WITH_ERROR,
 				StreamConsumerStatus.CLOSED_WITH_ERROR,
-				StreamConsumerStatus.CLOSED
+				StreamConsumerStatus.CLOSED_WITH_ERROR
 		}, consumerStatuses(streamUnion.getUpstreamConsumers()));
 	}
 

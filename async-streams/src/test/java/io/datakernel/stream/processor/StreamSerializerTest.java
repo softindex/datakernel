@@ -19,7 +19,9 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,12 +31,11 @@ import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
-import static io.datakernel.stream.AbstractStreamConsumer.*;
-import static io.datakernel.stream.AbstractStreamProducer.*;
-import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus;
+import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamSerializerTest {
 

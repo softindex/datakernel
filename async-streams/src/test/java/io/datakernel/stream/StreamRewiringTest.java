@@ -20,17 +20,17 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.processor.StreamFunction;
-import io.datakernel.stream.processor.Utils;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.AbstractStreamConsumer.*;
-import static io.datakernel.stream.AbstractStreamProducer.*;
-import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.AbstractStreamConsumer.StreamConsumerStatus;
+import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class StreamRewiringTest {
@@ -87,7 +87,8 @@ public class StreamRewiringTest {
 
 		assertEquals(asList("1", "2", "3"), consumer2.getList());
 		assertNotNull(consumer1.getUpstream());
-		assertStatus(null, consumer1.getUpstream()); // TODO (vsavchuk): replace null with correct status
+		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, consumer1.getUpstream());
+		assertStatus(StreamProducerStatus.END_OF_STREAM, consumer2.getUpstream());
 		assertStatus(StreamProducerStatus.END_OF_STREAM, producer);
 	}
 
@@ -159,5 +160,22 @@ public class StreamRewiringTest {
 
 //		assertNull(producer1.getWiredConsumerStatus());
 		assertStatus(StreamProducerStatus.END_OF_STREAM, producer2);
+	}
+
+	@Test
+	public void testProducerWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1));
+		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
+		producer.streamTo(function);
+
+		eventloop.run();
+
+		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<>(eventloop);
+		function.streamTo(consumer);
+
+		eventloop.run();
+
+		assertEquals(asList(1), consumer.getList());
 	}
 }

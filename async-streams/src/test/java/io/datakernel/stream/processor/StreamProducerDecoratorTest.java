@@ -17,10 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducerDecorator;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -65,6 +62,7 @@ public class StreamProducerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2));
+		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, consumer.getUpstream());
 		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, producer);
 //		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
 	}
@@ -85,6 +83,7 @@ public class StreamProducerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));
+		assertStatus(StreamProducerStatus.END_OF_STREAM, consumer.getUpstream());
 		assertStatus(StreamProducerStatus.END_OF_STREAM, producer);
 //		assertTrue(producerDecorator.getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}

@@ -158,8 +158,8 @@ public class StreamReducerTest {
 		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, streamReducer.getDownstreamProducer());
 		assertArrayEquals(new AbstractStreamConsumer.StreamConsumerStatus[]{
 				StreamConsumerStatus.CLOSED_WITH_ERROR,
-				StreamConsumerStatus.CLOSED,
-				StreamConsumerStatus.CLOSED
+				StreamConsumerStatus.CLOSED_WITH_ERROR,
+				StreamConsumerStatus.CLOSED_WITH_ERROR
 		}, consumerStatuses(streamReducer.getUpstreamConsumers()));
 	}
 

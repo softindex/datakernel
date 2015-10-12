@@ -18,14 +18,13 @@ package io.datakernel.stream;
 
 import io.datakernel.async.AsyncGetterWithSetter;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.processor.Utils;
 import org.junit.Test;
 
 import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
-import static io.datakernel.stream.AbstractStreamProducer.*;
-import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.AbstractStreamProducer.StreamProducerStatus;
+import static io.datakernel.stream.processor.Utils.assertStatus;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class AsyncStreamsTest {
 	@Test
@@ -42,7 +41,7 @@ public class AsyncStreamsTest {
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertStatus(null, consumer.getUpstream()); // TODO (vsavchuk): replace null with correct status
+		assertStatus(StreamProducerStatus.READY, consumer.getUpstream());
 
 		producerSetter.onResult(source);
 		eventloop.run();

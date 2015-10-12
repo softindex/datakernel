@@ -61,7 +61,7 @@ public class StreamMergerTest {
 		assertStatus(StreamProducerStatus.END_OF_STREAM, source1);
 		assertStatus(StreamProducerStatus.END_OF_STREAM, source2);
 		assertStatus(StreamConsumerStatus.CLOSED, consumer);
-		assertStatus(StreamConsumerStatus.END_OF_STREAM, merger.getDownstream());
+		assertStatus(StreamProducerStatus.END_OF_STREAM, merger.getDownstreamProducer());
 		assertStatuses(StreamConsumerStatus.CLOSED, merger.getUpstreamConsumers());
 	}
 
@@ -89,7 +89,7 @@ public class StreamMergerTest {
 		assertStatus(StreamProducerStatus.END_OF_STREAM, source1);
 		assertStatus(StreamProducerStatus.END_OF_STREAM, source2);
 		assertStatus(StreamConsumerStatus.CLOSED, consumer);
-		assertStatus(StreamConsumerStatus.END_OF_STREAM, merger.getDownstream());
+		assertStatus(StreamProducerStatus.END_OF_STREAM, merger.getDownstreamProducer());
 		assertStatuses(StreamConsumerStatus.CLOSED, merger.getUpstreamConsumers());
 	}
 
@@ -220,7 +220,7 @@ public class StreamMergerTest {
 		assertStatus(StreamProducerStatus.END_OF_STREAM, source2);
 		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, consumer);
 		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, merger.getDownstreamProducer());
-		assertStatuses(StreamConsumerStatus.CLOSED, merger.getUpstreamConsumers());
+		assertStatuses(StreamConsumerStatus.CLOSED_WITH_ERROR, merger.getUpstreamConsumers());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -257,7 +257,7 @@ public class StreamMergerTest {
 		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, consumer.getUpstream());
 		assertStatus(StreamConsumerStatus.CLOSED_WITH_ERROR, consumer);
 		assertStatus(StreamProducerStatus.CLOSED_WITH_ERROR, merger.getDownstreamProducer());
-		assertArrayEquals(new StreamConsumerStatus[]{StreamConsumerStatus.CLOSED_WITH_ERROR, StreamConsumerStatus.CLOSED},
+		assertArrayEquals(new StreamConsumerStatus[]{StreamConsumerStatus.CLOSED_WITH_ERROR, StreamConsumerStatus.CLOSED_WITH_ERROR},
 				consumerStatuses(merger.getUpstreamConsumers()));
 	}
 

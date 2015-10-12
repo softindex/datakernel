@@ -23,7 +23,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -40,8 +39,9 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 	protected final Eventloop eventloop;
 
+	protected final List<T> bufferedList = new ArrayList<>();
 	protected StreamConsumer<T> downstreamConsumer;
-	protected StreamDataReceiver<T> downstreamDataReceiver = new DataReceiverBeforeStart<>(this);
+	protected StreamDataReceiver<T> downstreamDataReceiver = new DataReceiverBeforeStart<>(this, bufferedList);
 
 	public enum StreamProducerStatus {
 		READY, SUSPENDED, END_OF_STREAM, CLOSED_WITH_ERROR;
@@ -84,11 +84,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 		boolean firstTime = this.downstreamConsumer == null;
 
-		List<T> list = Collections.emptyList();
-		if (firstTime) {
-			list = ((DataReceiverBeforeStart<T>) downstreamDataReceiver).list;
-		}
-
 		if (this.downstreamConsumer != null) {
 			this.downstreamConsumer.streamFrom(StreamProducers.<T>closingWithError(eventloop,
 					new Exception("Downstream disconnected")));
@@ -101,9 +96,10 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		bindDataReceiver();
 
 		if (firstTime) {
-			for (T item : list) {
-				downstreamDataReceiver.onData(item);
+			for (T item : bufferedList) {
+				downstreamConsumer.getDataReceiver().onData(item);
 			}
+			bufferedList.clear();
 		}
 
 		if (status == END_OF_STREAM) {
@@ -317,9 +313,12 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 	private static class DataReceiverBeforeStart<T> implements StreamDataReceiver<T> {
 		private final AbstractStreamProducer self;
-		private final List<T> list = new ArrayList<>();
+		private final List<T> list;
 
-		private DataReceiverBeforeStart(AbstractStreamProducer self) {this.self = self;}
+		private DataReceiverBeforeStart(AbstractStreamProducer self, List<T> list) {
+			this.self = self;
+			this.list = list;
+		}
 
 		@Override
 		public void onData(T item) {
