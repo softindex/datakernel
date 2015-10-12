@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs;
+package io.datakernel.simplefs.stress;
 
-public class SimpleFsResponseAcknowledge extends SimpleFsResponse {
+import java.net.UnknownHostException;
 
-	public final long bytesWritten;
-
-	public SimpleFsResponseAcknowledge(long bytesWritten) {
-		this.bytesWritten = bytesWritten;
-	}
-
-	@Override
-	public String toString() {
-		return "Uploaded{" + bytesWritten + "}";
+public class SerializerStressTest {
+	public static void main(String[] args) throws UnknownHostException {
+		StressClient client = new StressClient();
+		for (int i = 0; i < 100; i++) {
+			client.uploadSerializedObjects(i);
+		}
 	}
 }

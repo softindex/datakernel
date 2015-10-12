@@ -16,7 +16,6 @@
 
 package io.datakernel.simplefs;
 
-import com.google.common.base.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -24,15 +23,18 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamForwarder;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.MessagingStarter;
 import io.datakernel.stream.net.StreamMessagingConnection;
 import io.datakernel.stream.processor.StreamByteChunker;
-import io.datakernel.stream.processor.StreamFilter;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
+import io.datakernel.stream.processor.TransformerNoEnd;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,8 +82,10 @@ public class SimpleFsClient implements SimpleFs {
 							public void onMessage(SimpleFsResponseOperationOk item, final Messaging<SimpleFsCommand> messaging) {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
-								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
 								forwarder.streamTo(transformer);
+								// Need to count bytes
+								final StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
+
 								transformer.streamTo(streamByteChunker);
 								streamByteChunker.streamTo(consumer);
 							}
@@ -91,7 +95,11 @@ public class SimpleFsClient implements SimpleFs {
 							public void onMessage(SimpleFsResponseAcknowledge item, Messaging<SimpleFsCommand> messaging) {
 								logger.info("Received acknowledgement for {}", fileName);
 								messaging.shutdown();
-								commit(fileName, closeCallback);
+								// TODO logic for either committing or deleting file
+								if (item.bytesWritten == 0) {
+									logger.warn("0 bytes written in {}", fileName);
+								}
+								commit(fileName, closeCallback, true);
 							}
 						})
 						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
@@ -250,7 +258,7 @@ public class SimpleFsClient implements SimpleFs {
 				new StreamGsonSerializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 256 * 1024, 256 * (1 << 20), 0));
 	}
 
-	private void commit(final String fileName, final CompletionCallback callback) {
+	private void commit(final String fileName, final CompletionCallback callback, final boolean succes) {
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -258,7 +266,7 @@ public class SimpleFsClient implements SimpleFs {
 						.addStarter(new MessagingStarter<SimpleFsCommand>() {
 							@Override
 							public void onStart(Messaging<SimpleFsCommand> messaging) {
-								SimpleFsCommandCommit commandCommit = new SimpleFsCommandCommit(fileName);
+								SimpleFsCommandCommit commandCommit = new SimpleFsCommandCommit(fileName, succes);
 								messaging.sendMessage(commandCommit);
 							}
 						})

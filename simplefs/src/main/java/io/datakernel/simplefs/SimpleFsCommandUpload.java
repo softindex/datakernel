@@ -17,14 +17,14 @@
 package io.datakernel.simplefs;
 
 public final class SimpleFsCommandUpload extends SimpleFsCommand {
-	public final String filename;
+	public final String fileName;
 
-	public SimpleFsCommandUpload(String filename) {
-		this.filename = filename;
+	public SimpleFsCommandUpload(String fileName) {
+		this.fileName = fileName;
 	}
 
 	@Override
 	public String toString() {
-		return "Upload{filename=\'" + filename + "\'}";
+		return "Upload{filename=\'" + fileName + "\'}";
 	}
 }

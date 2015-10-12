@@ -60,7 +60,7 @@ public class SimpleFsServerTest {
 
 	@Before
 	public void before() throws Exception {
-		clientStorage = Paths.get(temporaryFolder.newFolder("test").toURI());
+		clientStorage = Paths.get(temporaryFolder.newFolder("client_storage").toURI());
 		serverStorage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
 
 		Files.createDirectories(clientStorage);
@@ -297,7 +297,7 @@ public class SimpleFsServerTest {
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
+		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile), true);
 		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -407,6 +407,38 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile1).toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile2).toFile()));
+	}
+
+	@Test
+	public void testUploadWithException() throws IOException {
+		String resultFile = "non_existing_file";
+
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		final StreamProducer<ByteBuf> producer = StreamProducers.closingWithError(eventloop, new Exception("Test exception"));
+		StreamConsumer<ByteBuf> consumer = client.upload(resultFile);
+		producer.streamTo(consumer);
+		consumer.addCompletionCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Big file uploaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Failed to upload", e);
+				stop(fileServer);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
 	}
 
 	private void uploadFiles(NioEventloop eventloop, final String... fileNames) throws IOException {

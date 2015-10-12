@@ -20,17 +20,26 @@ import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.simplefs.StopAndHugeFileUploadTest;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -39,6 +48,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import static java.util.Arrays.asList;
 
 public class StressClient {
 	private static final Logger logger = LoggerFactory.getLogger(StopAndHugeFileUploadTest.class);
@@ -204,4 +215,33 @@ public class StressClient {
 
 		return name.toString();
 	}
+
+	public void uploadSerializedObjects(int i) throws UnknownHostException {
+		DefiningClassLoader classLoader = new DefiningClassLoader();
+		BufferSerializer<SomeObject> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(classLoader)
+				.create(SomeObject.class);
+
+		SomeObject obj = new SomeObject();
+		obj.name = "someName";
+		obj.ip = InetAddress.getLocalHost();
+
+		StreamProducer<SomeObject> producer = StreamProducers.ofIterable(eventloop, asList(obj));
+		StreamBinarySerializer<SomeObject> serializer =
+				new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
+
+		producer.streamTo(serializer);
+		serializer.streamTo(client.upload("someName" + i));
+
+		eventloop.run();
+	}
+
+	public static class SomeObject {
+		@Serialize(order = 0)
+		public String name;
+
+		@Serialize(order = 1)
+		public InetAddress ip;
+	}
+
 }
