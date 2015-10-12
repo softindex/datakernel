@@ -57,7 +57,7 @@ public class SimpleFsClient implements SimpleFs {
 
 	@Override
 	public StreamConsumer<ByteBuf> upload(final String fileName) {
-		final StreamTransformer.TransformerWithoutEnd<ByteBuf> transformer = new StreamTransformer.TransformerWithoutEnd<>(eventloop);
+		final StreamTransformers.TransformerWithoutEnd<ByteBuf> transformer = new StreamTransformers.TransformerWithoutEnd<>(eventloop);
 		final CompletionCallback callback = new CompletionCallback() {
 			@Override
 			public void onComplete() {
