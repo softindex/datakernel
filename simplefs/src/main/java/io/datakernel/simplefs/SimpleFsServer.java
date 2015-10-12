@@ -126,7 +126,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 	protected SocketConnection createConnection(SocketChannel socketChannel) {
 
 		return new StreamMessagingConnection<>(eventloop, socketChannel,
-				new StreamGsonDeserializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 256 * 1024),
+				new StreamGsonDeserializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 10),
 				new StreamGsonSerializer<>(eventloop, SimpleFsResponseSerialization.GSON, SimpleFsResponse.class, 256 * 1024, 256 * (1 << 20), 0))
 				.addHandler(SimpleFsCommandUpload.class, defineUploadHandler())
 				.addHandler(SimpleFsCommandCommit.class, defineCommitHandler())

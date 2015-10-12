@@ -59,9 +59,9 @@ public class SimpleFsClient implements SimpleFs {
 
 	@Override
 	public StreamConsumer<ByteBuf> upload(final String fileName) {
-		final TransformerNoEnd transformer = new TransformerNoEnd(eventloop);
 		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-		transformer.streamTo(forwarder);
+		final TransformerNoEnd transformer = new TransformerNoEnd(eventloop);
+
 		final CompletionCallback closeCallback = transformer.getCloseCallback();
 
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
@@ -81,7 +81,8 @@ public class SimpleFsClient implements SimpleFs {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
-								forwarder.streamTo(streamByteChunker);
+								forwarder.streamTo(transformer);
+								transformer.streamTo(streamByteChunker);
 								streamByteChunker.streamTo(consumer);
 							}
 						})
@@ -111,9 +112,8 @@ public class SimpleFsClient implements SimpleFs {
 				closeCallback.onException(e);
 			}
 		});
-		StreamFilter<ByteBuf> filter = new StreamFilter<>(eventloop, Predicates.<ByteBuf>alwaysTrue());
-		filter.streamTo(transformer);
-		return filter;
+
+		return forwarder;
 	}
 
 	@Override
@@ -246,7 +246,7 @@ public class SimpleFsClient implements SimpleFs {
 
 	private StreamMessagingConnection<SimpleFsResponse, SimpleFsCommand> createConnection(SocketChannel socketChannel) {
 		return new StreamMessagingConnection<>(eventloop, socketChannel,
-				new StreamGsonDeserializer<>(eventloop, SimpleFsResponseSerialization.GSON, SimpleFsResponse.class, 256 * 1024),
+				new StreamGsonDeserializer<>(eventloop, SimpleFsResponseSerialization.GSON, SimpleFsResponse.class, 10),
 				new StreamGsonSerializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 256 * 1024, 256 * (1 << 20), 0));
 	}
 

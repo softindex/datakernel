@@ -17,11 +17,14 @@
 package io.datakernel.simplefs;
 
 import com.google.common.base.Charsets;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
@@ -204,6 +207,45 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), serverStorage.resolve(resultFile).toFile()));
+	}
+
+	@Test
+	public void testUploadMultiple() throws Exception {
+		int files = 10;
+		NioEventloop eventloop = new NioEventloop();
+		byte[] bytes = "Hello, World!".getBytes();
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		CompletionCallback callback = AsyncCallbacks.waitAll(files, new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("All files uploaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
+			}
+		});
+
+		for (int i = 0; i < files; i++) {
+			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
+			StreamConsumer<ByteBuf> consumer = client.upload("file" + i);
+			producer.streamTo(consumer);
+			consumer.addCompletionCallback(callback);
+		}
+
+		eventloop.run();
+
+		for (int i = 0; i < files; i++) {
+			assertArrayEquals(bytes, Files.readAllBytes(serverStorage.resolve("file" + i)));
+		}
+
+		return;
 	}
 
 	@Test
