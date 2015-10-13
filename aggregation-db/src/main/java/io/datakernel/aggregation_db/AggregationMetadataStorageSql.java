@@ -155,6 +155,38 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	@Override
+	public void loadAllChunks(final Aggregation aggregation, CompletionCallback callback) {
+		runConcurrently(eventloop, executor, false, new Runnable() {
+			@Override
+			public void run() {
+				loadAllChunks(DSL.using(jooqConfiguration), aggregation);
+			}
+		}, callback);
+	}
+
+	private void loadAllChunks(DSLContext jooq, Aggregation aggregation) {
+		Result<Record> records = jooq
+				.select()
+				.from(AGGREGATION_DB_CHUNK)
+				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(aggregation.getId()))
+				.fetch();
+
+		Splitter splitter = Splitter.on(' ').omitEmptyStrings();
+
+		for (Record record : records) {
+			boolean isConsolidated = record.getValue(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID) != null;
+
+			AggregationChunk chunk = getChunkFromRecord(record, aggregation, new HashMap<Integer, long[]>(), splitter, true);
+			aggregation.addChunk(chunk);
+
+			logger.info("Loaded chunk {} to aggregation with id '{}'. Consolidated: {}", chunk, aggregation.getId(), isConsolidated);
+			if (!isConsolidated) {
+				aggregation.addToIndex(chunk);
+			}
+		}
+	}
+
+	@Override
 	public int loadChunks(Aggregation aggregation, int lastRevisionId, int maxRevisionId) {
 		return loadChunks(DSL.using(jooqConfiguration), aggregation, lastRevisionId, maxRevisionId);
 	}
@@ -276,24 +308,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 			boolean isConsolidated = record.getValue(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID) != null &&
 					record.getValue(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID) <= newRevisionId;
 
-			Object[] minKeyArray = new Object[aggregation.getKeys().size()];
-			Object[] maxKeyArray = new Object[aggregation.getKeys().size()];
-			for (int d = 0; d < aggregation.getKeys().size(); d++) {
-				String key = aggregation.getKeys().get(d);
-				Class<?> type = aggregation.getStructure().getKeys().get(key).getDataType();
-				minKeyArray[d] = record.getValue("d" + (d + 1) + "_min", type);
-				maxKeyArray[d] = record.getValue("d" + (d + 1) + "_max", type);
-			}
-			AggregationChunk chunk = new AggregationChunk(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
-					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
-					record.getValue(AGGREGATION_DB_CHUNK.AGGREGATION_ID),
-					record.getValue(AGGREGATION_DB_CHUNK.MIN_REVISION_ID),
-					record.getValue(AGGREGATION_DB_CHUNK.MAX_REVISION_ID),
-					sourceChunkIdsMap.get(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID)),
-					newArrayList(splitter.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
-					PrimaryKey.ofArray(minKeyArray),
-					PrimaryKey.ofArray(maxKeyArray),
-					record.getValue(AGGREGATION_DB_CHUNK.COUNT));
+			AggregationChunk chunk = getChunkFromRecord(record, aggregation, sourceChunkIdsMap, splitter, false);
 			aggregation.addChunk(chunk);
 			logger.info("Loaded chunk {} to aggregation with id '{}'. Consolidated: {}", chunk, aggregation.getId(), isConsolidated);
 			if (!isConsolidated) {
@@ -308,6 +323,41 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		}
 
 		return newRevisionId;
+	}
+
+	private AggregationChunk getChunkFromRecord(Record record, Aggregation aggregation,
+	                                            Map<Integer, long[]> sourceChunkIdsMap, Splitter splitter,
+	                                            boolean retrieveConsolidationInfo) {
+		Object[] minKeyArray = new Object[aggregation.getKeys().size()];
+		Object[] maxKeyArray = new Object[aggregation.getKeys().size()];
+		for (int d = 0; d < aggregation.getKeys().size(); d++) {
+			String key = aggregation.getKeys().get(d);
+			Class<?> type = aggregation.getStructure().getKeys().get(key).getDataType();
+			minKeyArray[d] = record.getValue("d" + (d + 1) + "_min", type);
+			maxKeyArray[d] = record.getValue("d" + (d + 1) + "_max", type);
+		}
+
+		AggregationChunk chunk = new AggregationChunk(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
+				record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
+				record.getValue(AGGREGATION_DB_CHUNK.AGGREGATION_ID),
+				record.getValue(AGGREGATION_DB_CHUNK.MIN_REVISION_ID),
+				record.getValue(AGGREGATION_DB_CHUNK.MAX_REVISION_ID),
+				sourceChunkIdsMap.get(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID)),
+				newArrayList(splitter.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
+				PrimaryKey.ofArray(minKeyArray),
+				PrimaryKey.ofArray(maxKeyArray),
+				record.getValue(AGGREGATION_DB_CHUNK.COUNT));
+
+		if (retrieveConsolidationInfo) {
+			Integer consolidatedRevisionId = record.getValue(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID);
+			Timestamp consolidationStarted = record.getValue(AGGREGATION_DB_CHUNK.CONSOLIDATION_STARTED);
+			Timestamp consolidationCompleted = record.getValue(AGGREGATION_DB_CHUNK.CONSOLIDATION_COMPLETED);
+			chunk.setConsolidatedRevisionId(consolidatedRevisionId);
+			chunk.setConsolidationStarted(consolidationStarted);
+			chunk.setConsolidationCompleted(consolidationCompleted);
+		}
+
+		return chunk;
 	}
 
 	@Override

@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -81,12 +82,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void removeChunk(String aggregationId, long id) {
+	public void removeChunk(String aggregationId, long id, CompletionCallback callback) {
 		Path path = path(aggregationId, id);
 		try {
 			Files.delete(path);
+			callback.onComplete();
 		} catch (IOException e) {
 			logger.error("delete error", e);
+			callback.onException(e);
 		}
 	}
 

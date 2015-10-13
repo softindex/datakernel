@@ -46,6 +46,11 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
+	public void loadAllChunks(Aggregation aggregation, CompletionCallback callback) {
+
+	}
+
+	@Override
 	public int loadChunks(Aggregation aggregation, int lastRevisionId, int maxRevisionId) {
 		return 0;
 	}

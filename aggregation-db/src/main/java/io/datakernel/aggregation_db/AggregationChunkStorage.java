@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
@@ -56,6 +57,7 @@ public interface AggregationChunkStorage {
 	 *
 	 * @param aggregationId id of aggregation that contains the chunk
 	 * @param id            id of chunk
+	 * @param callback      callback
 	 */
-	void removeChunk(String aggregationId, long id);
+	void removeChunk(String aggregationId, long id, CompletionCallback callback);
 }

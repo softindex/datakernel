@@ -382,7 +382,7 @@ public class LogToCubeTest {
 
 		cb.check();
 		cb = new CompletionCallbackObserver();
-		cube.removeOldChunksFromAllIndexes(cb);
+		cube.removeOldChunksFromAllAggregations(cb);
 		eventloop.run();
 	}
 

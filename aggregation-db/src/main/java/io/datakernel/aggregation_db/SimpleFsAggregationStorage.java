@@ -99,17 +99,7 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void removeChunk(final String aggregationId, final long id) {
-		client.deleteFile(path(id), new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.trace("Removing chunk #{} completed successfully.", id);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.error("Removing chunk #{} from SimpleFS failed.", id);
-			}
-		});
+	public void removeChunk(final String aggregationId, final long id, CompletionCallback callback) {
+		client.deleteFile(path(id), callback);
 	}
 }

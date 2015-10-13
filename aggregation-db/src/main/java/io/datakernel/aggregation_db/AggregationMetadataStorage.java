@@ -57,6 +57,8 @@ public interface AggregationMetadataStorage {
 	 */
 	void saveChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
 
+	void loadAllChunks(Aggregation aggregation, CompletionCallback callback);
+
 	/**
 	 * Synchronously loads metadata of chunks, whose revision id is between {@code lastRevisionId} and {@code maxRevisionId}, to specified {@link Aggregation}.
 	 *

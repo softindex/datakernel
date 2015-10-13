@@ -18,10 +18,7 @@ package io.datakernel.aggregation_db;
 
 import com.google.common.base.*;
 import com.google.common.collect.Ordering;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -35,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.sql.Timestamp;
 import java.util.*;
+import java.util.Objects;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
@@ -58,8 +56,8 @@ public class Aggregation {
 	private final AggregationMetadata aggregationMetadata;
 	private final int aggregationChunkSize;
 	private final int sorterItemsInMemory;
-	private final int consolidationTimeoutMillis;
-	private final int removeChunksAfterConsolidationMillis;
+	private final long consolidationTimeoutMillis;
+	private final long removeChunksAfterConsolidationMillis;
 
 	private final AggregationStructure structure;
 
@@ -89,7 +87,7 @@ public class Aggregation {
 	public Aggregation(Eventloop eventloop, DefiningClassLoader classLoader, AggregationMetadataStorage metadataStorage,
 	                   AggregationChunkStorage aggregationChunkStorage, AggregationMetadata aggregationMetadata, AggregationStructure structure,
 	                   ProcessorFactory processorFactory, int sorterItemsInMemory,
-	                   int aggregationChunkSize, int consolidationTimeoutMillis, int removeChunksAfterConsolidationMillis) {
+	                   int aggregationChunkSize, long consolidationTimeoutMillis, long removeChunksAfterConsolidationMillis) {
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
 		this.metadataStorage = metadataStorage;
@@ -515,6 +513,27 @@ public class Aggregation {
 		});
 	}
 
+	public void consolidate(final ResultCallback<Integer> callback) {
+		consolidate(new ForwardingConsolidateCallback(callback) {
+			@Override
+			public void onConsolidate(AggregationMetadata aggregationMetadata,
+			                          final List<AggregationChunk> originalChunks,
+			                          List<AggregationChunk.NewChunk> consolidatedChunks) {
+				metadataStorage.saveConsolidatedChunks(Aggregation.this, aggregationMetadata, originalChunks, consolidatedChunks, new ForwardingCompletionCallback(callback) {
+					@Override
+					public void onComplete() {
+						callback.onResult(originalChunks.size());
+					}
+				});
+			}
+
+			@Override
+			public void onNothingToConsolidate() {
+				callback.onResult(0);
+			}
+		});
+	}
+
 	public int getNumberOfChunksAvailableForConsolidation() {
 		return aggregationMetadata.findChunksToConsolidate(newArrayList(chunks.keySet())).size();
 	}
@@ -592,7 +611,33 @@ public class Aggregation {
 		return ids;
 	}
 
+	private static class ChunkInfo {
+		private final long chunkId;
+		private final String aggregationId;
+
+		public ChunkInfo(long chunkId, String aggregationId) {
+			this.chunkId = chunkId;
+			this.aggregationId = aggregationId;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			ChunkInfo chunkInfo = (ChunkInfo) o;
+			return chunkId == chunkInfo.chunkId &&
+					Objects.equals(aggregationId, chunkInfo.aggregationId);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(chunkId, aggregationId);
+		}
+	}
+
 	public void removeOldChunks(final CompletionCallback completionCallback) {
+		List<ChunkInfo> chunksToRemove = newArrayList();
+
 		for (Map.Entry<Long, AggregationChunk> chunkEntry : chunks.entrySet()) {
 			final AggregationChunk chunk = chunkEntry.getValue();
 			if (chunk.isConsolidated()) {
@@ -602,24 +647,52 @@ public class Aggregation {
 				if (currentTimestamp > chunkRemovalTimestamp) {
 					final long chunkId = chunk.getChunkId();
 					final String aggregationId = chunk.getAggregationId();
-					metadataStorage.removeChunk(chunkId, new CompletionCallback() {
-						@Override
-						public void onComplete() {
-							removeFromIndex(chunk);
-							aggregationChunkStorage.removeChunk(aggregationId, chunkId);
-							logger.info("Removed chunk #{}", chunkId);
-							completionCallback.onComplete();
-						}
-
-						@Override
-						public void onException(Exception exception) {
-							logger.error("Removal of chunk #{} failed.", chunkId, exception);
-							completionCallback.onException(exception);
-						}
-					});
+					chunksToRemove.add(new ChunkInfo(chunkId, aggregationId));
 				}
 			}
 		}
+
+		if (chunksToRemove.isEmpty()) {
+			completionCallback.onComplete();
+			return;
+		}
+
+		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(chunksToRemove.size(), completionCallback);
+		for (ChunkInfo chunkInfo : chunksToRemove) {
+			removeChunk(chunkInfo, waitAllCallback);
+		}
+	}
+
+	private void removeChunk(ChunkInfo chunkInfo, final CompletionCallback callback) {
+		final long chunkId = chunkInfo.chunkId;
+		final String aggregationId = chunkInfo.aggregationId;
+
+		metadataStorage.removeChunk(chunkId, new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				chunks.remove(chunkId);
+				aggregationChunkStorage.removeChunk(aggregationId, chunkId, new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.info("Removed chunk #{} from chunk storage", chunkId);
+						callback.onComplete();
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						logger.error("Removal of chunk #{} from chunk storage failed", chunkId, exception);
+						callback.onException(exception);
+					}
+				});
+				logger.info("Removed chunk #{} from metadata storage", chunkId);
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				logger.error("Removal of chunk #{} from metadata storage failed", chunkId, exception);
+				callback.onException(exception);
+			}
+		});
 	}
 
 	public void loadChunks(int maxRevisionId, final CompletionCallback callback) {
@@ -642,6 +715,10 @@ public class Aggregation {
 
 	public void refreshChunkConsolidations(CompletionCallback callback) {
 		metadataStorage.refreshNotConsolidatedChunks(this, callback);
+	}
+
+	public void loadAllChunks(CompletionCallback callback) {
+		metadataStorage.loadAllChunks(this, callback);
 	}
 
 	@Override

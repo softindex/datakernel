@@ -18,6 +18,7 @@ package io.datakernel.aggregation_db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Iterables;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionSequence;
@@ -87,8 +88,9 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void removeChunk(String aggregationId, long id) {
+	public void removeChunk(String aggregationId, long id, CompletionCallback callback) {
 		chunkTypes.remove(id);
 		lists.remove(id);
+		callback.onComplete();
 	}
 }

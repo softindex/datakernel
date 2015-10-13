@@ -25,6 +25,7 @@ import io.datakernel.aggregation_db.*;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -59,8 +60,8 @@ public final class Cube {
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final int aggregationChunkSize;
 	private final int sorterItemsInMemory;
-	private final int consolidationTimeoutMillis;
-	private final int removeChunksAfterConsolidationMillis;
+	private final long consolidationTimeoutMillis;
+	private final long removeChunksAfterConsolidationMillis;
 
 	private final AggregationStructure structure;
 
@@ -86,8 +87,8 @@ public final class Cube {
 	 */
 	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
 	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory, int consolidationTimeoutMillis,
-	            int removeChunksAfterConsolidationMillis) {
+	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory,
+	            long consolidationTimeoutMillis, long removeChunksAfterConsolidationMillis) {
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
 		this.cubeMetadataStorage = cubeMetadataStorage;
@@ -120,6 +121,13 @@ public final class Cube {
 	            AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure) {
 		this(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, structure,
 				1_000_000, 1_000_000, 30 * 60 * 1000, 10 * 60 * 1000);
+	}
+
+	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
+	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	            AggregationStructure structure, long consolidationTimeoutMillis, long removeChunksAfterConsolidationMillis) {
+		this(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, structure,
+				1_000_000, 1_000_000, consolidationTimeoutMillis, removeChunksAfterConsolidationMillis);
 	}
 
 	public Map<String, Aggregation> getAggregations() {
@@ -396,6 +404,18 @@ public final class Cube {
 		cubeMetadataStorage.loadAggregations(this, callback);
 	}
 
+	public void loadAllChunks(CompletionCallback callback) {
+		if (aggregations.isEmpty()) {
+			callback.onComplete();
+			return;
+		}
+
+		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
+		for (Aggregation aggregation : aggregations.values()) {
+			aggregation.loadAllChunks(waitAllCallback);
+		}
+	}
+
 	public void reloadAllChunksConsolidations(CompletionCallback callback) {
 		if (aggregations.isEmpty()) {
 			callback.onComplete();
@@ -453,19 +473,43 @@ public final class Cube {
 			return;
 		}
 
-		TreeMap<Integer, Aggregation> indexNumberOfChunks = new TreeMap<>(Collections.reverseOrder());
+		TreeMap<Integer, Aggregation> aggregationToNumberOfChunks = getAggregationToNumberOfChunksForConsolidation();
+
+		if (aggregationToNumberOfChunks.isEmpty()) {
+			callback.onComplete();
+			return;
+		}
+
+		aggregationToNumberOfChunks.firstEntry().getValue().consolidate(callback);
+	}
+
+	public void consolidateGreedily(ResultCallback<Integer> callback) {
+		if (aggregations.isEmpty()) {
+			callback.onResult(0);
+			return;
+		}
+
+		TreeMap<Integer, Aggregation> aggregationToNumberOfChunks = getAggregationToNumberOfChunksForConsolidation();
+
+		if (aggregationToNumberOfChunks.isEmpty()) {
+			callback.onResult(0);
+			return;
+		}
+
+		aggregationToNumberOfChunks.firstEntry().getValue().consolidate(callback);
+	}
+
+	private TreeMap<Integer, Aggregation> getAggregationToNumberOfChunksForConsolidation() {
+		TreeMap<Integer, Aggregation> aggregationToNumberOfChunks = new TreeMap<>(Collections.reverseOrder());
 
 		for (Aggregation aggregation : aggregations.values()) {
 			int numberOfChunksAvailableForConsolidation = aggregation.getNumberOfChunksAvailableForConsolidation();
 			if (numberOfChunksAvailableForConsolidation != 0) {
-				indexNumberOfChunks.put(numberOfChunksAvailableForConsolidation, aggregation);
+				aggregationToNumberOfChunks.put(numberOfChunksAvailableForConsolidation, aggregation);
 			}
 		}
-		if (indexNumberOfChunks.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-		indexNumberOfChunks.firstEntry().getValue().consolidate(callback);
+
+		return aggregationToNumberOfChunks;
 	}
 
 	public void consolidateGreedily(ConsolidateCallback callback) {
@@ -474,20 +518,17 @@ public final class Cube {
 			return;
 		}
 
-		TreeMap<Integer, Aggregation> indexNumberOfChunks = new TreeMap<>(Collections.reverseOrder());
+		TreeMap<Integer, Aggregation> aggregationToNumberOfChunks = getAggregationToNumberOfChunksForConsolidation();
 
-		for (Aggregation aggregation : aggregations.values()) {
-			int numberOfChunksAvailableForConsolidation = aggregation.getNumberOfChunksAvailableForConsolidation();
-			indexNumberOfChunks.put(numberOfChunksAvailableForConsolidation, aggregation);
-		}
-		if (indexNumberOfChunks.isEmpty()) {
+		if (aggregationToNumberOfChunks.isEmpty()) {
 			callback.onNothingToConsolidate();
 			return;
 		}
-		indexNumberOfChunks.firstEntry().getValue().consolidate(callback);
+
+		aggregationToNumberOfChunks.firstEntry().getValue().consolidate(callback);
 	}
 
-	public void removeOldChunksFromAllIndexes(CompletionCallback callback) {
+	public void removeOldChunksFromAllAggregations(CompletionCallback callback) {
 		if (aggregations.isEmpty()) {
 			callback.onComplete();
 			return;
