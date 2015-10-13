@@ -57,7 +57,32 @@ public class StreamSorterTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter.getSortedStream()).getProducerStatus());
 		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter.getSortedStream()).getConsumerStatus());
-		//		assertNull(source.getWiredConsumerStatus());
+	}
+
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
+
+		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
+		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
+				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 2);
+
+		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop);
+
+		source.streamTo(sorter);
+		eventloop.run();
+
+		sorter.getSortedStream().streamTo(consumerToList);
+		eventloop.run();
+
+		storage.cleanup();
+
+		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter.getSortedStream()).getProducerStatus());
+		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter.getSortedStream()).getConsumerStatus());
 	}
 
 	@Test

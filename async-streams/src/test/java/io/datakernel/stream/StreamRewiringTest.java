@@ -156,7 +156,6 @@ public class StreamRewiringTest {
 		eventloop.run();
 		assertEquals(asList("1", "2", "3", "4", "5", "6"), consumer.getList());
 
-//		assertNull(producer1.getWiredConsumerStatus());
 		assertEquals(END_OF_STREAM, producer2.getProducerStatus());
 	}
 

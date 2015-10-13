@@ -103,49 +103,6 @@ public class StreamFilterTest {
 
 	}
 
-//	@Test
-//	public void testEndOfStream() {
-//		NioEventloop eventloop = new NioEventloop();
-//		List<Integer> list = new ArrayList<>();
-//
-//		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-//
-//		Predicate<Integer> predicate = new Predicate<Integer>() {
-//			@Override
-//			public boolean apply(Integer input) {
-//				return input % 2 != 2;
-//			}
-//		};
-//		StreamFilter<Integer> streamFilter = new StreamFilter<>(eventloop, predicate);
-//
-//		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
-//			@Override
-//			public void onData(Integer item) {
-//				list.add(item);
-//				if (item == 3) {
-//					onProducerEndOfStream();
-//					return;
-//				}
-//				upstreamProducer.onConsumerSuspended();
-//				eventloop.post(new Runnable() {
-//					@Override
-//					public void run() {
-//						upstreamProducer.onConsumerResumed();
-//					}
-//				});
-//			}
-//		};
-//
-//		source.streamTo(streamFilter);
-//		streamFilter.streamTo(consumer1);
-//
-//		eventloop.run();
-//
-//		assertEquals(asList(1, 2, 3), list);
-//		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-//
-//	}
-
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDisconnectWithError() {
@@ -176,5 +133,36 @@ public class StreamFilterTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFilter.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamFilter.getProducerStatus());
+	}
+
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+
+		Predicate<Integer> predicate = new Predicate<Integer>() {
+			@Override
+			public boolean apply(Integer input) {
+				return input % 2 == 1;
+			}
+		};
+		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
+
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+
+		source.streamTo(filter);
+		eventloop.run();
+
+		assertEquals(SUSPENDED, filter.getConsumerStatus());
+		assertEquals(SUSPENDED, filter.getProducerStatus());
+
+		filter.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(1, 3), consumer.getList());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, filter.getConsumerStatus());
+		assertEquals(END_OF_STREAM, filter.getProducerStatus());
 	}
 }

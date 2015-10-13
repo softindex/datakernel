@@ -123,49 +123,6 @@ public class StreamUnionTest {
 				consumerStatuses(streamUnion.getUpstreamConsumers()));
 	}
 
-//	@Test
-//	public void testEndOfStream() throws Exception {
-//		NioEventloop eventloop = new NioEventloop();
-//
-//		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
-//
-//		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-//		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(4, 5));
-//		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(6, 7));
-//
-//		List<Integer> list = new ArrayList<>();
-//		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
-//			@Override
-//			public void onData(Integer item) {
-//				super.onData(item);
-//				if (item == 5) {
-//					onProducerEndOfStream();
-//					return;
-//				}
-//				upstreamProducer.onConsumerSuspended();
-//				eventloop.post(new Runnable() {
-//					@Override
-//					public void run() {
-//						upstreamProducer.onConsumerResumed();
-//					}
-//				});
-//			}
-//		};
-//
-//		source0.streamTo(streamUnion.newInput());
-//		source1.streamTo(streamUnion.newInput());
-//		source2.streamTo(streamUnion.newInput());
-//
-//		streamUnion.streamTo(consumer);
-//		eventloop.run();
-//
-//		assertTrue(list.size() == 4);
-//		assertTrue(((AbstractStreamProducer)source0).getStatus() == AbstractStreamProducer.CLOSED);
-//		assertTrue(((AbstractStreamProducer)source1).getStatus() == AbstractStreamProducer.CLOSED);
-//		assertTrue(((AbstractStreamProducer)source2).getStatus() == AbstractStreamProducer.CLOSED);
-//
-//	}
-
 	@Test
 	public void testProducerWithError() {
 		NioEventloop eventloop = new NioEventloop();
@@ -193,5 +150,49 @@ public class StreamUnionTest {
 		assertTrue(list.size() == 3);
 		assertEquals(CLOSED_WITH_ERROR, streamUnion.getDownstreamProducer().getProducerStatus());
 		assertConsumerStatuses(CLOSED_WITH_ERROR, streamUnion.getUpstreamConsumers());
+	}
+
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
+
+		StreamProducer<Integer> source0 = StreamProducers.closing(eventloop);
+		StreamProducer<Integer> source1 = StreamProducers.ofValue(eventloop, 1);
+		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(2, 3));
+		StreamProducer<Integer> source3 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+		StreamProducer<Integer> source4 = StreamProducers.ofIterable(eventloop, asList(4, 5));
+		StreamProducer<Integer> source5 = StreamProducers.ofIterable(eventloop, asList(6));
+		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+
+		source0.streamTo(streamUnion.newInput());
+		source1.streamTo(streamUnion.newInput());
+		source2.streamTo(streamUnion.newInput());
+		source3.streamTo(streamUnion.newInput());
+		source4.streamTo(streamUnion.newInput());
+		source5.streamTo(streamUnion.newInput());
+		source6.streamTo(streamUnion.newInput());
+		eventloop.run();
+
+		streamUnion.streamTo(consumer);
+		eventloop.run();
+
+		List<Integer> result = consumer.getList();
+		Collections.sort(result);
+		assertEquals(asList(1, 2, 3, 4, 5, 6), result);
+
+		assertEquals(END_OF_STREAM, source0.getProducerStatus());
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertEquals(END_OF_STREAM, source3.getProducerStatus());
+		assertEquals(END_OF_STREAM, source4.getProducerStatus());
+		assertEquals(END_OF_STREAM, source5.getProducerStatus());
+		assertEquals(END_OF_STREAM, source6.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, streamUnion.getDownstreamProducer().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamUnion.getUpstreamConsumers());
 	}
 }

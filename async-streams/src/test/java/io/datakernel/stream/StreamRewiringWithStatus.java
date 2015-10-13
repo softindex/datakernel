@@ -38,7 +38,6 @@ public class StreamRewiringWithStatus {
 	private StreamConsumer<Integer> readyConsumer;
 	private StreamConsumer<Integer> suspendConsumer;
 	private StreamConsumer<Integer> endConsumer;
-//	private StreamConsumer<Integer> closedConsumer;
 	private StreamConsumer<Integer> closedWithErrorConsumer;
 
 	private StreamProducer<Integer> readyProducer;
@@ -55,7 +54,6 @@ public class StreamRewiringWithStatus {
 		readyConsumer = new TestConsumerOneByOne(eventloop);
 		suspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
 		endConsumer = new TestConsumerOneByOne(eventloop) {{onProducerEndOfStream();}};
-//		closedConsumer = new TestConsumerOneByOne(eventloop) {{close();}};
 		closedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{closeWithError(new Exception());}};
 
 		readyProducer = new TestProducerOfIterator(eventloop, it);
@@ -93,18 +91,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(CLOSED_WITH_ERROR, readyProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, endConsumer.getConsumerStatus());
 	}
-
-//	@Test
-//	// producer READY
-//	// consumer CLOSED
-//	public void testStartProducerReadyConsumerClosed() {
-//		readyProducer.streamTo(closedConsumer);
-//		eventloop.run();
-//
-//		assertEquals(Collections.emptyList(), list);
-//		assertStatus(AbstractStreamProducer.StreamProducerStatus.CLOSED_WITH_ERROR, readyProducer);
-//		assertStatus(AbstractStreamConsumer.StreamConsumerStatus.CLOSED_WITH_ERROR, closedConsumer);
-//	}
 
 	@Test
 	public void testStartProducerReadyConsumerClosedWithError() {
@@ -148,18 +134,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(END_OF_STREAM, endConsumer.getConsumerStatus());
 	}
 
-//	@Test
-//	// producer SUSPEND
-//	// consumer CLOSED
-//	public void testStartProducerSuspendConsumerClosed() {
-//		suspendProducer.streamTo(closedConsumer);
-//		eventloop.run();
-//
-//		assertEquals(Collections.emptyList(), list);
-//		assertStatus(AbstractStreamProducer.StreamProducerStatus.CLOSED_WITH_ERROR, suspendProducer);
-//		assertStatus(AbstractStreamConsumer.StreamConsumerStatus.CLOSED, closedConsumer);
-//	}
-
 	@Test
 	public void testStartProducerSuspendConsumerClosedWithError() {
 		suspendProducer.streamTo(closedWithErrorConsumer);
@@ -202,18 +176,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(END_OF_STREAM, endConsumer.getConsumerStatus());
 	}
 
-//	@Test
-//	// producer END_OF_STREAM
-//	// consumer CLOSED
-//	public void testStartProducerEndOfStreamConsumerCLOSED() {
-//		endProducer.streamTo(closedConsumer);
-//		eventloop.run();
-//
-//		assertEquals(Collections.emptyList(), list);
-//		assertStatus(AbstractStreamProducer.StreamProducerStatus.END_OF_STREAM, endProducer);
-//		assertStatus(AbstractStreamConsumer.StreamConsumerStatus.CLOSED, closedConsumer);
-//	}
-
 	@Test
 	public void testStartProducerEndOfStreamConsumerClosedWithError() {
 		endProducer.streamTo(closedWithErrorConsumer);
@@ -255,18 +217,6 @@ public class StreamRewiringWithStatus {
 		assertEquals(CLOSED_WITH_ERROR, closedWithErrorProducer.getProducerStatus());
 		assertEquals(END_OF_STREAM, endConsumer.getConsumerStatus());
 	}
-
-//	@Test
-//	// producer CLOSED_WITH_ERROR
-//	// consumer CLOSED
-//	public void testStartCloseWithErrorConsumerCLOSED() {
-//		closedWithErrorProducer.streamTo(closedConsumer);
-//		eventloop.run();
-//
-//		assertEquals(Collections.emptyList(), list);
-//		assertStatus(AbstractStreamProducer.StreamProducerStatus.CLOSED_WITH_ERROR, closedWithErrorProducer);
-//		assertStatus(AbstractStreamConsumer.StreamConsumerStatus.CLOSED_WITH_ERROR, closedConsumer);
-//	}
 
 	@Test
 	public void testStartCloseWithErrorConsumerClosedWithError() {

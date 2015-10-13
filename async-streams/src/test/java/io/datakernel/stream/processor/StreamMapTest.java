@@ -92,41 +92,6 @@ public class StreamMapTest {
 		assertEquals(CLOSED_WITH_ERROR, projection.getProducerStatus());
 	}
 
-//	@Test
-//	public void testEndofStream() throws Exception {
-//		NioEventloop eventloop = new NioEventloop();
-//		List<Integer> list = new ArrayList<>();
-//
-//		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-//		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
-//
-//		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
-//			@Override
-//			public void onData(Integer item) {
-//				super.onData(item);
-//				if (item == 12) {
-//					onProducerEndOfStream();
-//					return;
-//				}
-//				upstreamProducer.onConsumerSuspended();
-//				eventloop.post(new Runnable() {
-//					@Override
-//					public void run() {
-//						upstreamProducer.onConsumerResumed();
-//					}
-//				});
-//			}
-//		};
-//
-//		source.streamTo(projection);
-//		projection.streamTo(consumer);
-//
-//		eventloop.run();
-//
-//		assertTrue(list.size() == 2);
-//		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-//	}
-
 	@Test
 	public void testProducerWithError() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
@@ -149,4 +114,23 @@ public class StreamMapTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
 	}
 
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+
+		source.streamTo(projection);
+		eventloop.run();
+
+		projection.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(11, 12, 13), consumer.getList());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, projection.getConsumerStatus());
+		assertEquals(END_OF_STREAM, projection.getProducerStatus());
+	}
 }

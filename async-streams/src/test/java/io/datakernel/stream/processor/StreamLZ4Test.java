@@ -121,6 +121,64 @@ public class StreamLZ4Test {
 	}
 
 	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		List<ByteBuf> buffers = new ArrayList<>();
+		Random random = new Random(123456);
+		int buffersCount = 1000;
+		for (int i = 0; i < buffersCount; i++) {
+			ByteBuf buffer = createRandomByteBuf(random);
+			buffer.flip();
+			buffers.add(buffer);
+		}
+		byte[] expected = byteBufsToByteArray(buffers);
+
+		StreamProducer<ByteBuf> source = StreamProducers.ofIterable(eventloop, buffers);
+		StreamByteChunker preBuf = new StreamByteChunker(eventloop, 64, 128);
+		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+		StreamByteChunker postBuf = new StreamByteChunker(eventloop, 64, 128);
+		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+
+		source.streamTo(preBuf);
+		eventloop.run();
+
+		preBuf.streamTo(compressor);
+		eventloop.run();
+
+		compressor.streamTo(postBuf);
+		eventloop.run();
+
+		postBuf.streamTo(decompressor);
+		eventloop.run();
+
+		decompressor.streamTo(consumer);
+		eventloop.run();
+
+		byte[] actual = byteBufsToByteArray(consumer.getList());
+		for (ByteBuf buf : consumer.getList()) {
+			buf.recycle();
+		}
+
+		assertArrayEquals(expected, actual);
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+
+		assertEquals(END_OF_STREAM, preBuf.getProducerStatus());
+		assertEquals(END_OF_STREAM, preBuf.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, compressor.getConsumerStatus());
+		assertEquals(END_OF_STREAM, compressor.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, postBuf.getConsumerStatus());
+		assertEquals(END_OF_STREAM, postBuf.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, decompressor.getConsumerStatus());
+		assertEquals(END_OF_STREAM, decompressor.getProducerStatus());
+	}
+
+	@Test
 	public void testRaw() {
 		NioEventloop eventloop = new NioEventloop();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.rawCompressor(eventloop);

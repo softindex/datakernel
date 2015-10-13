@@ -136,47 +136,6 @@ public class StreamSharderTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer2.getConsumerStatus());
 	}
 
-//	@Test
-//	public void testEndofStream() throws Exception {
-//		NioEventloop eventloop = new NioEventloop();
-//
-//		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
-//
-//		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4));
-//
-//		List<Integer> list1 = new ArrayList<>();
-//		StreamConsumers.ToList<Integer> consumer1 = new StreamConsumers.ToList<Integer>(eventloop, list1);
-//
-//		List<Integer> list2 = new ArrayList<>();
-//		StreamConsumers.ToList<Integer> consumer2 = new StreamConsumers.ToList<Integer>(eventloop, list2) {
-//			@Override
-//			public void onData(Integer item) {
-//				super.onData(item);
-//				if (item == 3) {
-//					onProducerEndOfStream();
-//					return;
-//				}
-//				upstreamProducer.onConsumerSuspended();
-//				eventloop.post(new Runnable() {
-//					@Override
-//					public void run() {
-//						upstreamProducer.onConsumerResumed();
-//					}
-//				});
-//			}
-//		};
-//
-//		source.streamTo(streamSharder);
-//		streamSharder.newOutput().streamTo(consumer1);
-//		streamSharder.newOutput().streamTo(consumer2);
-//
-//		eventloop.run();
-//
-//		assertTrue(list1.size() == 1);
-//		assertTrue(list2.size() == 2);
-//		assertTrue(((AbstractStreamProducer)source).getStatus() == AbstractStreamProducer.CLOSED);
-//	}
-
 	@Test
 	public void testProducerWithError() throws Exception {
 		final NioEventloop eventloop = new NioEventloop();
