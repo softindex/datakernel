@@ -190,6 +190,53 @@ public class Utils {
 		return getJavaType(getSystemClassLoader(), type);
 	}
 
+	public static Class<?> tryGetJavaType(Type type) {
+		return tryGetJavaType(getSystemClassLoader(), type);
+	}
+
+	public static Class<?> tryGetJavaType(ClassLoader classLoader, Type type) {
+		int sort = type.getSort();
+		if (sort == Type.BOOLEAN)
+			return boolean.class;
+		if (sort == Type.CHAR)
+			return char.class;
+		if (sort == Type.BYTE)
+			return byte.class;
+		if (sort == Type.SHORT)
+			return short.class;
+		if (sort == Type.INT)
+			return int.class;
+		if (sort == Type.FLOAT)
+			return float.class;
+		if (sort == Type.LONG)
+			return long.class;
+		if (sort == Type.DOUBLE)
+			return double.class;
+		if (sort == Type.VOID)
+			return void.class;
+		if (sort == Type.OBJECT) {
+			try {
+				return classLoader.loadClass(type.getClassName());
+			} catch (ClassNotFoundException e) {
+				return Object.class;
+			}
+		}
+		if (sort == Type.ARRAY) {
+			Class<?> result;
+			if (type.equals(getType(Object[].class))) {
+				result = Object[].class;
+			} else {
+				result = type.getClass();
+			}
+			try {
+				result = Class.forName(type.getDescriptor());
+			} catch (ClassNotFoundException e) {
+			}
+			return result;
+		}
+		return Object.class;
+	}
+
 	public static void invokeVirtualOrInterface(GeneratorAdapter g, Class<?> owner, Method method) {
 		if (owner.isInterface())
 			g.invokeInterface(getType(owner), method);
@@ -249,6 +296,12 @@ public class Utils {
 
 		if (!type.equals(ctx.getThisType()) && !targetType.equals(ctx.getThisType()) &&
 				getJavaType(ctx.getClassLoader(), targetType).isAssignableFrom(getJavaType(ctx.getClassLoader(), type))) {
+			return;
+		}
+
+		if (targetType.equals(getType(Object.class)) && isPrimitiveType(type)) {
+			g.box(type);
+			g.cast(wrap(type), getType(Object.class));
 			return;
 		}
 

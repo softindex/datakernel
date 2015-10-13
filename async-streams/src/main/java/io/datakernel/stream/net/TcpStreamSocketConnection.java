@@ -27,6 +27,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+
 /**
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
@@ -131,18 +133,13 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		}
 
 		@Override
-		public void suspend() {
+		public final void suspend() {
 			super.suspend();
 		}
 
 		@Override
-		public void resume() {
+		public final void resume() {
 			super.resume();
-		}
-
-		@Override
-		public void close() {
-			super.close();
 		}
 
 		@Override
@@ -215,7 +212,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		if (!isRegistered())
 			return;
 		// TODO (vsavchuk) check this
-		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.END_OF_STREAM && writeQueue.isEmpty()) {
+		if (!socketReader.getProducerStatus().isOpen() && !socketWriter.getConsumerStatus().isOpen() && writeQueue.isEmpty()) {
 			logger.trace("done, closing {}", this);
 			close();
 			return;
@@ -251,7 +248,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 	@Override
 	protected void onWriteFlushed() {
-		if (socketWriter.getStatus() == AbstractStreamConsumer.END_OF_STREAM) {
+		if (socketWriter.getConsumerStatus() == END_OF_STREAM) {
 			try {
 				shutdownOutput();
 			} catch (IOException e) {

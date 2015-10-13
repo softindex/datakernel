@@ -20,7 +20,10 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -29,7 +32,9 @@ import java.util.List;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static org.junit.Assert.*;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 public class StreamLZ4Test {
 
@@ -98,8 +103,21 @@ public class StreamLZ4Test {
 		}
 
 		assertArrayEquals(expected, actual);
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+
+		assertEquals(END_OF_STREAM, preBuf.getProducerStatus());
+		assertEquals(END_OF_STREAM, preBuf.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, compressor.getConsumerStatus());
+		assertEquals(END_OF_STREAM, compressor.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, postBuf.getConsumerStatus());
+		assertEquals(END_OF_STREAM, postBuf.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, decompressor.getConsumerStatus());
+		assertEquals(END_OF_STREAM, decompressor.getProducerStatus());
+
 	}
 
 	@Test
@@ -159,7 +177,7 @@ public class StreamLZ4Test {
 		}
 		assertArrayEquals(actual, expected);
 
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 

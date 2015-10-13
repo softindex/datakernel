@@ -26,23 +26,31 @@ import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-@SuppressWarnings("FieldCanBeLocal")
 public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
-	private final StreamBinarySerializer<T> streamBinarySerializer;
-	private final StreamLZ4Compressor streamCompressor;
-	private final LogStreamConsumer_ByteBuffer logStreamConsumer_byteBuffer;
-
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
+	public static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
+	public static final int DEFAULT_FLUSH_DELAY = 1000; // 1 second
 
-	LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                  String streamId) {
+	private final StreamBinarySerializer<T> streamBinarySerializer;
+
+	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer, String streamId) {
+		this(eventloop, fileSystem, serializer, streamId, DEFAULT_BUFFER_SIZE);
+	}
+
+	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
+	                         String streamId, int bufferSize) {
+		this(eventloop, fileSystem, serializer, streamId, bufferSize, DEFAULT_FLUSH_DELAY);
+	}
+
+	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
+	                         String streamId, int bufferSize, int flushDelayMillis) {
 		super(eventloop);
-		this.streamBinarySerializer = new StreamBinarySerializer<>(eventloop, serializer, 1024 * 1024, StreamBinarySerializer.MAX_SIZE, 1000, false);
-		this.streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		this.logStreamConsumer_byteBuffer = new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
+		this.streamBinarySerializer = new StreamBinarySerializer<>(eventloop, serializer, bufferSize, StreamBinarySerializer.MAX_SIZE, flushDelayMillis, false);
+		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop).withoutEndOfStreamBlock();
+		LogStreamConsumer_ByteBuffer logStreamConsumer_byteBuffer = new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
 
-		this.logStreamConsumer_byteBuffer.setTag(streamId);
-		this.streamCompressor.setTag(streamId);
+		logStreamConsumer_byteBuffer.setTag(streamId);
+		streamCompressor.setTag(streamId);
 		this.streamBinarySerializer.setTag(streamId);
 
 		setActualConsumer(streamBinarySerializer);

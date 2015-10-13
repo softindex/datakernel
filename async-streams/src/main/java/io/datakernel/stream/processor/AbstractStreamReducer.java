@@ -18,8 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.AbstractStreamTransformer_M_1;
+import io.datakernel.stream.AbstractStreamTransformer_N_1;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -32,7 +31,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 /**
  * Perform aggregative functions on the elements from input streams. Searches key of item
  * with key function, selects elements with some key, reductions it and streams result sorted by key.
- * Elements from stream to input must be sorted by keys. It is {@link AbstractStreamTransformer_M_1}
+ * Elements from stream to input must be sorted by keys. It is {@link AbstractStreamTransformer_N_1}
  * because it represents few consumers and one producer.
  *
  * @param <K> type of key of element
@@ -40,7 +39,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  * @param <A> type of accumulator
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTransformer_M_1<O> implements AbstractStreamReducerMBean {
+public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTransformer_N_1<O> implements AbstractStreamReducerMBean {
 	public static final int BUFFER_SIZE = 1024;
 
 	private final int bufferSize;
@@ -94,7 +93,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 			}
 			if (deque.size() == bufferSize && streamsAwaiting == 0) {
 				downstreamProducer.produce();
-				if (((DownstreamProducer) downstreamProducer).getDownstreamStatus() != READY) {
+				if (!downstreamProducer.isStatusReady()) {
 					suspendAllUpstreams();
 				}
 			}
@@ -129,23 +128,19 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 
 		@Override
 		protected void onDownstreamSuspended() {
-			AbstractStreamReducer.this.onConsumerSuspended();
+			suspendAllUpstreams();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			AbstractStreamReducer.this.onConsumerResumed();
+			resumeAllUpstreams();
 			resumeProduce();
-		}
-
-		protected byte getDownstreamStatus() {
-			return status;
 		}
 
 		// TODO (vsavchuk) перенести всі поля які використовує doProduce, в цей клас
 		@Override
 		protected void doProduce() {
-			while (status == READY && streamsAwaiting == 0) {
+			while (isStatusReady() && streamsAwaiting == 0) {
 				UpstreamConsumer<Object> input = priorityQueue.poll();
 				if (input == null)
 					break;
@@ -167,18 +162,18 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 					input.headKey = input.keyFunction.apply(input.headItem);
 					priorityQueue.offer(input);
 				} else {
-					if (((AbstractStreamProducer) input.getUpstream()).getStatus() < END_OF_STREAM) {
+					if (input.getConsumerStatus().isOpen()) {
 						streamsAwaiting++;
 						break;
 					}
 				}
 			}
 
-			if (status == READY) {
+			if (isStatusReady()) {
 				resumeAllUpstreams();
 			}
 
-			if (status == READY && priorityQueue.isEmpty() && streamsAwaiting == 0) {
+			if (isStatusReady() && priorityQueue.isEmpty() && streamsAwaiting == 0) {
 				if (lastInput != null) {
 					assert jmxOnComplete != ++jmxOnComplete;
 					lastInput.reducer.onComplete(downstreamDataReceiver, key, accumulator);

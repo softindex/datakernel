@@ -37,6 +37,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
+import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
+
 /**
  * Represents a file system for persisting logs. Stores files in a local file system.
  */
@@ -60,6 +63,12 @@ public final class LogFileSystemImpl implements LogFileSystem {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.dir = dir;
+	}
+
+	public LogFileSystemImpl(Eventloop eventloop, ExecutorService executorService, Path dir, String logName) {
+		this.eventloop = eventloop;
+		this.executorService = executorService;
+		this.dir = dir.resolve(logName);
 	}
 
 	private static final class PartitionAndFile {
@@ -164,35 +173,25 @@ public final class LogFileSystemImpl implements LogFileSystem {
 							return FileVisitResult.CONTINUE;
 						}
 					});
-					eventloop.postConcurrently(new Runnable() {
-						@Override
-						public void run() {
-							callback.onResult(entries);
-							concurrentOperationTracker.complete();
-						}
-					});
-				} catch (final IOException e) {
+					postResultConcurrently(eventloop, callback, entries);
+				} catch (IOException e) {
 					// TODO ?
 					logger.error("walkFileTree error", e);
-					eventloop.postConcurrently(new Runnable() {
-						@Override
-						public void run() {
-							callback.onException(e);
-							concurrentOperationTracker.complete();
-						}
-					});
+					postExceptionConcurrently(eventloop, callback, e);
 				}
+
+				concurrentOperationTracker.complete();
 			}
 		});
 	}
 
 	@Override
-	public StreamProducer<ByteBuf> reader(String logPartition, LogFile logFile, long positionFrom) {
+	public StreamFileReader reader(String logPartition, LogFile logFile, long positionFrom) {
 		return StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024, path(logPartition, logFile), positionFrom);
 	}
 
 	@Override
-	public StreamConsumer<ByteBuf> writer(String logPartition, LogFile logFile) {
+	public StreamFileWriter writer(String logPartition, LogFile logFile) {
 		return StreamFileWriter.createFile(eventloop, executorService, path(logPartition, logFile));
 	}
 

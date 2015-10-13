@@ -76,17 +76,4 @@ public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> 
 		return super.newInput(keyFunction, reducer);
 	}
 
-	//for test only
-	byte downstreamProducerStatus() {
-		return downstreamProducer.getStatus();
-	}
-
-	byte[] upstreamConsumersStatus() {
-		byte[] bytes = new byte[upstreamConsumers.size()];
-		for (int i = 0; i < bytes.length; i++) {
-			bytes[i] = upstreamConsumers.get(i).getStatus();
-		}
-		return bytes;
-	}
-
 }

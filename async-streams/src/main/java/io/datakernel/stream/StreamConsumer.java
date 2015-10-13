@@ -59,10 +59,5 @@ public interface StreamConsumer<T> {
 	 */
 	void onProducerError(Exception e);
 
-	/**
-	 * Adds new CompletionCallback which will be called when consumer closed or closed with error
-	 *
-	 * @param completionCallback new instance of CompletionCallback
-	 */
-	void addConsumerCompletionCallback(CompletionCallback completionCallback);
+	StreamStatus getConsumerStatus();
 }

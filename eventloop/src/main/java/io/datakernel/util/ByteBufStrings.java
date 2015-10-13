@@ -308,13 +308,33 @@ public final class ByteBufStrings {
 
 	public static int decodeDecimal(byte[] array, int pos, int len) {
 		int result = 0;
+		int offsetLeft = trimOffsetLeft(array, pos, len);
+		pos = pos + offsetLeft;
+		len = len - offsetLeft;
+		len = len - trimOffsetRight(array, pos, len);
 		for (int i = pos; i < pos + len; i++) {
 			byte b = (byte) (array[i] - '0');
 			if (b < 0 || b >= 10)
-				throw new RuntimeException("Not decimal value");
+				throw new RuntimeException("Not decimal value" + new String(array, pos, len));
 			result = b + result * 10;
 		}
 		return result;
+	}
+
+	private static int trimOffsetLeft(byte[] array, int pos, int len) {
+		for (int i = 0; i < len; i++) {
+			if (array[pos + i] != SP && array[pos + i] != HT)
+				return i;
+		}
+		return 0;
+	}
+
+	private static int trimOffsetRight(byte[] array, int pos, int len) {
+		for (int i = len - 1; i >= 0; i--) {
+			if (array[pos + i] != SP && array[pos + i] != HT)
+				return len - i - 1;
+		}
+		return 0;
 	}
 
 	private static int digits(int x) {

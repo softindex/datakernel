@@ -16,6 +16,25 @@
 
 package io.datakernel.http;
 
+import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.net.SocketSettings.defaultSocketSettings;
+
+import java.io.IOException;
+import java.net.BindException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import io.datakernel.async.AsyncCallbacks;
@@ -35,24 +54,6 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.service.SimpleCompletionFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.BindException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
-import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 
 public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientImplMXBean {
 	private static final Logger logger = LoggerFactory.getLogger(HttpClientImpl.class);
@@ -248,11 +249,13 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		dnsClient.resolve4(request.getUrl().getHost(), new ResultCallback<InetAddress[]>() {
 			@Override
 			public void onResult(InetAddress[] inetAddresses) {
+				logger.trace("dnsClient.resolve4.onResult Calling {}", request);
 				getUrlForHostAsync(request, timeout, inetAddresses, callback);
 			}
 
 			@Override
 			public void onException(Exception exception) {
+				logger.trace("dnsClient.resolve4.onException Calling {}", request);
 				if (exception.getClass() == DnsException.class || exception.getClass() == TimeoutException.class) {
 					if (logger.isWarnEnabled()) {
 						logger.warn("Unexpected DNS exception for '{}': {}", request, exception.getMessage());
@@ -292,9 +295,11 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 			return;
 		}
 
+		logger.trace("eventloop.connect Calling {}", request);
 		eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
+				logger.trace("eventloop.connect.onConnect Calling {}", request);
 				removePendingSocketConnect(address);
 				HttpClientConnection connection = createConnection(socketChannel);
 				connection.register();
@@ -309,6 +314,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 
 			@Override
 			public void onException(Exception exception) {
+				logger.trace("eventloop.connect.onException Calling {}", request);
 				removePendingSocketConnect(address);
 				if (exception instanceof BindException) {
 					if (bindExceptionBlockTimeout != 0) {
@@ -332,6 +338,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 
 	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
 		connectionsList.moveNodeToLast(connection.connectionsListNode); // back-order connections
+		logger.trace("sendRequest Calling {}", request);
 		connection.request(request, timeoutTime, callback);
 	}
 
@@ -524,7 +531,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 			return null;
 		List<String> result = new ArrayList<>();
 		result.add("Address,DateTime");
-		for (Map.Entry<InetAddress, Long> entry : bindExceptionBlockedHosts.entrySet()) {
+		for (Entry<InetAddress, Long> entry : bindExceptionBlockedHosts.entrySet()) {
 			result.add(entry.getKey() + "," + MBeanFormat.formatDateTime(entry.getValue()));
 		}
 		return result.toArray(new String[result.size()]);

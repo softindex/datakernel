@@ -17,13 +17,13 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.LinkedList;
 
+import static io.datakernel.stream.StreamStatus.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -44,7 +44,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_INT, consumer1.getList().get(0));
-		assertTrue(producer1.getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, producer1.getProducerStatus());
 
 		StreamConsumers.ToList<String> consumer2 = new StreamConsumers.ToList<>(eventloop, new LinkedList<String>());
 		StreamProducers.OfValue<String> producer2 = new StreamProducers.OfValue<>(eventloop, TEST_STRING);
@@ -52,7 +52,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_STRING, consumer2.getList().get(0));
-		assertTrue(producer2.getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, producer2.getProducerStatus());
 
 		StreamConsumers.ToList<DataItem1> consumer3 = new StreamConsumers.ToList<>(eventloop, new LinkedList<DataItem1>());
 		StreamProducers.OfValue<DataItem1> producer3 = new StreamProducers.OfValue<>(eventloop, TEST_OBJECT);
@@ -60,7 +60,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertEquals(TEST_OBJECT, consumer3.getList().get(0));
-		assertTrue(producer3.getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, producer3.getProducerStatus());
 	}
 
 	@Test
@@ -71,7 +71,7 @@ public class ProducerOfValueTest {
 		eventloop.run();
 
 		assertTrue(consumer3.getList().get(0) == null);
-		assertTrue(producer3.getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, producer3.getProducerStatus());
 	}
 
 }

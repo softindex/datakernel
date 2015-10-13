@@ -16,7 +16,10 @@
 
 package io.datakernel.serializer.asm;
 
-import io.datakernel.codegen.*;
+import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Expressions;
+import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.StoreDef;
 import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.Arrays;
@@ -54,13 +57,13 @@ public final class SerializerGenList implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(final Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		Expression length = let(length(value));
 		Expression len = call(arg(0), "writeVarInt", length);
-		ExpressionListForEach forEach = listForEach(value, new ForVar() {
+		Expression forEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
 			@Override
-			public Expression forVar(Expression item) {
-				return valueSerializer.serialize(cast(item, valueSerializer.getRawType()), version, staticMethods);
+			public Expression forVar(Expression it) {
+				return valueSerializer.serialize(it, version, staticMethods);
 			}
 		});
 
@@ -74,15 +77,16 @@ public final class SerializerGenList implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression local = let(Expressions.newArray(Object[].class, call(arg(0), "readVarInt")));
-		ExpressionArrayForEachWithChanges forEach = arrayForEachWithChanges(local, new ForEachWithChanges() {
+		Expression len = let(call(arg(0), "readVarInt"));
+		final Expression array = let(Expressions.newArray(Object[].class, len));
+		Expression forEach = expressionFor(len, new ForVar() {
 			@Override
-			public Expression forEachWithChanges() {
-				return valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods);
+			public Expression forVar(Expression it) {
+				return setArrayItem(array, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods));
 			}
 		});
 
-		return sequence(forEach, set((StoreDef) local, callStatic(Arrays.class, "asList", local)), local);
+		return sequence(array, forEach, set((StoreDef) array, callStatic(Arrays.class, "asList", array)), array);
 	}
 
 	@Override

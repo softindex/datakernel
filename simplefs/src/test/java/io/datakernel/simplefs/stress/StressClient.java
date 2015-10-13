@@ -19,11 +19,9 @@ package io.datakernel.simplefs.stress;
 import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.simplefs.StopAndHugeFileUploadTest;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
@@ -74,20 +72,17 @@ public class StressClient {
 					StreamFileReader producer =
 							StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, file);
 
-					StreamConsumer<ByteBuf> consumer = client.upload(fileName);
-					consumer.addConsumerCompletionCallback(new CompletionCallback() {
+					client.upload(fileName, producer, new CompletionCallback() {
 						@Override
 						public void onComplete() {
 							logger.info("Uploaded: " + fileName);
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							logger.info("Failed to upload: {}", exception.getMessage());
+						public void onException(Exception e) {
+							logger.info("Failed to upload: {}", e.getMessage());
 						}
 					});
-					producer.streamTo(consumer);
-
 				} catch (IOException e) {
 					logger.info(e.getMessage());
 				}
@@ -107,7 +102,7 @@ public class StressClient {
 
 				StreamFileWriter consumer =
 						StreamFileWriter.createFile(eventloop, executor, downloads.resolve(fileName));
-				consumer.addConsumerCompletionCallback(new CompletionCallback() {
+				consumer.setFlushCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.info("Downloaded: " + fileName);

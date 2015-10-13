@@ -16,8 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
-
 /**
  * It represents object for asynchronous sending streams of data.
  * Implementors of this interface are strongly encouraged to extend one of the abstract classes
@@ -59,12 +57,6 @@ public interface StreamProducer<T> {
 	 */
 	void onConsumerError(Exception e);
 
-	/**
-	 * Adds new CompletionCallback which will be called when producer end of stream or closed with error
-	 *
-	 * @param completionCallback new instance of CompletionCallback
-	 */
-
-	void addProducerCompletionCallback(CompletionCallback completionCallback);
+	StreamStatus getProducerStatus();
 
 }

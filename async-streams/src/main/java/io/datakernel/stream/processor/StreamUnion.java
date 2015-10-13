@@ -18,7 +18,7 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.AbstractStreamTransformer_M_1;
+import io.datakernel.stream.AbstractStreamTransformer_N_1;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -28,7 +28,7 @@ import io.datakernel.stream.StreamDataReceiver;
  *
  * @param <T> type of output data
  */
-public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> {
+public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
 	public StreamUnion(Eventloop eventloop) {
 		super(eventloop);
 		this.downstreamProducer = new DownstreamProducer();
@@ -58,7 +58,6 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> {
 			if (allUpstreamsEndOfStream()) {
 				downstreamProducer.sendEndOfStream();
 			}
-			close();
 		}
 	}
 
@@ -82,5 +81,4 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> {
 	public StreamConsumer<T> newInput() {
 		return addInput(new UpstreamConsumer());
 	}
-
 }

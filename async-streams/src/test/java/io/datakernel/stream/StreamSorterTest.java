@@ -18,6 +18,7 @@ package io.datakernel.stream;
 
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.examples.ScheduledProducer;
 import io.datakernel.stream.processor.StreamMergeSorterStorage;
@@ -28,6 +29,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -52,10 +54,10 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((StreamForwarder) sorter.getSortedStream()).getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((StreamForwarder) sorter.getSortedStream()).getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
-//		assertNull(source.getWiredConsumerStatus());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter.getSortedStream()).getProducerStatus());
+		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter.getSortedStream()).getConsumerStatus());
+		//		assertNull(source.getWiredConsumerStatus());
 	}
 
 	@Test
@@ -71,11 +73,14 @@ public class StreamSorterTest {
 
 			@Override
 			public void scheduleNext() {
-				if (numberToSend > 9) abort();
-				if (scheduledRunnable != null && status >= END_OF_STREAM)
+				if (numberToSend > 9) {
+					abort();
+					return;
+				}
+				if (scheduledRunnable != null && getProducerStatus().isClosed())
 					return;
 				if (numberToSend >= 5) {
-					scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 1000L, new Runnable() {
+					scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 100L, new Runnable() {
 						@Override
 						public void run() {
 							send(numberToSend++);
@@ -112,13 +117,13 @@ public class StreamSorterTest {
 		assertEquals(consumerToList1.getList(), asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
 		assertEquals(consumerToList2.getList(), asList(10, 20, 30, 40, 50));
 
-		assertTrue(((AbstractStreamProducer) iterableSource).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer) scheduledSource).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, iterableSource.getProducerStatus());
+		assertEquals(END_OF_STREAM, scheduledSource.getProducerStatus());
 
-		assertTrue(((StreamForwarder) sorter1.getSortedStream()).getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((StreamForwarder) sorter1.getSortedStream()).getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
-		assertTrue(((StreamForwarder) sorter2.getSortedStream()).getDownstreamProducerStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((StreamForwarder) sorter2.getSortedStream()).getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED);
+		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter1.getSortedStream()).getProducerStatus());
+		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter1.getSortedStream()).getConsumerStatus());
+		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter2.getSortedStream()).getProducerStatus());
+		assertEquals(END_OF_STREAM, ((StreamForwarder) sorter2.getSortedStream()).getConsumerStatus());
 	}
 
 	@Test
@@ -153,11 +158,11 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertTrue(list.size() == 0);
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((StreamForwarder) sorter.getSortedStream()).getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
-		assertTrue(((StreamForwarder) sorter.getSortedStream()).getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, ((StreamForwarder) sorter.getSortedStream()).getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, ((StreamForwarder) sorter.getSortedStream()).getProducerStatus());
 
-		assertTrue(consumerToList.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
 	}
 
 	@Test
@@ -168,10 +173,10 @@ public class StreamSorterTest {
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<Integer>(eventloop) {
 			@Override
-			public StreamConsumer streamWriter() {
+			public void write(StreamProducer<Integer> producer, final CompletionCallback completionCallback) {
 				final List<Integer> list = new ArrayList<>();
 				storage.put(partition++, list);
-				return new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
+				TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 					@Override
 					public void onData(Integer item) {
 						list.add(item);
@@ -180,6 +185,9 @@ public class StreamSorterTest {
 						}
 					}
 				};
+				producer.streamTo(consumer);
+
+				consumer.setCompletionCallback(completionCallback);
 			}
 		};
 		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
@@ -195,10 +203,10 @@ public class StreamSorterTest {
 		storage.cleanup();
 
 		assertTrue(list.size() == 0);
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((StreamForwarder) sorter.getSortedStream()).getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((StreamForwarder) sorter.getSortedStream()).getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
-		assertTrue(consumerToList.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, ((StreamForwarder) sorter.getSortedStream()).getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, ((StreamForwarder) sorter.getSortedStream()).getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
 	}
 
 	@Test
@@ -228,12 +236,11 @@ public class StreamSorterTest {
 		eventloop.run();
 		storage.cleanup();
 
-		System.out.println(list.size());
 		assertTrue(list.size() == 2);
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((StreamForwarder) sorter.getSortedStream()).getDownstreamProducerStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(((StreamForwarder) sorter.getSortedStream()).getUpstreamConsumerStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
-		assertTrue(consumerToList.getStatus() == AbstractStreamConsumer.CLOSED_WITH_ERROR);
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, ((StreamForwarder) sorter.getSortedStream()).getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, ((StreamForwarder) sorter.getSortedStream()).getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
 	}
 
 	@Test
@@ -242,8 +249,7 @@ public class StreamSorterTest {
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofIterable(eventloop, asList(5, 1, 4, 3, 2))
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
 		);
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
@@ -261,5 +267,10 @@ public class StreamSorterTest {
 
 		assertTrue(list.size() == 0);
 		assertTrue(sorter.getItems() == 4);
+
+		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, ((StreamForwarder) sorter.getSortedStream()).getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, ((StreamForwarder) sorter.getSortedStream()).getConsumerStatus());
 	}
 }

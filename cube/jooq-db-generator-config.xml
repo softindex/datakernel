@@ -13,19 +13,12 @@
         <database>
             <name>org.jooq.util.mysql.MySQLDatabase</name>
             <inputSchema>test</inputSchema>
-            <outputSchema/>
+            <outputSchemaToDefault>true</outputSchemaToDefault>
 
             <includeExcludeColumns>true</includeExcludeColumns>
             <includes>
-                aggregation_log(\..*)? |
-                aggregation_revision(\..*)? |
-                aggregation_structure(\..*)? |
-                aggregation_chunk(\..*)?
+                aggregation_db_log(\..*)? |
             </includes>
-            <excludes>
-                aggregation_chunk\.d[0-9]+_min |
-                aggregation_chunk\.d[0-9]+_max |
-            </excludes>
         </database>
 
         <target>

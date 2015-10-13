@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_M_1;
+import io.datakernel.stream.AbstractStreamTransformer_N_1;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -28,7 +28,7 @@ import io.datakernel.stream.StreamDataReceiver;
  * @param <S> type of state
  * @param <O> type of output data
  */
-public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractStreamTransformer_M_1<O> implements StreamDataReceiver<I> {
+public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractStreamTransformer_N_1<O> implements StreamDataReceiver<I> {
 	protected S state;
 
 	private final class DownstreamProducer extends AbstractDownstreamProducer {

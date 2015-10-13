@@ -34,34 +34,27 @@ import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
 
-public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf>, StreamLZ4DecompressorMBean {
+public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamLZ4DecompressorMBean {
+	private final UpstreamConsumer upstreamConsumer;
+	private final DownstreamProducer downstreamProducer;
 
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
-
 		@Override
 		protected void onUpstreamStarted() {
-
 		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.sendEndOfStream();
-			((DownstreamProducer) downstreamProducer).recycleBufs();
 		}
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return StreamLZ4Decompressor.this;
-		}
-
-		@Override
-		protected void onError(Exception e) {
-			super.onError(e);
-			((DownstreamProducer) downstreamProducer).recycleBufs();
+			return downstreamProducer;
 		}
 	}
 
-	private final class DownstreamProducer extends AbstractDownstreamProducer {
+	private final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<ByteBuf> {
 		private static final int INITIAL_BUFFER_SIZE = 256;
 
 		private final LZ4FastDecompressor decompressor;
@@ -71,6 +64,11 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 
 		private ByteBuf inputBuf;
 		private long inputStreamPosition;
+
+		private long jmxBytesInput;
+		private long jmxBytesOutput;
+		private int jmxBufsInput;
+		private int jmxBufsOutput;
 
 		private DownstreamProducer(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 			this.decompressor = decompressor;
@@ -93,10 +91,13 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 			upstreamConsumer.resume();
 		}
 
-		private void onData(ByteBuf buf) {
+		@Override
+		public void onData(ByteBuf buf) {
+			jmxBufsInput++;
+			jmxBytesInput += buf.remaining();
 			try {
 				checkState(!header.finished, "Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf);
-				if (status <= SUSPENDED) {
+				if (getProducerStatus().isOpen()) {
 					consumeInputByteBuffer(buf);
 				}
 			} catch (Exception e) {
@@ -151,22 +152,18 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 			}
 		}
 
-		private void recycleBufs() {
+		private boolean isReadingHeader() {
+			return headerBuf.hasRemaining();
+		}
+
+		@Override
+		protected void doCleanup() {
 			if (inputBuf != null) {
 				inputBuf.recycle();
 				inputBuf = null;
 			}
 		}
-
-		private boolean isReadingHeader() {
-			return headerBuf.hasRemaining();
-		}
 	}
-
-	private long jmxBytesInput;
-	private long jmxBytesOutput;
-	private int jmxBufsInput;
-	private int jmxBufsOutput;
 
 	private final Header header = new Header();
 
@@ -247,45 +244,39 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		}
 	}
 
-	@Override
-	public void onData(ByteBuf buf) {
-		jmxBufsInput++;
-		jmxBytesInput += buf.remaining();
-		((DownstreamProducer) downstreamProducer).onData(buf);
-	}
-
 	public long getInputStreamPosition() {
-		return ((DownstreamProducer) downstreamProducer).inputStreamPosition;
+		return downstreamProducer.inputStreamPosition;
 	}
 
 	@Override
 	public long getBytesInput() {
-		return jmxBytesInput;
+		return downstreamProducer.jmxBytesInput;
 	}
 
 	@Override
 	public long getBytesOutput() {
-		return jmxBytesOutput;
+		return downstreamProducer.jmxBytesOutput;
 	}
 
 	@Override
 	public int getBufsInput() {
-		return jmxBufsInput;
+		return downstreamProducer.jmxBufsInput;
 	}
 
 	@Override
 	public int getBufsOutput() {
-		return jmxBufsOutput;
+		return downstreamProducer.jmxBufsOutput;
 	}
 
 	@SuppressWarnings("AssertWithSideEffects")
 	@Override
 	public String toString() {
 		return '{' + super.toString() +
-				" inBytes:" + jmxBytesInput +
-				" outBytes:" + jmxBytesOutput +
-				" inBufs:" + jmxBufsInput +
-				" outBufs:" + jmxBufsOutput +
+				" inBytes:" + downstreamProducer.jmxBytesInput +
+				" outBytes:" + downstreamProducer.jmxBytesOutput +
+				" inBufs:" + downstreamProducer.jmxBufsInput +
+				" outBufs:" + downstreamProducer.jmxBufsOutput +
 				'}';
 	}
+
 }

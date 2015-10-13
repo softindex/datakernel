@@ -50,7 +50,7 @@ public class SerializerGenSubclass implements SerializerGen {
 
 	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers) {
 		this.dataType = checkNotNull(dataType);
-		this.subclassSerializers = new HashMap<>(subclassSerializers);
+		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
 	}
 
 	@Override

@@ -18,16 +18,14 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Predicate;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -54,7 +52,9 @@ public class StreamFilterTest {
 
 		eventloop.run();
 		assertEquals(asList(1, 3), consumer.getList());
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, filter.getConsumerStatus());
+		assertEquals(END_OF_STREAM, filter.getProducerStatus());
 	}
 
 	@Test
@@ -96,7 +96,10 @@ public class StreamFilterTest {
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3), list);
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, consumer1.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFilter.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFilter.getProducerStatus());
 
 	}
 
@@ -169,6 +172,9 @@ public class StreamFilterTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 3);
-		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFilter.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFilter.getProducerStatus());
 	}
 }

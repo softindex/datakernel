@@ -17,14 +17,14 @@
 package io.datakernel.simplefs;
 
 public class SimpleFsResponseError extends SimpleFsResponse {
-    public final String exceptionMsg;
+	public final String exceptionMsg;
 
-    public SimpleFsResponseError(String exceptionMsg) {
-        this.exceptionMsg = exceptionMsg;
-    }
+	public SimpleFsResponseError(String exceptionMsg) {
+		this.exceptionMsg = exceptionMsg;
+	}
 
-    @Override
-    public String toString() {
-        return "Exception{msg=\'" + exceptionMsg + "\'}";
-    }
+	@Override
+	public String toString() {
+		return "Exception{msg=\'" + exceptionMsg + "\'}";
+	}
 }

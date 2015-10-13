@@ -17,6 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.AsyncGetter;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
@@ -93,19 +94,16 @@ public class StreamConsumers {
 
 		@Override
 		protected void onStarted() {
-			logger.info("{}", exception.getMessage());
-			upstreamProducer.onConsumerError(exception);
-			close();
+			logger.info("Closing with error {}", exception.toString());
+			closeWithError(exception);
 		}
 
 		@Override
 		protected void onEndOfStream() {
-
 		}
 
 		@Override
 		protected void onError(Exception e) {
-
 		}
 
 		@Override
@@ -168,6 +166,8 @@ public class StreamConsumers {
 	 */
 	public static final class ToList<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected final List<T> list;
+		private CompletionCallback completionCallback;
+		private ResultCallback<List<T>> resultCallback;
 
 		/**
 		 * Creates a new instance of ConsumerToList with empty list and event loop from argument, in which
@@ -177,6 +177,14 @@ public class StreamConsumers {
 			this(eventloop, new ArrayList<T>());
 		}
 
+		public void setCompletionCallback(CompletionCallback completionCallback) {
+			this.completionCallback = completionCallback;
+		}
+
+		public void setResultCallback(ResultCallback<List<T>> resultCallback) {
+			this.resultCallback = resultCallback;
+		}
+
 		@Override
 		protected void onStarted() {
 
@@ -184,12 +192,22 @@ public class StreamConsumers {
 
 		@Override
 		protected void onEndOfStream() {
-			close();
+			if (completionCallback != null) {
+				completionCallback.onComplete();
+			}
+			if (resultCallback != null) {
+				resultCallback.onResult(list);
+			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
-
+			if (completionCallback != null) {
+				completionCallback.onException(e);
+			}
+			if (resultCallback != null) {
+				resultCallback.onException(e);
+			}
 		}
 
 		/**
@@ -208,7 +226,7 @@ public class StreamConsumers {
 		 * Returns list with received items
 		 */
 		public final List<T> getList() {
-			checkState(((AbstractStreamProducer) upstreamProducer).getStatus() == AbstractStreamProducer.END_OF_STREAM, "Upstream %s is not closed", upstreamProducer);
+			checkState(getConsumerStatus() == StreamStatus.END_OF_STREAM, "ToList consumer is not closed");
 			return list;
 		}
 
@@ -244,7 +262,6 @@ public class StreamConsumers {
 		@Override
 		protected void onEndOfStream() {
 			endOfStream = true;
-			close();
 		}
 
 		@Override
@@ -284,36 +301,4 @@ public class StreamConsumers {
 		return toListSuspend(eventloop, new ArrayList<T>());
 	}
 
-	public static class TransformerWithoutEnd<I, O> extends AbstractStreamTransformer_1_1_Stateless<I, O> implements StreamDataReceiver<I> {
-		public TransformerWithoutEnd(Eventloop eventloop) {
-			super(eventloop);
-		}
-
-		@Override
-		protected StreamDataReceiver<I> getUpstreamDataReceiver() {
-			return this;
-		}
-
-		@Override
-		protected void onUpstreamEndOfStream() {
-			downstreamProducer.sendEndOfStream();
-		}
-
-		public void closeOnComplete() {
-			upstreamConsumer.close();
-		}
-
-		public void closeOnError(Exception e) {
-			upstreamConsumer.closeWithError(e);
-		}
-
-		@Override
-		public void onData(I item) {
-			downstreamDataReceiver.onData((O) item);
-		}
-	}
-
-	public static <I, O> TransformerWithoutEnd<I, O> transformerWithoutEnd(Eventloop eventloop) {
-		return new TransformerWithoutEnd<>(eventloop);
-	}
 }

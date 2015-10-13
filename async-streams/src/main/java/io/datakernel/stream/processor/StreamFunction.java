@@ -20,7 +20,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
 import io.datakernel.stream.StreamDataReceiver;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -32,53 +31,58 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <I> type of input data
  * @param <O> type of output data
  */
-public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1_Stateless<I, O> implements StreamDataReceiver<I> {
-	private final Function<I, O> function;
+public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I, O> {
+	private final UpstreamConsumer upstreamConsumer;
+	private final DownstreamProducer downstreamProducer;
 
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param eventloop eventloop in which filter will be running
-	 * @param function  function for applying
-	 */
+	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+		@Override
+		protected void onUpstreamStarted() {
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public StreamDataReceiver<I> getDataReceiver() {
+			return downstreamProducer.function == Functions.identity() ?
+					(StreamDataReceiver<I>) downstreamProducer.getDownstreamDataReceiver() :
+					downstreamProducer;
+		}
+	}
+
+	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<I> {
+		private final Function<I, O> function;
+
+		public DownstreamProducer(Function<I, O> function) {this.function = checkNotNull(function);}
+
+		@Override
+		protected void onDownstreamStarted() {
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+
+		@Override
+		public void onData(I item) {
+			send(function.apply(item));
+		}
+	}
+
 	public StreamFunction(Eventloop eventloop, Function<I, O> function) {
 		super(eventloop);
-		checkNotNull(function);
-		this.function = function;
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer(function);
 	}
 
-	/**
-	 * Returns callback for right sending data, if its function is identity, returns dataReceiver
-	 * for sending data without filtering.
-	 */
-	@Override
-	protected StreamDataReceiver<I> getUpstreamDataReceiver() {
-		return function == Functions.identity() ? (StreamDataReceiver<I>) downstreamDataReceiver : this;
-	}
-
-	@Override
-	protected void onUpstreamEndOfStream() {
-		downstreamProducer.sendEndOfStream();
-		upstreamConsumer.close();
-	}
-
-	/**
-	 * Applies function to received data and sends result to the destination
-	 *
-	 * @param item received data
-	 */
-	@Override
-	public void onData(I item) {
-		downstreamDataReceiver.onData(function.apply(item));
-	}
-
-	//for test only
-	byte upstreamConsumerStatus() {
-		return upstreamConsumer.getStatus();
-	}
-
-	//for test only
-	byte downstreamProducerStatus() {
-		return downstreamProducer.getStatus();
-	}
 }

@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 
 public class DataItemKey implements Comparable<DataItemKey> {
 	public int key1;
@@ -39,7 +39,7 @@ public class DataItemKey implements Comparable<DataItemKey> {
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("key1", key1)
 				.add("key2", key2)
 				.toString();

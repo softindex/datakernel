@@ -112,5 +112,4 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		assert (items = "" + jmxItems) != null;
 		return '{' + super.toString() + " items:" + items + '}';
 	}
-
 }

@@ -17,315 +17,372 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.http.middleware.*;
-import org.junit.Before;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.util.ByteBufStrings;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
-import java.util.concurrent.Executors;
-
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.assertEquals;
 
 public class MiddlewareServletTest {
 
-	@Before
-	public void before() {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+	private static final String TEMPLATE = "http://www.site.org";
+	private static final String DELIM = "*****************************************************************************";
+
+	@Rule
+	public ExpectedException expectedException = ExpectedException.none();
+
+	private static ResultCallback<HttpResponse> callback(final String expectedBody, final int expectedCode) {
+		return new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(HttpResponse result) {
+				assertEquals(expectedBody, result.getBody() == null ? "" : result.getBody().toString());
+				assertEquals(expectedCode, result.getCode());
+				System.out.println(result + "  " + result.getBody());
+			}
+
+			@Override
+			public void onException(Exception exception) {
+
+			}
+		};
 	}
 
 	@Test
-	public void test() throws Exception {
-		MiddlewareServlet servlet = new MiddlewareServlet();
+	public void testMicroMapping() {
+		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
+		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
+		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
+		HttpRequest request4 = HttpRequest.get(TEMPLATE + "/a/d");  // ok
+		HttpRequest request5 = HttpRequest.get(TEMPLATE + "/a/e");  // 404
+		HttpRequest request6 = HttpRequest.get(TEMPLATE + "/b");    // 404
+		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/b/f");  // ok
+		HttpRequest request8 = HttpRequest.get(TEMPLATE + "/b/g");  // ok
 
-		servlet.use(new HttpSuccessHandler() {
+		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void handle(final HttpRequest request, final MiddlewareRequestContext context) {
-				System.out.println("1");
-				context.setAttachment("key", "value");
-				context.next(request);
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				callback.onResult(HttpResponse.create(200).body(msg));
 			}
-		});
+		};
 
-		servlet.get("/", new HttpSuccessHandler() {
-			@Override
-			public void handle(final HttpRequest request, final MiddlewareRequestContext context) {
-				Executors.newCachedThreadPool().submit(new Runnable() {
-					@Override
-					public void run() {
-						System.out.println("2");
-						context.next(request);
-					}
-				});
-			}
-		});
+		MiddlewareServlet a = new MiddlewareServlet();
+		a.get("/c", action);
+		a.get("/d", action);
+		a.get("/", action);
 
-		servlet.get("/a", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("3");
-				context.next(request);
-			}
-		});
+		MiddlewareServlet b = new MiddlewareServlet();
+		b.get("/f", action);
+		b.get("/g", action);
 
-		servlet.get("/a/b/", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("4");
-				context.next(request);
-			}
-		});
+		MiddlewareServlet main = new MiddlewareServlet();
+		main.get("/", action);
+		main.get("/a", a);
+		main.get("/b", b);
 
-		servlet.use("/A", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("5");
-				context.next(request);
-			}
-		});
-
-		servlet.get("/a/b/c", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("6");
-				context.next(request);
-			}
-		});
-
-		servlet.post("/", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("7");
-				context.next(request);
-			}
-		});
-
-		servlet.use("/", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("8");
-				context.next(new Exception(), request);
-			}
-		});
-
-		servlet.use("/", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("9");
-				context.next(request);
-			}
-		});
-
-		servlet.use(new HttpErrorHandler() {
-			@Override
-			public void handle(Exception exception, HttpRequest request, MiddlewareRequestErrorContext context) {
-				System.out.println("error-1");
-				context.next(exception, request);
-			}
-		});
-
-		servlet.use(new HttpErrorHandler() {
-			@Override
-			public void handle(Exception exception, HttpRequest request, MiddlewareRequestErrorContext context) {
-				System.out.println("error-2");
-				context.send(HttpResponse.internalServerError500());
-			}
-		});
-
-		servlet.use(new HttpErrorHandler() {
-			@Override
-			public void handle(Exception exception, HttpRequest request, MiddlewareRequestErrorContext context) {
-				System.out.println("error-3");
-				context.next(exception, request);
-			}
-		});
-
-		String firstRequestUrl = "http://localhost:5588/";
-		String secondRequestUrl = "http://localhost:5588/a/b";
-
-		System.out.println("Executing request to " + firstRequestUrl);
-		servlet.serveAsync(HttpRequest.get(firstRequestUrl), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				System.out.println(result);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				exception.printStackTrace();
-			}
-		});
-
-		Thread.sleep(250);
-
-		System.out.println("Executing request to " + secondRequestUrl);
-		servlet.serveAsync(HttpRequest.get(secondRequestUrl), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				System.out.println(result);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				exception.printStackTrace();
-			}
-		});
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		System.out.println("Micro mapping" + DELIM);
+		main.serveAsync(request1, callback("Executed: /", 200));
+		main.serveAsync(request2, callback("Executed: /a", 200));
+		main.serveAsync(request3, callback("Executed: /a/c", 200));
+		main.serveAsync(request4, callback("Executed: /a/d", 200));
+		main.serveAsync(request5, callback("", 404));
+		main.serveAsync(request6, callback("", 404));
+		main.serveAsync(request7, callback("Executed: /b/f", 200));
+		main.serveAsync(request8, callback("Executed: /b/g", 200));
+		System.out.println();
 	}
 
 	@Test
-	public void testWithRuntimeExceptions() throws Exception {
-		MiddlewareServlet servlet = new MiddlewareServlet();
+	public void testLongMapping() {
+		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
+		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
+		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
+		HttpRequest request4 = HttpRequest.get(TEMPLATE + "/a/d");  // ok
+		HttpRequest request5 = HttpRequest.get(TEMPLATE + "/a/e");  // 404
+		HttpRequest request6 = HttpRequest.get(TEMPLATE + "/b");    // 404
+		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/b/f");  // ok
+		HttpRequest request8 = HttpRequest.get(TEMPLATE + "/b/g");  // ok
 
-		servlet.use(new HttpSuccessHandler() {
+		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("1");
-				context.next(request);
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				callback.onResult(HttpResponse.create(200).body(msg));
 			}
-		});
+		};
 
-		servlet.get("/", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("2");
-				throw new RuntimeException("Runtime exception in success handler.");
-			}
-		});
+		MiddlewareServlet main = new MiddlewareServlet();
 
-		servlet.get("/abc", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("3");
-				context.next(request);
-			}
-		});
+		main.get("/", action);
+		main.get("/a", action);
+		main.get("/a/c", action);
+		main.get("/a/d", action);
+		main.get("/b/f", action);
+		main.get("/b/g", action);
 
-		servlet.post("/", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("4");
-				context.next(request);
-			}
-		});
-
-		servlet.use("/", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("5");
-				context.next(new Exception(), request);
-			}
-		});
-
-		servlet.use("/", new HttpSuccessHandler() {
-			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.println("6");
-				context.next(request);
-			}
-		});
-
-		servlet.use(new HttpErrorHandler() {
-			@Override
-			public void handle(Exception exception, HttpRequest request, MiddlewareRequestErrorContext context) {
-				System.out.println(exception.getMessage());
-				context.next(exception, request);
-			}
-		});
-
-		servlet.use(new HttpErrorHandler() {
-			@Override
-			public void handle(Exception exception, HttpRequest request, MiddlewareRequestErrorContext context) {
-				System.out.println(exception.getMessage());
-				throw new RuntimeException("Exception in error handler.");
-			}
-		});
-
-		servlet.use(new HttpErrorHandler() {
-			@Override
-			public void handle(Exception exception, HttpRequest request, MiddlewareRequestErrorContext context) {
-				System.out.println(exception.getMessage());
-				context.next(exception, request);
-			}
-		});
-
-		servlet.serveAsync(HttpRequest.get("http://localhost:5588/"), new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				System.out.println(result);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				exception.printStackTrace();
-			}
-		});
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		System.out.println("Long mapping " + DELIM);
+		main.serveAsync(request1, callback("Executed: /", 200));
+		main.serveAsync(request2, callback("Executed: /a", 200));
+		main.serveAsync(request3, callback("Executed: /a/c", 200));
+		main.serveAsync(request4, callback("Executed: /a/d", 200));
+		main.serveAsync(request5, callback("", 404));
+		main.serveAsync(request6, callback("", 404));
+		main.serveAsync(request7, callback("Executed: /b/f", 200));
+		main.serveAsync(request8, callback("Executed: /b/g", 200));
+		System.out.println();
 	}
 
 	@Test
-	public void testUrlParameters() throws Exception {
-		MiddlewareServlet servlet = new MiddlewareServlet();
-
-		servlet.use("/user/:id/:name", new HttpSuccessHandler() {
+	public void testOverrideHandler() {
+		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.format("id: %s%n", context.getUrlParameter("id"));
-				System.out.format("name: %s%n", context.getUrlParameter("name"));
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				callback.onResult(HttpResponse.create(200).body(msg));
 			}
-		});
+		};
 
-		String requestUrl = "http://localhost:5588/user/123/joe";
-
-		System.out.println("Executing request to " + requestUrl);
-
-		servlet.serveAsync(HttpRequest.get(requestUrl), new ResultCallback<HttpResponse>() {
+		AsyncHttpServlet anotherAction = new AsyncHttpServlet() {
 			@Override
-			public void onResult(HttpResponse result) {
-				System.out.println(result);
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				callback.onResult(HttpResponse.create(200).body(msg));
 			}
+		};
 
-			@Override
-			public void onException(Exception exception) {
-				exception.printStackTrace();
-			}
-		});
+		MiddlewareServlet s1 = new MiddlewareServlet();
+		s1.get("/", action);
+		s1.get("/", action);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		expectedException.expect(RuntimeException.class);
+		expectedException.expectMessage("Can't map. Handler already exists");
+		s1.get("/", anotherAction);
+
 	}
 
 	@Test
-	public void testOptionalUrlParameters() throws Exception {
+	public void testMerge() {
+		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");         // ok
+		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");        // ok
+		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/b");        // ok
+		HttpRequest request4 = HttpRequest.get(TEMPLATE + "/a/c");      // ok
+		HttpRequest request5 = HttpRequest.get(TEMPLATE + "/a/d");      // ok
+		HttpRequest request6 = HttpRequest.get(TEMPLATE + "/a/e");      // ok
+		HttpRequest request7 = HttpRequest.get(TEMPLATE + "/a/c/f");    // ok
+
+		AsyncHttpServlet action = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				callback.onResult(HttpResponse.create(200).body(msg));
+			}
+		};
+
+		MiddlewareServlet main = new MiddlewareServlet();
+		main.get("/a", action);
+		main.get("/a/c", action);
+		main.get("/a/d", action);
+		main.get("/b", action);
+
+		MiddlewareServlet supp = new MiddlewareServlet();
+		supp.get("/", action);
+		supp.get("/a/e", action);
+		supp.get("/a/c/f", action);
+
+		main.get("/", supp);
+
+		System.out.println("Merge   " + DELIM);
+		main.serveAsync(request1, callback("Executed: /", 200));
+		main.serveAsync(request2, callback("Executed: /a", 200));
+		main.serveAsync(request3, callback("Executed: /b", 200));
+		main.serveAsync(request4, callback("Executed: /a/c", 200));
+		main.serveAsync(request5, callback("Executed: /a/d", 200));
+		main.serveAsync(request6, callback("Executed: /a/e", 200));
+		main.serveAsync(request7, callback("Executed: /a/c/f", 200));
+		System.out.println();
+	}
+
+	@Test
+	public void testFailMerge() {
+		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
+
+		AsyncHttpServlet action = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				callback.onResult(HttpResponse.create(200).body(msg));
+			}
+		};
+
+		AsyncHttpServlet anotherAction = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				ByteBuf msg = ByteBufStrings.wrapUTF8("Shall not be executed: " + request.getPath());
+				callback.onResult(HttpResponse.create(200).body(msg));
+			}
+		};
+
+		MiddlewareServlet main = new MiddlewareServlet();
+		main.get("/", action);
+		main.get("/a/e", action);
+		main.get("/a/c/f", action);
+
+		MiddlewareServlet exc = new MiddlewareServlet();
+		exc.get("/a/c/f", anotherAction);
+
+		// /a/c/f already mapped
+		expectedException.expect(RuntimeException.class);
+		expectedException.expectMessage("Can't map. Handler for this method already exists");
+		main.get("/", exc);
+
+		main.serveAsync(request, callback("SHALL NOT BE EXECUTED", 500));
+	}
+
+	@Test
+	public void testParameter() {
+		AsyncHttpServlet printParameters = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				HttpResponse response = HttpResponse.create(200);
+				response.body(ByteBufStrings.wrapUTF8(request.getUrlParameter("id")
+						+ " " + request.getUrlParameter("uid")
+						+ " " + request.getUrlParameter("eid")));
+				callback.onResult(response);
+			}
+		};
+
+		MiddlewareServlet main = new MiddlewareServlet();
+		main.get("/:id/a/:uid/b/:eid", printParameters);
+		main.get("/:id/a/:uid", printParameters);
+
+		System.out.println("Parameter test " + DELIM);
+		main.serveAsync(HttpRequest.get("http://www.coursera.org/123/a/456/b/789"), callback("123 456 789", 200));
+		main.serveAsync(HttpRequest.get("http://www.coursera.org/555/a/777"), callback("555 777 null", 200));
+		main.serveAsync(HttpRequest.get("http://www.coursera.org"), callback("", 404));
+		System.out.println();
+	}
+
+	@Test
+	public void testMultiParameters() {
+		AsyncHttpServlet serveCar = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				HttpResponse response = HttpResponse.create(200);
+				response.body(ByteBufStrings.wrapUTF8("served car: " + request.getUrlParameter("cid")));
+				callback.onResult(response);
+			}
+		};
+
+		AsyncHttpServlet serveMan = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				HttpResponse response = HttpResponse.create(200);
+				response.body(ByteBufStrings.wrapUTF8("served man: " + request.getUrlParameter("mid")));
+				callback.onResult(response);
+			}
+		};
+
+		MiddlewareServlet ms = new MiddlewareServlet();
+		ms.get("/serve/:cid/wash", serveCar);
+		ms.get("/serve/:mid/feed", serveMan);
+
+		System.out.println("Multi parameters " + DELIM);
+		ms.serveAsync(HttpRequest.get(TEMPLATE + "/serve/1/wash"), callback("served car: 1", 200));
+		ms.serveAsync(HttpRequest.get(TEMPLATE + "/serve/2/feed"), callback("served man: 2", 200));
+		System.out.println();
+	}
+
+	@Test
+	public void testDifferentMethods() {
+		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/a/b/c/action");
+		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
+		HttpRequest request3 = HttpRequest.create(HttpMethod.CONNECT).url(TEMPLATE + "/a/b/c/action");
+
+		AsyncHttpServlet post = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				HttpResponse response = HttpResponse.create(200);
+				response.body(ByteBufStrings.wrapUTF8("POST"));
+				callback.onResult(response);
+			}
+		};
+
+		AsyncHttpServlet get = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				HttpResponse response = HttpResponse.create(200);
+				response.body(ByteBufStrings.wrapUTF8("GET"));
+				callback.onResult(response);
+			}
+		};
+
+		AsyncHttpServlet wildcard = new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				HttpResponse response = HttpResponse.create(200);
+				response.body(ByteBufStrings.wrapUTF8("WILDCARD"));
+				callback.onResult(response);
+			}
+		};
+
 		MiddlewareServlet servlet = new MiddlewareServlet();
+		servlet.use("/a/b/c/action", wildcard);
+		servlet.post("/a/b/c/action", post);
+		servlet.get("/a/b/c/action", get);
 
-		servlet.use("/user/:id/:age/:name?", new HttpSuccessHandler() {
+		System.out.println("Different methods " + DELIM);
+		servlet.serveAsync(request1, callback("GET", 200));
+		servlet.serveAsync(request2, callback("POST", 200));
+		servlet.serveAsync(request3, callback("WILDCARD", 200));
+		System.out.println();
+	}
+
+	@Test
+	public void testDefault() {
+		AsyncHttpServlet def = new AsyncHttpServlet() {
 			@Override
-			public void handle(HttpRequest request, MiddlewareRequestContext context) {
-				System.out.format("id: %s%n", context.getUrlParameter("id"));
-				System.out.format("age: %s%n", context.getUrlParameter("age"));
-				System.out.format("name: %s%n", context.getUrlParameter("name"));
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("Stopped at admin: " + request.getRelativePath())));
 			}
-		});
+		};
 
-		String requestUrl = "http://localhost:5588/user/123/21/";
-
-		System.out.println("Executing request to " + requestUrl);
-
-		servlet.serveAsync(HttpRequest.get(requestUrl), new ResultCallback<HttpResponse>() {
+		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void onResult(HttpResponse result) {
-				System.out.println(result);
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("Action executed")));
 			}
+		};
 
+		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/html/admin/action");
+		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/html/admin/action/ban");
+
+		MiddlewareServlet main = new MiddlewareServlet();
+		main.get("/html/admin/action", action);
+		main.setDefault("/html/admin", def);
+
+		System.out.println("Default stop " + DELIM);
+		main.serveAsync(request1, callback("Action executed", 200));
+		main.serveAsync(request2, callback("Stopped at admin: /action/ban", 200));
+		System.out.println();
+	}
+
+	@Test
+	public void test404() {
+		AsyncHttpServlet handler = new AsyncHttpServlet() {
 			@Override
-			public void onException(Exception exception) {
-				exception.printStackTrace();
+			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("All OK")));
 			}
-		});
+		};
+		MiddlewareServlet main = new MiddlewareServlet();
+		main.use("/a/:id/b/c", null);
+		main.use("/a/:id/b/d", handler);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		System.out.println("404 " + DELIM);
+		main.serveAsync(HttpRequest.get(TEMPLATE + "/a/123/b/c"), callback("", 404));
+		System.out.println();
 	}
 }

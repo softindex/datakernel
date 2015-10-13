@@ -16,12 +16,14 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamDeserializer;
 import io.datakernel.stream.processor.StreamSerializer;
 
+import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 
@@ -50,6 +52,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 	private StreamProducer<ByteBuf> socketReader;
 	private StreamConsumer<ByteBuf> socketWriter;
+
+	private CompletionCallback completionCallback;
 
 	/**
 	 * Creates a new instance of BinaryProtocolMessaging
@@ -89,8 +93,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
 		this.socketReader = socketReader;
 		this.socketWriter = socketWriter;
-		socketReader.streamTo(currentConsumer);
-		streamSerializer.streamTo(socketWriter);
+		this.socketReader.streamTo(currentConsumer);
+		streamSerializer.streamTo(this.socketWriter);
 
 		output = messageProducer.getDownstreamDataReceiver();
 		onStart();
@@ -179,11 +183,26 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	}
 
 	@Override
-	public StreamConsumer<ByteBuf> binarySocketWriter() {
-		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+	protected void shutdownOutput() throws IOException {
+		super.shutdownOutput();
+		if (completionCallback != null && socketWriter.getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+			completionCallback.onComplete();
+		}
+	}
+
+	@Override
+	protected void onWriteException(Exception e) {
+		super.onWriteException(e);
+		if (completionCallback != null) {
+			completionCallback.onException(e);
+		}
+	}
+
+	@Override
+	public void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback) {
+		this.completionCallback = completionCallback;
 		streamSerializer.flush();
-		socketWriter.streamFrom(forwarder);
-		return forwarder;
+		producer.streamTo(socketWriter);
 	}
 
 	@Override
@@ -191,7 +210,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		socketReader.streamTo(forwarder);
 		currentConsumer = forwarder;
-		streamDeserializer.drainBuffersTo(forwarder);
+		streamDeserializer.drainBuffersTo(forwarder.getDataReceiver());
 		return forwarder;
 	}
 

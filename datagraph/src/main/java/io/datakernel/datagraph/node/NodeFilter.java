@@ -16,7 +16,7 @@
 
 package io.datakernel.datagraph.node;
 
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.graph.TaskContext;
@@ -58,7 +58,7 @@ public final class NodeFilter<T> implements Node {
 
 	@Override
 	public String toString() {
-		return Objects.toStringHelper(this)
+		return MoreObjects.toStringHelper(this)
 				.add("predicate", predicate)
 				.add("input", input)
 				.add("output", output)

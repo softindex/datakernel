@@ -23,9 +23,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.processor.Utils.*;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamSplitterTest {
 	@Test
@@ -43,7 +44,9 @@ public class StreamSplitterTest {
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumerToList1.getList());
 		assertEquals(asList(1, 2, 3), consumerToList2.getList());
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, streamConcat.getUpstreamConsumer().getConsumerStatus());
+		assertProducerStatuses(END_OF_STREAM, streamConcat.getDownstreamProducers());
 	}
 
 	@Test
@@ -67,11 +70,11 @@ public class StreamSplitterTest {
 					closeWithError(new Exception());
 					return;
 				}
-				upstreamProducer.onConsumerSuspended();
+				suspend();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.onConsumerResumed();
+						resume();
 					}
 				});
 			}
@@ -89,7 +92,9 @@ public class StreamSplitterTest {
 		assertTrue(toList2.size() == 3);
 		assertTrue(toBadList.size() == 3);
 
-		assertTrue(((AbstractStreamProducer) source).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamConcat.getUpstreamConsumer().getConsumerStatus());
+		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getDownstreamProducers());
 	}
 
 //	@Test
@@ -168,5 +173,8 @@ public class StreamSplitterTest {
 		assertTrue(list1.size() == 3);
 		assertTrue(list2.size() == 3);
 		assertTrue(list3.size() == 3);
+
+		assertEquals(CLOSED_WITH_ERROR, streamConcat.getUpstreamConsumer().getConsumerStatus());
+		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getDownstreamProducers());
 	}
 }

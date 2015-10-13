@@ -16,9 +16,10 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.StreamTransformer;
+
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * Represent {@link StreamProducer} and {@link StreamConsumer} in the one object.
@@ -31,17 +32,16 @@ import io.datakernel.stream.processor.StreamTransformer;
 public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTransformer<I, O> {
 	protected final Eventloop eventloop;
 
-	protected AbstractUpstreamConsumer upstreamConsumer;
-	protected AbstractDownstreamProducer downstreamProducer;
-	protected StreamDataReceiver<O> downstreamDataReceiver;
+	private AbstractUpstreamConsumer upstreamConsumer;
+	private AbstractDownstreamProducer downstreamProducer;
 
 	protected Object tag;
 
 	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
-		protected int index;
-
 		public AbstractUpstreamConsumer() {
 			super(AbstractStreamTransformer_1_1.this.eventloop);
+			checkState(upstreamConsumer == null);
+			upstreamConsumer = this;
 		}
 
 		@Override
@@ -64,37 +64,31 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		}
 
 		@Override
-		public void suspend() {
+		public final void suspend() {
 			super.suspend();
 		}
 
 		@Override
-		public void resume() {
+		public final void resume() {
 			super.resume();
-		}
-
-		@Override
-		public void close() {
-			super.close();
 		}
 
 		@Override
 		public void closeWithError(Exception e) {
 			super.closeWithError(e);
 		}
+
 	}
 
 	protected abstract class AbstractDownstreamProducer extends AbstractStreamProducer<O> {
-
-		protected int index;
-
 		public AbstractDownstreamProducer() {
 			super(AbstractStreamTransformer_1_1.this.eventloop);
+			checkState(downstreamProducer == null);
+			downstreamProducer = this;
 		}
 
 		@Override
 		protected final void onDataReceiverChanged() {
-			AbstractStreamTransformer_1_1.this.downstreamDataReceiver = this.downstreamDataReceiver;
 			if (upstreamConsumer.getUpstream() != null) {
 				upstreamConsumer.getUpstream().bindDataReceiver();
 			}
@@ -102,9 +96,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected final void onStarted() {
-			if (upstreamConsumer.getUpstream() != null) {
-				upstreamConsumer.getUpstream().bindDataReceiver();
-			}
+			upstreamConsumer.bindUpstream();
 			onDownstreamStarted();
 		}
 
@@ -149,11 +141,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		this.eventloop = eventloop;
 	}
 
-	protected void closeWithError(Exception e) {
-		downstreamProducer.closeWithError(e);
-		upstreamConsumer.closeWithError(e);
-	}
-
 	// upstream
 
 	@Override
@@ -167,19 +154,18 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	}
 
 	@Override
-	public final void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-		upstreamConsumer.addConsumerCompletionCallback(completionCallback);
-	}
-
-	@Override
 	public final void onProducerError(Exception e) {
 		upstreamConsumer.onProducerError(e);
-		downstreamProducer.closeWithError(e);
 	}
 
 	@Override
 	public final void streamFrom(StreamProducer<I> upstreamProducer) {
 		upstreamConsumer.streamFrom(upstreamProducer);
+	}
+
+	@Override
+	public StreamStatus getConsumerStatus() {
+		return upstreamConsumer.getConsumerStatus();
 	}
 
 	// downstream
@@ -205,27 +191,24 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	}
 
 	@Override
-	public final void addProducerCompletionCallback(CompletionCallback completionCallback) {
-		downstreamProducer.addProducerCompletionCallback(completionCallback);
+	public final void bindDataReceiver() {
+		downstreamProducer.bindDataReceiver();
 	}
 
 	@Override
-	public final void bindDataReceiver() {
-		downstreamProducer.bindDataReceiver();
-		if (upstreamConsumer.getUpstream() != null) {
-			upstreamConsumer.getUpstream().bindDataReceiver();
-		}
+	public StreamStatus getProducerStatus() {
+		return downstreamProducer.getProducerStatus();
 	}
 
-	public AbstractUpstreamConsumer getUpstreamConsumer() {
-		return upstreamConsumer;
+	//for test only
+	StreamStatus getUpstreamConsumerStatus() {
+		return upstreamConsumer.getConsumerStatus();
 	}
 
-	public AbstractDownstreamProducer getDownstreamProducer() {
-		return downstreamProducer;
+	// for test only
+	StreamStatus getDownstreamProducerStatus() {
+		return downstreamProducer.getProducerStatus();
 	}
-
-	// misc
 
 	public void setTag(Object tag) {
 		this.tag = tag;

@@ -1,0 +1,8 @@
+dependencies {
+    compile project(':datakernel/eventloop')
+    compile('com.google.inject:guice:4.0')
+    compile('org.slf4j:slf4j-api:1.7.12')
+
+    testCompile('ch.qos.logback:logback-classic:1.1.3')
+}
+

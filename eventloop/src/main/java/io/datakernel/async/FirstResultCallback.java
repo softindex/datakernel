@@ -53,6 +53,7 @@ public class FirstResultCallback<T> implements ResultCallback<T> {
 		if (!hasResult) {
 			this.exception = exception; // last Exception
 		}
+		processResult();
 	}
 
 	public void resultOf(int maxAwaitsCalls) {

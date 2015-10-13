@@ -17,7 +17,6 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ForEachWithChanges;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.SerializerBuilder;
@@ -55,10 +54,10 @@ public class SerializerGenSet implements SerializerGen {
 	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		return sequence(
 				call(arg(0), "writeVarInt", call(value, "size")),
-				setForEach(value, new ForVar() {
+				forEach(value, valueSerializer.getRawType(), new ForVar() {
 					@Override
-					public Expression forVar(Expression local) {
-						return sequence(valueSerializer.serialize(cast(local, valueSerializer.getRawType()), version, staticMethods), voidExp());
+					public Expression forVar(Expression it) {
+						return sequence(valueSerializer.serialize(it, version, staticMethods), voidExp());
 					}
 				})
 		);
@@ -84,11 +83,11 @@ public class SerializerGenSet implements SerializerGen {
 
 	private Expression deserializeEnumSet(final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		Expression len = let(call(arg(0), "readVarInt"));
-		Expression container = let(newArray(Object[].class, len));
-		Expression array = arrayForEachWithChanges(container, new ForEachWithChanges() {
+		final Expression container = let(newArray(Object[].class, len));
+		Expression array = expressionFor(len, new ForVar() {
 			@Override
-			public Expression forEachWithChanges() {
-				return valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods);
+			public Expression forVar(Expression it) {
+				return setArrayItem(container, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods));
 			}
 		});
 		Expression list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
@@ -101,7 +100,7 @@ public class SerializerGenSet implements SerializerGen {
 		final Expression container = let(constructor(LinkedHashSet.class, length));
 		return sequence(length, container, expressionFor(length, new ForVar() {
 					@Override
-					public Expression forVar(Expression local) {
+					public Expression forVar(Expression it) {
 						return sequence(
 								call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)),
 								voidExp()

@@ -164,39 +164,30 @@ public final class SerializationInputBuffer {
 		return result;
 	}
 
-	public String readAscii() {
+	public String readIso88591() {
 		int length = readVarInt();
-		return doReadAscii(length);
+		return doReadIso88591(length);
 	}
 
-	public String readNullableAscii() {
+	public String readNullableIso88591() {
 		int length = readVarInt();
 		if (length == 0)
 			return null;
-		return doReadUTF8(length - 1);
+		return doReadIso88591(length - 1);
 	}
 
-	public String doReadAscii(int length) {
+	public String doReadIso88591(int length) {
 		if (length == 0)
 			return "";
 		if (length > remaining())
 			throw new IllegalArgumentException();
 
-		if (length <= 35) {
-			char[] chars = ensureCharArray(length);
-			for (int i = 0; i < length; i++) {
-				int c = readByte() & 0xff;
-				chars[i] = (char) c;
-			}
-			return new String(chars, 0, length);
-		} else {
-			pos += length;
-			try {
-				return new String(buf, pos - length, length, "ISO-8859-1");
-			} catch (UnsupportedEncodingException e) {
-				throw new RuntimeException();
-			}
+		char[] chars = ensureCharArray(length);
+		for (int i = 0; i < length; i++) {
+			int c = readByte() & 0xff;
+			chars[i] = (char) c;
 		}
+		return new String(chars, 0, length);
 	}
 
 	public String readUTF8() {

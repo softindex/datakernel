@@ -16,13 +16,13 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static java.lang.System.arraycopy;
+import static java.util.Collections.unmodifiableList;
 
 /**
  * Represents a {@link AbstractStreamConsumer} with several {@link AbstractStreamProducer} .
@@ -36,10 +36,6 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	protected AbstractUpstreamConsumer upstreamConsumer;
 	protected final List<AbstractDownstreamProducer<?>> downstreamProducers = new ArrayList<>();
 	private int suspendedProducersCount;
-
-	protected void onDataReceiverChanged(int outputIndex) {
-
-	}
 
 	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
 		protected StreamDataReceiver<?>[] dataReceivers = new StreamDataReceiver[0];
@@ -77,11 +73,6 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 		@Override
 		public final void resume() {
 			super.resume();
-		}
-
-		@Override
-		public final void close() {
-			super.close();
 		}
 
 		@Override
@@ -214,8 +205,16 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 	}
 
 	@Override
-	public final void addConsumerCompletionCallback(CompletionCallback completionCallback) {
-		upstreamConsumer.addConsumerCompletionCallback(completionCallback);
+	public StreamStatus getConsumerStatus() {
+		return upstreamConsumer.getConsumerStatus();
+	}
+
+	public StreamConsumer getUpstreamConsumer() {
+		return upstreamConsumer;
+	}
+
+	public List<? extends StreamProducer<?>> getDownstreamProducers() {
+		return unmodifiableList(downstreamProducers);
 	}
 
 }

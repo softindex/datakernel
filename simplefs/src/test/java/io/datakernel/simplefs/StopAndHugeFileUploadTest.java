@@ -17,9 +17,7 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.file.StreamFileReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,55 +86,49 @@ public class StopAndHugeFileUploadTest {
 				final StreamFileReader producer3 = StreamFileReader.readFileFully(eventloop, executor,
 						16 * 1024, clientStorage.resolve(rejectedFile));
 
-				StreamConsumer<ByteBuf> consumer1 = client1.upload(hugeFile);
-				consumer1.addConsumerCompletionCallback(new CompletionCallback() {
+				client1.upload(hugeFile, producer1, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.info(hugeFile + " downloaded successfully");
 					}
 
 					@Override
-					public void onException(Exception exception) {
-						logger.error(hugeFile + " can't upload", exception);
+					public void onException(Exception e) {
+						logger.error(hugeFile + " can't upload", e);
 					}
 				});
-				producer1.streamTo(consumer1);
 
 				eventloop.schedule(eventloop.currentTimeMillis() + 5000, new Runnable() {
 					@Override
 					public void run() {
-						StreamConsumer<ByteBuf> consumer2 = client2.upload(rejectedFile);
-						consumer2.addConsumerCompletionCallback(new CompletionCallback() {
+						client2.upload(rejectedFile, producer3, new CompletionCallback() {
 							@Override
 							public void onComplete() {
 								logger.info("Should not happen");
 							}
 
 							@Override
-							public void onException(Exception exception) {
-								logger.error("Can't upload " + rejectedFile, exception);
+							public void onException(Exception e) {
+								logger.error("Can't upload " + rejectedFile, e);
 							}
 						});
-						producer3.streamTo(consumer2);
 					}
 				});
 
 				eventloop.schedule(eventloop.currentTimeMillis() + 2800, new Runnable() {
 					@Override
 					public void run() {
-						StreamConsumer<ByteBuf> consumer3 = client2.upload(downloadedFile);
-						consumer3.addConsumerCompletionCallback(new CompletionCallback() {
+						client2.upload(downloadedFile, producer2, new CompletionCallback() {
 							@Override
 							public void onComplete() {
 								logger.info(downloadedFile + " downloaded successfully");
 							}
 
 							@Override
-							public void onException(Exception exception) {
-								logger.error(downloadedFile + " can't upload", exception);
+							public void onException(Exception e) {
+								logger.error(downloadedFile + " can't upload", e);
 							}
 						});
-						producer2.streamTo(consumer3);
 					}
 				});
 

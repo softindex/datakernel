@@ -393,7 +393,7 @@ public class StreamBenchmark {
 		protected void doProduce() {
 
 			while (currentValue < maxValue) {
-				if (status != READY) {
+				if (!isStatusReady()) {
 					return;
 				}
 
@@ -455,16 +455,16 @@ public class StreamBenchmark {
 
 		}
 
+		@Override
+		protected void onEndOfStream() {
+
+		}
+
 //		@Override
 //		public void onProducerEndOfStream() {
 ////			upstreamProducer.close();
 //			close();
 //		}
-
-		@Override
-		protected void onEndOfStream() {
-			close();
-		}
 
 		@Override
 		protected void onError(Exception e) {

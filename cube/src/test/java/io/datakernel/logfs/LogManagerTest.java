@@ -16,36 +16,60 @@
 
 package io.datakernel.logfs;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static org.junit.Assert.*;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamSender;
 import io.datakernel.time.SettableCurrentTimeProvider;
 import org.joda.time.DateTimeZone;
+import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static org.junit.Assert.assertEquals;
-
 public class LogManagerTest {
+	private static final long ONE_SECOND = 1000L;
+	private static final long ONE_HOUR = 60 * 60 * ONE_SECOND;
+
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	private ExecutorService executor = Executors.newCachedThreadPool();
+	private Path testDir;
 
 	@Before
 	public void setUp() throws Exception {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+
+		testDir = temporaryFolder.newFolder().toPath();
+		clearTestDir(testDir);
+
+		executor = Executors.newCachedThreadPool();
+	}
+
+	@After
+	public void after() {
+		clearTestDir(testDir);
 	}
 
 	@Test
@@ -53,9 +77,7 @@ public class LogManagerTest {
 		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
 		NioEventloop eventloop = new NioEventloop(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
-		ExecutorService executor = Executors.newCachedThreadPool();
-		Path dir = temporaryFolder.newFolder().toPath();
-		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, dir);
+		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, testDir);
 		LogManager<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.stringSerializer());
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("1", "2", "3").iterator())
 				.streamTo(logManager.consumer("p1"));
@@ -68,8 +90,8 @@ public class LogManagerTest {
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("7", "8", "9").iterator())
 				.streamTo(logManager.consumer("p1"));
 		eventloop.run();
-		StreamProducer<String> p1 = logManager.producer("p1", new LogFile("1970-01-01_00", 1), 0L, null);
 
+		StreamProducer<String> p1 = logManager.producer("p1", new LogFile("1970-01-01_00", 1), 0L, null);
 		StreamConsumers.ToList<String> consumerToList = new StreamConsumers.ToList<>(eventloop);
 		p1.streamTo(consumerToList);
 		eventloop.run();
@@ -80,7 +102,103 @@ public class LogManagerTest {
 	}
 
 	@Test
-	public void testProducer() throws Exception {
+	public void test() throws Exception {
+		final LocalDate testDate = new LocalDate(0);
+		final String logPartition = "testLog";
 
+		final SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
+		final NioEventloop eventloop = new NioEventloop(timeProvider);
+
+		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, testDir);
+		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.stringSerializer());
+		final StreamSender<String> streamSender = new StreamSender<>(eventloop, false);
+		streamSender.streamTo(logManager.consumer(logPartition));
+
+		Map<Long, String> testData = new LinkedHashMap<>();
+		testData.put(ONE_HOUR - 2 * ONE_SECOND, "1");
+		testData.put(ONE_HOUR - ONE_SECOND, "2");
+		testData.put(ONE_HOUR + ONE_SECOND, "3");
+		testData.put(ONE_HOUR + 2 * ONE_SECOND, "4");
+		testData.put(ONE_HOUR + ONE_HOUR / 2, "5");
+
+		eventloop.keepAlive(true);
+		executor.submit(eventloop);
+
+		for (final Entry<Long, String> entry : testData.entrySet()) {
+			eventloop.postConcurrently(new Runnable() {
+				@Override
+				public void run() {
+					timeProvider.setTime(entry.getKey());
+					long timestamp = eventloop.refreshTimestampAndGet();
+					streamSender.trySend(entry.getValue());
+					timeProvider.setTime(timestamp + LogManagerImpl.DEFAULT_FLUSH_DELAY + 1);
+					eventloop.refreshTimestampAndGet();
+				}
+			});
+			Thread.sleep(200L);
+		}
+		timeProvider.setTime(eventloop.currentTimeMillis() + LogManagerImpl.DEFAULT_FLUSH_DELAY * 2);
+		eventloop.refreshTimestampAndGet();
+		eventloop.postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				streamSender.endStreaming();
+			}
+		});
+
+		// Wait for ends Eventloop
+		eventloop.keepAlive(false);
+		while (eventloop.getThreadName() != null) {
+			Thread.sleep(100L);
+		}
+
+		final StreamConsumers.ToList<String> consumerToList0 = new StreamConsumers.ToList<>(eventloop);
+		final StreamConsumers.ToList<String> consumerToList1 = new StreamConsumers.ToList<>(eventloop);
+		final StreamConsumers.ToList<String> consumerToList2 = new StreamConsumers.ToList<>(eventloop);
+
+		logManager.producer(logPartition, new LogFile(testDate.toString() + "_00", 0), 0L, null)
+				.streamTo(consumerToList0);
+		eventloop.run();
+
+		logManager.producer(logPartition, new LogFile(testDate.toString() + "_01", 0), 0L, null)
+				.streamTo(consumerToList1);
+		eventloop.run();
+
+		logManager.producer(logPartition, new LogFile(testDate.toString() + "_02", 0), 0L, null)
+				.streamTo(consumerToList2);
+		eventloop.run();
+
+		List<String> list00 = consumerToList0.getList();
+		List<String> list01 = consumerToList1.getList();
+		List<String> list02 = consumerToList2.getList();
+
+		System.out.println(list00);
+		System.out.println(list01);
+		System.out.println(list02);
+		assertEquals(5, list00.size());
+		assertEquals(4, list01.size());
+		assertTrue(list02.isEmpty());
+
+		assertEquals("1", list00.get(0));
+		assertEquals("5", list00.get(4));
+
+		assertEquals("2", list01.get(0));
+		assertEquals("5", list01.get(3));
+	}
+
+	private static void clearTestDir(Path testDir) {
+		if (testDir == null)
+			return;
+		File directory = testDir.toFile();
+		if (directory == null || !directory.isDirectory())
+			return;
+		File[] files = directory.listFiles();
+		if (files == null)
+			return;
+
+		for (File file : files) {
+			file.delete();
+		}
+		directory.delete();
 	}
 }

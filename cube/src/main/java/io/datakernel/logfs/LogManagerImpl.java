@@ -23,9 +23,13 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
+	public static final int DEFAULT_BUFFER_SIZE = LogStreamConsumer.DEFAULT_BUFFER_SIZE;
+	public static final int DEFAULT_FLUSH_DELAY = LogStreamConsumer.DEFAULT_FLUSH_DELAY;
 	private final Eventloop eventloop;
 	private final LogFileSystem fileSystem;
 	private final BufferSerializer<T> serializer;
+	private int bufferSize = DEFAULT_BUFFER_SIZE;
+	private int flushDelayMillis = DEFAULT_FLUSH_DELAY;
 
 	public LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {
 		this.eventloop = eventloop;
@@ -33,9 +37,19 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 		this.serializer = serializer;
 	}
 
+	public LogManagerImpl<T> fileSystemBufferSize(int bufferSize) {
+		this.bufferSize = bufferSize;
+		return this;
+	}
+
+	public LogManagerImpl<T> autoFlushDelayMillis(int flushDelayMillis) {
+		this.flushDelayMillis = flushDelayMillis;
+		return this;
+	}
+
 	@Override
 	public StreamConsumer<T> consumer(String streamId) {
-		return new LogStreamConsumer<>(eventloop, fileSystem, serializer, streamId);
+		return new LogStreamConsumer<>(eventloop, fileSystem, serializer, streamId, bufferSize, flushDelayMillis);
 	}
 
 	@Override

@@ -141,7 +141,17 @@ public class BinaryProtocolTest {
 								messaging.shutdownReader();
 								StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 								StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-								streamSerializer.streamTo(messaging.binarySocketWriter());
+								messaging.write(streamSerializer, new CompletionCallback() {
+									@Override
+									public void onComplete() {
+
+									}
+
+									@Override
+									public void onException(Exception exception) {
+
+									}
+								});
 							}
 						});
 			}
@@ -229,7 +239,18 @@ public class BinaryProtocolTest {
 
 										StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-										streamSerializer.streamTo(messaging.binarySocketWriter());
+										messaging.write(streamSerializer, new CompletionCallback() {
+
+											@Override
+											public void onException(Exception exception) {
+
+											}
+
+											@Override
+											public void onComplete() {
+
+											}
+										});
 
 										messaging.shutdownReader();
 									}
@@ -281,7 +302,7 @@ public class BinaryProtocolTest {
 								messaging.binarySocketReader().streamTo(streamDeserializer);
 								streamDeserializer.streamTo(consumerToList);
 
-								consumerToList.addConsumerCompletionCallback(new CompletionCallback() {
+								consumerToList.setCompletionCallback(new CompletionCallback() {
 									@Override
 									public void onComplete() {
 										System.out.println("send ack");
@@ -315,7 +336,17 @@ public class BinaryProtocolTest {
 
 										StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-										streamSerializer.streamTo(messaging.binarySocketWriter());
+										messaging.write(streamSerializer, new CompletionCallback() {
+											@Override
+											public void onComplete() {
+
+											}
+
+											@Override
+											public void onException(Exception exception) {
+
+											}
+										});
 									}
 								})
 								.addHandler(String.class, new MessagingHandler<String, String>() {
@@ -393,7 +424,17 @@ public class BinaryProtocolTest {
 
 										StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
 										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-										streamSerializer.streamTo(messaging.binarySocketWriter());
+										messaging.write(streamSerializer, new CompletionCallback() {
+											@Override
+											public void onComplete() {
+
+											}
+
+											@Override
+											public void onException(Exception exception) {
+
+											}
+										});
 
 										messaging.shutdownReader();
 									}

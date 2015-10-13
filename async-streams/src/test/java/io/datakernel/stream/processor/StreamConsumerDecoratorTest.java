@@ -23,8 +23,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamConsumerDecoratorTest {
 	@Test
@@ -33,7 +35,7 @@ public class StreamConsumerDecoratorTest {
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<>(consumer);
+		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<Integer>(eventloop, consumer) {};
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
@@ -43,6 +45,7 @@ public class StreamConsumerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3));
+		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 	}
 
 	@Test
@@ -51,7 +54,7 @@ public class StreamConsumerDecoratorTest {
 
 		List<Integer> list = new ArrayList<>();
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
-		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<>(consumer);
+		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<Integer>(eventloop, consumer) {};
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 
 		producer.streamTo(decorator);
@@ -59,6 +62,7 @@ public class StreamConsumerDecoratorTest {
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3, 4, 5));
+		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 	}
 
 }

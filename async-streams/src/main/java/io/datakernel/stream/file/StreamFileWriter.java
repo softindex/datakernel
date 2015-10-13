@@ -34,7 +34,7 @@ import java.util.ArrayDeque;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
@@ -56,7 +56,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	private boolean pendingAsyncOperation;
 
-	private static int i = 0;
+	private CompletionCallback flushCallback;
 
 	/**
 	 * Creates a new instance of StreamFileWriter
@@ -79,6 +79,10 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		this.path = path;
 		this.options = options;
 		this.removeFileOnException = removeFileOnException;
+	}
+
+	public void setFlushCallback(CompletionCallback flushCallback) {
+		this.flushCallback = flushCallback;
 	}
 
 	/**
@@ -120,8 +124,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		final ByteBuf buf = queue.poll();
 		final int len = buf.remaining();
 
-		logger.info("In doFlush: {}, {}, {}, {}", buf, pendingAsyncOperation, queue.size(), getStatus());
-
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -154,13 +156,41 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void postFlush() {
-		logger.info("In PostFlash: {}, {}, {}", pendingAsyncOperation, queue.size(), getStatus());
-		if (getStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
-			logger.info("Finishing success");
+
+		if (error != null && !pendingAsyncOperation && queue.isEmpty()) {
+			doCleanup(new CompletionCallback() {
+
+				private void tryRemoveFile() {
+					if (removeFileOnException) {
+						try {
+							Files.delete(path);
+						} catch (IOException e1) {
+							logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
+						}
+					}
+					closeWithError(error);
+				}
+
+				@Override
+				public void onComplete() {
+					tryRemoveFile();
+				}
+
+				@Override
+				public void onException(Exception ignored) {
+					tryRemoveFile();
+				}
+			});
+			return;
+		}
+
+		if (getConsumerStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					close();
+					if (flushCallback != null) {
+						flushCallback.onComplete();
+					}
 				}
 
 				@Override
@@ -179,7 +209,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				}
 			});
 		}
-
 	}
 
 	@Override
@@ -218,8 +247,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	public void onData(ByteBuf buf) {
-		checkState(getStatus() < END_OF_STREAM, "Unexpected buf after end-of-stream %s : %s", this, buf);
-		logger.info("Receiving data item {}", buf);
 		queue.offer(buf);
 		if (queue.size() > 1) {
 			suspend();
@@ -236,47 +263,18 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onEndOfStream() {
-		logger.info("endOfStream for {}, upstream: {}", this, upstreamProducer);
+
+		logger.trace("endOfStream for {}, upstream: {}", this, getUpstream());
+
 		postFlush();
 	}
 
 	@Override
 	protected void onError(final Exception e) {
-		if (pendingAsyncOperation) {
-			while (i++ < 10) {
-				logger.info("Closing with error! Still there is pendingAsyncOperation");
-			}
-
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					onError(e);
-				}
-			});
-		} else {
-			logger.info("Closing with error!");
-			doCleanup(new CompletionCallback() {
-				private void tryRemoveFile() {
-					if (removeFileOnException) {
-						try {
-							Files.delete(path);
-						} catch (IOException e1) {
-							logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
-						}
-					}
-					closeWithError(e);
-				}
-
-				@Override
-				public void onComplete() {
-					tryRemoveFile();
-				}
-
-				@Override
-				public void onException(Exception ignored) {
-					tryRemoveFile();
-				}
-			});
+		error = e;
+		postFlush();
+		if (flushCallback != null) {
+			flushCallback.onException(e);
 		}
 	}
 }

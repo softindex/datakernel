@@ -74,7 +74,7 @@ public class SumService implements RequestHandler<SumService.Request> {
 	private final AtomicInteger totalRequests = new AtomicInteger(0);
 
 	@Override
-	public void run(Request request, ResultCallback<RpcMessage.RpcMessageData> callback) {
+	public void run(Request request, ResultCallback<RpcMessageData> callback) {
 		totalRequests.incrementAndGet();
 		String result = Integer.toString(request.a + request.b);
 		callback.onResult(new Response(result));
@@ -93,19 +93,19 @@ public class SumService implements RequestHandler<SumService.Request> {
 	}
 
 	public static HashFunction<RpcMessageData> consistentHashFunction() {
-		return new HashFunction<RpcMessage.RpcMessageData>() {
+		return new HashFunction<RpcMessageData>() {
 			@Override
-			public int hashCode(RpcMessage.RpcMessageData item) {
+			public int hashCode(RpcMessageData item) {
 				int a = ((Request) item).getA();
 				return Doubles.hashCode((a + 1) * 1234567.8);
 			}
 		};
 	}
 
-	public static HashFunction<RpcMessage.RpcMessageData> simpleHashFunction() {
-		return new HashFunction<RpcMessage.RpcMessageData>() {
+	public static HashFunction<RpcMessageData> simpleHashFunction() {
+		return new HashFunction<RpcMessageData>() {
 			@Override
-			public int hashCode(RpcMessage.RpcMessageData item) {
+			public int hashCode(RpcMessageData item) {
 				return ((Request) item).getA();
 			}
 		};

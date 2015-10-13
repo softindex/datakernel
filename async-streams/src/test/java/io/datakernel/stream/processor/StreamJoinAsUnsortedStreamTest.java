@@ -17,12 +17,13 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamStatus;
 import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
@@ -30,8 +31,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Objects.equal;
+
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class StreamJoinAsUnsortedStreamTest {
@@ -48,7 +52,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("id", id)
 					.add("detailId", detailId)
 					.add("master", master)
@@ -67,7 +71,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("id", id)
 					.add("detail", detail)
 					.toString();
@@ -99,7 +103,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("id", id)
 					.add("detailId", detailId)
 					.add("master", master)
@@ -167,8 +171,8 @@ public class StreamJoinAsUnsortedStreamTest {
 						new DataItemMasterDetail(30, 20, "masterC", "detailY"),
 						new DataItemMasterDetail(40, 20, "masterD", "detailY")},
 				result.toArray(new DataItemMasterDetail[result.size()]));
-		assertTrue(((AbstractStreamProducer) source1).getStatus() == AbstractStreamProducer.END_OF_STREAM);
-		assertTrue(((AbstractStreamProducer) source2).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 	}
 
 	@Test

@@ -74,7 +74,7 @@ public interface Eventloop extends CurrentTimeProvider {
 	/**
 	 * It does not let eventloop to stop until all concurrent operations are ended.
 	 *
-	 * @return {@link Eventloop.ConcurrentOperationTracker} with method Complete, witch can resume
+	 * @return {@link ConcurrentOperationTracker} with method Complete, witch can resume
 	 * eventloop's work.
 	 */
 	ConcurrentOperationTracker startConcurrentOperation();
