@@ -27,6 +27,7 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
@@ -328,7 +329,6 @@ public class SimpleFsServerTest {
 	@Ignore
 	@Test
 	public void testActionsAfterStop() {
-		// TODO see StopAndHugeFileUpload logic
 		fail("Not yet implemented");
 	}
 
@@ -424,7 +424,7 @@ public class SimpleFsServerTest {
 	@Ignore
 	@Test
 	public void testUploadWithException() throws IOException {
-		// TODO timeouts are to be done. Test should freeze cos upload request is being send while producer at this side has died quietly
+		// TODO (vsavchuk) see SimpleFsServer
 		String resultFile = "non_existing_file";
 
 		ExecutorService executor = Executors.newCachedThreadPool();
@@ -438,6 +438,44 @@ public class SimpleFsServerTest {
 			@Override
 			public void onComplete() {
 				logger.info("Big file uploaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Failed to upload", e);
+				stop(fileServer);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Ignore
+	@Test
+	public void testBadUpload() throws IOException {
+		// TODO (vsavchuk) Requested
+
+		String resultFile = "non_existing_file";
+
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		final StreamProducer<ByteBuf> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofIterable(eventloop,
+						Arrays.asList(ByteBufStrings.wrapUTF8("Test1"), ByteBufStrings.wrapUTF8(" Test2"), ByteBufStrings.wrapUTF8(" Test3"))),
+				StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Test exception"))
+		);
+
+		client.upload(resultFile, producer, new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Should not happen");
 				stop(fileServer);
 			}
 
