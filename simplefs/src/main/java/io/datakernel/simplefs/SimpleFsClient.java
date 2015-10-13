@@ -83,9 +83,7 @@ public class SimpleFsClient implements SimpleFs {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 								forwarder.streamTo(transformer);
-								// Need to count bytes
 								final StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
-
 								transformer.streamTo(streamByteChunker);
 								streamByteChunker.streamTo(consumer);
 							}
@@ -95,11 +93,7 @@ public class SimpleFsClient implements SimpleFs {
 							public void onMessage(SimpleFsResponseAcknowledge item, Messaging<SimpleFsCommand> messaging) {
 								logger.info("Received acknowledgement for {}", fileName);
 								messaging.shutdown();
-								// TODO logic for either committing or deleting file
-								if (item.bytesWritten == 0) {
-									logger.warn("0 bytes written in {}", fileName);
-								}
-								commit(fileName, closeCallback, true);
+								commit(fileName, closeCallback);
 							}
 						})
 						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
@@ -258,7 +252,7 @@ public class SimpleFsClient implements SimpleFs {
 				new StreamGsonSerializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 256 * 1024, 256 * (1 << 20), 0));
 	}
 
-	private void commit(final String fileName, final CompletionCallback callback, final boolean succes) {
+	private void commit(final String fileName, final CompletionCallback callback) {
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -266,7 +260,7 @@ public class SimpleFsClient implements SimpleFs {
 						.addStarter(new MessagingStarter<SimpleFsCommand>() {
 							@Override
 							public void onStart(Messaging<SimpleFsCommand> messaging) {
-								SimpleFsCommandCommit commandCommit = new SimpleFsCommandCommit(fileName, succes);
+								SimpleFsCommandCommit commandCommit = new SimpleFsCommandCommit(fileName);
 								messaging.sendMessage(commandCommit);
 							}
 						})

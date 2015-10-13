@@ -18,15 +18,13 @@ package io.datakernel.simplefs;
 
 public class SimpleFsCommandCommit extends SimpleFsCommand {
 	public final String fileName;
-	public final boolean success;
 
-	public SimpleFsCommandCommit(String fileName, boolean success) {
+	public SimpleFsCommandCommit(String fileName) {
 		this.fileName = fileName;
-		this.success = success;
 	}
 
 	@Override
 	public String toString() {
-		return "Commit{filename=\'" + fileName + "\', " + success + "} ";
+		return "Commit{filename=\'" + fileName + "\' }";
 	}
 }

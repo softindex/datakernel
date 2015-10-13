@@ -197,19 +197,9 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				final Path destination = fileStorage.resolve(fileName);
 				final Path inProgress = tmpStorage.resolve(fileName + IN_PROGRESS_EXTENSION);
 
-				if (!item.success) {
-					try {
-						Files.delete(inProgress);
-						logger.trace("Temporary file {} removed(client failed to load file)", inProgress.toAbsolutePath());
-					} catch (IOException e1) {
-						logger.trace("Can't remove temporary file {} (client failed to load file) ", inProgress.toAbsolutePath());
-					}
-					messaging.sendMessage(new SimpleFsResponseError("Client got exception while downloading"));
-					return;
-				}
-
 				try {
 					Files.move(inProgress, destination);
+					messaging.sendMessage(new SimpleFsResponseOperationOk());
 					logger.info("File {} commited", fileName);
 				} catch (IOException e) {
 					try {
@@ -220,8 +210,8 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 					}
 					messaging.sendMessage(new SimpleFsResponseError(e.getMessage()));
 				}
+
 				operationFinished();
-				messaging.sendMessage(new SimpleFsResponseOperationOk());
 				messaging.shutdown();
 			}
 		};

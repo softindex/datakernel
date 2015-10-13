@@ -133,6 +133,10 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		final ByteBuf buf = queue.poll();
 		final int len = buf.remaining();
 
+		if (buf.position() == buf.limit()) {
+			logger.warn("Flushing empty buf {}");
+		}
+
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -200,7 +204,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 				@Override
 				public void onException(Exception exception) {
-					closeUpstreamWithError(new Exception("Can't do cleanap for file\t" + path.getFileName()));
+					closeUpstreamWithError(new Exception("Can't do cleanup for file\t" + path.getFileName()));
 				}
 			});
 		}

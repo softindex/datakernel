@@ -23,6 +23,7 @@ import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
 import io.datakernel.stream.StreamDataReceiver;
 
 public class TransformerNoEnd extends AbstractStreamTransformer_1_1_Stateless<ByteBuf, ByteBuf> {
+	private long bytesCounter = 0;
 
 	private final CompletionCallback closeCallback = new CompletionCallback() {
 		@Override
@@ -42,7 +43,13 @@ public class TransformerNoEnd extends AbstractStreamTransformer_1_1_Stateless<By
 
 	@Override
 	public StreamDataReceiver<ByteBuf> getDataReceiver() {
-		return downstreamDataReceiver;
+		return new StreamDataReceiver<ByteBuf>() {
+			@Override
+			public void onData(ByteBuf item) {
+				bytesCounter += item.limit() - item.position();
+				downstreamDataReceiver.onData(item);
+			}
+		};
 	}
 
 	@Override
@@ -52,5 +59,9 @@ public class TransformerNoEnd extends AbstractStreamTransformer_1_1_Stateless<By
 
 	public CompletionCallback getCloseCallback() {
 		return closeCallback;
+	}
+
+	public long getBytesSend() {
+		return bytesCounter;
 	}
 }
