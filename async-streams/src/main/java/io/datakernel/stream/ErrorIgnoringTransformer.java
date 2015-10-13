@@ -18,18 +18,19 @@ package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
 
-public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1_Stateless<T, T> {
+public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T, T> {
+	// TODO (vsavchuk)
 	public ErrorIgnoringTransformer(Eventloop eventloop) {
 		super(eventloop);
 	}
 
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return downstreamDataReceiver;
-	}
-
-	@Override
-	protected void onClosedWithError(Exception e) {
-		downstreamConsumer.onEndOfStream();
-	}
+//	@Override
+//	public StreamDataReceiver<T> getDataReceiver() {
+//		return downstreamDataReceiver;
+//	}
+//
+//	@Override
+//	protected void onClosedWithError(Exception e) {
+//		downstreamConsumer.onEndOfStream();
+//	}
 }

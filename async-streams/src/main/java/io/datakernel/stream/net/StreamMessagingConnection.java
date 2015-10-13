@@ -23,11 +23,11 @@ import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamDeserializer;
 import io.datakernel.stream.processor.StreamSerializer;
 
+import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 
 /**
  * It is wrapper for  Binary protocol which deserializes received stream to type of input object,
@@ -182,13 +182,21 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		output.onData(outputItem);
 	}
 
-//	@Override
-//	public StreamConsumer<ByteBuf> binarySocketWriter() {
-//		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-//		streamSerializer.flush();
-//		socketWriter.streamFrom(forwarder);
-//		return forwarder;
-//	}
+	@Override
+	protected void shutdownOutput() throws IOException {
+		super.shutdownOutput();
+		if (completionCallback != null && socketWriter.getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+			completionCallback.onComplete();
+		}
+	}
+
+	@Override
+	protected void onWriteException(Exception e) {
+		super.onWriteException(e);
+		if (completionCallback != null) {
+			completionCallback.onException(e);
+		}
+	}
 
 	@Override
 	public void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback) {
@@ -204,22 +212,6 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		currentConsumer = forwarder;
 		streamDeserializer.drainBuffersTo(forwarder.getDataReceiver());
 		return forwarder;
-	}
-
-	@Override
-	protected void onWriteFlushed() {
-		super.onWriteFlushed();
-		if (socketWriter.getConsumerStatus() == END_OF_STREAM && completionCallback != null) {
-			completionCallback.onComplete();
-		}
-	}
-
-	@Override
-	protected void onWriteException(Exception e) {
-		super.onWriteException(e);
-		if (completionCallback != null) {
-			completionCallback.onException(e);
-		}
 	}
 
 	@Override

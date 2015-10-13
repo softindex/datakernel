@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 
 /**
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},

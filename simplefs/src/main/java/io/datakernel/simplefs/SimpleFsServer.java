@@ -22,7 +22,6 @@ import io.datakernel.eventloop.AbstractNioServer;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -163,10 +162,10 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 
 				logger.trace("Starting uploading file {}", fileName);
 				StreamProducer<ByteBuf> producer = messaging.binarySocketReader();
-				StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, inProgress, true);
+				StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, inProgress, true);
 				producer.streamTo(diskWrite);
 
-				diskWrite.addCompletionCallback(new CompletionCallback() {
+				diskWrite.setFlushCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.info("Uploaded file {}", fileName);
@@ -239,10 +238,8 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				messaging.sendMessage(new SimpleFsResponseOperationOk());
 
 				StreamProducer<ByteBuf> producer = StreamFileReader.readFileFrom(eventloop, executor, bufferSize, source, 0L);
-				StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
 
-				producer.streamTo(consumer);
-				consumer.addCompletionCallback(new CompletionCallback() {
+				messaging.write(producer, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						operationFinished();
@@ -250,9 +247,9 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 					}
 
 					@Override
-					public void onException(Exception e) {
+					public void onException(Exception exception) {
 						operationFinished();
-						logger.error("File {} was not send", fileName, e);
+						logger.error("File {} was not send", fileName, exception);
 					}
 				});
 				messaging.shutdownReader();

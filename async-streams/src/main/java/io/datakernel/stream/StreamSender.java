@@ -16,128 +16,154 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
-
-import java.util.ArrayDeque;
+import io.datakernel.eventloop.Eventloop;
 
 public class StreamSender<T> extends AbstractStreamProducer<T> {
-	private final ArrayDeque<QueueEntry> queue = new ArrayDeque<>();
-	private boolean sendEndOfStream;
-
-	private class QueueEntry {
-		private T item;
-		private CompletionCallback callback;
-
-		public QueueEntry(T item, CompletionCallback callback) {
-			this.item = item;
-			this.callback = callback;
-		}
-	}
-
-	public StreamSender(NioEventloop eventloop) {
-		this(eventloop, false);
-	}
-
-	public StreamSender(NioEventloop eventloop, boolean sendEndOfStream) {
+	// TODO (vsavchuk)
+	protected StreamSender(Eventloop eventloop) {
 		super(eventloop);
-		this.sendEndOfStream = sendEndOfStream;
 	}
 
 	@Override
-	protected void doProduce() {
-		while (!queue.isEmpty()) {
-			if (status != READY)
-				return;
+	protected void onStarted() {
 
-			T item = retrieveFromBuffer();
-			if (item != null)
-				doSend(item);
-		}
-
-		if (sendEndOfStream)
-			sendEndOfStream();
-	}
-
-	public void forceSendBuffer() {
-		while (!queue.isEmpty()) {
-			T item = retrieveFromBuffer();
-			if (item != null)
-				doSend(item);
-		}
-	}
-
-	public void forceSend(T item) {
-		doSend(item);
-	}
-
-	public void send(T item, CompletionCallback callback) {
-		if (status == READY) {
-			doSend(item);
-			callback.onComplete();
-			return;
-		}
-
-		if (status == SUSPENDED) {
-			addToBuffer(item, callback);
-		} else {
-			callback.onException(new IllegalStateException("StreamSender closed."));
-		}
-	}
-
-	public boolean trySend(T item) {
-		if (status == READY) {
-			doSend(item);
-			return true;
-		}
-
-		if (status == SUSPENDED) {
-			addToBuffer(item, null);
-		} else {
-			queue.clear();
-		}
-		return false;
-	}
-
-	public void sendLater(T item) {
-		send(item, null);
-	}
-
-	public int getNumberOfBufferedItems() {
-		return queue.size();
-	}
-
-	public void endStreaming() {
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				sendEndOfStream();
-			}
-		});
-	}
-
-	private void addToBuffer(T item, CompletionCallback callback) {
-		queue.add(new QueueEntry(item, callback));
-	}
-
-	private T retrieveFromBuffer() {
-		QueueEntry poppedEntry = queue.poll();
-		if (poppedEntry != null && poppedEntry.callback != null)
-			poppedEntry.callback.onComplete();
-		return poppedEntry == null ? null : poppedEntry.item;
-	}
-
-	private void doSend(T item) {
-		downstreamDataReceiver.onData(item);
 	}
 
 	@Override
-	protected void onProducerStarted() {
-		produce();
+	protected void onDataReceiverChanged() {
+
+	}
+
+	@Override
+	protected void onSuspended() {
+
 	}
 
 	@Override
 	protected void onResumed() {
-		resumeProduce();
+
 	}
+
+	@Override
+	protected void onError(Exception e) {
+
+	}
+//	private final ArrayDeque<QueueEntry> queue = new ArrayDeque<>();
+//	private boolean sendEndOfStream;
+//
+//	private class QueueEntry {
+//		private T item;
+//		private CompletionCallback callback;
+//
+//		public QueueEntry(T item, CompletionCallback callback) {
+//			this.item = item;
+//			this.callback = callback;
+//		}
+//	}
+//
+//	public StreamSender(NioEventloop eventloop) {
+//		this(eventloop, false);
+//	}
+//
+//	public StreamSender(NioEventloop eventloop, boolean sendEndOfStream) {
+//		super(eventloop);
+//		this.sendEndOfStream = sendEndOfStream;
+//	}
+//
+//	@Override
+//	protected void doProduce() {
+//		while (!queue.isEmpty()) {
+//			if (status != READY)
+//				return;
+//
+//			T item = retrieveFromBuffer();
+//			if (item != null)
+//				doSend(item);
+//		}
+//
+//		if (sendEndOfStream)
+//			sendEndOfStream();
+//	}
+//
+//	public void forceSendBuffer() {
+//		while (!queue.isEmpty()) {
+//			T item = retrieveFromBuffer();
+//			if (item != null)
+//				doSend(item);
+//		}
+//	}
+//
+//	public void forceSend(T item) {
+//		doSend(item);
+//	}
+//
+//	public void send(T item, CompletionCallback callback) {
+//		if (status == READY) {
+//			doSend(item);
+//			callback.onComplete();
+//			return;
+//		}
+//
+//		if (status == SUSPENDED) {
+//			addToBuffer(item, callback);
+//		} else {
+//			callback.onException(new IllegalStateException("StreamSender closed."));
+//		}
+//	}
+//
+//	public boolean trySend(T item) {
+//		if (status == READY) {
+//			doSend(item);
+//			return true;
+//		}
+//
+//		if (status == SUSPENDED) {
+//			addToBuffer(item, null);
+//		} else {
+//			queue.clear();
+//		}
+//		return false;
+//	}
+//
+//	public void sendLater(T item) {
+//		send(item, null);
+//	}
+//
+//	public int getNumberOfBufferedItems() {
+//		return queue.size();
+//	}
+//
+//	public void endStreaming() {
+//		eventloop.post(new Runnable() {
+//			@Override
+//			public void run() {
+//				sendEndOfStream();
+//			}
+//		});
+//	}
+//
+//	private void addToBuffer(T item, CompletionCallback callback) {
+//		queue.add(new QueueEntry(item, callback));
+//	}
+//
+//	private T retrieveFromBuffer() {
+//		QueueEntry poppedEntry = queue.poll();
+//		if (poppedEntry != null && poppedEntry.callback != null)
+//			poppedEntry.callback.onComplete();
+//		return poppedEntry == null ? null : poppedEntry.item;
+//	}
+//
+//	private void doSend(T item) {
+//		downstreamDataReceiver.onData(item);
+//	}
+//
+//	@Override
+//	protected void onProducerStarted() {
+//		produce();
+//	}
+//
+//	@Override
+//	protected void onResumed() {
+//		resumeProduce();
+//	}
 }
