@@ -48,7 +48,6 @@ public class AsyncStreamsTest {
 		assertEquals(asList(1, 2, 3), consumer.getList());
 		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		//		assertNull(producer.getWiredConsumerStatus());
 	}
 
 }

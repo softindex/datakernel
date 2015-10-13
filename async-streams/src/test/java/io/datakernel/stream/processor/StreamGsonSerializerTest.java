@@ -19,17 +19,17 @@ package io.datakernel.stream.processor;
 import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamGsonSerializerTest {
 
@@ -89,6 +89,35 @@ public class StreamGsonSerializerTest {
 
 		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
 		serializerStream.streamTo(deserializerStream);
+
+		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop);
+		deserializerStream.streamTo(consumerToList);
+		eventloop.run();
+
+		assertEquals(items, consumerToList.getList());
+		assertEquals(END_OF_STREAM, serializerStream.getConsumerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, deserializerStream.getConsumerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getProducerStatus());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testWithoutConsumer() {
+		List<TestItem> items = asList(new TestItem(1, "item1"), new TestItem(1, "item2"), new TestItem(1, "item3"));
+
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamGsonSerializer<TestItem> serializerStream = new StreamGsonSerializer<>(eventloop, new Gson(), TestItem.class, 1, 50, 0);
+
+		StreamProducers.ofIterable(eventloop, items).streamTo(serializerStream);
+		eventloop.run();
+
+		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
+		serializerStream.streamTo(deserializerStream);
+		eventloop.run();
 
 		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop);
 		deserializerStream.streamTo(consumerToList);

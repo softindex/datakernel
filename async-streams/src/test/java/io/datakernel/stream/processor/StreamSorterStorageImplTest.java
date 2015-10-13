@@ -16,10 +16,11 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,10 +34,9 @@ import java.util.concurrent.Executors;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamSorterStorageImplTest {
 	@Rule

@@ -19,9 +19,54 @@ package io.datakernel.stream;
 import io.datakernel.eventloop.Eventloop;
 
 public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T, T> {
-	// TODO (vsavchuk)
+	private UpstreamConsumer upstreamConsumer;
+	private DownstreamProducer downstreamProducer;
+
+	private class UpstreamConsumer extends AbstractUpstreamConsumer {
+
+		@Override
+		protected void onUpstreamStarted() {
+
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return downstreamProducer.getDownstreamDataReceiver();
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
+		}
+	}
+
+	private class DownstreamProducer extends AbstractDownstreamProducer {
+
+		@Override
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+	}
+
 	public ErrorIgnoringTransformer(Eventloop eventloop) {
 		super(eventloop);
+		upstreamConsumer = new UpstreamConsumer();
+		downstreamProducer = new DownstreamProducer();
 	}
 
 //	@Override

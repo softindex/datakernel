@@ -98,4 +98,35 @@ public class StreamSerializerTest {
 		assertEquals(END_OF_STREAM, deserializerStream.getProducerStatus());
 	}
 
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		List<Integer> list = new ArrayList<>();
+		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+		StreamBinarySerializer<Integer> serializerStream = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
+		StreamBinaryDeserializer<Integer> deserializerStream = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 12);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+
+		source.streamTo(serializerStream);
+		eventloop.run();
+
+		serializerStream.streamTo(deserializerStream);
+		eventloop.run();
+
+		deserializerStream.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(1, 2, 3), consumer.getList());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+
+		assertEquals(END_OF_STREAM, serializerStream.getConsumerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, deserializerStream.getConsumerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getProducerStatus());
+	}
+
 }

@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import com.google.common.base.Functions;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
@@ -23,9 +24,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamProducerConcatTest {
 
@@ -56,9 +58,6 @@ public class StreamProducerConcatTest {
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
 		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
-		//		assertNull(source1.getWiredConsumerStatus());
-//		assertNull(source2.getWiredConsumerStatus());
-//		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
 	}
 
 	@Test
@@ -90,10 +89,7 @@ public class StreamProducerConcatTest {
 		producerSetter.onNext(StreamProducers.ofIterable(eventloop, asList(1, 2, 3)));
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
-//		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getStatus() == AbstractStreamProducer.CLOSED_WITH_ERROR);
-//		assertNull(source1.getWiredConsumerStatus());
-//		assertNull(source2.getWiredConsumerStatus());
-//		assertTrue(((AbstractStreamProducer)producer).getStatus() == AbstractStreamProducer.END_OF_STREAM);
+		assertTrue(((AbstractStreamProducer) consumer.getUpstream()).getProducerStatus() == StreamStatus.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -130,6 +126,27 @@ public class StreamProducerConcatTest {
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), list);
 
+	}
+
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
+				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
+				StreamProducers.<Integer>closing(eventloop));
+
+		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
+		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
+
+		producer.streamTo(function);
+		eventloop.run();
+
+		function.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());
 	}
 
 }

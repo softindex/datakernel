@@ -82,6 +82,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 		@Override
 		protected void onDownstreamResumed() {
 			upstreamConsumer.resume();
+			resumeProduce();
 		}
 
 		@Override

@@ -18,17 +18,20 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.stream.StreamProducers.concat;
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamFunctionTest {
 
@@ -131,4 +134,31 @@ public class StreamFunctionTest {
 		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
 	}
 
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
+			@Override
+			public Integer apply(Integer input) {
+				return input * input;
+			}
+		});
+
+		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+
+		source1.streamTo(streamFunction);
+		eventloop.run();
+
+		streamFunction.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(1, 4, 9), consumer.getList());
+
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, streamFunction.getConsumerStatus());
+		assertEquals(END_OF_STREAM, streamFunction.getProducerStatus());
+		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
+	}
 }
