@@ -195,7 +195,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 
 				final Path destination = fileStorage.resolve(fileName);
 				final Path inProgress = tmpStorage.resolve(fileName + IN_PROGRESS_EXTENSION);
-
 				try {
 					Files.move(inProgress, destination);
 					messaging.sendMessage(new SimpleFsResponseOperationOk());
@@ -209,7 +208,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 					}
 					messaging.sendMessage(new SimpleFsResponseError(e.getMessage()));
 				}
-
 				operationFinished();
 				messaging.shutdown();
 			}
@@ -233,7 +231,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 					refuse(messaging, "File not found");
 					return;
 				}
-
 				startOperation();
 				messaging.sendMessage(new SimpleFsResponseOperationOk());
 
@@ -305,7 +302,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				try {
 					List<String> fileList = listFiles();
 					messaging.sendMessage(new SimpleFsResponseFileList(fileList));
-					logger.info("Send list(size = {}) of files", fileList.size());
+					logger.info("Send list(size={}) of files", fileList.size());
 				} catch (IOException e) {
 					messaging.sendMessage(new SimpleFsResponseError("Can't get list of files: " + e.getMessage()));
 					logger.error("Can't get list of files");

@@ -17,15 +17,8 @@
 package io.datakernel.simplefs;
 
 public class SimpleFsResponseAcknowledge extends SimpleFsResponse {
-
-	public final long bytesWritten;
-
-	public SimpleFsResponseAcknowledge(long bytesWritten) {
-		this.bytesWritten = bytesWritten;
-	}
-
 	@Override
 	public String toString() {
-		return "Uploaded{" + bytesWritten + "}";
+		return "Uploaded{OK}";
 	}
 }

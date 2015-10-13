@@ -42,12 +42,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import static java.util.Arrays.asList;
 
 public class StressClient {
 	private static final Logger logger = LoggerFactory.getLogger(StopAndHugeFileUploadTest.class);
@@ -223,7 +222,7 @@ public class StressClient {
 		obj.name = "someName";
 		obj.ip = InetAddress.getLocalHost();
 
-		StreamProducer<TestObject> producer = StreamProducers.ofIterable(eventloop, asList(obj));
+		StreamProducer<TestObject> producer = StreamProducers.ofIterable(eventloop, Collections.singletonList(obj));
 		StreamBinarySerializer<TestObject> serializer =
 				new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
