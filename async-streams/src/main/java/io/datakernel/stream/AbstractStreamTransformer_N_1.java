@@ -50,7 +50,9 @@ public abstract class AbstractStreamTransformer_N_1<O> implements StreamProducer
 			onUpstreamStarted();
 		}
 
-		protected abstract void onUpstreamStarted();
+		protected void onUpstreamStarted() {
+
+		}
 
 		@Override
 		protected final void onEndOfStream() {
@@ -112,7 +114,9 @@ public abstract class AbstractStreamTransformer_N_1<O> implements StreamProducer
 			onDownstreamStarted();
 		}
 
-		protected abstract void onDownstreamStarted();
+		protected void onDownstreamStarted() {
+
+		}
 
 		@Override
 		protected final void onError(Exception e) {

@@ -117,31 +117,17 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		}
 
 		@Override
-		protected void onStarted() {
-
-		}
-
-		@Override
 		protected void onEndOfStream() {
 			if (currentConsumer == streamDeserializer) {
 				shutdown();
 			}
 		}
 
-		@Override
-		protected void onError(Exception e) {
-
-		}
 	}
 
 	private class MessageProducer extends AbstractStreamProducer<O> {
 		public MessageProducer() {
 			super(StreamMessagingConnection.this.eventloop);
-		}
-
-		@Override
-		protected void onStarted() {
-
 		}
 
 		@Override
@@ -155,11 +141,6 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 		@Override
 		protected void onResumed() {
-		}
-
-		@Override
-		protected void onError(Exception e) {
-
 		}
 
 		@Override

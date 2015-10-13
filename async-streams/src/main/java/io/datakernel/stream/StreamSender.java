@@ -61,11 +61,6 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 	}
 
 	@Override
-	protected void onError(Exception e) {
-
-	}
-
-	@Override
 	protected void doProduce() {
 		while (!queue.isEmpty()) {
 			if (getProducerStatus().isClosed())

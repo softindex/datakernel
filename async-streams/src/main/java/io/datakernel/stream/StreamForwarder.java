@@ -16,11 +16,7 @@
 
 package io.datakernel.stream;
 
-import com.google.common.base.Function;
-import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Provides you apply function before sending data to the destination. It is a {@link AbstractStreamTransformer_1_1}
@@ -34,9 +30,6 @@ public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T
 	private final DownstreamProducer downstreamProducer;
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -51,9 +44,6 @@ public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T
 	}
 
 	protected final class DownstreamProducer extends AbstractDownstreamProducer {
-		@Override
-		protected void onDownstreamStarted() {
-		}
 
 		@Override
 		protected void onDownstreamSuspended() {

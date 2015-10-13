@@ -49,7 +49,9 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 			onUpstreamStarted();
 		}
 
-		protected abstract void onUpstreamStarted();
+		protected void onUpstreamStarted() {
+
+		}
 
 		@Override
 		protected final void onEndOfStream() {
@@ -64,12 +66,12 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		}
 
 		@Override
-		public final void suspend() {
+		public void suspend() {
 			super.suspend();
 		}
 
 		@Override
-		public final void resume() {
+		public void resume() {
 			super.resume();
 		}
 
@@ -100,7 +102,9 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 			onDownstreamStarted();
 		}
 
-		protected abstract void onDownstreamStarted();
+		protected void onDownstreamStarted() {
+
+		}
 
 		@Override
 		protected final void onError(Exception e) {

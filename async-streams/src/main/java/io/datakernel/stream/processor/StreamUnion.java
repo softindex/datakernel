@@ -50,10 +50,6 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
 		}
 
 		@Override
-		protected void onUpstreamStarted() {
-		}
-
-		@Override
 		protected void onUpstreamEndOfStream() {
 			if (allUpstreamsEndOfStream()) {
 				downstreamProducer.sendEndOfStream();
@@ -62,9 +58,6 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
 	}
 
 	public final class DownstreamProducer extends AbstractDownstreamProducer {
-		@Override
-		protected void onDownstreamStarted() {
-		}
 
 		@Override
 		protected void onDownstreamSuspended() {

@@ -142,7 +142,9 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		});
 	}
 
-	protected abstract void onStarted();
+	protected void onStarted() {
+
+	}
 
 	@Nullable
 	public final StreamConsumer<T> getDownstream() {
@@ -227,7 +229,9 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		closeWithError(e, false);
 	}
 
-	protected abstract void onError(Exception e);
+	protected void onError(Exception e) {
+
+	}
 
 	protected void doCleanup() {
 	}

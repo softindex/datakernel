@@ -42,10 +42,6 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		}
 
 		@Override
-		protected void onStarted() {
-		}
-
-		@Override
 		protected void onDataReceiverChanged() {
 		}
 
@@ -79,20 +75,11 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 			super.closeWithError(e);
 		}
 
-//		@Override
-//		protected void onClosed() {
-//			closeIfDone();
-//		}
-
 	}
 
 	protected final class Writer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 		public Writer(Eventloop eventloop) {
 			super(eventloop);
-		}
-
-		@Override
-		protected void onStarted() {
 		}
 
 		@Override
@@ -148,10 +135,6 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		}
 	}
 
-	// TODO (vsavchuk) shotdownNow все закриває
-	// TODO (vsavchuk) showdown чекає поки зафлашиться ... потім
-	// endofStream from producer call shotdown
-
 	public static final int DEFAULT_STREAM_BUFFER_SIZE = 256 * 1024;
 
 	protected final Reader socketReader;
@@ -182,7 +165,6 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	public void onRegistered() {
 		wire(socketReader, socketWriter);
 		if (socketReader.getDownstream() == null)
-			// TODO (vsavchuk) chenge closing to idle???
 			socketReader.streamTo(StreamConsumers.<ByteBuf>idle(eventloop));
 		if (socketWriter.getUpstream() == null)
 			new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(socketWriter);

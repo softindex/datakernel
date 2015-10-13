@@ -18,7 +18,6 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamProducer;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -65,7 +64,6 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 			if (!downstreamProducer.isStatusReady())
 				return;
 			A accumulator = iterator.next();
-//			downstreamDataReceiver.onData(reducer.produceResult(accumulator));
 			downstreamProducer.getDownstreamDataReceiver().onData(reducer.produceResult(accumulator));
 		}
 		downstreamProducer.sendEndOfStream();

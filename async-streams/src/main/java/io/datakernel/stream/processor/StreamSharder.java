@@ -60,10 +60,6 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		}
 
 		@Override
-		protected void onUpstreamStarted() {
-		}
-
-		@Override
 		protected void onUpstreamEndOfStream() {
 			sendEndOfStreamToDownstreams();
 		}
@@ -71,10 +67,6 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 
 	protected final class DownstreamProducer extends AbstractDownstreamProducer<T> {
 		private final UpstreamConsumer upstreamConsumer = (UpstreamConsumer) StreamSharder.this.upstreamConsumer;
-
-		@Override
-		protected void onStarted() {
-		}
 
 		@Override
 		protected void onDownstreamSuspended() {

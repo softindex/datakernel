@@ -39,9 +39,6 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 	private final DownstreamProducer downstreamProducer;
 
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -77,11 +74,6 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 		}
 
 		@Override
-		protected void onDownstreamStarted() {
-
-		}
-
-		@Override
 		protected void onDownstreamSuspended() {
 			upstreamConsumer.suspend();
 		}
@@ -101,7 +93,6 @@ public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf
 					consumeInputByteBuffer(buf);
 				}
 			} catch (Exception e) {
-//				onInternalError(e);
 				upstreamConsumer.closeWithError(e);
 			} finally {
 				buf.recycle();

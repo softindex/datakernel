@@ -33,11 +33,6 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
 
 		@Override
-		protected void onUpstreamStarted() {
-
-		}
-
-		@Override
 		protected void onUpstreamEndOfStream() {
 			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
 				downstreamProducer.sendEndOfStream();
@@ -72,10 +67,6 @@ public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implemen
 			}
 		}
 
-		@Override
-		protected final void onStarted() {
-
-		}
 	}
 
 	public StreamProducer<T> newOutput() {

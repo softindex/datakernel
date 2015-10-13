@@ -125,14 +125,14 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.addConsumerCompletionCallback(new SimpleCompletionCallback() {
+		result1.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
 				server1.close();
 			}
 		});
 
-		result2.addConsumerCompletionCallback(new SimpleCompletionCallback() {
+		result2.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
 				server2.close();
@@ -189,14 +189,14 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.addConsumerCompletionCallback(new SimpleCompletionCallback() {
+		result1.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
 				server1.close();
 			}
 		});
 
-		result2.addConsumerCompletionCallback(new SimpleCompletionCallback() {
+		result2.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
 				server2.close();
@@ -265,14 +265,14 @@ public class DatagraphServerTest {
 		server1.listen();
 		server2.listen();
 
-		result1.addConsumerCompletionCallback(new SimpleCompletionCallback() {
+		result1.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
 				server1.close();
 			}
 		});
 
-		result2.addConsumerCompletionCallback(new SimpleCompletionCallback() {
+		result2.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
 				server2.close();
