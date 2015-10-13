@@ -25,7 +25,7 @@ public interface NativeDnsResolverMBean {
 
 	String[] getDomainNamesBeingResolved();
 
-	String[] getAllCachedDomainNames();
+	String[] getAllCacheEntries();
 
 	String[] getSuccessfullyResolvedDomainNames();
 

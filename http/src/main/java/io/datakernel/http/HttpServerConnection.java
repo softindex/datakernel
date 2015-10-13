@@ -176,7 +176,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving every request. It handles it,
 	 * using servlet and sends a response back to the client.
-	 * <p>
+	 * <p/>
 	 * After sending a response, request and response will be recycled and you can not use it twice.
 	 *
 	 * @param bodyBuf the received message

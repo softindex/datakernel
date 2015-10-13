@@ -16,18 +16,21 @@
 
 package io.datakernel.cube;
 
+import com.google.common.base.MoreObjects;
+
+import java.util.List;
 import java.util.Set;
 
 public final class AvailableDrillDowns {
-	private final Set<String> drillDowns;
+	private final Set<List<String>> drillDowns;
 	private final Set<String> measures;
 
-	public AvailableDrillDowns(Set<String> drillDowns, Set<String> measures) {
+	public AvailableDrillDowns(Set<List<String>> drillDowns, Set<String> measures) {
 		this.drillDowns = drillDowns;
 		this.measures = measures;
 	}
 
-	public Set<String> getDrillDowns() {
+	public Set<List<String>> getDrillDowns() {
 		return drillDowns;
 	}
 
@@ -51,5 +54,13 @@ public final class AvailableDrillDowns {
 		int result = drillDowns != null ? drillDowns.hashCode() : 0;
 		result = 31 * result + (measures != null ? measures.hashCode() : 0);
 		return result;
+	}
+
+	@Override
+	public String toString() {
+		return MoreObjects.toStringHelper(this)
+				.add("drillDowns", drillDowns)
+				.add("measures", measures)
+				.toString();
 	}
 }

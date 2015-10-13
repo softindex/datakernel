@@ -75,19 +75,18 @@ public class StressClient {
 							StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, file);
 
 					StreamConsumer<ByteBuf> consumer = client.upload(fileName);
-					consumer.addConsumerCompletionCallback(new CompletionCallback() {
+					consumer.addCompletionCallback(new CompletionCallback() {
 						@Override
 						public void onComplete() {
 							logger.info("Uploaded: " + fileName);
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							logger.info("Failed to upload: {}", exception.getMessage());
+						public void onException(Exception e) {
+							logger.info("Failed to upload: {}", e.getMessage());
 						}
 					});
 					producer.streamTo(consumer);
-
 				} catch (IOException e) {
 					logger.info(e.getMessage());
 				}
@@ -107,7 +106,7 @@ public class StressClient {
 
 				StreamFileWriter consumer =
 						StreamFileWriter.createFile(eventloop, executor, downloads.resolve(fileName));
-				consumer.addConsumerCompletionCallback(new CompletionCallback() {
+				consumer.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.info("Downloaded: " + fileName);

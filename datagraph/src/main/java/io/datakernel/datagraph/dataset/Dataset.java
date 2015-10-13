@@ -23,7 +23,7 @@ import java.util.List;
 
 /**
  * Represents distributed dataset which can span multiple partitions.
- * <p>
+ * <p/>
  * Typically it is implemented as result of some distributed operation:
  * <ul>
  * <li>Parallel query to some underlying distributed data source which is provided by 'environment'

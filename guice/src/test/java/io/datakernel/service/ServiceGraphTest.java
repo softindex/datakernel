@@ -39,7 +39,7 @@ public class ServiceGraphTest {
 						})
 						.addDependency(Key.get(TestGraph.S6.class), Key.get(TestGraph.S4.class))
 						.removeDependency(Key.get(TestGraph.S4.class), Key.get(TestGraph.S2.class))
-								// Some meaningless settings, to display WARN-s in log:
+						// Some meaningless settings, to display WARN-s in log:
 						.serviceForKey(Key.get(Object.class), null) // Unused key
 						.addDependency(Key.get(TestGraph.S6.class), Key.get(TestGraph.S3.class)) // Duplicate existing dependency
 						.removeDependency(Key.get(TestGraph.S4.class), Key.get(TestGraph.S6.class)) // Removing non-existing dependency

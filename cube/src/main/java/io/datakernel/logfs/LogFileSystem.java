@@ -17,9 +17,8 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.file.StreamFileWriter;
 
 import java.util.List;
 
@@ -32,8 +31,8 @@ public interface LogFileSystem {
 
 	void list(String logPartition, ResultCallback<List<LogFile>> callback);
 
-	StreamProducer<ByteBuf> reader(String logPartition, LogFile logFile, long positionFrom);
+	StreamFileReader reader(String logPartition, LogFile logFile, long positionFrom);
 
-	StreamConsumer<ByteBuf> writer(String logPartition, LogFile logFile);
+	StreamFileWriter writer(String logPartition, LogFile logFile);
 
 }

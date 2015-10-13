@@ -21,8 +21,10 @@ import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.async.AsyncIterators.asyncIteratorOfIterator;
@@ -164,11 +166,17 @@ public class StreamProducers {
 	 * Returns  {@link StreamProducerConcat} with producers from Iterable which will stream to this
 	 *
 	 * @param eventloop event loop in which will run it
-	 * @param iterable  iterator with producers
+	 * @param producers list of producers
 	 * @param <T>       type of output data
 	 */
-	public static <T> StreamProducer<T> concat(Eventloop eventloop, Iterable<StreamProducer<T>> iterable) {
-		return concat(eventloop, iterable.iterator());
+	public static <T> StreamProducer<T> concat(Eventloop eventloop, List<StreamProducer<T>> producers) {
+		List<StreamProducer<T>> forwarders = new ArrayList<>();
+		for (StreamProducer<T> producer : producers) {
+			StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
+			producer.streamTo(forwarder);
+			forwarders.add(forwarder);
+		}
+		return concat(eventloop, forwarders.iterator());
 	}
 
 	@SafeVarargs

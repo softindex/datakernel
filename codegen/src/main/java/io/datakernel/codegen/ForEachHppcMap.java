@@ -53,9 +53,7 @@ public class ForEachHppcMap implements Expression {
 		ForEachHppcMap that = (ForEachHppcMap) o;
 
 		if (iteratorType != null ? !iteratorType.equals(that.iteratorType) : that.iteratorType != null) return false;
-		if (value != null ? !value.equals(that.value) : that.value != null) return false;
-		if (forKey != null ? !forKey.equals(that.forKey) : that.forKey != null) return false;
-		return !(forValue != null ? !forValue.equals(that.forValue) : that.forValue != null);
+		return !(value != null ? !value.equals(that.value) : that.value != null);
 
 	}
 
@@ -63,8 +61,6 @@ public class ForEachHppcMap implements Expression {
 	public int hashCode() {
 		int result = iteratorType != null ? iteratorType.hashCode() : 0;
 		result = 31 * result + (value != null ? value.hashCode() : 0);
-		result = 31 * result + (forKey != null ? forKey.hashCode() : 0);
-		result = 31 * result + (forValue != null ? forValue.hashCode() : 0);
 		return result;
 	}
 

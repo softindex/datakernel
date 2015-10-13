@@ -17,14 +17,14 @@
 package io.datakernel.simplefs;
 
 public final class SimpleFsCommandDownload extends SimpleFsCommand {
-    public final String filename;
+	public final String filename;
 
-    public SimpleFsCommandDownload(String filename) {
-        this.filename = filename;
-    }
+	public SimpleFsCommandDownload(String filename) {
+		this.filename = filename;
+	}
 
-    @Override
-    public String toString() {
-        return "Download{filename=\'" + filename + "\'}";
-    }
+	@Override
+	public String toString() {
+		return "Download{filename=\'" + filename + "\'}";
+	}
 }

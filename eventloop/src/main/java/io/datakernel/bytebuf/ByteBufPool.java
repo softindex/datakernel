@@ -191,7 +191,7 @@ public final class ByteBufPool {
 
 	/**
 	 * Puts back ByteBuf which was taken from pool
-	 * <p>
+	 * <p/>
 	 * Puts back the ByteBuf which was taking from pool
 	 *
 	 * @param buf ByteBuf for recycling

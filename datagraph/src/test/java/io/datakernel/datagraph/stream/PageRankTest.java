@@ -17,7 +17,7 @@
 package io.datakernel.datagraph.stream;
 
 import com.google.common.base.Function;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallback;
@@ -77,7 +77,7 @@ public class PageRankTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("pageId", pageId)
 					.add("links", Arrays.toString(links))
 					.toString();
@@ -104,7 +104,7 @@ public class PageRankTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("pageId", pageId)
 					.add("value", value)
 					.toString();
@@ -141,7 +141,7 @@ public class PageRankTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("pageId", pageId)
 					.add("accumulatedRank", accumulatedRank)
 					.toString();

@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer;
 
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.serializer.annotations.*;
 import org.junit.Test;
 
@@ -28,10 +29,11 @@ import static org.junit.Assert.*;
 
 @SuppressWarnings("serial")
 public class AsmSerializerTest {
+	private static final DefiningClassLoader definingClassLoader = new DefiningClassLoader();
 
 	private static <T> T doTest(Class<?> type, T testData1) {
 		BufferSerializer<T> serializer = SerializerBuilder
-				.newDefaultInstance(ClassLoader.getSystemClassLoader())
+				.newDefaultInstance(definingClassLoader)
 				.create(type);
 		return doTest(testData1, serializer, serializer);
 	}
@@ -735,10 +737,10 @@ public class AsmSerializerTest {
 	@Test
 	public void testFixedSize() {
 		TestDataFixedSize testData1 = new TestDataFixedSize();
-		testData1.strings = new String[]{"abc", null, "123"};
+		testData1.strings = new String[]{"abc", null, "123", "superfluous"};
 		testData1.bytes = new byte[]{1, 2, 3, 4};
 		TestDataFixedSize testData2 = doTest(TestDataFixedSize.class, testData1);
-		assertArrayEquals(testData1.strings, testData2.strings);
+		assertArrayEquals(new String[]{testData1.strings[0], testData1.strings[1], testData1.strings[2]}, testData2.strings);
 		assertArrayEquals(testData1.bytes, testData2.bytes);
 	}
 
@@ -1438,5 +1440,50 @@ public class AsmSerializerTest {
 
 		assertTrue(gc.holder1.item.equals(_gc.holder1.item));
 		assertTrue(gc.holder2.item.equals(_gc.holder2.item));
+	}
+
+	public static class TestObj {
+		@Serialize(order = 0)
+		public String string;
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			TestObj testObj = (TestObj) o;
+
+			if (string != null ? !string.equals(testObj.string) : testObj.string != null) return false;
+			return !(integer != null ? !integer.equals(testObj.integer) : testObj.integer != null);
+
+		}
+
+		@Override
+		public int hashCode() {
+			int result = string != null ? string.hashCode() : 0;
+			result = 31 * result + (integer != null ? integer.hashCode() : 0);
+			return result;
+		}
+
+		@Serialize(order = 1)
+		public Integer integer;
+
+		public TestObj(@Deserialize("string") String string, @Deserialize("integer") Integer integer) {
+			this.string = string;
+			this.integer = integer;
+		}
+	}
+
+	public static class ListOfObjectHolder {
+		@Serialize(order = 0)
+		public List<TestObj> list;
+	}
+
+	@Test
+	public void testListObj() {
+		ListOfObjectHolder testData1 = new ListOfObjectHolder();
+		testData1.list = Arrays.asList(new TestObj("a", 1), new TestObj("b", 2), new TestObj("c", 3));
+		ListOfObjectHolder testData2 = doTest(ListOfObjectHolder.class, testData1);
+		assertEquals(testData1.list, testData2.list);
 	}
 }

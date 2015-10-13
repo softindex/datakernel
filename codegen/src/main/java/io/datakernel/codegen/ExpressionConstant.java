@@ -73,6 +73,8 @@ public final class ExpressionConstant implements Expression {
 			g.push((String) value);
 		} else if (value instanceof Type) {
 			g.push((Type) value);
+		} else if (value instanceof Enum) {
+			g.getStatic(type, ((Enum) value).name(), type);
 		} else
 			throw new IllegalArgumentException();
 		return type;

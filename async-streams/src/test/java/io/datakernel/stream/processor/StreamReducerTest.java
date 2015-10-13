@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
+import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
@@ -426,7 +427,7 @@ public class StreamReducerTest {
 
 		@Override
 		public String toString() {
-			return Objects.toStringHelper(this)
+			return MoreObjects.toStringHelper(this)
 					.add("key", key)
 					.add("metric1", metric1)
 					.add("metric2", metric2)
@@ -460,9 +461,9 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(
-						new KeyValueResult(1, 10.0, 10.0, 0.0),
-						new KeyValueResult(2, 0.0, 10.0, 20.0),
-						new KeyValueResult(3, 30.0, 40.0, 20.0)),
+				new KeyValueResult(1, 10.0, 10.0, 0.0),
+				new KeyValueResult(2, 0.0, 10.0, 20.0),
+				new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
@@ -494,9 +495,9 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(
-						new KeyValueResult(1, 10.0, 10.0, 0.0),
-						new KeyValueResult(2, 0.0, 10.0, 20.0),
-						new KeyValueResult(3, 30.0, 40.0, 20.0)),
+				new KeyValueResult(1, 10.0, 10.0, 0.0),
+				new KeyValueResult(2, 0.0, 10.0, 20.0),
+				new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());

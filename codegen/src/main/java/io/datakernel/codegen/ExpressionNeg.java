@@ -28,6 +28,22 @@ public class ExpressionNeg implements Expression {
 	ExpressionNeg(Expression arg) {this.arg = arg;}
 
 	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		ExpressionNeg that = (ExpressionNeg) o;
+
+		return !(arg != null ? !arg.equals(that.arg) : that.arg != null);
+
+	}
+
+	@Override
+	public int hashCode() {
+		return arg != null ? arg.hashCode() : 0;
+	}
+
+	@Override
 	public Type type(Context ctx) {
 		switch (arg.type(ctx).getSort()) {
 			case Type.BOOLEAN:

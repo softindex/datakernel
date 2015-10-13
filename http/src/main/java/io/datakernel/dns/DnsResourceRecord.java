@@ -39,6 +39,10 @@ public final class DnsResourceRecord {
 		this.type = type;
 	}
 
+	public boolean hasData() {
+		return ips.length != 0;
+	}
+
 	public InetAddress[] getIps() {
 		return ips;
 	}

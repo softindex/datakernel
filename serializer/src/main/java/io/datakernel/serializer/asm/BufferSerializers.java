@@ -210,15 +210,15 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<String> ASCII_SERIALIZER = new BufferSerializer<String>() {
+	private static final BufferSerializer<String> ISO_8859_1_SERIALIZER = new BufferSerializer<String>() {
 		@Override
 		public void serialize(SerializationOutputBuffer output, String item) {
-			output.writeAscii(item);
+			output.writeIso88591(item);
 		}
 
 		@Override
 		public String deserialize(SerializationInputBuffer input) {
-			return input.readAscii();
+			return input.readIso88591();
 		}
 	};
 
@@ -274,5 +274,5 @@ public final class BufferSerializers {
 		return UTF16_SERIALIZER;
 	}
 
-	public static BufferSerializer<String> asciiSerializer() { return ASCII_SERIALIZER; }
+	public static BufferSerializer<String> iso88591Serializer() { return ISO_8859_1_SERIALIZER; }
 }

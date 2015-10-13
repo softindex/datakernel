@@ -52,7 +52,6 @@ public final class DatagraphSerialization {
 
 	public final Gson gson;
 
-
 	private final Map<Class<?>, BufferSerializer<?>> serializers = new HashMap<>();
 
 	/**

@@ -17,6 +17,7 @@
 package io.datakernel.cube;
 
 import com.google.common.collect.ImmutableSet;
+import io.datakernel.aggregation_db.RangeTree;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;

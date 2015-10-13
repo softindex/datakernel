@@ -17,11 +17,14 @@
 package io.datakernel.simplefs;
 
 import com.google.common.base.Charsets;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
@@ -184,7 +187,9 @@ public class SimpleFsServerTest {
 				16 * 1024, clientStorage.resolve(requestedFile));
 
 		StreamConsumer<ByteBuf> consumer = client.upload(resultFile);
-		consumer.addConsumerCompletionCallback(new CompletionCallback() {
+		producer.streamTo(consumer);
+
+		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("File uploaded");
@@ -192,17 +197,55 @@ public class SimpleFsServerTest {
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.error(exception.getMessage(), exception);
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
 				stop(fileServer);
 			}
 		});
-		producer.streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdownNow();
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), serverStorage.resolve(resultFile).toFile()));
+	}
+
+	@Test
+	public void testUploadMultiple() throws Exception {
+		int files = 10;
+		NioEventloop eventloop = new NioEventloop();
+		byte[] bytes = "Hello, World!".getBytes();
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		CompletionCallback callback = AsyncCallbacks.waitAll(files, new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("All files uploaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
+			}
+		});
+
+		for (int i = 0; i < files; i++) {
+			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
+			StreamConsumer<ByteBuf> consumer = client.upload("file" + i);
+			producer.streamTo(consumer);
+			consumer.addCompletionCallback(callback);
+		}
+
+		eventloop.run();
+
+		for (int i = 0; i < files; i++) {
+			assertArrayEquals(bytes, Files.readAllBytes(serverStorage.resolve("file" + i)));
+		}
+
+		return;
 	}
 
 	@Test
@@ -220,7 +263,8 @@ public class SimpleFsServerTest {
 				16 * 1024, clientStorage.resolve(requestedFile));
 
 		StreamConsumer<ByteBuf> consumer = client.upload(resultFile);
-		consumer.addConsumerCompletionCallback(new CompletionCallback() {
+		producer.streamTo(consumer);
+		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Big file uploaded");
@@ -233,7 +277,6 @@ public class SimpleFsServerTest {
 				stop(fileServer);
 			}
 		});
-		producer.streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdownNow();
@@ -255,7 +298,7 @@ public class SimpleFsServerTest {
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
-		consumer.addConsumerCompletionCallback(new CompletionCallback() {
+		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.error("File downloaded");
@@ -278,6 +321,11 @@ public class SimpleFsServerTest {
 	}
 
 	@Test
+	public void testActionsAfterStop() {
+		// TODO
+	}
+
+	@Test
 	public void testDownloadNotExistsFile() throws Exception {
 		String requestedFile = "t2_not_exist";
 		String resultFile = "t2_downloaded";
@@ -289,7 +337,7 @@ public class SimpleFsServerTest {
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		final StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
-		consumer.addConsumerCompletionCallback(new CompletionCallback() {
+		consumer.addCompletionCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				// file server won't be stopped
@@ -310,6 +358,57 @@ public class SimpleFsServerTest {
 		executor.shutdown();
 	}
 
+	@Test
+	public void testTwoSimultaneousDownloads() throws IOException {
+		String requestedFile = "big_file";
+		String resultFile1 = "big_file_downloaded1";
+		String resultFile2 = "big_file_downloaded2";
+
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+
+		Files.copy(clientStorage.resolve(requestedFile), serverStorage.resolve(requestedFile));
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		StreamFileWriter consumer1 = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile1));
+		StreamFileWriter consumer2 = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile2));
+		consumer1.addCompletionCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("File 1 downloaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+			}
+		});
+		consumer2.addCompletionCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("File 2 downloaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
+			}
+		});
+
+		client.download(requestedFile, consumer1);
+		client.download(requestedFile, consumer2);
+
+		eventloop.run();
+		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile1).toFile()));
+	}
+
 	private void uploadFiles(NioEventloop eventloop, final String... fileNames) throws IOException {
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		ExecutorService executor = Executors.newCachedThreadPool();
@@ -322,7 +421,8 @@ public class SimpleFsServerTest {
 					16 * 1024, clientStorage.resolve(fileName));
 
 			StreamConsumer<ByteBuf> consumer = client.upload(fileName);
-			consumer.addConsumerCompletionCallback(new CompletionCallback() {
+			producer.streamTo(consumer);
+			consumer.addCompletionCallback(new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.info("Uploaded file: {}", fileName);
@@ -335,7 +435,6 @@ public class SimpleFsServerTest {
 					logger.error("Can't upload: {}", fileName, exception);
 				}
 			});
-			producer.streamTo(consumer);
 		}
 
 		eventloop.run();

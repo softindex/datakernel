@@ -16,6 +16,7 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -27,7 +28,7 @@ import static java.util.Arrays.asList;
 
 @SuppressWarnings("unchecked")
 public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
-	private static final AggregatorSplitter.Factory<TestPubRequest> FACTORY = new Factory<TestPubRequest>() {
+	private static final AggregatorSplitter.Factory<TestPubRequest> FACTORY = new AggregatorSplitter.Factory<TestPubRequest>() {
 		@Override
 		public AggregatorSplitter<TestPubRequest> create(Eventloop eventloop) {
 			return new TestAggregatorSplitter(eventloop);

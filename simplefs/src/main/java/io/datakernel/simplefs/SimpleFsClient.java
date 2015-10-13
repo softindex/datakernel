@@ -16,6 +16,7 @@
 
 package io.datakernel.simplefs;
 
+import com.google.common.base.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -29,6 +30,7 @@ import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.MessagingStarter;
 import io.datakernel.stream.net.StreamMessagingConnection;
 import io.datakernel.stream.processor.StreamByteChunker;
+import io.datakernel.stream.processor.StreamFilter;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
 import org.slf4j.Logger;
@@ -57,18 +59,10 @@ public class SimpleFsClient implements SimpleFs {
 
 	@Override
 	public StreamConsumer<ByteBuf> upload(final String fileName) {
-		final StreamTransformers.TransformerWithoutEnd<ByteBuf> transformer = new StreamTransformers.TransformerWithoutEnd<>(eventloop);
-		final CompletionCallback callback = new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				transformer.closeOnComplete();
-			}
+		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+		final TransformerNoEnd transformer = new TransformerNoEnd(eventloop);
 
-			@Override
-			public void onException(Exception exception) {
-				transformer.closeOnError(exception);
-			}
-		};
+		final CompletionCallback closeCallback = transformer.getCloseCallback();
 
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
 			@Override
@@ -83,37 +77,30 @@ public class SimpleFsClient implements SimpleFs {
 						})
 						.addHandler(SimpleFsResponseOperationOk.class, new MessagingHandler<SimpleFsResponseOperationOk, SimpleFsCommand>() {
 							@Override
-							public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
+							public void onMessage(SimpleFsResponseOperationOk item, final Messaging<SimpleFsCommand> messaging) {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
-
-								consumer.addConsumerCompletionCallback(new CompletionCallback() {
-									@Override
-									public void onComplete() {
-										logger.info("File {} send, trying to commit");
-										commit(fileName, callback);
-									}
-
-									@Override
-									public void onException(final Exception e) {
-										logger.error("Can't send file {}", fileName, e);
-										callback.onException(e);
-									}
-								});
-
+								forwarder.streamTo(transformer);
 								transformer.streamTo(streamByteChunker);
 								streamByteChunker.streamTo(consumer);
-								messaging.shutdownReader();
+							}
+						})
+						.addHandler(SimpleFsResponseAcknowledge.class, new MessagingHandler<SimpleFsResponseAcknowledge, SimpleFsCommand>() {
+							@Override
+							public void onMessage(SimpleFsResponseAcknowledge item, Messaging<SimpleFsCommand> messaging) {
+								logger.info("Received acknowledgement for {}", fileName);
+								messaging.shutdown();
+								commit(fileName, closeCallback);
 							}
 						})
 						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
 							@Override
 							public void onMessage(SimpleFsResponseError item, Messaging<SimpleFsCommand> messaging) {
 								Exception e = new Exception(item.exceptionMsg);
+								logger.error("Can't upload file {}", fileName, e);
 								messaging.shutdown();
-								logger.info("Can't upload file {}", fileName, e);
-								callback.onException(e);
+								closeCallback.onException(e);
 							}
 						});
 				connection.register();
@@ -122,11 +109,11 @@ public class SimpleFsClient implements SimpleFs {
 			@Override
 			public void onException(Exception e) {
 				logger.error("Can't connect", e);
-				callback.onException(e);
+				closeCallback.onException(e);
 			}
 		});
 
-		return transformer;
+		return forwarder;
 	}
 
 	@Override
@@ -259,7 +246,7 @@ public class SimpleFsClient implements SimpleFs {
 
 	private StreamMessagingConnection<SimpleFsResponse, SimpleFsCommand> createConnection(SocketChannel socketChannel) {
 		return new StreamMessagingConnection<>(eventloop, socketChannel,
-				new StreamGsonDeserializer<>(eventloop, SimpleFsResponseSerialization.GSON, SimpleFsResponse.class, 256 * 1024),
+				new StreamGsonDeserializer<>(eventloop, SimpleFsResponseSerialization.GSON, SimpleFsResponse.class, 10),
 				new StreamGsonSerializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 256 * 1024, 256 * (1 << 20), 0));
 	}
 

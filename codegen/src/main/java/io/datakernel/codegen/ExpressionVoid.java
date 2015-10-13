@@ -21,6 +21,12 @@ import org.objectweb.asm.Type;
 import static org.objectweb.asm.Type.VOID_TYPE;
 
 public class ExpressionVoid implements Expression {
+	public static final ExpressionVoid instance = new ExpressionVoid();
+
+	private ExpressionVoid() {
+
+	}
+
 	@Override
 	public Type type(Context ctx) {
 		return VOID_TYPE;

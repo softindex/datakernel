@@ -16,6 +16,8 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation_db.AggregationMetadata;
+import io.datakernel.aggregation_db.PrimaryKey;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -30,7 +32,7 @@ public class ChunkFilteringTest {
 		PrimaryKey minChunkKey = PrimaryKey.ofArray(3, 5, 77, 90);
 		PrimaryKey maxChunkKey = PrimaryKey.ofArray(3, 5, 80, 22);
 
-		assertTrue(Aggregation.chunkMightContainQueryValues(minQueryKey, maxQueryKey, minChunkKey, maxChunkKey));
+		assertTrue(AggregationMetadata.chunkMightContainQueryValues(minQueryKey, maxQueryKey, minChunkKey, maxChunkKey));
 	}
 
 	@Test
@@ -41,7 +43,7 @@ public class ChunkFilteringTest {
 		PrimaryKey minChunkKey = PrimaryKey.ofArray(3, 5, 77, 90);
 		PrimaryKey maxChunkKey = PrimaryKey.ofArray(3, 5, 80, 22);
 
-		assertFalse(Aggregation.chunkMightContainQueryValues(minQueryKey, maxQueryKey, minChunkKey, maxChunkKey));
+		assertFalse(AggregationMetadata.chunkMightContainQueryValues(minQueryKey, maxQueryKey, minChunkKey, maxChunkKey));
 	}
 
 	@Test
@@ -52,7 +54,7 @@ public class ChunkFilteringTest {
 		PrimaryKey minChunkKey = PrimaryKey.ofArray(3, 5, 77, 90);
 		PrimaryKey maxChunkKey = PrimaryKey.ofArray(3, 5, 80, 22);
 
-		assertFalse(Aggregation.chunkMightContainQueryValues(minQueryKey, maxQueryKey, minChunkKey, maxChunkKey));
+		assertFalse(AggregationMetadata.chunkMightContainQueryValues(minQueryKey, maxQueryKey, minChunkKey, maxChunkKey));
 	}
 
 	@Test
@@ -63,6 +65,6 @@ public class ChunkFilteringTest {
 		PrimaryKey minChunkKey = PrimaryKey.ofArray(3, 5, 80, 90);
 		PrimaryKey maxChunkKey = PrimaryKey.ofArray(3, 5, 80, 90);
 
-		assertTrue(Aggregation.chunkMightContainQueryValues(minQueryKey, maxQueryKey, minChunkKey, maxChunkKey));
+		assertTrue(AggregationMetadata.chunkMightContainQueryValues(minQueryKey, maxQueryKey, minChunkKey, maxChunkKey));
 	}
 }

@@ -79,17 +79,12 @@ public class ExpressionMapForEach implements Expression {
 
 		ExpressionMapForEach that = (ExpressionMapForEach) o;
 
-		if (field != null ? !field.equals(that.field) : that.field != null) return false;
-		if (forKey != null ? !forKey.equals(that.forKey) : that.forKey != null) return false;
-		return !(forValue != null ? !forValue.equals(that.forValue) : that.forValue != null);
+		return !(field != null ? !field.equals(that.field) : that.field != null);
 
 	}
 
 	@Override
 	public int hashCode() {
-		int result = field != null ? field.hashCode() : 0;
-		result = 31 * result + (forKey != null ? forKey.hashCode() : 0);
-		result = 31 * result + (forValue != null ? forValue.hashCode() : 0);
-		return result;
+		return field != null ? field.hashCode() : 0;
 	}
 }

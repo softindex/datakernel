@@ -20,44 +20,21 @@
 
     <dependencies>
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <scope>test</scope>
+            <groupId>io.datakernel</groupId>
+            <artifactId>aggregation-db</artifactId>
+            <version>${version-snapshot}</version>
         </dependency>
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
+            <groupId>io.datakernel</groupId>
+            <artifactId>aggregation-db</artifactId>
+            <version>${version-snapshot}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>http</artifactId>
-            <version>1.1</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>codegen</artifactId>
-            <version>1.1</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>simplefs</artifactId>
-            <version>${version-snapshot}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.zaxxer</groupId>
-            <artifactId>HikariCP</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>net.jpountz.lz4</groupId>
-            <artifactId>lz4</artifactId>
+            <version>1.1.2</version>
         </dependency>
     </dependencies>
 </project>

@@ -16,42 +16,49 @@
 
 package io.datakernel.cube;
 
+import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
+
+import java.util.List;
+
 import com.google.common.collect.ImmutableMap;
+import io.datakernel.aggregation_db.*;
+import io.datakernel.aggregation_db.fieldtype.FieldType;
+import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
+import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.aggregation_db.keytype.KeyTypeInt;
+import io.datakernel.aggregation_db.keytype.KeyTypeString;
 import io.datakernel.codegen.utils.DefiningClassLoader;
-import io.datakernel.cube.CubeTest.MyCommitCallback;
-import io.datakernel.cube.dimensiontype.DimensionType;
-import io.datakernel.cube.dimensiontype.DimensionTypeInt;
-import io.datakernel.cube.dimensiontype.DimensionTypeString;
+import io.datakernel.cube.bean.DataItemResultString;
+import io.datakernel.cube.bean.DataItemString1;
+import io.datakernel.cube.bean.DataItemString2;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
-import java.util.List;
-
-import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-
 public class StringDimensionTest {
-	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationStorage storage,
-	                           CubeStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, new LogToCubeMetadataStorageStub(), storage, cubeStructure);
+	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationChunkStorage storage,
+	                           AggregationStructure structure) {
+		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		Cube cube = new Cube(eventloop, classLoader, new LogToCubeMetadataStorageStub(), aggregationMetadataStorage,
+				storage, structure);
 		cube.addAggregation(
-				new Aggregation("detailedAggregation", asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
+				new AggregationMetadata("detailedAggregation", asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
 		return cube;
 	}
 
-	public static CubeStructure cubeStructureWithStringDimension(DefiningClassLoader classLoader) {
-		return new CubeStructure(classLoader,
-				ImmutableMap.<String, DimensionType>builder()
-						.put("key1", new DimensionTypeString())
-						.put("key2", new DimensionTypeInt())
+	public static AggregationStructure cubeStructureWithStringDimension(DefiningClassLoader classLoader) {
+		return new AggregationStructure(classLoader,
+				ImmutableMap.<String, KeyType>builder()
+						.put("key1", new KeyTypeString())
+						.put("key2", new KeyTypeInt())
 						.build(),
-				ImmutableMap.<String, MeasureType>builder()
-						.put("metric1", MeasureType.SUM_LONG)
-						.put("metric2", MeasureType.SUM_LONG)
-						.put("metric3", MeasureType.SUM_LONG)
+				ImmutableMap.<String, FieldType>builder()
+						.put("metric1", new FieldTypeLong())
+						.put("metric2", new FieldTypeLong())
+						.put("metric3", new FieldTypeLong())
 						.build());
 	}
 
@@ -59,20 +66,20 @@ public class StringDimensionTest {
 	public void testQuery() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		NioEventloop eventloop = new NioEventloop();
-		AggregationStorageStub storage = new AggregationStorageStub(eventloop, classLoader);
-		CubeStructure cubeStructure = cubeStructureWithStringDimension(classLoader);
-		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);
+		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
+		AggregationStructure structure = cubeStructureWithStringDimension(classLoader);
+		Cube cube = newCube(eventloop, classLoader, storage, structure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString1("str1", 2, 10, 20), new DataItemString1("str2", 3, 10, 20)))
-				.streamTo(cube.consumer(DataItemString1.class, DataItemString1.DIMENSIONS, DataItemString1.METRICS, new MyCommitCallback(cube)));
+				.streamTo(cube.consumer(DataItemString1.class, DataItemString1.DIMENSIONS, DataItemString1.METRICS, new CubeTest.MyCommitCallback(cube)));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)))
-				.streamTo(cube.consumer(DataItemString2.class, DataItemString2.DIMENSIONS, DataItemString2.METRICS, new MyCommitCallback(cube)));
+				.streamTo(cube.consumer(DataItemString2.class, DataItemString2.DIMENSIONS, DataItemString2.METRICS, new CubeTest.MyCommitCallback(cube)));
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
 		cube.query(0, DataItemResultString.class,
-				new CubeQuery()
-						.dimensions("key1", "key2")
-						.measures("metric1", "metric2", "metric3")
+				new AggregationQuery()
+						.keys("key1", "key2")
+						.fields("metric1", "metric2", "metric3")
 						.eq("key1", "str2")
 						.eq("key2", 3))
 				.streamTo(consumerToList);
