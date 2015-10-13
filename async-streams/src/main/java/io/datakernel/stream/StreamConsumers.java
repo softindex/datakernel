@@ -103,10 +103,6 @@ public class StreamConsumers {
 		}
 
 		@Override
-		protected void onError(Exception e) {
-		}
-
-		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
 			return new StreamDataReceiver<T>() {
 				@Override
@@ -134,17 +130,7 @@ public class StreamConsumers {
 		}
 
 		@Override
-		protected void onStarted() {
-
-		}
-
-		@Override
 		protected void onEndOfStream() {
-
-		}
-
-		@Override
-		protected void onError(Exception e) {
 
 		}
 
@@ -183,11 +169,6 @@ public class StreamConsumers {
 
 		public void setResultCallback(ResultCallback<List<T>> resultCallback) {
 			this.resultCallback = resultCallback;
-		}
-
-		@Override
-		protected void onStarted() {
-
 		}
 
 		@Override
@@ -252,11 +233,6 @@ public class StreamConsumers {
 		public ToListSuspend(Eventloop eventloop, List<T> list) {
 			super(eventloop);
 			this.list = list;
-		}
-
-		@Override
-		protected void onStarted() {
-
 		}
 
 		@Override

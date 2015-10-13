@@ -419,20 +419,11 @@ public class StreamBenchmark {
 
 		}
 
-//		@Override
-//		protected void onProducerStarted() {
-//			produce();
-//		}
-
 		@Override
 		protected void onResumed() {
 			resumeProduce();
 		}
 
-		@Override
-		protected void onError(Exception e) {
-
-		}
 	}
 
 	public static class SuspendConsumer extends AbstractStreamConsumer<Integer> implements StreamDataReceiver<Integer> {
@@ -457,14 +448,7 @@ public class StreamBenchmark {
 
 		@Override
 		protected void onEndOfStream() {
-
 		}
-
-//		@Override
-//		public void onProducerEndOfStream() {
-////			upstreamProducer.close();
-//			close();
-//		}
 
 		@Override
 		protected void onError(Exception e) {
@@ -475,16 +459,13 @@ public class StreamBenchmark {
 		public void onData(Integer item) {
 			if (receivedValues == suspendPeriod) {
 				receivedValues = 0;
-//				suspendUpstream();
 				suspend();
 				this.eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-//						resumeUpstream();
 						resume();
 					}
 				});
-
 			}
 			receivedValues++;
 		}

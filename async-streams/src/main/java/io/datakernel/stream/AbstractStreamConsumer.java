@@ -95,7 +95,9 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		rewiring = false;
 	}
 
-	abstract protected void onStarted();
+	protected void onStarted() {
+
+	}
 
 	@Nullable
 	public final StreamProducer<T> getUpstream() {
@@ -166,7 +168,9 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		closeWithError(e, false);
 	}
 
-	protected abstract void onError(Exception e);
+	protected void onError(Exception e) {
+
+	}
 
 	public Object getTag() {
 		return tag;

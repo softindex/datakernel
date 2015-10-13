@@ -36,9 +36,6 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 	private final DownstreamProducer downstreamProducer;
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -61,10 +58,6 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 		private int jmxOutputItems;
 
 		public DownstreamProducer(Predicate<T> predicate) {this.predicate = predicate;}
-
-		@Override
-		protected void onDownstreamStarted() {
-		}
 
 		@Override
 		protected void onDownstreamSuspended() {

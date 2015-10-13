@@ -43,6 +43,8 @@ import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+
 /**
  * Server for processing JSON commands.
  */
@@ -76,7 +78,7 @@ public final class DatagraphServer extends AbstractNioServer<DatagraphServer> {
 			forwarder = new StreamForwarder<>(eventloop);
 			pendingStreams.put(streamId, forwarder);
 		}
-		forwarder.streamTo(messaging.binarySocketWriter());
+		messaging.write(forwarder, ignoreCompletionCallback());
 	}
 
 	private void onExecute(DatagraphCommandExecute item, Messaging<DatagraphResponse> messaging) {

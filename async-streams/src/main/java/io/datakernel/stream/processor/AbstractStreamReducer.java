@@ -123,10 +123,6 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 	private final class DownstreamProducer extends AbstractDownstreamProducer {
 
 		@Override
-		protected void onDownstreamStarted() {
-		}
-
-		@Override
 		protected void onDownstreamSuspended() {
 			suspendAllUpstreams();
 		}

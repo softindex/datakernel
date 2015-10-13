@@ -25,11 +25,6 @@ public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T
 	private class UpstreamConsumer extends AbstractUpstreamConsumer {
 
 		@Override
-		protected void onUpstreamStarted() {
-
-		}
-
-		@Override
 		protected void onUpstreamEndOfStream() {
 			downstreamProducer.sendEndOfStream();
 		}
@@ -48,11 +43,6 @@ public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T
 	private class DownstreamProducer extends AbstractDownstreamProducer {
 
 		@Override
-		protected void onDownstreamStarted() {
-
-		}
-
-		@Override
 		protected void onDownstreamSuspended() {
 			upstreamConsumer.suspend();
 		}
@@ -69,13 +59,4 @@ public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T
 		downstreamProducer = new DownstreamProducer();
 	}
 
-//	@Override
-//	public StreamDataReceiver<T> getDataReceiver() {
-//		return downstreamDataReceiver;
-//	}
-//
-//	@Override
-//	protected void onClosedWithError(Exception e) {
-//		downstreamConsumer.onEndOfStream();
-//	}
 }

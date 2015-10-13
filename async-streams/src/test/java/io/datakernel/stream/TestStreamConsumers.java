@@ -137,20 +137,4 @@ public class TestStreamConsumers {
 	public static <T> TestConsumerToList<T> toListRandomlySuspending(Eventloop eventloop) {
 		return toListRandomlySuspending(eventloop, new ArrayList<T>(), new Random());
 	}
-
-	public static <T> TestConsumerToList<T> toListErrorAtSecondItem(Eventloop eventloop) {
-		return toListErrorAtSecondItem(eventloop, new ArrayList<T>());
-	}
-
-	public static <T> TestConsumerToList<T> toListErrorAtSecondItem(Eventloop eventloop, List<T> list) {
-		return new TestConsumerToList<T>(eventloop, list) {
-			@Override
-			public void onData(T item) {
-				list.add(item);
-				if (list.size() == 2) {
-					closeWithError(new Exception());
-				}
-			}
-		};
-	}
 }

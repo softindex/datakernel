@@ -49,7 +49,9 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 			onUpstreamStarted();
 		}
 
-		protected abstract void onUpstreamStarted();
+		protected void onUpstreamStarted() {
+
+		}
 
 		@Override
 		protected final void onEndOfStream() {

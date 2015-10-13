@@ -34,11 +34,6 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 	private final class DownstreamProducer extends AbstractDownstreamProducer {
 
 		@Override
-		protected void onDownstreamStarted() {
-
-		}
-
-		@Override
 		protected void onDownstreamSuspended() {
 
 		}

@@ -16,8 +16,6 @@
 
 package io.datakernel.stream.examples;
 
-import com.google.common.base.Function;
-import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
@@ -25,7 +23,6 @@ import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.TestStreamConsumers;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.stream.StreamProducers.ofIterable;
 import static java.util.Arrays.asList;
 
@@ -42,9 +39,6 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1<Stri
 	private final DownstreamProducer downstreamProducer;
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -59,9 +53,6 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1<Stri
 	}
 
 	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<String> {
-		@Override
-		protected void onDownstreamStarted() {
-		}
 
 		@Override
 		protected void onDownstreamSuspended() {

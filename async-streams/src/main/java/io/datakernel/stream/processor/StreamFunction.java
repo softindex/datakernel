@@ -36,9 +36,6 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I,
 	private final DownstreamProducer downstreamProducer;
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -58,10 +55,6 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I,
 		private final Function<I, O> function;
 
 		public DownstreamProducer(Function<I, O> function) {this.function = checkNotNull(function);}
-
-		@Override
-		protected void onDownstreamStarted() {
-		}
 
 		@Override
 		protected void onDownstreamSuspended() {

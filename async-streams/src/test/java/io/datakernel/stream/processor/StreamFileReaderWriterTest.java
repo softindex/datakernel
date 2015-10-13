@@ -161,11 +161,6 @@ public class StreamFileReaderWriterTest {
 			}
 
 			@Override
-			protected void onError(Exception e) {
-
-			}
-
-			@Override
 			public StreamDataReceiver<ByteBuf> getDataReceiver() {
 				return this;
 			}

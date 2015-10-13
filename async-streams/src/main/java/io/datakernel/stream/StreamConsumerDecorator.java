@@ -16,7 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 
 /**
@@ -61,9 +60,6 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 			}
 		};
 		this.downstreamProducer = new AbstractStreamProducer<T>(eventloop) {
-			@Override
-			protected void onStarted() {
-			}
 
 			@Override
 			protected void onDataReceiverChanged() {

@@ -237,17 +237,7 @@ public class StreamRewiringWithStatus {
 		}
 
 		@Override
-		protected void onStarted() {
-
-		}
-
-		@Override
 		protected void onEndOfStream() {
-
-		}
-
-		@Override
-		protected void onError(Exception e) {
 
 		}
 
@@ -317,9 +307,5 @@ public class StreamRewiringWithStatus {
 			resumeProduce();
 		}
 
-		@Override
-		protected void onError(Exception e) {
-
-		}
 	}
 }

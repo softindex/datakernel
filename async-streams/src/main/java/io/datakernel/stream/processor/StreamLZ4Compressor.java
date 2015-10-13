@@ -50,9 +50,6 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	private final DownstreamProducer downstreamProducer;
 
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -75,10 +72,6 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		private int jmxBufs;
 
 		private DownstreamProducer(LZ4Compressor compressor) {this.compressor = compressor;}
-
-		@Override
-		protected void onDownstreamStarted() {
-		}
 
 		@Override
 		protected void onDownstreamSuspended() {

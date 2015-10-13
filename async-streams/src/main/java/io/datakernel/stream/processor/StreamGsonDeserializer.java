@@ -30,9 +30,6 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 	private final DownstreamProducer downstreamProducer;
 
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -67,11 +64,6 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 			this.gson = gson;
 			this.type = type;
 			this.buf = ByteBufPool.allocate(INITIAL_BUFFER_SIZE);
-		}
-
-		@Override
-		protected void onDownstreamStarted() {
-
 		}
 
 		@Override

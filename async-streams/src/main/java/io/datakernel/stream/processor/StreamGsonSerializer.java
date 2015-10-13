@@ -22,8 +22,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -44,9 +42,6 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 	private final DownstreamProducer downstreamProducer;
 
 	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -90,11 +85,6 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 			this.estimatedMessageSize = 1;
 			this.flushDelayMillis = flushDelayMillis;
 			allocateBuffer();
-		}
-
-		@Override
-		protected void onDownstreamStarted() {
-
 		}
 
 		@Override

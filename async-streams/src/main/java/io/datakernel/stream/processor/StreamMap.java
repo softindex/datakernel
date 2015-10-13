@@ -121,9 +121,6 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> i
 	private final DownstreamProducer downstreamProducer;
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -141,10 +138,6 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> i
 		private final Mapper<I, O> mapper;
 
 		public DownstreamProducer(Mapper<I, O> mapper) {this.mapper = checkNotNull(mapper);}
-
-		@Override
-		protected void onDownstreamStarted() {
-		}
 
 		@Override
 		protected void onDownstreamSuspended() {

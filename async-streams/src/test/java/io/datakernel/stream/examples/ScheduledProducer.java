@@ -68,11 +68,6 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 		});
 	}
 
-//	@Override
-//	public void onProducerStarted() {
-//		scheduleNext();
-//	}
-
 	@Override
 	protected void onSuspended() {
 		cancel();
@@ -83,18 +78,4 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 		scheduleNext();
 	}
 
-	@Override
-	protected void onError(Exception e) {
-
-	}
-
-//	@Override
-//	protected void onClosed() {
-//		cancel();
-//	}
-
-//	@Override
-//	protected void onClosedWithError(Exception e) {
-//		cancel();
-//	}
 }

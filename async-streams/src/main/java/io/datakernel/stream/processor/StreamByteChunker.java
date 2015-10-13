@@ -27,9 +27,6 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 	private final DownstreamProducer downstreamProducer;
 
 	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
-		@Override
-		protected void onUpstreamStarted() {
-		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
@@ -54,12 +51,8 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		}
 
 		@Override
-		protected void onDownstreamStarted() {
-		}
-
-		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend(); // TODO ?
+			upstreamConsumer.suspend();
 		}
 
 		@Override

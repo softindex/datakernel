@@ -213,11 +213,6 @@ public class StreamProducers {
 
 		}
 
-		@Override
-		protected void onError(Exception e) {
-
-		}
-
 	}
 
 	/**
@@ -256,20 +251,11 @@ public class StreamProducers {
 
 		}
 
-		@Override
-		protected void onError(Exception e) {
-
-		}
 	}
 
 	public static class Idle<T> extends AbstractStreamProducer<T> {
 		public Idle(Eventloop eventloop) {
 			super(eventloop);
-		}
-
-		@Override
-		protected void onStarted() {
-
 		}
 
 		@Override
@@ -287,10 +273,6 @@ public class StreamProducers {
 
 		}
 
-		@Override
-		protected void onError(Exception e) {
-
-		}
 	}
 
 	/**
@@ -352,10 +334,6 @@ public class StreamProducers {
 			resumeProduce();
 		}
 
-		@Override
-		protected void onError(Exception e) {
-
-		}
 	}
 
 	/**
@@ -416,10 +394,6 @@ public class StreamProducers {
 			resumeProduce();
 		}
 
-		@Override
-		protected void onError(Exception e) {
-
-		}
 	}
 
 	/**
