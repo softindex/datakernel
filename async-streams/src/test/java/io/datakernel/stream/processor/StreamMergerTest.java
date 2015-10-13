@@ -222,7 +222,7 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, merger.getDownstreamProducer().getProducerStatus());
-		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, CLOSED_WITH_ERROR},
+		assertArrayEquals(new StreamStatus[]{END_OF_STREAM, END_OF_STREAM},
 				consumerStatuses(merger.getUpstreamConsumers()));
 	}
 
@@ -260,7 +260,7 @@ public class StreamMergerTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, merger.getDownstreamProducer().getProducerStatus());
-		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, CLOSED_WITH_ERROR},
+		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
 				consumerStatuses(merger.getUpstreamConsumers()));
 	}
 

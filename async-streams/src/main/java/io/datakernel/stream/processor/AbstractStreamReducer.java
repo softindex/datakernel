@@ -128,12 +128,12 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 
 		@Override
 		protected void onDownstreamSuspended() {
-			AbstractStreamReducer.this.onConsumerSuspended();
+			suspendAllUpstreams();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			AbstractStreamReducer.this.onConsumerResumed();
+			resumeAllUpstreams();
 			resumeProduce();
 		}
 

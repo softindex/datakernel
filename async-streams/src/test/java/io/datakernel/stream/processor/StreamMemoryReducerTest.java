@@ -290,7 +290,7 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
-		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, CLOSED_WITH_ERROR},
+		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
 				consumerStatuses(sorter.getUpstreamConsumers()));
 		assertEquals(CLOSED_WITH_ERROR, sorter.getDownstreamProducer().getProducerStatus());
 	}

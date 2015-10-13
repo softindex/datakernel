@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
@@ -26,6 +27,7 @@ import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 
 /**
  * It is wrapper for  Binary protocol which deserializes received stream to type of input object,
@@ -50,6 +52,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 	private StreamProducer<ByteBuf> socketReader;
 	private StreamConsumer<ByteBuf> socketWriter;
+
+	private CompletionCallback completionCallback;
 
 	/**
 	 * Creates a new instance of BinaryProtocolMessaging
@@ -89,8 +93,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
 		this.socketReader = socketReader;
 		this.socketWriter = socketWriter;
-		socketReader.streamTo(currentConsumer);
-		streamSerializer.streamTo(socketWriter);
+		this.socketReader.streamTo(currentConsumer);
+		streamSerializer.streamTo(this.socketWriter);
 
 		output = messageProducer.getDownstreamDataReceiver();
 		onStart();
@@ -178,12 +182,19 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		output.onData(outputItem);
 	}
 
+//	@Override
+//	public StreamConsumer<ByteBuf> binarySocketWriter() {
+//		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+//		streamSerializer.flush();
+//		socketWriter.streamFrom(forwarder);
+//		return forwarder;
+//	}
+
 	@Override
-	public StreamConsumer<ByteBuf> binarySocketWriter() {
-		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
+	public void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback) {
+		this.completionCallback = completionCallback;
 		streamSerializer.flush();
-		socketWriter.streamFrom(forwarder);
-		return forwarder;
+		producer.streamTo(socketWriter);
 	}
 
 	@Override
@@ -193,6 +204,22 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		currentConsumer = forwarder;
 		streamDeserializer.drainBuffersTo(forwarder.getDataReceiver());
 		return forwarder;
+	}
+
+	@Override
+	protected void onWriteFlushed() {
+		super.onWriteFlushed();
+		if (socketWriter.getConsumerStatus() == END_OF_STREAM && completionCallback != null) {
+			completionCallback.onComplete();
+		}
+	}
+
+	@Override
+	protected void onWriteException(Exception e) {
+		super.onWriteException(e);
+		if (completionCallback != null) {
+			completionCallback.onException(e);
+		}
 	}
 
 	@Override

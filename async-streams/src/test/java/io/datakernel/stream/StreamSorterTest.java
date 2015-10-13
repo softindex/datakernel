@@ -80,7 +80,7 @@ public class StreamSorterTest {
 				if (scheduledRunnable != null && getProducerStatus().isClosed())
 					return;
 				if (numberToSend >= 5) {
-					scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 1000L, new Runnable() {
+					scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 100L, new Runnable() {
 						@Override
 						public void run() {
 							send(numberToSend++);
@@ -173,7 +173,7 @@ public class StreamSorterTest {
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<Integer>(eventloop) {
 			@Override
-			public void write(StreamProducer<Integer> producer, CompletionCallback completionCallback) {
+			public void write(StreamProducer<Integer> producer, final CompletionCallback completionCallback) {
 				final List<Integer> list = new ArrayList<>();
 				storage.put(partition++, list);
 				TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
@@ -186,6 +186,8 @@ public class StreamSorterTest {
 					}
 				};
 				producer.streamTo(consumer);
+
+				consumer.setCompletionCallback(completionCallback);
 			}
 		};
 		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,

@@ -16,50 +16,79 @@
 
 package io.datakernel.stream;
 
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 public class TestStreamConsumers {
 	public static abstract class TestConsumerToList<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected final List<T> list;
-
-		abstract public void onData(T item);
-
-		public TestConsumerToList(Eventloop eventloop, List<T> list) {
-			super(eventloop);
-			this.list = list;
-		}
+		private CompletionCallback completionCallback;
+		private ResultCallback<List<T>> resultCallback;
 
 		public TestConsumerToList(Eventloop eventloop) {
 			this(eventloop, new ArrayList<T>());
 		}
 
+		public void setCompletionCallback(CompletionCallback completionCallback) {
+			this.completionCallback = completionCallback;
+		}
+
+		public void setResultCallback(ResultCallback<List<T>> resultCallback) {
+			this.resultCallback = resultCallback;
+		}
+
 		@Override
-		protected final void onStarted() {
+		protected void onStarted() {
 
 		}
 
 		@Override
-		protected final void onEndOfStream() {
+		protected void onEndOfStream() {
+			if (completionCallback != null) {
+				completionCallback.onComplete();
+			}
+			if (resultCallback != null) {
+				resultCallback.onResult(list);
+			}
 		}
 
 		@Override
-		protected final void onError(Exception e) {
+		protected void onError(Exception e) {
+			if (completionCallback != null) {
+				completionCallback.onException(e);
+			}
+			if (resultCallback != null) {
+				resultCallback.onException(e);
+			}
 		}
 
-		@Override
-		public final StreamDataReceiver<T> getDataReceiver() {
-			return this;
+		public TestConsumerToList(Eventloop eventloop, List<T> list) {
+			super(eventloop);
+			checkNotNull(list);
+			this.list = list;
 		}
 
 		public final List<T> getList() {
 			checkState(getConsumerStatus() == StreamStatus.END_OF_STREAM, "ToList consumer is not closed");
 			return list;
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return this;
+		}
+
+		@Override
+		public void onData(T item) {
+			list.add(item);
 		}
 	}
 

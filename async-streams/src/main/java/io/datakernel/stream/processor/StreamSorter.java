@@ -169,6 +169,8 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 				@Override
 				public void onException(Exception e) {
 					new StreamProducers.ClosingWithError<T>(eventloop, e).streamTo(downstream);
+					closeWithError(e);
+
 				}
 			});
 			this.list = new ArrayList<>(list.size() + (list.size() >> 8));
@@ -190,6 +192,7 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 	@Override
 	protected void onError(Exception e) {
 		StreamProducers.<T>closingWithError(eventloop, e).streamTo(downstream);
+		closeWithError(e);
 	}
 
 	@Override
