@@ -140,7 +140,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 			@Override
 			public void onMessage(final SimpleFsCommandUpload item, final Messaging<SimpleFsResponse> messaging) {
 
-				final String fileName = getFileName(item.filename);
+				final String fileName = getFileName(item.fileName);
 				logger.info("Server received command to upload file {}", fileName);
 
 				if (serverStatus != RUNNING) {
@@ -221,7 +221,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 		return new MessagingHandler<SimpleFsCommandDownload, SimpleFsResponse>() {
 			@Override
 			public void onMessage(SimpleFsCommandDownload item, final Messaging<SimpleFsResponse> messaging) {
-				final String fileName = item.filename;
+				final String fileName = item.fileName;
 				logger.info("Server received command to download file {}", fileName);
 
 				if (serverStatus != RUNNING) {

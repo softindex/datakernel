@@ -75,7 +75,6 @@ public class SimpleFsClient implements SimpleFs {
 							public void onMessage(SimpleFsResponseOperationOk item, final Messaging<SimpleFsCommand> messaging) {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
-
 								producer.streamTo(streamByteChunker);
 								messaging.write(streamByteChunker, new CompletionCallback() {
 									@Override

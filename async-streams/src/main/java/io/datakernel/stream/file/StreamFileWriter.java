@@ -127,7 +127,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.info("Completed writing in file: {}", buf);
+				logger.trace("Completed writing in file");
 
 				buf.recycle();
 				pendingAsyncOperation = false;
@@ -145,10 +145,9 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 			@Override
 			public void onException(final Exception e) {
-				logger.info("Failed to write in file: {}", buf);
+				logger.error("Failed to write data in file", e);
 
 				pendingAsyncOperation = false;
-				logger.error("Can't write data in file", e);
 				buf.recycle();
 				closeWithError(e);
 			}
@@ -200,7 +199,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			});
 		}
 		if (!queue.isEmpty() && !pendingAsyncOperation && asyncFile != null) {
-			logger.info("writing in file");
+			logger.trace("Writing in file");
 			pendingAsyncOperation = true;
 			eventloop.post(new Runnable() {
 				@Override
@@ -213,14 +212,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onStarted() {
-		logger.info("StreamFileWriter  onStarted");
 		if (asyncFile != null || pendingAsyncOperation)
 			return;
 		pendingAsyncOperation = true;
 		AsyncFile.open(eventloop, executor, path, options, new ResultCallback<AsyncFile>() {
 			@Override
 			public void onResult(AsyncFile result) {
-				logger.info("File {} is opened for writing!", path.getFileName());
+				logger.trace("File {} is opened for writing!", path.getFileName());
 				pendingAsyncOperation = false;
 				asyncFile = result;
 				eventloop.post(new Runnable() {
@@ -263,9 +261,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onEndOfStream() {
-
 		logger.trace("endOfStream for {}, upstream: {}", this, getUpstream());
-
 		postFlush();
 	}
 
