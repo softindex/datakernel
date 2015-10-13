@@ -166,9 +166,11 @@ public class AggregationChunk {
 	@Override
 	public String toString() {
 		return MoreObjects.toStringHelper(this)
-				.add("id", chunkId)
+				.add("revisionId", revisionId)
+				.add("chunkId", chunkId)
 				.add("minPrimaryKey", minPrimaryKey)
 				.add("maxPrimaryKey", maxPrimaryKey)
+				.add("count", count)
 				.toString();
 	}
 }

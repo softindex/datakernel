@@ -34,6 +34,8 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.jooq.*;
 import org.jooq.impl.DSL;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Timestamp;
 import java.util.*;
@@ -52,6 +54,8 @@ import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static org.jooq.impl.DSL.*;
 
 public class AggregationMetadataStorageSql implements AggregationMetadataStorage {
+	private static final Logger logger = LoggerFactory.getLogger(AggregationMetadataStorageSql.class);
+
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final Configuration jooqConfiguration;
@@ -291,6 +295,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 					PrimaryKey.ofArray(maxKeyArray),
 					record.getValue(AGGREGATION_DB_CHUNK.COUNT));
 			aggregation.addChunk(chunk);
+			logger.info("Loaded chunk {} to aggregation with id '{}'. Consolidated: {}", chunk, aggregation.getId(), isConsolidated);
 			if (!isConsolidated) {
 				aggregation.addToIndex(chunk);
 			}
@@ -299,6 +304,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		for (Long chunkId : sourceChunkIdsMultimap.values()) {
 			AggregationChunk chunk = aggregation.getChunks().get(chunkId);
 			aggregation.removeFromIndex(chunk);
+			logger.info("Removed chunk {} from index", chunk);
 		}
 
 		return newRevisionId;
