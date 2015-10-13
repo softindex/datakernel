@@ -112,18 +112,17 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 	@Override
 	public void stop(final CompletionCallback callback) {
 		logger.info("Stopping SimpleFS");
+		serverStatus = SHUTDOWN;
 		if (pendingOperationsCounter == 0) {
 			callback.onComplete();
 			self().close();
 			return;
 		}
 		callbackOnStop = callback;
-		serverStatus = SHUTDOWN;
 	}
 
 	@Override
 	protected SocketConnection createConnection(SocketChannel socketChannel) {
-
 		return new StreamMessagingConnection<>(eventloop, socketChannel,
 				new StreamGsonDeserializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 10),
 				new StreamGsonSerializer<>(eventloop, SimpleFsResponseSerialization.GSON, SimpleFsResponse.class, 256 * 1024, 256 * (1 << 20), 0))
@@ -132,14 +131,12 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				.addHandler(SimpleFsCommandDownload.class, defineDownloadHandler())
 				.addHandler(SimpleFsCommandDelete.class, defineDeleteHandler())
 				.addHandler(SimpleFsCommandList.class, defineListHandler());
-
 	}
 
 	private MessagingHandler<SimpleFsCommandUpload, SimpleFsResponse> defineUploadHandler() {
 		return new MessagingHandler<SimpleFsCommandUpload, SimpleFsResponse>() {
 			@Override
 			public void onMessage(final SimpleFsCommandUpload item, final Messaging<SimpleFsResponse> messaging) {
-
 				final String fileName = getFileName(item.fileName);
 				logger.info("Server received command to upload file {}", fileName);
 
@@ -168,7 +165,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				diskWrite.setFlushCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						logger.info("Uploaded file {}", fileName);
+						logger.trace("Uploaded file {}", fileName);
 						messaging.sendMessage(new SimpleFsResponseAcknowledge());
 						messaging.shutdown();
 					}
@@ -191,16 +188,18 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				final String fileName = getFileName(item.fileName);
 				logger.info("Server received command to commit file {}", fileName);
 
-				if (serverStatus == SHUTDOWN && pendingOperationsCounter != 0) {
+				if (serverStatus != RUNNING && pendingOperationsCounter > 0) {
 					refuse(messaging, "Server is being shut down");
 					return;
 				}
 
 				final Path destination = fileStorage.resolve(fileName);
 				final Path inProgress = tmpStorage.resolve(fileName + IN_PROGRESS_EXTENSION);
+
 				try {
 					Files.move(inProgress, destination);
-					logger.trace("File {} commited", fileName);
+					messaging.sendMessage(new SimpleFsResponseOperationOk());
+					logger.info("File {} commited", fileName);
 				} catch (IOException e) {
 					try {
 						Files.delete(inProgress);
@@ -210,8 +209,8 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 					}
 					messaging.sendMessage(new SimpleFsResponseError(e.getMessage()));
 				}
+
 				operationFinished();
-				messaging.sendMessage(new SimpleFsResponseOperationOk());
 				messaging.shutdown();
 			}
 		};
@@ -234,24 +233,27 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 					refuse(messaging, "File not found");
 					return;
 				}
+
 				startOperation();
 				messaging.sendMessage(new SimpleFsResponseOperationOk());
 
 				StreamProducer<ByteBuf> producer = StreamFileReader.readFileFrom(eventloop, executor, bufferSize, source, 0L);
 
 				messaging.write(producer, new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						operationFinished();
-						logger.trace("File {} send", fileName);
-					}
+							@Override
+							public void onComplete() {
+								logger.trace("File {} send", fileName);
+								operationFinished();
+							}
 
-					@Override
-					public void onException(Exception exception) {
-						operationFinished();
-						logger.error("File {} was not send", fileName, exception);
-					}
-				});
+							@Override
+							public void onException(Exception e) {
+								logger.error("File {} was not send", fileName, e);
+								operationFinished();
+							}
+						}
+
+				);
 				messaging.shutdownReader();
 			}
 
@@ -279,7 +281,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				try {
 					Files.delete(path);
 					messaging.sendMessage(new SimpleFsResponseOperationOk());
-					logger.trace("File {} deleted", fileName);
+					logger.info("File {} deleted", fileName);
 				} catch (IOException e) {
 					messaging.sendMessage(new SimpleFsResponseError("Can't delete file: " + e.getMessage()));
 					logger.error("Can't delete file: {}", fileName, e);
@@ -303,7 +305,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				try {
 					List<String> fileList = listFiles();
 					messaging.sendMessage(new SimpleFsResponseFileList(fileList));
-					logger.trace("Send list(size = {}) of files", fileList.size());
+					logger.info("Send list(size = {}) of files", fileList.size());
 				} catch (IOException e) {
 					messaging.sendMessage(new SimpleFsResponseError("Can't get list of files: " + e.getMessage()));
 					logger.error("Can't get list of files");
@@ -325,8 +327,11 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 
 	private void operationFinished() {
 		pendingOperationsCounter--;
-		if (pendingOperationsCounter == 0 && callbackOnStop != null) {
-			callbackOnStop.onComplete();
+		if (serverStatus == SHUTDOWN && pendingOperationsCounter == 0) {
+			if (callbackOnStop != null) {
+				callbackOnStop.onComplete();
+			}
+			self().close();
 		}
 	}
 

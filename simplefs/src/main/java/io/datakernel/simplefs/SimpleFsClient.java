@@ -79,14 +79,15 @@ public class SimpleFsClient implements SimpleFs {
 								messaging.write(streamByteChunker, new CompletionCallback() {
 									@Override
 									public void onComplete() {
-
+										logger.trace("File is being send");
 									}
 
 									@Override
-									public void onException(Exception exception) {
-
+									public void onException(Exception e) {
+										logger.error("Exception while sending file", e);
 									}
 								});
+
 							}
 						})
 						.addHandler(SimpleFsResponseAcknowledge.class, new MessagingHandler<SimpleFsResponseAcknowledge, SimpleFsCommand>() {

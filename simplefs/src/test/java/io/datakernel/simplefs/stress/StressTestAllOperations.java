@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs;
+package io.datakernel.simplefs.stress;
 
-public class SimpleFsCommandCommit extends SimpleFsCommand {
-	public final String fileName;
+import java.io.IOException;
 
-	public SimpleFsCommandCommit(String fileName) {
-		this.fileName = fileName;
-	}
-
-	@Override
-	public String toString() {
-		return "Commit{filename=\'" + fileName + "\' }";
+public class StressTestAllOperations {
+	// first should start server form StressServer, then call main as many times as you like
+	public static void main(String[] args) {
+		try {
+			StressClient client = new StressClient();
+			client.setup();
+			client.start(100, 360_000);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

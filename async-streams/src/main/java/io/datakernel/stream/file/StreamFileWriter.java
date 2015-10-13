@@ -120,9 +120,12 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void doFlush() {
-
 		final ByteBuf buf = queue.poll();
 		final int len = buf.remaining();
+
+		if (buf.position() == buf.limit()) {
+			logger.warn("Flushing empty buf {}");
+		}
 
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
@@ -135,12 +138,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				if (queue.size() <= 1) {
 					resume();
 				}
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						postFlush();
-					}
-				});
+				postFlush();
 			}
 
 			@Override
@@ -149,7 +147,17 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 				pendingAsyncOperation = false;
 				buf.recycle();
-				closeWithError(e);
+				doCleanup(new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						closeWithError(e);
+					}
+
+					@Override
+					public void onException(Exception ignored) {
+						closeWithError(e);
+					}
+				});
 			}
 		});
 	}
@@ -193,7 +201,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				}
 
 				@Override
-				public void onException(Exception exception) {
+				public void onException(Exception e) {
 					closeWithError(new Exception("Can't do cleanup for file\t" + path.getFileName()));
 				}
 			});
@@ -221,24 +229,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				logger.trace("File {} is opened for writing!", path.getFileName());
 				pendingAsyncOperation = false;
 				asyncFile = result;
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						postFlush();
-					}
-				});
+				postFlush();
 			}
 
 			@Override
-			public void onException(final Exception e) {
+			public void onException(Exception e) {
 				logger.error("Can't open file {} for writing", path.getFileName(), e);
-				pendingAsyncOperation = false;
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						closeWithError(e);
-					}
-				});
+				closeWithError(e);
 			}
 		});
 	}
