@@ -545,7 +545,7 @@ public class Aggregation {
 			public List<AggregationChunk> apply(List<Long> consolidationCandidateChunkIds) {
 				List<AggregationChunk> foundChunksToConsolidate = aggregationMetadata.findChunksToConsolidate(consolidationCandidateChunkIds);
 
-				if (foundChunksToConsolidate.isEmpty()) {
+				if (foundChunksToConsolidate.size() < 2) {
 					callback.onNothingToConsolidate();
 					return new ArrayList<>();
 				}
