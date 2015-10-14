@@ -101,9 +101,13 @@ public final class RangeTree<K, V> {
 	public boolean remove(K lower, K upper, V value) {
 		boolean removed = false;
 		Segment<V> upperSegment = segments.get(upper);
+
+		if (upperSegment == null)
+			return false;
+
 		upperSegment.closing.remove(value);
 		if (upperSegment.set.isEmpty() && upperSegment.closing.isEmpty()) {
-			removed |= segments.remove(upper) != null;
+			removed = segments.remove(upper) != null;
 		}
 
 		Iterator<Segment<V>> it = segments.subMap(lower, upper).values().iterator();
