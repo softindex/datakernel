@@ -16,7 +16,6 @@
 
 package io.datakernel.simplefs;
 
-import com.google.common.base.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -24,13 +23,14 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.MessagingStarter;
 import io.datakernel.stream.net.StreamMessagingConnection;
 import io.datakernel.stream.processor.StreamByteChunker;
-import io.datakernel.stream.processor.StreamFilter;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
 import org.slf4j.Logger;
@@ -58,12 +58,7 @@ public class SimpleFsClient implements SimpleFs {
 	}
 
 	@Override
-	public StreamConsumer<ByteBuf> upload(final String fileName) {
-		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-		final TransformerNoEnd transformer = new TransformerNoEnd(eventloop);
-
-		final CompletionCallback closeCallback = transformer.getCloseCallback();
-
+	public void upload(final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -80,10 +75,19 @@ public class SimpleFsClient implements SimpleFs {
 							public void onMessage(SimpleFsResponseOperationOk item, final Messaging<SimpleFsCommand> messaging) {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
-								StreamConsumer<ByteBuf> consumer = messaging.binarySocketWriter();
-								forwarder.streamTo(transformer);
-								transformer.streamTo(streamByteChunker);
-								streamByteChunker.streamTo(consumer);
+								producer.streamTo(streamByteChunker);
+								messaging.write(streamByteChunker, new CompletionCallback() {
+									@Override
+									public void onComplete() {
+										logger.trace("File is being send");
+									}
+
+									@Override
+									public void onException(Exception e) {
+										logger.error("Exception while sending file", e);
+									}
+								});
+
 							}
 						})
 						.addHandler(SimpleFsResponseAcknowledge.class, new MessagingHandler<SimpleFsResponseAcknowledge, SimpleFsCommand>() {
@@ -91,7 +95,7 @@ public class SimpleFsClient implements SimpleFs {
 							public void onMessage(SimpleFsResponseAcknowledge item, Messaging<SimpleFsCommand> messaging) {
 								logger.info("Received acknowledgement for {}", fileName);
 								messaging.shutdown();
-								commit(fileName, closeCallback);
+								commit(fileName, callback);
 							}
 						})
 						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
@@ -100,7 +104,7 @@ public class SimpleFsClient implements SimpleFs {
 								Exception e = new Exception(item.exceptionMsg);
 								logger.error("Can't upload file {}", fileName, e);
 								messaging.shutdown();
-								closeCallback.onException(e);
+								callback.onException(e);
 							}
 						});
 				connection.register();
@@ -109,11 +113,9 @@ public class SimpleFsClient implements SimpleFs {
 			@Override
 			public void onException(Exception e) {
 				logger.error("Can't connect", e);
-				closeCallback.onException(e);
+				callback.onException(e);
 			}
 		});
-
-		return forwarder;
 	}
 
 	@Override

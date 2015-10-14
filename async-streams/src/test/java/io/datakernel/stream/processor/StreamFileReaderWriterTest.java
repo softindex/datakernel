@@ -19,10 +19,9 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
@@ -41,6 +40,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.stream.StreamStatus.*;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import static java.nio.file.StandardOpenOption.WRITE;
 import static org.junit.Assert.*;
@@ -65,7 +65,7 @@ public class StreamFileReaderWriterTest {
 			@Override
 			public void send(ByteBuf item) {
 				if (item.toString().equals("1")) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Intentionally closed with exception"));
 					return;
 				}
 				super.send(item);
@@ -82,22 +82,23 @@ public class StreamFileReaderWriterTest {
 		reader.streamTo(writer);
 
 		eventloop.run();
-		assertTrue(reader.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
 	}
 
 	@Test
 	public void testStreamReaderOnCloseWithError() throws IOException {
-
-		File tempFile = tempFolder.newFile("outReaderWithError.dat");
-		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executor,
+		final File tempFile = tempFolder.newFile("outReaderWithError.dat");
+		final StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executor,
 				Paths.get(tempFile.getAbsolutePath()));
 
 		reader.streamTo(writer);
 		eventloop.run();
 
+		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
-		assertTrue(reader.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
 	}
 
 	@Test
@@ -111,6 +112,73 @@ public class StreamFileReaderWriterTest {
 
 		List<ByteBuf> list = new ArrayList<>();
 		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop, list);
+
+		reader.streamTo(consumer);
+		eventloop.run();
+
+		ByteBufQueue byteQueue = new ByteBufQueue();
+		for (ByteBuf buf : list) {
+			byteQueue.add(buf);
+		}
+
+		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
+		byteQueue.drainTo(buf);
+
+		assertArrayEquals(fileBytes, buf.array());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testStreamFileReaderWithSuspends() throws IOException {
+		NioEventloop eventloop = new NioEventloop();
+		ExecutorService executor = Executors.newCachedThreadPool();
+
+		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
+		StreamFileReader reader = StreamFileReader.readFileFully(eventloop, executor,
+				1, Paths.get("test_data/in.dat"));
+
+		final List<ByteBuf> list = new ArrayList<>();
+
+		class MockConsumer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
+			protected MockConsumer(Eventloop eventloop) {
+				super(eventloop);
+			}
+
+			@Override
+			protected void onStarted() {
+				suspend();
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
+					@Override
+					public void run() {
+						resume();
+					}
+				});
+			}
+
+			@Override
+			protected void onEndOfStream() {
+
+			}
+
+			@Override
+			public StreamDataReceiver<ByteBuf> getDataReceiver() {
+				return this;
+			}
+
+			@Override
+			public void onData(ByteBuf item) {
+				list.add(item);
+				suspend();
+				eventloop.schedule(eventloop.currentTimeMillis() + 10, new Runnable() {
+					@Override
+					public void run() {
+						resume();
+					}
+				});
+			}
+		}
+
+		StreamConsumer<ByteBuf> consumer = new MockConsumer(eventloop);
 
 		reader.streamTo(consumer);
 		eventloop.run();

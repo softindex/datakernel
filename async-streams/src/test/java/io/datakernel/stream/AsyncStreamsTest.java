@@ -21,8 +21,10 @@ import io.datakernel.eventloop.NioEventloop;
 import org.junit.Test;
 
 import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
+
+import static io.datakernel.stream.StreamStatus.*;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class AsyncStreamsTest {
 	@Test
@@ -34,19 +36,18 @@ public class AsyncStreamsTest {
 		AsyncGetterWithSetter<StreamProducer<Integer>> producerSetter = createAsyncGetterWithSetter(eventloop);
 
 		StreamProducer<Integer> producer = StreamProducers.asynchronouslyResolving(eventloop, producerSetter);
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		producer.streamTo(consumer);
 
 		eventloop.run();
-		assertFalse(consumer.getUpstreamStatus() == StreamProducer.CLOSED);
+		assertEquals(READY, consumer.getUpstream().getProducerStatus());
 
 		producerSetter.onResult(source);
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumer.getList());
-		assertTrue(consumer.getUpstreamStatus() == StreamProducer.CLOSED);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
-//		assertNull(producer.getWiredConsumerStatus());
+		assertEquals(END_OF_STREAM, consumer.getUpstream().getProducerStatus());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
 	}
 
 }

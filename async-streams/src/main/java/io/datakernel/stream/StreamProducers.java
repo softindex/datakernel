@@ -18,6 +18,8 @@ package io.datakernel.stream;
 
 import io.datakernel.async.*;
 import io.datakernel.eventloop.Eventloop;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -193,9 +195,24 @@ public class StreamProducers {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			sendEndOfStream();
 		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+		}
+
+		@Override
+		protected void onSuspended() {
+
+		}
+
+		@Override
+		protected void onResumed() {
+
+		}
+
 	}
 
 	/**
@@ -204,6 +221,7 @@ public class StreamProducers {
 	 * @param <T>
 	 */
 	public static class ClosingWithError<T> extends AbstractStreamProducer<T> {
+		private static final Logger logger = LoggerFactory.getLogger(ClosingWithError.class);
 		private final Exception exception;
 
 		public ClosingWithError(Eventloop eventloop, Exception exception) {
@@ -212,15 +230,49 @@ public class StreamProducers {
 		}
 
 		@Override
-		protected void onProducerStarted() {
-			closeWithError(exception);
+		protected void onStarted() {
+			logger.info("{} close with error {}", this, exception.getMessage());
+			downstreamConsumer.onProducerError(exception);
+			sendEndOfStream();
 		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
+		protected void onSuspended() {
+
+		}
+
+		@Override
+		protected void onResumed() {
+
+		}
+
 	}
 
 	public static class Idle<T> extends AbstractStreamProducer<T> {
 		public Idle(Eventloop eventloop) {
 			super(eventloop);
 		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
+		protected void onSuspended() {
+
+		}
+
+		@Override
+		protected void onResumed() {
+
+		}
+
 	}
 
 	/**
@@ -253,7 +305,7 @@ public class StreamProducers {
 			for (; ; ) {
 				if (!iterator.hasNext())
 					break;
-				if (status != READY)
+				if (!isStatusReady())
 					return;
 				T item = iterator.next();
 				send(item);
@@ -263,14 +315,25 @@ public class StreamProducers {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			produce();
+		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
+		protected void onSuspended() {
+
 		}
 
 		@Override
 		protected void onResumed() {
 			resumeProduce();
 		}
+
 	}
 
 	/**
@@ -306,11 +369,31 @@ public class StreamProducers {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void doProduce() {
 			send(value);
 			if (sendEndOfStream)
 				sendEndOfStream();
 		}
+
+		@Override
+		protected void onStarted() {
+			produce();
+		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+		}
+
+		@Override
+		protected void onSuspended() {
+
+		}
+
+		@Override
+		protected void onResumed() {
+			resumeProduce();
+		}
+
 	}
 
 	/**
@@ -321,13 +404,10 @@ public class StreamProducers {
 	 */
 	public static class StreamProducerConcat<T> extends StreamProducerDecorator<T> {
 		private final AsyncIterator<StreamProducer<T>> iterator;
-		private final StreamProducerSwitcher<T> switcher;
 
 		public StreamProducerConcat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> iterator) {
 			super(eventloop);
 			this.iterator = checkNotNull(iterator);
-			this.switcher = new StreamProducerSwitcher<>(eventloop);
-			decorate(switcher);
 		}
 
 		/**
@@ -335,7 +415,12 @@ public class StreamProducers {
 		 * from producers from iterator
 		 */
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
+			doNext();
+		}
+
+		@Override
+		protected void onProducerEndOfStream() {
 			doNext();
 		}
 
@@ -346,22 +431,17 @@ public class StreamProducers {
 					iterator.next(new IteratorCallback<StreamProducer<T>>() {
 						@Override
 						public void onNext(StreamProducer<T> actualProducer) {
-							switcher.switchProducerTo(new StreamProducerDecorator<T>(eventloop, actualProducer) {
-								@Override
-								public void onEndOfStream() {
-									doNext();
-								}
-							});
+							StreamProducerConcat.this.setActualProducer(actualProducer);
 						}
 
 						@Override
 						public void onEnd() {
-							switcher.switchProducerTo(new EndOfStream<T>(eventloop));
+							sendEndOfStream();
 						}
 
 						@Override
 						public void onException(Exception e) {
-							switcher.switchProducerTo(new ClosingWithError<T>(eventloop, e));
+							closeWithError(e);
 						}
 					});
 				}

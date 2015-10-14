@@ -19,7 +19,7 @@ package io.datakernel.net;
 import java.io.IOException;
 import java.nio.channels.ServerSocketChannel;
 
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.check;
 import static java.net.StandardSocketOptions.SO_RCVBUF;
 import static java.net.StandardSocketOptions.SO_REUSEADDR;
 
@@ -82,7 +82,7 @@ public class ServerSocketSettings {
 	}
 
 	public int getReceiveBufferSize() {
-		checkState(hasReceiveBufferSize());
+		check(hasReceiveBufferSize());
 		return receiveBufferSize;
 	}
 
@@ -91,7 +91,7 @@ public class ServerSocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		checkState(hasReuseAddress());
+		check(hasReuseAddress());
 		return reuseAddress != FALSE;
 	}
 }

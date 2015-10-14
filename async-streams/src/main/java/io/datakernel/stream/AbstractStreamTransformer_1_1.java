@@ -16,11 +16,9 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.StreamTransformer;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
@@ -31,85 +29,191 @@ import static com.google.common.base.Preconditions.checkState;
  * @param <O> type of output data of producer
  */
 @SuppressWarnings("unchecked")
-public abstract class AbstractStreamTransformer_1_1<I, O> extends AbstractStreamProducer<O> implements StreamConsumer<I>, StreamTransformer<I, O> {
-	protected StreamProducer<I> upstreamProducer;
+public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTransformer<I, O> {
+	protected final Eventloop eventloop;
+
+	private AbstractUpstreamConsumer upstreamConsumer;
+	private AbstractDownstreamProducer downstreamProducer;
 
 	protected Object tag;
 
-	protected AbstractStreamTransformer_1_1(Eventloop eventloop) {
-		super(eventloop);
+	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
+		public AbstractUpstreamConsumer() {
+			super(AbstractStreamTransformer_1_1.this.eventloop);
+			checkState(upstreamConsumer == null);
+			upstreamConsumer = this;
+		}
+
+		@Override
+		protected final void onStarted() {
+			onUpstreamStarted();
+		}
+
+		protected void onUpstreamStarted() {
+
+		}
+
+		@Override
+		protected final void onEndOfStream() {
+			onUpstreamEndOfStream();
+		}
+
+		protected abstract void onUpstreamEndOfStream();
+
+		@Override
+		protected void onError(Exception e) {
+			downstreamProducer.closeWithError(e);
+		}
+
+		@Override
+		public void suspend() {
+			super.suspend();
+		}
+
+		@Override
+		public void resume() {
+			super.resume();
+		}
+
+		@Override
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+
 	}
 
-	@Override
-	public void setUpstream(StreamProducer<I> upstreamProducer) {
-		checkNotNull(upstreamProducer);
-		checkState(this.upstreamProducer == null, "Already wired");
-		this.upstreamProducer = upstreamProducer;
+	protected abstract class AbstractDownstreamProducer extends AbstractStreamProducer<O> {
+		public AbstractDownstreamProducer() {
+			super(AbstractStreamTransformer_1_1.this.eventloop);
+			checkState(downstreamProducer == null);
+			downstreamProducer = this;
+		}
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				onConsumerStarted();
+		@Override
+		protected final void onDataReceiverChanged() {
+			if (upstreamConsumer.getUpstream() != null) {
+				upstreamConsumer.getUpstream().bindDataReceiver();
 			}
-		});
-	}
+		}
 
-	protected void onConsumerStarted() {
-	}
+		@Override
+		protected final void onStarted() {
+			upstreamConsumer.bindUpstream();
+			onDownstreamStarted();
+		}
 
-	@Override
-	public void bindDataReceiver() {
-		super.bindDataReceiver();
-		if (upstreamProducer != null) {
-			upstreamProducer.bindDataReceiver();
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected final void onError(Exception e) {
+			upstreamConsumer.closeWithError(e);
+		}
+
+		@Override
+		protected final void onSuspended() {
+			onDownstreamSuspended();
+		}
+
+		protected abstract void onDownstreamSuspended();
+
+		@Override
+		protected final void onResumed() {
+			onDownstreamResumed();
+		}
+
+		protected abstract void onDownstreamResumed();
+
+		@Override
+		public void produce() {
+			super.produce();
+		}
+
+		@Override
+		public void send(O item) {
+			super.send(item);
+		}
+
+		@Override
+		public void sendEndOfStream() {
+			super.sendEndOfStream();
 		}
 	}
 
-	@Override
-	@Nullable
-	public StreamProducer<I> getUpstream() {
-		return upstreamProducer;
+	protected AbstractStreamTransformer_1_1(Eventloop eventloop) {
+		this.eventloop = eventloop;
 	}
 
-	public byte getUpstreamStatus() {
-		return upstreamProducer.getStatus();
-	}
+	// upstream
 
 	@Override
-	public void onClosed() {
-		upstreamProducer.close();
+	public final StreamDataReceiver<I> getDataReceiver() {
+		return upstreamConsumer.getDataReceiver();
 	}
 
 	@Override
-	protected void onClosedWithError(Exception e) {
-		upstreamProducer.closeWithError(e);
-		downstreamConsumer.onError(e);
+	public final void onProducerEndOfStream() {
+		upstreamConsumer.onProducerEndOfStream();
 	}
 
 	@Override
-	public void onError(Exception e) {
-		closeWithError(e);
+	public final void onProducerError(Exception e) {
+		upstreamConsumer.onProducerError(e);
 	}
-
-	protected final void resumeUpstream() {
-		upstreamProducer.resume();
-	}
-
-	protected final void suspendUpstream() {
-		upstreamProducer.suspend();
-	}
-
-	protected final void closeUpstream() {
-		upstreamProducer.close();
-	}
-
-	protected final void closeUpstreamWithError(Exception e) {
-		upstreamProducer.closeWithError(e);
-	}
-
-	// misc
 
 	@Override
+	public final void streamFrom(StreamProducer<I> upstreamProducer) {
+		upstreamConsumer.streamFrom(upstreamProducer);
+	}
+
+	@Override
+	public StreamStatus getConsumerStatus() {
+		return upstreamConsumer.getConsumerStatus();
+	}
+
+	// downstream
+
+	@Override
+	public final void streamTo(StreamConsumer<O> downstreamConsumer) {
+		downstreamProducer.streamTo(downstreamConsumer);
+	}
+
+	@Override
+	public final void onConsumerSuspended() {
+		downstreamProducer.onConsumerSuspended();
+	}
+
+	@Override
+	public final void onConsumerResumed() {
+		downstreamProducer.onConsumerResumed();
+	}
+
+	@Override
+	public final void onConsumerError(Exception e) {
+		downstreamProducer.onConsumerError(e);
+	}
+
+	@Override
+	public final void bindDataReceiver() {
+		downstreamProducer.bindDataReceiver();
+	}
+
+	@Override
+	public StreamStatus getProducerStatus() {
+		return downstreamProducer.getProducerStatus();
+	}
+
+	//for test only
+	StreamStatus getUpstreamConsumerStatus() {
+		return upstreamConsumer.getConsumerStatus();
+	}
+
+	// for test only
+	StreamStatus getDownstreamProducerStatus() {
+		return downstreamProducer.getProducerStatus();
+	}
+
 	public void setTag(Object tag) {
 		this.tag = tag;
 	}

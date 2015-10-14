@@ -35,7 +35,7 @@ public class ProducerExample extends AbstractStreamProducer<Integer> {
 
 	@Override
 	protected void doProduce() {
-		while (status == READY && i < count) {
+		while (isStatusReady() && i < count) {
 			send(i++);
 		}
 		if (i == count) {
@@ -44,12 +44,23 @@ public class ProducerExample extends AbstractStreamProducer<Integer> {
 	}
 
 	@Override
-	protected void onProducerStarted() {
+	protected void onStarted() {
 		produce();
+	}
+
+	@Override
+	protected void onDataReceiverChanged() {
+
+	}
+
+	@Override
+	protected void onSuspended() {
+
 	}
 
 	@Override
 	public void onResumed() {
 		resumeProduce();
 	}
+
 }

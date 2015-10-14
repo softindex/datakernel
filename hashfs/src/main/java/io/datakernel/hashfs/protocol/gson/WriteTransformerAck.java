@@ -67,7 +67,7 @@ public class WriteTransformerAck<I> extends AbstractStreamTransformer_1_1<I, I> 
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		sendEndOfStream();
 	}
 

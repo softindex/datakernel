@@ -17,7 +17,6 @@
 package io.datakernel.simplefs;
 
 public class SimpleFsResponseAcknowledge extends SimpleFsResponse {
-
 	@Override
 	public String toString() {
 		return "Uploaded{OK}";

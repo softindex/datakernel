@@ -21,13 +21,15 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -36,15 +38,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.*;
 
 public class SimpleFsServerTest {
@@ -60,7 +65,7 @@ public class SimpleFsServerTest {
 
 	@Before
 	public void before() throws Exception {
-		clientStorage = Paths.get(temporaryFolder.newFolder("test").toURI());
+		clientStorage = Paths.get(temporaryFolder.newFolder("client_storage").toURI());
 		serverStorage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
 
 		Files.createDirectories(clientStorage);
@@ -96,7 +101,7 @@ public class SimpleFsServerTest {
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		final CompletionCallback callback = new CompletionCallback() {
+		client.deleteFile(requestedFile, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("File deleted");
@@ -108,12 +113,12 @@ public class SimpleFsServerTest {
 				logger.error(e.getMessage(), e);
 				stop(fileServer);
 			}
-		};
-		client.deleteFile(requestedFile, callback);
+		});
 		eventloop.run();
 
 		Path pathDeleted = serverStorage.resolve(requestedFile);
 		assertFalse(Files.exists(pathDeleted));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -121,26 +126,28 @@ public class SimpleFsServerTest {
 		NioEventloop eventloop = new NioEventloop();
 		String requestedFile = "big_file_not_exist";
 
+		final boolean[] ifDeleted = new boolean[1];
+
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		final CompletionCallback callback = new CompletionCallback() {
+		client.deleteFile(requestedFile, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				stop(fileServer);
-				assertFalse(true);
-				logger.info("Should not end there");
+				ifDeleted[0] = false;
 			}
 
 			@Override
 			public void onException(Exception e) {
 				stop(fileServer);
-				logger.info(e.getMessage());
+				ifDeleted[0] = true;
 			}
-		};
-		client.deleteFile(requestedFile, callback);
+		});
 
 		eventloop.run();
+		assertTrue(ifDeleted[0]);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -151,25 +158,27 @@ public class SimpleFsServerTest {
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		final ResultCallback<List<String>> callback = new ResultCallback<List<String>>() {
+		List<String> expected = Arrays.asList("t1", "t2", "a b", "empty_file", "big_file");
+		final List<String> actual = new ArrayList<>();
+
+		client.listFiles(new ResultCallback<List<String>>() {
 			@Override
 			public void onResult(List<String> result) {
+				actual.addAll(result);
 				stop(fileServer);
-				Collections.sort(result);
-				List<String> expected = Arrays.asList("t1", "t2", "a b", "empty_file", "big_file");
-				Collections.sort(expected);
-				assertEquals(expected, result);
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			public void onException(Exception e) {
 				stop(fileServer);
-				logger.error("Can't get file list", exception);
 			}
-		};
-
-		client.listFiles(callback);
+		});
 		eventloop.run();
+
+		Collections.sort(actual);
+		Collections.sort(expected);
+		assertEquals(expected, actual);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -186,10 +195,7 @@ public class SimpleFsServerTest {
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
 				16 * 1024, clientStorage.resolve(requestedFile));
 
-		StreamConsumer<ByteBuf> consumer = client.upload(resultFile);
-		producer.streamTo(consumer);
-
-		consumer.addCompletionCallback(new CompletionCallback() {
+		client.upload(resultFile, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("File uploaded");
@@ -207,13 +213,14 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), serverStorage.resolve(resultFile).toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testUploadMultiple() throws Exception {
 		int files = 10;
 		NioEventloop eventloop = new NioEventloop();
-		byte[] bytes = "Hello, World!".getBytes();
+		byte[] bytes = "Hello, World!".getBytes(Charset.forName("UTF-8"));
 
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
@@ -234,9 +241,7 @@ public class SimpleFsServerTest {
 
 		for (int i = 0; i < files; i++) {
 			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
-			StreamConsumer<ByteBuf> consumer = client.upload("file" + i);
-			producer.streamTo(consumer);
-			consumer.addCompletionCallback(callback);
+			client.upload("file" + i, producer, callback);
 		}
 
 		eventloop.run();
@@ -245,7 +250,7 @@ public class SimpleFsServerTest {
 			assertArrayEquals(bytes, Files.readAllBytes(serverStorage.resolve("file" + i)));
 		}
 
-		return;
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -262,9 +267,7 @@ public class SimpleFsServerTest {
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
 				16 * 1024, clientStorage.resolve(requestedFile));
 
-		StreamConsumer<ByteBuf> consumer = client.upload(resultFile);
-		producer.streamTo(consumer);
-		consumer.addCompletionCallback(new CompletionCallback() {
+		client.upload(resultFile, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Big file uploaded");
@@ -282,6 +285,7 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), serverStorage.resolve(resultFile).toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -298,10 +302,11 @@ public class SimpleFsServerTest {
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
-		consumer.addCompletionCallback(new CompletionCallback() {
+		consumer.setFlushCallback(new CompletionCallback() {
+
 			@Override
 			public void onComplete() {
-				logger.error("File downloaded");
+				logger.info("File downloaded");
 				stop(fileServer);
 			}
 
@@ -318,17 +323,21 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile).toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testActionsAfterStop() {
-		// TODO
+		fail("Not yet implemented");
 	}
 
 	@Test
 	public void testDownloadNotExistsFile() throws Exception {
 		String requestedFile = "t2_not_exist";
 		String resultFile = "t2_downloaded";
+
+		final boolean[] isNotDownloaded = new boolean[1];
 
 		ExecutorService executor = Executors.newCachedThreadPool();
 		NioEventloop eventloop = new NioEventloop();
@@ -337,18 +346,17 @@ public class SimpleFsServerTest {
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 		final StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
-		consumer.addCompletionCallback(new CompletionCallback() {
+		consumer.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				// file server won't be stopped
-				fail("Can't download non existing file");
 				stop(fileServer);
+				isNotDownloaded[0] = false;
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.info(exception.getMessage());
+			public void onException(Exception e) {
 				stop(fileServer);
+				isNotDownloaded[0] = true;
 			}
 		});
 
@@ -356,6 +364,8 @@ public class SimpleFsServerTest {
 
 		eventloop.run();
 		executor.shutdown();
+		assertTrue(isNotDownloaded[0]);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -374,7 +384,7 @@ public class SimpleFsServerTest {
 
 		StreamFileWriter consumer1 = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile1));
 		StreamFileWriter consumer2 = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile2));
-		consumer1.addCompletionCallback(new CompletionCallback() {
+		consumer1.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("File 1 downloaded");
@@ -386,7 +396,7 @@ public class SimpleFsServerTest {
 				logger.error(e.getMessage(), e);
 			}
 		});
-		consumer2.addCompletionCallback(new CompletionCallback() {
+		consumer2.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("File 2 downloaded");
@@ -407,6 +417,78 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile1).toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile2).toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Ignore
+	@Test
+	public void testUploadWithException() throws IOException {
+		// TODO (vsavchuk) see SimpleFsServer
+		String resultFile = "non_existing_file";
+
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		final StreamProducer<ByteBuf> producer = StreamProducers.closingWithError(eventloop, new Exception("Test exception"));
+		client.upload(resultFile, producer, new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Big file uploaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Failed to upload", e);
+				stop(fileServer);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Ignore
+	@Test
+	public void testBadUpload() throws IOException {
+		// TODO (vsavchuk) Requested
+
+		String resultFile = "non_existing_file";
+
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		final StreamProducer<ByteBuf> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofIterable(eventloop,
+						Arrays.asList(ByteBufStrings.wrapUTF8("Test1"), ByteBufStrings.wrapUTF8(" Test2"), ByteBufStrings.wrapUTF8(" Test3"))),
+				StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Test exception"))
+		);
+
+		client.upload(resultFile, producer, new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Should not happen");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Failed to upload", e);
+				stop(fileServer);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	private void uploadFiles(NioEventloop eventloop, final String... fileNames) throws IOException {
@@ -420,9 +502,7 @@ public class SimpleFsServerTest {
 			final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
 					16 * 1024, clientStorage.resolve(fileName));
 
-			StreamConsumer<ByteBuf> consumer = client.upload(fileName);
-			producer.streamTo(consumer);
-			consumer.addCompletionCallback(new CompletionCallback() {
+			client.upload(fileName, producer, new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logger.info("Uploaded file: {}", fileName);
@@ -431,8 +511,8 @@ public class SimpleFsServerTest {
 				}
 
 				@Override
-				public void onException(Exception exception) {
-					logger.error("Can't upload: {}", fileName, exception);
+				public void onException(Exception e) {
+					logger.error("Can't upload: {}", fileName, e);
 				}
 			});
 		}
@@ -472,7 +552,7 @@ public class SimpleFsServerTest {
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			public void onException(Exception e) {
 				logger.info("Failed to stop server");
 			}
 		});

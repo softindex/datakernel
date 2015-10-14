@@ -22,8 +22,6 @@ import org.slf4j.LoggerFactory;
 import javax.management.*;
 import java.util.Collection;
 
-import static com.google.common.base.Throwables.propagate;
-
 public final class MBeanUtils {
 	private static final Logger logger = LoggerFactory.getLogger(MBeanUtils.class);
 
@@ -35,10 +33,10 @@ public final class MBeanUtils {
 			server.registerMBean(mbean, objectName);
 		} catch (InstanceAlreadyExistsException e) {
 			logger.error("MBean {} already registered: {}", objectName, e.toString());
-			throw propagate(e);
+			throw new RuntimeException(e);
 		} catch (MBeanRegistrationException e) {
 			logger.error("Registration failed for MBean {}: {}", objectName, e.toString());
-			throw propagate(e);
+			throw new RuntimeException(e);
 		} catch (NotCompliantMBeanException e) {
 			logger.warn("Not compliant MBean {}", objectName);
 		}

@@ -60,7 +60,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
 		this.chunkSize = chunkSize;
-		decorate(switcher);
+		setActualConsumer(switcher);
 		startNewChunk();
 	}
 
@@ -129,14 +129,14 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	}
 
 	@Override
-	public void onEndOfStream() {
-		super.onEndOfStream();
+	public void onProducerEndOfStream() {
+		super.onProducerEndOfStream();
 		saveChunk();
 		logger.trace("{}: upstream producer {} closed.", this, upstreamProducer);
 	}
 
 	@Override
-	public void onError(Exception e) {
+	public void onProducerError(Exception e) {
 		// TODO (dvolvach)
 		logger.error("{}: upstream producer {} exception.", this, upstreamProducer, e);
 	}

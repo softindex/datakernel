@@ -16,9 +16,9 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -75,12 +75,8 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		return path.resolve(format(filePattern, i + 1));
 	}
 
-	/**
-	 * Returns consumer for writing data to this storage. It serializes it, compresses and streams
-	 * to the file in external memory
-	 */
 	@Override
-	public StreamConsumer<T> streamWriter() {
+	public void write(StreamProducer<T> producer, CompletionCallback completionCallback) {
 		assert partition >= 0;
 		StreamBinarySerializer<T> streamSerializer = new StreamBinarySerializer<>(eventloop, serializer, blockSize, blockSize, 1, false);
 		StreamByteChunker streamByteChunkerBefore = new StreamByteChunker(eventloop, blockSize / 2, blockSize);
@@ -88,11 +84,12 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		StreamByteChunker streamByteChunkerAfter = new StreamByteChunker(eventloop, blockSize / 2, blockSize);
 		StreamFileWriter streamWriter = StreamFileWriter.createFile(eventloop, executorService, partitionPath(partition++));
 
+		producer.streamTo(streamSerializer);
 		streamSerializer.streamTo(streamByteChunkerBefore);
 		streamByteChunkerBefore.streamTo(streamCompressor);
 		streamCompressor.streamTo(streamByteChunkerAfter);
 		streamByteChunkerAfter.streamTo(streamWriter);
-		return streamSerializer;
+		streamWriter.setFlushCallback(completionCallback);
 	}
 
 	/**
@@ -102,7 +99,7 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	 * @param partition index of partition to read
 	 */
 	@Override
-	public StreamProducer<T> streamReader(int partition) {
+	public StreamProducer<T> read(int partition) {
 		assert partition >= 0;
 
 		StreamFileReader streamReader = StreamFileReader.readFileFrom(eventloop, executorService, blockSize, partitionPath(partition), 0L);

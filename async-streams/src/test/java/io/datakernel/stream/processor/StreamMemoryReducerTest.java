@@ -18,9 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -28,8 +26,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.processor.Utils.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class StreamMemoryReducerTest {
@@ -73,7 +74,7 @@ public class StreamMemoryReducerTest {
 				}
 		);
 
-		StreamConsumers.ToList<DataItemResult> consumer = StreamConsumers.toListOneByOne(eventloop);
+		TestStreamConsumers.TestConsumerToList<DataItemResult> consumer = TestStreamConsumers.toListOneByOne(eventloop);
 
 		source1.streamTo(sorter.newInput());
 		source2.streamTo(sorter.newInput());
@@ -81,10 +82,8 @@ public class StreamMemoryReducerTest {
 
 		eventloop.run();
 
-		System.out.println(consumer.getList());
-
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 
 		List<DataItemResult> result = consumer.getList();
 		Collections.sort(result, new Comparator<DataItemResult>() {
@@ -141,19 +140,19 @@ public class StreamMemoryReducerTest {
 				}
 		);
 
-		StreamConsumers.ToList<DataItemResult> consumer = new StreamConsumers.ToList<DataItemResult>(eventloop, list) {
+		TestStreamConsumers.TestConsumerToList<DataItemResult> consumer = new TestStreamConsumers.TestConsumerToList<DataItemResult>(eventloop, list) {
 			@Override
 			public void onData(DataItemResult item) {
-				super.onData(item);
+				list.add(item);
 				if (item.equals(new DataItemResult(1, 2, 60, 90, 0))) {
-					onError(new Exception());
+					closeWithError(new Exception());
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -166,77 +165,8 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 2);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-	}
-
-	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
-	@Test
-	public void test() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
-		List<DataItemResult> list = new ArrayList<>();
-
-		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
-				new DataItem1(1, 1, 10, 20),
-				new DataItem1(1, 2, 20, 30),
-				new DataItem1(1, 1, 10, 20),
-				new DataItem1(1, 2, 20, 30)));
-		StreamProducer<DataItem1> source2 = StreamProducers.ofIterable(eventloop, asList(
-				new DataItem1(1, 1, 10, 20),
-				new DataItem1(1, 2, 20, 30),
-				new DataItem1(1, 1, 10, 20),
-				new DataItem1(1, 2, 20, 30)));
-
-		StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult> reducer = new StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult>() {
-			@Override
-			public DataItemResult createAccumulator(DataItemKey key) {
-				return new DataItemResult(key.key1, key.key2, 0, 0, 0);
-			}
-
-			@Override
-			public DataItemResult accumulate(DataItemResult accumulator, DataItem1 value) {
-				accumulator.metric1 += value.metric1;
-				accumulator.metric2 += value.metric2;
-				return accumulator;
-			}
-		};
-		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
-				reducer,
-				new Function<DataItem1, DataItemKey>() {
-					@Override
-					public DataItemKey apply(DataItem1 input) {
-						return new DataItemKey(input.key1, input.key2);
-					}
-				}
-		);
-
-		StreamConsumers.ToList<DataItemResult> consumer = new StreamConsumers.ToList<DataItemResult>(eventloop, list) {
-			@Override
-			public void onData(DataItemResult item) {
-				super.onData(item);
-				if (item.equals(new DataItemResult(1, 2, 60, 90, 0))) {
-					onEndOfStream();
-					return;
-				}
-				upstreamProducer.suspend();
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						upstreamProducer.resume();
-					}
-				});
-			}
-		};
-
-		source1.streamTo(sorter.newInput());
-		source2.streamTo(sorter.newInput());
-		sorter.streamTo(consumer);
-
-		eventloop.run();
-
-		assertTrue(list.size() == 2);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 	}
 
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
@@ -282,7 +212,7 @@ public class StreamMemoryReducerTest {
 		);
 
 		List<DataItemResult> list = new ArrayList<>();
-		StreamConsumers.ToList<DataItemResult> consumer = StreamConsumers.toListOneByOne(eventloop, list);
+		TestStreamConsumers.TestConsumerToList<DataItemResult> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 
 		source1.streamTo(sorter.newInput());
 		source2.streamTo(sorter.newInput());
@@ -291,8 +221,73 @@ public class StreamMemoryReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
+				consumerStatuses(sorter.getUpstreamConsumers()));
+		assertEquals(CLOSED_WITH_ERROR, sorter.getDownstreamProducer().getProducerStatus());
 	}
 
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(1, 1, 10, 20),
+				new DataItem1(1, 2, 20, 30),
+				new DataItem1(1, 1, 10, 20),
+				new DataItem1(1, 2, 20, 30)));
+		StreamProducer<DataItem1> source2 = StreamProducers.ofIterable(eventloop, asList(
+				new DataItem1(1, 1, 10, 20),
+				new DataItem1(1, 2, 20, 30),
+				new DataItem1(1, 1, 10, 20),
+				new DataItem1(1, 2, 20, 30)));
+
+		StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult> reducer = new StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult>() {
+			@Override
+			public DataItemResult createAccumulator(DataItemKey key) {
+				return new DataItemResult(key.key1, key.key2, 0, 0, 0);
+			}
+
+			@Override
+			public DataItemResult accumulate(DataItemResult accumulator, DataItem1 value) {
+				accumulator.metric1 += value.metric1;
+				accumulator.metric2 += value.metric2;
+				return accumulator;
+			}
+		};
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+				reducer,
+				new Function<DataItem1, DataItemKey>() {
+					@Override
+					public DataItemKey apply(DataItem1 input) {
+						return new DataItemKey(input.key1, input.key2);
+					}
+				}
+		);
+
+		TestStreamConsumers.TestConsumerToList<DataItemResult> consumer = TestStreamConsumers.toListOneByOne(eventloop);
+
+		source1.streamTo(sorter.newInput());
+		source2.streamTo(sorter.newInput());
+		eventloop.run();
+
+		sorter.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+
+		List<DataItemResult> result = consumer.getList();
+		Collections.sort(result, new Comparator<DataItemResult>() {
+			@Override
+			public int compare(DataItemResult o1, DataItemResult o2) {
+				int result = Integer.compare(o1.key1, o2.key1);
+				if (result != 0)
+					return result;
+				return Integer.compare(o1.key2, o2.key2);
+			}
+		});
+
+		assertArrayEquals(new DataItemResult[]{new DataItemResult(1, 1, 30, 60, 0), new DataItemResult(1, 2, 60, 90, 0)},
+				result.toArray(new DataItemResult[0]));
+	}
 }

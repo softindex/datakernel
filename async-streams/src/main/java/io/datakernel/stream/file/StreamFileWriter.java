@@ -23,7 +23,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +34,7 @@ import java.util.ArrayDeque;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.nio.file.StandardOpenOption.*;
 
 /**
@@ -44,7 +43,6 @@ import static java.nio.file.StandardOpenOption.*;
  */
 public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileWriter.class);
-	private Exception error;
 
 	private final ExecutorService executor;
 	private final Path path;
@@ -57,6 +55,8 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	private long position;
 
 	private boolean pendingAsyncOperation;
+
+	private CompletionCallback flushCallback;
 
 	/**
 	 * Creates a new instance of StreamFileWriter
@@ -81,11 +81,15 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		this.removeFileOnException = removeFileOnException;
 	}
 
+	public void setFlushCallback(CompletionCallback flushCallback) {
+		this.flushCallback = flushCallback;
+	}
+
 	/**
 	 * Returns new StreamFileWriter for appending new data to existing file
 	 *
 	 * @param eventloop event loop in which it will work
-	 * @param executor  executor it which file will be opened
+	 * @param executor  executor in which file will be opened
 	 * @param path      location of file
 	 */
 	public static StreamFileWriter appendFile(Eventloop eventloop, ExecutorService executor,
@@ -115,48 +119,43 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		return this;
 	}
 
-	/**
-	 * Returns a position in which it will write next byte
-	 */
-	public long getPosition() {
-		return position;
-	}
-
-	/**
-	 * Sets a position in which it will write next byte
-	 */
-	public void setPosition(long position) {
-		this.position = position;
-	}
-
 	private void doFlush() {
 		final ByteBuf buf = queue.poll();
 		final int len = buf.remaining();
 
+		if (buf.position() == buf.limit()) {
+			logger.warn("Flushing empty buf {}");
+		}
+
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
+				logger.trace("Completed writing in file");
+
 				buf.recycle();
 				pendingAsyncOperation = false;
 				position += len;
 				if (queue.size() <= 1) {
-					resumeUpstream();
+					resume();
 				}
 				postFlush();
 			}
 
 			@Override
 			public void onException(final Exception e) {
+				logger.error("Failed to write data in file", e);
+
+				pendingAsyncOperation = false;
 				buf.recycle();
 				doCleanup(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						closeUpstreamWithError(e);
+						closeWithError(e);
 					}
 
 					@Override
-					public void onException(Exception exception) {
-						closeUpstreamWithError(e);
+					public void onException(Exception ignored) {
+						closeWithError(e);
 					}
 				});
 			}
@@ -164,6 +163,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void postFlush() {
+
 		if (error != null && !pendingAsyncOperation && queue.isEmpty()) {
 			doCleanup(new CompletionCallback() {
 
@@ -175,7 +175,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 							logger.error("Could not delete file {}", path.toAbsolutePath(), e1);
 						}
 					}
-					closeUpstreamWithError(error);
+					closeWithError(error);
 				}
 
 				@Override
@@ -191,20 +191,23 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			return;
 		}
 
-		if (getUpstreamStatus() == StreamProducer.END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
+		if (getConsumerStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					closeUpstream();
+					if (flushCallback != null) {
+						flushCallback.onComplete();
+					}
 				}
 
 				@Override
-				public void onException(Exception exception) {
-					closeUpstreamWithError(new Exception("Can't do cleanap for file\t" + path.getFileName()));
+				public void onException(Exception e) {
+					closeWithError(new Exception("Can't do cleanup for file\t" + path.getFileName()));
 				}
 			});
 		}
 		if (!queue.isEmpty() && !pendingAsyncOperation && asyncFile != null) {
+			logger.trace("Writing in file");
 			pendingAsyncOperation = true;
 			eventloop.post(new Runnable() {
 				@Override
@@ -216,13 +219,14 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	protected void onConsumerStarted() {
+	protected void onStarted() {
 		if (asyncFile != null || pendingAsyncOperation)
 			return;
 		pendingAsyncOperation = true;
 		AsyncFile.open(eventloop, executor, path, options, new ResultCallback<AsyncFile>() {
 			@Override
 			public void onResult(AsyncFile result) {
+				logger.trace("File {} is opened for writing!", path.getFileName());
 				pendingAsyncOperation = false;
 				asyncFile = result;
 				postFlush();
@@ -230,27 +234,20 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 			@Override
 			public void onException(Exception e) {
-				closeUpstreamWithError(e);
+				logger.error("Can't open file {} for writing", path.getFileName(), e);
+				closeWithError(e);
 			}
 		});
 	}
 
 	@Override
 	public void onData(ByteBuf buf) {
-		checkState(getUpstreamStatus() < StreamProducer.END_OF_STREAM, "Unexpected buf after end-of-stream %s : %s", this, buf);
 		queue.offer(buf);
 		if (queue.size() > 1) {
-			suspendUpstream();
+			suspend();
 		}
 		postFlush();
 	}
-
-//	private void doCleanup() {
-//		if (asyncFile != null) {
-//			asyncFile.close(ignoreCompletionCallback());
-//			asyncFile = null;
-//		}
-//	}
 
 	private void doCleanup(CompletionCallback callback) {
 		if (asyncFile != null) {
@@ -260,14 +257,17 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	public void onEndOfStream() {
-		logger.trace("endOfStream for {}, upstream: {}", this, upstreamProducer);
+	protected void onEndOfStream() {
+		logger.trace("endOfStream for {}, upstream: {}", this, getUpstream());
 		postFlush();
 	}
 
 	@Override
-	public void onError(final Exception e) {
+	protected void onError(final Exception e) {
 		error = e;
 		postFlush();
+		if (flushCallback != null) {
+			flushCallback.onException(e);
+		}
 	}
 }

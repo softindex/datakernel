@@ -19,9 +19,9 @@ package io.datakernel.stream.benchmarks;
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.Sharder;
 import io.datakernel.stream.processor.StreamSharder;
 
@@ -64,11 +64,11 @@ public class StreamSharderBenchmark implements Runnable {
 			testList.add(i);
 		}
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, testList);
-		StreamConsumers.ToList<Integer> consumer1 = StreamConsumers.toListRandomlySuspending(eventloop);
-		StreamConsumers.ToList<Integer> consumer2 = StreamConsumers.toListRandomlySuspending(eventloop);
-		StreamConsumers.ToList<Integer> consumer3 = StreamConsumers.toListRandomlySuspending(eventloop);
-		StreamConsumers.ToList<Integer> consumer4 = StreamConsumers.toListRandomlySuspending(eventloop);
-		StreamConsumers.ToList<Integer> consumer5 = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer3 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer4 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer5 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(streamSharder);
 		streamSharder.newOutput().streamTo(consumer1);

@@ -19,7 +19,7 @@ package io.datakernel.net;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.check;
 import static java.net.StandardSocketOptions.*;
 
 /**
@@ -98,7 +98,7 @@ public class SocketSettings {
 	}
 
 	public int getSendBufferSize() {
-		checkState(hasSendBufferSize());
+		check(hasSendBufferSize());
 		return sendBufferSize;
 	}
 
@@ -107,7 +107,7 @@ public class SocketSettings {
 	}
 
 	public int getReceiveBufferSize() {
-		checkState(hasReceiveBufferSize());
+		check(hasReceiveBufferSize());
 		return receiveBufferSize;
 	}
 
@@ -116,7 +116,7 @@ public class SocketSettings {
 	}
 
 	public boolean getKeepAlive() {
-		checkState(hasKeepAlive());
+		check(hasKeepAlive());
 		return keepAlive != FALSE;
 	}
 
@@ -125,7 +125,7 @@ public class SocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		checkState(hasReuseAddress());
+		check(hasReuseAddress());
 		return reuseAddress != FALSE;
 	}
 
@@ -134,7 +134,7 @@ public class SocketSettings {
 	}
 
 	public boolean getTcpNoDelay() {
-		checkState(hasTcpNoDelay());
+		check(hasTcpNoDelay());
 		return tcpNoDelay != FALSE;
 	}
 

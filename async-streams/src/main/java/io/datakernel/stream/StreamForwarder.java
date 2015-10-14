@@ -18,125 +18,47 @@ package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
 
-import java.util.ArrayList;
-
 /**
- * Simple no-op forwarder of stream data, which supports wiring of itself to upstream producer or to downstream consumer at later time.
- * <p>After both upstream producer and downstream consumer are connected, StreamForwarder switches to zero-overhead 'short-circuit' mode, which directly forwards StreamDataReceiver from downstream to upstream.
+ * Provides you apply function before sending data to the destination. It is a {@link AbstractStreamTransformer_1_1}
+ * which receives specified type and streams set of function's result  to the destination .
  *
  * @param <T> type of data
  */
-public class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> implements StreamDataReceiver<T> {
-	private final ArrayList<T> bufferedItems = new ArrayList<>();
-	private boolean bufferedEndOfStream;
+public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> {
 
-	private boolean rewired;
+	private final UpstreamConsumer upstreamConsumer;
+	private final DownstreamProducer downstreamProducer;
 
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param eventloop eventloop in which forwarder will be running
-	 */
+	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			downstreamProducer.sendEndOfStream();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return downstreamProducer.getDownstreamDataReceiver();
+		}
+	}
+
+	protected final class DownstreamProducer extends AbstractDownstreamProducer {
+
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
+	}
+
 	public StreamForwarder(Eventloop eventloop) {
 		super(eventloop);
-	}
-
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return rewired ? getDownstreamDataReceiver() : this; // short-circuit upstream producer and downstream consumer
-	}
-
-	@Override
-	public void onData(T item) {
-		if (rewired) {
-			// Maybe downstreamDataReceiver is cached somewhere in upstream producer, even after rewire?
-			// Anyway, let's just forward items to downstream.
-			send(item);
-		} else {
-			bufferedItems.add(item);
-			if (getUpstream() != null) {
-				suspendUpstream();
-			}
-		}
-	}
-
-	private void flushAndRewire() {
-		if (error != null) {
-			upstreamProducer.closeWithError(error);
-			downstreamConsumer.onError(error);
-			return;
-		}
-
-		for (T item : bufferedItems) {
-			send(item);
-		}
-		bufferedItems.clear();
-
-		if (bufferedEndOfStream) {
-			sendEndOfStream();
-		}
-
-		rewired = true;
-		getUpstream().bindDataReceiver();
-
-		if (status == CLOSED) {
-			closeUpstream();
-		} else if (status != READY) {
-			suspendUpstream();
-		} else {
-			resumeUpstream();
-		}
-	}
-
-	@Override
-	protected void onConsumerStarted() {
-		if (getUpstream() != null && getDownstream() != null) {
-			flushAndRewire();
-		}
-	}
-
-	@Override
-	protected void onProducerStarted() {
-		if (getUpstream() != null && getDownstream() != null) {
-			flushAndRewire();
-		}
-	}
-
-	@Override
-	public void onEndOfStream() {
-		if (rewired) {
-			sendEndOfStream();
-		} else {
-			bufferedEndOfStream = true;
-		}
-	}
-
-	@Override
-	public void onSuspended() {
-		if (rewired) {
-			suspendUpstream();
-		}
-	}
-
-	@Override
-	public void onResumed() {
-		if (rewired) {
-			resumeUpstream();
-		}
-	}
-
-	@Override
-	public void onClosed() {
-		if (rewired) {
-			closeUpstream();
-		}
-	}
-
-	@Override
-	public void onClosedWithError(Exception e) {
-		if (rewired) {
-			upstreamProducer.closeWithError(e);
-			downstreamConsumer.onError(e);
-		}
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer();
 	}
 }

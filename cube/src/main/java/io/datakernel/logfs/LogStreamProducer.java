@@ -53,7 +53,7 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 		this.serializer = serializer;
 		this.positionCallback = positionCallback;
 		this.forwarder = new StreamForwarder<>(eventloop);
-		decorate(forwarder);
+		setActualProducer(forwarder);
 		fileSystem.list(logPartition, new ResultCallback<List<LogFile>>() {
 			@Override
 			public void onResult(List<LogFile> entries) {

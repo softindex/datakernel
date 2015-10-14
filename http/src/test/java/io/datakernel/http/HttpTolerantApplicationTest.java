@@ -24,6 +24,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -95,7 +96,9 @@ public class HttpTolerantApplicationTest {
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();
 
-		server.closeFuture();
+		SimpleCompletionFuture callback = new SimpleCompletionFuture();
+		server.closeFuture(callback);
+		callback.await();
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

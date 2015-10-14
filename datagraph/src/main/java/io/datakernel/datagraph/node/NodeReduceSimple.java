@@ -25,7 +25,7 @@ import io.datakernel.stream.processor.StreamReducers;
 import java.util.*;
 
 /**
- * Represents a simple reducer node, with a single key function and reducer for all inputs.
+ * Represents a simple reducer node, with a single key function and reducer for all internalConsumers.
  *
  * @param <K> keys type
  * @param <I> input data type

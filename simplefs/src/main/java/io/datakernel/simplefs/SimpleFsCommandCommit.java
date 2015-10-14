@@ -25,6 +25,6 @@ public class SimpleFsCommandCommit extends SimpleFsCommand {
 
 	@Override
 	public String toString() {
-		return "Commit{filename=\'" + fileName + "\'} ";
+		return "Commit{filename=\'" + fileName + "\'}";
 	}
 }

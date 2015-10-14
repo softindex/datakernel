@@ -87,7 +87,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	private void doNext() {
-		if (getUpstreamStatus() == StreamProducer.CLOSED) {
+		if (getUpstreamStatus() == AbstractStreamProducer.CLOSED) {
 			return;
 		}
 
@@ -96,7 +96,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			return;
 		}
 
-		if (getUpstreamStatus() == StreamProducer.END_OF_STREAM && map.isEmpty()) {
+		if (getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM && map.isEmpty()) {
 			chunksCallback.onResult(chunks);
 			closeUpstream();
 			logger.trace("{}: completed saving chunks {} for aggregation {}. Closing itself.", this, chunks, aggregationMetadata);
@@ -186,13 +186,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	@Override
-	public void onEndOfStream() {
+	public void onProducerEndOfStream() {
 		logger.trace("{}: upstream producer {} closed.", this, upstreamProducer);
 		doNext();
 	}
 
 	@Override
-	public void onError(Exception e) {
+	public void onProducerError(Exception e) {
 		logger.trace("{}: upstream producer {} exception.", this, upstreamProducer, e);
 	}
 }

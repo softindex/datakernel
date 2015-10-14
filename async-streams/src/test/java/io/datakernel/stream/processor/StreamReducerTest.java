@@ -19,7 +19,6 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Objects;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
@@ -28,11 +27,14 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static io.datakernel.stream.processor.StreamReducers.mergeDeduplicateReducer;
+import static io.datakernel.stream.processor.Utils.assertConsumerStatuses;
+import static io.datakernel.stream.processor.Utils.consumerStatuses;
 import static java.util.Arrays.asList;
 import static java.util.Collections.EMPTY_LIST;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("unchecked")
 public class StreamReducerTest {
@@ -46,14 +48,16 @@ public class StreamReducerTest {
 		Function<Integer, Integer> keyFunction = Functions.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(streamReducer.newInput(keyFunction, reducer));
 		streamReducer.streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
 	}
 
 	@Test
@@ -73,7 +77,7 @@ public class StreamReducerTest {
 		Function<Integer, Integer> keyFunction = Functions.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source0.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source1.streamTo(streamReducer.newInput(keyFunction, reducer));
@@ -87,14 +91,17 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
-		assertTrue(source0.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source4.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source5.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source6.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source7.getStatus() == StreamProducer.CLOSED);
+		assertEquals(END_OF_STREAM, source0.getProducerStatus());
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertEquals(END_OF_STREAM, source3.getProducerStatus());
+		assertEquals(END_OF_STREAM, source4.getProducerStatus());
+		assertEquals(END_OF_STREAM, source5.getProducerStatus());
+		assertEquals(END_OF_STREAM, source6.getProducerStatus());
+		assertEquals(END_OF_STREAM, source7.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
 	}
 
 	@Test
@@ -108,19 +115,19 @@ public class StreamReducerTest {
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
 
 		final List<KeyValueResult> list = new ArrayList<>();
-		StreamConsumers.ToList<KeyValueResult> consumer = new StreamConsumers.ToList<KeyValueResult>(eventloop, list) {
+		TestStreamConsumers.TestConsumerToList<KeyValueResult> consumer = new TestStreamConsumers.TestConsumerToList<KeyValueResult>(eventloop, list) {
 			@Override
 			public void onData(KeyValueResult item) {
-				super.onData(item);
+				list.add(item);
 				if (list.size() == 1) {
-					onError(new Exception());
+					closeWithError(new Exception());
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
@@ -140,76 +147,28 @@ public class StreamReducerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 1);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+
+		assertEquals(CLOSED_WITH_ERROR, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertEquals(END_OF_STREAM, source3.getProducerStatus());
+
+		assertEquals(CLOSED_WITH_ERROR, streamReducer.getDownstreamProducer().getProducerStatus());
+		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM, END_OF_STREAM},
+				consumerStatuses(streamReducer.getUpstreamConsumers()));
 	}
 
-	@Test
-	public void test() {
-		NioEventloop eventloop = new NioEventloop();
-
-		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
-		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
-		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop, asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
-
-		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
-
-		final List<KeyValueResult> list = new ArrayList<>();
-		StreamConsumers.ToList<KeyValueResult> consumer = new StreamConsumers.ToList<KeyValueResult>(eventloop, list) {
-			@Override
-			public void onData(KeyValueResult item) {
-				super.onData(item);
-				if (list.size() == 1) {
-					onEndOfStream();
-					return;
-				}
-				upstreamProducer.suspend();
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						upstreamProducer.resume();
-					}
-				});
-			}
-		};
-
-		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(KeyValue1.keyFunction, KeyValue1.REDUCER);
-		source1.streamTo(streamConsumer1);
-
-		StreamConsumer<KeyValue2> streamConsumer2 = streamReducer.newInput(KeyValue2.keyFunction, KeyValue2.REDUCER);
-		source2.streamTo(streamConsumer2);
-
-		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER);
-		source3.streamTo(streamConsumer3);
-
-		streamReducer.streamTo(consumer);
-
-		eventloop.run();
-
-		assertTrue(list.size() == 1);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED);
-	}
 
 	@Test
 	public void testProducerDisconnectWithError() {
 		NioEventloop eventloop = new NioEventloop();
 
-		StreamProducer<KeyValue1> source1 = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, new KeyValue1(1, 10.0)),
-				StreamProducers.ofValue(eventloop, new KeyValue1(3, 30.0))
-		);
-		StreamProducer<KeyValue2> source2 = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, new KeyValue2(1, 10.0)),
-				StreamProducers.ofValue(eventloop, new KeyValue2(3, 30.0)),
-				StreamProducers.<KeyValue2>closingWithError(eventloop, new Exception())
-		);
-		StreamProducer<KeyValue3> source3 = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, new KeyValue3(2, 10.0, 20.0)),
-				StreamProducers.ofValue(eventloop, new KeyValue3(3, 10.0, 20.0))
-		);
+		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop,
+				asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
+
+		StreamProducer<KeyValue2> source2 = StreamProducers.closingWithError(eventloop, new Exception());
+
+		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop,
+				asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
 
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
 
@@ -229,9 +188,8 @@ public class StreamReducerTest {
 
 		eventloop.run();
 		assertTrue(list.size() == 0);
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source3.getProducerStatus());
 	}
 
 	private static final class KeyValue1 {
@@ -430,7 +388,7 @@ public class StreamReducerTest {
 
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
 
-		StreamConsumers.ToList<KeyValueResult> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<KeyValueResult> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(KeyValue1.keyFunction, KeyValue1.REDUCER_TO_ACCUMULATOR.inputToOutput());
 		source1.streamTo(streamConsumer1);
@@ -449,9 +407,9 @@ public class StreamReducerTest {
 				new KeyValueResult(2, 0.0, 10.0, 20.0),
 				new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertEquals(END_OF_STREAM, source3.getProducerStatus());
 	}
 
 	@Test
@@ -464,7 +422,7 @@ public class StreamReducerTest {
 
 		StreamReducer<Integer, KeyValueResult, KeyValueResult> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
 
-		StreamConsumers.ToList<KeyValueResult> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<KeyValueResult> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		StreamConsumer<KeyValue1> streamConsumer1 = streamReducer.newInput(KeyValue1.keyFunction, KeyValue1.REDUCER);
 		source1.streamTo(streamConsumer1);
@@ -483,8 +441,54 @@ public class StreamReducerTest {
 				new KeyValueResult(2, 0.0, 10.0, 20.0),
 				new KeyValueResult(3, 30.0, 40.0, 20.0)),
 				consumer.getList());
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source3.getStatus() == StreamProducer.CLOSED);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertEquals(END_OF_STREAM, source3.getProducerStatus());
+	}
+
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
+		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
+		StreamProducer<Integer> source3 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+		StreamProducer<Integer> source4 = StreamProducers.ofIterable(eventloop, asList(2, 3, 5));
+		StreamProducer<Integer> source5 = StreamProducers.ofIterable(eventloop, asList(1, 3));
+		StreamProducer<Integer> source6 = StreamProducers.ofIterable(eventloop, asList(1, 3));
+		StreamProducer<Integer> source7 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
+
+		StreamReducer<Integer, Integer, Void> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		Function<Integer, Integer> keyFunction = Functions.identity();
+		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
+
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+
+		source0.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source1.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source2.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source3.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source4.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source5.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
+		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
+		eventloop.run();
+
+		streamReducer.streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
+		assertEquals(END_OF_STREAM, source0.getProducerStatus());
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
+		assertEquals(END_OF_STREAM, source3.getProducerStatus());
+		assertEquals(END_OF_STREAM, source4.getProducerStatus());
+		assertEquals(END_OF_STREAM, source5.getProducerStatus());
+		assertEquals(END_OF_STREAM, source6.getProducerStatus());
+		assertEquals(END_OF_STREAM, source7.getProducerStatus());
+
+		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
 	}
 }

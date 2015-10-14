@@ -26,7 +26,7 @@ import java.util.Collection;
 import java.util.Comparator;
 
 /**
- * Represents a node, which joins two inputs streams (left and right) into one, based on logic, defined by key functions and joiner.
+ * Represents a node, which joins two internalConsumers streams (left and right) into one, based on logic, defined by key functions and joiner.
  *
  * @param <K> keys type
  * @param <L> left stream data type

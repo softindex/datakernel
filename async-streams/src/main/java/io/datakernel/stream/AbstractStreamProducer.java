@@ -17,7 +17,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +24,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.stream.StreamStatus.*;
 
 /**
  * It is basic implementation of {@link StreamProducer}
@@ -37,19 +37,21 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 	protected final Eventloop eventloop;
 
+	protected final List<T> bufferedList = new ArrayList<>();
 	protected StreamConsumer<T> downstreamConsumer;
-	protected StreamDataReceiver<T> downstreamDataReceiver;
+	protected StreamDataReceiver<T> downstreamDataReceiver = new DataReceiverBeforeStart<>(this, bufferedList);
 
-	protected byte status = READY;
+	private StreamStatus status = READY;
+	private boolean ready = true;
 	protected Exception error;
-
-	private final List<CompletionCallback> completionCallbacks = new ArrayList<>();
 
 	protected Object tag;
 
 	protected AbstractStreamProducer(Eventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
 	}
+
+	private boolean rewiring;
 
 	/**
 	 * Sets consumer for this producer. At the moment of calling this method producer shouldn't have consumer,
@@ -58,25 +60,54 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 * @param downstreamConsumer consumer for streaming
 	 */
 	@Override
-	public void streamTo(StreamConsumer<T> downstreamConsumer) {
+	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
 		checkNotNull(downstreamConsumer);
-		checkState(this.downstreamConsumer == null, "Producer is already wired");
-		checkArgument(downstreamConsumer.getUpstream() == null, "Consumer is already wired");
+		if (rewiring || this.downstreamConsumer == downstreamConsumer)
+			return;
+		rewiring = true;
+
+		boolean firstTime = this.downstreamConsumer == null;
+
+		if (this.downstreamConsumer != null) {
+			this.downstreamConsumer.streamFrom(StreamProducers.<T>closingWithError(eventloop,
+					new Exception("Downstream disconnected")));
+		}
 
 		this.downstreamConsumer = downstreamConsumer;
 
-		downstreamConsumer.setUpstream(this);
+		downstreamConsumer.streamFrom(this);
 
 		bindDataReceiver();
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				if (status < END_OF_STREAM) {
-					onProducerStarted();
-				}
+		if (firstTime) {
+			for (T item : bufferedList) {
+				downstreamConsumer.getDataReceiver().onData(item);
 			}
-		});
+			bufferedList.clear();
+		}
+
+		if (status == END_OF_STREAM) {
+			downstreamConsumer.onProducerEndOfStream();
+			return;
+		}
+
+		if (status == CLOSED_WITH_ERROR) {
+			downstreamConsumer.onProducerError(error);
+			return;
+		}
+
+		if (firstTime) {
+			eventloop.post(new Runnable() {
+				@Override
+				public void run() {
+					// TODO (vsavchuk) post can be done in status == READY, and in Runnable status can be other, check this
+					if (status.isOpen()) {
+						onStarted();
+					}
+				}
+			});
+		}
+		rewiring = false;
 	}
 
 	/**
@@ -84,32 +115,21 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 *
 	 * @param item item to be sent
 	 */
-	public void send(T item) {
-		assert status < END_OF_STREAM;
+	protected void send(T item) {
+		assert status.isOpen();
 		downstreamDataReceiver.onData(item);
-	}
-
-	public final void sendEndOfStream() {
-		if (status < END_OF_STREAM) {
-			status = END_OF_STREAM;
-			downstreamConsumer.onEndOfStream();
-		}
-	}
-
-	public final void sendError(Exception e) {
-		downstreamConsumer.onError(e);
 	}
 
 	protected void doProduce() {
 	}
 
-	protected final void produce() {
-		if (status != READY)
+	protected void produce() {
+		if (!isStatusReady())
 			return;
 		try {
 			doProduce();
 		} catch (Exception e) {
-			onInternalError(e);
+			closeWithError(e, true);
 		}
 	}
 
@@ -122,16 +142,12 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		});
 	}
 
-	protected void onProducerStarted() {
+	protected void onStarted() {
+
 	}
 
-	protected void onInternalError(Exception e) {
-		closeWithError(e);
-	}
-
-	@Override
 	@Nullable
-	public StreamConsumer<T> getDownstream() {
+	public final StreamConsumer<T> getDownstream() {
 		return downstreamConsumer;
 	}
 
@@ -139,114 +155,134 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 * Connects consumer's {@link StreamDataReceiver} to producer
 	 */
 	@Override
-	public void bindDataReceiver() {
-		downstreamDataReceiver = downstreamConsumer.getDataReceiver();
+	public final void bindDataReceiver() {
+		if (status.isClosed()) {
+			downstreamDataReceiver = new DataReceiverAfterClose<>();
+			return;
+		}
+
+		StreamDataReceiver<T> newDataReceiver = downstreamConsumer.getDataReceiver();
+		assert newDataReceiver != null;
+		if (downstreamDataReceiver != newDataReceiver) {
+			downstreamDataReceiver = newDataReceiver;
+			onDataReceiverChanged();
+		}
 	}
+
+	protected abstract void onDataReceiverChanged();
 
 	public StreamDataReceiver<T> getDownstreamDataReceiver() {
 		return downstreamDataReceiver;
 	}
 
-	protected void onSuspended() {
-	}
+	abstract protected void onSuspended();
 
 	@Override
-	public final void suspend() {
+	public final void onConsumerSuspended() {
 		if (status != READY)
 			return;
-		status = SUSPENDED;
+		setStatus(SUSPENDED);
 		onSuspended();
 	}
 
-	protected void onResumed() {
-	}
+	abstract protected void onResumed();
 
 	@Override
-	public final void resume() {
+	public final void onConsumerResumed() {
 		if (status != SUSPENDED)
 			return;
-		status = READY;
+		setStatus(READY);
 		onResumed();
 	}
 
-	protected void onClosed() {
-	}
-
-	@Override
-	public final void close() {
-		if (status >= CLOSED)
+	protected void sendEndOfStream() {
+		if (status.isClosed())
 			return;
-		logger.trace("StreamProducer {} closed", this);
-		status = CLOSED;
-		for (CompletionCallback completionCallback : completionCallbacks) {
-			completionCallback.onComplete();
+		setStatus(END_OF_STREAM);
+		downstreamDataReceiver = new DataReceiverAfterClose<>();
+		if (downstreamConsumer != null) {
+			downstreamConsumer.onProducerEndOfStream();
 		}
-		completionCallbacks.clear();
-		onClosed();
+		doCleanup();
 	}
 
-	protected void onClosedWithError(Exception e) {
-		downstreamConsumer.onError(e);
-	}
-
-	@Override
-	public final void closeWithError(Exception e) {
-		checkNotNull(e);
-		if (status >= CLOSED)
+	private void closeWithError(Exception e, boolean sendToConsumer) {
+		if (status.isClosed())
 			return;
-		logger.error("StreamConsumer {} closed with error", this, e);
-		status = CLOSED_WITH_ERROR;
+		setStatus(CLOSED_WITH_ERROR);
 		error = e;
-		for (CompletionCallback completionCallback : completionCallbacks) {
-			completionCallback.onException(e);
+		downstreamDataReceiver = new DataReceiverAfterClose<>();
+		logger.info("StreamProducer {} closed with error {}", this, error.toString());
+		if (sendToConsumer && downstreamConsumer != null) {
+			downstreamConsumer.onProducerError(e);
 		}
-		completionCallbacks.clear();
-		onClosedWithError(e);
+		onError(e);
+		doCleanup();
+	}
+
+	protected void closeWithError(Exception e) {
+		closeWithError(e, true);
 	}
 
 	@Override
-	public byte getStatus() {
+	public final void onConsumerError(Exception e) {
+		closeWithError(e, false);
+	}
+
+	protected void onError(Exception e) {
+
+	}
+
+	protected void doCleanup() {
+	}
+
+	@Override
+	public final StreamStatus getProducerStatus() {
 		return status;
 	}
 
-	/**
-	 * Returns exception from this consumer
-	 */
-	@Override
-	public Exception getError() {
-		return error;
+	private void setStatus(StreamStatus status) {
+		this.status = status;
+		this.ready = status == READY;
 	}
 
-	@Override
-	public void addCompletionCallback(final CompletionCallback completionCallback) {
-		checkNotNull(completionCallback);
-		checkArgument(!completionCallbacks.contains(completionCallback));
-		if (status >= CLOSED) {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					if (status != CLOSED_WITH_ERROR) {
-						completionCallback.onComplete();
-					} else {
-						completionCallback.onException(error);
-					}
-				}
-			});
-			return;
-		}
-		completionCallbacks.add(completionCallback);
+	public final boolean isStatusReady() {
+		return ready;
 	}
 
-	public Object getTag() {
+	public final Object getTag() {
 		return tag;
 	}
 
-	public void setTag(Object tag) {
+	public final void setTag(Object tag) {
 		this.tag = tag;
 	}
 
 	@Override
 	public String toString() {
 		return tag != null ? tag.toString() : super.toString();
+	}
+
+	private static class DataReceiverBeforeStart<T> implements StreamDataReceiver<T> {
+		private final AbstractStreamProducer self;
+		private final List<T> list;
+
+		private DataReceiverBeforeStart(AbstractStreamProducer self, List<T> list) {
+			this.self = self;
+			this.list = list;
+		}
+
+		@Override
+		public void onData(T item) {
+			self.onConsumerSuspended();
+			list.add(item);
+		}
+	}
+
+	private static class DataReceiverAfterClose<T> implements StreamDataReceiver<T> {
+		@Override
+		public void onData(T item) {
+			logger.error("Unexpected item {} after end-of-stream of {}", item, this);
+		}
 	}
 }

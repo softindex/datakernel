@@ -16,17 +16,13 @@
 
 package io.datakernel.simplefs.stress;
 
-import java.io.IOException;
+import java.net.UnknownHostException;
 
-public class StressTest {
-	// first should start server form StressServer, then call main as many times as you like
-	public static void main(String[] args) {
-		try {
-			StressClient client = new StressClient();
-			client.setup();
-			client.start(100, 360_000);
-		} catch (IOException e) {
-			e.printStackTrace();
+public class StressTestUploadSmallObjects {
+	public static void main(String[] args) throws UnknownHostException {
+		StressClient client = new StressClient();
+		for (int i = 0; i < 100; i++) {
+			client.uploadSerializedObject(i);
 		}
 	}
 }

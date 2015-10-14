@@ -17,25 +17,21 @@
 package io.datakernel.dns;
 
 import com.google.common.net.InetAddresses;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.service.SimpleResultFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Maps.newConcurrentMap;
 import static com.google.common.collect.Maps.newHashMap;
-import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
 
 /**
  * It is abstract class which represents non-asynchronous resolving. It resolves each domain
@@ -46,7 +42,7 @@ public abstract class BlockingDnsResolver {
 
 	protected final Map<String, ResolvedAddress> cache = newConcurrentMap();
 
-	protected final Map<String, ListenableFuture<InetAddress[]>> pendings = newHashMap();
+	protected final Map<String, SimpleResultFuture<InetAddress[]>> pendings = newHashMap();
 
 	protected long positiveKeepMillis = TimeUnit.MINUTES.toMillis(60);
 	protected long negativeKeepMillis = TimeUnit.MINUTES.toMillis(10);
@@ -68,40 +64,31 @@ public abstract class BlockingDnsResolver {
 		return new DnsClient() {
 			public void resolve(String domainName, final ResultCallback<InetAddress[]> callback, boolean ipv6) {
 				final Eventloop.ConcurrentOperationTracker concurrentOperationTracker = eventloop.startConcurrentOperation();
-				final ListenableFuture<InetAddress[]> future = ipv6 ? resolver.resolve6(domainName) : resolver.resolve4(domainName);
 
-				future.addListener(new Runnable() {
+				SimpleResultFuture<InetAddress[]> simpleResultFuture = new SimpleResultFuture<InetAddress[]>() {
 					@Override
-					public void run() {
-						try {
-							final InetAddress[] inetAddresses = future.get();
-							eventloop.postConcurrently(new Runnable() {
-								@Override
-								public void run() {
-									concurrentOperationTracker.complete();
-									callback.onResult(inetAddresses);
-								}
-							});
-						} catch (final InterruptedException e) {
-							eventloop.postConcurrently(new Runnable() {
-								@Override
-								public void run() {
-									concurrentOperationTracker.complete();
-									callback.onException(e);
-								}
-							});
-						} catch (final ExecutionException e) {
-							eventloop.postConcurrently(new Runnable() {
-								@Override
-								public void run() {
-									concurrentOperationTracker.complete();
-									if (e.getCause() instanceof Exception)
-										callback.onException((Exception) e.getCause());
-								}
-							});
-						}
+					protected void doOnResult(final InetAddress[] item) {
+						eventloop.postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								concurrentOperationTracker.complete();
+								callback.onResult(item);
+							}
+						});
 					}
-				}, newDirectExecutorService());
+
+					@Override
+					protected void doOnError(Exception e) {
+						concurrentOperationTracker.complete();
+						callback.onException(e);
+					}
+				};
+
+				if (ipv6) {
+					resolver.resolve6(domainName, simpleResultFuture);
+				} else {
+					resolver.resolve4(domainName, simpleResultFuture);
+				}
 			}
 
 			@Override
@@ -161,8 +148,8 @@ public abstract class BlockingDnsResolver {
 	 * @param host domain name to resolve
 	 * @return future from which you can get result of resolving
 	 */
-	public ListenableFuture<InetAddress[]> resolve4(String host) {
-		return resolve(host, false);
+	public void resolve4(String host, SimpleResultFuture<InetAddress[]> simpleResultFuture) {
+		resolve(host, false, simpleResultFuture);
 	}
 
 	/**
@@ -171,34 +158,39 @@ public abstract class BlockingDnsResolver {
 	 * @param host domain name to resolve
 	 * @return future from which you can get result of resolving
 	 */
-	public ListenableFuture<InetAddress[]> resolve6(String host) {
-		return resolve(host, true);
+	public void resolve6(String host, SimpleResultFuture<InetAddress[]> simpleResultFuture) {
+		resolve(host, true, simpleResultFuture);
 	}
 
-	protected ListenableFuture<InetAddress[]> resolve(String host, boolean ipv6) {
+	protected void resolve(String host, boolean ipv6, SimpleResultFuture<InetAddress[]> simpleResultFuture) {
 		checkNotNull(host);
 
 		if (InetAddresses.isInetAddress(host)) {
 			InetAddress ipAddress = InetAddresses.forString(host);
-			return Futures.immediateFuture(new InetAddress[]{ipAddress});
+			simpleResultFuture.onResult(new InetAddress[]{ipAddress});
+			return;
 		}
 
 		host = host.toLowerCase();
 		ResolvedAddress resolvedAddress = cache.get(host);
 		if (resolvedAddress != null && !resolvedAddress.isInvalid()) {
-			return Futures.immediateFuture(resolvedAddress.getAllAddresses());
+			simpleResultFuture.onResult(resolvedAddress.getAllAddresses());
+			return;
 		}
-		return resolvePending(host, ipv6);
+		resolvePending(host, ipv6, simpleResultFuture);
 	}
 
-	synchronized protected ListenableFuture<InetAddress[]> resolvePending(final String host, final boolean ipv6) {
-		ListenableFuture<InetAddress[]> pending = pendings.get(host);
+	synchronized protected void resolvePending(final String host, final boolean ipv6, final SimpleResultFuture<InetAddress[]> simpleResultFuture) {
+		SimpleResultFuture<InetAddress[]> pending = pendings.get(host);
 
 		if (pending != null) {
-			return pending;
+			try {
+				pending.onResult(pending.get());
+			} catch (Exception e) {
+				throw new RuntimeException();
+			}
 		} else {
-			final SettableFuture<InetAddress[]> future = SettableFuture.create();
-			pendings.put(host, future);
+			pendings.put(host, simpleResultFuture);
 
 			executor.execute(new Runnable() {
 				@Override
@@ -212,14 +204,12 @@ public abstract class BlockingDnsResolver {
 					InetAddress[] inetAddresses = resolvedAddress.getAllAddresses();
 
 					if (inetAddresses == null) {
-						future.setException(new DnsException(host, DnsMessage.ResponseErrorCode.UNKNOWN));
+						simpleResultFuture.onError(new DnsException(host, DnsMessage.ResponseErrorCode.UNKNOWN));
 					} else {
-						future.set(resolvedAddress.getAllAddresses());
+						simpleResultFuture.onResult(resolvedAddress.getAllAddresses());
 					}
 				}
 			});
-
-			return future;
 		}
 	}
 

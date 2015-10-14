@@ -41,8 +41,8 @@ import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.SocketReconnector.reconnect;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
+import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public final class TcpStreamSocketConnectionTest {
 	private static final int LISTEN_PORT = 1234;

@@ -16,7 +16,7 @@
 
 package io.datakernel.async;
 
-import com.google.common.base.Function;
+import io.datakernel.util.Function;
 
 import java.util.Iterator;
 

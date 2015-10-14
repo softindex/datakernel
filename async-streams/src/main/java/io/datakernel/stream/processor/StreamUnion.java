@@ -17,7 +17,10 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
+import io.datakernel.stream.AbstractStreamTransformer_N_1;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
 
 /**
  * It is {@link AbstractStreamTransformer_1_1} which unions all input streams and streams it
@@ -25,71 +28,50 @@ import io.datakernel.stream.*;
  *
  * @param <T> type of output data
  */
-public final class StreamUnion<T> extends AbstractStreamTransformer_M_1<T> implements StreamDataReceiver<T> {
-
+public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
 	public StreamUnion(Eventloop eventloop) {
 		super(eventloop);
+		this.downstreamProducer = new DownstreamProducer();
 	}
 
-	private class InputImpl extends AbstractStreamConsumer<T> {
-		protected InputImpl(Eventloop eventloop) {
-			super(eventloop);
-		}
+	protected final class UpstreamConsumer extends AbstractUpstreamConsumer<T> implements StreamDataReceiver<T> {
+		private final DownstreamProducer downstreamProducer = (DownstreamProducer) StreamUnion.this.downstreamProducer;
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return StreamUnion.this.downstreamDataReceiver != null ? StreamUnion.this.downstreamDataReceiver : StreamUnion.this;
+			return downstreamProducer.getDownstreamDataReceiver() != null
+					? downstreamProducer.getDownstreamDataReceiver()
+					: this;
 		}
 
 		@Override
-		public void onEndOfStream() {
+		public void onData(T item) {
+			downstreamProducer.send(item);
+		}
+
+		@Override
+		protected void onUpstreamEndOfStream() {
 			if (allUpstreamsEndOfStream()) {
-				sendEndOfStream();
+				downstreamProducer.sendEndOfStream();
 			}
 		}
+	}
+
+	public final class DownstreamProducer extends AbstractDownstreamProducer {
 
 		@Override
-		public void onError(Exception e) {
-			upstreamProducer.closeWithError(e);
-			closeWithError(e);
+		protected void onDownstreamSuspended() {
+			suspendAllUpstreams();
 		}
-	}
 
-	/**
-	 * This method is called if consumer was changed for changing consumer status and checks if input
-	 * streams are at out.
-	 */
-	@Override
-	protected void onProducerStarted() {
-		for (StreamConsumer<?> input : inputs) {
-			input.getUpstream().bindDataReceiver();
+		@Override
+		protected void onDownstreamResumed() {
+			resumeAllUpstreams();
 		}
-		if (inputs.isEmpty()) {
-			sendEndOfStream();
-		}
+
 	}
 
-	@Override
-	protected void onSuspended() {
-		suspendAllUpstreams();
-	}
-
-	@Override
-	public void onResumed() {
-		resumeAllUpstreams();
-	}
-
-	/**
-	 * Adds the new input stream to this StreamUnion
-	 *
-	 * @return the new stream
-	 */
 	public StreamConsumer<T> newInput() {
-		return addInput(new InputImpl(eventloop));
-	}
-
-	@Override
-	public void onData(T item) {
-		downstreamDataReceiver.onData(item);
+		return addInput(new UpstreamConsumer());
 	}
 }

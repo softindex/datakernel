@@ -22,7 +22,10 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.processor.*;
 import org.openjdk.jmh.annotations.*;
 
@@ -134,19 +137,19 @@ public class StreamBenchmark {
 		eventloop.run();
 	}
 
-	@Benchmark
-	public void testForwarder() {
-		NioEventloop eventloop = new NioEventloop();
-		SequenceGenerator generator = new SequenceGenerator(eventloop, sequenceLength);
-
-		StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
-
-		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
-		generator.streamTo(forwarder);
-		forwarder.streamTo(consumer);
-
-		eventloop.run();
-	}
+//	@Benchmark
+//	public void testForwarder() {
+//		NioEventloop eventloop = new NioEventloop();
+//		SequenceGenerator generator = new SequenceGenerator(eventloop, sequenceLength);
+//
+//		StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
+//
+//		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
+//		generator.streamTo(forwarder);
+//		forwarder.streamTo(consumer);
+//
+//		eventloop.run();
+//	}
 
 	@Benchmark
 	public void simpleTransformer() {
@@ -390,7 +393,7 @@ public class StreamBenchmark {
 		protected void doProduce() {
 
 			while (currentValue < maxValue) {
-				if (status != READY) {
+				if (!isStatusReady()) {
 					return;
 				}
 
@@ -402,14 +405,25 @@ public class StreamBenchmark {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			produce();
+		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
+		protected void onSuspended() {
+
 		}
 
 		@Override
 		protected void onResumed() {
 			resumeProduce();
 		}
+
 	}
 
 	public static class SuspendConsumer extends AbstractStreamConsumer<Integer> implements StreamDataReceiver<Integer> {
@@ -428,22 +442,30 @@ public class StreamBenchmark {
 		}
 
 		@Override
-		public void onEndOfStream() {
-			upstreamProducer.close();
+		protected void onStarted() {
+
+		}
+
+		@Override
+		protected void onEndOfStream() {
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 
 		@Override
 		public void onData(Integer item) {
 			if (receivedValues == suspendPeriod) {
 				receivedValues = 0;
-				suspendUpstream();
+				suspend();
 				this.eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						resumeUpstream();
+						resume();
 					}
 				});
-
 			}
 			receivedValues++;
 		}

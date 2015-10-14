@@ -16,8 +16,6 @@
 
 package io.datakernel.bytebuf;
 
-import com.google.common.annotations.VisibleForTesting;
-
 import java.nio.ByteBuffer;
 
 /**
@@ -159,7 +157,6 @@ public class ByteBuf {
 	/**
 	 * Tells whether or not this byte buffer is recycled.
 	 */
-	@VisibleForTesting
 	boolean isRecycled() {
 		return refs == -1;
 	}
@@ -280,7 +277,6 @@ public class ByteBuf {
 	/**
 	 * Returns this buffer's capacity.
 	 */
-	@VisibleForTesting
 	int capacity() {
 		return array.length;
 	}

@@ -16,8 +16,8 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -37,14 +37,17 @@ public class StreamMergeSorterStorageStub<T> implements StreamMergeSorterStorage
 	}
 
 	@Override
-	public StreamConsumer<T> streamWriter() {
+	public void write(StreamProducer<T> producer, CompletionCallback completionCallback) {
 		List<T> list = new ArrayList<>();
 		storage.put(partition++, list);
-		return StreamConsumers.toList(eventloop, list);
+		StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
+		producer.streamTo(consumer);
+
+		consumer.setCompletionCallback(completionCallback);
 	}
 
 	@Override
-	public StreamProducer<T> streamReader(int partition) {
+	public StreamProducer<T> read(int partition) {
 		return StreamProducers.ofIterable(eventloop, storage.get(partition));
 	}
 

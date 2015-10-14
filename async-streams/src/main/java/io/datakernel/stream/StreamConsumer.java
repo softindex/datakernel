@@ -45,31 +45,19 @@ public interface StreamConsumer<T> {
 	 *
 	 * @param upstreamProducer stream producer for setting
 	 */
-	void setUpstream(StreamProducer<T> upstreamProducer);
-
-	/**
-	 * Returns StreamProducer which sent data to this consumer
-	 *
-	 * @return wired producer for this consumer
-	 */
-	StreamProducer<T> getUpstream();
+	void streamFrom(StreamProducer<T> upstreamProducer);
 
 	/**
 	 * This method is called when consumer has finished with sending information
 	 */
-	void onEndOfStream();
+	void onProducerEndOfStream();
 
 	/**
 	 * This method is called when consumer has error
 	 *
 	 * @param e exception which was found
 	 */
-	void onError(Exception e);
+	void onProducerError(Exception e);
 
-	/**
-	 * Adds new CompletionCallback which will be called when consumer closed or closed with error
-	 *
-	 * @param completionCallback new instance of CompletionCallback
-	 */
-	void addCompletionCallback(CompletionCallback completionCallback);
+	StreamStatus getConsumerStatus();
 }

@@ -25,18 +25,17 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.guice.workers.*;
 import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.service.NioEventloopRunner;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.http.HttpServerTest.readAndAssert;
@@ -129,12 +128,15 @@ public class HelloWorldGuiceTest {
 	}
 
 	@Test
-	public void test() throws ExecutionException, InterruptedException, IOException {
+	public void test() throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
-			primaryNioEventloopRunner.startFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			primaryNioEventloopRunner.startFuture(callback);
+			callback.await();
+
 			socket0.connect(new InetSocketAddress(PORT));
 			socket1.connect(new InetSocketAddress(PORT));
 
@@ -152,7 +154,9 @@ public class HelloWorldGuiceTest {
 				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 29\r\n\r\nHello world: worker server #1");
 			}
 		} finally {
-			primaryNioEventloopRunner.stopFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			primaryNioEventloopRunner.stopFuture(callback);
+			callback.await();
 			Closeables.close(socket0, true);
 			Closeables.close(socket1, true);
 		}
@@ -160,16 +164,21 @@ public class HelloWorldGuiceTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	public static void main(String[] args) throws ExecutionException, InterruptedException, IOException {
+	public static void main(String[] args) throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
 		try {
-			primaryNioEventloopRunner.startFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			primaryNioEventloopRunner.startFuture(callback);
+			callback.await();
+
 			System.out.println("Server started, press enter to stop it.");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			primaryNioEventloopRunner.stopFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			primaryNioEventloopRunner.stopFuture(callback);
+			callback.await();
 		}
 	}
 
