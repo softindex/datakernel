@@ -76,6 +76,7 @@ public class SimpleFsClient implements SimpleFs {
 								logger.info("Uploading file {}", fileName);
 								StreamByteChunker streamByteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 								producer.streamTo(streamByteChunker);
+
 								messaging.write(streamByteChunker, new CompletionCallback() {
 									@Override
 									public void onComplete() {
@@ -83,7 +84,19 @@ public class SimpleFsClient implements SimpleFs {
 									}
 
 									@Override
-									public void onException(Exception e) {
+									public void onException(final Exception e) {
+										CompletionCallback transit = new CompletionCallback() {
+											@Override
+											public void onComplete() {
+												callback.onException(e);
+											}
+
+											@Override
+											public void onException(Exception e1) {
+												callback.onException(e);
+											}
+										};
+										commit(fileName, transit, false);
 										logger.error("Exception while sending file", e);
 									}
 								});
@@ -95,7 +108,7 @@ public class SimpleFsClient implements SimpleFs {
 							public void onMessage(SimpleFsResponseAcknowledge item, Messaging<SimpleFsCommand> messaging) {
 								logger.info("Received acknowledgement for {}", fileName);
 								messaging.shutdown();
-								commit(fileName, callback);
+								commit(fileName, callback, true);
 							}
 						})
 						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
@@ -252,7 +265,7 @@ public class SimpleFsClient implements SimpleFs {
 				new StreamGsonSerializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 256 * 1024, 256 * (1 << 20), 0));
 	}
 
-	private void commit(final String fileName, final CompletionCallback callback) {
+	private void commit(final String fileName, final CompletionCallback callback, final boolean isOk) {
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -260,7 +273,7 @@ public class SimpleFsClient implements SimpleFs {
 						.addStarter(new MessagingStarter<SimpleFsCommand>() {
 							@Override
 							public void onStart(Messaging<SimpleFsCommand> messaging) {
-								SimpleFsCommandCommit commandCommit = new SimpleFsCommandCommit(fileName);
+								SimpleFsCommandCommit commandCommit = new SimpleFsCommandCommit(fileName, isOk);
 								messaging.sendMessage(commandCommit);
 							}
 						})

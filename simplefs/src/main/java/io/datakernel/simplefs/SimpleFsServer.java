@@ -165,7 +165,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				diskWrite.setFlushCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						// TODO(vsavchuk) Why is onComplete being called instead of onException in testUploadWithException()
 						logger.trace("Uploaded file {}", fileName);
 						messaging.sendMessage(new SimpleFsResponseAcknowledge());
 						messaging.shutdown();
@@ -188,7 +187,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 			@Override
 			public void onMessage(SimpleFsCommandCommit item, Messaging<SimpleFsResponse> messaging) {
 				final String fileName = getFileName(item.fileName);
-				logger.info("Server received command to commit file {}", fileName);
+				logger.info("Server received command to " + (item.isOk ? "commit" : "cancel upload") + "file {}", fileName);
 
 				if (serverStatus != RUNNING && pendingOperationsCounter > 0) {
 					refuse(messaging, "Server is being shut down");
@@ -197,18 +196,29 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 
 				final Path destination = fileStorage.resolve(fileName);
 				final Path inProgress = tmpStorage.resolve(fileName + IN_PROGRESS_EXTENSION);
-				try {
-					Files.move(inProgress, destination);
-					messaging.sendMessage(new SimpleFsResponseOperationOk());
-					logger.info("File {} commited", fileName);
-				} catch (IOException e) {
+
+				if (item.isOk) {
+					try {
+						Files.move(inProgress, destination);
+						messaging.sendMessage(new SimpleFsResponseOperationOk());
+						logger.info("File {} commited", fileName);
+					} catch (IOException e) {
+						try {
+							Files.delete(inProgress);
+							logger.trace("Temporary file {} removed (impossible to commit)", inProgress.toAbsolutePath());
+						} catch (IOException e1) {
+							logger.trace("Can't remove temporary file {} (impossible to commit) ", inProgress.toAbsolutePath());
+						}
+						messaging.sendMessage(new SimpleFsResponseError(e.getMessage()));
+					}
+				} else {
 					try {
 						Files.delete(inProgress);
-						logger.trace("Temporary file {} removed(impossible to commit)", inProgress.toAbsolutePath());
-					} catch (IOException e1) {
+						messaging.sendMessage(new SimpleFsResponseOperationOk());
+						logger.trace("Temporary file {} removed (Exception on client side)", inProgress.toAbsolutePath());
+					} catch (IOException e) {
 						logger.trace("Can't remove temporary file {} (impossible to commit) ", inProgress.toAbsolutePath());
 					}
-					messaging.sendMessage(new SimpleFsResponseError(e.getMessage()));
 				}
 				operationFinished();
 				messaging.shutdown();
