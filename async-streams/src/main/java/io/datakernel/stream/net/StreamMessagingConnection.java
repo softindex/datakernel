@@ -54,7 +54,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	private StreamConsumer<ByteBuf> socketWriter;
 
 	private MessagingEndOfStream messagingEndOfStream;
-	private MessagingException messagingException;
+	private MessagingException messagingWriteException;
+	private MessagingException messagingReadException;
 
 	private CompletionCallback completionCallback;
 
@@ -91,8 +92,13 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		return this;
 	}
 
-	public StreamMessagingConnection<I, O> addException(MessagingException messagingException) {
-		this.messagingException = messagingException;
+	public StreamMessagingConnection<I, O> addWriteException(MessagingException messagingWriteException) {
+		this.messagingWriteException = messagingWriteException;
+		return this;
+	}
+
+	public StreamMessagingConnection<I, O> addReadException(MessagingException messagingReadException) {
+		this.messagingReadException = messagingReadException;
 		return this;
 	}
 
@@ -149,8 +155,19 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	@Override
 	protected void onReadException(Exception e) {
 		super.onReadException(e);
-		if (messagingException != null) {
-			messagingException.onException(e);
+		if (messagingReadException != null) {
+			messagingReadException.onException(e);
+		}
+	}
+
+	@Override
+	protected void onWriteException(Exception e) {
+		super.onWriteException(e);
+		if (completionCallback != null) {
+			completionCallback.onException(e);
+		}
+		if (messagingWriteException != null) {
+			messagingWriteException.onException(e);
 		}
 	}
 
@@ -205,14 +222,6 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		super.shutdownOutput();
 		if (completionCallback != null && socketWriter.getConsumerStatus() == StreamStatus.END_OF_STREAM) {
 			completionCallback.onComplete();
-		}
-	}
-
-	@Override
-	protected void onWriteException(Exception e) {
-		super.onWriteException(e);
-		if (completionCallback != null) {
-			completionCallback.onException(e);
 		}
 	}
 

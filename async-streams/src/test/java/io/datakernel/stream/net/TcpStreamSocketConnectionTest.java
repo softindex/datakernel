@@ -111,7 +111,7 @@ public final class TcpStreamSocketConnectionTest {
 	@Test
 	public void testLoopback() throws Exception {
 		final List<Integer> source = Lists.newArrayList();
-		for (int i = 0; i < 1; i++) {
+		for (int i = 0; i < 100; i++) {
 			source.add(i);
 		}
 
