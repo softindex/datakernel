@@ -16,7 +16,7 @@
 
 package io.datakernel.simplefs;
 
-public final class SimpleFsCommandDownload extends SimpleFsCommand {
+final class SimpleFsCommandDownload extends SimpleFsCommand {
 	public final String fileName;
 
 	public SimpleFsCommandDownload(String fileName) {

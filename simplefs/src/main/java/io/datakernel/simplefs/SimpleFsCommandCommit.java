@@ -16,7 +16,7 @@
 
 package io.datakernel.simplefs;
 
-public class SimpleFsCommandCommit extends SimpleFsCommand {
+final class SimpleFsCommandCommit extends SimpleFsCommand {
 	public final String fileName;
 	public final boolean isOk;
 

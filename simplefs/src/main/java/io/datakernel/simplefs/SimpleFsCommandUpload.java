@@ -16,7 +16,7 @@
 
 package io.datakernel.simplefs;
 
-public final class SimpleFsCommandUpload extends SimpleFsCommand {
+final class SimpleFsCommandUpload extends SimpleFsCommand {
 	public final String fileName;
 
 	public SimpleFsCommandUpload(String fileName) {
