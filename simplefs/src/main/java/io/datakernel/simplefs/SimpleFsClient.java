@@ -122,12 +122,6 @@ public class SimpleFsClient implements SimpleFs {
 							public void onEndOfStream() {
 								logger.info("onReadEndOfStream");
 							}
-						})
-						.addException(new MessagingException() {
-							@Override
-							public void onException(Exception e) {
-								logger.error("onReadException", e);
-							}
 						});
 				connection.register();
 			}
@@ -176,12 +170,6 @@ public class SimpleFsClient implements SimpleFs {
 							@Override
 							public void onEndOfStream() {
 								logger.info("onReadEndOfStream");
-							}
-						})
-						.addException(new MessagingException() {
-							@Override
-							public void onException(Exception e) {
-								logger.error("onReadException", e);
 							}
 						});
 				connection.register();
