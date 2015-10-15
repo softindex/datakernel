@@ -107,7 +107,7 @@ public final class DatagraphClient {
 						assert serialization.checkGson(commandDownload, DatagraphCommandDownload.class);
 						messaging.sendMessage(commandDownload);
 						messaging.shutdownWriter();
-						messaging.binarySocketReader().streamTo(streamDeserializer);
+						messaging.read().streamTo(streamDeserializer);
 					}
 				});
 

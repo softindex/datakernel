@@ -158,7 +158,7 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				messaging.sendMessage(new SimpleFsResponseOperationOk());
 
 				logger.trace("Starting uploading file {}", fileName);
-				StreamProducer<ByteBuf> producer = messaging.binarySocketReader();
+				StreamProducer<ByteBuf> producer = messaging.read();
 				StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, inProgress, true);
 				producer.streamTo(diskWrite);
 

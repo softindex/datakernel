@@ -136,7 +136,7 @@ public class SimpleFsClient implements SimpleFs {
 							@Override
 							public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
 								logger.info("Downloading file {}", fileName);
-								StreamProducer<ByteBuf> producer = messaging.binarySocketReader();
+								StreamProducer<ByteBuf> producer = messaging.read();
 								producer.streamTo(consumer);
 								messaging.shutdownWriter();
 							}

@@ -187,7 +187,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	}
 
 	@Override
-	public StreamProducer<ByteBuf> binarySocketReader() {
+	public StreamProducer<ByteBuf> read() {
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		socketReader.streamTo(forwarder);
 		currentConsumer = forwarder;

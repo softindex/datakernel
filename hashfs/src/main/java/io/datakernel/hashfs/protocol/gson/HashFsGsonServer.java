@@ -74,7 +74,7 @@ public class HashFsGsonServer extends AbstractNioServer<HashFsGsonServer> {
 					public void onMessage(final HashFsCommandUpload item, final Messaging<HashFsResponse> messaging) {
 						if (fileServer.canUpload(item.filename)) {
 							messaging.sendMessage(new HashFsResponseOperationOk());
-							StreamProducer<ByteBuf> producer = messaging.binarySocketReader();
+							StreamProducer<ByteBuf> producer = messaging.read();
 							fileServer.onUpload(item.filename, producer, new CompletionCallback() {
 								@Override
 								public void onComplete() {
