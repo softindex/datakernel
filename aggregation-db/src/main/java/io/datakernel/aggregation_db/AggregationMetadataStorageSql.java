@@ -238,12 +238,15 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 	@Override
 	public void loadChunks(final Aggregation aggregation, final int lastRevisionId, final int maxRevisionId, ResultCallback<Integer> callback) {
-		callConcurrently(eventloop, executor, false, new Callable<Integer>() {
-			@Override
-			public Integer call() {
-				return loadChunks(DSL.using(jooqConfiguration), aggregation, lastRevisionId, maxRevisionId);
-			}
-		}, callback);
+//		callConcurrently(eventloop, executor, false, new Callable<Integer>() {
+//			@Override
+//			public Integer call() {
+//				return loadChunks(DSL.using(jooqConfiguration), aggregation, lastRevisionId, maxRevisionId);
+//			}
+//		}, callback);
+//
+		int result = loadChunks(DSL.using(jooqConfiguration), aggregation, lastRevisionId, maxRevisionId);
+		callback.onResult(result);
 	}
 
 	private int loadChunks(DSLContext jooq, Aggregation aggregation, int lastRevisionId, int maxRevisionId) {
