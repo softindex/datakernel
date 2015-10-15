@@ -16,20 +16,6 @@
 
 package io.datakernel.stream.net;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamProducer;
-
-public interface Messaging<O> {
-	void sendMessage(O outputItem);
-
-	void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback);
-
-	StreamProducer<ByteBuf> read();
-
-	void shutdown();
-
-	void shutdownReader();
-
-	void shutdownWriter();
+public interface MessagingException {
+	void onException(Exception e);
 }

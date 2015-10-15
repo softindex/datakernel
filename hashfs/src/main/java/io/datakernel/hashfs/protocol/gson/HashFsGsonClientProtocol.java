@@ -242,7 +242,7 @@ public class HashFsGsonClientProtocol implements HashFsClientProtocol {
 									@Override
 									public void onMessage(HashFsResponseOperationOk item, Messaging<HashFsCommand> messaging) {
 										messaging.shutdownWriter();
-										callback.onResult(messaging.binarySocketReader());
+										callback.onResult(messaging.read());
 									}
 								})
 								.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {

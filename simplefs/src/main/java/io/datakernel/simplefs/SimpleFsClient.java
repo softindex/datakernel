@@ -26,10 +26,7 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.net.Messaging;
-import io.datakernel.stream.net.MessagingHandler;
-import io.datakernel.stream.net.MessagingStarter;
-import io.datakernel.stream.net.StreamMessagingConnection;
+import io.datakernel.stream.net.*;
 import io.datakernel.stream.processor.StreamByteChunker;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
@@ -119,6 +116,18 @@ public class SimpleFsClient implements SimpleFs {
 								messaging.shutdown();
 								callback.onException(e);
 							}
+						})
+						.addEndOfStream(new MessagingEndOfStream() {
+							@Override
+							public void onEndOfStream() {
+								logger.info("onReadEndOfStream");
+							}
+						})
+						.addException(new MessagingException() {
+							@Override
+							public void onException(Exception e) {
+								logger.error("onReadException", e);
+							}
 						});
 				connection.register();
 			}
@@ -149,7 +158,7 @@ public class SimpleFsClient implements SimpleFs {
 							@Override
 							public void onMessage(SimpleFsResponseOperationOk item, Messaging<SimpleFsCommand> messaging) {
 								logger.info("Downloading file {}", fileName);
-								StreamProducer<ByteBuf> producer = messaging.binarySocketReader();
+								StreamProducer<ByteBuf> producer = messaging.read();
 								producer.streamTo(consumer);
 								messaging.shutdownWriter();
 							}
@@ -161,6 +170,18 @@ public class SimpleFsClient implements SimpleFs {
 								logger.error("Can't download {}", fileName, e);
 								StreamProducers.<ByteBuf>closingWithError(eventloop, e)
 										.streamTo(consumer);
+							}
+						})
+						.addEndOfStream(new MessagingEndOfStream() {
+							@Override
+							public void onEndOfStream() {
+								logger.info("onReadEndOfStream");
+							}
+						})
+						.addException(new MessagingException() {
+							@Override
+							public void onException(Exception e) {
+								logger.error("onReadException", e);
 							}
 						});
 				connection.register();
