@@ -53,6 +53,9 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	private StreamProducer<ByteBuf> socketReader;
 	private StreamConsumer<ByteBuf> socketWriter;
 
+	private MessagingEndOfStream messagingEndOfStream;
+	private MessagingException messagingException;
+
 	private CompletionCallback completionCallback;
 
 	/**
@@ -80,6 +83,16 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 	public StreamMessagingConnection<I, O> addStarter(MessagingStarter<O> starter) {
 		this.starter = starter;
+		return this;
+	}
+
+	public StreamMessagingConnection<I, O> addEndOfStream(MessagingEndOfStream messagingEndOfStream) {
+		this.messagingEndOfStream = messagingEndOfStream;
+		return this;
+	}
+
+	public StreamMessagingConnection<I, O> addException(MessagingException messagingException) {
+		this.messagingException = messagingException;
 		return this;
 	}
 
@@ -123,6 +136,30 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 			}
 		}
 
+	}
+
+	@Override
+	protected void onReadEndOfStream() {
+		super.onReadEndOfStream();
+		if (messagingEndOfStream != null) {
+			messagingEndOfStream.onEndOfStream();
+		}
+	}
+
+	@Override
+	protected void onReadException(Exception e) {
+		super.onReadException(e);
+		if (messagingException != null) {
+			messagingException.onException(e);
+		}
+	}
+
+	@Override
+	protected void onInternalException(Exception e) {
+		super.onInternalException(e);
+		if (completionCallback != null) {
+			completionCallback.onException(e);
+		}
 	}
 
 	private class MessageProducer extends AbstractStreamProducer<O> {

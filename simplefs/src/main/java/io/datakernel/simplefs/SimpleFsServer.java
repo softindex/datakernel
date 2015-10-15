@@ -165,7 +165,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				diskWrite.setFlushCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						// TODO(vsavchuk) Why is onComplete being called instead of onException in testUploadWithException()
 						logger.trace("Uploaded file {}", fileName);
 						messaging.sendMessage(new SimpleFsResponseAcknowledge());
 						messaging.shutdown();

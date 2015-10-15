@@ -424,7 +424,6 @@ public class SimpleFsServerTest {
 	@Ignore
 	@Test
 	public void testUploadWithException() throws IOException {
-		// TODO (vsavchuk) see SimpleFsServer
 		String resultFile = "non_existing_file";
 
 		ExecutorService executor = Executors.newCachedThreadPool();
@@ -456,8 +455,6 @@ public class SimpleFsServerTest {
 	@Ignore
 	@Test
 	public void testBadUpload() throws IOException {
-		// TODO (vsavchuk) Requested
-
 		String resultFile = "non_existing_file";
 
 		ExecutorService executor = Executors.newCachedThreadPool();
