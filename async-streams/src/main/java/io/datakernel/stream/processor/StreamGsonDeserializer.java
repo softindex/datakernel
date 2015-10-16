@@ -108,8 +108,9 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 					downstreamDataReceiver.onData(item);
 				}
 
-				if (getProducerStatus().isClosed())
+				if (getProducerStatus().isClosed()) {
 					return;
+				}
 
 				if (!srcBuf.hasRemaining()) {
 					byteBufs.poll();
@@ -141,6 +142,7 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void recycleBufs() {
+			bufferReader.set(null, 0, 0);
 			if (buf != null) {
 				buf.recycle();
 				buf = null;
@@ -149,6 +151,11 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 				byteBuf.recycle();
 			}
 			byteBufs.clear();
+		}
+
+		@Override
+		protected void doCleanup() {
+			recycleBufs();
 		}
 	}
 

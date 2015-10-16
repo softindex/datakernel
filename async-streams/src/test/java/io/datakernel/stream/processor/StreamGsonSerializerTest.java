@@ -20,13 +20,16 @@ import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -133,5 +136,35 @@ public class StreamGsonSerializerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	// TODO (vsavchuk) test with error
+	@Test
+	public void testProducerWithError() throws Exception {
+		NioEventloop eventloop = new NioEventloop();
+
+		List<TestItem> list = new ArrayList<>();
+
+		StreamGsonSerializer<TestItem> serializerStream = new StreamGsonSerializer<>(eventloop, new Gson(), TestItem.class, 1, 50, 0);
+
+		StreamProducer<TestItem> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, new TestItem(1, "item1")),
+				StreamProducers.ofValue(eventloop, new TestItem(1, "item2")),
+				StreamProducers.<TestItem>closingWithError(eventloop, new Exception("Test Exception"))
+		);
+		producer.streamTo(serializerStream);
+
+		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
+		serializerStream.streamTo(deserializerStream);
+
+		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop, list);
+		deserializerStream.streamTo(consumerToList);
+
+		eventloop.run();
+
+		assertEquals(CLOSED_WITH_ERROR, serializerStream.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, serializerStream.getProducerStatus());
+
+		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getProducerStatus());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
 }

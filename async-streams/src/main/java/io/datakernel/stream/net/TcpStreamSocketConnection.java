@@ -257,7 +257,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		try {
 			shutdownOutput();
 		} catch (IOException e1) {
-			e1.printStackTrace();
+			e1.printStackTrace(); // TODO (vsavchuk) printStackTrace delete
 		}
 		closeIfDone();
 	}

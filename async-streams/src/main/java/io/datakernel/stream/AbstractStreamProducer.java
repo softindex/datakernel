@@ -79,7 +79,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 		bindDataReceiver();
 
-		if (firstTime) {
+		if (firstTime && bufferedList.size() != 0) {
+			logger.info("Send buffered item");
 			for (T item : bufferedList) {
 				downstreamConsumer.getDataReceiver().onData(item);
 			}
@@ -274,6 +275,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 		@Override
 		public void onData(T item) {
+			logger.info("Buffered item {}", item);
 			self.onConsumerSuspended();
 			list.add(item);
 		}

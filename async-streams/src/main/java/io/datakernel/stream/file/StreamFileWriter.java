@@ -123,10 +123,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		final ByteBuf buf = queue.poll();
 		final int len = buf.remaining();
 
-		if (buf.position() == buf.limit()) {
-			logger.warn("Flushing empty buf {}");
-		}
-
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {

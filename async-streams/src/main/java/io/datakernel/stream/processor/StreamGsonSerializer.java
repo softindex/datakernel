@@ -206,6 +206,10 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 				buf.recycle();
 				buf = null;
 			}
+			for (ByteBuf buf : downstreamProducer.bufferedList) {
+				buf.recycle();
+			}
+			downstreamProducer.bufferedList.clear();
 		}
 
 	}
