@@ -212,6 +212,7 @@ public final class ByteBufPool {
 	 * Removes all items from this pool
 	 */
 	public static void clear() {
+		System.out.println("In clear");
 		for (int i = 0; i < ByteBufPool.NUMBER_SLABS; i++) {
 			slabs[i].clear();
 			created[i] = 0;

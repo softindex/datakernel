@@ -45,6 +45,11 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		}
 
 		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
 		public StreamDataReceiver<RpcMessage> getDataReceiver() {
 			return this;
 		}
@@ -55,13 +60,24 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		}
 
 		@Override
-		public void onProducerEndOfStream() {
-			sender.sendEndOfStream();
+		protected void onEndOfStream() {
+			sender.close();
 		}
 
 		@Override
-		public void onProducerError(Exception e) {
-			sender.onConsumerError(e);
+		protected void onError(Exception e) {
+			sender.closeWithError(e);
+		}
+
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+
+		public void close() {
+//			if (connection != null) {
+//				connection.close();
+//			}
+
 		}
 	}
 
@@ -72,29 +88,57 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		}
 
 		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
 		public void onSuspended() {
 		}
 
 		@Override
 		public void onResumed() {
 		}
+//
+//		@Override
+//		public void onClosed() {
+//			receiver.closeUpstream();
+//		}
 
-		@Override
-		public void onClosed() {
-			receiver.closeUpstream();
-		}
-
-		@Override
-		public void onClosedWithError(Exception e) {
-			receiver.closeUpstreamWithError(e);
-		}
+//		@Override
+//		public void onClosedWithError(Exception e) {
+//			receiver.closeUpstreamWithError(e);
+//		}
 
 		public boolean isOverloaded() {
-			return status != READY;
+			return getProducerStatus() != StreamStatus.READY;
 		}
 
 		public void sendMessage(RpcMessage message) throws Exception {
 			downstreamDataReceiver.onData(message);
+		}
+
+		public void close() {
+			sendEndOfStream();
+		}
+
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			receiver.closeWithError(e);
+		}
+
+		@Override
+		protected void doCleanup() {
+			receiver.close();
 		}
 	}
 
@@ -175,8 +219,11 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 	@Override
 	public void close() {
-		sender.sendEndOfStream();
-		receiver.closeUpstream();
+//		sender.sendEndOfStream();
+//		receiver.closeUpstream();
+//		sender.close();
+//		receiver.close();
+//		connection.close();
 	}
 
 	// JMX
