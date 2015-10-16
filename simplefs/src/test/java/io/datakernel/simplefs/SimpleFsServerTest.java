@@ -542,7 +542,6 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testUploadWithException() throws IOException {
 		String resultFile = "non_existing_file";
@@ -573,7 +572,6 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testBadUpload() throws IOException {
 		String resultFile = "non_existing_file";

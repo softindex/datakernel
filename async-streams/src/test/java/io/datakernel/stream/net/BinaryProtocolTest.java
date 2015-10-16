@@ -188,8 +188,7 @@ public class BinaryProtocolTest {
 		eventloop.run();
 		assertEquals(source, consumerToList.getList());
 
-		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -269,8 +268,7 @@ public class BinaryProtocolTest {
 
 		assertEquals(source, consumerToList.getList());
 
-		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -373,8 +371,7 @@ public class BinaryProtocolTest {
 		assertEquals(source, consumerToList.getList());
 		assertTrue(ack.get());
 
-		// FIXME
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -453,8 +450,7 @@ public class BinaryProtocolTest {
 
 		assertEquals(source, consumerToList.getList());
 
-		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

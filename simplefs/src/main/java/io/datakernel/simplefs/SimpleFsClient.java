@@ -93,6 +93,7 @@ public final class SimpleFsClient implements SimpleFs {
 												callback.onException(e);
 											}
 										};
+										messaging.shutdown(); // TODO shutdown?
 										commit(fileName, transit, false);
 										logger.error("Exception while sending file", e);
 									}
