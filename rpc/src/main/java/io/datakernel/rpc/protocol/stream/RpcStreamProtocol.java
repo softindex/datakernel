@@ -61,7 +61,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onEndOfStream() {
-			sender.close();
+//			sender.close();
 		}
 
 		@Override
@@ -222,8 +222,9 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 //		sender.sendEndOfStream();
 //		receiver.closeUpstream();
 //		sender.close();
+		deserializer.onProducerEndOfStream();
 //		receiver.close();
-//		connection.close();
+		connection.close();
 	}
 
 	// JMX

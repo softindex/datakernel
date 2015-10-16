@@ -208,7 +208,7 @@ public class RpcNioHelloWorldTest {
 
 	@Test
 	public void testAsyncCall() throws Exception {
-		int count = 100; // amount requests
+		int count = 1; // amount requests
 		final AtomicInteger success = new AtomicInteger();
 		try (HelloClient client = new HelloClient(eventloop, protocolFactory)) {
 			final CountDownLatch latch = new CountDownLatch(count);
