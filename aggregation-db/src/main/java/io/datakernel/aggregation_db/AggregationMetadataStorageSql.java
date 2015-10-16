@@ -250,11 +250,13 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	private int loadChunks(DSLContext jooq, Aggregation aggregation, int lastRevisionId, int maxRevisionId) {
+		String indexId = aggregation.getId();
 		Record1<Integer> maxRevisionRecord = jooq
-				.select(DSL.max(AggregationDbRevision.AGGREGATION_DB_REVISION.ID))
-				.from(AggregationDbRevision.AGGREGATION_DB_REVISION)
-				.where(AggregationDbRevision.AGGREGATION_DB_REVISION.ID.gt(lastRevisionId)
-						.and(AggregationDbRevision.AGGREGATION_DB_REVISION.ID.le(maxRevisionId)))
+				.select(DSL.max(AGGREGATION_DB_CHUNK.REVISION_ID))
+				.from(AGGREGATION_DB_CHUNK)
+				.where(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
+				.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(maxRevisionId))
+				.and(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(indexId))
 				.fetchOne();
 		if (maxRevisionRecord.value1() == null)
 			return lastRevisionId;
@@ -262,7 +264,6 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 		Multimap<Integer, Long> sourceChunkIdsMultimap = LinkedListMultimap.create();
 		Map<Integer, long[]> sourceChunkIdsMap = new HashMap<>();
-		String indexId = aggregation.getId();
 
 		if (lastRevisionId != 0) {
 			Result<Record4<Long, Integer, Timestamp, Timestamp>> consolidatedChunksRecords = jooq
@@ -321,8 +322,10 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 		for (Long chunkId : sourceChunkIdsMultimap.values()) {
 			AggregationChunk chunk = aggregation.getChunks().get(chunkId);
-			aggregation.removeFromIndex(chunk);
-			logger.info("Removed chunk {} from index", chunk);
+			if (chunk != null) {
+				aggregation.removeFromIndex(chunk);
+				logger.info("Removed chunk {} from index", chunk);
+			}
 		}
 
 		return newRevisionId;

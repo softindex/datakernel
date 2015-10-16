@@ -275,18 +275,18 @@ public class AggregationMetadata {
 
 	public List<AggregationChunk> findChunksToConsolidate(final List<Long> consolidationCandidateChunksIds) {
 		int maxOverlaps = 2;
-		Set<AggregationChunk> set = Collections.emptySet();
+		List<AggregationChunk> result = new ArrayList<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
 		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
 			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
-			int overlaps = segment.getSet().size();
+			int overlaps = segment.getSet().size() + segment.getClosingSet().size();
 			if (overlaps >= maxOverlaps) {
 				maxOverlaps = overlaps;
-				set = segment.getSet();
+				result.clear();
+				result.addAll(segment.getSet());
+				result.addAll(segment.getClosingSet());
 			}
 		}
-		List<AggregationChunk> result = new ArrayList<>();
-		result.addAll(set);
 		return newArrayList(filter(result, new Predicate<AggregationChunk>() {
 			@Override
 			public boolean apply(AggregationChunk chunk) {
