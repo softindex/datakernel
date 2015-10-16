@@ -37,7 +37,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 
-public class SimpleFsClient implements SimpleFs {
+public final class SimpleFsClient implements SimpleFs {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsClient.class);
 
 	private final InetSocketAddress address;
