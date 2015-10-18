@@ -61,13 +61,16 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onEndOfStream() {
-			RpcStreamProtocol.this.close();
+//			RpcStreamProtocol.this.close();
+			sender.close();
+//			deserializer.onProducerEndOfStream();
+			connection.close();
 		}
 
 		@Override
 		protected void onError(Exception e) {
-//			sender.closeWithError(e);
-			closeProtocolWithError(e);
+			sender.closeWithError(e);
+//			closeProtocolWithError(e);
 		}
 
 		public void closeWithError(Exception e) {
@@ -118,8 +121,8 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onError(Exception e) {
-//			receiver.closeWithError(e);
-			closeProtocolWithError(e);
+			receiver.closeWithError(e);
+//			closeProtocolWithError(e);
 		}
 	}
 
@@ -200,17 +203,18 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 	@Override
 	public void close() {
-		deserializer.onProducerEndOfStream();
 		sender.close();
+		deserializer.onProducerEndOfStream();
 		connection.close();
+//		sender.close();
 	}
 
-	private void closeProtocolWithError(Exception e) {
-		sender.closeWithError(e);
-		deserializer.onProducerError(e);
-		receiver.closeWithError(e);
-		connection.close();
-	}
+//	private void closeProtocolWithError(Exception e) {
+//		sender.closeWithError(e);
+//		deserializer.onProducerError(e);
+//		receiver.closeWithError(e);
+//		connection.close();
+//	}
 
 	// JMX
 	public void startMonitoring() {
