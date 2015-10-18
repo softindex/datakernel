@@ -61,24 +61,19 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onEndOfStream() {
-//			sender.close();
+			RpcStreamProtocol.this.close();
 		}
 
 		@Override
 		protected void onError(Exception e) {
-			sender.closeWithError(e);
+//			sender.closeWithError(e);
+			closeProtocolWithError(e);
 		}
 
 		public void closeWithError(Exception e) {
 			super.closeWithError(e);
 		}
 
-		public void close() {
-//			if (connection != null) {
-//				connection.close();
-//			}
-
-		}
 	}
 
 	private class Sender extends AbstractStreamProducer<RpcMessage> {
@@ -104,16 +99,6 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		@Override
 		public void onResumed() {
 		}
-//
-//		@Override
-//		public void onClosed() {
-//			receiver.closeUpstream();
-//		}
-
-//		@Override
-//		public void onClosedWithError(Exception e) {
-//			receiver.closeUpstreamWithError(e);
-//		}
 
 		public boolean isOverloaded() {
 			return getProducerStatus() != StreamStatus.READY;
@@ -133,12 +118,8 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onError(Exception e) {
-			receiver.closeWithError(e);
-		}
-
-		@Override
-		protected void doCleanup() {
-			receiver.close();
+//			receiver.closeWithError(e);
+			closeProtocolWithError(e);
 		}
 	}
 
@@ -219,11 +200,15 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 	@Override
 	public void close() {
-//		sender.sendEndOfStream();
-//		receiver.closeUpstream();
-//		sender.close();
 		deserializer.onProducerEndOfStream();
-//		receiver.close();
+		sender.close();
+		connection.close();
+	}
+
+	private void closeProtocolWithError(Exception e) {
+		sender.closeWithError(e);
+		deserializer.onProducerError(e);
+		receiver.closeWithError(e);
 		connection.close();
 	}
 
