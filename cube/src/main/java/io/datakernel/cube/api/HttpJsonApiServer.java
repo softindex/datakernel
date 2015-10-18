@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -203,7 +202,7 @@ public final class HttpJsonApiServer {
 	private static <T> StreamConsumers.ToList<T> queryCube(Class<T> resultClass, AggregationQuery query, Cube cube,
 	                                                       NioEventloop eventloop) {
 		StreamConsumers.ToList<T> consumerStream = StreamConsumers.toList(eventloop);
-		cube.query(0, resultClass, query).streamTo(consumerStream);
+		cube.query(resultClass, query).streamTo(consumerStream);
 		return consumerStream;
 	}
 

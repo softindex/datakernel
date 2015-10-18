@@ -20,6 +20,6 @@ import com.google.common.collect.Multimap;
 import io.datakernel.async.ExceptionCallback;
 
 public interface CommitCallback extends ExceptionCallback {
-
+	// TODO (dtkachenko): refactor into ResultCallback
 	void onCommit(Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks);
 }

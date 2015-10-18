@@ -25,6 +25,7 @@ import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
@@ -50,6 +51,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
@@ -130,7 +132,7 @@ public class CubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResult.class,
+		cube.query(DataItemResult.class,
 				new AggregationQuery()
 						.keys("key1", "key2")
 						.fields("metric1", "metric2", "metric3")
@@ -234,7 +236,7 @@ public class CubeTest {
 				.fields("metric1", "metric2", "metric3")
 				.eq("key1", 1)
 				.eq("key2", 3);
-		StreamProducer<DataItemResult> queryResultProducer = cube.query(0, DataItemResult.class, query);
+		StreamProducer<DataItemResult> queryResultProducer = cube.query(DataItemResult.class, query);
 		queryResultProducer.streamTo(consumerToList);
 		queryResultProducer.addCompletionCallback(new CompletionCallback() {
 			@Override
@@ -275,7 +277,7 @@ public class CubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResult.class,
+		cube.query(DataItemResult.class,
 				new AggregationQuery()
 						.keys("key1", "key2")
 						.fields("metric1", "metric2", "metric3")
@@ -310,7 +312,7 @@ public class CubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResult.class,
+		cube.query(DataItemResult.class,
 				new AggregationQuery()
 						.keys("key1", "key2")
 						.fields("metric1", "metric2", "metric3")
@@ -365,7 +367,7 @@ public class CubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResult.class,
+		cube.query(DataItemResult.class,
 				new AggregationQuery()
 						.keys("key1", "key2")
 						.fields("metric1", "metric2", "metric3")
@@ -415,7 +417,7 @@ public class CubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult3> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResult3.class,
+		cube.query(DataItemResult3.class,
 				new AggregationQuery()
 						.keys("key1", "key2", "key3", "key4", "key5")
 						.fields("metric1", "metric2", "metric3")
@@ -452,7 +454,7 @@ public class CubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult2> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResult2.class,
+		cube.query(DataItemResult2.class,
 				new AggregationQuery()
 						.keys("key2")
 						.fields("metric1", "metric2", "metric3"))
@@ -491,7 +493,7 @@ public class CubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResult.class,
+		cube.query(DataItemResult.class,
 				new AggregationQuery()
 						.keys("key1", "key2")
 						.fields("metric1", "metric2", "metric3")
@@ -525,16 +527,16 @@ public class CubeTest {
 				.streamTo(cube.consumer(DataItem2.class, DataItem2.DIMENSIONS, DataItem2.METRICS, new MyCommitCallback(cube)));
 		eventloop.run();
 
-		cube.consolidateGreedily(new MyConsolidateCallback(cube));
+		cube.consolidate(AsyncCallbacks.ignoreResultCallback());// TODO (dtkachenko) new MyConsolidateCallback(cube));
 
 		eventloop.run();
 
-		cube.consolidateGreedily(new MyConsolidateCallback(cube));
+		cube.consolidate(AsyncCallbacks.ignoreResultCallback()); // cube.consolidate(new MyConsolidateCallback(cube));
 
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResult.class,
+		cube.query(DataItemResult.class,
 				new AggregationQuery()
 						.keys("key1", "key2")
 						.fields("metric1", "metric2", "metric3")
@@ -564,7 +566,7 @@ public class CubeTest {
 			for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
 				AggregationMetadata aggregation = entry.getKey();
 				AggregationChunk.NewChunk newChunk = entry.getValue();
-				aggregation.addToIndex(AggregationChunk.createCommitChunk(cube.getLastRevisionId(), newChunk));
+				aggregation.addToIndex(createChunk(cube.getLastRevisionId(), newChunk));
 			}
 		}
 
@@ -574,6 +576,7 @@ public class CubeTest {
 		}
 	}
 
+/*
 	private static class MyConsolidateCallback implements ConsolidateCallback {
 		private final Cube cube;
 
@@ -602,4 +605,5 @@ public class CubeTest {
 			logger.error("Exception thrown while performing cube {} consolidation.", cube);
 		}
 	}
+*/
 }

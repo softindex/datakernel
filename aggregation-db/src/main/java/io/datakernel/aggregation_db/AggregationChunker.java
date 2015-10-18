@@ -50,7 +50,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 
 	public AggregationChunker(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
 	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-	                          ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback, int chunkSize) {
+	                          int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		super(eventloop);
 		this.aggregationId = aggregationId;
 		this.keys = keys;
@@ -93,7 +93,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		if (count != 0) {
 			AggregationChunk.NewChunk chunk = new AggregationChunk.NewChunk(
 					this.newId,
-					aggregationId, fields,
+					fields,
 					PrimaryKey.ofObject(first, keys),
 					PrimaryKey.ofObject(last, keys),
 					count);
@@ -102,7 +102,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	}
 
 	public void startNewChunk() {
-		newId = metadataStorage.newChunkId();
+		newId = metadataStorage.newChunkId(); // TODO (dtkachenko): refactor as async
 		first = null;
 		last = null;
 		count = 0;

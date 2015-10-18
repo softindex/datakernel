@@ -76,7 +76,7 @@ public class StringDimensionTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResultString.class,
+		cube.query(DataItemResultString.class,
 				new AggregationQuery()
 						.keys("key1", "key2")
 						.fields("metric1", "metric2", "metric3")
