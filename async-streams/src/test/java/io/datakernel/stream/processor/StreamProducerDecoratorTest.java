@@ -43,7 +43,7 @@ public class StreamProducerDecoratorTest {
 			@Override
 			public void onData(Integer item) {
 				if (item == 3) {
-					upstreamProducer.onConsumerError(new Exception());
+					upstreamProducer.onConsumerError(new Exception("Test Exception"));
 					return;
 				}
 				list.add(item);

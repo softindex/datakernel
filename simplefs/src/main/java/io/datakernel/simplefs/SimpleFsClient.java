@@ -93,7 +93,6 @@ public final class SimpleFsClient implements SimpleFs {
 												callback.onException(e);
 											}
 										};
-										messaging.shutdown(); // TODO shutdown?
 										commit(fileName, transit, false);
 										logger.error("Exception while sending file", e);
 									}
@@ -118,7 +117,7 @@ public final class SimpleFsClient implements SimpleFs {
 								callback.onException(e);
 							}
 						})
-						.addEndOfStream(new MessagingEndOfStream() {
+						.addReadEndOfStream(new MessagingEndOfStream() {
 							@Override
 							public void onEndOfStream() {
 								logger.info("onReadEndOfStream");
@@ -167,7 +166,7 @@ public final class SimpleFsClient implements SimpleFs {
 										.streamTo(consumer);
 							}
 						})
-						.addEndOfStream(new MessagingEndOfStream() {
+						.addReadEndOfStream(new MessagingEndOfStream() {
 							@Override
 							public void onEndOfStream() {
 								logger.info("onReadEndOfStream");

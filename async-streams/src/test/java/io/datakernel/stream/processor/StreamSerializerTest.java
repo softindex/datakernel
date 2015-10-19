@@ -129,4 +129,31 @@ public class StreamSerializerTest {
 		assertEquals(END_OF_STREAM, deserializerStream.getProducerStatus());
 	}
 
+	@Test
+	public void testProducerWithError() throws Exception {
+		NioEventloop eventloop = new NioEventloop();
+
+		List<Integer> list = new ArrayList<>();
+		StreamProducer<Integer> source = StreamProducers.closingWithError(eventloop, new Exception("Test Exception"));
+		StreamBinarySerializer<Integer> serializerStream = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
+		StreamBinaryDeserializer<Integer> deserializerStream = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 12);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+
+		source.streamTo(serializerStream);
+		serializerStream.streamTo(deserializerStream);
+		deserializerStream.streamTo(consumer);
+
+		eventloop.run();
+		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+
+		assertEquals(CLOSED_WITH_ERROR, serializerStream.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, serializerStream.getProducerStatus());
+
+		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getProducerStatus());
+	}
+
 }

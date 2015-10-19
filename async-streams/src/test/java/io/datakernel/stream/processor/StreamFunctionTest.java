@@ -79,7 +79,7 @@ public class StreamFunctionTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (list.size() == 2) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				suspend();
@@ -119,7 +119,7 @@ public class StreamFunctionTest {
 		StreamProducer<Integer> source1 = concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
 

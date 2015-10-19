@@ -53,7 +53,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	private StreamProducer<ByteBuf> socketReader;
 	private StreamConsumer<ByteBuf> socketWriter;
 
-	private MessagingEndOfStream messagingEndOfStream;
+	private MessagingEndOfStream messagingReadEndOfStream;
 	private MessagingException messagingReadException;
 
 	private CompletionCallback completionCallback;
@@ -86,8 +86,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		return this;
 	}
 
-	public StreamMessagingConnection<I, O> addEndOfStream(MessagingEndOfStream messagingEndOfStream) {
-		this.messagingEndOfStream = messagingEndOfStream;
+	public StreamMessagingConnection<I, O> addReadEndOfStream(MessagingEndOfStream messagingEndOfStream) {
+		this.messagingReadEndOfStream = messagingEndOfStream;
 		return this;
 	}
 
@@ -141,8 +141,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	@Override
 	protected void onReadEndOfStream() {
 		super.onReadEndOfStream();
-		if (messagingEndOfStream != null) {
-			messagingEndOfStream.onEndOfStream();
+		if (messagingReadEndOfStream != null) {
+			messagingReadEndOfStream.onEndOfStream();
 		}
 	}
 

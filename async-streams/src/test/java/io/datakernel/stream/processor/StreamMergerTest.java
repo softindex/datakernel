@@ -158,7 +158,7 @@ public class StreamMergerTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (item == 8) {
-					closeWithError(new Exception("Consumer Error"));
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -194,7 +194,7 @@ public class StreamMergerTest {
 		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 7),
 				StreamProducers.ofValue(eventloop, 8),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")),
 				StreamProducers.ofValue(eventloop, 3),
 				StreamProducers.ofValue(eventloop, 9)
 		);

@@ -83,7 +83,7 @@ public class StreamProducerConcatTest {
 		producerSetter.onNext(source2);
 		eventloop.run();
 
-		producerSetter.onException(new Exception());
+		producerSetter.onException(new Exception("Test Exception"));
 		eventloop.run();
 
 		producerSetter.onNext(StreamProducers.ofIterable(eventloop, asList(1, 2, 3)));
@@ -117,7 +117,7 @@ public class StreamProducerConcatTest {
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 
