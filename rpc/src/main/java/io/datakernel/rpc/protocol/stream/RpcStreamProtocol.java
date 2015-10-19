@@ -61,16 +61,13 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onEndOfStream() {
-//			RpcStreamProtocol.this.close();
 			sender.close();
-//			deserializer.onProducerEndOfStream();
 			connection.close();
 		}
 
 		@Override
 		protected void onError(Exception e) {
 			sender.closeWithError(e);
-//			closeProtocolWithError(e);
 		}
 
 		public void closeWithError(Exception e) {
@@ -122,7 +119,6 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		@Override
 		protected void onError(Exception e) {
 			receiver.closeWithError(e);
-//			closeProtocolWithError(e);
 		}
 	}
 
