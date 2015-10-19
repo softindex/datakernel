@@ -19,9 +19,11 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
-public interface RequestSender extends RequestSenderMXBean {
+public interface RequestSender {
 
 	<T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback);
 
 	void onConnectionsUpdated();
+
+	int getKey();
 }
