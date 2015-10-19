@@ -43,12 +43,6 @@ public abstract class AggregatorSplitter<T> extends StreamSplitter<T> implements
 		super(eventloop);
 	}
 
-	@Override
-	@SuppressWarnings("unchecked")
-	public StreamDataReceiver getDataReceiver() {
-		return this;
-	}
-
 	protected <O> StreamDataReceiver<O> addOutput(Class<?> aggregationItemType, List<String> dimensions, List<String> measures) {
 		return addOutput(aggregationItemType, dimensions, measures, null);
 	}

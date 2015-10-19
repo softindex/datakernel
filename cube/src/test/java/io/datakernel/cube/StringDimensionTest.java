@@ -75,7 +75,7 @@ public class StringDimensionTest {
 				.streamTo(cube.consumer(DataItemString2.class, DataItemString2.DIMENSIONS, DataItemString2.METRICS, new CubeTest.MyCommitCallback(cube)));
 		eventloop.run();
 
-		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);
 		cube.query(DataItemResultString.class,
 				new AggregationQuery()
 						.keys("key1", "key2")

@@ -46,8 +46,6 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	private AggregationChunkStorage storage;
 	private AggregationMetadataStorage metadataStorage;
 
-	private StreamConsumerSwitcher<T> switcher = new StreamConsumerSwitcher<>(eventloop);
-
 	public AggregationChunker(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
 	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 	                          int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
@@ -60,13 +58,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
 		this.chunkSize = chunkSize;
-		setActualConsumer(switcher);
 		startNewChunk();
-	}
-
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return this;
 	}
 
 	@Override
@@ -75,7 +67,8 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 			first = item;
 		}
 		last = item;
-		switcher.getDataReceiver().onData(item);
+
+		upstreamConsumer.getDataReceiver().onData(item);
 
 		if (count++ == chunkSize) {
 			rotateChunk();
@@ -84,8 +77,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 
 	private void rotateChunk() {
 		saveChunk();
-		StreamConsumer<T> chunkConsumer = switcher.getCurrentConsumer();
-		new StreamProducers.EndOfStream<T>(eventloop).streamTo(chunkConsumer);
+		new StreamProducers.EndOfStream<T>(eventloop).streamTo(upstreamConsumer);
 		startNewChunk();
 	}
 
@@ -108,11 +100,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		count = 0;
 		pendingChunks++;
 
-		StreamConsumer<T> consumer = storage.chunkWriter(aggregationId, keys, fields, recordClass, newId);
-
-		switcher.switchConsumerTo(consumer);
-
-		consumer.addCompletionCallback(new CompletionCallback() {
+		StreamConsumer<T> consumer = storage.chunkWriter(aggregationId, keys, fields, recordClass, newId, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				if (--pendingChunks == 0) {
@@ -126,18 +114,20 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 				logger.error("{}: saving new chunk with id {} to storage {} failed.", this, newId, storage);
 			}
 		});
+
+		setActualConsumer(consumer);
 	}
 
 	@Override
 	public void onProducerEndOfStream() {
 		super.onProducerEndOfStream();
 		saveChunk();
-		logger.trace("{}: upstream producer {} closed.", this, upstreamProducer);
+		logger.trace("{}: downstream producer {} closed.", this, downstreamProducer);
 	}
 
 	@Override
 	public void onProducerError(Exception e) {
 		// TODO (dvolvach)
-		logger.error("{}: upstream producer {} exception.", this, upstreamProducer, e);
+		logger.error("{}: downstream producer {} exception.", this, downstreamProducer, e);
 	}
 }

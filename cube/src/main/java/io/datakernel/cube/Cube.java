@@ -213,6 +213,7 @@ public final class Cube {
 		final StreamSplitter<T> streamSplitter = new StreamSplitter<>(eventloop);
 		final Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks = LinkedHashMultimap.create();
 		final int[] aggregationsDone = {0};
+		final int[] streamSplitterOutputs = {0};
 
 		Collection<Aggregation> preparedAggregations = findAggregationsForWriting(predicates);
 
@@ -230,26 +231,15 @@ public final class Cube {
 						public void onResult(List<AggregationChunk.NewChunk> chunks) {
 							resultChunks.putAll(aggregation.getAggregationMetadata(), chunks);
 							++aggregationsDone[0];
-							if (aggregationsDone[0] == streamSplitter.getOutputsCount()) {
+							if (aggregationsDone[0] == streamSplitterOutputs[0]) {
 								callback.onCommit(resultChunks);
 							}
 						}
 					});
 
 			streamSplitter.newOutput().streamTo(groupReducer);
+			++streamSplitterOutputs[0];
 		}
-
-		streamSplitter.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.trace("Populating cube {} completed.", Cube.this);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("Populating cube {} failed.", Cube.this, e);
-			}
-		});
 
 		return streamSplitter;
 	}
@@ -372,18 +362,6 @@ public final class Cube {
 
 		logger.trace("Finished building StreamProducer for query.");
 
-		orderedResultStream.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.trace("Streaming query result from stream {} completed.", orderedResultStream);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("Streaming query result from stream {} failed.", orderedResultStream, e);
-			}
-		});
-
 		return orderedResultStream;
 	}
 
@@ -411,8 +389,8 @@ public final class Cube {
 		consolidate(false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	public void consolidate(boolean found, Iterator<Aggregation> iterator,
-	                        ResultCallback<Boolean> callback) {
+	public void consolidate(final boolean found, final Iterator<Aggregation> iterator,
+	                        final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
@@ -518,7 +496,6 @@ public final class Cube {
 			sortedStream.setTag(query);
 			return sortedStream;
 		} else {
-			rawResultStream.setTag(query);
 			return rawResultStream;
 		}
 	}

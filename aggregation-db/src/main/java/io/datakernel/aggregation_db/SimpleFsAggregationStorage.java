@@ -70,26 +70,25 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> StreamConsumer<T> chunkWriter(String aggregationId, final List<String> dimensions, final List<String> measures,
-	                                         final Class<T> recordClass, final long id) {
+	                                         final Class<T> recordClass, final long id, final CompletionCallback callback) {
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, dimensions, measures);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		serializer.streamTo(compressor);
 
-		StreamConsumer<ByteBuf> consumer = client.upload(path(id));
-		consumer.addCompletionCallback(new CompletionCallback() {
+		client.upload(path(id), compressor, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Uploaded chunk #{} to SimpleFS successfully", id);
+				callback.onComplete();
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				logger.error("Uploading chunk #{} to SimpleFS failed", id, exception);
+				callback.onException(exception);
 			}
 		});
-
-		compressor.streamTo(consumer);
 
 		return serializer;
 	}

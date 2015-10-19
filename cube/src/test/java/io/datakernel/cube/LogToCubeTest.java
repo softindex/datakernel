@@ -24,6 +24,7 @@ import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackObserver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
@@ -133,7 +134,7 @@ public class LogToCubeTest {
 
 		eventloop.run();
 
-		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.query(TestAdvResult.class, new AggregationQuery(asList("adv"), asList("advRequests")))
 				.streamTo(consumerToList);
 		eventloop.run();
@@ -223,7 +224,7 @@ public class LogToCubeTest {
 				cb.check();
 				cb2.check();
 
-				cube.consolidate(ignoreResultCallback());
+				cube.consolidate(AsyncCallbacks.<Boolean>ignoreResultCallback());
 				eventloop.run();
 
 				latch.countDown();
@@ -304,23 +305,23 @@ public class LogToCubeTest {
 		eventloop.run();
 
 		AggregationQuery query = new AggregationQuery(asList("adv"), asList("advRequests"));
-		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.query(TestAdvResult.class, query).streamTo(consumerToList);
 		eventloop.run();
 
-		cube.consolidate(ignoreResultCallback());
+		cube.consolidate(AsyncCallbacks.<Boolean>ignoreResultCallback());
 		eventloop.run();
 
 		cube.loadChunks(ignoreCompletionCallback());
 		eventloop.run();
 
-		cube.consolidate(ignoreResultCallback());
+		cube.consolidate(AsyncCallbacks.<Boolean>ignoreResultCallback());
 		eventloop.run();
 
 		cube.loadChunks(ignoreCompletionCallback());
 		eventloop.run();
 
-		StreamConsumers.ToList<TestAdvResult> consumerToList2 = StreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumers.ToList<TestAdvResult> consumerToList2 = StreamConsumers.toList(eventloop);
 		cube.query(TestAdvResult.class, query).streamTo(consumerToList2);
 		eventloop.run();
 

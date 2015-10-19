@@ -87,18 +87,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	private void doNext() {
-		if (getUpstreamStatus() == AbstractStreamProducer.CLOSED) {
-			return;
-		}
-
 		if (saving) {
-			suspendUpstream();
+			suspend();
 			return;
 		}
 
-		if (getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM && map.isEmpty()) {
+		if (getConsumerStatus() == StreamStatus.END_OF_STREAM && map.isEmpty()) {
 			chunksCallback.onResult(chunks);
-			closeUpstream();
 			logger.trace("{}: completed saving chunks {} for aggregation {}. Closing itself.", this, chunks, aggregationMetadata);
 			return;
 		}
@@ -143,11 +138,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 				final StreamProducer<Object> producer = StreamProducers.ofIterable(eventloop, list);
 
-				StreamConsumer consumer = storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId);
-
-				producer.streamTo(consumer);
-
-				producer.addCompletionCallback(new CompletionCallback() {
+				StreamConsumer consumer = storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						saving = false;
@@ -164,7 +155,10 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 						logger.error("Saving chunks {} to aggregation storage {} failed.", chunks, storage, e);
 					}
 				});
-				AggregationGroupReducer.this.resumeUpstream();
+
+				producer.streamTo(consumer);
+
+				AggregationGroupReducer.this.resume();
 			}
 
 			@Override
@@ -176,13 +170,8 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	@Override
-	public void onProducerEndOfStream() {
+	public void onEndOfStream() {
 		logger.trace("{}: upstream producer {} closed.", this, upstreamProducer);
 		doNext();
-	}
-
-	@Override
-	public void onProducerError(Exception e) {
-		logger.trace("{}: upstream producer {} exception.", this, upstreamProducer, e);
 	}
 }

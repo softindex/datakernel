@@ -57,9 +57,9 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void loadChunks(Aggregation aggregation, int lastRevisionId, ResultCallback<LoadedChunks> callback) {
+	public void loadChunks(Aggregation aggregation, final int lastRevisionId, ResultCallback<LoadedChunks> callback) {
 		List<AggregationChunk.NewChunk> newChunks = tmpChunks.get(aggregation.getId());
-		callback.onResult(new LoadedChunks(lastRevisionId + 1, Collections.emptyList(),
+		callback.onResult(new LoadedChunks(lastRevisionId + 1, Collections.<Long>emptyList(),
 				Collections2.transform(newChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
 					@Override
 					public AggregationChunk apply(AggregationChunk.NewChunk input) {

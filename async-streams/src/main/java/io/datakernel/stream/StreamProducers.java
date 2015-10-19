@@ -273,6 +273,10 @@ public class StreamProducers {
 
 		}
 
+		@Override
+		public void sendEndOfStream() {
+			super.sendEndOfStream();
+		}
 	}
 
 	/**

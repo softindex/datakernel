@@ -16,6 +16,7 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -48,12 +49,12 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	}
 
 	@Override
-	public StreamConsumer<T> consumer(String streamId) {
+	public LogStreamConsumer<T> consumer(String streamId) {
 		return new LogStreamConsumer<>(eventloop, fileSystem, serializer, streamId, bufferSize, flushDelayMillis);
 	}
 
 	@Override
-	public StreamProducer<T> producer(String logPartition, LogFile logFile, long position,
+	public LogStreamProducer<T> producer(String logPartition, LogFile logFile, long position,
 	                                  ResultCallback<LogPosition> positionCallback) {
 		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition, new LogPosition(logFile, position), positionCallback);
 	}

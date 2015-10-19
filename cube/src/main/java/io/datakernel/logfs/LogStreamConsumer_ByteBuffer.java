@@ -16,21 +16,19 @@
 
 package io.datakernel.logfs;
 
-import static io.datakernel.stream.StreamProducer.END_OF_STREAM;
-
-import java.util.ArrayDeque;
-
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.file.StreamFileWriter;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayDeque;
 
 class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> implements StreamDataReceiver<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(LogStreamConsumer_ByteBuffer.class);
@@ -40,6 +38,7 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 	private long currentHour = -1;
 	private LogFile currentLogFile;
 	private StreamProducers.Idle<ByteBuf> currentProducer;
+	private StreamFileWriter currentConsumer;
 
 	private boolean endOfStreamReceived = false;
 	private Exception receivedException = null;
@@ -51,6 +50,8 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 
 	private int activeWriters = 0;
 
+	private CompletionCallback callback;
+
 	public LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem,
 	                                    String streamId) {
 		super(eventloop);
@@ -58,6 +59,10 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 		this.datetimeFormat = datetimeFormat;
 		this.fileSystem = fileSystem;
 		this.currentProducer = new StreamProducers.Idle<>(eventloop);
+	}
+
+	public void setCompletionCallback(CompletionCallback callback) {
+		this.callback = callback;
 	}
 
 	@Override
@@ -71,25 +76,27 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 			public void onComplete() {
 				--activeWriters;
 				if (endOfStreamReceived && activeWriters == 0) {
-					closeUpstream();
+					if (callback != null)
+						callback.onComplete();
 				} else if (receivedException != null) {
-					closeUpstreamWithError(receivedException);
+					if (callback != null)
+						callback.onException(receivedException);
 				} else {
-					resumeUpstream();
+					resume();
 				}
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				--activeWriters;
-				closeUpstreamWithError(exception);
+				if (callback != null)
+					callback.onException(exception);
 			}
 		};
 	}
 
 	private boolean isWriteStreamAvailable() {
-		assert currentProducer != null;
-		return currentProducer.getDownstream() != null && currentProducer.getStatus() < END_OF_STREAM;
+		return currentConsumer != null && !currentConsumer.getConsumerStatus().isClosed();
 	}
 
 	@Override
@@ -98,16 +105,16 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 		long newHour = timestamp / ONE_HOUR;
 		if (isWriteStreamAvailable()) {
 			if (newHour == currentHour) {
-				currentProducer.getDownstreamDataReceiver().onData(buf);
+				currentConsumer.getDataReceiver().onData(buf);
 				return;
 			}
-			currentProducer.sendEndOfStream();
+			new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(currentConsumer);
 		}
 		queue.add(buf);
 		if (queue.size() > 10) {
-			suspendUpstream();
+			suspend();
 		} else {
-			resumeUpstream();
+			resume();
 		}
 
 		if (newHour != currentHour) {
@@ -126,13 +133,13 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 				++activeWriters;
 
 				currentLogFile = result;
-				StreamConsumer<ByteBuf> writer = fileSystem.writer(streamId, currentLogFile);
+				currentConsumer = fileSystem.writer(streamId, currentLogFile);
 				currentProducer = new StreamProducers.Idle<>(eventloop);
-				currentProducer.streamTo(writer);
-				writer.addCompletionCallback(createCloseCompletionCallback());
+				currentProducer.streamTo(currentConsumer);
+				currentConsumer.setFlushCallback(createCloseCompletionCallback());
 
 				for (ByteBuf buf : queue) {
-					currentProducer.getDownstreamDataReceiver().onData(buf);
+					currentConsumer.getDataReceiver().onData(buf);
 				}
 				queue.clear();
 			}
@@ -141,7 +148,7 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 			public void onException(Exception exception) {
 				logger.error("{}: creating new unique log file with name {} and stream id {} failed.",
 						LogStreamConsumer_ByteBuffer.this, newChunkName, streamId);
-				closeUpstreamWithError(exception);
+				closeWithError(exception);
 			}
 		});
 	}
@@ -152,7 +159,7 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 
 		endOfStreamReceived = true;
 		if (isWriteStreamAvailable()) {
-			currentProducer.sendEndOfStream();
+			new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(currentConsumer);
 		}
 	}
 
@@ -162,7 +169,7 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 
 		receivedException = e;
 		if (isWriteStreamAvailable()) {
-			currentProducer.closeWithError(e);
+			new StreamProducers.ClosingWithError<ByteBuf>(eventloop, e).streamTo(currentConsumer);
 		}
 	}
 }

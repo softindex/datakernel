@@ -106,7 +106,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id,
+	                                         CompletionCallback callback) {
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
@@ -114,6 +115,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 		serializer.streamTo(compressor);
 		compressor.streamTo(writer);
+
+		writer.setFlushCallback(callback);
 
 		return serializer;
 	}
