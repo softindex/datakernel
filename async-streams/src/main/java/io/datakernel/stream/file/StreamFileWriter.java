@@ -250,6 +250,11 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			asyncFile.close(callback);
 			asyncFile = null;
 		}
+
+		for (ByteBuf buf : queue) {
+			buf.recycle();
+		}
+		queue.clear();
 	}
 
 	@Override

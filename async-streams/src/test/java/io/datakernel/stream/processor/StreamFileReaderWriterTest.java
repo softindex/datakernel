@@ -65,6 +65,7 @@ public class StreamFileReaderWriterTest {
 			@Override
 			public void send(ByteBuf item) {
 				if (item.toString().equals("1")) {
+					item.recycle();
 					closeWithError(new Exception("Intentionally closed with exception"));
 					return;
 				}
@@ -85,6 +86,7 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -99,6 +101,7 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -212,6 +215,46 @@ public class StreamFileReaderWriterTest {
 
 		byte[] fileBytes = com.google.common.io.Files.toByteArray(tempFile);
 		assertArrayEquals(bytes, fileBytes);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testStreamFileWriterRecycle() throws IOException {
+		NioEventloop eventloop = new NioEventloop();
+		ExecutorService executor = Executors.newCachedThreadPool();
+		File tempFile = tempFolder.newFile("out.dat");
+		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
+
+		StreamProducer<ByteBuf> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes)),
+				StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Test Exception")));
+
+		StreamFileWriter writer = new StreamFileWriter(eventloop, executor, Paths.get(tempFile.getAbsolutePath()),
+				new OpenOption[]{WRITE, TRUNCATE_EXISTING}, false);
+
+		producer.streamTo(writer);
+		eventloop.run();
+
+		byte[] fileBytes = com.google.common.io.Files.toByteArray(tempFile);
+		assertArrayEquals(bytes, fileBytes);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testStreamReaderRecycle() throws IOException {
+		final TestStreamConsumers.TestConsumerToList<ByteBuf> writer = new TestStreamConsumers.TestConsumerToList<ByteBuf>(eventloop) {
+			@Override
+			public void onData(ByteBuf item) {
+				super.onData(item);
+				item.recycle();
+			}
+		};
+
+		reader.streamTo(writer);
+		eventloop.run();
+
+		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }
