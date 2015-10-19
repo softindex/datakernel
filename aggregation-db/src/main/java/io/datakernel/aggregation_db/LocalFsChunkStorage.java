@@ -74,6 +74,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	private Path path(long id) {
+		try {
+			Files.createDirectories(dir);
+		} catch (IOException e) {
+			logger.error("createDirectories error", e);
+		}
 		return dir.resolve(id + ".log");
 	}
 
