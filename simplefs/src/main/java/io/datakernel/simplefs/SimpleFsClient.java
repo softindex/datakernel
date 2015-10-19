@@ -118,7 +118,7 @@ public final class SimpleFsClient implements SimpleFs {
 								callback.onException(e);
 							}
 						})
-						.addEndOfStream(new MessagingEndOfStream() {
+						.addReadEndOfStream(new MessagingEndOfStream() {
 							@Override
 							public void onEndOfStream() {
 								logger.info("onReadEndOfStream");
@@ -167,7 +167,7 @@ public final class SimpleFsClient implements SimpleFs {
 										.streamTo(consumer);
 							}
 						})
-						.addEndOfStream(new MessagingEndOfStream() {
+						.addReadEndOfStream(new MessagingEndOfStream() {
 							@Override
 							public void onEndOfStream() {
 								logger.info("onReadEndOfStream");
