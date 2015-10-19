@@ -19,10 +19,10 @@ package io.datakernel.cube;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.logfs.LogCommitTransaction;
+import io.datakernel.stream.AbstractStreamTransformer_1_N;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.processor.StreamSplitter;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ import java.util.List;
  *
  * @param <T> type of input records
  */
-public abstract class AggregatorSplitter<T> extends StreamSplitter<T> implements StreamDataReceiver<T> {
+public abstract class AggregatorSplitter<T> extends AbstractStreamTransformer_1_N<T> {
 	public interface Factory<T> {
 		AggregatorSplitter<T> create(Eventloop eventloop);
 	}
@@ -41,26 +41,65 @@ public abstract class AggregatorSplitter<T> extends StreamSplitter<T> implements
 
 	public AggregatorSplitter(Eventloop eventloop) {
 		super(eventloop);
+		this.upstreamConsumer = new UpstreamConsumer();
 	}
 
-	protected <O> StreamDataReceiver<O> addOutput(Class<?> aggregationItemType, List<String> dimensions, List<String> measures) {
+	private final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
+		@Override
+		protected void onUpstreamEndOfStream() {
+			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+				downstreamProducer.sendEndOfStream();
+			}
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return this;
+		}
+
+		@Override
+		public void onData(T item) {
+			processItem(item);
+		}
+	}
+
+	private final class DownstreamProducer extends AbstractDownstreamProducer<T> {
+		@Override
+		protected final void onDownstreamSuspended() {
+			upstreamConsumer.getUpstream().onConsumerSuspended();
+		}
+
+		@Override
+		protected final void onDownstreamResumed() {
+			if (allOutputsResumed()) {
+				upstreamConsumer.getUpstream().onConsumerResumed();
+			}
+		}
+	}
+
+	public final StreamProducer<T> newOutput() {
+		return addOutput(new DownstreamProducer());
+	}
+
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions, List<String> measures) {
 		return addOutput(aggregationItemType, dimensions, measures, null);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <O> StreamDataReceiver<O> addOutput(Class<?> aggregationItemType, List<String> dimensions, List<String> measures,
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions, List<String> measures,
 	                                              AggregationQuery.QueryPredicates predicates) {
 		StreamProducer streamProducer = newOutput();
 		StreamConsumer streamConsumer = cube.consumer(aggregationItemType, dimensions, measures, predicates,
 				transaction.addCommitCallback());
 		streamProducer.streamTo(streamConsumer);
-		return (StreamDataReceiver<O>) streamConsumer;
+		return streamConsumer.getDataReceiver();
 	}
 
 	protected abstract void addOutputs();
 
-	@SuppressWarnings("unchecked")
-	public void streamTo(Cube cube, LogCommitTransaction<?> transaction) {
+	protected abstract void processItem(T item);
+
+	public final void streamTo(Cube cube, LogCommitTransaction<?> transaction) {
 		this.cube = cube;
 		this.transaction = transaction;
 		addOutputs();

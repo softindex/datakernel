@@ -41,8 +41,8 @@ import org.junit.Test;
 public class StringDimensionTest {
 	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationChunkStorage storage,
 	                           AggregationStructure structure) {
-		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		Cube cube = new Cube(eventloop, classLoader, new LogToCubeMetadataStorageStub(), aggregationMetadataStorage,
+		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		Cube cube = new Cube(eventloop, classLoader, new LogToCubeMetadataStorageStub(aggregationMetadataStorage), aggregationMetadataStorage,
 				storage, structure);
 		cube.addAggregation(
 				new AggregationMetadata("detailedAggregation", asList("key1", "key2"), asList("metric1", "metric2", "metric3")));

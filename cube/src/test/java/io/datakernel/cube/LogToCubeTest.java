@@ -52,7 +52,6 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -61,7 +60,6 @@ import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -95,10 +93,11 @@ public class LogToCubeTest {
 	public void testStubStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		NioEventloop eventloop = new NioEventloop();
-		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = getStructure(classLoader);
-		Cube cube = newCube(eventloop, classLoader, new LogToCubeMetadataStorageStub(), aggregationMetadataStorage, aggregationStorage, structure);
+		LogToCubeMetadataStorageStub logToCubeMetadataStorageStub = new LogToCubeMetadataStorageStub(aggregationMetadataStorage);
+		Cube cube = newCube(eventloop, classLoader, logToCubeMetadataStorageStub, aggregationMetadataStorage, aggregationStorage, structure);
 		cube.addAggregation(new AggregationMetadata("pub", asList("pub"), asList("pubRequests")));
 		cube.addAggregation(new AggregationMetadata("adv", asList("adv"), asList("advRequests")));
 
@@ -113,7 +112,7 @@ public class LogToCubeTest {
 		LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
 
 		LogToCubeRunner<TestPubRequest> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager, TestAggregatorSplitter.factory(),
-				"testlog", asList("partitionA"), new LogToCubeMetadataStorageStub());
+				"testlog", asList("partitionA"), logToCubeMetadataStorageStub);
 
 		new StreamProducers.OfIterator<>(eventloop, asList(
 				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),

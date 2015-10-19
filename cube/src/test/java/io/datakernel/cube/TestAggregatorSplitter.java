@@ -79,7 +79,7 @@ public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
 	}
 
 	@Override
-	public void onData(TestPubRequest pubRequest) {
+	protected void processItem(TestPubRequest pubRequest) {
 		outputItem.date = (int) (pubRequest.timestamp / (24 * 60 * 60 * 1000L));
 		outputItem.hourOfDay = (byte) ((pubRequest.timestamp / (60 * 60 * 1000L)) % 24);
 		outputItem.pub = pubRequest.pub;
@@ -89,5 +89,4 @@ public class TestAggregatorSplitter extends AggregatorSplitter<TestPubRequest> {
 			advAggregator.onData(outputItem);
 		}
 	}
-
 }

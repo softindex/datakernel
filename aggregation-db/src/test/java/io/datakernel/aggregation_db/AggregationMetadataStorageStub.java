@@ -49,6 +49,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	@Override
 	public void saveChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		this.tmpChunks.put(aggregationMetadata.getId(), newChunks);
+		callback.onComplete();
 	}
 
 	@Override

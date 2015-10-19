@@ -19,21 +19,24 @@ package io.datakernel.cube;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
+import io.datakernel.aggregation_db.AggregationMetadataStorageStub;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Maps.filterKeys;
 
 public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStorage {
-	private static long chunkId;
 	private Map<String, Map<String, LogPosition>> positions = new LinkedHashMap<>();
+	private final AggregationMetadataStorageStub aggregationStorage;
+
+	public LogToCubeMetadataStorageStub(AggregationMetadataStorageStub aggregationStorage) {
+		this.aggregationStorage = aggregationStorage;
+	}
 
 	private Map<String, LogPosition> ensureLogPositions(String log) {
 		Map<String, LogPosition> logPositionMap = positions.get(log);
@@ -66,6 +69,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 			AggregationChunk.NewChunk newChunk = entry.getValue();
 //			TODO (dtkachenko)
 //			aggregation.addToIndex(AggregationChunk.createCommitChunk(cube.getLastRevisionId(), newChunk));
+			aggregationStorage.saveChunks(aggregation, Arrays.asList(newChunk), callback);
 		}
 	}
 

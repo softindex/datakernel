@@ -71,8 +71,8 @@ public class CubeTest {
 
 	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationChunkStorage storage,
 	                           AggregationStructure aggregationStructure) {
-		LogToCubeMetadataStorageStub cubeMetadataStorage = new LogToCubeMetadataStorageStub();
-		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		LogToCubeMetadataStorageStub cubeMetadataStorage = new LogToCubeMetadataStorageStub(aggregationMetadataStorage);
 		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, storage, aggregationStructure);
 		cube.addAggregation(new AggregationMetadata("detailedAggregation", asList("key1", "key2"),
 				asList("metric1", "metric2", "metric3")));
@@ -81,8 +81,8 @@ public class CubeTest {
 
 	public static Cube newSophisticatedCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationChunkStorage storage,
 	                                        AggregationStructure aggregationStructure) {
-		LogToCubeMetadataStorageStub cubeMetadataStorage = new LogToCubeMetadataStorageStub();
-		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		LogToCubeMetadataStorageStub cubeMetadataStorage = new LogToCubeMetadataStorageStub(aggregationMetadataStorage);
 		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, storage, aggregationStructure);
 		cube.addAggregation(new AggregationMetadata("detailedAggregation", asList("key1", "key2", "key3", "key4", "key5"),
 				asList("metric1", "metric2", "metric3")));
