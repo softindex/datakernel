@@ -142,6 +142,10 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 					currentConsumer.getDataReceiver().onData(buf);
 				}
 				queue.clear();
+
+				if (endOfStreamReceived) {
+					new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(currentConsumer);
+				}
 			}
 
 			@Override
