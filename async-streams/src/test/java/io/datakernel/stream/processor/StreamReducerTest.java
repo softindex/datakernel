@@ -120,7 +120,7 @@ public class StreamReducerTest {
 			public void onData(KeyValueResult item) {
 				list.add(item);
 				if (list.size() == 1) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -165,7 +165,7 @@ public class StreamReducerTest {
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 
-		StreamProducer<KeyValue2> source2 = StreamProducers.closingWithError(eventloop, new Exception());
+		StreamProducer<KeyValue2> source2 = StreamProducers.closingWithError(eventloop, new Exception("Test Exception"));
 
 		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));

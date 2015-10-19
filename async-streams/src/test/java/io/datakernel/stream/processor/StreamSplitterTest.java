@@ -67,7 +67,7 @@ public class StreamSplitterTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (item == 3) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				suspend();
@@ -105,7 +105,7 @@ public class StreamSplitterTest {
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
 				StreamProducers.ofValue(eventloop, 3),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);

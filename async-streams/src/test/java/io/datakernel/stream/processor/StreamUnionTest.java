@@ -93,7 +93,7 @@ public class StreamUnionTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (item == 1) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -131,11 +131,11 @@ public class StreamUnionTest {
 
 		StreamProducer<Integer> source0 = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(1, 2)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, Arrays.asList(7, 8, 9)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 
 		List<Integer> list = new ArrayList<>();

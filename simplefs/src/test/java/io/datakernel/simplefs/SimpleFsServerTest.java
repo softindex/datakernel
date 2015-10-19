@@ -544,7 +544,7 @@ public class SimpleFsServerTest {
 
 	@Test
 	public void testUploadWithException() throws IOException {
-		String resultFile = "non_existing_file";
+		String resultFile = "non_existing_file_upload_exception";
 
 		ExecutorService executor = Executors.newCachedThreadPool();
 		NioEventloop eventloop = new NioEventloop();
@@ -574,7 +574,7 @@ public class SimpleFsServerTest {
 
 	@Test
 	public void testBadUpload() throws IOException {
-		String resultFile = "non_existing_file";
+		String resultFile = "non_existing_file_bad_upload";
 
 		ExecutorService executor = Executors.newCachedThreadPool();
 		NioEventloop eventloop = new NioEventloop();

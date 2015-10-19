@@ -23,10 +23,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamConsumerDecoratorTest {
 	@Test
@@ -39,7 +39,7 @@ public class StreamConsumerDecoratorTest {
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
 
 		producer.streamTo(consumerDecorator);
 		eventloop.run();

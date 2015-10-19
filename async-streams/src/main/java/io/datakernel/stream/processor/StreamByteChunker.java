@@ -98,7 +98,10 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		protected void doCleanup() {
-			internalBuf.recycle();
+			if (internalBuf != null) {
+				internalBuf.recycle();
+				internalBuf = null;
+			}
 		}
 	}
 

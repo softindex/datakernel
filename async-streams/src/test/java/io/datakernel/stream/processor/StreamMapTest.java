@@ -68,7 +68,7 @@ public class StreamMapTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (item == 12) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -99,7 +99,7 @@ public class StreamMapTest {
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
 
 		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
 

@@ -145,7 +145,7 @@ public class StreamMemoryReducerTest {
 			public void onData(DataItemResult item) {
 				list.add(item);
 				if (item.equals(new DataItemResult(1, 2, 60, 90, 0))) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -179,7 +179,7 @@ public class StreamMemoryReducerTest {
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
-				StreamProducers.<DataItem1>closingWithError(eventloop, new Exception())
+				StreamProducers.<DataItem1>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 		StreamProducer<DataItem1> source2 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
