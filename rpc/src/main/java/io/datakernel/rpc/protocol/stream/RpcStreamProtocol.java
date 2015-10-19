@@ -204,17 +204,13 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	@Override
 	public void close() {
 		sender.close();
-		deserializer.onProducerEndOfStream();
+		if (compression) {
+			decompressor.onProducerEndOfStream();
+		} else {
+			deserializer.onProducerEndOfStream();
+		}
 		connection.close();
-//		sender.close();
 	}
-
-//	private void closeProtocolWithError(Exception e) {
-//		sender.closeWithError(e);
-//		deserializer.onProducerError(e);
-//		receiver.closeWithError(e);
-//		connection.close();
-//	}
 
 	// JMX
 	public void startMonitoring() {
