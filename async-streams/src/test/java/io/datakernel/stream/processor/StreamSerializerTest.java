@@ -145,7 +145,7 @@ public class StreamSerializerTest {
 
 		eventloop.run();
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
-		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 

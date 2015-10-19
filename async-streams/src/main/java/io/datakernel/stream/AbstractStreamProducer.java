@@ -242,6 +242,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		return status;
 	}
 
+	@Override
+	public Exception getProducerException() {
+		return error;
+	}
+
 	private void setStatus(StreamStatus status) {
 		this.status = status;
 		this.ready = status == READY;

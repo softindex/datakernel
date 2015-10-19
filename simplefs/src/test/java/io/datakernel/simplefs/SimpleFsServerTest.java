@@ -29,7 +29,6 @@ import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -375,12 +374,6 @@ public class SimpleFsServerTest {
 
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile).toFile()));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-	}
-
-	@Ignore
-	@Test
-	public void testActionsAfterStop() {
-		fail("Not yet implemented");
 	}
 
 	@Test

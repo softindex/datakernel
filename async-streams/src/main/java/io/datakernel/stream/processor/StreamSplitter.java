@@ -22,7 +22,7 @@ import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 
 @SuppressWarnings("unchecked")
-public class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implements StreamSplitterMBean {
+public final class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implements StreamSplitterMBean {
 	private int jmxItems;
 
 	public StreamSplitter(Eventloop eventloop) {

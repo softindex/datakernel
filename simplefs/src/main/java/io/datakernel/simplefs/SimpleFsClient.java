@@ -37,6 +37,8 @@ import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+
 public final class SimpleFsClient implements SimpleFs {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsClient.class);
 
@@ -82,18 +84,8 @@ public final class SimpleFsClient implements SimpleFs {
 
 									@Override
 									public void onException(final Exception e) {
-										CompletionCallback transit = new CompletionCallback() {
-											@Override
-											public void onComplete() {
-												callback.onException(e);
-											}
-
-											@Override
-											public void onException(Exception e1) {
-												callback.onException(e);
-											}
-										};
-										commit(fileName, transit, false);
+										callback.onException(e);
+										commit(fileName, false, ignoreCompletionCallback());
 										logger.error("Exception while sending file", e);
 									}
 								});
@@ -105,7 +97,7 @@ public final class SimpleFsClient implements SimpleFs {
 							public void onMessage(SimpleFsResponseAcknowledge item, Messaging<SimpleFsCommand> messaging) {
 								logger.info("Received acknowledgement for {}", fileName);
 								messaging.shutdown();
-								commit(fileName, callback, true);
+								commit(fileName, true, callback);
 							}
 						})
 						.addHandler(SimpleFsResponseError.class, new MessagingHandler<SimpleFsResponseError, SimpleFsCommand>() {
@@ -274,7 +266,7 @@ public final class SimpleFsClient implements SimpleFs {
 				new StreamGsonSerializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 256 * 1024, 256 * (1 << 20), 0));
 	}
 
-	private void commit(final String fileName, final CompletionCallback callback, final boolean isOk) {
+	private void commit(final String fileName, final boolean isOk, final CompletionCallback callback) {
 		eventloop.connect(address, SocketSettings.defaultSocketSettings(), new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {

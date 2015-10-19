@@ -34,7 +34,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
 
-public class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamLZ4DecompressorMBean {
+public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamLZ4DecompressorMBean {
 	private final UpstreamConsumer upstreamConsumer;
 	private final DownstreamProducer downstreamProducer;
 

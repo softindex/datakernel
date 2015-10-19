@@ -211,6 +211,11 @@ public abstract class AbstractStreamTransformer_1_N<I> implements StreamConsumer
 		return upstreamConsumer.getConsumerStatus();
 	}
 
+	@Override
+	public Exception getConsumerException() {
+		return upstreamConsumer.getConsumerException();
+	}
+
 	public StreamConsumer getUpstreamConsumer() {
 		return upstreamConsumer;
 	}

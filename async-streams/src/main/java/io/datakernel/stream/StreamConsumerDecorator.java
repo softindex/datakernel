@@ -114,6 +114,11 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 			public StreamStatus getProducerStatus() {
 				return downstreamProducer.getProducerStatus();
 			}
+
+			@Override
+			public Exception getProducerException() {
+				return downstreamProducer.getProducerException();
+			}
 		}.streamTo(actualConsumer);
 	}
 
@@ -157,5 +162,10 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 	@Override
 	public final StreamStatus getConsumerStatus() {
 		return upstreamConsumer.getConsumerStatus();
+	}
+
+	@Override
+	public Exception getConsumerException() {
+		return upstreamConsumer.getConsumerException();
 	}
 }
