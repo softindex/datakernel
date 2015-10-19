@@ -57,7 +57,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 		@Override
 		protected void onError(Exception e) {
-			TcpStreamSocketConnection.this.onInternalException(e);
+			onInternalException(e);
 		}
 
 		@Override
@@ -93,7 +93,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 				try {
 					shutdownOutput();
 				} catch (IOException e) {
-					e.printStackTrace();
+					logger.error("shutdownOutput error {} for {}", e.toString(), this);
 				}
 				closeIfDone();
 			}
@@ -193,18 +193,11 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	private void closeIfDone() {
 		if (!isRegistered())
 			return;
-		// TODO (vsavchuk) check this
 		if (!socketReader.getProducerStatus().isOpen() && !socketWriter.getConsumerStatus().isOpen() && writeQueue.isEmpty()) {
 			logger.trace("done, closing {}", this);
 			close();
 			return;
 		}
-
-//		if (socketReader.getStatus() >= AbstractStreamProducer.END_OF_STREAM && socketWriter.getStatus() >= AbstractStreamConsumer.CLOSED) {
-//			logger.trace("done, closing {}", this);
-//			close();
-//			return;
-//		}
 	}
 
 	/**
@@ -234,7 +227,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 			try {
 				shutdownOutput();
 			} catch (IOException e) {
-				e.printStackTrace();
+				logger.error("shutdownOutput error {} for {}", e.toString(), this);
 			}
 		} else {
 			socketWriter.resume();
@@ -245,6 +238,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	protected void onReadException(Exception e) {
 		logger.warn("onReadException", e);
 		socketReader.closeWithError(e);
+		closeIfDone();
 	}
 
 	@Override
@@ -254,7 +248,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		try {
 			shutdownOutput();
 		} catch (IOException e1) {
-			e1.printStackTrace();
+			logger.error("shutdownOutput error {} for {}", e1.toString(), this);
 		}
 		closeIfDone();
 	}

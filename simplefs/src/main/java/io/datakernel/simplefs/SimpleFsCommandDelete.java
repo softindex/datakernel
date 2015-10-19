@@ -16,7 +16,7 @@
 
 package io.datakernel.simplefs;
 
-public final class SimpleFsCommandDelete extends SimpleFsCommand {
+final class SimpleFsCommandDelete extends SimpleFsCommand {
 	public final String fileName;
 
 	public SimpleFsCommandDelete(String fileName) {

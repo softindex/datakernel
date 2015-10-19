@@ -53,6 +53,9 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	private StreamProducer<ByteBuf> socketReader;
 	private StreamConsumer<ByteBuf> socketWriter;
 
+	private MessagingEndOfStream messagingEndOfStream;
+	private MessagingException messagingReadException;
+
 	private CompletionCallback completionCallback;
 
 	/**
@@ -80,6 +83,16 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 	public StreamMessagingConnection<I, O> addStarter(MessagingStarter<O> starter) {
 		this.starter = starter;
+		return this;
+	}
+
+	public StreamMessagingConnection<I, O> addEndOfStream(MessagingEndOfStream messagingEndOfStream) {
+		this.messagingEndOfStream = messagingEndOfStream;
+		return this;
+	}
+
+	public StreamMessagingConnection<I, O> addReadException(MessagingException messagingReadException) {
+		this.messagingReadException = messagingReadException;
 		return this;
 	}
 
@@ -123,6 +136,38 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 			}
 		}
 
+	}
+
+	@Override
+	protected void onReadEndOfStream() {
+		super.onReadEndOfStream();
+		if (messagingEndOfStream != null) {
+			messagingEndOfStream.onEndOfStream();
+		}
+	}
+
+	@Override
+	protected void onReadException(Exception e) {
+		super.onReadException(e);
+		if (messagingReadException != null) {
+			messagingReadException.onException(e);
+		}
+	}
+
+	@Override
+	protected void onWriteException(Exception e) {
+		super.onWriteException(e);
+		if (completionCallback != null) {
+			completionCallback.onException(e);
+		}
+	}
+
+	@Override
+	protected void onInternalException(Exception e) {
+		super.onInternalException(e);
+		if (completionCallback != null) {
+			completionCallback.onException(e);
+		}
 	}
 
 	private class MessageProducer extends AbstractStreamProducer<O> {
@@ -172,14 +217,6 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	}
 
 	@Override
-	protected void onWriteException(Exception e) {
-		super.onWriteException(e);
-		if (completionCallback != null) {
-			completionCallback.onException(e);
-		}
-	}
-
-	@Override
 	public void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback) {
 		this.completionCallback = completionCallback;
 		streamSerializer.flush();
@@ -187,7 +224,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	}
 
 	@Override
-	public StreamProducer<ByteBuf> binarySocketReader() {
+	public StreamProducer<ByteBuf> read() {
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		socketReader.streamTo(forwarder);
 		currentConsumer = forwarder;

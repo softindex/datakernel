@@ -14,19 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs;
+package io.datakernel.stream.net;
 
-final class SimpleFsCommandCommit extends SimpleFsCommand {
-	public final String fileName;
-	public final boolean isOk;
-
-	public SimpleFsCommandCommit(String fileName, boolean isOk) {
-		this.fileName = fileName;
-		this.isOk = isOk;
-	}
-
-	@Override
-	public String toString() {
-		return "Commit{filename=\'" + fileName + "\'}";
-	}
+public interface MessagingEndOfStream {
+	void onEndOfStream();
 }

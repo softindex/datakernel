@@ -95,6 +95,11 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 			internalBuf = null;
 			downstreamProducer.sendEndOfStream();
 		}
+
+		@Override
+		protected void doCleanup() {
+			internalBuf.recycle();
+		}
 	}
 
 	public StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {

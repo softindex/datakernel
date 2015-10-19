@@ -254,7 +254,137 @@ public class SimpleFsServerTest {
 	}
 
 	@Test
-	public void testUploadBig() throws Exception {
+	public void testGeneralLongPaths() throws Exception {
+		String requestedFile = "a b";
+		final String resultFile = "this/is/directory/ab.txt";
+
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		final SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
+				16 * 1024, clientStorage.resolve(requestedFile));
+
+		final StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(requestedFile + "_downloaded"));
+		consumer.setFlushCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.deleteFile(resultFile, new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						client.listFiles(new ResultCallback<List<String>>() {
+							@Override
+							public void onResult(List<String> result) {
+								logger.info("Files on server: {}", result.size());
+							}
+
+							@Override
+							public void onException(Exception e) {
+								logger.error(e.getMessage(), e);
+							}
+						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error(e.getMessage(), e);
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+			}
+		});
+
+		client.upload(resultFile, producer, new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Uploaded");
+				client.download(resultFile, consumer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+			}
+		});
+
+		client.listFiles(new ResultCallback<List<String>>() {
+			@Override
+			public void onResult(List<String> result) {
+				logger.info("Files on server: {}", result.size());
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+			}
+		});
+
+		eventloop.schedule(eventloop.currentTimeMillis() + 1000, new Runnable() {
+			@Override
+			public void run() {
+				stop(fileServer);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(),
+				clientStorage.resolve(requestedFile + "_downloaded").toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testDownload() throws Exception {
+		String requestedFile = "big_file";
+		String resultFile = "big_file_downloaded";
+
+		ExecutorService executor = Executors.newCachedThreadPool();
+		NioEventloop eventloop = new NioEventloop();
+
+		Files.copy(clientStorage.resolve(requestedFile), serverStorage.resolve(requestedFile));
+
+		final SimpleFsServer fileServer = prepareServer(eventloop);
+		SimpleFsClient client = new SimpleFsClient(eventloop, address);
+
+		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
+		consumer.setFlushCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("File downloaded");
+				stop(fileServer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error(e.getMessage(), e);
+				stop(fileServer);
+			}
+		});
+
+		client.download(requestedFile, consumer);
+
+		eventloop.run();
+		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile).toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Ignore
+	@Test
+	public void testActionsAfterStop() {
+		fail("Not yet implemented");
+	}
+
+	@Test
+	public void testUploadBigFile() throws IOException {
 		String requestedFile = "big_file";
 		String resultFile = "big_file_uploaded";
 
@@ -289,9 +419,8 @@ public class SimpleFsServerTest {
 	}
 
 	@Test
-	public void testDownload() throws Exception {
+	public void testFileAlreadyExist() throws IOException {
 		String requestedFile = "big_file";
-		String resultFile = "big_file_downloaded";
 
 		ExecutorService executor = Executors.newCachedThreadPool();
 		NioEventloop eventloop = new NioEventloop();
@@ -301,9 +430,9 @@ public class SimpleFsServerTest {
 		final SimpleFsServer fileServer = prepareServer(eventloop);
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile));
-		consumer.setFlushCallback(new CompletionCallback() {
+		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, clientStorage.resolve(requestedFile));
 
+		client.upload(requestedFile, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("File downloaded");
@@ -317,23 +446,15 @@ public class SimpleFsServerTest {
 			}
 		});
 
-		client.download(requestedFile, consumer);
-
 		eventloop.run();
 		executor.shutdownNow();
 
-		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(resultFile).toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve(requestedFile).toFile(), clientStorage.resolve(requestedFile).toFile()));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
-	public void testActionsAfterStop() {
-		fail("Not yet implemented");
-	}
-
-	@Test
-	public void testDownloadNotExistsFile() throws Exception {
+	public void testDownloadNotExist() throws Exception {
 		String requestedFile = "t2_not_exist";
 		String resultFile = "t2_downloaded";
 
@@ -421,10 +542,8 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testUploadWithException() throws IOException {
-		// TODO (vsavchuk) see SimpleFsServer
 		String resultFile = "non_existing_file";
 
 		ExecutorService executor = Executors.newCachedThreadPool();
@@ -453,11 +572,8 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testBadUpload() throws IOException {
-		// TODO (vsavchuk) Requested
-
 		String resultFile = "non_existing_file";
 
 		ExecutorService executor = Executors.newCachedThreadPool();

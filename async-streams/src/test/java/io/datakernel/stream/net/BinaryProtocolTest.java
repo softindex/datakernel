@@ -171,7 +171,7 @@ public class BinaryProtocolTest {
 										messaging.sendMessage("start");
 										messaging.shutdownWriter();
 										StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-										messaging.binarySocketReader().streamTo(streamDeserializer);
+										messaging.read().streamTo(streamDeserializer);
 										streamDeserializer.streamTo(consumerToList);
 									}
 								});
@@ -188,8 +188,7 @@ public class BinaryProtocolTest {
 		eventloop.run();
 		assertEquals(source, consumerToList.getList());
 
-		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -215,7 +214,7 @@ public class BinaryProtocolTest {
 								assertEquals("start", item);
 
 								StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-								messaging.binarySocketReader().streamTo(streamDeserializer);
+								messaging.read().streamTo(streamDeserializer);
 								streamDeserializer.streamTo(consumerToList);
 
 								messaging.shutdownWriter();
@@ -269,8 +268,7 @@ public class BinaryProtocolTest {
 
 		assertEquals(source, consumerToList.getList());
 
-		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -299,7 +297,7 @@ public class BinaryProtocolTest {
 								System.out.println("receive start");
 
 								StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-								messaging.binarySocketReader().streamTo(streamDeserializer);
+								messaging.read().streamTo(streamDeserializer);
 								streamDeserializer.streamTo(consumerToList);
 
 								consumerToList.setCompletionCallback(new CompletionCallback() {
@@ -373,8 +371,7 @@ public class BinaryProtocolTest {
 		assertEquals(source, consumerToList.getList());
 		assertTrue(ack.get());
 
-		// FIXME
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -400,7 +397,7 @@ public class BinaryProtocolTest {
 								assertEquals("start", item);
 
 								StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-								messaging.binarySocketReader().streamTo(streamDeserializer);
+								messaging.read().streamTo(streamDeserializer);
 								streamDeserializer.streamTo(consumerToList);
 
 								messaging.shutdownWriter();
@@ -453,8 +450,7 @@ public class BinaryProtocolTest {
 
 		assertEquals(source, consumerToList.getList());
 
-		// FIXME: 1 ByteBuf Leak (ByteBuf(16) produced by StreamBinaryDeserializer)
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 }

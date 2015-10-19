@@ -16,7 +16,7 @@
 
 package io.datakernel.simplefs;
 
-public final class SimpleFsCommandList extends SimpleFsCommand {
+final class SimpleFsCommandList extends SimpleFsCommand {
 
 	public SimpleFsCommandList() {
 	}
