@@ -140,7 +140,7 @@ public class KeyValueTest {
 				.keys(KeyValuePair.KEYS)
 				.fields(KeyValuePair.FIELDS);
 		StreamConsumers.ToList<KeyValuePair> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		aggregation.query(0, query, KeyValuePair.class).streamTo(consumerToList);
+		aggregation.query(query, KeyValuePair.class).streamTo(consumerToList);
 
 		eventloop.run();
 

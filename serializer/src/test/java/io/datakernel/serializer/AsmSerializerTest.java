@@ -1147,6 +1147,11 @@ public class AsmSerializerTest {
 		@SerializeNullable
 		@SerializeMaxLength(5)
 		public String s3;
+
+		@Serialize(order = 3)
+		@SerializeNullable
+		@SerializeMaxLength(6)
+		public String s4;
 	}
 
 	@Test
@@ -1155,11 +1160,13 @@ public class AsmSerializerTest {
 		expected.s1 = "abcdefg";
 		expected.s2 = "1234";
 		expected.s3 = "QWE";
+		expected.s4 = null;
 
 		TestDataMaxLength actual = doTest(TestDataMaxLength.class, expected);
 		assertEquals(expected.s1.substring(0, 3), actual.s1);
 		assertEquals(expected.s2, actual.s2);
 		assertEquals(expected.s3, actual.s3);
+		assertEquals(expected.s4, actual.s4);
 	}
 
 	public static class TestDataDeserializeFactory0 {

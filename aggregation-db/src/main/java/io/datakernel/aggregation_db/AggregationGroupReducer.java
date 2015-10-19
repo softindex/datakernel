@@ -128,7 +128,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			public void onResult(Long newId) {
 				AggregationChunk.NewChunk newChunk = new AggregationChunk.NewChunk(
 						newId,
-						aggregationMetadata.getId(), outputFields,
+						outputFields,
 						PrimaryKey.ofObject(entryList.get(0).getValue(), keys),
 						PrimaryKey.ofObject(entryList.get(entryList.size() - 1).getValue(), keys),
 						entryList.size());
@@ -151,17 +151,6 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 					@Override
 					public void onComplete() {
 						saving = false;
-						metadataStorage.saveChunks(aggregationMetadata, chunks, new CompletionCallback() {
-							@Override
-							public void onComplete() {
-								logger.trace("Saving chunks {} to metadata storage {} completed.", chunks, metadataStorage);
-							}
-
-							@Override
-							public void onException(Exception exception) {
-								logger.error("Saving chunks {} to metadata storage {} failed.", chunks, metadataStorage, exception);
-							}
-						});
 						eventloop.post(new Runnable() {
 							@Override
 							public void run() {
@@ -181,6 +170,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			@Override
 			public void onException(Exception exception) {
 				logger.error("Failed to retrieve new chunk id from the metadata storage {}.", metadataStorage);
+				// TODO (dtkachenko): implement proper exception handling after merge with async-streams2
 			}
 		});
 	}

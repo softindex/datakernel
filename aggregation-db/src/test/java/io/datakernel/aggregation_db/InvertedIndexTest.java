@@ -163,7 +163,7 @@ public class InvertedIndexTest {
 				.fields(InvertedIndexRecord.INPUT_FIELDS);
 
 		StreamConsumers.ToList<InvertedIndexQueryResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		aggregation.query(0, query, InvertedIndexQueryResult.class).streamTo(consumerToList);
+		aggregation.query(query, InvertedIndexQueryResult.class).streamTo(consumerToList);
 
 		eventloop.run();
 

@@ -71,26 +71,21 @@ public final class RangeTree<K, V> {
 		return result;
 	}
 
-	public void put(K lower, K upper, V value) {
-		if (!segments.containsKey(lower)) {
-			Map.Entry<K, Segment<V>> floorEntry = segments.floorEntry(lower);
-			Segment<V> newEntry = new Segment<>();
+	private Segment<V> ensureSegment(K key) {
+		Segment<V> segment = segments.get(key);
+		if (segment == null) {
+			Map.Entry<K, Segment<V>> floorEntry = segments.floorEntry(key);
+			segment = new Segment<>();
 			if (floorEntry != null)
-				newEntry.set.addAll(floorEntry.getValue().set);
-			segments.put(lower, newEntry);
+				segment.set.addAll(floorEntry.getValue().set);
+			segments.put(key, segment);
 		}
+		return segment;
+	}
 
-		if (!segments.containsKey(upper)) {
-			Map.Entry<K, Segment<V>> floorEntry = segments.floorEntry(upper);
-			Segment<V> newSegment = new Segment<>();
-			if (floorEntry != null)
-				newSegment.set.addAll(floorEntry.getValue().set);
-			segments.put(upper, newSegment);
-			newSegment.closing.add(value);
-		} else {
-			Segment<V> segment = segments.get(upper);
-			segment.closing.add(value);
-		}
+	public void put(K lower, K upper, V value) {
+		ensureSegment(lower);
+		ensureSegment(upper).closing.add(value);
 
 		SortedMap<K, Segment<V>> subMap = segments.subMap(lower, upper);
 		for (Map.Entry<K, Segment<V>> entry : subMap.entrySet()) {
@@ -98,15 +93,14 @@ public final class RangeTree<K, V> {
 		}
 	}
 
+	@SuppressWarnings("ConstantConditions")
 	public boolean remove(K lower, K upper, V value) {
 		boolean removed = false;
-		Segment<V> upperSegment = segments.get(upper);
-		upperSegment.closing.remove(value);
-		if (upperSegment.set.isEmpty() && upperSegment.closing.isEmpty()) {
-			removed |= segments.remove(upper) != null;
-		}
 
-		Iterator<Segment<V>> it = segments.subMap(lower, upper).values().iterator();
+		ensureSegment(lower);
+		removed |= ensureSegment(upper).closing.remove(value);
+
+		Iterator<Segment<V>> it = segments.subMap(lower, true, upper, true).values().iterator();
 		while (it.hasNext()) {
 			Segment<V> segment = it.next();
 			removed |= segment.set.remove(value);
@@ -114,6 +108,7 @@ public final class RangeTree<K, V> {
 				it.remove();
 			}
 		}
+
 		return removed;
 	}
 

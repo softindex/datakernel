@@ -32,7 +32,6 @@ import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Maps.filterKeys;
 
 public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStorage {
-	private int revisionId;
 	private static long chunkId;
 	private Map<String, Map<String, LogPosition>> positions = new LinkedHashMap<>();
 
@@ -56,17 +55,17 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	}
 
 	@Override
-	public void commit(Cube cube, String log, Map<String, LogPosition> oldPositions,
-	                   Map<String, LogPosition> newPositions, Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
-	                   CompletionCallback callback) {
+	public void saveCommit(String log, Map<String, LogPosition> oldPositions,
+	                       Map<String, LogPosition> newPositions, Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
+	                       CompletionCallback callback) {
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
 		callback.onComplete();
-		cube.incrementLastRevisionId();
 		for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
 			AggregationMetadata aggregation = entry.getKey();
 			AggregationChunk.NewChunk newChunk = entry.getValue();
-			aggregation.addToIndex(AggregationChunk.createCommitChunk(cube.getLastRevisionId(), newChunk));
+//			TODO (dtkachenko)
+//			aggregation.addToIndex(AggregationChunk.createCommitChunk(cube.getLastRevisionId(), newChunk));
 		}
 	}
 

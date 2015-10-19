@@ -59,6 +59,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -127,8 +129,12 @@ public class LogToCubeTest {
 		eventloop.run();
 		cb.check();
 
+		cube.loadChunks(ignoreCompletionCallback());
+
+		eventloop.run();
+
 		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, TestAdvResult.class, new AggregationQuery(asList("adv"), asList("advRequests")))
+		cube.query(TestAdvResult.class, new AggregationQuery(asList("adv"), asList("advRequests")))
 				.streamTo(consumerToList);
 		eventloop.run();
 
@@ -211,16 +217,14 @@ public class LogToCubeTest {
 				cube.loadAggregations(cb);
 				eventloop.run();
 
-				cube.refreshAllChunks(cb2);
+				cube.loadChunks(cb2);
 				eventloop.run();
 
 				cb.check();
 				cb2.check();
 
-				cb = new CompletionCallbackObserver();
-				cube.consolidateGreedily(cb);
+				cube.consolidate(ignoreResultCallback());
 				eventloop.run();
-				cb.check();
 
 				latch.countDown();
 			}
@@ -256,10 +260,8 @@ public class LogToCubeTest {
 		cube.addAggregation(new AggregationMetadata("pub", asList("pub"), asList("pubRequests")));
 		cube.addAggregation(new AggregationMetadata("adv", asList("adv"), asList("advRequests")));
 
-		CompletionCallbackObserver observer = new CompletionCallbackObserver();
-		cube.saveAggregations(observer);
+		cube.saveAggregations(ignoreCompletionCallback());
 		eventloop.run();
-		observer.check();
 
 		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, logsDir);
 		BufferSerializer<TestPubRequest> bufferSerializer = SerializerBuilder
@@ -279,37 +281,47 @@ public class LogToCubeTest {
 				.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		observer = new CompletionCallbackObserver();
-		logToCubeRunner.processLog(observer);
+		logToCubeRunner.processLog(ignoreCompletionCallback());
 		eventloop.run();
-		observer.check();
+
+		cube.loadChunks(ignoreCompletionCallback());
+		eventloop.run();
 
 		/* ***** */
 
 		new StreamProducers.OfIterator<>(eventloop, asList(
-				new TestPubRequest(1000, 1, Collections.<TestPubRequest.TestAdvRequest>emptyList()),
-				new TestPubRequest(1001, 2, Collections.<TestPubRequest.TestAdvRequest>emptyList()),
-				new TestPubRequest(1002, 1, Collections.<TestPubRequest.TestAdvRequest>emptyList()),
-				new TestPubRequest(1002, 2, Collections.<TestPubRequest.TestAdvRequest>emptyList())).iterator())
+				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
+				new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
+				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
+				new TestPubRequest(1002, 2, Arrays.<TestPubRequest.TestAdvRequest>asList())).iterator())
 				.streamTo(logManager.consumer("partitionA"));
 		eventloop.run();
 
-		observer = new CompletionCallbackObserver();
-		logToCubeRunner.processLog(observer);
+		logToCubeRunner.processLog(ignoreCompletionCallback());
 		eventloop.run();
-		observer.check();
+
+		cube.loadChunks(ignoreCompletionCallback());
+		eventloop.run();
 
 		AggregationQuery query = new AggregationQuery(asList("adv"), asList("advRequests"));
 		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, TestAdvResult.class, query).streamTo(consumerToList);
+		cube.query(TestAdvResult.class, query).streamTo(consumerToList);
 		eventloop.run();
 
-		observer = new CompletionCallbackObserver();
-		cube.consolidateGreedily(observer);
+		cube.consolidate(ignoreResultCallback());
+		eventloop.run();
+
+		cube.loadChunks(ignoreCompletionCallback());
+		eventloop.run();
+
+		cube.consolidate(ignoreResultCallback());
+		eventloop.run();
+
+		cube.loadChunks(ignoreCompletionCallback());
 		eventloop.run();
 
 		StreamConsumers.ToList<TestAdvResult> consumerToList2 = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, TestAdvResult.class, query).streamTo(consumerToList2);
+		cube.query(TestAdvResult.class, query).streamTo(consumerToList2);
 		eventloop.run();
 
 		assertEquals(consumerToList.getList(), consumerToList2.getList());
@@ -356,7 +368,7 @@ public class LogToCubeTest {
 				aggregationsDir);
 		Cube cube = newCube(eventloop, classLoader, cubeMetadataStorage, indexMetadataStorage, aggregationChunkStorage, structure);
 		cube.loadAggregations(cb);
-		cube.refreshAllChunks(cb);
+		cube.loadChunks(cb);
 		eventloop.run();
 
 		int consolidationThreads = 4;
@@ -372,17 +384,17 @@ public class LogToCubeTest {
 
 		cb.check();
 		cb = new CompletionCallbackObserver();
-		cube.reloadAllChunksConsolidations(cb);
+//		cube.reloadAllChunksConsolidations(cb); TODO (dtkachenko)
 		eventloop.run();
 
 		cb.check();
 		cb = new CompletionCallbackObserver();
-		cube.reloadAllChunksConsolidations(cb);
+//		cube.reloadAllChunksConsolidations(cb); TODO (dtkachenko)
 		eventloop.run();
 
 		cb.check();
 		cb = new CompletionCallbackObserver();
-		cube.removeOldChunksFromAllAggregations(cb);
+//		cube.reloadAllChunksConsolidations(cb); TODO (dtkachenko)
 		eventloop.run();
 	}
 

@@ -24,7 +24,10 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.processor.*;
+import io.datakernel.stream.processor.StreamBinaryDeserializer;
+import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.stream.processor.StreamLZ4Compressor;
+import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -70,20 +73,13 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		this.bufferSize = bufferSize;
 	}
 
-	private Path path(String aggregationId, long id) {
-		Path tableDir = dir.resolve(aggregationId);
-		Path path = tableDir.resolve(id + ".log");
-		try {
-			Files.createDirectories(tableDir);
-		} catch (IOException e) {
-			logger.error("createDirectories error", e);
-		}
-		return path;
+	private Path path(long id) {
+		return dir.resolve(id + ".log");
 	}
 
 	@Override
 	public void removeChunk(String aggregationId, long id, CompletionCallback callback) {
-		Path path = path(aggregationId, id);
+		Path path = path(id);
 		try {
 			Files.delete(path);
 			callback.onComplete();
@@ -97,7 +93,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
 
 		StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
-				path(aggregationId, id), 0L);
+				path(id), 0L);
 
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
@@ -114,12 +110,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(aggregationId, id));
+		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id));
 
 		serializer.streamTo(compressor);
 		compressor.streamTo(writer);
 
 		return serializer;
 	}
-
 }

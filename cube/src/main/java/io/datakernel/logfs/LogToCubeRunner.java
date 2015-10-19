@@ -131,7 +131,7 @@ public final class LogToCubeRunner<T> {
 	                                 final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
 	                                 final CompletionCallback callback) {
 		logger.trace("processLog_doCommit called. Log: {}. Old positions: {}. New positions: {}. New chunks: {}.", log, oldPositions, newPositions, newChunks);
-		metadataStorage.commit(cube, log, oldPositions, newPositions, newChunks, new ForwardingCompletionCallback(callback) {
+		metadataStorage.saveCommit(log, oldPositions, newPositions, newChunks, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
 				processLog_afterCommit(newChunks, callback);

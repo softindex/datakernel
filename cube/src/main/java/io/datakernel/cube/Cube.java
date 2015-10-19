@@ -16,7 +16,9 @@
 
 package io.datakernel.cube;
 
-import com.google.common.base.*;
+import com.google.common.base.Function;
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Predicate;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
@@ -60,8 +62,6 @@ public final class Cube {
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final int aggregationChunkSize;
 	private final int sorterItemsInMemory;
-	private final long consolidationTimeoutMillis;
-	private final long removeChunksAfterConsolidationMillis;
 
 	private final AggregationStructure structure;
 
@@ -97,8 +97,6 @@ public final class Cube {
 		this.structure = structure;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
-		this.consolidationTimeoutMillis = consolidationTimeoutMillis;
-		this.removeChunksAfterConsolidationMillis = removeChunksAfterConsolidationMillis;
 	}
 
 	/**
@@ -154,8 +152,7 @@ public final class Cube {
 	 */
 	public void addAggregation(AggregationMetadata aggregationMetadata) {
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage, aggregationChunkStorage, aggregationMetadata, structure,
-				new SummationProcessorFactory(classLoader), sorterItemsInMemory, aggregationChunkSize,
-				consolidationTimeoutMillis, removeChunksAfterConsolidationMillis);
+				new SummationProcessorFactory(classLoader), sorterItemsInMemory, aggregationChunkSize);
 		aggregations.put(aggregation.getId(), aggregation);
 	}
 
@@ -322,13 +319,12 @@ public final class Cube {
 	/**
 	 * Returns a {@link StreamProducer} of the records retrieved from cube for the specified query.
 	 *
-	 * @param revisionId  minimum revision of records
+	 * @param <T>         type of output objects
 	 * @param resultClass class of output records
 	 * @param query       query
-	 * @param <T>         type of output objects
 	 * @return producer that streams query results
 	 */
-	public <T> StreamProducer<T> query(int revisionId, Class<T> resultClass, AggregationQuery query) {
+	public <T> StreamProducer<T> query(Class<T> resultClass, AggregationQuery query) {
 		logger.trace("Started building StreamProducer for query.");
 
 		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
@@ -353,7 +349,7 @@ public final class Cube {
 
 			Class aggregationClass = structure.createRecordClass(aggregation.getKeys(), aggregationMeasures);
 
-			StreamProducer<T> queryResultProducer = aggregation.query(revisionId, filteredQuery, aggregationClass);
+			StreamProducer<T> queryResultProducer = aggregation.query(filteredQuery, aggregationClass);
 
 			Function keyFunction = structure.createKeyFunction(aggregationClass, resultKeyClass, resultDimensions);
 
@@ -404,140 +400,35 @@ public final class Cube {
 		cubeMetadataStorage.loadAggregations(this, callback);
 	}
 
-	public void loadAllChunks(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
+	public void loadChunks(CompletionCallback callback) {
 		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
 		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.loadAllChunks(waitAllCallback);
+			aggregation.loadChunks(waitAllCallback);
 		}
 	}
 
-	public void reloadAllChunksConsolidations(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.reloadAllChunksConsolidations(waitAllCallback);
-		}
+	public void consolidate(ResultCallback<Boolean> callback) {
+		consolidate(false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	public void refreshChunkConsolidations(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.refreshChunkConsolidations(waitAllCallback);
-		}
-	}
-
-	public void refreshAllChunks(CompletionCallback callback) {
-		refreshAllChunks(Integer.MAX_VALUE, callback);
-	}
-
-	public void refreshAllChunks(int maxRevisionId, CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.loadChunks(maxRevisionId, waitAllCallback);
-		}
-	}
-
-	public void consolidateAllIndexes(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.consolidate(waitAllCallback);
-		}
-	}
-
-	public void consolidateGreedily(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		TreeMap<Integer, Aggregation> aggregationToNumberOfChunks = getAggregationToNumberOfChunksForConsolidation();
-
-		if (aggregationToNumberOfChunks.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		aggregationToNumberOfChunks.firstEntry().getValue().consolidate(callback);
-	}
-
-	public void consolidateGreedily(ResultCallback<Integer> callback) {
-		if (aggregations.isEmpty()) {
-			callback.onResult(0);
-			return;
-		}
-
-		TreeMap<Integer, Aggregation> aggregationToNumberOfChunks = getAggregationToNumberOfChunksForConsolidation();
-
-		if (aggregationToNumberOfChunks.isEmpty()) {
-			callback.onResult(0);
-			return;
-		}
-
-		aggregationToNumberOfChunks.firstEntry().getValue().consolidate(callback);
-	}
-
-	private TreeMap<Integer, Aggregation> getAggregationToNumberOfChunksForConsolidation() {
-		TreeMap<Integer, Aggregation> aggregationToNumberOfChunks = new TreeMap<>(Collections.reverseOrder());
-
-		for (Aggregation aggregation : aggregations.values()) {
-			int numberOfChunksAvailableForConsolidation = aggregation.getNumberOfChunksAvailableForConsolidation();
-			if (numberOfChunksAvailableForConsolidation != 0) {
-				aggregationToNumberOfChunks.put(numberOfChunksAvailableForConsolidation, aggregation);
+	public void consolidate(boolean found, Iterator<Aggregation> iterator,
+	                        ResultCallback<Boolean> callback) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				if (iterator.hasNext()) {
+					Aggregation aggregation = iterator.next();
+					aggregation.consolidate(new ForwardingResultCallback<Boolean>(callback) {
+						@Override
+						public void onResult(Boolean result) {
+							consolidate(result || found, iterator, callback);
+						}
+					});
+				} else {
+					callback.onResult(found);
+				}
 			}
-		}
-
-		return aggregationToNumberOfChunks;
-	}
-
-	public void consolidateGreedily(ConsolidateCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onNothingToConsolidate();
-			return;
-		}
-
-		TreeMap<Integer, Aggregation> aggregationToNumberOfChunks = getAggregationToNumberOfChunksForConsolidation();
-
-		if (aggregationToNumberOfChunks.isEmpty()) {
-			callback.onNothingToConsolidate();
-			return;
-		}
-
-		aggregationToNumberOfChunks.firstEntry().getValue().consolidate(callback);
-	}
-
-	public void removeOldChunksFromAllAggregations(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.removeOldChunks(waitAllCallback);
-		}
+		});
 	}
 
 	public AvailableDrillDowns getAvailableDrillDowns(Set<String> dimensions, AggregationQuery.QueryPredicates predicates,
@@ -585,10 +476,6 @@ public final class Cube {
 
 	public List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
 		return structure.getChildParentRelationships().buildDrillDownChain(usedDimensions, dimension);
-	}
-
-	public Set<List<String>> buildDrillDownChains(Set<String> usedDimensions, Set<String> availableDimensions) {
-		return structure.getChildParentRelationships().buildDrillDownChains(usedDimensions, availableDimensions);
 	}
 
 	public Set<String> getAvailableMeasures(List<String> dimensions, List<String> allMeasures) {
