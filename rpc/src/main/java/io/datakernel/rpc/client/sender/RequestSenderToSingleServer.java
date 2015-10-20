@@ -9,7 +9,9 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
-public class RequestSenderToSingleServer implements RequestSender {
+public final class RequestSenderToSingleServer implements RequestSender {
+	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
+
 
 	private final RpcClientConnectionPool connectionPool;
 	private final InetSocketAddress address;
@@ -30,6 +32,8 @@ public class RequestSenderToSingleServer implements RequestSender {
 		RpcClientConnection connection = connectionPool.get(address);
 		if (connection != null) {
 			connection.callMethod(request, timeout, callback);
+		} else {
+			callback.onException(NO_AVAILABLE_CONNECTION);
 		}
 	}
 
@@ -44,6 +48,11 @@ public class RequestSenderToSingleServer implements RequestSender {
 			key = computeKey();
 		}
 		return key;
+	}
+
+	@Override
+	public boolean isActive() {
+		return connectionPool.get(address) != null;
 	}
 
 	private int computeKey() {

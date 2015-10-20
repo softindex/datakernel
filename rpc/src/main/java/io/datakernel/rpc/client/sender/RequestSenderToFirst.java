@@ -32,31 +32,23 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-final class RequestSenderToFirst implements RequestSender {
+final class RequestSenderToFirst extends RequestSenderToGroup {
+	private static final int HASH_BASE = 101;
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
-	private final RpcClientConnectionPool connections;
 
-	// JMX
-	private final long[] callCounters;
-
-	public RequestSenderToFirst(RpcClientConnectionPool connections) {
-		this.connections = checkNotNull(connections);
-
-		this.callCounters = new long[connections.addresses().size()];
+	public RequestSenderToFirst(List<RequestSender> senders) {
+		super(senders);
 	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
 		checkNotNull(callback);
-		int serverNumber = 0;
-		for (InetSocketAddress address : connections.addresses()) {
-			RpcClientConnection connection = connections.get(address);
-			if (connection == null) {
-				serverNumber++;
+		for (RequestSender subSender : getSubSenders()) {
+			if (!subSender.isActive()) {
 				continue;
 			}
-			++callCounters[serverNumber];
-			connection.callMethod(request, timeout, callback);
+			// TODO (vmykhalko): what if connection was removed from pool concurrently at this moment?
+			subSender.sendRequest(request, timeout, callback);
 			return;
 		}
 		callback.onException(NO_AVAILABLE_CONNECTION);
@@ -66,24 +58,9 @@ final class RequestSenderToFirst implements RequestSender {
 	public void onConnectionsUpdated() {
 	}
 
-	// JMX
-	@Override
-	public void resetStats() {
-		for (int i = 0; i < callCounters.length; i++) {
-			callCounters[i] = 0;
-		}
-	}
 
 	@Override
-	public CompositeData getRequestSenderInfo() throws OpenDataException {
-		List<String> res = new ArrayList<>();
-		res.add("address;calls");
-		for (int i = 0; i < connections.addresses().size(); i++) {
-			res.add(connections.addresses().get(i) + ";" + callCounters[i]);
-		}
-		return CompositeDataBuilder.builder(RequestSenderToFirst.class.getSimpleName())
-				.add("connectionDispatcher", SimpleType.STRING, RequestSenderToFirst.class.getSimpleName())
-				.add("callsPerAddress", new ArrayType<>(1, SimpleType.STRING), res.toArray(new String[res.size()]))
-				.build();
+	protected int getHashBase() {
+		return HASH_BASE;
 	}
 }

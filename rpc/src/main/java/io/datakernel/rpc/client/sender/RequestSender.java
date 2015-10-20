@@ -26,4 +26,6 @@ public interface RequestSender {
 	void onConnectionsUpdated();
 
 	int getKey();
+
+	boolean isActive();
 }

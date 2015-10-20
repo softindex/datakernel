@@ -32,66 +32,44 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-final class RequestSenderRoundRobin implements RequestSender {
+final class RequestSenderRoundRobin extends RequestSenderToGroup {
+	private static final int HASH_BASE = 102;
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
-	private final RpcClientConnectionPool connections;
-	private int activeConnection = 0;
 
-	// JMX
-	private final long[] callCounters;
+	private int currentSender;
 
-	public RequestSenderRoundRobin(RpcClientConnectionPool connections) {
-		this.connections = checkNotNull(connections);
 
-		this.callCounters = new long[connections.addresses().size()];
+	public RequestSenderRoundRobin(List<RequestSender> senders) {
+		super(senders);
+		currentSender = 0;
 	}
 
 	@Override
 	public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback) {
 		checkNotNull(callback);
-		while (connections.size() > 0) {
-			for (int i = 0; i < connections.addresses().size(); ++i) {
-				int serverNumber = getServerNumber();
-				InetSocketAddress address = connections.addresses().get(serverNumber);
-				RpcClientConnection connection = connections.get(address);
-				if (connection == null) {
-					continue;
-				}
-				++callCounters[serverNumber];
-				connection.callMethod(request, timeout, callback);
+		List<RequestSender> subSenders = getSubSenders();
+		for (int i = 0; i < subSenders.size(); ++i) {
+			RequestSender sender = subSenders.get(getCurrentSenderNumber());
+			if (sender.isActive()) {
+				sender.sendRequest(request, timeout, callback);
 				return;
 			}
 		}
 		callback.onException(NO_AVAILABLE_CONNECTION);
 	}
 
-	private int getServerNumber() {
-		activeConnection = (activeConnection + 1) % connections.addresses().size();
-		return activeConnection;
+	private int getCurrentSenderNumber() {
+		// TODO (vmykhalko): maybe change subSenders to immutable list?
+		currentSender = (currentSender + 1) % getSubSenders().size();
+		return currentSender;
 	}
 
 	@Override
 	public void onConnectionsUpdated() {
 	}
 
-	// JMX
 	@Override
-	public void resetStats() {
-		for (int i = 0; i < callCounters.length; i++) {
-			callCounters[i] = 0;
-		}
-	}
-
-	@Override
-	public CompositeData getRequestSenderInfo() throws OpenDataException {
-		List<String> res = new ArrayList<>();
-		res.add("address;calls");
-		for (int i = 0; i < connections.addresses().size(); i++) {
-			res.add(connections.addresses().get(i) + ";" + callCounters[i]);
-		}
-		return CompositeDataBuilder.builder(RequestSenderRoundRobin.class.getSimpleName())
-				.add("connectionDispatcher", SimpleType.STRING, RequestSenderRoundRobin.class.getSimpleName())
-				.add("callsPerAddress", new ArrayType<>(1, SimpleType.STRING), res.toArray(new String[res.size()]))
-				.build();
+	protected int getHashBase() {
+		return HASH_BASE;
 	}
 }

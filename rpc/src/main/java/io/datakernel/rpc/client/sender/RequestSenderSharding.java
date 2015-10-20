@@ -32,71 +32,39 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-final class RequestSenderSharding implements RequestSender {
+final class RequestSenderSharding extends RequestSenderToGroup {
+	private static final int HASH_BASE = 103;
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
-	private final RpcClientConnectionPool connections;
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 
-	// JMX
-	private final long[] callCounters;
-
-	public RequestSenderSharding(RpcClientConnectionPool connections, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
-		this.connections = checkNotNull(connections);
+	public RequestSenderSharding(List<RequestSender> senders, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+		super(senders);
 		this.hashFunction = checkNotNull(hashFunction);
-
-		this.callCounters = new long[connections.addresses().size()];
 	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, final ResultCallback<T> callback) {
 		checkNotNull(callback);
-		RpcClientConnection connection = getConnection(request);
-		if (connection == null) {
-			callback.onException(NO_AVAILABLE_CONNECTION);
+		RequestSender sender = chooseSender(request);
+		if (sender.isActive()) {
+			sender.sendRequest(request, timeout, callback);
 			return;
 		}
-		connection.callMethod(request, timeout, new ResultCallback<T>() {
-			@Override
-			public void onException(Exception exception) {
-				callback.onException(exception);
-			}
-
-			@Override
-			public void onResult(T result) {
-				callback.onResult(result);
-			}
-
-		});
+		callback.onException(NO_AVAILABLE_CONNECTION);
 	}
 
-	private RpcClientConnection getConnection(RpcMessage.RpcMessageData request) {
-		int index = Math.abs(hashFunction.hashCode(request)) % connections.addresses().size();
-		++callCounters[index];
-		return connections.get(connections.addresses().get(index));
+	private RequestSender chooseSender(RpcMessage.RpcMessageData request) {
+		List<RequestSender> subSenders = getSubSenders();
+		int index = Math.abs(hashFunction.hashCode(request)) % subSenders.size();
+		return subSenders.get(index);
 	}
 
 	@Override
 	public void onConnectionsUpdated() {
 	}
 
-	// JMX
 	@Override
-	public void resetStats() {
-		for (int i = 0; i < callCounters.length; i++) {
-			callCounters[i] = 0;
-		}
-	}
-
-	@Override
-	public CompositeData getRequestSenderInfo() throws OpenDataException {
-		List<String> res = new ArrayList<>();
-		res.add("address;calls");
-		for (int i = 0; i < connections.addresses().size(); i++) {
-			res.add(connections.addresses().get(i) + ";" + callCounters[i]);
-		}
-		return CompositeDataBuilder.builder(RequestSenderSharding.class.getSimpleName())
-				.add("senderStrategy", SimpleType.STRING, RequestSenderSharding.class.getSimpleName())
-				.add("callsPerAddress", new ArrayType<>(1, SimpleType.STRING), res.toArray(new String[res.size()]))
-				.build();
+	protected int getHashBase() {
+		return HASH_BASE;
 	}
 }
