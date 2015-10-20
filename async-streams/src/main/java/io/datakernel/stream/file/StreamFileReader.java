@@ -38,7 +38,7 @@ import static java.nio.file.StandardOpenOption.READ;
  * This class allows you to read data from file non-blocking. It represents a {@link AbstractStreamProducer}
  * which streams data from file.
  */
-public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
+public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
 
 	private final ExecutorService executor;

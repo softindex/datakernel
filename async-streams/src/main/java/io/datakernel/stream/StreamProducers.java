@@ -232,8 +232,7 @@ public class StreamProducers {
 		@Override
 		protected void onStarted() {
 			logger.info("{} close with error {}", this, exception.getMessage());
-			downstreamConsumer.onProducerError(exception);
-			sendEndOfStream();
+			closeWithError(exception);
 		}
 
 		@Override

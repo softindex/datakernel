@@ -193,6 +193,11 @@ public abstract class AbstractStreamTransformer_N_1<O> implements StreamProducer
 		return countEndOfStreams == upstreamConsumers.size();
 	}
 
+	@Override
+	public Exception getProducerException() {
+		return downstreamProducer.getProducerException();
+	}
+
 	// StreamConsumer interface
 
 	@Override

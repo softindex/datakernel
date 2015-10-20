@@ -204,6 +204,16 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		return downstreamProducer.getProducerStatus();
 	}
 
+	@Override
+	public Exception getConsumerException() {
+		return upstreamConsumer.getConsumerException();
+	}
+
+	@Override
+	public Exception getProducerException() {
+		return downstreamProducer.getProducerException();
+	}
+
 	//for test only
 	StreamStatus getUpstreamConsumerStatus() {
 		return upstreamConsumer.getConsumerStatus();

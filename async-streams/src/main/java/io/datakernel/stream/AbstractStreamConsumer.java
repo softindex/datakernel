@@ -172,6 +172,11 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	}
 
+	@Override
+	public Exception getConsumerException() {
+		return error;
+	}
+
 	public Object getTag() {
 		return tag;
 	}

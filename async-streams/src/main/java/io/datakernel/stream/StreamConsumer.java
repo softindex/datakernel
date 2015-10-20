@@ -16,8 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
-
 /**
  * It represents an object which can asynchronous receive streams of data.
  * Implementors of this interface are strongly encouraged to extend one of the abstract classes
@@ -60,4 +58,6 @@ public interface StreamConsumer<T> {
 	void onProducerError(Exception e);
 
 	StreamStatus getConsumerStatus();
+
+	Exception getConsumerException();
 }

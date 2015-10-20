@@ -144,6 +144,11 @@ public class StreamByteChunkerTest {
 		}
 
 		@Override
+		public Exception getConsumerException() {
+			return null;
+		}
+
+		@Override
 		public void onData(ByteBuf item) {
 			buffers.add(item);
 		}

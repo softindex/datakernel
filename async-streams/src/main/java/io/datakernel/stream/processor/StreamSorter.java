@@ -37,7 +37,7 @@ import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
  * @param <K> type of keys
  * @param <T> type of objects
  */
-public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>, StreamSorterMBean {
+public final class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>, StreamSorterMBean {
 
 	private final StreamMergeSorterStorage<T> storage;
 	private final Function<T, K> keyFunction;
