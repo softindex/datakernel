@@ -17,96 +17,108 @@
 package io.datakernel.rpc.client.sender;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.hash.Hashing;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.hash.HashBucketAddresses;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 
-import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
-import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-final class RequestSenderRendezvousHashing implements RequestSender {
+final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
+	private static final int HASH_BASE = 104;
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
-	private final RpcClientConnectionPool connections;
+
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 	@VisibleForTesting
-	final HashBucketAddresses hashBucket;
+	final HashBucket hashBucket;
 
-	// JMX
-	private final long[] callCounters;
 
-	public RequestSenderRendezvousHashing(RpcClientConnectionPool connections, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
-		this.connections = checkNotNull(connections);
+	public RequestSenderRendezvousHashing(List<RequestSender> senders, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+		super(senders);
 		this.hashFunction = checkNotNull(hashFunction);
-		this.hashBucket = new HashBucketAddresses(connections.addresses());
-
-		this.callCounters = new long[connections.addresses().size()];
+		this.hashBucket = new HashBucket(senders);
 	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, final ResultCallback<T> callback) {
 		checkNotNull(callback);
-		RpcClientConnection connection = getConnection(request);
-		if (connection == null) {
+		RequestSender sender = getRequestSender(request);
+		if (sender == null) {
 			callback.onException(NO_AVAILABLE_CONNECTION);
 			return;
 		}
-		connection.callMethod(request, timeout, new ResultCallback<T>() {
-			@Override
-			public void onException(Exception exception) {
-				callback.onException(exception);
-			}
-
-			@Override
-			public void onResult(T result) {
-				callback.onResult(result);
-			}
-
-		});
+		sender.sendRequest(request, timeout, callback);
 	}
 
-	private RpcClientConnection getConnection(RpcMessage.RpcMessageData request) {
-		int hashRequest = hashFunction.hashCode(request);
-		int serverId = hashBucket.getAddressId(hashRequest);
-		if (serverId == -1)
-			return null;
-		++callCounters[serverId];
-		return connections.get(connections.addresses().get(serverId));
+	private RequestSender getRequestSender(RpcMessage.RpcMessageData request) {
+		int hash = hashFunction.hashCode(request);
+		return hashBucket.chooseSender(hash);
 	}
 
 	@Override
 	public void onConnectionsUpdated() {
-		hashBucket.updateBucket(connections.activeAddresses());
-	}
-
-	// JMX
-	@Override
-	public void resetStats() {
-		for (int i = 0; i < callCounters.length; i++) {
-			callCounters[i] = 0;
-		}
+		hashBucket.update();
 	}
 
 	@Override
-	public CompositeData getRequestSenderInfo() throws OpenDataException {
-		List<String> res = new ArrayList<>();
-		res.add("address;calls");
-		for (int i = 0; i < connections.addresses().size(); i++) {
-			res.add(connections.addresses().get(i) + ";" + callCounters[i]);
-		}
-		return CompositeDataBuilder.builder(RequestSenderRendezvousHashing.class.getSimpleName())
-				.add("connectionDispatcher", SimpleType.STRING, RequestSenderRendezvousHashing.class.getSimpleName())
-				.add("callsPerAddress", new ArrayType<>(1, SimpleType.STRING), res.toArray(new String[res.size()]))
-				.build();
+	protected int getHashBase() {
+		return HASH_BASE;
 	}
 
+	@VisibleForTesting
+	static class HashBucket {
+		private static final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
+		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
+
+		private final byte[] baseHashes;
+		private final List<RequestSender> senders;
+
+		public HashBucket(List<RequestSender> senders) {
+			this(senders, DEFAULT_BUCKET_CAPACITY);
+		}
+
+		public HashBucket(List<RequestSender> senders, int capacity) {
+			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
+			this.senders = checkNotNull(senders, "addresses is not set");
+			this.baseHashes = new byte[capacity];
+			update();
+		}
+
+		// if activeAddresses is empty fill bucket -1
+		private void update() {
+			for (int n = 0; n < baseHashes.length; n++) {
+				int senderIndex = -1;
+				int max = Integer.MIN_VALUE;
+				for (int i = 0; i < senders.size(); ++i) {
+					RequestSender sender = senders.get(i);
+					if (sender.isActive()) {
+						int hash = hashAddress(n, sender);
+						if (hash >= max) {
+							senderIndex = i;
+							max = hash;
+						}
+					}
+				}
+				// TODO (vmykhalko): We can't use more than 128 senders in list. Is it desirable/acceptable limitation?
+				baseHashes[n] = (byte) senderIndex;
+			}
+		}
+
+		private int hashAddress(int bucket, RequestSender sender) {
+			return murmurHashAddressFunction.newHasher()
+					.putInt(sender.getKey())
+					.putInt(bucket)
+					.hash().asInt();
+		}
+
+		public RequestSender chooseSender(int hash) {
+			int index = baseHashes[hash & (baseHashes.length - 1)];
+			return senders.get(index);
+		}
+	}
 }

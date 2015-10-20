@@ -9,14 +9,12 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
-public final class RequestSenderToSingleServer implements RequestSender {
+final class RequestSenderToSingleServer implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
-
 
 	private final RpcClientConnectionPool connectionPool;
 	private final InetSocketAddress address;
 	private final HashFunction hashFunction;
-
 	private Integer key;
 
 	public RequestSenderToSingleServer(InetSocketAddress address, RpcClientConnectionPool connectionPool,
