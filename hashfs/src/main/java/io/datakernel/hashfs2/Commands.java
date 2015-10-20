@@ -32,9 +32,9 @@ public interface Commands {
 	/**
 	 * Delete file that is not supposed to be at this server storage;
 	 *
-	 * @param fileName - name of a file to be deleted.
+	 * @param file - name of a file to be deleted.
 	 */
-	void delete(FileInfo fileName);
+	void delete(FileInfo file);
 
 	/**
 	 * Shows files that are being kept on this server.

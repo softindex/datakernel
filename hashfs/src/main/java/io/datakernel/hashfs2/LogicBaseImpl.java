@@ -22,9 +22,11 @@ import java.util.Set;
 
 public class LogicBaseImpl implements Logic {
 	private Commands commands;
+	private Hashing hashing;
 
-	public LogicBaseImpl(Commands commands) {
+	public LogicBaseImpl(Commands commands, Hashing hashing) {
 		this.commands = commands;
+		this.hashing = hashing;
 	}
 
 	@Override
@@ -37,7 +39,9 @@ public class LogicBaseImpl implements Logic {
 		Set<FileInfo> files = filesMap.keySet();
 
 		for (FileInfo file : files) {
-			List<ServerInfo> rangedServers = RendezvousHashing.sortServers(aliveServers, file.getFileName());
+
+			List<ServerInfo> rangedServers = hashing.sortServers(aliveServers, file.getFileName());
+
 			List<ServerInfo> candidates = rangedServers.subList(0, Math.min(rangedServers.size(), config.getReplicasQuantity()));
 			for (ServerInfo server : candidates) {
 				if (!filesMap.get(file).contains(server) && !pendingOperations.containsKey(server)) {
@@ -48,7 +52,5 @@ public class LogicBaseImpl implements Logic {
 				commands.delete(file);
 			}
 		}
-		
 	}
-
 }

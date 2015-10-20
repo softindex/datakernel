@@ -375,11 +375,10 @@ public class StreamSorterTest {
 		}
 
 		protected void nextState() {
-			// TODO (vsavchuk) Fix this
-//		if (downstream.g() != null) {
-//			return;
-//		}
-//
+			if (list == null) {
+				return;
+			}
+
 			boolean bufferFull = list.size() >= itemsInMemorySize;
 
 			if (writing) {

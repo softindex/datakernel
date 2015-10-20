@@ -23,6 +23,13 @@ public class Config {
 
 	private ServerInfo myInfo;
 
+	public Config(int triesQuantity, int replicasQuantity, long timeoutToDeath, ServerInfo myInfo) {
+		this.triesQuantity = triesQuantity;
+		this.replicasQuantity = replicasQuantity;
+		this.timeoutToDeath = timeoutToDeath;
+		this.myInfo = myInfo;
+	}
+
 	public ServerInfo getMyInfo() {
 		return myInfo;
 	}

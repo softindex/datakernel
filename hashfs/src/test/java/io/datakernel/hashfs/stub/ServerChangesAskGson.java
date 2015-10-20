@@ -31,6 +31,8 @@ import io.datakernel.stream.processor.StreamGsonSerializer;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 
+import static org.junit.Assert.fail;
+
 /**
  * This class currently need just for test.
  */
@@ -76,7 +78,7 @@ public class ServerChangesAskGson {
 
 					@Override
 					public void onException(Exception exception) {
-
+						fail("Exception: " + exception);
 					}
 				}
 		);

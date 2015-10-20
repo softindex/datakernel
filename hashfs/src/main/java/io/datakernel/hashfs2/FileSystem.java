@@ -27,15 +27,13 @@ import java.util.Set;
 public interface FileSystem {
 	boolean canSave(String fileName);
 
-	void save(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	void stash(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	boolean canGet(String fileName);
+	void save(String fileName, CompletionCallback callback);
 
 	void get(String fileName, StreamConsumer<ByteBuf> consumer);
 
-	boolean canDelete(String fileName);
-
-	void deleteFile(CompletionCallback callback);
+	void deleteFile(String filePath, CompletionCallback callback);
 
 	void listFiles(ResultCallback<Set<String>> files);
 }
