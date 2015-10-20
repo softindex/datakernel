@@ -78,14 +78,18 @@ public class RangeTreeTest {
 	@Test
 	public void testRemove() throws Exception {
 		RangeTree<Integer, String> rangeTree = new RangeTree<>();
-		assertEquals(false, rangeTree.remove(11, 20, "d"));
 
-		rangeTree.put(11, 20, "e");
-		assertEquals(false, rangeTree.remove(11, 20, "d"));
-		Set<String> range = rangeTree.getRange(11, 20);
-		assertTrue(range.size() == 1);
-		assertTrue(range.contains("e"));
-		assertEquals(true, rangeTree.remove(11, 20, "e"));
-		assertTrue(rangeTree.getRange(11, 20).isEmpty());
+		rangeTree.put(1, 20, "a");
+		rangeTree.put(5, 15, "b");
+		rangeTree.put(5, 10, "c");
+		rangeTree.put(10, 15, "d");
+		assertEquals(ImmutableSet.of("a", "b", "c", "d"), rangeTree.getRange(0, 20));
+
+		rangeTree.remove(5, 10, "c");
+		rangeTree.remove(10, 15, "d");
+		rangeTree.remove(1, 20, "a");
+		rangeTree.remove(5, 15, "b");
+		assertEquals(ImmutableSet.of(), rangeTree.getRange(0, 20));
+		assertTrue(rangeTree.getSegments().isEmpty());
 	}
 }

@@ -18,6 +18,7 @@ package io.datakernel.aggregation_db;
 
 import java.util.*;
 
+import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Collections.unmodifiableSortedMap;
 
@@ -74,10 +75,10 @@ public final class RangeTree<K, V> {
 	private Segment<V> ensureSegment(K key) {
 		Segment<V> segment = segments.get(key);
 		if (segment == null) {
-			Map.Entry<K, Segment<V>> floorEntry = segments.floorEntry(key);
+			Map.Entry<K, Segment<V>> prevEntry = segments.lowerEntry(key);
 			segment = new Segment<>();
-			if (floorEntry != null)
-				segment.set.addAll(floorEntry.getValue().set);
+			if (prevEntry != null)
+				segment.set.addAll(prevEntry.getValue().set);
 			segments.put(key, segment);
 		}
 		return segment;
@@ -93,19 +94,23 @@ public final class RangeTree<K, V> {
 		}
 	}
 
-	@SuppressWarnings("ConstantConditions")
+	@SuppressWarnings({"ConstantConditions", "EqualsBetweenInconvertibleTypes"})
 	public boolean remove(K lower, K upper, V value) {
 		boolean removed = false;
 
 		ensureSegment(lower);
 		removed |= ensureSegment(upper).closing.remove(value);
 
+		Map.Entry<K, Segment<V>> prevEntry = segments.lowerEntry(lower);
+		Segment<V> prev = prevEntry != null ? prevEntry.getValue() : null;
 		Iterator<Segment<V>> it = segments.subMap(lower, true, upper, true).values().iterator();
 		while (it.hasNext()) {
 			Segment<V> segment = it.next();
 			removed |= segment.set.remove(value);
-			if (segment.set.isEmpty() && segment.closing.isEmpty()) {
+			if (segment.closing.isEmpty() && segment.set.equals(prev != null ? prev.set : emptySet())) {
 				it.remove();
+			} else {
+				prev = segment;
 			}
 		}
 
@@ -132,16 +137,10 @@ public final class RangeTree<K, V> {
 			result.addAll(floorEntry.getValue().set);
 		}
 
-		SortedMap<K, Segment<V>> subMap = segments.subMap(lower, upper);
+		SortedMap<K, Segment<V>> subMap = segments.subMap(lower, true, upper, true);
 		for (Map.Entry<K, Segment<V>> entry : subMap.entrySet()) {
 			result.addAll(entry.getValue().set);
 			result.addAll(entry.getValue().closing);
-		}
-
-		Segment<V> upperEntry = segments.get(upper);
-		if (upperEntry != null) {
-			result.addAll(upperEntry.set);
-			result.addAll(upperEntry.closing);
 		}
 
 		return result;
