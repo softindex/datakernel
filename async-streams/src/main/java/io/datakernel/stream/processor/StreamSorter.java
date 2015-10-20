@@ -119,10 +119,9 @@ public final class StreamSorter<K, T> extends AbstractStreamConsumer<T> implemen
 	}
 
 	protected void nextState() {
-		// TODO (vsavchuk) Fix this
-//		if (result.getUpstream() != null) {
-//			return;
-//		}
+		if (list == null) {
+			return;
+		}
 
 		boolean bufferFull = list.size() >= itemsInMemorySize;
 

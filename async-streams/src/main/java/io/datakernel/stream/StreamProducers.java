@@ -231,7 +231,7 @@ public class StreamProducers {
 
 		@Override
 		protected void onStarted() {
-			logger.info("{} close with error {}", this, exception.getMessage());
+			logger.trace("{} close with error {}", this, exception.getMessage());
 			closeWithError(exception);
 		}
 

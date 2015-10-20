@@ -265,7 +265,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onError(final Exception e) {
-		error = e;
+		logger.error("{}: onError", this, e);
 		postFlush();
 		if (flushCallback != null) {
 			flushCallback.onException(e);

@@ -61,8 +61,13 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		protected abstract void onUpstreamEndOfStream();
 
 		@Override
-		protected void onError(Exception e) {
+		protected final void onError(Exception e) {
 			downstreamProducer.closeWithError(e);
+			onUpstreamError();
+		}
+
+		protected void onUpstreamError() {
+
 		}
 
 		@Override
@@ -109,6 +114,11 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		@Override
 		protected final void onError(Exception e) {
 			upstreamConsumer.closeWithError(e);
+			onDownstreamError();
+		}
+
+		protected void onDownstreamError() {
+
 		}
 
 		@Override

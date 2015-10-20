@@ -239,7 +239,6 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 			public void run() {
 				messageProducer.sendEndOfStream();
 				StreamMessagingConnection.super.shutdown();
-				// shutdown == flush and shutdownNow, shutdownNow
 			}
 		});
 	}

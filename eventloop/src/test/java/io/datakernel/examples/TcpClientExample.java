@@ -29,6 +29,7 @@ import java.util.Scanner;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static junit.framework.TestCase.fail;
 
 /**
  * Example of creating a simple TCP console client by subclassing `TcpSocketConnection`.
@@ -94,7 +95,7 @@ public class TcpClientExample {
 
 					@Override
 					public void onException(Exception exception) {
-						System.err.println("Could not connect to server, make sure it is started: \n" + exception);
+						fail("Could not connect to server, make sure it is started: \n" + exception);
 					}
 				}
 		);
