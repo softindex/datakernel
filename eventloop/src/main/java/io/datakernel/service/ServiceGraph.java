@@ -98,7 +98,6 @@ public class ServiceGraph implements ConcurrentService {
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
 
-	// TODO (vsavchuk) bug?, this is not the same as old version(LinkedHashMultiMap), search other
 	private final Map<Node, Set<Node>> forwards = new LinkedHashMap<Node, Set<Node>>() {
 		@Override
 		public Set<Node> get(final Object key) {
@@ -123,7 +122,6 @@ public class ServiceGraph implements ConcurrentService {
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
 
-	// TODO (vsavchuk) bug?, this is not the same as old version
 	private final Map<Node, Set<Node>> backwards = new LinkedHashMap<Node, Set<Node>>() {
 		@Override
 		public Set<Node> get(final Object key) {

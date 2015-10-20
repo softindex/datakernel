@@ -106,7 +106,6 @@ public abstract class AbstractStreamTransformer_N_1<O> implements StreamProducer
 		@Override
 		protected final void onStarted() {
 			for (AbstractUpstreamConsumer<?> input : upstreamConsumers) {
-				// TODO (vsavchuk) input.getUpstream() == null?
 				if (input.getUpstream() != null) {
 					input.getUpstream().bindDataReceiver();
 				}

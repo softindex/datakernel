@@ -67,7 +67,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 		private K headKey;
 		private I headItem;
 
-		private UpstreamConsumer(Eventloop eventloop, PriorityQueue<UpstreamConsumer> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
+		private UpstreamConsumer(PriorityQueue<UpstreamConsumer> priorityQueue, Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
 			this.priorityQueue = priorityQueue;
 			this.keyFunction = keyFunction;
 			this.reducer = reducer;
@@ -133,7 +133,6 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 			resumeProduce();
 		}
 
-		// TODO (vsavchuk) перенести всі поля які використовує doProduce, в цей клас
 		@Override
 		protected void doProduce() {
 			while (isStatusReady() && streamsAwaiting == 0) {
@@ -216,7 +215,7 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 	}
 
 	protected <I> StreamConsumer<I> newInput(Function<I, K> keyFunction, StreamReducers.Reducer<K, I, O, A> reducer) {
-		UpstreamConsumer input = new UpstreamConsumer<>(eventloop, priorityQueue, keyFunction, reducer);
+		UpstreamConsumer input = new UpstreamConsumer<>(priorityQueue, keyFunction, reducer);
 		addInput(input);
 		streamsAwaiting++;
 		return input;

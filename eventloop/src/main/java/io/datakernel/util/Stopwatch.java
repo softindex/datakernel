@@ -19,6 +19,9 @@ package io.datakernel.util;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.util.Preconditions.check;
+import static java.util.concurrent.TimeUnit.*;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class Stopwatch {
 	private boolean isRunning;
@@ -50,7 +53,7 @@ public class Stopwatch {
 		return this;
 	}
 
-	public long time() {
+	private long time() {
 		if (isRunning) {
 			return System.nanoTime() - start + nanos;
 		} else {
@@ -58,7 +61,64 @@ public class Stopwatch {
 		}
 	}
 
+	private long elapsedNanos() {
+		return isRunning ? System.nanoTime() - start + nanos : nanos;
+	}
+
+	@Override
+	public String toString() {
+		long nanos = elapsedNanos();
+
+		TimeUnit unit = chooseUnit(nanos);
+		double value = (double) nanos / NANOSECONDS.convert(1, unit);
+
+		return String.format("%.4g %s", value, abbreviate(unit));
+	}
+
 	public long elapsed(TimeUnit timeUnit) {
 		return timeUnit.convert(time(), TimeUnit.NANOSECONDS);
+	}
+
+	private static TimeUnit chooseUnit(long nanos) {
+		if (DAYS.convert(nanos, NANOSECONDS) > 0) {
+			return DAYS;
+		}
+		if (HOURS.convert(nanos, NANOSECONDS) > 0) {
+			return HOURS;
+		}
+		if (MINUTES.convert(nanos, NANOSECONDS) > 0) {
+			return MINUTES;
+		}
+		if (SECONDS.convert(nanos, NANOSECONDS) > 0) {
+			return SECONDS;
+		}
+		if (MILLISECONDS.convert(nanos, NANOSECONDS) > 0) {
+			return MILLISECONDS;
+		}
+		if (MICROSECONDS.convert(nanos, NANOSECONDS) > 0) {
+			return MICROSECONDS;
+		}
+		return NANOSECONDS;
+	}
+
+	private static String abbreviate(TimeUnit unit) {
+		switch (unit) {
+			case NANOSECONDS:
+				return "ns";
+			case MICROSECONDS:
+				return "\u03bcs"; // μs
+			case MILLISECONDS:
+				return "ms";
+			case SECONDS:
+				return "s";
+			case MINUTES:
+				return "min";
+			case HOURS:
+				return "h";
+			case DAYS:
+				return "d";
+			default:
+				throw new AssertionError();
+		}
 	}
 }

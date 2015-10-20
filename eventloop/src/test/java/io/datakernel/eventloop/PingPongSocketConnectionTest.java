@@ -28,6 +28,7 @@ import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class PingPongSocketConnectionTest {
 	public static final int PORT = 9921;
@@ -115,8 +116,7 @@ public class PingPongSocketConnectionTest {
 
 					@Override
 					public void onException(Exception exception) {
-						// TODO (vsavchuk): replace with 'fail()' everywhere
-						System.err.println("Could not connect:\n" + exception);
+						fail("Exception: " + exception);
 					}
 				}
 		);

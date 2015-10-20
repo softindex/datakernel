@@ -60,7 +60,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 * @param downstreamConsumer consumer for streaming
 	 */
 	@Override
-	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
+	public final void streamTo(final StreamConsumer<T> downstreamConsumer) {
 		checkNotNull(downstreamConsumer);
 		if (rewiring || this.downstreamConsumer == downstreamConsumer)
 			return;
@@ -101,7 +101,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					// TODO (vsavchuk) post can be done in status == READY, and in Runnable status can be other, check this
 					if (status.isOpen()) {
 						onStarted();
 					}

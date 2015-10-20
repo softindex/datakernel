@@ -202,7 +202,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	@Override
 	protected void onError(Exception e) {
-		logger.error("{}: downstream consumer {} exception.", this, downstreamConsumer);
+		logger.error("{}: onError", this, e);
 	}
 
 	protected void doCleanup() {
