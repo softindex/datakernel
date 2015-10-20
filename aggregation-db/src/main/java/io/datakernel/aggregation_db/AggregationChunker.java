@@ -46,6 +46,8 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	private AggregationChunkStorage storage;
 	private AggregationMetadataStorage metadataStorage;
 
+	private StreamDataReceiver<T> actualDataReceiver;
+
 	public AggregationChunker(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
 	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 	                          int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
@@ -68,11 +70,17 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		}
 		last = item;
 
-		upstreamConsumer.getDataReceiver().onData(item);
+		actualDataReceiver.onData(item);
 
 		if (count++ == chunkSize) {
 			rotateChunk();
 		}
+	}
+
+	@Override
+	public StreamDataReceiver<T> getDataReceiver() {
+		actualDataReceiver = super.getDataReceiver();
+		return this;
 	}
 
 	private void rotateChunk() {

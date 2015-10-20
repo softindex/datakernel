@@ -123,7 +123,7 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public final StreamDataReceiver<T> getDataReceiver() {
+	public StreamDataReceiver<T> getDataReceiver() {
 		return upstreamConsumer.getDataReceiver();
 	}
 
