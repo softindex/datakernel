@@ -94,7 +94,7 @@ public class StreamConsumers {
 
 		@Override
 		protected void onStarted() {
-			logger.info("Closing with error {}", exception.toString());
+			logger.trace("Closing with error {}", exception.toString());
 			closeWithError(exception);
 		}
 

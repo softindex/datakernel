@@ -80,7 +80,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		bindDataReceiver();
 
 		if (firstTime && bufferedList.size() != 0) {
-			logger.info("{} Send buffered items", this);
+			logger.trace("{} Send buffered items", this);
 			for (T item : bufferedList) {
 				downstreamConsumer.getDataReceiver().onData(item);
 			}
@@ -213,7 +213,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		setStatus(CLOSED_WITH_ERROR);
 		error = e;
 		downstreamDataReceiver = new DataReceiverAfterClose<>();
-		logger.info("StreamProducer {} closed with error {}", this, error.toString());
+		logger.trace("StreamProducer {} closed with error {}", this, error.toString());
 		if (sendToConsumer && downstreamConsumer != null) {
 			downstreamConsumer.onProducerError(e);
 		}
@@ -280,7 +280,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 		@Override
 		public void onData(T item) {
-			logger.info("{} add item to buffer", self);
+			logger.trace("{} add item to buffer", self);
 			self.onConsumerSuspended();
 			list.add(item);
 		}

@@ -112,7 +112,7 @@ public final class SimpleFsClient implements SimpleFs {
 						.addReadEndOfStream(new MessagingEndOfStream() {
 							@Override
 							public void onEndOfStream() {
-								logger.info("onReadEndOfStream");
+								logger.trace("onReadEndOfStream");
 							}
 						});
 				connection.register();
@@ -161,7 +161,7 @@ public final class SimpleFsClient implements SimpleFs {
 						.addReadEndOfStream(new MessagingEndOfStream() {
 							@Override
 							public void onEndOfStream() {
-								logger.info("onReadEndOfStream");
+								logger.trace("onReadEndOfStream");
 							}
 						});
 				connection.register();

@@ -289,22 +289,13 @@ public class ServiceGraph implements ConcurrentService {
 
 		if (newNodes.isEmpty()) {
 			if (activeNodes.isEmpty()) {
+				executorService.shutdown();
 				if (failedNodes.isEmpty()) {
-					executorService.execute(new Runnable() {
-						@Override
-						public void run() {
-							callback.onSuccess();
-						}
-					});
+					callback.onSuccess();
 
 					longestPath(processingTimes, vertices, forwardNodes, backwardNodes);
 				} else {
-					executorService.execute(new Runnable() {
-						@Override
-						public void run() {
-							callback.onError((Exception) (failedNodes.values().iterator().next()));
-						}
-					});
+					callback.onError((Exception) (failedNodes.values().iterator().next()));
 				}
 			}
 			return;
