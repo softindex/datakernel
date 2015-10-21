@@ -17,6 +17,7 @@
 package io.datakernel.rpc.client.sender;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.check;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -27,12 +28,12 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
 
-import io.datakernel.async.FirstResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.protocol.RpcMessage;
+import io.datakernel.util.Preconditions;
 
 final class RequestSenderToAll implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
@@ -93,4 +94,62 @@ final class RequestSenderToAll implements RequestSender {
 				.add("callsPerAddress", new ArrayType<>(1, SimpleType.STRING), res.toArray(new String[res.size()]))
 				.build();
 	}
+
+	public class FirstResultCallback<T> implements ResultCallback<T> {
+		private final ResultCallback<T> resultCallback;
+		private T result;
+		private Exception exception;
+		private int countCalls;
+		private int awaitsCalls;
+		private boolean hasResult;
+		private boolean complete;
+
+		public FirstResultCallback(ResultCallback<T> resultCallback) {
+			Preconditions.checkNotNull(resultCallback);
+			this.resultCallback = resultCallback;
+		}
+
+		@Override
+		public final void onResult(T result) {
+			++countCalls;
+			if (!hasResult && isValidResult(result)) {
+				this.result = result;  // first valid result
+				this.hasResult = true;
+			}
+			processResult();
+		}
+
+		protected boolean isValidResult(T result) {
+			return result != null;
+		}
+
+		@Override
+		public final void onException(Exception exception) {
+			++countCalls;
+			if (!hasResult) {
+				this.exception = exception; // last Exception
+			}
+			processResult();
+		}
+
+		public void resultOf(int maxAwaitsCalls) {
+			check(maxAwaitsCalls > 0);
+			this.awaitsCalls = maxAwaitsCalls;
+			processResult();
+		}
+
+		private boolean resultReady() {
+			return awaitsCalls > 0 && (countCalls == awaitsCalls || hasResult);
+		}
+
+		private void processResult() {
+			if (complete || !resultReady()) return;
+			complete = true;
+			if (hasResult || exception == null)
+				resultCallback.onResult(result);
+			else
+				resultCallback.onException(exception);
+		}
+	}
+
 }
