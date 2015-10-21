@@ -1,6 +1,7 @@
 package io.datakernel.rpc.client.sender;
 
 import com.google.common.hash.HashFunction;
+import com.google.common.hash.Hashing;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
@@ -11,6 +12,7 @@ import java.net.InetSocketAddress;
 
 final class RequestSenderToSingleServer implements RequestSender {
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
+	private static final HashFunction DEFAULT_HASH_FUNCTION = Hashing.murmur3_32();
 
 	private final RpcClientConnectionPool connectionPool;
 	private final InetSocketAddress address;
@@ -23,6 +25,10 @@ final class RequestSenderToSingleServer implements RequestSender {
 		this.address = address;
 		this.hashFunction = hashFunction;
 		this.key = null;
+	}
+
+	public RequestSenderToSingleServer(InetSocketAddress address, RpcClientConnectionPool connectionPool) {
+		this(address, connectionPool, DEFAULT_HASH_FUNCTION);
 	}
 
 	@Override

@@ -20,14 +20,23 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
-public abstract class RequestSenderFactory {
+import java.net.InetSocketAddress;
+import java.util.List;
 
-	public abstract RequestSender create(RpcClientConnectionPool pool);
+public class RequestSenders {
 
-	private RequestSenderFactory() {
+	private RequestSenders() {
 	}
 
-	public static RequestSenderFactory firstAvailable() {
+	public static List<RequestSender> serverGroup(List<InetSocketAddress>) {
+		// TODO:
+		return null;
+	}
+
+	public static RequestSender server(InetSocketAddress)
+
+
+	public static RequestSenderFactory firstAvailable(List<RequestSender> senders) {
 		return new RequestSenderFactory() {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
