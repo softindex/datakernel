@@ -32,8 +32,8 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 public class FileSystemImpl implements FileSystem {
@@ -58,38 +58,58 @@ public class FileSystemImpl implements FileSystem {
 		this.bufferSize = bufferSize;
 	}
 
+	public static FileSystem initFileSystem(NioEventloop eventloop, ExecutorService executor, Path fileStorage, int bufferSize) {
+		FileSystemImpl fileSystem = new FileSystemImpl(eventloop, executor, fileStorage, bufferSize);
+		fileSystem.ensureInfrastructure();
+		fileSystem.cleanTemporary();
+		return fileSystem;
+	}
+
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
-	public boolean canSave(String filePath) {
-		boolean exists = Files.exists(fileStorage.resolve(filePath));
-		boolean waitsForCommit = Files.exists(tmpStorage.resolve(filePath));
-		return !exists && !waitsForCommit;
+	public boolean exists(String filePath) {
+		return !Files.exists(fileStorage.resolve(filePath));
 	}
 
 	@Override
 	public void stash(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-		Path tmpDirectory;
+		Path tmpPath;
 		try {
-			tmpDirectory = ensureInProgressDirectory(filePath);
+			tmpPath = ensureInProgressDirectory(filePath);
 		} catch (IOException e) {
 			callback.onException(e);
 			return;
 		}
-		StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, tmpDirectory, true);
-		producer.streamTo(diskWrite);
+		StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, tmpPath, true);
 		diskWrite.setFlushCallback(callback);
+		producer.streamTo(diskWrite);
 	}
 
 	@Override
-	public void save(String filePath, CompletionCallback callback) {
-		Path destinationDirectory;
-		Path tmpDirectory;
-		try {
-			tmpDirectory = ensureInProgressDirectory(filePath);
-			destinationDirectory = ensureDestinationDirectory(filePath);
-			Files.move(tmpDirectory, destinationDirectory);
-		} catch (IOException e) {
-			callback.onException(e);
+	public void commit(String filePath, boolean successful, CompletionCallback callback) {
+		if (successful) {
+			Path destinationPath;
+			Path tmpPath;
+			try {
+				tmpPath = ensureInProgressDirectory(filePath);
+				destinationPath = ensureDestinationDirectory(filePath);
+			} catch (IOException e) {
+				callback.onException(e);
+				return;
+			}
+			try {
+				Files.move(tmpPath, destinationPath);
+				callback.onComplete();
+			} catch (IOException e) {
+				try {
+					Files.delete(tmpPath);
+				} catch (IOException ignored) {
+
+				}
+				callback.onException(e);
+			}
+		} else {
+			deleteTemporary(filePath, callback);
 		}
 	}
 
@@ -102,25 +122,31 @@ public class FileSystemImpl implements FileSystem {
 
 	@Override
 	public void deleteFile(String filePath, CompletionCallback callback) {
-		Path destination = fileStorage.resolve(filePath);
-		try {
-			Files.delete(destination);
-			callback.onComplete();
-		} catch (IOException e) {
-			callback.onException(e);
-		}
+		deleteFile(fileStorage, filePath, callback);
 	}
 
 	@Override
-	public void listFiles(ResultCallback<Set<String>> result) {
-		Set<String> files = new HashSet<>();
-		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(fileStorage)) {
-			for (Path path : directoryStream) {
-				files.add(path.getFileName().toString());
-			}
+	public void listFiles(ResultCallback<List<String>> result) {
+		List<String> files = new ArrayList<>();
+		try {
+			listFiles(fileStorage, files);
 			result.onResult(files);
 		} catch (IOException e) {
 			result.onException(e);
+		}
+	}
+
+	private void listFiles(Path parent, List<String> files) throws IOException {
+		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(parent)) {
+			for (Path path : directoryStream) {
+				if (Files.isDirectory(path)) {
+					if (!path.equals(tmpStorage)) {
+						listFiles(path, files);
+					}
+				} else {
+					files.add(path.getFileName().toString());
+				}
+			}
 		}
 	}
 
@@ -158,5 +184,32 @@ public class FileSystemImpl implements FileSystem {
 			path = "";
 		}
 		return path;
+	}
+
+	private void deleteTemporary(String filePath, CompletionCallback callback) {
+		deleteFile(tmpStorage, filePath + IN_PROGRESS_EXTENSION, callback);
+	}
+
+	private void deleteFile(Path container, String filePath, CompletionCallback callback) {
+		Path destination = container.resolve(filePath);
+		try {
+			Files.delete(destination);
+			callback.onComplete();
+		} catch (IOException e) {
+			callback.onException(e);
+		}
+	}
+
+	private void ensureInfrastructure() {
+		// TODO (arashev)
+		try {
+			Files.createDirectory(tmpStorage);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void cleanTemporary() {
+		// TODO (arashev)
 	}
 }

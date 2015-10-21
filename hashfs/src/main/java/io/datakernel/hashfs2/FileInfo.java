@@ -17,20 +17,22 @@
 package io.datakernel.hashfs2;
 
 final class FileInfo {
-	private final String fileName;
-	private final int fileSize;
+	private final String name;
+	private final long size;
+	private final int hash;
 
-	public FileInfo(String fileName, int fileSize) {
-		this.fileName = fileName;
-		this.fileSize = fileSize;
+	public FileInfo(String name, long size, int hash) {
+		this.name = name;
+		this.size = size;
+		this.hash = hash;
 	}
 
-	public int getFileSize() {
-		return fileSize;
+	public long getSize() {
+		return size;
 	}
 
-	public String getFileName() {
-		return fileName;
+	public String getName() {
+		return name;
 	}
 
 	@Override
@@ -38,16 +40,16 @@ final class FileInfo {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		FileInfo that = (FileInfo) o;
-		return this.fileSize == that.fileSize && this.fileName.equals(that.fileName);
+		return this.size == that.size && this.name.equals(that.name) && this.hash == that.hash;
 	}
 
 	@Override
 	public int hashCode() {
-		return ((fileName.hashCode() * 7) + fileSize) * 13;
+		return hash;
 	}
 
 	@Override
 	public String toString() {
-		return "File name: " + fileName + ", size:" + fileSize;
+		return "File name: " + name + ", size:" + size;
 	}
 }

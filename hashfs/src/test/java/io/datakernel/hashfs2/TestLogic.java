@@ -26,10 +26,10 @@ import static org.junit.Assert.assertTrue;
 
 public class TestLogic {
 
-	FileInfo file1 = new FileInfo("good_file.txt", 123);
-	FileInfo file2 = new FileInfo("will_replicate.txt", 456);
-	FileInfo file3 = new FileInfo("cant_delete.txt", 789);
-	FileInfo file4 = new FileInfo("will_delete.txt", 983);
+	FileInfo file1 = new FileInfo("good_file.txt", 123, 123);
+	FileInfo file2 = new FileInfo("will_replicate.txt", 456, 456);
+	FileInfo file3 = new FileInfo("cant_delete.txt", 789, 789);
+	FileInfo file4 = new FileInfo("will_delete.txt", 983, 983);
 
 	InetSocketAddress ignored = new InetSocketAddress(1234);
 	ServerInfo local = new ServerInfo(0, ignored, 0.1);

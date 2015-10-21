@@ -22,18 +22,22 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
+import java.util.List;
 import java.util.Set;
 
 public interface FileSystem {
-	boolean canSave(String fileName);
+	boolean exists(String fileName);
 
-	void stash(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	/**
+	 * Moves file to temporary directory
+	 */
+	void stash(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void save(String fileName, CompletionCallback callback);
+	void commit(String filePath, boolean successful, CompletionCallback file);
 
-	void get(String fileName, StreamConsumer<ByteBuf> consumer);
+	void get(String filePath, StreamConsumer<ByteBuf> consumer);
 
 	void deleteFile(String filePath, CompletionCallback callback);
 
-	void listFiles(ResultCallback<Set<String>> files);
+	void listFiles(ResultCallback<List<String>> files);
 }

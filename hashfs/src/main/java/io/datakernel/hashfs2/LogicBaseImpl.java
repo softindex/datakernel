@@ -40,7 +40,7 @@ public class LogicBaseImpl implements Logic {
 
 		for (FileInfo file : files) {
 
-			List<ServerInfo> rangedServers = hashing.sortServers(aliveServers, file.getFileName());
+			List<ServerInfo> rangedServers = hashing.sortServers(aliveServers, file.getName());
 
 			List<ServerInfo> candidates = rangedServers.subList(0, Math.min(rangedServers.size(), config.getReplicasQuantity()));
 			for (ServerInfo server : candidates) {
