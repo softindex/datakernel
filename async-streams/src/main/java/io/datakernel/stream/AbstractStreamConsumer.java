@@ -173,7 +173,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public Exception getConsumerException() {
+	public final Exception getConsumerException() {
 		return error;
 	}
 

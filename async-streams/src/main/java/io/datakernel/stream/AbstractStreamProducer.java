@@ -242,7 +242,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	}
 
 	@Override
-	public Exception getProducerException() {
+	public final Exception getProducerException() {
 		return error;
 	}
 
