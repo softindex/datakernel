@@ -65,10 +65,6 @@ final class RequestSenderRoundRobin extends RequestSenderToGroup {
 	}
 
 	@Override
-	public void onConnectionsUpdated() {
-	}
-
-	@Override
 	protected int getHashBase() {
 		return HASH_BASE;
 	}

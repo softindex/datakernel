@@ -42,4 +42,11 @@ abstract class RequestSenderToGroup implements RequestSender {
 		}
 		return false;
 	}
+
+	@Override
+	public void onConnectionsUpdated() {
+		for (RequestSender sender : subSenders) {
+			sender.onConnectionsUpdated();
+		}
+	}
 }

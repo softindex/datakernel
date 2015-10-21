@@ -34,34 +34,24 @@ import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.protocol.RpcMessage;
 
-final class RequestSenderToAll implements RequestSender {
+final class RequestSenderToAll extends RequestSenderToGroup {
+	private static final int HASH_BASE = 105;
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
-	private final RpcClientConnectionPool connections;
 
-	// JMX
-	private final long[] callCounters;
-
-	public RequestSenderToAll(RpcClientConnectionPool connections) {
-		this.connections = checkNotNull(connections);
-
-		this.callCounters = new long[connections.addresses().size()];
+	public RequestSenderToAll(List<RequestSender> senders) {
+		super(senders);
 	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, final ResultCallback<T> callback) {
 		checkNotNull(callback);
-		int serverNumber = 0;
 		int calls = 0;
 		FirstResultCallback<T> resultCallback = new FirstResultCallback<>(callback);
-		for (InetSocketAddress address : connections.addresses()) {
-			RpcClientConnection connection = connections.get(address);
-			if (connection == null) {
-				serverNumber++;
-				continue;
+		for (RequestSender sender : getSubSenders()) {
+			if (sender.isActive()) {
+				sender.sendRequest(request, timeout, callback);
+				++calls;
 			}
-			++calls;
-			++callCounters[serverNumber];
-			connection.callMethod(request, timeout, resultCallback);
 		}
 		if (calls == 0) {
 			callback.onException(NO_AVAILABLE_CONNECTION);
@@ -70,27 +60,9 @@ final class RequestSenderToAll implements RequestSender {
 		}
 	}
 
-	@Override
-	public void onConnectionsUpdated() {
-	}
 
 	@Override
-	public void resetStats() {
-		for (int i = 0; i < callCounters.length; i++) {
-			callCounters[i] = 0;
-		}
-	}
-
-	@Override
-	public CompositeData getRequestSenderInfo() throws OpenDataException {
-		List<String> res = new ArrayList<>();
-		res.add("address;calls");
-		for (int i = 0; i < connections.addresses().size(); i++) {
-			res.add(connections.addresses().get(i) + ";" + callCounters[i]);
-		}
-		return CompositeDataBuilder.builder(RequestSenderToAll.class.getSimpleName())
-				.add("senderStrategy", SimpleType.STRING, RequestSenderToAll.class.getSimpleName())
-				.add("callsPerAddress", new ArrayType<>(1, SimpleType.STRING), res.toArray(new String[res.size()]))
-				.build();
+	protected int getHashBase() {
+		return HASH_BASE;
 	}
 }

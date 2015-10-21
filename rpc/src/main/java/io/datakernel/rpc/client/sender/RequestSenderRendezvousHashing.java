@@ -63,6 +63,7 @@ final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
 	@Override
 	public void onConnectionsUpdated() {
 		hashBucket.update();
+		super.onConnectionsUpdated();
 	}
 
 	@Override
