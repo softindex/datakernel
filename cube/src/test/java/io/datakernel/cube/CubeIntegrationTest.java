@@ -27,7 +27,6 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.CompletionCallbackObserver;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackObserver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.NioEventloop;
@@ -50,10 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -190,7 +186,7 @@ public class CubeIntegrationTest {
 		logToCubeRunner.processLog(cb);
 		eventloop.run();
 
-		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
+		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
 		producerOfRandomLogItems = new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems2.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
@@ -198,7 +194,7 @@ public class CubeIntegrationTest {
 		logToCubeRunner.processLog(cb);
 		eventloop.run();
 
-		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(100);
+		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
 		producerOfRandomLogItems = new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems3.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
@@ -228,7 +224,7 @@ public class CubeIntegrationTest {
 		aggregateToMap(map, listOfRandomLogItems3);
 
 
-		// Check
+		// Check query results
 		for (LogItem logItem : queryResultConsumer.getList()) {
 			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
 		}
@@ -255,10 +251,22 @@ public class CubeIntegrationTest {
 		eventloop.run();
 
 
-		// Check
+		// Check query results
 		for (LogItem logItem : queryResultConsumer.getList()) {
 			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
 		}
+
+
+		// Check files in aggregations directory
+		Set<String> actualChunkFileNames = new TreeSet<>();
+		for (File file : aggregationsDir.toFile().listFiles()) {
+			actualChunkFileNames.add(file.getName());
+		}
+		Set<String> expectedChunkFileNames = new TreeSet<>();
+		for (int i = 1; i <= 12; ++i) {
+			expectedChunkFileNames.add(i + ".log");
+		}
+		assertEquals(expectedChunkFileNames, actualChunkFileNames);
 	}
 
 	private void aggregateToMap(Map<Integer, Long> map, List<LogItem> logItems) {
