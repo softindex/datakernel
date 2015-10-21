@@ -40,6 +40,7 @@ public abstract class AbstractStreamSplitter<I> extends AbstractStreamTransforme
 	}
 
 	protected final class DownstreamProducer<O> extends AbstractDownstreamProducer<O> {
+		public DownstreamProducer() {}
 
 		@Override
 		protected void onDownstreamSuspended() {

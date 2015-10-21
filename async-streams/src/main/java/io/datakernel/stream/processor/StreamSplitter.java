@@ -38,7 +38,7 @@ public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implement
 	}
 
 	public StreamProducer<T> newOutput() {
-		return addOutput(new DownstreamProducer());
+		return addOutput(new DownstreamProducer<T>());
 	}
 
 	@Override
