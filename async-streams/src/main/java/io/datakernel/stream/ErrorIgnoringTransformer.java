@@ -17,23 +17,15 @@
 package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.StreamTransformer;
 
-public class ErrorIgnoringTransformer<T> implements StreamTransformer<T, T> {
-	protected final Eventloop eventloop;
-
+public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T, T> {
 	private UpstreamConsumer upstreamConsumer;
 	private DownstreamProducer downstreamProducer;
 
-	protected Object tag;
-
-	private class UpstreamConsumer extends AbstractStreamConsumer<T> {
-		public UpstreamConsumer(Eventloop eventloop) {
-			super(eventloop);
-		}
+	private class UpstreamConsumer extends AbstractUpstreamConsumer {
 
 		@Override
-		protected void onEndOfStream() {
+		protected void onUpstreamEndOfStream() {
 			downstreamProducer.sendEndOfStream();
 		}
 
@@ -48,118 +40,23 @@ public class ErrorIgnoringTransformer<T> implements StreamTransformer<T, T> {
 		}
 	}
 
-	private class DownstreamProducer extends AbstractStreamProducer<T> {
-		public DownstreamProducer(Eventloop eventloop) {
-			super(eventloop);
-		}
+	private class DownstreamProducer extends AbstractDownstreamProducer {
 
 		@Override
-		protected void onDataReceiverChanged() {
-
-		}
-
-		@Override
-		protected void onSuspended() {
+		protected void onDownstreamSuspended() {
 			upstreamConsumer.suspend();
 		}
 
 		@Override
-		protected void onResumed() {
+		protected void onDownstreamResumed() {
 			upstreamConsumer.resume();
 		}
 	}
 
 	public ErrorIgnoringTransformer(Eventloop eventloop) {
-		this.eventloop = eventloop;
-		this.upstreamConsumer = new UpstreamConsumer(eventloop);
-		this.downstreamProducer = new DownstreamProducer(eventloop);
+		super(eventloop);
+		upstreamConsumer = new UpstreamConsumer();
+		downstreamProducer = new DownstreamProducer();
 	}
 
-	// upstream
-
-	@Override
-	public final StreamDataReceiver<T> getDataReceiver() {
-		return upstreamConsumer.getDataReceiver();
-	}
-
-	@Override
-	public final void onProducerEndOfStream() {
-		upstreamConsumer.onProducerEndOfStream();
-	}
-
-	@Override
-	public final void onProducerError(Exception e) {
-		upstreamConsumer.onProducerError(e);
-	}
-
-	@Override
-	public final void streamFrom(StreamProducer<T> upstreamProducer) {
-		upstreamConsumer.streamFrom(upstreamProducer);
-	}
-
-	@Override
-	public StreamStatus getConsumerStatus() {
-		return upstreamConsumer.getConsumerStatus();
-	}
-
-	// downstream
-
-	@Override
-	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
-		downstreamProducer.streamTo(downstreamConsumer);
-	}
-
-	@Override
-	public final void onConsumerSuspended() {
-		downstreamProducer.onConsumerSuspended();
-	}
-
-	@Override
-	public final void onConsumerResumed() {
-		downstreamProducer.onConsumerResumed();
-	}
-
-	@Override
-	public final void onConsumerError(Exception e) {
-		downstreamProducer.onConsumerError(e);
-	}
-
-	@Override
-	public final void bindDataReceiver() {
-		downstreamProducer.bindDataReceiver();
-	}
-
-	@Override
-	public StreamStatus getProducerStatus() {
-		return downstreamProducer.getProducerStatus();
-	}
-
-	@Override
-	public Exception getConsumerException() {
-		return upstreamConsumer.getConsumerException();
-	}
-
-	@Override
-	public Exception getProducerException() {
-		return downstreamProducer.getProducerException();
-	}
-
-	//for test only
-	StreamStatus getUpstreamConsumerStatus() {
-		return upstreamConsumer.getConsumerStatus();
-	}
-
-	// for test only
-	StreamStatus getDownstreamProducerStatus() {
-		return downstreamProducer.getProducerStatus();
-	}
-
-	public void setTag(Object tag) {
-		this.tag = tag;
-	}
-
-	@Override
-	public String toString() {
-		return tag != null ? tag.toString() : super.toString();
-	}
 }
