@@ -527,11 +527,11 @@ public class CubeTest {
 				.streamTo(cube.consumer(DataItem2.class, DataItem2.DIMENSIONS, DataItem2.METRICS, new MyCommitCallback(cube)));
 		eventloop.run();
 
-		cube.consolidate(AsyncCallbacks.ignoreResultCallback());// TODO (dtkachenko) new MyConsolidateCallback(cube));
+		cube.consolidate(AsyncCallbacks.<Boolean>ignoreResultCallback());// TODO (dtkachenko) new MyConsolidateCallback(cube));
 
 		eventloop.run();
 
-		cube.consolidate(AsyncCallbacks.ignoreResultCallback()); // cube.consolidate(new MyConsolidateCallback(cube));
+		cube.consolidate(AsyncCallbacks.<Boolean>ignoreResultCallback()); // cube.consolidate(new MyConsolidateCallback(cube));
 
 		eventloop.run();
 

@@ -477,13 +477,13 @@ public class Aggregation {
 			return;
 		}
 
-		metadataStorage.startConsolidation(this, chunksToConsolidate, new ForwardingCompletionCallback(callback) {
+		metadataStorage.startConsolidation(chunksToConsolidate, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
 				doConsolidation(chunksToConsolidate, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
 					@Override
 					public void onResult(List<AggregationChunk.NewChunk> consolidatedChunks) {
-						metadataStorage.saveConsolidatedChunks(Aggregation.this, aggregationMetadata, chunksToConsolidate, consolidatedChunks,
+						metadataStorage.saveConsolidatedChunks(aggregationMetadata, chunksToConsolidate, consolidatedChunks,
 								new ForwardingCompletionCallback(callback) {
 									@Override
 									public void onComplete() {

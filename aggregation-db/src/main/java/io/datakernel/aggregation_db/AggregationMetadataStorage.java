@@ -57,7 +57,7 @@ public interface AggregationMetadataStorage {
 	 */
 	void saveChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
 
-	void startConsolidation(Aggregation aggregation, List<AggregationChunk> chunksToConsolidate,
+	void startConsolidation(List<AggregationChunk> chunksToConsolidate,
 	                        CompletionCallback callback);
 
 	final class LoadedChunks {
@@ -83,14 +83,12 @@ public interface AggregationMetadataStorage {
 
 	/**
 	 * Asynchronously saves the metadata of the given list of new chunks that are result of consolidation of the list of specified chunks.
-	 *
-	 * @param aggregation         aggregation which performed consolidation
-	 * @param aggregationMetadata metadata of aggregation that contains original and consolidated chunks
+	 *  @param aggregationMetadata metadata of aggregation that contains original and consolidated chunks
 	 * @param originalChunks      list of original chunks
 	 * @param consolidatedChunks  list of chunks that appeared as a result of consolidation of original chunks
 	 * @param callback            callback which is called once saving is complete
 	 */
-	void saveConsolidatedChunks(Aggregation aggregation, AggregationMetadata aggregationMetadata, // TODO (dtkachenko): why Aggregation aggregation and AggregationMetadata?
+	void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, // TODO (dtkachenko): why Aggregation aggregation and AggregationMetadata?
 	                            List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks,
 	                            CompletionCallback callback);
 }

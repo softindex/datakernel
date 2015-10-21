@@ -411,8 +411,8 @@ public final class Cube {
 		consolidate(false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	public void consolidate(boolean found, Iterator<Aggregation> iterator,
-	                        ResultCallback<Boolean> callback) {
+	public void consolidate(final boolean found, final Iterator<Aggregation> iterator,
+	                        final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {

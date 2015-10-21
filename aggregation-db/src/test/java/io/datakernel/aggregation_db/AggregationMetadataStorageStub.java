@@ -16,17 +16,12 @@
 
 package io.datakernel.aggregation_db;
 
-import com.google.common.base.Function;
-import com.google.common.collect.Collections2;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 
 public class AggregationMetadataStorageStub implements AggregationMetadataStorage {
 	private long chunkId;
@@ -52,12 +47,13 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void startConsolidation(Aggregation aggregation, List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
+	public void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
 
 	}
 
 	@Override
 	public void loadChunks(Aggregation aggregation, int lastRevisionId, ResultCallback<LoadedChunks> callback) {
+/*
 		List<AggregationChunk.NewChunk> newChunks = tmpChunks.get(aggregation.getId());
 		callback.onResult(new LoadedChunks(lastRevisionId + 1, Collections.emptyList(),
 				Collections2.transform(newChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
@@ -66,10 +62,11 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 						return createChunk(lastRevisionId, input);
 					}
 				})));
+*/
 	}
 
 	@Override
-	public void saveConsolidatedChunks(Aggregation aggregation, AggregationMetadata aggregationMetadata, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+	public void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
 
 	}
 
