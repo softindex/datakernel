@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
@@ -53,6 +54,7 @@ public final class HttpJsonApiServer {
 	private static final String DIMENSIONS_REQUEST_PATH = "/dimensions/";
 	private static final String QUERY_REQUEST_PATH = "/";
 	private static final String INFO_REQUEST_PATH = "/info/";
+	private static final String REPORTING_QUERY_REQUEST_PATH = "/reporting/";
 
 	/**
 	 * Creates an HTTP server, that runs in the specified event loop, processes JSON requests to the given cube,
@@ -74,6 +76,8 @@ public final class HttpJsonApiServer {
 		servlet.get(QUERY_REQUEST_PATH, queryHandler(gson, cube, eventloop, classLoader));
 
 		servlet.get(DIMENSIONS_REQUEST_PATH, dimensionsRequestHandler(gson, cube, eventloop, classLoader));
+
+		servlet.get(REPORTING_QUERY_REQUEST_PATH, reportingQueryHandler(gson, cube, eventloop, classLoader));
 
 		return new AsyncHttpServer(eventloop, servlet);
 	}
@@ -200,8 +204,84 @@ public final class HttpJsonApiServer {
 		};
 	}
 
+	private static AsyncHttpServlet reportingQueryHandler(final Gson gson, final Cube cube, final NioEventloop eventloop,
+	                                                      final DefiningClassLoader classLoader) {
+		return new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				logger.info("Got query {}", request);
+				List<String> dimensions = getListOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
+				List<String> measures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
+				String predicatesJson = request.getParameter("filters");
+				String orderingsJson = request.getParameter("sort");
+				String limitString = request.getParameter("limit");
+				String offsetString = request.getParameter("offset");
+
+				AggregationQuery.QueryPredicates queryPredicates = null;
+				if (predicatesJson != null) {
+					queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
+				}
+
+				Map<String, String> orderings = getMapFromJsonArray(gson, orderingsJson);
+
+				Set<String> availableMeasures = cube.getAvailableMeasures(dimensions, measures);
+
+				final AggregationQuery finalQuery = new AggregationQuery()
+						.keys(dimensions)
+						.fields(newArrayList(availableMeasures));
+
+				if (orderings != null) {
+					addOrderingsFromMap(finalQuery, orderings);
+				}
+
+				if (queryPredicates != null) {
+					finalQuery.predicates(queryPredicates);
+				}
+
+				Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
+				final StreamConsumers.ToList consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
+
+				final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
+				final Integer offset = offsetString == null ? null : Integer.valueOf(offsetString);
+
+				consumerStream.setResultCallback(new ResultCallback<List>() {
+					@Override
+					public void onResult(List result) {
+						String jsonResult = constructReportingQueryJson(gson, cube, consumerStream.getList(), finalQuery,
+								classLoader, limit, offset);
+						callback.onResult(createResponse(jsonResult));
+						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
+					}
+
+					@Override
+					public void onException(Exception e) {
+						processException(e);
+						logger.error("Sending response to query {} failed.", finalQuery, e);
+					}
+				});
+			}
+		};
+	}
+
+	private static AggregationQuery addOrderingsFromMap(AggregationQuery query, Map<String, String> orderings) {
+		for (Map.Entry<String, String> entry : orderings.entrySet()) {
+			String propertyName = entry.getKey();
+			String direction = entry.getValue();
+			if (direction.equals("asc"))
+				query.orderAsc(propertyName);
+			else if (direction.equals("desc"))
+				query.orderDesc(propertyName);
+		}
+		return query;
+	}
+
+	private static Map<String, String> getMapFromJsonArray(Gson gson, String json) {
+		Type type = new TypeToken<Map<String, String>>() {}.getType();
+		return gson.fromJson(json, type);
+	}
+
 	private static StreamConsumers.ToList queryCube(Class<?> resultClass, AggregationQuery query, Cube cube,
-	                                                       NioEventloop eventloop) {
+	                                                NioEventloop eventloop) {
 		StreamConsumers.ToList consumerStream = StreamConsumers.toList(eventloop);
 		cube.query(resultClass, query).streamTo(consumerStream);
 		return consumerStream;
@@ -241,6 +321,47 @@ public final class HttpJsonApiServer {
 		}
 
 		return jsonResults.toString();
+	}
+
+	private static <T> String constructReportingQueryJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
+	                                                      DefiningClassLoader classLoader, Integer limit, Integer offset) {
+		List<String> resultKeys = query.getResultKeys();
+		List<String> resultFields = query.getResultFields();
+		JsonObject jsonResult = new JsonObject();
+		JsonArray jsonRecords = new JsonArray();
+		AggregationStructure structure = cube.getStructure();
+
+		int start = offset == null ? 0 : offset;
+		int end;
+
+		if (limit == null)
+			end = results.size();
+		else if (start + limit > results.size())
+			end = results.size();
+		else
+			end = start + limit;
+
+		for (int i = start; i < end; ++i) {
+			T result = results.get(i);
+			Class<?> resultClass = result.getClass();
+			JsonObject resultJsonObject = new JsonObject();
+
+			for (String key : resultKeys) {
+				addValueOfKey(resultJsonObject, result, resultClass, key, structure, classLoader, gson);
+			}
+
+			for (String field : resultFields) {
+				Object fieldValue = generateGetter(classLoader, resultClass, field).get(result);
+				resultJsonObject.add(field, gson.toJsonTree(fieldValue));
+			}
+
+			jsonRecords.add(resultJsonObject);
+		}
+
+		jsonResult.add("records", jsonRecords);
+		jsonResult.addProperty("count", results.size());
+
+		return jsonResult.toString();
 	}
 
 	private static <T> String constructDimensionsJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
