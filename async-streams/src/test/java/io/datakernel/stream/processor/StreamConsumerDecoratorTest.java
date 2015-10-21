@@ -46,6 +46,7 @@ public class StreamConsumerDecoratorTest {
 
 		assertEquals(list, asList(1, 2, 3));
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, consumerDecorator.getConsumerStatus());
 	}
 
 	@Test
@@ -63,6 +64,7 @@ public class StreamConsumerDecoratorTest {
 
 		assertEquals(list, asList(1, 2, 3, 4, 5));
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, decorator.getConsumerStatus());
 	}
 
 }
