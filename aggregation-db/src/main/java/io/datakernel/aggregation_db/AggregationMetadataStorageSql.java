@@ -271,18 +271,17 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	@Override
-	public void saveConsolidatedChunks(final Aggregation aggregation, final AggregationMetadata aggregationMetadata, final List<AggregationChunk> originalChunks,
+	public void saveConsolidatedChunks(final AggregationMetadata aggregationMetadata, final List<AggregationChunk> originalChunks,
 	                                   final List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
 		runConcurrently(eventloop, executor, false, new Runnable() {
 			@Override
 			public void run() {
-				saveConsolidatedChunks(DSL.using(jooqConfiguration), aggregation, aggregationMetadata, originalChunks, consolidatedChunks);
+				saveConsolidatedChunks(DSL.using(jooqConfiguration), aggregationMetadata, originalChunks, consolidatedChunks);
 			}
 		}, callback);
 	}
 
-	public void saveConsolidatedChunks(DSLContext jooq, final Aggregation aggregation,
-	                                    final AggregationMetadata aggregationMetadata,
+	public void saveConsolidatedChunks(DSLContext jooq, final AggregationMetadata aggregationMetadata,
 	                                    final List<AggregationChunk> originalChunks,
 	                                    final List<AggregationChunk.NewChunk> consolidatedChunks) {
 		jooq.transaction(new TransactionalRunnable() {

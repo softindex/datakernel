@@ -483,7 +483,7 @@ public class Aggregation {
 				doConsolidation(chunksToConsolidate, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
 					@Override
 					public void onResult(List<AggregationChunk.NewChunk> consolidatedChunks) {
-						metadataStorage.saveConsolidatedChunks(Aggregation.this, aggregationMetadata, chunksToConsolidate, consolidatedChunks,
+						metadataStorage.saveConsolidatedChunks(aggregationMetadata, chunksToConsolidate, consolidatedChunks,
 								new ForwardingCompletionCallback(callback) {
 									@Override
 									public void onComplete() {
@@ -502,6 +502,7 @@ public class Aggregation {
 			public void onResult(LoadedChunks loadedChunks) {
 				for (AggregationChunk newChunk : loadedChunks.newChunks) {
 					addToIndex(newChunk);
+					logger.info("Added chunk {} to index", newChunk);
 				}
 				for (Long consolidatedChunkId : loadedChunks.consolidatedChunkIds) {
 					AggregationChunk chunk = chunks.get(consolidatedChunkId);

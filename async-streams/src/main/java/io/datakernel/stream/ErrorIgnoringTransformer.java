@@ -17,8 +17,12 @@
 package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T, T> {
+	private static final Logger logger = LoggerFactory.getLogger(ErrorIgnoringTransformer.class);
+
 	private UpstreamConsumer upstreamConsumer;
 	private DownstreamProducer downstreamProducer;
 
@@ -36,6 +40,7 @@ public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T
 
 		@Override
 		protected void onError(Exception e) {
+			logger.info("Ignoring exception", e);
 			downstreamProducer.sendEndOfStream();
 		}
 	}
