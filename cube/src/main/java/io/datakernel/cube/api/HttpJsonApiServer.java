@@ -88,8 +88,6 @@ public final class HttpJsonApiServer {
 		return httpServer(cube, eventloop, classLoader).setListenPort(port);
 	}
 
-
-
 	private static AsyncHttpServlet dimensionsRequestHandler(final Gson gson, final Cube cube, final NioEventloop eventloop,
 	                                                         final DefiningClassLoader classLoader) {
 		return new AsyncHttpServlet() {
@@ -101,7 +99,7 @@ public final class HttpJsonApiServer {
 				final String dimension = request.getParameter("dimension");
 
 				AggregationQuery.QueryPredicates queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
-				List<String> measures = getListOfStringsFromJsonArray(gson, measuresJson);
+				List<String> measures = getListOfStrings(gson, measuresJson);
 				List<String> chain = cube.buildDrillDownChain(queryPredicates.keys(), dimension);
 				final Set<String> childrenDimensions = cube.findChildrenDimensions(dimension);
 				List<AggregationQuery.QueryPredicate> filteredPredicates = newArrayList(Iterables.filter(queryPredicates.asCollection(), new Predicate<AggregationQuery.QueryPredicate>() {
@@ -142,8 +140,8 @@ public final class HttpJsonApiServer {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				logger.info("Got request {} for available drill downs.", request);
-				Set<String> dimensions = getSetOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
-				Set<String> measures = getSetOfStringsFromJsonArray(gson, request.getParameter("measures"));
+				Set<String> dimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
+				Set<String> measures = getSetOfStrings(gson, request.getParameter("measures"));
 				AggregationQuery.QueryPredicates queryPredicates = gson.fromJson(request.getParameter("filters"), AggregationQuery.QueryPredicates.class);
 				AvailableDrillDowns availableDrillDowns =
 						cube.getAvailableDrillDowns(dimensions, queryPredicates, measures);
@@ -161,8 +159,8 @@ public final class HttpJsonApiServer {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				logger.info("Got query {}", request);
-				List<String> dimensions = getListOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
-				Set<String> measures = getSetOfStringsFromJsonArray(gson, request.getParameter("measures"));
+				List<String> dimensions = getListOfStrings(gson, request.getParameter("dimensions"));
+				Set<String> measures = getSetOfStrings(gson, request.getParameter("measures"));
 				String predicatesJson = request.getParameter("filters");
 
 				AggregationQuery.QueryPredicates queryPredicates = null;
@@ -210,7 +208,7 @@ public final class HttpJsonApiServer {
 				logger.info("Got query {}", request);
 				final AggregationStructure structure = cube.getStructure();
 
-				List<String> dimensions = getListOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
+				List<String> dimensions = getListOfStrings(gson, request.getParameter("dimensions"));
 
 				for (String dimension : dimensions) {
 					if (!structure.getKeys().containsKey(dimension)) {
@@ -219,7 +217,7 @@ public final class HttpJsonApiServer {
 					}
 				}
 
-				final List<String> queryMeasures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
+				final List<String> queryMeasures = getListOfStrings(gson, request.getParameter("measures"));
 				Set<String> storedMeasures = newHashSet();
 				List<String> computedMeasures = newArrayList();
 
@@ -246,7 +244,7 @@ public final class HttpJsonApiServer {
 					queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
 				}
 
-				Map<String, String> orderings = getMapFromJsonArray(gson, orderingsJson);
+				List<List<String>> orderings = getListOfLists(gson, orderingsJson);
 
 				Set<String> availableMeasures = cube.getAvailableMeasures(dimensions, storedMeasures);
 
@@ -255,7 +253,7 @@ public final class HttpJsonApiServer {
 						.fields(newArrayList(availableMeasures));
 
 				if (orderings != null) {
-					addOrderingsFromMap(finalQuery, orderings);
+					addOrderings(finalQuery, orderings);
 				}
 
 				if (queryPredicates != null) {
@@ -282,7 +280,7 @@ public final class HttpJsonApiServer {
 
 					@Override
 					public void onException(Exception e) {
-						response500(e);
+						callback.onResult(response500(e));
 						logger.error("Sending response to query {} failed.", finalQuery, e);
 					}
 				});
@@ -290,21 +288,16 @@ public final class HttpJsonApiServer {
 		};
 	}
 
-	private static AggregationQuery addOrderingsFromMap(AggregationQuery query, Map<String, String> orderings) {
-		for (Map.Entry<String, String> entry : orderings.entrySet()) {
-			String propertyName = entry.getKey();
-			String direction = entry.getValue();
+	private static AggregationQuery addOrderings(AggregationQuery query, List<List<String>> orderings) {
+		for (List<String> ordering : orderings) {
+			String propertyName = ordering.get(0);
+			String direction = ordering.get(1);
 			if (direction.equals("asc"))
 				query.orderAsc(propertyName);
 			else if (direction.equals("desc"))
 				query.orderDesc(propertyName);
 		}
 		return query;
-	}
-
-	private static Map<String, String> getMapFromJsonArray(Gson gson, String json) {
-		Type type = new TypeToken<Map<String, String>>() {}.getType();
-		return gson.fromJson(json, type);
 	}
 
 	private static StreamConsumers.ToList queryCube(Class<?> resultClass, AggregationQuery query, Cube cube,
@@ -321,13 +314,18 @@ public final class HttpJsonApiServer {
 		return consumerStream;
 	}
 
-	private static Set<String> getSetOfStringsFromJsonArray(Gson gson, String json) {
+	private static Set<String> getSetOfStrings(Gson gson, String json) {
 		Type type = new TypeToken<Set<String>>() {}.getType();
 		return gson.fromJson(json, type);
 	}
 
-	private static List<String> getListOfStringsFromJsonArray(Gson gson, String json) {
+	private static List<String> getListOfStrings(Gson gson, String json) {
 		Type type = new TypeToken<List<String>>() {}.getType();
+		return gson.fromJson(json, type);
+	}
+
+	private static List<List<String>> getListOfLists(Gson gson, String json) {
+		Type type = new TypeToken<List<List<String>>>() {}.getType();
 		return gson.fromJson(json, type);
 	}
 

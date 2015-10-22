@@ -23,6 +23,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.aggregation_db.api.ReportingDSL.divide;
 import static io.datakernel.aggregation_db.api.ReportingDSL.multiply;
@@ -57,6 +58,6 @@ public class ReportingTest {
 		resultPlaceholder.compute();
 
 		assertEquals(0.2, resultPlaceholder.getResult());
-		assertEquals(Arrays.asList("a", "b", "c"), d.getMeasureDependencies());
+		assertEquals(newHashSet("a", "b", "c"), d.getMeasureDependencies());
 	}
 }

@@ -18,35 +18,56 @@ package io.datakernel.aggregation_db.api;
 
 import io.datakernel.codegen.Expression;
 
-import java.util.List;
+import java.util.Set;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
-import static java.util.Arrays.asList;
 
 public final class ReportingDSL {
 	private ReportingDSL() {}
 
+	public static ReportingDSLExpression sqrt(ReportingDSLExpression reportingExpression) {
+		Expression expression = callStatic(Math.class, "sqrt", reportingExpression.getExpression());
+		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+	}
+
+	public static ReportingDSLExpression subtract(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
+		Expression expression = sub(reportingExpression1.getExpression(), reportingExpression2.getExpression());
+		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
+	}
+
 	public static ReportingDSLExpression divide(String measure1, String measure2) {
 		Expression expression = div(cast(field(self(), measure1), double.class), field(self(), measure2));
-		List<String> measureDependencies = asList(measure1, measure2);
+		Set<String> measureDependencies = newHashSet(measure1, measure2);
 		return new ReportingDSLExpression(expression, measureDependencies);
 	}
 
 	public static ReportingDSLExpression divide(ReportingDSLExpression reportingExpression, String measure) {
 		Expression expression = div(reportingExpression.getExpression(), cast(field(self(), measure), double.class));
-		List<String> measureDependencies = reportingExpression.getMeasureDependencies();
+		Set<String> measureDependencies = reportingExpression.getMeasureDependencies();
 		measureDependencies.add(measure);
 		return new ReportingDSLExpression(expression, measureDependencies);
 	}
 
 	public static ReportingDSLExpression multiply(String measure1, String measure2) {
 		Expression expression = mul(cast(field(self(), measure1), double.class), field(self(), measure2));
-		List<String> measureDependencies = asList(measure1, measure2);
+		Set<String> measureDependencies = newHashSet(measure1, measure2);
 		return new ReportingDSLExpression(expression, measureDependencies);
 	}
 
 	public static ReportingDSLExpression multiply(ReportingDSLExpression reportingExpression, double value) {
 		Expression expression = mul(reportingExpression.getExpression(), value(value));
 		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+	}
+
+	public static ReportingDSLExpression multiply(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
+		Expression expression = mul(reportingExpression1.getExpression(), reportingExpression2.getExpression());
+		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
+	}
+
+	private static Set<String> mergeMeasureDependencies(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
+		Set<String> measureDependencies = reportingExpression1.getMeasureDependencies();
+		measureDependencies.addAll(reportingExpression2.getMeasureDependencies());
+		return measureDependencies;
 	}
 }

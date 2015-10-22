@@ -19,15 +19,13 @@ package io.datakernel.aggregation_db.api;
 import com.google.common.base.MoreObjects;
 import io.datakernel.codegen.Expression;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public final class ReportingDSLExpression {
 	private final Expression expression;
-	private final List<String> measureDependencies;
+	private final Set<String> measureDependencies;
 
-	public ReportingDSLExpression(Expression expression, List<String> measureDependencies) {
+	public ReportingDSLExpression(Expression expression, Set<String> measureDependencies) {
 		this.expression = expression;
 		this.measureDependencies = measureDependencies;
 	}
@@ -36,8 +34,8 @@ public final class ReportingDSLExpression {
 		return expression;
 	}
 
-	public List<String> getMeasureDependencies() {
-		return new ArrayList<>(measureDependencies);
+	public Set<String> getMeasureDependencies() {
+		return new HashSet<>(measureDependencies);
 	}
 
 	@Override
