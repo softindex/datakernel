@@ -19,6 +19,7 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimap;
 import com.google.gson.Gson;
@@ -41,8 +42,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Lists.transform;
-import static com.google.common.collect.Multimaps.transformValues;
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbStructure.AGGREGATION_DB_STRUCTURE;
@@ -50,6 +49,7 @@ import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static org.jooq.impl.DSL.currentTimestamp;
 import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.nullif;
 
 public class AggregationMetadataStorageSql implements AggregationMetadataStorage {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationMetadataStorageSql.class);
@@ -97,9 +97,9 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	public long newChunkId() {
 		DSLContext jooq = DSL.using(jooqConfiguration);
 		return jooq
-				.insertInto(AGGREGATION_DB_CHUNK, AGGREGATION_DB_CHUNK.REVISION_ID, AGGREGATION_DB_CHUNK.MIN_REVISION_ID,
-						AGGREGATION_DB_CHUNK.MAX_REVISION_ID, AGGREGATION_DB_CHUNK.COUNT)
-				.values(0, 0, 0, 0)
+				.insertInto(AGGREGATION_DB_CHUNK, AGGREGATION_DB_CHUNK.REVISION_ID,
+						AGGREGATION_DB_CHUNK.COUNT)
+				.values(0, 0)
 				.returning(AGGREGATION_DB_CHUNK.ID)
 				.fetchOne()
 				.getId();
@@ -139,60 +139,53 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 			@Override
 			public void run() {
 				DSLContext jooq = DSL.using(jooqConfiguration);
-
-				final int revisionId = nextRevisionId(jooq);
-
-				saveChunks(jooq, aggregationMetadata, transform(newChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
-					@Override
-					public AggregationChunk apply(AggregationChunk.NewChunk newChunk) {
-						return createChunk(revisionId, newChunk);
-					}
-				}));
+				saveNewChunks(jooq,
+						ImmutableMultimap.<AggregationMetadata, AggregationChunk.NewChunk>builder()
+								.putAll(aggregationMetadata, newChunks)
+								.build());
 			}
 		}, callback);
 	}
 
-	public void saveChunks(DSLContext jooq, AggregationMetadata aggregationMetadata, Collection<AggregationChunk> chunks) {
-		for (AggregationChunk chunk : chunks) {
-			AggregationDbChunkRecord record = new AggregationDbChunkRecord();
-			record.setId(chunk.getChunkId());
-			record.setAggregationId(aggregationMetadata.getId());
-			record.setRevisionId(chunk.getRevisionId());
-			record.setMinRevisionId(chunk.getRevisionId()); // TODO (dtkachenko): remove unused min-max fields
-			record.setMaxRevisionId(chunk.getRevisionId());
-			record.setKeys(Joiner.on(' ').join(aggregationMetadata.getKeys()));
-			record.setFields(Joiner.on(' ').join(chunk.getFields()));
-			record.setCount(chunk.getCount());
-			record.setCreated(new Timestamp(Calendar.getInstance().getTime().getTime()));
-
-			Map<Field<?>, Object> fields = new LinkedHashMap<>();
-			int size = record.size();
-			for (int i = 1; i < size; i++) {
-				fields.put(record.field(i), record.getValue(i));
-			}
-
-			for (int d = 0; d < aggregationMetadata.getKeys().size(); d++) {
-				fields.put(field("d" + (d + 1) + "_min"), chunk.getMinPrimaryKey().values().get(d).toString());
-				fields.put(field("d" + (d + 1) + "_max"), chunk.getMaxPrimaryKey().values().get(d).toString());
-			}
-
-			jooq.update(AGGREGATION_DB_CHUNK).set(fields).where(AGGREGATION_DB_CHUNK.ID.equal(chunk.getChunkId())).execute();
-		}
+	public void saveNewChunks(DSLContext jooq,
+	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
+		int revisionId = nextRevisionId(jooq);
+		saveNewChunks(jooq, revisionId, newChunksWithMetadata);
 	}
 
-	public void saveChunks(DSLContext jooq,
-	                       Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
-		final int revisionId = nextRevisionId(jooq);
+	public void saveNewChunks(DSLContext jooq, final int revisionId,
+	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
+		lockChunkTables(jooq);
+		try {
+			for (AggregationMetadata aggregationMetadata : newChunksWithMetadata.keySet()) {
+				for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
+					AggregationChunk chunk = createChunk(revisionId, newChunk);
+					AggregationDbChunkRecord record = new AggregationDbChunkRecord();
+					record.setAggregationId(aggregationMetadata.getId());
+					record.setRevisionId(chunk.getRevisionId());
+					record.setKeys(Joiner.on(' ').join(aggregationMetadata.getKeys()));
+					record.setFields(Joiner.on(' ').join(chunk.getFields()));
+					record.setCount(chunk.getCount());
 
-		Multimap<AggregationMetadata, AggregationChunk> chunksWithMetadata = transformValues(newChunksWithMetadata,
-				new Function<AggregationChunk.NewChunk, AggregationChunk>() {
-					@Override
-					public AggregationChunk apply(AggregationChunk.NewChunk newChunk) {
-						return createChunk(revisionId, newChunk);
+					Map<Field<?>, Object> fields = new LinkedHashMap<>();
+					int size = record.size();
+					for (int i = 1; i < size; i++) {
+						Object value = record.getValue(i);
+						if (value != null) {
+							fields.put(record.field(i), value);
+						}
 					}
-				});
-		for (AggregationMetadata chunkMetadata : chunksWithMetadata.keySet()) {
-			saveChunks(jooq, chunkMetadata, chunksWithMetadata.get(chunkMetadata));
+
+					for (int d = 0; d < aggregationMetadata.getKeys().size(); d++) {
+						fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min"), chunk.getMinPrimaryKey().values().get(d).toString());
+						fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max"), chunk.getMaxPrimaryKey().values().get(d).toString());
+					}
+
+					jooq.update(AGGREGATION_DB_CHUNK).set(fields).where(AGGREGATION_DB_CHUNK.ID.equal(chunk.getChunkId())).execute();
+				}
+			}
+		} finally {
+			unlockChunkTables(jooq);
 		}
 	}
 
@@ -281,9 +274,10 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		}, callback);
 	}
 
-	public void saveConsolidatedChunks(DSLContext jooq, final AggregationMetadata aggregationMetadata,
-	                                    final List<AggregationChunk> originalChunks,
-	                                    final List<AggregationChunk.NewChunk> consolidatedChunks) {
+	public void saveConsolidatedChunks(DSLContext jooq,
+	                                   final AggregationMetadata aggregationMetadata,
+	                                   final List<AggregationChunk> originalChunks,
+	                                   final List<AggregationChunk.NewChunk> consolidatedChunks) {
 		jooq.transaction(new TransactionalRunnable() {
 			@Override
 			public void run(Configuration jooqConfiguration) throws Exception {
@@ -302,31 +296,26 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 						}))))
 						.execute();
 
-				saveChunks(jooq, aggregationMetadata, newArrayList(Iterables.transform(consolidatedChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
-					@Override
-					public AggregationChunk apply(AggregationChunk.NewChunk newChunk) {
-						return createChunk(revisionId, newChunk);
-					}
-				})));
+				saveNewChunks(jooq, revisionId, ImmutableMultimap.<AggregationMetadata, AggregationChunk.NewChunk>builder()
+						.putAll(aggregationMetadata, consolidatedChunks)
+						.build());
 			}
 		});
 	}
 
 	@Override
-	public void startConsolidation(final Aggregation aggregation, final List<AggregationChunk> chunksToConsolidate,
+	public void startConsolidation(final List<AggregationChunk> chunksToConsolidate,
 	                               CompletionCallback callback) {
 		runConcurrently(eventloop, executor, false, new Runnable() {
 			@Override
 			public void run() {
-				startConsolidation(DSL.using(jooqConfiguration), aggregation, chunksToConsolidate);
+				startConsolidation(DSL.using(jooqConfiguration), chunksToConsolidate);
 			}
 		}, callback);
 	}
 
-	public void startConsolidation(final DSLContext jooq, final Aggregation aggregation,
-	                                List<AggregationChunk> chunksToConsolidate) {
-//		lockTablesForConsolidation(jooq);
-
+	public void startConsolidation(final DSLContext jooq,
+	                               List<AggregationChunk> chunksToConsolidate) {
 		jooq.update(AGGREGATION_DB_CHUNK)
 				.set(AGGREGATION_DB_CHUNK.CONSOLIDATION_STARTED, currentTimestamp())
 				.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(chunksToConsolidate, new Function<AggregationChunk, Long>() {
@@ -336,17 +325,14 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 					}
 				}))))
 				.execute();
-
-//		unlockTablesForConsolidation(jooq);
 	}
 
-	// TODO - make sure it's working
-//	private void lockTablesForConsolidation(DSLContext jooq) {
-//		jooq.execute("LOCK TABLES aggregation_db_chunk WRITE");
-//	}
+	private void lockChunkTables(DSLContext jooq) {
+		jooq.execute("LOCK TABLES aggregation_db_chunk WRITE");
+	}
 
-//	private void unlockTablesForConsolidation(DSLContext jooq) {
-//		jooq.execute("UNLOCK TABLES");
-//	}
+	private void unlockChunkTables(DSLContext jooq) {
+		jooq.execute("UNLOCK TABLES");
+	}
 
 }

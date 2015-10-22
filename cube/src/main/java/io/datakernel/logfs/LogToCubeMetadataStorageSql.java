@@ -164,7 +164,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 							.execute();
 				}
 
-				aggregationMetadataStorage.saveChunks(jooq, newChunks);
+				aggregationMetadataStorage.saveNewChunks(jooq, newChunks);
 			}
 		});
 	}

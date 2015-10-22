@@ -492,9 +492,7 @@ public final class Cube {
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, sortingMeasureFunction,
 					fieldComparator, false, sorterItemsInMemory);
 			rawResultStream.streamTo(sorter);
-			StreamForwarder<T> sortedStream = (StreamForwarder<T>) sorter.getSortedStream();
-			sortedStream.setTag(query);
-			return sortedStream;
+			return sorter;
 		} else {
 			return rawResultStream;
 		}

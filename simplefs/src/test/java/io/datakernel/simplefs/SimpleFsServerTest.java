@@ -303,6 +303,17 @@ public class SimpleFsServerTest {
 			@Override
 			public void onComplete() {
 				logger.info("Uploaded");
+				client.listFiles(new ResultCallback<List<String>>() {
+					@Override
+					public void onResult(List<String> result) {
+						logger.info("File on server: {}", result.get(0));
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error(e.getMessage(), e);
+					}
+				});
 				client.download(resultFile, consumer);
 			}
 

@@ -53,7 +53,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void startConsolidation(Aggregation aggregation, List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
+	public void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
 
 	}
 

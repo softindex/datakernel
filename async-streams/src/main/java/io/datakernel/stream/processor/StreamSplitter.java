@@ -17,60 +17,28 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_N;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 
 @SuppressWarnings("unchecked")
-public final class StreamSplitter<T> extends AbstractStreamTransformer_1_N<T> implements StreamSplitterMBean {
+public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implements StreamSplitterMBean {
 	private int jmxItems;
 
 	public StreamSplitter(Eventloop eventloop) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-	}
-
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
-
-		@Override
-		protected void onUpstreamEndOfStream() {
-			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
-				downstreamProducer.sendEndOfStream();
+		this.upstreamConsumer = new UpstreamConsumer() {
+			@Override
+			public void onData(T item) {
+				assert jmxItems != ++jmxItems;
+				for (StreamDataReceiver<T> streamCallback : (StreamDataReceiver<T>[]) dataReceivers) {
+					streamCallback.onData(item);
+				}
 			}
-		}
-
-		@Override
-		public StreamDataReceiver<T> getDataReceiver() {
-			return this;
-		}
-
-		@Override
-		public void onData(T item) {
-			assert jmxItems != ++jmxItems;
-			for (StreamDataReceiver<T> streamCallback : (StreamDataReceiver<T>[]) dataReceivers) {
-				streamCallback.onData(item);
-			}
-		}
-	}
-
-	protected final class DownstreamProducer extends AbstractDownstreamProducer<T> {
-
-		@Override
-		protected final void onDownstreamSuspended() {
-			upstreamConsumer.getUpstream().onConsumerSuspended();
-		}
-
-		@Override
-		protected final void onDownstreamResumed() {
-			if (allOutputsResumed()) {
-				upstreamConsumer.getUpstream().onConsumerResumed();
-			}
-		}
-
+		};
 	}
 
 	public StreamProducer<T> newOutput() {
-		return addOutput(new DownstreamProducer());
+		return addOutput(new DownstreamProducer<T>());
 	}
 
 	@Override
