@@ -456,7 +456,7 @@ public final class Cube {
 		return structure.getChildParentRelationships().buildDrillDownChain(usedDimensions, dimension);
 	}
 
-	public Set<String> getAvailableMeasures(List<String> dimensions, List<String> allMeasures) {
+	public Set<String> getAvailableMeasures(List<String> dimensions, Set<String> allMeasures) {
 		Set<String> availableMeasures = newHashSet();
 		Set<String> allMeasuresSet = newHashSet();
 		allMeasuresSet.addAll(allMeasures);

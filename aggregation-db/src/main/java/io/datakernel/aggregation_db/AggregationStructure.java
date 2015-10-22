@@ -19,6 +19,8 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
+import io.datakernel.aggregation_db.api.QueryResultPlaceholder;
+import io.datakernel.aggregation_db.api.ReportingDSLExpression;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.codegen.AsmBuilder;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +59,7 @@ public class AggregationStructure {
 	private final Map<String, FieldType> fields;
 	private final Map<String, FieldType> outputFields;
 	private final AggregationKeyRelationships childParentRelationships;
+	private final Map<String, ReportingDSLExpression> computedMeasures;
 
 	private final static Logger logger = LoggerFactory.getLogger(AggregationStructure.class);
 
@@ -67,21 +71,30 @@ public class AggregationStructure {
 	 * @param fields      map of aggregation fields (key is field name)
 	 */
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields) {
-		this(classLoader, keys, fields, fields, ImmutableMap.<String, String>of());
+		this(classLoader, keys, fields, fields, ImmutableMap.<String, String>of(), new HashMap<String, ReportingDSLExpression>());
 	}
 
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields,
 	                            Map<String, String> childParentRelationships) {
-		this(classLoader, keys, fields, fields, childParentRelationships);
+		this(classLoader, keys, fields, fields, childParentRelationships, new HashMap<String, ReportingDSLExpression>());
+	}
+
+	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields,
+	                            Map<String, String> childParentRelationships,
+	                            Map<String, ReportingDSLExpression> computedMeasures) {
+		this(classLoader, keys, fields, fields, childParentRelationships, computedMeasures);
 	}
 
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys,
-	                            Map<String, FieldType> fields, Map<String, FieldType> outputFields, Map<String, String> childParentRelationships) {
+	                            Map<String, FieldType> fields, Map<String, FieldType> outputFields,
+	                            Map<String, String> childParentRelationships,
+	                            Map<String, ReportingDSLExpression> computedMeasures) {
 		this.classLoader = classLoader;
 		this.keys = keys;
 		this.fields = fields;
 		this.outputFields = outputFields;
 		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
+		this.computedMeasures = computedMeasures;
 	}
 
 	public void checkThatKeysExist(List<String> keys) {
@@ -114,6 +127,10 @@ public class AggregationStructure {
 
 	public Map<String, FieldType> getOutputFields() {
 		return outputFields;
+	}
+
+	public Map<String, ReportingDSLExpression> getComputedMeasures() {
+		return computedMeasures;
 	}
 
 	public AggregationKeyRelationships getChildParentRelationships() {
@@ -235,24 +252,47 @@ public class AggregationStructure {
 		return builder.defineClass();
 	}
 
+	public Class<QueryResultPlaceholder> createResultClass(AggregationQuery query, List<String> computedMeasureNames) {
+		logger.trace("Creating result class for query {} with computed measures {}", query.toString(), computedMeasureNames);
+		AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(classLoader, QueryResultPlaceholder.class);
+		List<String> resultKeys = query.getResultKeys();
+		List<String> resultFields = query.getResultFields();
+		for (String key : resultKeys) {
+			KeyType keyType = this.keys.get(key);
+			builder.field(key, keyType.getDataType());
+		}
+		for (String field : resultFields) {
+			FieldType fieldType = this.fields.get(field);
+			builder.field(field, fieldType.getDataType());
+		}
+		ExpressionSequence computeSequence = sequence();
+		for (String computedMeasure : computedMeasureNames) {
+			builder.field(computedMeasure, double.class);
+			computeSequence.add(set(field(self(), computedMeasure), computedMeasures.get(computedMeasure).getExpression()));
+		}
+		builder.method("compute", computeSequence);
+		builder.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
+		return builder.defineClass();
+	}
+
 	public Class<?> createResultClass(AggregationQuery query) {
 		logger.trace("Creating result class for query {}", query.toString());
 		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
 		for (String key : resultKeys) {
-			KeyType d = this.keys.get(key);
-			if (d == null) {
+			KeyType keyType = this.keys.get(key);
+			if (keyType == null) {
 				throw new AggregationException("Key with the name '" + key + "' not found.");
 			}
-			builder.field(key, d.getDataType());
+			builder.field(key, keyType.getDataType());
 		}
 		for (String field : resultFields) {
-			FieldType m = this.fields.get(field);
-			if (m == null) {
+			FieldType fieldType = this.fields.get(field);
+			if (fieldType == null) {
 				throw new AggregationException("Field with the name '" + field + "' not found.");
 			}
-			builder.field(field, m.getDataType());
+			builder.field(field, fieldType.getDataType());
 		}
 		builder.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
 		return builder.defineClass();

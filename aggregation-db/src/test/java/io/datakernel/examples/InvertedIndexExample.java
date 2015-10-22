@@ -18,6 +18,7 @@ package io.datakernel.examples;
 
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
+import io.datakernel.aggregation_db.api.ReportingDSLExpression;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeList;
@@ -29,6 +30,7 @@ import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -68,7 +70,8 @@ public class InvertedIndexExample {
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
 						.build(),
-				ImmutableMap.<String, String>of());
+				ImmutableMap.<String, String>of(),
+				new HashMap<String, ReportingDSLExpression>());
 
 		// local file system storage for data
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,

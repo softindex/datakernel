@@ -369,6 +369,18 @@ public final class Expressions {
 		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.SUB, left, right);
 	}
 
+	public static ExpressionArithmeticOp mul(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.MUL, left, right);
+	}
+
+	public static ExpressionArithmeticOp div(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.DIV, left, right);
+	}
+
+	public static ExpressionArithmeticOp rem(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.REM, left, right);
+	}
+
 	/**
 	 * Returns new instance of class
 	 *

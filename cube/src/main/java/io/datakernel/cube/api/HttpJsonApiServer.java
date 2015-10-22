@@ -23,10 +23,11 @@ import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationException;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.aggregation_db.api.QueryResultPlaceholder;
+import io.datakernel.aggregation_db.api.ReportingDSLExpression;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -45,6 +46,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.ByteBufStrings.wrapUTF8;
 
@@ -86,11 +88,7 @@ public final class HttpJsonApiServer {
 		return httpServer(cube, eventloop, classLoader).setListenPort(port);
 	}
 
-	private static HttpResponse createResponse(String body) {
-		return HttpResponse.create()
-				.body(wrapUTF8(body))
-				.header(HttpHeader.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
-	}
+
 
 	private static AsyncHttpServlet dimensionsRequestHandler(final Gson gson, final Cube cube, final NioEventloop eventloop,
 	                                                         final DefiningClassLoader classLoader) {
@@ -131,7 +129,7 @@ public final class HttpJsonApiServer {
 
 					@Override
 					public void onException(Exception e) {
-						processException(e);
+						callback.onResult(response500(e));
 						logger.error("Sending response to /dimensions query failed. Constructed query: {}", query, e);
 					}
 				});
@@ -164,7 +162,7 @@ public final class HttpJsonApiServer {
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				logger.info("Got query {}", request);
 				List<String> dimensions = getListOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
-				List<String> measures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
+				Set<String> measures = getSetOfStringsFromJsonArray(gson, request.getParameter("measures"));
 				String predicatesJson = request.getParameter("filters");
 
 				AggregationQuery.QueryPredicates queryPredicates = null;
@@ -196,7 +194,7 @@ public final class HttpJsonApiServer {
 
 					@Override
 					public void onException(Exception e) {
-						processException(e);
+						callback.onResult(response500(e));
 						logger.error("Sending response to query {} failed.", finalQuery, e);
 					}
 				});
@@ -210,8 +208,34 @@ public final class HttpJsonApiServer {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				logger.info("Got query {}", request);
+				final AggregationStructure structure = cube.getStructure();
+
 				List<String> dimensions = getListOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
-				List<String> measures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
+
+				for (String dimension : dimensions) {
+					if (!structure.getKeys().containsKey(dimension)) {
+						callback.onResult(response404("Cube does not contain dimension with name '" + dimension + "'"));
+						return;
+					}
+				}
+
+				final List<String> queryMeasures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
+				Set<String> storedMeasures = newHashSet();
+				List<String> computedMeasures = newArrayList();
+
+				for (String queryMeasure : queryMeasures) {
+					if (structure.getFields().containsKey(queryMeasure)) {
+						storedMeasures.add(queryMeasure);
+					} else if (structure.getComputedMeasures().containsKey(queryMeasure)) {
+						ReportingDSLExpression reportingDSLExpression = structure.getComputedMeasures().get(queryMeasure);
+						storedMeasures.addAll(reportingDSLExpression.getMeasureDependencies());
+						computedMeasures.add(queryMeasure);
+					} else {
+						callback.onResult(response404("Cube does not contain measure with name '" + queryMeasure + "'"));
+						return;
+					}
+				}
+
 				String predicatesJson = request.getParameter("filters");
 				String orderingsJson = request.getParameter("sort");
 				String limitString = request.getParameter("limit");
@@ -224,7 +248,7 @@ public final class HttpJsonApiServer {
 
 				Map<String, String> orderings = getMapFromJsonArray(gson, orderingsJson);
 
-				Set<String> availableMeasures = cube.getAvailableMeasures(dimensions, measures);
+				Set<String> availableMeasures = cube.getAvailableMeasures(dimensions, storedMeasures);
 
 				final AggregationQuery finalQuery = new AggregationQuery()
 						.keys(dimensions)
@@ -238,24 +262,27 @@ public final class HttpJsonApiServer {
 					finalQuery.predicates(queryPredicates);
 				}
 
-				Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
-				final StreamConsumers.ToList consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
+				Class<QueryResultPlaceholder> resultClass = structure.createResultClass(finalQuery, computedMeasures);
+				final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCubeReporting(resultClass, finalQuery, cube, eventloop);
 
 				final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
 				final Integer offset = offsetString == null ? null : Integer.valueOf(offsetString);
 
-				consumerStream.setResultCallback(new ResultCallback<List>() {
+				consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 					@Override
-					public void onResult(List result) {
-						String jsonResult = constructReportingQueryJson(gson, cube, consumerStream.getList(), finalQuery,
-								classLoader, limit, offset);
+					public void onResult(List<QueryResultPlaceholder> results) {
+						for (QueryResultPlaceholder queryResult : results) {
+							queryResult.compute();
+						}
+						String jsonResult = constructReportingQueryJson(gson, structure, queryMeasures,
+								consumerStream.getList(), finalQuery, classLoader, limit, offset);
 						callback.onResult(createResponse(jsonResult));
 						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
 					}
 
 					@Override
 					public void onException(Exception e) {
-						processException(e);
+						response500(e);
 						logger.error("Sending response to query {} failed.", finalQuery, e);
 					}
 				});
@@ -283,6 +310,13 @@ public final class HttpJsonApiServer {
 	private static StreamConsumers.ToList queryCube(Class<?> resultClass, AggregationQuery query, Cube cube,
 	                                                NioEventloop eventloop) {
 		StreamConsumers.ToList consumerStream = StreamConsumers.toList(eventloop);
+		cube.query(resultClass, query).streamTo(consumerStream);
+		return consumerStream;
+	}
+
+	private static StreamConsumers.ToList<QueryResultPlaceholder> queryCubeReporting(Class<QueryResultPlaceholder> resultClass, AggregationQuery query, Cube cube,
+	                                                NioEventloop eventloop) {
+		StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = StreamConsumers.toList(eventloop);
 		cube.query(resultClass, query).streamTo(consumerStream);
 		return consumerStream;
 	}
@@ -323,13 +357,12 @@ public final class HttpJsonApiServer {
 		return jsonResults.toString();
 	}
 
-	private static <T> String constructReportingQueryJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
+	private static <T> String constructReportingQueryJson(Gson gson, AggregationStructure structure, List<String> resultFields,
+	                                                      List<T> results, AggregationQuery query,
 	                                                      DefiningClassLoader classLoader, Integer limit, Integer offset) {
 		List<String> resultKeys = query.getResultKeys();
-		List<String> resultFields = query.getResultFields();
 		JsonObject jsonResult = new JsonObject();
 		JsonArray jsonRecords = new JsonArray();
-		AggregationStructure structure = cube.getStructure();
 
 		int start = offset == null ? 0 : offset;
 		int end;
@@ -402,11 +435,23 @@ public final class HttpJsonApiServer {
 		return builder.newInstance();
 	}
 
-	private static HttpResponse processException(Exception exception) {
+	private static HttpResponse createResponse(String body) {
+		return HttpResponse.create()
+				.body(wrapUTF8(body))
+				.header(HttpHeader.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+	}
+
+	private static HttpResponse response500(Exception exception) {
 		HttpResponse internalServerError = HttpResponse.internalServerError500();
 		if (exception instanceof AggregationException) {
 			internalServerError.body(wrapUTF8(exception.getMessage()));
 		}
 		return internalServerError;
+	}
+
+	private static HttpResponse response404(String message) {
+		HttpResponse response404 = HttpResponse.notFound404();
+		response404.body(wrapUTF8(message));
+		return response404;
 	}
 }
