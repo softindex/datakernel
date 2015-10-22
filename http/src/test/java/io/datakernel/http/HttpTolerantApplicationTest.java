@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackObserver;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
@@ -143,7 +143,7 @@ public class HttpTolerantApplicationTest {
 	@Test
 	public void testTolerantClient() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		final ResultCallbackObserver<String> resultObserver = new ResultCallbackObserver<>();
+		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			NioEventloop eventloop = new NioEventloop();
 			final HttpClientImpl httpClient = new HttpClientImpl(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
@@ -165,7 +165,7 @@ public class HttpTolerantApplicationTest {
 
 			eventloop.run();
 		}
-		assertEquals("text/html; charset=UTF-8", resultObserver.getResult());
+		assertEquals("text/html; charset=UTF-8", resultObserver.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

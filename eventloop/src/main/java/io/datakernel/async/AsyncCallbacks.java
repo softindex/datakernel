@@ -17,6 +17,7 @@
 package io.datakernel.async;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.service.SimpleCompletionFuture;
@@ -34,8 +35,12 @@ import static org.slf4j.LoggerFactory.getLogger;
  * Static utility methods pertaining to {@link ResultCallback}, {@link CompletionCallback} and working with
  * {@link NioServer} and {@link NioService}.
  */
-public class AsyncCallbacks {
+public final class AsyncCallbacks {
 	private static final Logger logger = getLogger(AsyncCallbacks.class);
+
+	private AsyncCallbacks() {
+
+	}
 
 	private static final CompletionCallback IGNORE_COMPLETION_CALLBACK = new CompletionCallback() {
 		@Override
@@ -983,5 +988,72 @@ public class AsyncCallbacks {
 			this.results = results;
 			this.exceptions = exceptions;
 		}
+	}
+
+	/**
+	 * Returns {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
+	 * to specified eventloop
+	 * @param eventloop {@link Eventloop} to which calls will be forwarded
+	 * @param callback {@link ResultCallback}
+	 * @param <T>
+	 * @return {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
+	 * to specified eventloop
+	 */
+	public static <T> ResultCallback<T> concurrentResultCallback(final NioEventloop eventloop,
+	                                                             final ResultCallback<T> callback) {
+		return new ResultCallback<T>() {
+			@Override
+			public void onResult(final T result) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onResult(result);
+					}
+				});
+			}
+
+			@Override
+			public void onException(final Exception exception) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onException(exception);
+					}
+				});
+			}
+		};
+	}
+
+	/**
+	 * Returns {@link CompletionCallback} which forwards {@code onComplete()} or {@code onException()} calls
+	 * to specified eventloop
+	 * @param eventloop {@link Eventloop} to which calls will be forwarded
+	 * @param callback {@link CompletionCallback}
+	 * @return {@link CompletionCallback} which forwards {@code onComplete()} or {@code onException()} calls
+	 * to specified eventloop
+	 */
+	public static CompletionCallback concurrentCompletionCallback(final NioEventloop eventloop,
+	                                                              final CompletionCallback callback) {
+		return new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onComplete();
+					}
+				});
+			}
+
+			@Override
+			public void onException(final Exception exception) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onException(exception);
+					}
+				});
+			}
+		};
 	}
 }

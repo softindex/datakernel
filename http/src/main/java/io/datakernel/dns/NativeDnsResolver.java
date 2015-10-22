@@ -19,7 +19,6 @@ package io.datakernel.dns;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.ConcurrentResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
 import io.datakernel.eventloop.NioEventloop;
@@ -140,7 +139,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 					NativeDnsResolver.this.eventloop.postConcurrently(new Runnable() {
 						@Override
 						public void run() {
-							NativeDnsResolver.this.resolve(domainName, ipv6, new ConcurrentResultCallback<>(eventloop, callback));
+							NativeDnsResolver.this.resolve(domainName, ipv6, AsyncCallbacks.concurrentResultCallback(eventloop, callback));
 						}
 					});
 				}
