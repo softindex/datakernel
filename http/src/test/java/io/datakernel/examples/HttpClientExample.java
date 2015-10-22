@@ -18,7 +18,7 @@ package io.datakernel.examples;
 
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackObserver;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
@@ -28,6 +28,7 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
@@ -43,7 +44,7 @@ public class HttpClientExample {
 	private static final int PORT = 5588;
 	private static final String CLIENT_NAME = "client";
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
 		NioEventloop eventloop = new NioEventloop();
 
 		// Create the server, to which client will connect
@@ -53,7 +54,7 @@ public class HttpClientExample {
 		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 						3_000L, InetAddresses.forString("8.8.8.8")));
-		final ResultCallbackObserver<String> resultObserver = new ResultCallbackObserver<>();
+		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpServer.listen();
 
@@ -77,6 +78,6 @@ public class HttpClientExample {
 
 		eventloop.run();
 
-		System.out.println("Server response: " + resultObserver.getResult());
+		System.out.println("Server response: " + resultObserver.get());
 	}
 }
