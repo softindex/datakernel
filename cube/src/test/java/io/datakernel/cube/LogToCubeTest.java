@@ -63,6 +63,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class LogToCubeTest {
 	private static final Logger logger = LoggerFactory.getLogger(LogToCubeTest.class);
@@ -324,6 +325,7 @@ public class LogToCubeTest {
 		cube.query(TestAdvResult.class, query).streamTo(consumerToList2);
 		eventloop.run();
 
+		assertTrue(!consumerToList.getList().isEmpty());
 		assertEquals(consumerToList.getList(), consumerToList2.getList());
 	}
 

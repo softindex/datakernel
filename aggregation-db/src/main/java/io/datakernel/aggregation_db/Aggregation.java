@@ -477,7 +477,7 @@ public class Aggregation {
 			return;
 		}
 
-		metadataStorage.startConsolidation(this, chunksToConsolidate, new ForwardingCompletionCallback(callback) {
+		metadataStorage.startConsolidation(chunksToConsolidate, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
 				doConsolidation(chunksToConsolidate, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
