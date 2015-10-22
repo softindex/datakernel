@@ -49,9 +49,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static java.lang.Math.min;
-import static java.nio.file.StandardOpenOption.READ;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-import static java.nio.file.StandardOpenOption.WRITE;
+import static java.nio.file.StandardOpenOption.*;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -258,7 +256,7 @@ public class StreamFileReaderWriterTest {
 
 	}
 
-	// copy for test and override send(ByteBuf item)
+	// override send(ByteBuf item) with error
 	public final static class StreamFileReaderWithError extends AbstractStreamProducer<ByteBuf> {
 		private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
 

@@ -370,7 +370,8 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				}
 
 				try {
-					List<String> fileList = listFiles();
+					List<String> fileList = new ArrayList<>();
+					listFiles(fileStorage, fileList);
 					messaging.sendMessage(new SimpleFsResponseFileList(fileList));
 					logger.info("Send list(size={}) of files", fileList.size());
 				} catch (IOException e) {
@@ -424,40 +425,32 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 
 	private void ensureInfrastructure() throws IOException {
 		Files.createDirectories(tmpStorage);
-		clearFolder(tmpStorage);
 	}
 
-	private void cleanFolder(Path folder) throws IOException {
-		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(folder)) {
+	private void cleanFolder(Path container) throws IOException {
+		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(container)) {
 			for (Path path : directoryStream) {
-				if (Files.isDirectory(path) && !path.iterator().hasNext()) {
+				if (Files.isDirectory(path) && path.iterator().hasNext()) {
+					cleanFolder(path);
+				} else {
 					Files.delete(path);
 				}
 			}
 		}
 	}
 
-	private void clearFolder(Path folder) throws IOException {
-		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(folder)) {
+	private void listFiles(Path container, List<String> fileNames) throws IOException {
+		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(container)) {
 			for (Path path : directoryStream) {
 				if (Files.isDirectory(path)) {
-					clearFolder(path);
-				}
-				Files.delete(path);
-			}
-		}
-
-	}
-
-	private List<String> listFiles() throws IOException {
-		List<String> fileNames = new ArrayList<>();
-		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(fileStorage)) {
-			for (Path path : directoryStream) {
-				if (!Files.isDirectory(path))
+					if (!path.equals(tmpStorage)) {
+						listFiles(path, fileNames);
+					}
+				} else {
 					fileNames.add(path.getFileName().toString());
+				}
 			}
 		}
-		return fileNames;
 	}
 
 	private String getFileName(String path) {

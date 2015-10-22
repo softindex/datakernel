@@ -60,7 +60,7 @@ public final class NodeSort<K, T> implements Node {
 		StreamSorter<K, T> streamMap = new StreamSorter<>(taskContext.getEventloop(), taskContext.environment().getInstance(StreamMergeSorterStorage.class),
 				keyFunction, keyComparator, deduplicate, itemsInMemorySize);
 		taskContext.bindChannel(input, streamMap);
-		taskContext.export(output, streamMap.getSortedStream());
+		taskContext.export(output, streamMap);
 	}
 
 	public StreamId getOutput() {

@@ -39,8 +39,9 @@ public abstract class AbstractStreamSplitter<I> extends AbstractStreamTransforme
 		public abstract void onData(I item);
 	}
 
-	protected final class DownstreamProducer<O> extends AbstractDownstreamProducer<O> {
-		public DownstreamProducer() {}
+	protected class DownstreamProducer<O> extends AbstractDownstreamProducer<O> {
+		public DownstreamProducer() {
+		}
 
 		@Override
 		protected void onDownstreamSuspended() {

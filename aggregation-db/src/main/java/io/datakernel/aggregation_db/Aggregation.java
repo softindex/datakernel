@@ -293,7 +293,7 @@ public class Aggregation {
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, keyFunction, Ordering.natural(), false,
 					sorterItemsInMemory);
 			streamProducer.streamTo(sorter);
-			return sorter.getSortedStream();
+			return sorter;
 		} else {
 			return streamProducer;
 		}

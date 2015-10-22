@@ -69,7 +69,9 @@ public class StreamRewiringWithStatus {
 
 	@Test
 	public void testStartProducerReadyConsumerEndOfStream() {
-		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{onProducerEndOfStream();}};
+		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{
+			onProducerEndOfStream();
+		}};
 		StreamProducer<Integer> startStatusReadyProducer = new TestProducerOfIterator(eventloop, it);
 		startStatusReadyProducer.streamTo(startStatusEndConsumer);
 		eventloop.run();
@@ -81,7 +83,9 @@ public class StreamRewiringWithStatus {
 
 	@Test
 	public void testStartProducerReadyConsumerClosedWithError() {
-		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{closeWithError(new Exception());}};
+		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{
+			closeWithError(new Exception());
+		}};
 		StreamProducer<Integer> startStatusReadyProducer = new TestProducerOfIterator(eventloop, it);
 		startStatusReadyProducer.streamTo(startStatusClosedWithErrorConsumer);
 		eventloop.run();
@@ -96,7 +100,9 @@ public class StreamRewiringWithStatus {
 	@Test
 	public void testStartProducerSuspendConsumerReady() {
 		StreamConsumer<Integer> startStatusReadyConsumer = new TestConsumerOneByOne(eventloop);
-		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{onConsumerSuspended();}};
+		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
+			onConsumerSuspended();
+		}};
 		startStatusSuspendProducer.streamTo(startStatusReadyConsumer);
 		eventloop.run();
 
@@ -108,7 +114,9 @@ public class StreamRewiringWithStatus {
 	@Test
 	public void testStartProducerSuspendConsumerSuspend() {
 		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
-		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{onConsumerSuspended();}};
+		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
+			onConsumerSuspended();
+		}};
 		startStatusSuspendProducer.streamTo(startStatusSuspendConsumer);
 		eventloop.run();
 
@@ -119,8 +127,12 @@ public class StreamRewiringWithStatus {
 
 	@Test
 	public void testStartProducerSuspendConsumerEndOfStream() {
-		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{onProducerEndOfStream();}};
-		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{onConsumerSuspended();}};
+		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{
+			onProducerEndOfStream();
+		}};
+		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
+			onConsumerSuspended();
+		}};
 		startStatusSuspendProducer.streamTo(startStatusEndConsumer);
 		eventloop.run();
 
@@ -131,8 +143,12 @@ public class StreamRewiringWithStatus {
 
 	@Test
 	public void testStartProducerSuspendConsumerClosedWithError() {
-		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{closeWithError(new Exception());}};
-		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{onConsumerSuspended();}};
+		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{
+			closeWithError(new Exception());
+		}};
+		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
+			onConsumerSuspended();
+		}};
 		startStatusSuspendProducer.streamTo(startStatusClosedWithErrorConsumer);
 		eventloop.run();
 
@@ -146,7 +162,9 @@ public class StreamRewiringWithStatus {
 	@Test
 	public void testStartProducerEndOfStreamConsumerReady() {
 		StreamConsumer<Integer> startStatusReadyConsumer = new TestConsumerOneByOne(eventloop);
-		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{sendEndOfStream();}};
+		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
+			sendEndOfStream();
+		}};
 		startStatusEndProducer.streamTo(startStatusReadyConsumer);
 		eventloop.run();
 
@@ -158,7 +176,9 @@ public class StreamRewiringWithStatus {
 	@Test
 	public void testStartProducerEndOfStreamConsumerSuspend() {
 		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
-		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{sendEndOfStream();}};
+		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
+			sendEndOfStream();
+		}};
 		startStatusEndProducer.streamTo(startStatusSuspendConsumer);
 		eventloop.run();
 
@@ -169,8 +189,12 @@ public class StreamRewiringWithStatus {
 
 	@Test
 	public void testStartProducerEndOfStreamConsumerEndOfStream() {
-		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{onProducerEndOfStream();}};
-		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{sendEndOfStream();}};
+		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{
+			onProducerEndOfStream();
+		}};
+		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
+			sendEndOfStream();
+		}};
 		startStatusEndProducer.streamTo(startStatusEndConsumer);
 		eventloop.run();
 
@@ -181,8 +205,12 @@ public class StreamRewiringWithStatus {
 
 	@Test
 	public void testStartProducerEndOfStreamConsumerClosedWithError() {
-		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{closeWithError(new Exception());}};
-		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{sendEndOfStream();}};
+		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{
+			closeWithError(new Exception());
+		}};
+		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
+			sendEndOfStream();
+		}};
 		startStatusEndProducer.streamTo(startStatusClosedWithErrorConsumer);
 		eventloop.run();
 
@@ -196,7 +224,9 @@ public class StreamRewiringWithStatus {
 	@Test
 	public void testStartCloseWithErrorConsumerReady() {
 		StreamConsumer<Integer> startStatusReadyConsumer = new TestConsumerOneByOne(eventloop);
-		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{closeWithError(new Exception());}};
+		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
+			closeWithError(new Exception());
+		}};
 		startStatusClosedWithErrorProducer.streamTo(startStatusReadyConsumer);
 		eventloop.run();
 
@@ -208,7 +238,9 @@ public class StreamRewiringWithStatus {
 	@Test
 	public void testStartCloseWithErrorConsumerSuspend() {
 		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
-		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{closeWithError(new Exception());}};
+		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
+			closeWithError(new Exception());
+		}};
 		startStatusClosedWithErrorProducer.streamTo(startStatusSuspendConsumer);
 		eventloop.run();
 
@@ -219,8 +251,12 @@ public class StreamRewiringWithStatus {
 
 	@Test
 	public void testStartCloseWithErrorConsumerEndOfStream() {
-		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{onProducerEndOfStream();}};
-		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{closeWithError(new Exception());}};
+		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{
+			onProducerEndOfStream();
+		}};
+		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
+			closeWithError(new Exception());
+		}};
 		startStatusClosedWithErrorProducer.streamTo(startStatusEndConsumer);
 		eventloop.run();
 
@@ -231,8 +267,12 @@ public class StreamRewiringWithStatus {
 
 	@Test
 	public void testStartCloseWithErrorConsumerClosedWithError() {
-		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{closeWithError(new Exception());}};
-		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{closeWithError(new Exception());}};
+		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{
+			closeWithError(new Exception());
+		}};
+		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
+			closeWithError(new Exception());
+		}};
 		startStatusClosedWithErrorProducer.streamTo(startStatusClosedWithErrorConsumer);
 		eventloop.run();
 
