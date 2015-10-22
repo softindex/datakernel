@@ -16,6 +16,46 @@
 
 package io.datakernel.hashfs2;
 
+import io.datakernel.async.ResultCallback;
+
+import java.util.Set;
+
 public interface Logic {
 	void update();
+
+	boolean canUpload(String filePath);
+
+	void onUploadStart(String filePath);
+
+	void onUploadComplete(String filePath);
+
+	void onUploadFailed(String filePath);
+
+	boolean canApprove(String filePath);
+
+	void onApprove(String filePath, boolean success);
+
+	boolean canDownload(String filePath);
+
+	void onDownloadStart(String filePath);
+
+	void onDownloadComplete(String filePath);
+
+	void onDownloadFailed(String filePath);
+
+	boolean canDelete(String filePath);
+
+	void onDeletionStart(String filePath);
+
+	void onDeleteComplete(String filePath);
+
+	void onDeleteFailed(String filePath);
+
+	void onShowAlive(ResultCallback<Set<ServerInfo>> alive);
+
+	void onOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
+
+	void onReplicationComplete(String filePath, ServerInfo server);
+
+	void onReplicationFailed(String filePath, ServerInfo server);
 }

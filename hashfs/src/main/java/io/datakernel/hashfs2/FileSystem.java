@@ -23,14 +23,8 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
-import java.util.Set;
 
 public interface FileSystem {
-	boolean exists(String fileName);
-
-	/**
-	 * Moves file to temporary directory
-	 */
 	void stash(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
 	void commit(String filePath, boolean successful, CompletionCallback file);

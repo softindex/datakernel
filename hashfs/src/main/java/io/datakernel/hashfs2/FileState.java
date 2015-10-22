@@ -16,17 +16,6 @@
 
 package io.datakernel.hashfs2;
 
-import io.datakernel.async.ResultCallback;
-
-import java.util.List;
-import java.util.Set;
-
-public interface Commands {
-	void replicate(String filePath, ServerInfo server);
-
-	void delete(String filePath);
-
-	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
-
-	void updateServerMap(List<ServerInfo> bootstrap, ResultCallback<Set<ServerInfo>> result);
+public enum FileState {
+	UPLOADING, DOWNLOADING, TOMBSTONE, READY, REPLICATING
 }

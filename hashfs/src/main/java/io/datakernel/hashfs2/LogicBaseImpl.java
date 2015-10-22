@@ -16,41 +16,6 @@
 
 package io.datakernel.hashfs2;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+public class LogicBaseImpl {
 
-public class LogicBaseImpl implements Logic {
-	private Commands commands;
-	private Hashing hashing;
-
-	public LogicBaseImpl(Commands commands, Hashing hashing) {
-		this.commands = commands;
-		this.hashing = hashing;
-	}
-
-	@Override
-	public void update() {
-		Map<FileInfo, Set<ServerInfo>> filesMap = commands.showFiles();
-		Set<ServerInfo> aliveServers = commands.showServers();
-		Map<ServerInfo, Set<Operation>> pendingOperations = commands.showPendingOperations();
-
-		Config config = commands.showConfigs();
-		Set<FileInfo> files = filesMap.keySet();
-
-		for (FileInfo file : files) {
-
-			List<ServerInfo> rangedServers = hashing.sortServers(aliveServers, file.getName());
-
-			List<ServerInfo> candidates = rangedServers.subList(0, Math.min(rangedServers.size(), config.getReplicasQuantity()));
-			for (ServerInfo server : candidates) {
-				if (!filesMap.get(file).contains(server) && !pendingOperations.containsKey(server)) {
-					commands.replicate(file, server);
-				}
-			}
-			if (!candidates.contains(config.getMyInfo()) && filesMap.get(file).size() > 1) {
-				commands.delete(file);
-			}
-		}
-	}
 }

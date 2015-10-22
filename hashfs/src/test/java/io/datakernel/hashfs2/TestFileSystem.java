@@ -17,10 +17,12 @@
 package io.datakernel.hashfs2;
 
 import com.google.common.base.Charsets;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.file.StreamFileReader;
+import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -28,10 +30,12 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
@@ -90,7 +94,7 @@ public class TestFileSystem {
 
 	@Test
 	public void testUpload() throws IOException {
-		FileSystem fs = FileSystemImpl.initFileSystem(eventloop, executor, storage, 256 * 1024);
+		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
 		fs.stash("1/c.txt", producer, ignoreCompletionCallback());
@@ -111,7 +115,7 @@ public class TestFileSystem {
 
 	@Test
 	public void testUploadFailed() throws IOException {
-		FileSystem fs = FileSystemImpl.initFileSystem(eventloop, executor, storage, 256 * 1024);
+		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
 		fs.stash("1/c.txt", producer, ignoreCompletionCallback());
@@ -129,22 +133,79 @@ public class TestFileSystem {
 	}
 
 	@Test
+	public void testGet() throws IOException {
+		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
+		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("d.txt"));
+
+		fs.get("2/b/d.txt", consumer);
+
+		eventloop.run();
+		executor.shutdown();
+		assertTrue(com.google.common.io.Files.equal(client.resolve("d.txt").toFile(), storage.resolve("2/b/d.txt").toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testGetFailed() throws Exception {
+		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
+		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("no_file.txt"));
+
+		consumer.setFlushCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				fail("Should not get there");
+			}
+
+			@Override
+			public void onException(Exception e) {
+				assertTrue(e.getClass() == NoSuchFileException.class);
+			}
+		});
+		fs.get("2/b/no_file.txt", consumer);
+
+		eventloop.run();
+		executor.shutdown();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
 	public void testDeleteFile() throws IOException {
-		FileSystem fs = FileSystemImpl.initFileSystem(eventloop, executor, storage, 256 * 1024);
-		assertTrue(Files.exists(storage.resolve("1/a.txt")));
-		fs.deleteFile("1/a.txt", ignoreCompletionCallback());
-		assertFalse(Files.exists(storage.resolve("1/a.txt")));
+		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
+		assertTrue(Files.exists(storage.resolve("2/3/a.txt")));
+		fs.deleteFile("2/3/a.txt", ignoreCompletionCallback());
+		assertFalse(Files.exists(storage.resolve("2/3/a.txt")));
+		assertFalse(Files.exists(storage.resolve("2/3")));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testDeleteFailed() throws IOException {
+		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
+		fs.deleteFile("2/3/z.txt", new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				fail("Should not end here");
+			}
+
+			@Override
+			public void onException(Exception e) {
+				assertTrue(e.getClass() == NoSuchFileException.class);
+			}
+		});
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testListFiles() throws IOException {
-		FileSystem fs = FileSystemImpl.initFileSystem(eventloop, executor, storage, 256 * 1024);
+		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
 		final List<String> expected = new ArrayList<>();
 		expected.addAll(Arrays.asList("a.txt", "b.txt", "a.txt", "d.txt", "e.txt"));
 		fs.listFiles(new ResultCallback<List<String>>() {
 			@Override
 			public void onResult(List<String> result) {
+				Collections.sort(expected);
+				Collections.sort(result);
 				assertEquals(expected, result);
 			}
 

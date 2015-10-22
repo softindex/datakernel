@@ -26,15 +26,15 @@ import java.util.List;
 import java.util.Set;
 
 public interface Client {
-	void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	void upload(ServerInfo server, String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void download(String fileName, StreamConsumer<ByteBuf> consumer);
+	void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer);
 
-	void list(ResultCallback<List<String>> files);
+	void list(ServerInfo server, ResultCallback<List<String>> files);
 
-	void delete(CompletionCallback callback);
+	void delete(ServerInfo server, CompletionCallback callback);
 
-	void alive(ResultCallback<ServerInfo> servers);
+	void alive(ServerInfo server, ResultCallback<Set<ServerInfo>> servers);
 
-	void offer(Set<FileInfo> offeredFiles, ResultCallback<Set<FileInfo>> neededFiles);
+	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
 }

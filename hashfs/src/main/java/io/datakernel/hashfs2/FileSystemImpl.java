@@ -24,8 +24,6 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,8 +35,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 
 public class FileSystemImpl implements FileSystem {
-	private static final Logger logger = LoggerFactory.getLogger(FileSystemImpl.class);
-
 	private static final String IN_PROGRESS_EXTENSION = ".partial";
 	private static final String TMP_DIRECTORY = "tmp";
 
@@ -49,26 +45,22 @@ public class FileSystemImpl implements FileSystem {
 	private final Path tmpStorage;
 	private final int bufferSize;
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	private FileSystemImpl(NioEventloop eventloop, ExecutorService executor, Path fileStorage, int bufferSize) {
+	private FileSystemImpl(NioEventloop eventloop, ExecutorService executor,
+	                       Path fileStorage, Path tmpStorage, int bufferSize) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.fileStorage = fileStorage;
-		this.tmpStorage = fileStorage.resolve(TMP_DIRECTORY);
+		this.tmpStorage = tmpStorage;
 		this.bufferSize = bufferSize;
 	}
 
-	public static FileSystem initFileSystem(NioEventloop eventloop, ExecutorService executor, Path fileStorage, int bufferSize) {
-		FileSystemImpl fileSystem = new FileSystemImpl(eventloop, executor, fileStorage, bufferSize);
+	public static FileSystem init(NioEventloop eventloop, ExecutorService executor,
+	                              Path fileStorage, int bufferSize) throws IOException {
+		Path tmpStorage = fileStorage.resolve(TMP_DIRECTORY);
+		FileSystemImpl fileSystem = new FileSystemImpl(eventloop, executor, fileStorage, tmpStorage, bufferSize);
 		fileSystem.ensureInfrastructure();
-		fileSystem.cleanTemporary();
+		fileSystem.cleanFolder(tmpStorage);
 		return fileSystem;
-	}
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	@Override
-	public boolean exists(String filePath) {
-		return !Files.exists(fileStorage.resolve(filePath));
 	}
 
 	@Override
@@ -122,17 +114,23 @@ public class FileSystemImpl implements FileSystem {
 
 	@Override
 	public void deleteFile(String filePath, CompletionCallback callback) {
-		deleteFile(fileStorage, filePath, callback);
+		Path path = fileStorage.resolve(filePath);
+		try {
+			deleteFile(path);
+			callback.onComplete();
+		} catch (IOException e) {
+			callback.onException(e);
+		}
 	}
 
 	@Override
-	public void listFiles(ResultCallback<List<String>> result) {
-		List<String> files = new ArrayList<>();
+	public void listFiles(ResultCallback<List<String>> files) {
+		List<String> result = new ArrayList<>();
 		try {
-			listFiles(fileStorage, files);
-			result.onResult(files);
+			listFiles(fileStorage, result);
+			files.onResult(result);
 		} catch (IOException e) {
-			result.onException(e);
+			files.onException(e);
 		}
 	}
 
@@ -150,7 +148,6 @@ public class FileSystemImpl implements FileSystem {
 		}
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	private Path ensureDestinationDirectory(String path) throws IOException {
 		return ensureDirectory(fileStorage, path);
 	}
@@ -187,29 +184,49 @@ public class FileSystemImpl implements FileSystem {
 	}
 
 	private void deleteTemporary(String filePath, CompletionCallback callback) {
-		deleteFile(tmpStorage, filePath + IN_PROGRESS_EXTENSION, callback);
-	}
-
-	private void deleteFile(Path container, String filePath, CompletionCallback callback) {
-		Path destination = container.resolve(filePath);
+		Path path = tmpStorage.resolve(filePath + IN_PROGRESS_EXTENSION);
 		try {
-			Files.delete(destination);
+			deleteFile(path);
 			callback.onComplete();
 		} catch (IOException e) {
 			callback.onException(e);
 		}
 	}
 
-	private void ensureInfrastructure() {
-		// TODO (arashev)
-		try {
-			Files.createDirectory(tmpStorage);
-		} catch (IOException e) {
-			e.printStackTrace();
+	private void deleteFile(Path path) throws IOException {
+		if (Files.isDirectory(path)) {
+			if (isDirEmpty(path)) {
+				Files.delete(path);
+			}
+			path = path.getParent();
+			if (path != null && !path.equals(fileStorage)) {
+				deleteFile(path);
+			}
+		} else {
+			Files.delete(path);
+			deleteFile(path.getParent());
 		}
 	}
 
-	private void cleanTemporary() {
-		// TODO (arashev)
+	private boolean isDirEmpty(final Path directory) throws IOException {
+		try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(directory)) {
+			return !dirStream.iterator().hasNext();
+		}
+	}
+
+	private void ensureInfrastructure() throws IOException {
+		Files.createDirectory(tmpStorage);
+	}
+
+	private void cleanFolder(Path container) throws IOException {
+		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(container)) {
+			for (Path path : directoryStream) {
+				if (Files.isDirectory(path) && path.iterator().hasNext()) {
+					cleanFolder(path);
+				} else {
+					Files.delete(path);
+				}
+			}
+		}
 	}
 }
