@@ -209,7 +209,7 @@ public class StreamBenchmark {
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
 
 		generator.streamTo(sorter);
-		sorter.getSortedStream().streamTo(consumer);
+		sorter.streamTo(consumer);
 
 		eventloop.run();
 	}
