@@ -17,17 +17,8 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.jmx.CompositeDataBuilder;
-import io.datakernel.rpc.client.RpcClientConnection;
-import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
-import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -36,12 +27,12 @@ final class RequestSenderRoundRobin extends RequestSenderToGroup {
 	private static final int HASH_BASE = 102;
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 
-	private int currentSender;
+	private int nextSender;
 
 
 	public RequestSenderRoundRobin(List<RequestSender> senders) {
 		super(senders);
-		currentSender = 0;
+		nextSender = 0;
 	}
 
 	@Override
@@ -60,7 +51,8 @@ final class RequestSenderRoundRobin extends RequestSenderToGroup {
 
 	private int getCurrentSenderNumber() {
 		// TODO (vmykhalko): maybe change subSenders to immutable list?
-		currentSender = (currentSender + 1) % getSubSenders().size();
+		int currentSender = nextSender;
+		nextSender = (nextSender + 1) % getSubSenders().size();
 		return currentSender;
 	}
 
