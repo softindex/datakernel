@@ -17,53 +17,40 @@
 package io.datakernel.cube;
 
 import com.google.common.collect.ImmutableMap;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallbackObserver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.logfs.*;
+import io.datakernel.logfs.LogFileSystemImpl;
+import io.datakernel.logfs.LogManager;
+import io.datakernel.logfs.LogManagerImpl;
+import io.datakernel.logfs.LogToCubeRunner;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
-import org.jooq.Configuration;
-import org.jooq.SQLDialect;
-import org.jooq.impl.DataSourceConnectionProvider;
-import org.jooq.impl.DefaultConfiguration;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.google.common.base.Charsets.UTF_8;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class LogToCubeTest {
 	private static final Logger logger = LoggerFactory.getLogger(LogToCubeTest.class);
@@ -124,11 +111,9 @@ public class LogToCubeTest {
 
 		eventloop.run();
 
-		CompletionCallbackObserver cb = new CompletionCallbackObserver();
-		logToCubeRunner.processLog(cb);
+		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 
 		eventloop.run();
-		cb.check();
 
 		cube.loadChunks(ignoreCompletionCallback());
 

@@ -26,8 +26,8 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.async.CompletionCallbackObserver;
-import io.datakernel.async.ResultCallbackObserver;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.examples.LogItem;
@@ -59,8 +59,6 @@ import static org.junit.Assert.assertEquals;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeIntegrationTest {
-	private static final Logger logger = LoggerFactory.getLogger(CubeIntegrationTest.class);
-
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -171,10 +169,8 @@ public class CubeIntegrationTest {
 		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
-		CompletionCallbackObserver cb = new CompletionCallbackObserver();
-		cube.saveAggregations(cb);
+		cube.saveAggregations(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
-		cb.check();
 
 
 		// Save logs
@@ -183,7 +179,7 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(cb);
+		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
@@ -191,7 +187,7 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		logToCubeRunner.processLog(cb);
+		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
 		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
@@ -201,15 +197,14 @@ public class CubeIntegrationTest {
 
 
 		// Aggregate logs
-		logToCubeRunner.processLog(cb);
+		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
 
 		// Load metadata
-		CompletionCallbackObserver loadChunksCompletionObserver = new CompletionCallbackObserver();
-		cube.loadChunks(loadChunksCompletionObserver);
+		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
-		loadChunksCompletionObserver.check();
+
 
 		AggregationQuery query = new AggregationQuery().keys("date").fields("clicks");
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
@@ -231,18 +226,16 @@ public class CubeIntegrationTest {
 
 
 		// Consolidate
-		ResultCallbackObserver<Boolean> consolidationResultObserver = new ResultCallbackObserver<>();
-		cube.consolidate(consolidationResultObserver);
+		ResultCallbackFuture<Boolean> callback = new ResultCallbackFuture<>();
+		cube.consolidate(callback);
 		eventloop.run();
-
-		assertEquals(true, consolidationResultObserver.getResult());
+		boolean consolidated = callback.isDone() ? callback.get() : false;
+		assertEquals(true, consolidated);
 
 
 		// Load metadata
-		loadChunksCompletionObserver = new CompletionCallbackObserver();
-		cube.loadChunks(loadChunksCompletionObserver);
+		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
-		loadChunksCompletionObserver.check();
 
 
 		// Query

@@ -1,6 +1,5 @@
 package io.datakernel.async;
 
-import java.lang.reflect.Constructor;
 import java.util.concurrent.*;
 
 public class CompletionCallbackFuture implements Future<Void>, CompletionCallback {
