@@ -58,4 +58,26 @@ public class ReportingTest {
 		assertEquals(0.2, resultPlaceholder.getResult());
 		assertEquals(newHashSet("a", "b", "c"), d.getMeasureDependencies());
 	}
+
+	@Test
+	public void testNullDivision() throws Exception {
+		DefiningClassLoader classLoader = new DefiningClassLoader();
+		ReportingDSLExpression d = divide(multiply(divide("a", "b"), 100), "c");
+		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
+				.field("a", long.class)
+				.field("b", long.class)
+				.field("c", double.class)
+				.field("d", double.class)
+				.method("compute", set(field(self(), "d"), d.getExpression()))
+				.method("init", sequence(
+						set(field(self(), "a"), value(1)),
+						set(field(self(), "b"), value(0)),
+						set(field(self(), "c"), value(0))))
+				.method("getResult", field(self(), "d"))
+				.newInstance();
+		resultPlaceholder.init();
+		resultPlaceholder.compute();
+
+		assertEquals(0.0, resultPlaceholder.getResult());
+	}
 }

@@ -49,7 +49,6 @@ public final class ReportingDSL {
 		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
 	}
 
-
 	/* Subtraction */
 	public static ReportingDSLExpression subtract(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
 		Expression expression = sub(reportingExpression1.getExpression(), reportingExpression2.getExpression());
@@ -82,39 +81,37 @@ public final class ReportingDSL {
 		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
 	}
 
-
 	/* Division */
 	public static ReportingDSLExpression divide(String measure1, String measure2) {
-		Expression expression = div(cast(field(self(), measure1), double.class), field(self(), measure2));
+		Expression expression = getDivisionExpression(cast(field(self(), measure1), double.class), cast(field(self(), measure2), double.class));
 		Set<String> measureDependencies = newHashSet(measure1, measure2);
 		return new ReportingDSLExpression(expression, measureDependencies);
 	}
 
 	public static ReportingDSLExpression divide(ReportingDSLExpression reportingExpression, String measure) {
-		Expression expression = div(reportingExpression.getExpression(), cast(field(self(), measure), double.class));
+		Expression expression = getDivisionExpression(reportingExpression.getExpression(), cast(field(self(), measure), double.class));
 		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression, measure));
 	}
 
 	public static ReportingDSLExpression divide(String measure, ReportingDSLExpression reportingExpression) {
-		Expression expression = div(cast(field(self(), measure), double.class), reportingExpression.getExpression());
+		Expression expression = getDivisionExpression(cast(field(self(), measure), double.class), reportingExpression.getExpression());
 		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression, measure));
 	}
 
 	public static ReportingDSLExpression divide(ReportingDSLExpression reportingExpression, double value) {
-		Expression expression = div(reportingExpression.getExpression(), value(value));
+		Expression expression = getDivisionExpression(reportingExpression.getExpression(), value(value));
 		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression divide(double value, ReportingDSLExpression reportingExpression) {
-		Expression expression = div(value(value), reportingExpression.getExpression());
+		Expression expression = getDivisionExpression(value(value), reportingExpression.getExpression());
 		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
 	}
 
 	public static ReportingDSLExpression divide(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
-		Expression expression = div(reportingExpression1.getExpression(), reportingExpression2.getExpression());
+		Expression expression = getDivisionExpression(reportingExpression1.getExpression(), reportingExpression2.getExpression());
 		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
 	}
-
 
 	/* Multiplication */
 	public static ReportingDSLExpression multiply(String measure1, String measure2) {
@@ -138,12 +135,10 @@ public final class ReportingDSL {
 		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
 	}
 
-
 	public static ReportingDSLExpression sqrt(ReportingDSLExpression reportingExpression) {
 		Expression expression = callStatic(Math.class, "sqrt", reportingExpression.getExpression());
 		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
 	}
-
 
 	/* Utility methods */
 	private static Set<String> mergeMeasureDependencies(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
@@ -156,5 +151,17 @@ public final class ReportingDSL {
 		Set<String> measureDependencies = reportingExpression.getMeasureDependencies();
 		measureDependencies.add(measure);
 		return measureDependencies;
+	}
+
+	private static Expression getDivisionExpression(Expression dividend, Expression divisor) {
+		/*
+		if (Double.compare(divisor, 0.0d) == 0)
+			return 0.0d;
+		else
+			return dividend / divisor;
+		 */
+		return choice(cmpEq(callStatic(Double.class, "compare", divisor, value(0.0d)), value(0)),
+				value(0.0d),
+				div(dividend, divisor));
 	}
 }
