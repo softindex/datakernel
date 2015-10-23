@@ -33,10 +33,9 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
@@ -199,13 +198,11 @@ public class TestFileSystem {
 	@Test
 	public void testListFiles() throws IOException {
 		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
-		final List<String> expected = new ArrayList<>();
+		final Set<String> expected = new HashSet<>();
 		expected.addAll(Arrays.asList("a.txt", "b.txt", "a.txt", "d.txt", "e.txt"));
-		fs.listFiles(new ResultCallback<List<String>>() {
+		fs.listFiles(new ResultCallback<Set<String>>() {
 			@Override
-			public void onResult(List<String> result) {
-				Collections.sort(expected);
-				Collections.sort(result);
+			public void onResult(Set<String> result) {
 				assertEquals(expected, result);
 			}
 

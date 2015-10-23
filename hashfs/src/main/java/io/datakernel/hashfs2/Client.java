@@ -22,19 +22,18 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
-import java.util.List;
 import java.util.Set;
 
 public interface Client {
-	void upload(ServerInfo server, String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	void upload(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer);
+	void download(String filePath, StreamConsumer<ByteBuf> consumer);
 
-	void list(ServerInfo server, ResultCallback<List<String>> files);
+	void list(ResultCallback<Set<String>> files);
 
-	void delete(ServerInfo server, CompletionCallback callback);
+	void delete(CompletionCallback callback);
 
-	void alive(ServerInfo server, ResultCallback<Set<ServerInfo>> servers);
+	void alive(ResultCallback<Set<ServerInfo>> servers);
 
-	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
+	void offer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
 }

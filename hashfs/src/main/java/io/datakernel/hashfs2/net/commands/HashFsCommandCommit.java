@@ -14,24 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
+package io.datakernel.hashfs2.net.commands;
 
-import io.datakernel.async.ResultCallback;
+public class HashFsCommandCommit extends HashFsCommand{
+	public final String filePath;
+	public final boolean isOk;
 
-import java.util.Set;
+	public HashFsCommandCommit(String filePath, boolean isOk) {
+		this.filePath = filePath;
+		this.isOk = isOk;
+	}
 
-public interface Commands {
-	void replicate(String filePath, ServerInfo server);
-
-	void delete(String filePath);
-
-	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
-
-	void updateServerMap(Set<ServerInfo> bootstrap, ResultCallback<Set<ServerInfo>> result);
-
-	void scheduleTemporaryFileDeletion(String filePath);
-
-	void scan(ResultCallback<Set<String>> callback);
-
-	void updateSystem();
+	@Override
+	public String toString() {
+		return "Commit{filepath=\'" + filePath + "\',isOk=" + isOk + "}";
+	}
 }

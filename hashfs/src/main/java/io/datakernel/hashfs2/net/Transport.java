@@ -14,24 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
+package io.datakernel.hashfs2.net;
 
-import io.datakernel.async.ResultCallback;
-
-import java.util.Set;
-
-public interface Commands {
-	void replicate(String filePath, ServerInfo server);
-
-	void delete(String filePath);
-
-	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
-
-	void updateServerMap(Set<ServerInfo> bootstrap, ResultCallback<Set<ServerInfo>> result);
-
-	void scheduleTemporaryFileDeletion(String filePath);
-
-	void scan(ResultCallback<Set<String>> callback);
-
-	void updateSystem();
+public interface Transport {
 }

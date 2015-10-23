@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
-import java.util.List;
+import java.util.Set;
 
 public interface FileSystem {
 	void stash(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
@@ -33,5 +33,5 @@ public interface FileSystem {
 
 	void deleteFile(String filePath, CompletionCallback callback);
 
-	void listFiles(ResultCallback<List<String>> files);
+	void listFiles(ResultCallback<Set<String>> files);
 }

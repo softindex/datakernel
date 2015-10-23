@@ -30,8 +30,8 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 public class FileSystemImpl implements FileSystem {
@@ -124,8 +124,8 @@ public class FileSystemImpl implements FileSystem {
 	}
 
 	@Override
-	public void listFiles(ResultCallback<List<String>> files) {
-		List<String> result = new ArrayList<>();
+	public void listFiles(ResultCallback<Set<String>> files) {
+		Set<String> result = new HashSet<>();
 		try {
 			listFiles(fileStorage, result);
 			files.onResult(result);
@@ -134,7 +134,7 @@ public class FileSystemImpl implements FileSystem {
 		}
 	}
 
-	private void listFiles(Path parent, List<String> files) throws IOException {
+	private void listFiles(Path parent, Set<String> files) throws IOException {
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(parent)) {
 			for (Path path : directoryStream) {
 				if (Files.isDirectory(path)) {

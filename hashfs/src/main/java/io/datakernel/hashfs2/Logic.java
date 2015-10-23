@@ -21,6 +21,8 @@ import io.datakernel.async.ResultCallback;
 import java.util.Set;
 
 public interface Logic {
+	void init();
+
 	void update();
 
 	boolean canUpload(String filePath);

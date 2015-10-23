@@ -14,28 +14,27 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
+package io.datakernel.hashfs2.net;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamForwarder;
+import io.datakernel.hashfs2.ServerInfo;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.Set;
 
-public interface Server {
-	void upload(final String filePath, StreamProducer<ByteBuf> producer, final CompletionCallback callback);
+public interface Protocol {
+	void upload(ServerInfo server, String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void commit(final String filePath, final boolean success, final CompletionCallback callback);
+	void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer);
 
-	void download(final String filePath, StreamForwarder<ByteBuf> consumer, ResultCallback<CompletionCallback> crutch);
+	void delete(ServerInfo server, String filePath, CompletionCallback callback);
 
-	void delete(final String filePath, final CompletionCallback callback);
+	void list(ServerInfo server, ResultCallback<Set<String>> callback);
 
-	void listFiles(ResultCallback<Set<String>> files);
+	void alive(ServerInfo server, ResultCallback<Set<ServerInfo>> servers);
 
-	void showAlive(ResultCallback<Set<ServerInfo>> alive);
-
-	void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
+	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
 }

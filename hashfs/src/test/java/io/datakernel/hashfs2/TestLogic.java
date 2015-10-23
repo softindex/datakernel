@@ -161,7 +161,7 @@ public class TestLogic {
 		Hashing hashing = new HashingMock();
 
 		Logic logic = new Logic() {};
-		logic.update();
+		logic.updateSystem();
 
 		assertEquals(1, commands.deletedFiles.size());
 		assertTrue(commands.deletedFiles.contains(file4));

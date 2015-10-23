@@ -14,8 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
+package io.datakernel.hashfs2.net.commands;
 
-public enum Operation {
-	UPLOAD, DOWNLOAD
+public class HashFsCommandDownload extends HashFsCommand {
+	public final String filePath;
+
+	public HashFsCommandDownload(String filePath) {
+		this.filePath = filePath;
+	}
+
+	@Override
+	public String toString() {
+		return "Delete{filepath=\'" + filePath + "\'}";
+	}
 }

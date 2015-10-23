@@ -14,8 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
+package io.datakernel.hashfs2.net.commands;
 
-public class LogicBaseImpl {
+public class HashFsResponseError extends HashFsResponse {
+	public final String msg;
 
+	public HashFsResponseError(String msg) {
+		this.msg = msg;
+	}
+
+	@Override
+	public String toString() {
+		return "Error{" + msg + "}";
+	}
 }

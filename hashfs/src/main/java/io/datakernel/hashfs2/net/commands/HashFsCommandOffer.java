@@ -14,24 +14,23 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
-
-import io.datakernel.async.ResultCallback;
+package io.datakernel.hashfs2.net.commands;
 
 import java.util.Set;
 
-public interface Commands {
-	void replicate(String filePath, ServerInfo server);
+import static java.util.Collections.unmodifiableSet;
 
-	void delete(String filePath);
+public class HashFsCommandOffer extends HashFsCommand {
+	public final Set<String> forDeletion;
+	public final Set<String> forUpload;
 
-	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
+	public HashFsCommandOffer(Set<String> forDeletion, Set<String> forUpload) {
+		this.forDeletion = unmodifiableSet(forDeletion);
+		this.forUpload = unmodifiableSet(forUpload);
+	}
 
-	void updateServerMap(Set<ServerInfo> bootstrap, ResultCallback<Set<ServerInfo>> result);
-
-	void scheduleTemporaryFileDeletion(String filePath);
-
-	void scan(ResultCallback<Set<String>> callback);
-
-	void updateSystem();
+	@Override
+	public String toString() {
+		return "Offer{forDeletion:" + forDeletion.size() + ",forUpload:" + forUpload.size() + "}";
+	}
 }
