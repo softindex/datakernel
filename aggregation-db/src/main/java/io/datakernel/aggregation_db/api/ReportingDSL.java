@@ -135,8 +135,14 @@ public final class ReportingDSL {
 		return new ReportingDSLExpression(expression, mergeMeasureDependencies(reportingExpression1, reportingExpression2));
 	}
 
+	/* Other functions */
 	public static ReportingDSLExpression sqrt(ReportingDSLExpression reportingExpression) {
 		Expression expression = callStatic(Math.class, "sqrt", reportingExpression.getExpression());
+		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
+	}
+
+	public static ReportingDSLExpression squared(ReportingDSLExpression reportingExpression) {
+		Expression expression = mul(reportingExpression.getExpression(), reportingExpression.getExpression());
 		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
 	}
 

@@ -36,10 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Iterables.concat;
@@ -137,6 +134,22 @@ public class AggregationStructure {
 		return childParentRelationships;
 	}
 
+	public boolean containsKey(String key) {
+		return keys.containsKey(key);
+	}
+
+	public boolean containsInputField(String field) {
+		return fields.containsKey(field);
+	}
+
+	public boolean containsOutputField(String field) {
+		return outputFields.containsKey(field);
+	}
+
+	public boolean containsComputedMeasure(String computedMeasure) {
+		return computedMeasures.containsKey(computedMeasure);
+	}
+
 	public Class<?> createKeyClass(List<String> keys) {
 		logger.trace("Creating key class for keys {}", keys);
 		AsmBuilder builder = new AsmBuilder(classLoader, Comparable.class);
@@ -200,7 +213,7 @@ public class AggregationStructure {
 
 	public Comparator createFieldComparator(AggregationQuery query, Class<?> fieldClass) {
 		logger.trace("Creating field comparator for query {}", query.toString());
-		AsmBuilder builder = new AsmBuilder(classLoader, Comparator.class);
+		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();
 		List<AggregationQuery.QueryOrdering> orderings = query.getOrderings();
 
@@ -219,7 +232,7 @@ public class AggregationStructure {
 
 		builder.method("compare", comparator);
 
-		return (Comparator) builder.newInstance();
+		return builder.newInstance();
 	}
 
 	public Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> keys) {
@@ -252,7 +265,7 @@ public class AggregationStructure {
 		return builder.defineClass();
 	}
 
-	public Class<QueryResultPlaceholder> createResultClass(AggregationQuery query, List<String> computedMeasureNames) {
+	public Class<QueryResultPlaceholder> createResultClass(AggregationQuery query, Set<String> computedMeasureNames) {
 		logger.trace("Creating result class for query {} with computed measures {}", query.toString(), computedMeasureNames);
 		AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(classLoader, QueryResultPlaceholder.class);
 		List<String> resultKeys = query.getResultKeys();

@@ -30,6 +30,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.AvailableDrillDowns;
 import io.datakernel.cube.Cube;
@@ -41,9 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
@@ -211,7 +210,7 @@ public final class HttpJsonApiServer {
 				List<String> dimensions = getListOfStrings(gson, request.getParameter("dimensions"));
 
 				for (String dimension : dimensions) {
-					if (!structure.getKeys().containsKey(dimension)) {
+					if (!structure.containsKey(dimension)) {
 						callback.onResult(response404("Cube does not contain dimension with name '" + dimension + "'"));
 						return;
 					}
@@ -219,12 +218,12 @@ public final class HttpJsonApiServer {
 
 				final List<String> queryMeasures = getListOfStrings(gson, request.getParameter("measures"));
 				Set<String> storedMeasures = newHashSet();
-				List<String> computedMeasures = newArrayList();
+				Set<String> computedMeasures = newHashSet();
 
 				for (String queryMeasure : queryMeasures) {
-					if (structure.getFields().containsKey(queryMeasure)) {
+					if (structure.containsOutputField(queryMeasure)) {
 						storedMeasures.add(queryMeasure);
-					} else if (structure.getComputedMeasures().containsKey(queryMeasure)) {
+					} else if (structure.containsComputedMeasure(queryMeasure)) {
 						ReportingDSLExpression reportingDSLExpression = structure.getComputedMeasures().get(queryMeasure);
 						storedMeasures.addAll(reportingDSLExpression.getMeasureDependencies());
 						computedMeasures.add(queryMeasure);
@@ -244,33 +243,67 @@ public final class HttpJsonApiServer {
 					queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
 				}
 
-				List<List<String>> orderings = getListOfLists(gson, orderingsJson);
-
-				Set<String> availableMeasures = cube.getAvailableMeasures(dimensions, storedMeasures);
-
 				final AggregationQuery finalQuery = new AggregationQuery()
 						.keys(dimensions)
-						.fields(newArrayList(availableMeasures));
+						.fields(newArrayList(storedMeasures));
 
-				if (orderings != null) {
-					addOrderings(finalQuery, orderings);
+				List<String> ordering = getListOfStrings(gson, orderingsJson);
+				boolean orderingByComputedMeasure = false;
+				String orderingField = null;
+				boolean ascendingOrdering = false;
+
+				if (ordering != null) {
+					if (ordering.size() != 2) {
+						callback.onResult(response500("Incorrect 'sort' parameter format"));
+						return;
+					}
+					orderingField = ordering.get(0);
+					orderingByComputedMeasure = computedMeasures.contains(orderingField);
+
+					if (!dimensions.contains(orderingField) && !storedMeasures.contains(orderingField) && !orderingByComputedMeasure) {
+						callback.onResult(response500("Incorrect field specified in 'sort' parameter"));
+						return;
+					}
+
+					String direction = ordering.get(1);
+
+					if (direction.equals("asc"))
+						ascendingOrdering = true;
+					else if (direction.equals("desc"))
+						ascendingOrdering = false;
+					else {
+						callback.onResult(response500("Incorrect ordering specified in 'sort' parameter"));
+						return;
+					}
+
+					addOrdering(finalQuery, orderingField, ascendingOrdering, computedMeasures);
 				}
 
 				if (queryPredicates != null) {
 					finalQuery.predicates(queryPredicates);
 				}
 
-				Class<QueryResultPlaceholder> resultClass = structure.createResultClass(finalQuery, computedMeasures);
+				final Class<QueryResultPlaceholder> resultClass = structure.createResultClass(finalQuery, computedMeasures);
 				final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCubeReporting(resultClass, finalQuery, cube, eventloop);
 
 				final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
 				final Integer offset = offsetString == null ? null : Integer.valueOf(offsetString);
+
+				final boolean sortingRequired = orderingByComputedMeasure;
+				Comparator comparator = null;
+				if (sortingRequired) {
+					comparator = generateComparator(classLoader, orderingField, ascendingOrdering, resultClass);
+				}
+				final Comparator finalComparator = comparator;
 
 				consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 					@Override
 					public void onResult(List<QueryResultPlaceholder> results) {
 						for (QueryResultPlaceholder queryResult : results) {
 							queryResult.compute();
+						}
+						if (sortingRequired) {
+							Collections.sort(results, finalComparator);
 						}
 						String jsonResult = constructReportingQueryJson(gson, structure, queryMeasures,
 								consumerStream.getList(), finalQuery, classLoader, limit, offset);
@@ -288,15 +321,15 @@ public final class HttpJsonApiServer {
 		};
 	}
 
-	private static AggregationQuery addOrderings(AggregationQuery query, List<List<String>> orderings) {
-		for (List<String> ordering : orderings) {
-			String propertyName = ordering.get(0);
-			String direction = ordering.get(1);
-			if (direction.equals("asc"))
-				query.orderAsc(propertyName);
-			else if (direction.equals("desc"))
-				query.orderDesc(propertyName);
-		}
+	private static AggregationQuery addOrdering(AggregationQuery query, String fieldName, boolean ascendingOrdering, Set<String> computedMeasures) {
+		if (computedMeasures.contains(fieldName))
+			return query;
+
+		if (ascendingOrdering)
+			query.orderAsc(fieldName);
+		else
+			query.orderDesc(fieldName);
+
 		return query;
 	}
 
@@ -308,7 +341,7 @@ public final class HttpJsonApiServer {
 	}
 
 	private static StreamConsumers.ToList<QueryResultPlaceholder> queryCubeReporting(Class<QueryResultPlaceholder> resultClass, AggregationQuery query, Cube cube,
-	                                                NioEventloop eventloop) {
+	                                                                                 NioEventloop eventloop) {
 		StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = StreamConsumers.toList(eventloop);
 		cube.query(resultClass, query).streamTo(consumerStream);
 		return consumerStream;
@@ -321,11 +354,6 @@ public final class HttpJsonApiServer {
 
 	private static List<String> getListOfStrings(Gson gson, String json) {
 		Type type = new TypeToken<List<String>>() {}.getType();
-		return gson.fromJson(json, type);
-	}
-
-	private static List<List<String>> getListOfLists(Gson gson, String json) {
-		Type type = new TypeToken<List<List<String>>>() {}.getType();
 		return gson.fromJson(json, type);
 	}
 
@@ -433,6 +461,24 @@ public final class HttpJsonApiServer {
 		return builder.newInstance();
 	}
 
+	private static Comparator generateComparator(DefiningClassLoader classLoader, String fieldName, boolean ascending,
+	                                             Class<QueryResultPlaceholder> fieldClass) {
+		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
+		ExpressionComparator comparator = comparator();
+		if (ascending)
+			comparator.add(
+					field(cast(arg(0), fieldClass), fieldName),
+					field(cast(arg(1), fieldClass), fieldName));
+		else
+			comparator.add(
+					field(cast(arg(1), fieldClass), fieldName),
+					field(cast(arg(0), fieldClass), fieldName));
+
+		builder.method("compare", comparator);
+
+		return builder.newInstance();
+	}
+
 	private static HttpResponse createResponse(String body) {
 		return HttpResponse.create()
 				.body(wrapUTF8(body))
@@ -445,6 +491,12 @@ public final class HttpJsonApiServer {
 			internalServerError.body(wrapUTF8(exception.getMessage()));
 		}
 		return internalServerError;
+	}
+
+	private static HttpResponse response500(String message) {
+		HttpResponse response500 = HttpResponse.internalServerError500();
+		response500.body(wrapUTF8(message));
+		return response500;
 	}
 
 	private static HttpResponse response404(String message) {
