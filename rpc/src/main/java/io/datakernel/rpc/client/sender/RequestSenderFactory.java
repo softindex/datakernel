@@ -16,69 +16,112 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.List;
 
-public class RequestSenders {
+import static com.google.common.base.Preconditions.checkNotNull;
 
-	private RequestSenders() {
+public abstract class RequestSenderFactory {
+
+	private final List<RequestSenderFactory> subSenderFactories;
+
+	public RequestSenderFactory(List<RequestSenderFactory> subSenderFactories) {
+		this.subSenderFactories = subSenderFactories;
 	}
 
-	public static List<RequestSender> serverGroup(List<InetSocketAddress>) {
-		// TODO:
-		return null;
+	public abstract RequestSender create(RpcClientConnectionPool pool);
+
+	protected List<RequestSender> createSubSenders(RpcClientConnectionPool pool) {
+
+		// method should be called only from factories that have subFactories
+		assert subSenderFactories != null;
+
+		List<RequestSender> requestSenders = new ArrayList<>(subSenderFactories.size());
+		for (RequestSenderFactory subSenderFactory : subSenderFactories) {
+			requestSenders.add(subSenderFactory.create(pool));
+		}
+		return requestSenders;
 	}
 
-	public static RequestSender server(InetSocketAddress)
+//	public static List<RequestSender> serverGroup(List<InetSocketAddress>) {
+//		// TODO:
+//		return null;
+//	}
 
-
-	public static RequestSenderFactory firstAvailable(List<RequestSender> senders) {
-		return new RequestSenderFactory() {
+	public static RequestSenderFactory server(final InetSocketAddress address) {
+		checkNotNull(address);
+		return new RequestSenderFactory(null) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
-				return new RequestSenderToFirst(pool);
+				return new RequestSenderToSingleServer(address, pool);
 			}
 		};
 	}
 
-	public static RequestSenderFactory allAvailable() {
-		return new RequestSenderFactory() {
+//	public static RequestSenderFactory servers()
+
+
+	public static RequestSenderFactory firstAvailable(final List<RequestSenderFactory> senders) {
+		checkNotNull(senders);
+		return new RequestSenderFactory(senders) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
-				return new RequestSenderToAll(pool);
+				List<RequestSender> subSenders = createSubSenders(pool);
+				return new RequestSenderToFirst(subSenders);
 			}
 		};
 	}
 
-	public static RequestSenderFactory roundRobin() {
-		return new RequestSenderFactory() {
+	public static RequestSenderFactory allAvailable(final List<RequestSenderFactory> senders) {
+		return new RequestSenderFactory(senders) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
-				return new RequestSenderRoundRobin(pool);
+				List<RequestSender> subSenders = createSubSenders(pool);
+				return new RequestSenderToAll(subSenders);
 			}
 		};
 	}
 
-	public static RequestSenderFactory consistentHashBucket(final HashFunction<RpcMessageData> hashFunction) {
-		return new RequestSenderFactory() {
+	public static RequestSenderFactory roundRobin(final List<RequestSenderFactory> senders) {
+		checkNotNull(senders);
+		return new RequestSenderFactory(senders) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
-				return new RequestSenderRendezvousHashing(pool, hashFunction);
+				List<RequestSender> subSenders = createSubSenders(pool);
+				return new RequestSenderRoundRobin(subSenders);
 			}
 		};
 	}
 
-	public static RequestSenderFactory sharding(final HashFunction<RpcMessageData> hashFunction) {
-		return new RequestSenderFactory() {
+	public static RequestSenderFactory rendezvousHashing(final List<RequestSenderFactory> senders,
+	                                                     final HashFunction<RpcMessageData> hashFunction) {
+		checkNotNull(senders);
+		checkNotNull(hashFunction);
+		return new RequestSenderFactory(senders) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
-				return new RequestSenderSharding(pool, hashFunction);
+				List<RequestSender> subSenders = createSubSenders(pool);
+				return new RequestSenderRendezvousHashing(subSenders, hashFunction);
 			}
 		};
 	}
 
+	public static RequestSenderFactory sharding(final List<RequestSenderFactory> senders,
+	                                            final HashFunction<RpcMessageData> hashFunction) {
+		checkNotNull(senders);
+		checkNotNull(hashFunction);
+		return new RequestSenderFactory(senders) {
+			@Override
+			public RequestSender create(RpcClientConnectionPool pool) {
+				List<RequestSender> subSenders = createSubSenders(pool);
+				return new RequestSenderSharding(subSenders, hashFunction);
+			}
+		};
+	}
 }
