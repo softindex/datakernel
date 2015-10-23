@@ -76,7 +76,7 @@ public abstract class RequestSenderFactory {
 
 	public static RequestSenderFactory servers(final List<InetSocketAddress> addresses) {
 		checkNotNull(addresses);
-		checkArgument(addresses.size() > 0, "addresses list must containt at least one element");
+		checkArgument(addresses.size() > 0, "at least one address must be present");
 		return new RequestSenderFactory(null) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
@@ -101,6 +101,7 @@ public abstract class RequestSenderFactory {
 
 	public static RequestSenderFactory firstAvailable(final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
+		checkArgument(senders.size() > 0, "at least one sender must be present");
 		return new RequestSenderFactory(senders) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
@@ -122,6 +123,8 @@ public abstract class RequestSenderFactory {
 
 
 	public static RequestSenderFactory allAvailable(final List<RequestSenderFactory> senders) {
+		checkNotNull(senders);
+		checkArgument(senders.size() > 0, "at least one sender must be present");
 		return new RequestSenderFactory(senders) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
@@ -143,6 +146,7 @@ public abstract class RequestSenderFactory {
 
 	public static RequestSenderFactory roundRobin(final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
+		checkArgument(senders.size() > 0, "at least one sender must be present");
 		return new RequestSenderFactory(senders) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
@@ -165,6 +169,7 @@ public abstract class RequestSenderFactory {
 	public static RequestSenderFactory rendezvousHashing(final HashFunction<RpcMessageData> hashFunction,
 	                                                     final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
+		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
 		return new RequestSenderFactory(senders) {
 			@Override
@@ -189,6 +194,7 @@ public abstract class RequestSenderFactory {
 	public static RequestSenderFactory sharding(final HashFunction<RpcMessageData> hashFunction,
 	                                            final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
+		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
 		return new RequestSenderFactory(senders) {
 			@Override
