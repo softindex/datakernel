@@ -25,7 +25,7 @@ import java.util.concurrent.TimeoutException;
  * It is CompletionCallback which has time to live, in this time this callback will work as usual CompletionCallback,
  * after timeout, calling of it will throw TimeoutException.
  */
-public class CompletionCallbackWithTimeout extends AbstractAsyncCancellable implements CompletionCallback {
+public final class CompletionCallbackWithTimeout extends AbstractAsyncCancellable implements CompletionCallback {
 	private final CompletionCallback callback;
 	private final ScheduledRunnable timeouter;
 

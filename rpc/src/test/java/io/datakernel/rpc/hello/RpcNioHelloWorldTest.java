@@ -32,9 +32,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.BlockingCompletionCallback;
-import io.datakernel.async.BlockingResultObserver;
+import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -132,7 +132,7 @@ public class RpcNioHelloWorldTest {
 					.requestSenderFactory(RequestSenderFactory.firstAvailable())
 					.build();
 
-			final BlockingCompletionCallback connectCompletion = new BlockingCompletionCallback();
+			final CompletionCallbackFuture connectCompletion = new CompletionCallbackFuture();
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {
@@ -144,9 +144,9 @@ public class RpcNioHelloWorldTest {
 
 		@Override
 		public String hello(String name) throws Exception {
-			BlockingResultObserver<HelloResponse> result = new BlockingResultObserver<>();
+			ResultCallbackFuture<HelloResponse> result = new ResultCallbackFuture<>();
 			helloAsync(name, result);
-			return result.getResult().message;
+			return result.get().message;
 		}
 
 		public void helloAsync(final String name, final ResultCallback<HelloResponse> callback) {
@@ -160,7 +160,7 @@ public class RpcNioHelloWorldTest {
 
 		@Override
 		public void close() throws IOException {
-			final BlockingCompletionCallback callback = new BlockingCompletionCallback();
+			final CompletionCallbackFuture callback = new CompletionCallbackFuture();
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {

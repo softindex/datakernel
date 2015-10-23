@@ -153,6 +153,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 					@Override
 					public void onException(Exception e) {
 						logger.error("Saving chunks {} to aggregation storage {} failed.", chunks, storage, e);
+						closeWithError(e);
 					}
 				});
 
@@ -164,14 +165,20 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			@Override
 			public void onException(Exception exception) {
 				logger.error("Failed to retrieve new chunk id from the metadata storage {}.", metadataStorage);
-				// TODO (dtkachenko): implement proper exception handling after merge with async-streams2
+				closeWithError(exception);
 			}
 		});
 	}
 
 	@Override
 	public void onEndOfStream() {
-		logger.trace("{}: upstream producer {} closed.", this, upstreamProducer);
+		logger.trace("{}: upstream producer {} closed", this, upstreamProducer);
 		doNext();
+	}
+
+	@Override
+	protected void onError(Exception e) {
+		logger.error("{}: upstream producer {} exception", this, upstreamProducer, e);
+		chunksCallback.onException(e);
 	}
 }
