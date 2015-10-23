@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Stopwatch;
@@ -146,7 +147,11 @@ public class RpcNioHelloWorldTest {
 		public String hello(String name) throws Exception {
 			ResultCallbackFuture<HelloResponse> result = new ResultCallbackFuture<>();
 			helloAsync(name, result);
-			return result.get().message;
+			try {
+				return result.get().message;
+			} catch (ExecutionException e) {
+				throw (Exception)e.getCause();
+			}
 		}
 
 		public void helloAsync(final String name, final ResultCallback<HelloResponse> callback) {
