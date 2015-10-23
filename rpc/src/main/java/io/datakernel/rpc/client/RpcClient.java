@@ -464,6 +464,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 
 	@Override
 	public CompositeData getRequestSenderInfo() throws OpenDataException {
-		return requestSender.getRequestSenderInfo();
+//		return requestSender.getRequestSenderInfo();
+		// TODO (vmykhalko): reimplement jmx support
+		return null;
 	}
 }

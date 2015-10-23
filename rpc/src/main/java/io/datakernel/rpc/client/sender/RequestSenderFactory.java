@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
@@ -25,7 +26,10 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Arrays.asList;
+import static java.util.Arrays.fill;
 
 public abstract class RequestSenderFactory {
 
@@ -36,23 +40,19 @@ public abstract class RequestSenderFactory {
 	}
 
 	public abstract RequestSender create(RpcClientConnectionPool pool);
+	protected abstract List<RequestSender> createAsList(RpcClientConnectionPool pool);
 
 	protected List<RequestSender> createSubSenders(RpcClientConnectionPool pool) {
 
 		// method should be called only from factories that have subFactories
 		assert subSenderFactories != null;
 
-		List<RequestSender> requestSenders = new ArrayList<>(subSenderFactories.size());
+		List<List<RequestSender>> listOfListOfSenders = new ArrayList<>();
 		for (RequestSenderFactory subSenderFactory : subSenderFactories) {
-			requestSenders.add(subSenderFactory.create(pool));
+			listOfListOfSenders.add(subSenderFactory.createAsList(pool));
 		}
-		return requestSenders;
+		return flatten(listOfListOfSenders);
 	}
-
-//	public static List<RequestSender> serverGroup(List<InetSocketAddress>) {
-//		// TODO:
-//		return null;
-//	}
 
 	public static RequestSenderFactory server(final InetSocketAddress address) {
 		checkNotNull(address);
@@ -61,11 +61,43 @@ public abstract class RequestSenderFactory {
 			public RequestSender create(RpcClientConnectionPool pool) {
 				return new RequestSenderToSingleServer(address, pool);
 			}
+
+			@Override
+			protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
+				return asList(create(pool));
+			}
 		};
 	}
 
-//	public static RequestSenderFactory servers()
 
+	public static RequestSenderFactory servers(InetSocketAddress ... addresses) {
+		return servers(asList(addresses));
+	}
+
+	public static RequestSenderFactory servers(final List<InetSocketAddress> addresses) {
+		checkNotNull(addresses);
+		checkArgument(addresses.size() > 0, "addresses list must containt at least one element");
+		return new RequestSenderFactory(null) {
+			@Override
+			public RequestSender create(RpcClientConnectionPool pool) {
+				throw new UnsupportedOperationException();
+			}
+
+			@Override
+			protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
+				List<RequestSender> senders = new ArrayList<>();
+				for (InetSocketAddress address : addresses) {
+					senders.add(new RequestSenderToSingleServer(address, pool));
+				}
+				return senders;
+			}
+		};
+	}
+
+
+	public static RequestSenderFactory firstAvailable(RequestSenderFactory ... senders) {
+		return firstAvailable(asList(senders));
+	}
 
 	public static RequestSenderFactory firstAvailable(final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
@@ -75,8 +107,19 @@ public abstract class RequestSenderFactory {
 				List<RequestSender> subSenders = createSubSenders(pool);
 				return new RequestSenderToFirst(subSenders);
 			}
+
+			@Override
+			protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
+				return asList(create(pool));
+			}
 		};
 	}
+
+
+	public static RequestSenderFactory allAvailable(RequestSenderFactory ... senders) {
+		return allAvailable(asList(senders));
+	}
+
 
 	public static RequestSenderFactory allAvailable(final List<RequestSenderFactory> senders) {
 		return new RequestSenderFactory(senders) {
@@ -85,7 +128,17 @@ public abstract class RequestSenderFactory {
 				List<RequestSender> subSenders = createSubSenders(pool);
 				return new RequestSenderToAll(subSenders);
 			}
+
+			@Override
+			protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
+				return asList(create(pool));
+			}
 		};
+	}
+
+
+	public static RequestSenderFactory roundRobin(RequestSenderFactory ... senders) {
+		return roundRobin(asList(senders));
 	}
 
 	public static RequestSenderFactory roundRobin(final List<RequestSenderFactory> senders) {
@@ -96,11 +149,21 @@ public abstract class RequestSenderFactory {
 				List<RequestSender> subSenders = createSubSenders(pool);
 				return new RequestSenderRoundRobin(subSenders);
 			}
+
+			@Override
+			protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
+				return asList(create(pool));
+			}
 		};
 	}
 
-	public static RequestSenderFactory rendezvousHashing(final List<RequestSenderFactory> senders,
-	                                                     final HashFunction<RpcMessageData> hashFunction) {
+	public static RequestSenderFactory rendezvousHashing(final HashFunction<RpcMessageData> hashFunction,
+	                                                     RequestSenderFactory ... senders) {
+		return rendezvousHashing(hashFunction, asList(senders));
+	}
+
+	public static RequestSenderFactory rendezvousHashing(final HashFunction<RpcMessageData> hashFunction,
+	                                                     final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
 		checkNotNull(hashFunction);
 		return new RequestSenderFactory(senders) {
@@ -109,11 +172,22 @@ public abstract class RequestSenderFactory {
 				List<RequestSender> subSenders = createSubSenders(pool);
 				return new RequestSenderRendezvousHashing(subSenders, hashFunction);
 			}
+
+			@Override
+			protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
+				return asList(create(pool));
+			}
 		};
 	}
 
-	public static RequestSenderFactory sharding(final List<RequestSenderFactory> senders,
-	                                            final HashFunction<RpcMessageData> hashFunction) {
+
+	public static RequestSenderFactory sharding(final HashFunction<RpcMessageData> hashFunction,
+	                                            RequestSenderFactory ... senders) {
+		return sharding(hashFunction, asList(senders));
+	}
+
+	public static RequestSenderFactory sharding(final HashFunction<RpcMessageData> hashFunction,
+	                                            final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
 		checkNotNull(hashFunction);
 		return new RequestSenderFactory(senders) {
@@ -122,6 +196,22 @@ public abstract class RequestSenderFactory {
 				List<RequestSender> subSenders = createSubSenders(pool);
 				return new RequestSenderSharding(subSenders, hashFunction);
 			}
+
+			@Override
+			protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
+				return asList(create(pool));
+			}
 		};
+	}
+
+	@VisibleForTesting
+	static <T> List<T> flatten(List<List<T>> listOfList) {
+		List<T> flatList = new ArrayList<>();
+		for (List<T> list : listOfList) {
+			for (T element : list) {
+				flatList.add(element);
+			}
+		}
+		return flatList;
 	}
 }
