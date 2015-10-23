@@ -21,12 +21,10 @@ import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import org.junit.Test;
 
-import java.util.Arrays;
-
 import static com.google.common.collect.Sets.newHashSet;
-import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.aggregation_db.api.ReportingDSL.divide;
 import static io.datakernel.aggregation_db.api.ReportingDSL.multiply;
+import static io.datakernel.codegen.Expressions.*;
 import static org.junit.Assert.assertEquals;
 
 public class ReportingTest {
