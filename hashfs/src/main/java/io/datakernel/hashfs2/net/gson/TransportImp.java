@@ -59,10 +59,11 @@ public class TransportImp extends AbstractNioServer<TransportImp> implements Tra
 	}
 
 	private MessagingHandler<HashFsCommandUpload, HashFsResponse> defineUploadHandler() {
-		// FIXME implement logic: req --> ok --> up --> ack (now: req+up --> ack)
+		// FIXME (check) implement logic: req --> ok --> up --> ack (now: req+up --> ack)
 		return new MessagingHandler<HashFsCommandUpload, HashFsResponse>() {
 			@Override
 			public void onMessage(HashFsCommandUpload item, final Messaging<HashFsResponse> messaging) {
+				messaging.sendMessage(new HashFsResponseOk());
 				server.upload(item.filePath, messaging.read(), new CompletionCallback() {
 					@Override
 					public void onComplete() {

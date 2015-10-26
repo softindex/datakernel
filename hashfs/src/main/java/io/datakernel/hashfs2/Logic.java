@@ -21,7 +21,7 @@ import io.datakernel.async.ResultCallback;
 import java.util.Set;
 
 public interface Logic {
-	void init();
+	void init(Set<ServerInfo> bootstrap);
 
 	void update();
 

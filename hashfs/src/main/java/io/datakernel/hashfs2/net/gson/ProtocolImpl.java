@@ -45,7 +45,7 @@ public class ProtocolImpl implements Protocol {
 	private final NioEventloop eventloop;
 	private final int bufferSize;
 
-	private ProtocolImpl(NioEventloop eventloop, int bufferSize) {
+	public ProtocolImpl(NioEventloop eventloop, int bufferSize) {
 		this.eventloop = eventloop;
 		this.bufferSize = bufferSize;
 	}

@@ -18,13 +18,11 @@ package io.datakernel.hashfs2;
 
 import io.datakernel.async.ResultCallback;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class LogicImpl implements Logic {
 	private static final long MAXIMUM_DIE_TIME = 10 * 1000;
+	private static final int MAX_REPLICA_QUANTITY = 3;
 	private final Hashing hashing;
 	private final ServerInfo myId;
 	private final Commands commands;
@@ -33,9 +31,9 @@ public class LogicImpl implements Logic {
 	private final Set<String> filesToBeDeleted = new HashSet<>();
 	private final Set<ServerInfo> servers = new HashSet<>();
 
-	public LogicImpl(Hashing hashing, ServerInfo serverInfo, Commands commands) {
+	public LogicImpl(Hashing hashing, ServerInfo myId, Commands commands) {
 		this.hashing = hashing;
-		this.myId = serverInfo;
+		this.myId = myId;
 		this.commands = commands;
 	}
 
@@ -151,11 +149,66 @@ public class LogicImpl implements Logic {
 
 	@Override
 	public void update() {
-		// TODO (arashev)
+		Map<ServerInfo, Set<String>> filesForOffer = new HashMap<>();
+		Map<ServerInfo, Set<String>> filesForDeletion = new HashMap<>();
+
+		Set<String> currentFiles = files.keySet();
+		for (String file : currentFiles) {
+			List<ServerInfo> candidates = hashing.sortServers(servers, file);
+			candidates = candidates.subList(0, Math.min(candidates.size(), MAX_REPLICA_QUANTITY));
+			Set<ServerInfo> currentReplicas = files.get(file);
+
+			// removing servers that should not handle replica based on remote server default behavior
+			for (ServerInfo info : currentReplicas) {
+				if (!candidates.contains(info)) {
+					currentReplicas.remove(info);
+					if (info.equals(myId)) {
+						commands.delete(file);
+					}
+				}
+			}
+
+			// defining files to be offered to remote servers
+			for (ServerInfo info : candidates) {
+				if (!currentReplicas.contains(info)) {
+					Set<String> currentServerFilesForOffer = filesForOffer.get(info);
+					if (currentServerFilesForOffer == null) {
+						currentServerFilesForOffer = new HashSet<>();
+						filesForOffer.put(info, currentServerFilesForOffer);
+					}
+					currentServerFilesForOffer.add(file);
+				}
+			}
+		}
+
+		// TODO defining files to be deleted in remote servers
+
+		// Spreading files
+		for (final ServerInfo server : filesForOffer.keySet()) {
+			Set<String> forDeletion = filesForDeletion.get(server);
+			if (forDeletion == null) {
+				forDeletion = new HashSet<>();
+			}
+			commands.offer(server, filesForOffer.get(server), forDeletion, new ResultCallback<Set<String>>() {
+				@Override
+				public void onResult(Set<String> result) {
+					for (String file : result) {
+						commands.replicate(file, server);
+					}
+				}
+
+				@Override
+				public void onException(Exception ignored) {
+					// nothing to do: either remote server shut down or internal Exception
+				}
+			});
+		}
+
+		commands.updateSystem();
 	}
 
 	@Override
-	public void init() {
+	public void init(Set<ServerInfo> bootstrap) {
 		commands.scan(new ResultCallback<Set<String>>() {
 			@Override
 			public void onResult(Set<String> result) {
@@ -171,8 +224,7 @@ public class LogicImpl implements Logic {
 				// ignored
 			}
 		});
-
-		commands.updateServerMap(servers, new ResultCallback<Set<ServerInfo>>() {
+		commands.updateServerMap(bootstrap, new ResultCallback<Set<ServerInfo>>() {
 			@Override
 			public void onResult(Set<ServerInfo> result) {
 				servers.addAll(result);

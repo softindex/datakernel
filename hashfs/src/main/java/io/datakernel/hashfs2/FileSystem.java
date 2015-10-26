@@ -25,9 +25,9 @@ import io.datakernel.stream.StreamProducer;
 import java.util.Set;
 
 public interface FileSystem {
-	void stash(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	void saveToTemporary(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void commit(String filePath, boolean successful, CompletionCallback file);
+	void commitTemporary(String filePath, boolean successful, CompletionCallback file);
 
 	void get(String filePath, StreamConsumer<ByteBuf> consumer);
 

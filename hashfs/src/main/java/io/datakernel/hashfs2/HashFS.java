@@ -34,16 +34,20 @@ public class HashFS implements Commands, Server {
 	private static final long SERVER_UPDATE_TIME = 100 * 1000;
 	private static final long TIMEOUT_TO_UPDATE = 50 * 1000;
 	private final NioEventloop eventloop;
-	private final Logic logic;
+	private Logic logic;
 	private final FileSystem fileSystem;
 	private final Protocol protocol;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	private HashFS(NioEventloop eventloop, Logic logic, FileSystem fileSystem, Protocol protocol) {
+	public HashFS(NioEventloop eventloop, FileSystem fileSystem, Protocol protocol) {
 		this.eventloop = eventloop;
-		this.logic = logic;
+		//this.logic = logic;
 		this.fileSystem = fileSystem;
 		this.protocol = protocol;
+	}
+
+	public void wirelogic(Logic logic) {
+		this.logic = logic;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,7 +55,7 @@ public class HashFS implements Commands, Server {
 	public void upload(final String filePath, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		if (logic.canUpload(filePath)) {
 			logic.onUploadStart(filePath);
-			fileSystem.stash(filePath, producer, new CompletionCallback() {
+			fileSystem.saveToTemporary(filePath, producer, new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logic.onUploadComplete(filePath);
@@ -71,7 +75,7 @@ public class HashFS implements Commands, Server {
 	@Override
 	public void commit(final String filePath, final boolean success, final CompletionCallback callback) {
 		if (logic.canApprove(filePath)) {
-			fileSystem.commit(filePath, success, new CompletionCallback() {
+			fileSystem.commitTemporary(filePath, success, new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logic.onApprove(filePath, success);
@@ -162,7 +166,7 @@ public class HashFS implements Commands, Server {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public void delete(String filePath) {
-		delete(filePath, ignoreCompletionCallback());
+		fileSystem.deleteFile(filePath, ignoreCompletionCallback());
 	}
 
 	@Override

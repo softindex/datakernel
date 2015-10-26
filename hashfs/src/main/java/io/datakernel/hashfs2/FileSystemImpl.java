@@ -64,7 +64,7 @@ public class FileSystemImpl implements FileSystem {
 	}
 
 	@Override
-	public void stash(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+	public void saveToTemporary(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
 		Path tmpPath;
 		try {
 			tmpPath = ensureInProgressDirectory(filePath);
@@ -78,7 +78,7 @@ public class FileSystemImpl implements FileSystem {
 	}
 
 	@Override
-	public void commit(String filePath, boolean successful, CompletionCallback callback) {
+	public void commitTemporary(String filePath, boolean successful, CompletionCallback callback) {
 		if (successful) {
 			Path destinationPath;
 			Path tmpPath;

@@ -13,167 +13,193 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/*
+
 package io.datakernel.hashfs2;
+
+import io.datakernel.async.ResultCallback;
+import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.util.*;
 
+import static org.junit.Assert.*;
+
 public class TestLogic {
 
-	FileInfo file1 = new FileInfo("good_file.txt", 123, 123);
-	FileInfo file2 = new FileInfo("will_replicate.txt", 456, 456);
-	FileInfo file3 = new FileInfo("cant_delete.txt", 789, 789);
-	FileInfo file4 = new FileInfo("will_delete.txt", 983, 983);
+	private final ServerInfo local = new ServerInfo(0, new InetSocketAddress("http://127.0.0.1", 1234), 0.1);
+	private final ServerInfo server1 = new ServerInfo(1, new InetSocketAddress("http://127.0.0.1", 2345), 0.1);
+	private final ServerInfo server2 = new ServerInfo(2, new InetSocketAddress("http://127.0.0.1", 3456), 0.1);
+	private final ServerInfo server3 = new ServerInfo(3, new InetSocketAddress("http://127.0.0.1", 4567), 0.1);
 
-	InetSocketAddress ignored = new InetSocketAddress(1234);
-	ServerInfo local = new ServerInfo(0, ignored, 0.1);
-	ServerInfo fs1 = new ServerInfo(1, ignored, 0.1);
-	ServerInfo fs2 = new ServerInfo(2, ignored, 0.1);
-	ServerInfo fs3 = new ServerInfo(3, ignored, 0.1);
-	ServerInfo fs4 = new ServerInfo(4, ignored, 0.1);
+	private final String a = "a.txt";
+	private final String b = "b.txt";
+	private final String c = "c.txt";
+	private final String d = "d.txt";
+	private final String e = "e.txt";
+	private final String f = "f.txt";
+	private final String g = "g.txt";
+	private final String newFile = "new file";
 
-	class CommandsMock implements Commands {
-		private Map<FileInfo, Set<ServerInfo>> fileMap;
-		private Set<ServerInfo> serversMap;
-		private Map<ServerInfo, Set<Operation>> operationsMap;
-		private Config configs;
+	@Test
+	public void testUpdate() {
+		HashingMock hMock = new HashingMock();
+		CommandsMock cMock = new CommandsMock();
+		Logic logic = new LogicImpl(hMock, local, cMock);
+		logic.init(new HashSet<>(Arrays.asList(local, server1, server2, server3)));
+		logic.update();
 
-		Map<FileInfo, Set<ServerInfo>> replicas = new HashMap<>();
-		Set<FileInfo> deletedFiles = new HashSet<>();
+		Set<String> real1 = cMock.servers.get(server1);
+		Set<String> real2 = cMock.servers.get(server2);
+		Set<String> real3 = cMock.servers.get(server3);
 
-		public CommandsMock(Map<FileInfo, Set<ServerInfo>> fileMap, Set<ServerInfo> serversMap,
-		                    Map<ServerInfo, Set<Operation>> operationsMap, Config configs) {
-			this.fileMap = fileMap;
-			this.serversMap = serversMap;
-			this.operationsMap = operationsMap;
-			this.configs = configs;
-		}
+		Set<String> expected1 = new HashSet<>(Arrays.asList(a, c, d, f, g));
+		Set<String> expected2 = new HashSet<>(Arrays.asList(a, b, d, e, f));
+		Set<String> expected3 = new HashSet<>(Arrays.asList(a, b, c, e, g));
 
-		@Override
-		public void replicate(FileInfo file, ServerInfo server) {
-			Set<ServerInfo> replicaHandlers = replicas.get(file);
-			if (replicaHandlers == null) {
-				replicaHandlers = new HashSet<>();
-				replicas.put(file, replicaHandlers);
-			}
-			replicaHandlers.add(server);
-		}
+		assertEquals(expected1, real1);
+		assertEquals(expected2, real2);
+		assertEquals(expected3, real3);
+	}
 
-		@Override
-		public void delete(FileInfo file) {
-			deletedFiles.add(file);
-		}
+	@Test
+	public void testUpload() {
+		HashingMock hMock = new HashingMock();
+		CommandsMock cMock = new CommandsMock();
+		Logic logic = new LogicImpl(hMock, local, cMock);
+		logic.init(new HashSet<>(Arrays.asList(local, server1, server2, server3)));
+		logic.update();
 
-		@Override
-		public Map<FileInfo, Set<ServerInfo>> showFiles() {
-			return fileMap;
-		}
+		assertFalse(logic.canUpload(b));
 
-		@Override
-		public Set<ServerInfo> showServers() {
-			return serversMap;
-		}
+		assertTrue(logic.canUpload(newFile));
+		logic.onUploadComplete(newFile);
+		assertTrue(cMock.scheduledDeletions.contains(newFile) && cMock.scheduledDeletions.size() == 1);
+		assertTrue(logic.canApprove(newFile));
+		logic.onApprove(newFile, true);
+		logic.update();
 
-		@Override
-		public Map<ServerInfo, Set<Operation>> showPendingOperations() {
-			return operationsMap;
-		}
+		Set<String> real2 = cMock.servers.get(server2);
+		Set<String> real3 = cMock.servers.get(server3);
 
-		@Override
-		public Config showConfigs() {
-			return configs;
-		}
+		assertTrue(real2.contains(newFile));
+		assertTrue(real3.contains(newFile));
+	}
+
+	@Test
+	public void testDownload() {
+		fail("Not yet implemented");
+	}
+
+	@Test
+	public void testOffer() {
+		fail("Not yet implemented");
+	}
+
+	@Test
+	public void testAlive() {
+		fail("Not yet implemented");
 	}
 
 	class HashingMock implements Hashing {
 		@Override
 		public List<ServerInfo> sortServers(Collection<ServerInfo> servers, String fileName) {
-			List<ServerInfo> list = new ArrayList<>();
-			if (fileName.equals("good_file.txt")) {
-				list.add(local);
-				list.add(fs1);
-				list.add(fs2);
-				list.add(fs3);
-				list.add(fs4);
-				return list;
+			switch (fileName) {
+				case a:
+					return sort(1, 2, 3, 0);
+				case b:
+					return sort(2, 3, 0, 1);
+				case c:
+					return sort(3, 0, 1, 2);
+				case d:
+					return sort(0, 1, 2, 3);
+				case e:
+					return sort(0, 2, 3, 1);
+				case f:
+					return sort(2, 0, 1, 3);
+				case g:
+					return sort(1, 3, 0, 2);
+				case newFile:
+					return sort(0, 2, 3, 1);
+				default:
+					return new ArrayList<>();
 			}
-			if (fileName.equals("will_replicate.txt")) {
-				list.add(local);
-				list.add(fs2);
-				list.add(fs3);
-				list.add(fs4);
-				list.add(fs1);
-				return list;
+		}
+
+		private List<ServerInfo> sort(int... order) {
+			List<ServerInfo> result = new ArrayList<>();
+			for (int num : order) {
+				switch (num) {
+					case 0:
+						result.add(local);
+						break;
+					case 1:
+						result.add(server1);
+						break;
+					case 2:
+						result.add(server2);
+						break;
+					case 3:
+						result.add(server3);
+						break;
+				}
 			}
-			if (fileName.equals("cant_delete.txt")) {
-				list.add(fs1);
-				list.add(fs2);
-				list.add(fs3);
-				list.add(fs4);
-				return list;
-			}
-			if (fileName.equals("will_delete.txt")) {
-				list.add(fs1);
-				list.add(fs2);
-				list.add(fs3);
-				list.add(fs4);
-				return list;
-			}
-			return null;
+			return result;
 		}
 	}
 
-	@Test
-	public void testLogicBaseImpl() {
-		Set<ServerInfo> replica1 = new HashSet<>();
-		replica1.add(local);
-		replica1.add(fs1);
-		replica1.add(fs2);
+	class CommandsMock implements Commands {
+		Map<ServerInfo, Set<String>> servers = new HashMap<>();
+		Set<String> filesDeletedFromThisServer = new HashSet<>();
+		Set<String> scheduledDeletions = new HashSet<>();
 
-		Set<ServerInfo> replica2 = new HashSet<>();
-		replica2.add(local);
+		{
+			servers.put(local, new HashSet<String>());
+			servers.put(server1, new HashSet<String>());
+			servers.put(server2, new HashSet<String>());
+			servers.put(server3, new HashSet<String>());
+		}
 
-		Set<ServerInfo> replica3 = new HashSet<>();
-		replica3.add(local);
+		@Override
+		public void replicate(String filePath, ServerInfo server) {
+			servers.get(server).add(filePath);
+		}
 
-		Set<ServerInfo> replica4 = new HashSet<>();
-		replica4.add(local);
-		replica4.add(fs1);
-		replica4.add(fs2);
-		replica4.add(fs3);
+		@Override
+		public void delete(String filePath) {
+			filesDeletedFromThisServer.add(filePath);
+		}
 
-		Map<FileInfo, Set<ServerInfo>> filesMap = new HashMap<>();
-		filesMap.put(file1, replica1);
-		filesMap.put(file2, replica2);
-		filesMap.put(file3, replica3);
-		filesMap.put(file4, replica4);
+		@Override
+		public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result) {
+			Set<String> neededFiles = new HashSet<>();
+			Set<String> currentFiles = servers.get(server);
+			for (String s : forUpload) {
+				if (!currentFiles.contains(s)) {
+					neededFiles.add(s);
+				}
+				result.onResult(neededFiles);
+			}
+		}
 
-		Set<ServerInfo> alive = new HashSet<>();
-		alive.addAll(Arrays.asList(local, fs1, fs2, fs3));
+		@Override
+		public void updateServerMap(Set<ServerInfo> bootstrap, ResultCallback<Set<ServerInfo>> result) {
+			result.onResult(servers.keySet());
+		}
 
-		Map<ServerInfo, Set<Operation>> operations = new HashMap<>();
-		operations.put(fs4, new HashSet<Operation>());
+		@Override
+		public void scheduleTemporaryFileDeletion(String filePath) {
+			scheduledDeletions.add(filePath);
+		}
 
-		Config config = new Config(1, 3, 1000l, local);
+		@Override
+		public void scan(ResultCallback<Set<String>> callback) {
+			callback.onResult(new HashSet<>(Arrays.asList(a, b, c, d, e, f, g)));
+		}
 
-		CommandsMock commands = new CommandsMock(filesMap, alive, operations, config);
-		Hashing hashing = new HashingMock();
-
-		Logic logic = new Logic() {};
-		logic.updateSystem();
-
-		assertEquals(1, commands.deletedFiles.size());
-		assertTrue(commands.deletedFiles.contains(file4));
-
-		assertEquals(2, commands.replicas.size());
-		Set<ServerInfo> updatedReplicasFor2 = commands.replicas.get(file2);
-		assertEquals(2, updatedReplicasFor2.size());
-		assertTrue(updatedReplicasFor2.contains(fs2) && updatedReplicasFor2.contains(fs3));
-
-		Set<ServerInfo> updatedReplicasFor3 = commands.replicas.get(file3);
-		assertEquals(3, updatedReplicasFor3.size());
-		assertTrue(updatedReplicasFor3.contains(fs1) && updatedReplicasFor3.contains(fs2) && updatedReplicasFor3.contains(fs3));
+		@Override
+		public void updateSystem() {
+			// ignored
+		}
 	}
 }
-*/
+

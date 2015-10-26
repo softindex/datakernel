@@ -96,14 +96,14 @@ public class TestFileSystem {
 		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
-		fs.stash("1/c.txt", producer, ignoreCompletionCallback());
+		fs.saveToTemporary("1/c.txt", producer, ignoreCompletionCallback());
 
 		eventloop.run();
 
 		assertTrue(com.google.common.io.Files.equal(client.resolve("c.txt").toFile(), storage.resolve("tmp/1/c.txt.partial").toFile()));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 
-		fs.commit("1/c.txt", true, ignoreCompletionCallback());
+		fs.commitTemporary("1/c.txt", true, ignoreCompletionCallback());
 		eventloop.run();
 		executor.shutdown();
 
@@ -117,7 +117,7 @@ public class TestFileSystem {
 		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, 256 * 1024);
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
-		fs.stash("1/c.txt", producer, ignoreCompletionCallback());
+		fs.saveToTemporary("1/c.txt", producer, ignoreCompletionCallback());
 
 		eventloop.run();
 
@@ -125,7 +125,7 @@ public class TestFileSystem {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 
 		// Failed on client side --> decide to cancel upload
-		fs.commit("1/c.txt", false, ignoreCompletionCallback());
+		fs.commitTemporary("1/c.txt", false, ignoreCompletionCallback());
 
 		assertFalse(Files.exists(storage.resolve("tmp/1/c.txt.partial")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
