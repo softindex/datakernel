@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db.api;
 
-public interface QueryResultPlaceholder {
-	void computeMeasures();
+public interface TotalsPlaceholder extends QueryResultPlaceholder {
+	void initAccumulator(QueryResultPlaceholder record);
+	void accumulate(QueryResultPlaceholder record);
 }

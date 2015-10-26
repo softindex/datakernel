@@ -45,7 +45,7 @@ public class ReportingTest {
 				.field("b", long.class)
 				.field("c", double.class)
 				.field("d", double.class)
-				.method("compute", set(field(self(), "d"), d.getExpression()))
+				.method("computeMeasures", set(field(self(), "d"), d.getExpression()))
 				.method("init", sequence(
 						set(field(self(), "a"), value(1)),
 						set(field(self(), "b"), value(100)),
@@ -68,7 +68,7 @@ public class ReportingTest {
 				.field("b", long.class)
 				.field("c", double.class)
 				.field("d", double.class)
-				.method("compute", set(field(self(), "d"), d.getExpression()))
+				.method("computeMeasures", set(field(self(), "d"), d.getExpression()))
 				.method("init", sequence(
 						set(field(self(), "a"), value(1)),
 						set(field(self(), "b"), value(0)),

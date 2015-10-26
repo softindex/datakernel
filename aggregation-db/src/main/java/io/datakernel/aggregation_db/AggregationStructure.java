@@ -19,7 +19,6 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
-import io.datakernel.aggregation_db.api.QueryResultPlaceholder;
 import io.datakernel.aggregation_db.api.ReportingDSLExpression;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
@@ -36,7 +35,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Iterables.concat;
@@ -94,28 +96,24 @@ public class AggregationStructure {
 		this.computedMeasures = computedMeasures;
 	}
 
-	public void checkThatKeysExist(List<String> keys) {
-		for (String key : keys) {
-			if (!this.keys.containsKey(key)) {
-				throw new AggregationException("Key with the name '" + key + "' not found.");
-			}
-		}
-	}
-
-	public void checkThatFieldsExist(List<String> fields) {
-		for (String field : fields) {
-			if (!this.fields.containsKey(field)) {
-				throw new AggregationException("Field with the name '" + field + "' not found.");
-			}
-		}
-	}
-
 	public Map<String, KeyType> getKeys() {
 		return keys;
 	}
 
 	public KeyType getKeyType(String key) {
 		return keys.get(key);
+	}
+
+	public FieldType getInputFieldType(String inputField) {
+		return fields.get(inputField);
+	}
+
+	public FieldType getOutputFieldType(String outputField) {
+		return outputFields.get(outputField);
+	}
+
+	public Expression getComputedMeasureExpression(String computedMeasure) {
+		return computedMeasures.get(computedMeasure).getExpression();
 	}
 
 	public Map<String, FieldType> getFields() {
@@ -265,29 +263,6 @@ public class AggregationStructure {
 		return builder.defineClass();
 	}
 
-	public Class<QueryResultPlaceholder> createResultClass(AggregationQuery query, Set<String> computedMeasureNames) {
-		logger.trace("Creating result class for query {} with computed measures {}", query.toString(), computedMeasureNames);
-		AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(classLoader, QueryResultPlaceholder.class);
-		List<String> resultKeys = query.getResultKeys();
-		List<String> resultFields = query.getResultFields();
-		for (String key : resultKeys) {
-			KeyType keyType = this.keys.get(key);
-			builder.field(key, keyType.getDataType());
-		}
-		for (String field : resultFields) {
-			FieldType fieldType = this.fields.get(field);
-			builder.field(field, fieldType.getDataType());
-		}
-		ExpressionSequence computeSequence = sequence();
-		for (String computedMeasure : computedMeasureNames) {
-			builder.field(computedMeasure, double.class);
-			computeSequence.add(set(field(self(), computedMeasure), computedMeasures.get(computedMeasure).getExpression()));
-		}
-		builder.method("compute", computeSequence);
-		builder.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
-		return builder.defineClass();
-	}
-
 	public Class<?> createResultClass(AggregationQuery query) {
 		logger.trace("Creating result class for query {}", query.toString());
 		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
@@ -301,7 +276,7 @@ public class AggregationStructure {
 			builder.field(key, keyType.getDataType());
 		}
 		for (String field : resultFields) {
-			FieldType fieldType = this.fields.get(field);
+			FieldType fieldType = this.outputFields.get(field);
 			if (fieldType == null) {
 				throw new AggregationException("Field with the name '" + field + "' not found.");
 			}

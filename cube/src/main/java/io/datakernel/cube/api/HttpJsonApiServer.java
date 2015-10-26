@@ -25,12 +25,15 @@ import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.api.QueryResultPlaceholder;
 import io.datakernel.aggregation_db.api.ReportingDSLExpression;
+import io.datakernel.aggregation_db.api.TotalsPlaceholder;
+import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.ExpressionComparator;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.AvailableDrillDowns;
 import io.datakernel.cube.Cube;
@@ -42,7 +45,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
-import java.util.*;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
@@ -217,8 +223,8 @@ public final class HttpJsonApiServer {
 				}
 
 				final List<String> queryMeasures = getListOfStrings(gson, request.getParameter("measures"));
-				Set<String> storedMeasures = newHashSet();
-				Set<String> computedMeasures = newHashSet();
+				final Set<String> storedMeasures = newHashSet();
+				final Set<String> computedMeasures = newHashSet();
 
 				for (String queryMeasure : queryMeasures) {
 					if (structure.containsOutputField(queryMeasure)) {
@@ -283,7 +289,7 @@ public final class HttpJsonApiServer {
 					finalQuery.predicates(queryPredicates);
 				}
 
-				final Class<QueryResultPlaceholder> resultClass = structure.createResultClass(finalQuery, computedMeasures);
+				final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, structure);
 				final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCubeReporting(resultClass, finalQuery, cube, eventloop);
 
 				final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
@@ -299,14 +305,39 @@ public final class HttpJsonApiServer {
 				consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 					@Override
 					public void onResult(List<QueryResultPlaceholder> results) {
-						for (QueryResultPlaceholder queryResult : results) {
-							queryResult.compute();
+						if (results.isEmpty()) {
+							callback.onResult(createResponse(""));
+							return;
 						}
+
+						// compute totals
+						List<String> requestedStoredMeasures = newArrayList(Iterables.filter(finalQuery.getResultFields(), new Predicate<String>() {
+							@Override
+							public boolean apply(String queryMeasure) {
+								return !computedMeasures.contains(queryMeasure);
+							}
+						}));
+						TotalsPlaceholder totalsPlaceholder = createTotalsPlaceholder(classLoader, structure, resultClass, storedMeasures, computedMeasures);
+						totalsPlaceholder.initAccumulator(results.get(0));
+						if (results.size() > 1) {
+							for (int i = 1; i < results.size(); ++i) {
+								totalsPlaceholder.accumulate(results.get(i));
+							}
+						}
+						totalsPlaceholder.computeMeasures();
+
+						// compute measures
+						for (QueryResultPlaceholder queryResult : results) {
+							queryResult.computeMeasures();
+						}
+
+						// sort
 						if (sortingRequired) {
 							Collections.sort(results, finalComparator);
 						}
+
 						String jsonResult = constructReportingQueryJson(gson, structure, queryMeasures,
-								consumerStream.getList(), finalQuery, classLoader, limit, offset);
+								consumerStream.getList(), totalsPlaceholder, finalQuery, classLoader, limit, offset);
 						callback.onResult(createResponse(jsonResult));
 						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
 					}
@@ -347,6 +378,7 @@ public final class HttpJsonApiServer {
 		return consumerStream;
 	}
 
+	/* JSON utils */
 	private static Set<String> getSetOfStrings(Gson gson, String json) {
 		Type type = new TypeToken<Set<String>>() {}.getType();
 		return gson.fromJson(json, type);
@@ -384,11 +416,12 @@ public final class HttpJsonApiServer {
 	}
 
 	private static <T> String constructReportingQueryJson(Gson gson, AggregationStructure structure, List<String> resultFields,
-	                                                      List<T> results, AggregationQuery query,
+	                                                      List<T> results, TotalsPlaceholder totalsPlaceholder, AggregationQuery query,
 	                                                      DefiningClassLoader classLoader, Integer limit, Integer offset) {
 		List<String> resultKeys = query.getResultKeys();
 		JsonObject jsonResult = new JsonObject();
 		JsonArray jsonRecords = new JsonArray();
+		JsonObject jsonTotals = new JsonObject();
 
 		int start = offset == null ? 0 : offset;
 		int end;
@@ -417,7 +450,13 @@ public final class HttpJsonApiServer {
 			jsonRecords.add(resultJsonObject);
 		}
 
+		for (String field : resultFields) {
+			Object totalFieldValue = generateGetter(classLoader, totalsPlaceholder.getClass(), field).get(totalsPlaceholder);
+			jsonTotals.addProperty(field, totalFieldValue.toString());
+		}
+
 		jsonResult.add("records", jsonRecords);
+		jsonResult.add("totals", jsonTotals);
 		jsonResult.addProperty("count", results.size());
 
 		return jsonResult.toString();
@@ -455,6 +494,70 @@ public final class HttpJsonApiServer {
 		}
 	}
 
+	/* Codegen utils */
+	private static Class<QueryResultPlaceholder> createResultClass(DefiningClassLoader classLoader, AggregationQuery query,
+	                                                               Set<String> computedMeasureNames, AggregationStructure structure) {
+		AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(classLoader, QueryResultPlaceholder.class);
+		List<String> resultKeys = query.getResultKeys();
+		List<String> resultFields = query.getResultFields();
+		for (String key : resultKeys) {
+			KeyType keyType = structure.getKeyType(key);
+			builder.field(key, keyType.getDataType());
+		}
+		for (String field : resultFields) {
+			FieldType fieldType = structure.getOutputFieldType(field);
+			builder.field(field, fieldType.getDataType());
+		}
+		ExpressionSequence computeSequence = sequence();
+		for (String computedMeasure : computedMeasureNames) {
+			builder.field(computedMeasure, double.class);
+			computeSequence.add(set(field(self(), computedMeasure), structure.getComputedMeasureExpression(computedMeasure)));
+		}
+		builder.method("computeMeasures", computeSequence);
+		return builder.defineClass();
+	}
+
+	private static TotalsPlaceholder createTotalsPlaceholder(DefiningClassLoader classLoader,
+	                                                         AggregationStructure structure, Class<?> inputClass,
+	                                                 Set<String> requestedStoredFields, Set<String> computedMeasureNames) {
+		AsmBuilder<TotalsPlaceholder> builder = new AsmBuilder<>(classLoader, TotalsPlaceholder.class);
+
+		ExpressionSequence initAccumulatorSequence = sequence();
+
+		for (String field : requestedStoredFields) {
+			FieldType fieldType = structure.getOutputFieldType(field);
+			builder.field(field, fieldType.getDataType());
+		}
+		for (String computedMeasure : computedMeasureNames) {
+			builder.field(computedMeasure, double.class);
+		}
+
+		for (String field : requestedStoredFields) {
+			initAccumulatorSequence.add(set(
+					field(self(), field),
+					field(cast(arg(0), inputClass), field)));
+		}
+		builder.method("initAccumulator", initAccumulatorSequence);
+
+		ExpressionSequence accumulateSequence = sequence();
+		for (String field : requestedStoredFields) {
+			accumulateSequence.add(set(
+					field(self(), field),
+					add(
+							field(self(), field),
+							field(cast(arg(0), inputClass), field))));
+		}
+		builder.method("accumulate", accumulateSequence);
+
+		ExpressionSequence computeSequence = sequence();
+		for (String computedMeasure : computedMeasureNames) {
+			computeSequence.add(set(field(self(), computedMeasure), structure.getComputedMeasureExpression(computedMeasure)));
+		}
+		builder.method("computeMeasures", computeSequence);
+
+		return builder.newInstance();
+	}
+
 	private static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
 		AsmBuilder<FieldGetter> builder = new AsmBuilder<>(classLoader, FieldGetter.class);
 		builder.method("get", field(cast(arg(0), objClass), propertyName));
@@ -479,6 +582,7 @@ public final class HttpJsonApiServer {
 		return builder.newInstance();
 	}
 
+	/* HTTP response utils */
 	private static HttpResponse createResponse(String body) {
 		return HttpResponse.create()
 				.body(wrapUTF8(body))
