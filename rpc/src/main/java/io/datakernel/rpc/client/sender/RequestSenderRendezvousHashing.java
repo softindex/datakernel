@@ -22,32 +22,28 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 
-import java.util.List;
+import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
-import static io.datakernel.rpc.client.sender.RequestSenderUtils.checkAllSendersHaveKey;
 
-final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
+final class RequestSenderRendezvousHashing implements RequestSender {
+
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 
+	private boolean active;
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 	@VisibleForTesting
-	final HashBucket hashBucket;
+	final RendezvousHashBucket<RequestSender> hashBucket;
 
 
-	public RequestSenderRendezvousHashing(List<RequestSender> senders, int key,
+	public RequestSenderRendezvousHashing(Map<Integer, RequestSender> keyToSender,
 	                                      HashFunction<RpcMessage.RpcMessageData> hashFunction) {
-		super(checkAllSendersHaveKey(senders), key);
+		checkNotNull(keyToSender);
 		this.hashFunction = checkNotNull(hashFunction);
-		this.hashBucket = new HashBucket(senders);
+		this.active = countActiveSenders(keyToSender) > 0;
+		this.hashBucket = new RendezvousHashBucket(keyToSender);
 	}
-
-//	public RequestSenderRendezvousHashing(List<RequestSender> senders,
-//	                                      HashFunction<RpcMessage.RpcMessageData> hashFunction) {
-//		this(senders, EMPTY_KEY, hashFunction);
-//	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
@@ -61,62 +57,75 @@ final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
 		sender.sendRequest(request, timeout, callback);
 	}
 
+	@Override
+	public final boolean isActive() {
+		return active;
+	}
+
 	private RequestSender getRequestSender(RpcMessage.RpcMessageData request) {
 		int hash = hashFunction.hashCode(request);
 		return hashBucket.chooseSender(hash);
 	}
 
+	private static int countActiveSenders(Map<Integer, RequestSender> keyToSender) {
+		int count = 0;
+		for (RequestSender sender : keyToSender.values()) {
+			if (sender.isActive()) {
+				++count;
+			}
+		}
+		return count;
+	}
+
 	@VisibleForTesting
-	static class HashBucket {
+	static class RendezvousHashBucket<T> {
 		private static final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
 		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
 
-		private final byte[] baseHashes;
+		private final int[] baseHashes;
 
-		// TODO: maybe use same senders as in base class ?
-		private final List<RequestSender> senders;
+		private final Map<Integer, RequestSender> keyToSender;
 
-		public HashBucket(List<RequestSender> senders) {
-			this(senders, DEFAULT_BUCKET_CAPACITY);
+		public RendezvousHashBucket(Map<Integer, RequestSender> keyToSender) {
+			this(keyToSender, DEFAULT_BUCKET_CAPACITY);
 		}
 
-		public HashBucket(List<RequestSender> senders, int capacity) {
+		public RendezvousHashBucket(Map<Integer, RequestSender> keyToSender, int capacity) {
 			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
-			this.senders = checkNotNull(senders, "addresses is not set");
-			this.baseHashes = new byte[capacity];
+			this.keyToSender = checkNotNull(keyToSender, "addresses is not set");
+			this.baseHashes = new int[capacity];
 			computeBaseHashes();
 		}
 
 		// if activeAddresses is empty fill bucket -1
 		private void computeBaseHashes() {
 			for (int n = 0; n < baseHashes.length; n++) {
-				int senderIndex = -1;
+				int senderKey = -1;
 				int max = Integer.MIN_VALUE;
-				for (int i = 0; i < senders.size(); ++i) {
-					RequestSender sender = senders.get(i);
+				for (int key : keyToSender.keySet()) {
+					RequestSender sender = keyToSender.get(key);
 					if (sender.isActive()) {
-						int hash = hashAddress(n, sender);
+						int hash = hashAddress(n, key, sender);
 						if (hash >= max) {
-							senderIndex = i;
+							senderKey = key;
 							max = hash;
 						}
 					}
 				}
-				// TODO (vmykhalko): We can't use more than 128 senders in list. Is it desirable/acceptable limitation?
-				baseHashes[n] = (byte) senderIndex;
+				baseHashes[n] = senderKey;
 			}
 		}
 
-		private int hashAddress(int bucket, RequestSender sender) {
+		private int hashAddress(int bucket, int senderKey, RequestSender sender) {
 			return murmurHashAddressFunction.newHasher()
-					.putInt(sender.getKey())
+					.putInt(senderKey)
 					.putInt(bucket)
 					.hash().asInt();
 		}
 
 		public RequestSender chooseSender(int hash) {
-			int index = baseHashes[hash & (baseHashes.length - 1)];
-			return senders.get(index);
+			int key = baseHashes[hash & (baseHashes.length - 1)];
+			return keyToSender.get(key);
 		}
 	}
 }

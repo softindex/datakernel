@@ -23,18 +23,11 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
-
-
 final class RequestSenderToFirst extends RequestSenderToGroup {
 
-	public RequestSenderToFirst(List<RequestSender> senders, int key) {
-		super(senders, key);
+	public RequestSenderToFirst(List<RequestSender> senders) {
+		super(senders);
 	}
-
-//	public RequestSenderToFirst(List<RequestSender> senders) {
-//		this(senders, EMPTY_KEY);
-//	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,

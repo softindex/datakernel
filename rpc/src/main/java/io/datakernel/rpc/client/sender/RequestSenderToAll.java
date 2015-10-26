@@ -24,18 +24,12 @@ import io.datakernel.async.FirstResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.protocol.RpcMessage;
 
-import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
 
 final class RequestSenderToAll extends RequestSenderToGroup {
 
-	public RequestSenderToAll(List<RequestSender> senders, int key) {
-		super(senders, key);
+	public RequestSenderToAll(List<RequestSender> senders) {
+		super(senders);
 	}
-
-//	public RequestSenderToAll(List<RequestSender> senders) {
-//		this(senders, EMPTY_KEY);
-//	}
-
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,

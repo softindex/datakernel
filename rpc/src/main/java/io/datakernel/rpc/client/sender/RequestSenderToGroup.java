@@ -5,18 +5,13 @@ import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
-
-
 abstract class RequestSenderToGroup implements RequestSender {
 	private final List<RequestSender> allSubSenders;
 	private final List<RequestSender> activeSubSenders;
-	private int key;
 	private boolean active;
 
-	public RequestSenderToGroup(List<RequestSender> senders, int key) {
+	public RequestSenderToGroup(List<RequestSender> senders) {
 		checkNotNull(senders);
-		this.key = key;
 		this.allSubSenders = senders;
 		this.activeSubSenders = filterSenders(senders);
 		this.active = activeSubSenders.size() > 0;
@@ -28,11 +23,6 @@ abstract class RequestSenderToGroup implements RequestSender {
 
 	protected final List<RequestSender> getAllSubSenders() {
 		return allSubSenders;
-	}
-
-	@Override
-	public final int getKey() {
-		return key;
 	}
 
 	@Override

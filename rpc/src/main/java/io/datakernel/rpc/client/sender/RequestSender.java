@@ -23,7 +23,5 @@ public interface RequestSender {
 
 	<T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback);
 
-	int getKey();
-
 	boolean isActive();
 }

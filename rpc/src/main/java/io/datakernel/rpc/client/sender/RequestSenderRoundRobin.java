@@ -22,13 +22,12 @@ import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
 
 final class RequestSenderRoundRobin extends RequestSenderToGroup {
 	private int nextSender;
 
-	public RequestSenderRoundRobin(List<RequestSender> senders, int key) {
-		super(senders, key);
+	public RequestSenderRoundRobin(List<RequestSender> senders) {
+		super(senders);
 		nextSender = 0;
 	}
 
