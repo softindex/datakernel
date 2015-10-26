@@ -17,17 +17,8 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.jmx.CompositeDataBuilder;
-import io.datakernel.rpc.client.RpcClientConnection;
-import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.protocol.RpcMessage;
 
-import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -41,17 +32,11 @@ final class RequestSenderToFirst extends RequestSenderToGroup {
 	}
 
 	@Override
-	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
+	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+	                                                              ResultCallback<T> callback) {
 		checkNotNull(callback);
-		for (RequestSender subSender : getSubSenders()) {
-			if (!subSender.isActive()) {
-				continue;
-			}
-			// TODO (vmykhalko): what if connection was removed from pool concurrently at this moment?
-			subSender.sendRequest(request, timeout, callback);
-			return;
-		}
-		callback.onException(NO_AVAILABLE_CONNECTION);
+		RequestSender first = getActiveSubSenders().get(0);
+		first.sendRequest(request, timeout, callback);
 	}
 
 	@Override

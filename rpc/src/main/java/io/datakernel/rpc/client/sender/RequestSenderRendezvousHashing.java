@@ -19,8 +19,6 @@ package io.datakernel.rpc.client.sender;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.hash.Hashing;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.client.RpcClientConnection;
-import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 
@@ -45,7 +43,8 @@ final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
 	}
 
 	@Override
-	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, final ResultCallback<T> callback) {
+	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+	                                                              final ResultCallback<T> callback) {
 		checkNotNull(callback);
 		RequestSender sender = getRequestSender(request);
 		if (sender == null) {
@@ -61,12 +60,6 @@ final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
 	}
 
 	@Override
-	public void onConnectionsUpdated() {
-		hashBucket.update();
-		super.onConnectionsUpdated();
-	}
-
-	@Override
 	protected int getHashBase() {
 		return HASH_BASE;
 	}
@@ -77,6 +70,8 @@ final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
 		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
 
 		private final byte[] baseHashes;
+
+		// TODO: maybe use same senders as in base class ?
 		private final List<RequestSender> senders;
 
 		public HashBucket(List<RequestSender> senders) {
@@ -87,11 +82,11 @@ final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
 			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
 			this.senders = checkNotNull(senders, "addresses is not set");
 			this.baseHashes = new byte[capacity];
-			update();
+			computeBaseHashes();
 		}
 
 		// if activeAddresses is empty fill bucket -1
-		private void update() {
+		private void computeBaseHashes() {
 			for (int n = 0; n < baseHashes.length; n++) {
 				int senderIndex = -1;
 				int max = Integer.MIN_VALUE;

@@ -17,17 +17,9 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.jmx.CompositeDataBuilder;
-import io.datakernel.rpc.client.RpcClientConnection;
-import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 
-import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
-import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -43,7 +35,8 @@ final class RequestSenderSharding extends RequestSenderToGroup {
 	}
 
 	@Override
-	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, final ResultCallback<T> callback) {
+	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+	                                                              final ResultCallback<T> callback) {
 		checkNotNull(callback);
 		RequestSender sender = chooseSender(request);
 		if (sender.isActive()) {
@@ -54,7 +47,7 @@ final class RequestSenderSharding extends RequestSenderToGroup {
 	}
 
 	private RequestSender chooseSender(RpcMessage.RpcMessageData request) {
-		List<RequestSender> subSenders = getSubSenders();
+		List<RequestSender> subSenders = getAllSubSenders();
 		int index = Math.abs(hashFunction.hashCode(request)) % subSenders.size();
 		return subSenders.get(index);
 	}

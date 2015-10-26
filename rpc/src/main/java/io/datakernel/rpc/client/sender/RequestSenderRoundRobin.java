@@ -38,21 +38,16 @@ final class RequestSenderRoundRobin extends RequestSenderToGroup {
 	@Override
 	public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback) {
 		checkNotNull(callback);
-		List<RequestSender> subSenders = getSubSenders();
-		for (int i = 0; i < subSenders.size(); ++i) {
-			RequestSender sender = subSenders.get(getCurrentSenderNumber());
-			if (sender.isActive()) {
-				sender.sendRequest(request, timeout, callback);
-				return;
-			}
-		}
-		callback.onException(NO_AVAILABLE_CONNECTION);
+		RequestSender sender = getCurrentSubSender();
+		sender.sendRequest(request, timeout, callback);
 	}
 
-	private int getCurrentSenderNumber() {
+	// TODO (vmykhalko): method doesn't seem to be thread safe
+	private RequestSender getCurrentSubSender() {
 		// TODO (vmykhalko): maybe change subSenders to immutable list?
-		int currentSender = nextSender;
-		nextSender = (nextSender + 1) % getSubSenders().size();
+		List<RequestSender> activeSubSenders = getActiveSubSenders();
+		RequestSender currentSender = activeSubSenders.get(nextSender);
+		nextSender = (nextSender + 1) % activeSubSenders.size();
 		return currentSender;
 	}
 

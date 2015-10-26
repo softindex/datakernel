@@ -17,14 +17,16 @@ final class RequestSenderToSingleServer implements RequestSender {
 	private final RpcClientConnectionPool connectionPool;
 	private final InetSocketAddress address;
 	private final HashFunction hashFunction;
-	private Integer key;
+	private final int key;
+	private final boolean active;
 
 	public RequestSenderToSingleServer(InetSocketAddress address, RpcClientConnectionPool connectionPool,
 										HashFunction hashFunction) {
 		this.connectionPool = connectionPool;
 		this.address = address;
 		this.hashFunction = hashFunction;
-		this.key = null;
+		this.key = computeKey();
+		this.active = checkConnectionAvailable();
 	}
 
 	public RequestSenderToSingleServer(InetSocketAddress address, RpcClientConnectionPool connectionPool) {
@@ -32,7 +34,9 @@ final class RequestSenderToSingleServer implements RequestSender {
 	}
 
 	@Override
-	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
+	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+	                                                              ResultCallback<T> callback) {
+		// TODO (vmykhalko): maybe try to cache connection during creation of strategy ?
 		RpcClientConnection connection = connectionPool.get(address);
 		if (connection != null) {
 			connection.callMethod(request, timeout, callback);
@@ -42,20 +46,16 @@ final class RequestSenderToSingleServer implements RequestSender {
 	}
 
 	@Override
-	public void onConnectionsUpdated() {
-
-	}
-
-	@Override
 	public int getKey() {
-		if (key == null) {
-			key = computeKey();
-		}
 		return key;
 	}
 
 	@Override
 	public boolean isActive() {
+		return active;
+	}
+
+	private boolean checkConnectionAvailable() {
 		return connectionPool.get(address) != null;
 	}
 

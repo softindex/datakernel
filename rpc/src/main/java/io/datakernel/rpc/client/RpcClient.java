@@ -157,7 +157,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	private final List<InetSocketAddress> addresses;
 	private final RpcProtocolFactory protocolFactory;
 	private final RpcMessageSerializer serializer;
-	private final RequestSender requestSender;
+	private final RequestSenderFactory requestSenderFactory;
 	private final SocketSettings socketSettings;
 	private final ConnectSettings connectSettings;
 	private final int countAwaitsConnects;
@@ -166,6 +166,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	private final RpcMessage.RpcMessageData pingMessage;
 	private final long pingIntervalMillis;
 	private final long pingAmountFailed;
+
+	private RequestSender requestSender;
 
 	private AsyncCancellable schedulePingTask;
 	private boolean running;
@@ -184,6 +186,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		this.connections = new RpcClientConnectionPool(addresses);
 		this.protocolFactory = builder.protocolFactory;
 		this.serializer = builder.serializer;
+		this.requestSenderFactory = builder.requestSenderFactory;
 		this.requestSender = builder.requestSenderFactory.create(connections);
 		this.socketSettings = builder.settings.getSocketSettings();
 		this.connectSettings = builder.settings.getConnectSettings();
@@ -335,7 +338,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 
 	private void addConnection(InetSocketAddress address, RpcClientConnection connection) {
 		connections.add(address, connection);
-		requestSender.onConnectionsUpdated();
+		requestSender = requestSenderFactory.create(connections);
 		if (isPingEnabled()) {
 			pingTimestamps.put(address, eventloop.currentTimeMillis());
 			schedulePingTask(address);
@@ -347,7 +350,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		if (isPingEnabled()) {
 			pingTimestamps.remove(address);
 		}
-		requestSender.onConnectionsUpdated();
+		requestSender = requestSenderFactory.create(connections);
 	}
 
 	private void closeConnections() {

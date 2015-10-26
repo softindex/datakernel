@@ -18,20 +18,10 @@ package io.datakernel.rpc.client.sender;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.List;
-
-import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
 
 import io.datakernel.async.FirstResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.jmx.CompositeDataBuilder;
-import io.datakernel.rpc.client.RpcClientConnection;
-import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.protocol.RpcMessage;
 
 final class RequestSenderToAll extends RequestSenderToGroup {
@@ -43,11 +33,12 @@ final class RequestSenderToAll extends RequestSenderToGroup {
 	}
 
 	@Override
-	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, final ResultCallback<T> callback) {
+	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+	                                                              final ResultCallback<T> callback) {
 		checkNotNull(callback);
 		int calls = 0;
 		FirstResultCallback<T> resultCallback = new FirstResultCallback<>(callback);
-		for (RequestSender sender : getSubSenders()) {
+		for (RequestSender sender : getActiveSubSenders()) {
 			if (sender.isActive()) {
 				sender.sendRequest(request, timeout, callback);
 				++calls;
