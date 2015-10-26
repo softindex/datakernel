@@ -31,21 +31,13 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
-import static java.util.Arrays.fill;
-
 
 public abstract class RequestSenderFactory {
 
-	private final List<RequestSenderFactory> subSenderFactories;
-	private final int keyForSender;
+	private final List<? extends RequestSenderFactory> subSenderFactories;
 
-	private RequestSenderFactory(List<RequestSenderFactory> subSenderFactories, int key) {
+	private RequestSenderFactory(List<? extends RequestSenderFactory> subSenderFactories) {
 		this.subSenderFactories = subSenderFactories;
-		this.keyForSender = key;
-	}
-
-	protected final int getKeyForSender() {
-		return keyForSender;
 	}
 
 	public abstract RequestSender create(RpcClientConnectionPool pool);
@@ -69,9 +61,9 @@ public abstract class RequestSenderFactory {
 		return server(EMPTY_KEY, address);
 	}
 
-	public static RequestSenderFactory server(int key, final InetSocketAddress address) {
+	public static RequestSenderFactoryWithKey server(int key, final InetSocketAddress address) {
 		checkNotNull(address);
-		return new RequestSenderFactory(null, key) {
+		return new RequestSenderFactoryWithKey(null, key) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
 				return new RequestSenderToSingleServer(address, pool, getKeyForSender());
@@ -95,7 +87,7 @@ public abstract class RequestSenderFactory {
 	public static RequestSenderFactory servers(final List<InetSocketAddress> addresses) {
 		checkNotNull(addresses);
 		checkArgument(addresses.size() > 0, "at least one address must be present");
-		return new RequestSenderFactory(null, EMPTY_KEY) {
+		return new RequestSenderFactoryWithKey(null, EMPTY_KEY) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
 				throw new UnsupportedOperationException();
@@ -115,8 +107,8 @@ public abstract class RequestSenderFactory {
 
 
 
-	public static RequestSenderFactory firstAvailable(int key, RequestSenderFactory ... senders) {
-		return firstAvailable(key, asList(senders));
+	public static RequestSenderFactoryWithKey firstAvailable(int key, RequestSenderFactory ... senders) {
+		return (RequestSenderFactoryWithKey)firstAvailable(key, asList(senders));
 	}
 
 	public static RequestSenderFactory firstAvailable(RequestSenderFactory ... senders) {
@@ -127,10 +119,10 @@ public abstract class RequestSenderFactory {
 		return firstAvailable(EMPTY_KEY, senders);
 	}
 
-	public static RequestSenderFactory firstAvailable(final int key, final List<RequestSenderFactory> senders) {
+	public static RequestSenderFactoryWithKey firstAvailable(final int key, final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
-		return new RequestSenderFactory(senders, key) {
+		return new RequestSenderFactoryWithKey(senders, key) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
 				List<RequestSender> subSenders = createSubSenders(pool);
@@ -147,8 +139,8 @@ public abstract class RequestSenderFactory {
 
 
 
-	public static RequestSenderFactory allAvailable(int key, RequestSenderFactory ... senders) {
-		return allAvailable(key, asList(senders));
+	public static RequestSenderFactoryWithKey allAvailable(int key, RequestSenderFactory ... senders) {
+		return (RequestSenderFactoryWithKey)allAvailable(key, asList(senders));
 	}
 
 	public static RequestSenderFactory allAvailable(RequestSenderFactory ... senders) {
@@ -159,10 +151,10 @@ public abstract class RequestSenderFactory {
 		return allAvailable(EMPTY_KEY, senders);
 	}
 
-	public static RequestSenderFactory allAvailable(int key, final List<RequestSenderFactory> senders) {
+	public static RequestSenderFactoryWithKey allAvailable(int key, final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
-		return new RequestSenderFactory(senders, key) {
+		return new RequestSenderFactoryWithKey(senders, key) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
 				List<RequestSender> subSenders = createSubSenders(pool);
@@ -179,8 +171,8 @@ public abstract class RequestSenderFactory {
 
 
 
-	public static RequestSenderFactory roundRobin(int key, RequestSenderFactory ... senders) {
-		return roundRobin(key, asList(senders));
+	public static RequestSenderFactoryWithKey roundRobin(int key, RequestSenderFactory ... senders) {
+		return (RequestSenderFactoryWithKey)roundRobin(key, asList(senders));
 	}
 
 	public static RequestSenderFactory roundRobin(RequestSenderFactory ... senders) {
@@ -191,10 +183,10 @@ public abstract class RequestSenderFactory {
 		return roundRobin(EMPTY_KEY, senders);
 	}
 
-	public static RequestSenderFactory roundRobin(int key, final List<RequestSenderFactory> senders) {
+	public static RequestSenderFactoryWithKey roundRobin(int key, final List<RequestSenderFactory> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
-		return new RequestSenderFactory(senders, key) {
+		return new RequestSenderFactoryWithKey(senders, key) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
 				List<RequestSender> subSenders = createSubSenders(pool);
@@ -210,27 +202,27 @@ public abstract class RequestSenderFactory {
 
 
 
-	public static RequestSenderFactory rendezvousHashing(int key, final HashFunction<RpcMessageData> hashFunction,
-	                                                     RequestSenderFactory ... senders) {
-		return rendezvousHashing(key, hashFunction, asList(senders));
+	public static RequestSenderFactoryWithKey rendezvousHashing(int key, final HashFunction<RpcMessageData> hashFunction,
+	                                                     RequestSenderFactoryWithKey ... senders) {
+		return (RequestSenderFactoryWithKey)rendezvousHashing(key, hashFunction, asList(senders));
 	}
 
 	public static RequestSenderFactory rendezvousHashing(final HashFunction<RpcMessageData> hashFunction,
-	                                                     RequestSenderFactory ... senders) {
+	                                                     RequestSenderFactoryWithKey ... senders) {
 		return rendezvousHashing(EMPTY_KEY, hashFunction, senders);
 	}
 
 	public static RequestSenderFactory rendezvousHashing(final HashFunction<RpcMessageData> hashFunction,
-	                                                     final List<RequestSenderFactory> senders) {
+	                                                     final List<RequestSenderFactoryWithKey> senders) {
 		return rendezvousHashing(EMPTY_KEY, hashFunction, senders);
 	}
 
-	public static RequestSenderFactory rendezvousHashing(int key, final HashFunction<RpcMessageData> hashFunction,
-	                                                     final List<RequestSenderFactory> senders) {
+	public static RequestSenderFactoryWithKey rendezvousHashing(int key, final HashFunction<RpcMessageData> hashFunction,
+	                                                     final List<RequestSenderFactoryWithKey> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
-		return new RequestSenderFactory(senders, key) {
+		return new RequestSenderFactoryWithKey(senders, key) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
 				List<RequestSender> subSenders = createSubSenders(pool);
@@ -245,27 +237,27 @@ public abstract class RequestSenderFactory {
 	}
 
 
-	public static RequestSenderFactory sharding(int key, final HashFunction<RpcMessageData> hashFunction,
-	                                            RequestSenderFactory ... senders) {
-		return sharding(key, hashFunction, asList(senders));
+	public static RequestSenderFactoryWithKey sharding(int key, final HashFunction<RpcMessageData> hashFunction,
+	                                            RequestSenderFactoryWithKey ... senders) {
+		return (RequestSenderFactoryWithKey)sharding(key, hashFunction, asList(senders));
 	}
 
 	public static RequestSenderFactory sharding(final HashFunction<RpcMessageData> hashFunction,
-	                                            RequestSenderFactory ... senders) {
+	                                            RequestSenderFactoryWithKey ... senders) {
 		return sharding(EMPTY_KEY, hashFunction, senders);
 	}
 
 	public static RequestSenderFactory sharding(final HashFunction<RpcMessageData> hashFunction,
-	                                            final List<RequestSenderFactory> senders) {
+	                                            final List<RequestSenderFactoryWithKey> senders) {
 		return sharding(EMPTY_KEY, hashFunction, senders);
 	}
 
-	public static RequestSenderFactory sharding(int key, final HashFunction<RpcMessageData> hashFunction,
-	                                            final List<RequestSenderFactory> senders) {
+	public static RequestSenderFactoryWithKey sharding(int key, final HashFunction<RpcMessageData> hashFunction,
+	                                            final List<RequestSenderFactoryWithKey> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
-		return new RequestSenderFactory(senders, key) {
+		return new RequestSenderFactoryWithKey(senders, key) {
 			@Override
 			public RequestSender create(RpcClientConnectionPool pool) {
 				List<RequestSender> subSenders = createSubSenders(pool);
@@ -288,5 +280,21 @@ public abstract class RequestSenderFactory {
 			}
 		}
 		return flatList;
+	}
+
+	public static abstract class RequestSenderFactoryWithKey extends RequestSenderFactory {
+
+		private int keyForSender;
+
+		private RequestSenderFactoryWithKey(List<? extends RequestSenderFactory> subSenderFactories, int key) {
+			super(subSenderFactories);
+			this.keyForSender = key;
+		}
+
+		protected int getKeyForSender() {
+			return keyForSender;
+		}
+
+
 	}
 }

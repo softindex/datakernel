@@ -183,8 +183,13 @@ public class CombinedStrategiesTest {
 					.serializer(serializer())
 					.protocolFactory(protocolFactory)
 					.requestSenderFactory(
-							roundRobin(server(address1),
-							sharding(hashFunction, server(1, address2), server(2,address3))))
+							roundRobin(
+									server(address1),
+									sharding(hashFunction,
+											server(1, address2),
+											server(2, address3))
+							)
+					)
 							.build();
 
 			final BlockingCompletionCallback connectCompletion = new BlockingCompletionCallback();
