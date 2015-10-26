@@ -138,6 +138,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	@Override
 	public void onProducerError(Exception e) {
 		super.onProducerError(e);
+		chunksCallback.onException(e);
 		logger.error("{}: downstream producer {} exception.", this, downstreamProducer, e);
 	}
 }

@@ -127,7 +127,7 @@ public final class HttpJsonApiServer {
 
 					@Override
 					public void onException(Exception e) {
-						processException(e);
+						callback.onResult(processException(e));
 						logger.error("Sending response to /dimensions query failed. Constructed query: {}", query, e);
 					}
 				});
@@ -192,7 +192,7 @@ public final class HttpJsonApiServer {
 
 					@Override
 					public void onException(Exception e) {
-						processException(e);
+						callback.onResult(processException(e));
 						logger.error("Sending response to query {} failed.", finalQuery, e);
 					}
 				});
