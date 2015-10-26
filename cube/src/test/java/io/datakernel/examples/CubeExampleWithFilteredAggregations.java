@@ -121,7 +121,7 @@ public class CubeExampleWithFilteredAggregations {
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
 		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage,
-				aggregationChunkStorage, cubeStructure);
+				aggregationChunkStorage, cubeStructure, 100_000, 1_000_000);
 
 		cube.addAggregation(new AggregationMetadata("date", asList("date"), MEASURES));
 

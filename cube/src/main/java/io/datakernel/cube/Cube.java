@@ -18,6 +18,7 @@ package io.datakernel.cube;
 
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
@@ -73,7 +74,6 @@ public final class Cube {
 	 * Instantiates a cube with the specified structure, that runs in a given event loop,
 	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
 	 * and uses the specified parameters.
-	 *
 	 * @param eventloop                            event loop, in which the cube is to run
 	 * @param classLoader                          class loader for defining dynamic classes
 	 * @param cubeMetadataStorage                  storage for persisting cube metadata
@@ -82,13 +82,10 @@ public final class Cube {
 	 * @param structure                            structure of a cube
 	 * @param aggregationChunkSize                 maximum size of aggregation chunk
 	 * @param sorterItemsInMemory                  maximum number of records that can stay in memory while sorting
-	 * @param consolidationTimeoutMillis           maximum duration of consolidation attempt (in milliseconds)
-	 * @param removeChunksAfterConsolidationMillis period of time (in milliseconds) after consolidation after which consolidated chunks can be removed
 	 */
 	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
 	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory,
-	            long consolidationTimeoutMillis, long removeChunksAfterConsolidationMillis) {
+	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory) {
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
 		this.cubeMetadataStorage = cubeMetadataStorage;
@@ -97,35 +94,6 @@ public final class Cube {
 		this.structure = structure;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
-	}
-
-	/**
-	 * Instantiates a cube with the specified structure, that runs in a given event loop,
-	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages.
-	 * Maximum size of chunk is 1,000,000 bytes.
-	 * No more than 1,000,000 records stay in memory while sorting.
-	 * Maximum duration of consolidation attempt is 30 minutes.
-	 * Consolidated chunks become available for removal in 10 minutes from consolidation.
-	 *
-	 * @param eventloop                  event loop, in which the cube is to run
-	 * @param classLoader                class loader for defining dynamic classes
-	 * @param cubeMetadataStorage        storage for persisting cube metadata
-	 * @param aggregationMetadataStorage storage for aggregations metadata
-	 * @param aggregationChunkStorage    storage for data chunks
-	 * @param structure                  structure of a cube
-	 */
-	public Cube(Eventloop eventloop, DefiningClassLoader classLoader,
-	            CubeMetadataStorage cubeMetadataStorage, AggregationMetadataStorage aggregationMetadataStorage,
-	            AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure) {
-		this(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, structure,
-				1_000_000, 1_000_000, 30 * 60 * 1000, 10 * 60 * 1000);
-	}
-
-	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
-	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, long consolidationTimeoutMillis, long removeChunksAfterConsolidationMillis) {
-		this(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, structure,
-				1_000_000, 1_000_000, consolidationTimeoutMillis, removeChunksAfterConsolidationMillis);
 	}
 
 	public Map<String, Aggregation> getAggregations() {
@@ -153,6 +121,7 @@ public final class Cube {
 	public void addAggregation(AggregationMetadata aggregationMetadata) {
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage, aggregationChunkStorage, aggregationMetadata, structure,
 				new SummationProcessorFactory(classLoader), sorterItemsInMemory, aggregationChunkSize);
+		checkArgument(!aggregations.containsKey(aggregation.getId()), "Aggregation '%s' is already defined", aggregation.getId());
 		aggregations.put(aggregation.getId(), aggregation);
 	}
 

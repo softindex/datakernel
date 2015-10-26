@@ -35,12 +35,12 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 
 	private JsonPrimitive encodeKey(String key, Object value) {
 		KeyType keyType = structure.getKeyType(key);
-		return new JsonPrimitive(keyType.toString(value));
+		return keyType.toJson(value);
 	}
 
 	private Object parseKey(String key, JsonElement value) {
-		KeyType keyType = structure.getKeyType(key);
-		return keyType.toInternalRepresentation(value.getAsString());
+		KeyType keyType = structure.getKeyType(key); // TODO (dtkachenko): implement and test exceptions handling
+		return keyType.fromJson(value);
 	}
 
 	@SuppressWarnings("ConstantConditions")

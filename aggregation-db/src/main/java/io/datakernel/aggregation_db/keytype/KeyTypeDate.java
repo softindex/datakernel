@@ -16,20 +16,23 @@
 
 package io.datakernel.aggregation_db.keytype;
 
-import static org.joda.time.format.DateTimeFormat.forPattern;
-
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenInt;
 import org.joda.time.Days;
 import org.joda.time.LocalDate;
-import org.joda.time.format.DateTimeFormatter;
 
 public class KeyTypeDate extends KeyType implements KeyTypeEnumerable {
-	private static final LocalDate EPOCH_DATE = LocalDate.parse("1970-01-01");
-	private static final DateTimeFormatter FORMATTER = forPattern("yyyy-MM-dd");
+	private final LocalDate startDate;
 
 	public KeyTypeDate() {
+		this(LocalDate.parse("1970-01-01"));
+	}
+
+	public KeyTypeDate(LocalDate startDate) {
 		super(int.class);
+		this.startDate = startDate;
 	}
 
 	@Override
@@ -38,15 +41,15 @@ public class KeyTypeDate extends KeyType implements KeyTypeEnumerable {
 	}
 
 	@Override
-	public String toString(Object numberOfDaysSinceEpoch) {
-		LocalDate date = EPOCH_DATE.plusDays((Integer) numberOfDaysSinceEpoch);
-		return FORMATTER.print(date);
+	public JsonPrimitive toJson(Object value) {
+		LocalDate date = startDate.plusDays((Integer) value);
+		return new JsonPrimitive(date.toString());
 	}
 
 	@Override
-	public Object toInternalRepresentation(String dateString) {
-		LocalDate date = FORMATTER.parseLocalDate(dateString);
-		return Days.daysBetween(EPOCH_DATE, date).getDays();
+	public Object fromJson(JsonElement value) {
+		LocalDate date = LocalDate.parse(value.getAsString());
+		return Days.daysBetween(startDate, date).getDays();
 	}
 
 	@Override

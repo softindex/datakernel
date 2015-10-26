@@ -52,7 +52,6 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -61,7 +60,6 @@ import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.ignoreResultCallback;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -77,7 +75,7 @@ public class LogToCubeTest {
 	                           AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
 	                           AggregationStructure aggregationStructure) {
 		return new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage,
-				aggregationStructure, 1_000_000, 1_000_000, 30 * 60 * 1000, 10 * 60 * 1000);
+				aggregationStructure, 1_000_000, 1_000_000);
 	}
 
 	public static AggregationStructure getStructure(DefiningClassLoader classLoader) {

@@ -18,6 +18,7 @@ package io.datakernel.cube.api;
 
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
+import com.google.common.net.MediaType;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationException;
@@ -25,7 +26,6 @@ import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
@@ -83,6 +83,7 @@ public final class HttpJsonApiServer {
 
 	private static HttpResponse createResponse(String body) {
 		return HttpResponse.create()
+				.contentType(MediaType.HTML_UTF_8.toString())
 				.body(wrapUTF8(body))
 				.header(HttpHeader.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 	}
@@ -113,13 +114,13 @@ public final class HttpJsonApiServer {
 						.fields(measures)
 						.predicates(filteredPredicates);
 
-				Class<?> resultClass = cube.getStructure().createResultClass(query);
+				final Class<?> resultClass = cube.getStructure().createResultClass(query);
 				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, query, cube, eventloop);
 
 				consumerStream.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						String jsonResult = constructDimensionsJson(gson, cube, consumerStream.getList(), query, classLoader);
+						String jsonResult = constructDimensionsJson(cube, resultClass, consumerStream.getList(), query, classLoader);
 						callback.onResult(createResponse(jsonResult));
 						logger.trace("Sending response {} to /dimensions query. Constructed query: {}", jsonResult, query);
 					}
@@ -177,13 +178,13 @@ public final class HttpJsonApiServer {
 					finalQuery.predicates(queryPredicates);
 				}
 
-				Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
+				final Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
 				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
 				consumerStream.addCompletionCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						String jsonResult = constructQueryJson(gson, cube, consumerStream.getList(), finalQuery,
+						String jsonResult = constructQueryJson(cube, resultClass, consumerStream.getList(), finalQuery,
 								classLoader);
 						callback.onResult(createResponse(jsonResult));
 						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
@@ -216,24 +217,36 @@ public final class HttpJsonApiServer {
 		return gson.fromJson(json, type);
 	}
 
-	private static <T> String constructQueryJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
+	private static <T> String constructQueryJson(Cube cube, Class<?> resultClass, List<T> results, AggregationQuery query,
 	                                             DefiningClassLoader classLoader) {
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
 		JsonArray jsonResults = new JsonArray();
 		AggregationStructure structure = cube.getStructure();
 
+		FieldGetter[] fieldGetters = new FieldGetter[resultFields.size()];
+		for (int i = 0; i < resultFields.size(); i++) {
+			String field = resultFields.get(i);
+			fieldGetters[i] = generateGetter(classLoader, resultClass, field);
+		}
+
+		FieldGetter[] keyGetters = new FieldGetter[resultKeys.size()];
+		KeyType[] keyTypes = new KeyType[resultKeys.size()];
+		for (int i = 0; i < resultKeys.size(); i++) {
+			String key = resultKeys.get(i);
+			keyGetters[i] = generateGetter(classLoader, resultClass, key);
+			keyTypes[i] = structure.getKeyType(key);
+		}
+
 		for (T result : results) {
-			Class<?> resultClass = result.getClass();
 			JsonObject resultJsonObject = new JsonObject();
 
-			for (String key : resultKeys) {
-				addValueOfKey(resultJsonObject, result, resultClass, key, structure, classLoader, gson);
+			for (int i = 0; i < resultKeys.size(); i++) {
+				resultJsonObject.add(resultKeys.get(i), keyTypes[i].toJson(keyGetters[i].get(result)));
 			}
 
-			for (String field : resultFields) {
-				Object fieldValue = generateGetter(classLoader, resultClass, field).get(result);
-				resultJsonObject.add(field, gson.toJsonTree(fieldValue));
+			for (int i = 0; i < resultFields.size(); i++) {
+				resultJsonObject.add(resultFields.get(i), new JsonPrimitive((Number) fieldGetters[i].get(result)));
 			}
 
 			jsonResults.add(resultJsonObject);
@@ -242,18 +255,25 @@ public final class HttpJsonApiServer {
 		return jsonResults.toString();
 	}
 
-	private static <T> String constructDimensionsJson(Gson gson, Cube cube, List<T> results, AggregationQuery query,
+	private static <T> String constructDimensionsJson(Cube cube, Class<?> resultClass, List<T> results, AggregationQuery query,
 	                                                  DefiningClassLoader classLoader) {
 		List<String> resultKeys = query.getResultKeys();
 		JsonArray jsonResults = new JsonArray();
 		AggregationStructure structure = cube.getStructure();
 
+		FieldGetter[] keyGetters = new FieldGetter[resultKeys.size()];
+		KeyType[] keyTypes = new KeyType[resultKeys.size()];
+		for (int i = 0; i < resultKeys.size(); i++) {
+			String key = resultKeys.get(i);
+			keyGetters[i] = generateGetter(classLoader, resultClass, key);
+			keyTypes[i] = structure.getKeyType(key);
+		}
+
 		for (T result : results) {
-			Class<?> resultClass = result.getClass();
 			JsonObject resultJsonObject = new JsonObject();
 
-			for (String key : resultKeys) {
-				addValueOfKey(resultJsonObject, result, resultClass, key, structure, classLoader, gson);
+			for (int i = 0; i < resultKeys.size(); i++) {
+				resultJsonObject.add(resultKeys.get(i), keyTypes[i].toJson(keyGetters[i].get(result)));
 			}
 
 			jsonResults.add(resultJsonObject);
@@ -262,20 +282,10 @@ public final class HttpJsonApiServer {
 		return jsonResults.toString();
 	}
 
-	private static void addValueOfKey(JsonObject resultJsonObject, Object result, Class<?> resultClass, String key,
-	                                  AggregationStructure structure, DefiningClassLoader classLoader, Gson gson) {
-		KeyType keyType = structure.getKeyType(key);
-		Object valueOfKey = generateGetter(classLoader, resultClass, key).get(result);
-		if (keyType instanceof KeyTypeDate) {
-			String fieldValueString = keyType.toString(valueOfKey);
-			resultJsonObject.add(key, new JsonPrimitive(fieldValueString));
-		} else {
-			resultJsonObject.add(key, gson.toJsonTree(valueOfKey));
-		}
-	}
-
 	private static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
 		AsmBuilder<FieldGetter> builder = new AsmBuilder<>(classLoader, FieldGetter.class);
+		// TODO (dtkachenko): use getter expression instead of field expression
+		// TODO (vsavchuk): implement getter and setter expressions
 		builder.method("get", field(cast(arg(0), objClass), propertyName));
 		return builder.newInstance();
 	}

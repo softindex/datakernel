@@ -16,6 +16,8 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenLong;
 
@@ -30,8 +32,13 @@ public class KeyTypeLong extends KeyType implements KeyTypeEnumerable {
 	}
 
 	@Override
-	public Object toInternalRepresentation(String o) {
-		return Long.valueOf(o);
+	public JsonPrimitive toJson(Object value) {
+		return new JsonPrimitive((Number) value);
+	}
+
+	@Override
+	public Object fromJson(JsonElement value) {
+		return value.getAsLong();
 	}
 
 	@Override
