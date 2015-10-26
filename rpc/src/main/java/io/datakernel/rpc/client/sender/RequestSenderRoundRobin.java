@@ -22,18 +22,19 @@ import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
 
 final class RequestSenderRoundRobin extends RequestSenderToGroup {
-	private static final int HASH_BASE = 102;
-	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
-
 	private int nextSender;
 
-
-	public RequestSenderRoundRobin(List<RequestSender> senders) {
-		super(senders);
+	public RequestSenderRoundRobin(List<RequestSender> senders, int key) {
+		super(senders, key);
 		nextSender = 0;
 	}
+
+//	public RequestSenderRoundRobin(List<RequestSender> senders) {
+//		this(senders, EMPTY_KEY);
+//	}
 
 	@Override
 	public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback) {
@@ -46,13 +47,11 @@ final class RequestSenderRoundRobin extends RequestSenderToGroup {
 	private RequestSender getCurrentSubSender() {
 		// TODO (vmykhalko): maybe change subSenders to immutable list?
 		List<RequestSender> activeSubSenders = getActiveSubSenders();
+
+		assert activeSubSenders.size() > 0;
+
 		RequestSender currentSender = activeSubSenders.get(nextSender);
 		nextSender = (nextSender + 1) % activeSubSenders.size();
 		return currentSender;
-	}
-
-	@Override
-	protected int getHashBase() {
-		return HASH_BASE;
 	}
 }

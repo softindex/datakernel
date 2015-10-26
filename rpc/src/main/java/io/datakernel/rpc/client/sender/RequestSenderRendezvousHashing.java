@@ -26,9 +26,10 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
+import static io.datakernel.rpc.client.sender.RequestSenderUtils.checkAllSendersHaveKey;
 
 final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
-	private static final int HASH_BASE = 104;
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
@@ -36,11 +37,17 @@ final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
 	final HashBucket hashBucket;
 
 
-	public RequestSenderRendezvousHashing(List<RequestSender> senders, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
-		super(senders);
+	public RequestSenderRendezvousHashing(List<RequestSender> senders, int key,
+	                                      HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+		super(checkAllSendersHaveKey(senders), key);
 		this.hashFunction = checkNotNull(hashFunction);
 		this.hashBucket = new HashBucket(senders);
 	}
+
+//	public RequestSenderRendezvousHashing(List<RequestSender> senders,
+//	                                      HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+//		this(senders, EMPTY_KEY, hashFunction);
+//	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
@@ -57,11 +64,6 @@ final class RequestSenderRendezvousHashing extends RequestSenderToGroup {
 	private RequestSender getRequestSender(RpcMessage.RpcMessageData request) {
 		int hash = hashFunction.hashCode(request);
 		return hashBucket.chooseSender(hash);
-	}
-
-	@Override
-	protected int getHashBase() {
-		return HASH_BASE;
 	}
 
 	@VisibleForTesting

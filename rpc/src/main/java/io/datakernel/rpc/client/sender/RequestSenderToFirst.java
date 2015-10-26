@@ -23,24 +23,28 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-final class RequestSenderToFirst extends RequestSenderToGroup {
-	private static final int HASH_BASE = 101;
-	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
+import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
 
-	public RequestSenderToFirst(List<RequestSender> senders) {
-		super(senders);
+
+final class RequestSenderToFirst extends RequestSenderToGroup {
+
+	public RequestSenderToFirst(List<RequestSender> senders, int key) {
+		super(senders, key);
 	}
+
+//	public RequestSenderToFirst(List<RequestSender> senders) {
+//		this(senders, EMPTY_KEY);
+//	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
 	                                                              ResultCallback<T> callback) {
 		checkNotNull(callback);
-		RequestSender first = getActiveSubSenders().get(0);
-		first.sendRequest(request, timeout, callback);
-	}
+		List<RequestSender> activeSubSenders = getActiveSubSenders();
 
-	@Override
-	protected int getHashBase() {
-		return HASH_BASE;
+		assert activeSubSenders.size() > 0;
+
+		RequestSender first = activeSubSenders.get(0);
+		first.sendRequest(request, timeout, callback);
 	}
 }

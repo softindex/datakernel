@@ -53,7 +53,11 @@ public class RequestSenderFactoryTest {
 		};
 
 		RequestSenderFactory requestSenderFactory =
-				firstAvailable(server(address1), roundRobin(servers(address2, address3), rendezvousHashing(hashFunction, server(address4), server(address5))));
+				firstAvailable(
+						server(address1),
+						roundRobin(
+								servers(address2, address3),
+								rendezvousHashing(hashFunction, server(1, address4), server(2, address5))));
 
 		RequestSender strategy = requestSenderFactory.create(new RpcClientConnectionPool(new ArrayList<InetSocketAddress>()));
 

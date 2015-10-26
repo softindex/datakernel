@@ -24,36 +24,31 @@ import io.datakernel.async.FirstResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.protocol.RpcMessage;
 
-final class RequestSenderToAll extends RequestSenderToGroup {
-	private static final int HASH_BASE = 105;
-	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
+import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
 
-	public RequestSenderToAll(List<RequestSender> senders) {
-		super(senders);
+final class RequestSenderToAll extends RequestSenderToGroup {
+
+	public RequestSenderToAll(List<RequestSender> senders, int key) {
+		super(senders, key);
 	}
+
+//	public RequestSenderToAll(List<RequestSender> senders) {
+//		this(senders, EMPTY_KEY);
+//	}
+
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
 	                                                              final ResultCallback<T> callback) {
 		checkNotNull(callback);
-		int calls = 0;
+		List<RequestSender> activeSubSenders = getActiveSubSenders();
+
+		assert activeSubSenders.size() > 0;
+
 		FirstResultCallback<T> resultCallback = new FirstResultCallback<>(callback);
-		for (RequestSender sender : getActiveSubSenders()) {
-			if (sender.isActive()) {
-				sender.sendRequest(request, timeout, callback);
-				++calls;
-			}
+		for (RequestSender sender : activeSubSenders) {
+			sender.sendRequest(request, timeout, callback);
 		}
-		if (calls == 0) {
-			callback.onException(NO_AVAILABLE_CONNECTION);
-		} else {
-			resultCallback.resultOf(calls);
-		}
-	}
-
-
-	@Override
-	protected int getHashBase() {
-		return HASH_BASE;
+		resultCallback.resultOf(activeSubSenders.size());
 	}
 }

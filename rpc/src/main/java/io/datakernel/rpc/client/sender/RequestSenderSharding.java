@@ -23,16 +23,22 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.rpc.client.sender.RequestSenderUtils.EMPTY_KEY;
+import static io.datakernel.rpc.client.sender.RequestSenderUtils.checkAllSendersHaveKey;
 
 final class RequestSenderSharding extends RequestSenderToGroup {
-	private static final int HASH_BASE = 103;
 	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 
-	public RequestSenderSharding(List<RequestSender> senders, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
-		super(senders);
+	public RequestSenderSharding(List<RequestSender> senders, int key,
+	                             HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+		super(checkAllSendersHaveKey(senders), key);
 		this.hashFunction = checkNotNull(hashFunction);
 	}
+
+//	public RequestSenderSharding(List<RequestSender> senders, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+//		this(senders, EMPTY_KEY, hashFunction);
+//	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
@@ -50,10 +56,5 @@ final class RequestSenderSharding extends RequestSenderToGroup {
 		List<RequestSender> subSenders = getAllSubSenders();
 		int index = Math.abs(hashFunction.hashCode(request)) % subSenders.size();
 		return subSenders.get(index);
-	}
-
-	@Override
-	protected int getHashBase() {
-		return HASH_BASE;
 	}
 }
