@@ -339,7 +339,7 @@ public class SerializerGenClass implements SerializerGen {
 
 		Expression constructor;
 		if (factory == null) {
-			constructor = _insertCallConstructor(this.getRawType(), map);
+			constructor = _insertCallConstructor(this.getRawType(), map, version);
 		} else {
 			constructor = _insertCallFactory(map);
 		}
@@ -401,7 +401,7 @@ public class SerializerGenClass implements SerializerGen {
 		return callStatic(factory.getDeclaringClass(), factory.getName(), param);
 	}
 
-	private Expression _insertCallConstructor(Class<?> targetType, final Map<String, Expression> map) {
+	private Expression _insertCallConstructor(Class<?> targetType, final Map<String, Expression> map, int version) {
 		Expression[] param;
 		if (constructorParams == null) {
 			param = new Expression[0];
@@ -411,7 +411,14 @@ public class SerializerGenClass implements SerializerGen {
 
 		int i = 0;
 		for (String fieldName : constructorParams) {
-			param[i++] = map.get(fieldName);
+			FieldGen fieldGen = fields.get(fieldName);
+			checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, constructor);
+			if (fieldGen.hasVersion(version)) {
+				param[i++] = map.get(fieldName);
+			} else {
+				param[i++] = pushDefaultValue(fieldGen.getAsmType());
+			}
+
 		}
 		return constructor(targetType, param);
 	}
