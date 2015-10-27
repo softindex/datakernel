@@ -601,4 +601,101 @@ public class ExpressionTest {
 
 		assertEquals(42, getter.get(intHolder));
 	}
+
+	@org.junit.Test
+	public void testBuildedInstance() throws IllegalAccessException, InstantiationException {
+		DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		Expression local = let(constructor(TestPojo.class, value(1)));
+		Class<Test> testClass1 = new AsmBuilder<>(definingClassLoader, Test.class)
+				.field("x", int.class)
+				.field("y", Long.class)
+				.method("compare", int.class, asList(TestPojo.class, TestPojo.class),
+						compare(TestPojo.class, "field1", "field2"))
+				.method("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
+						compareTo("x"))
+				.method("equals",
+						asEquals("x"))
+				.method("setXY", sequence(
+						set(field(self(), "x"), arg(0)),
+						set(field(self(), "y"), arg(1))))
+				.method("test",
+						add(arg(0), value(1L)))
+				.method("hash",
+						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
+				.method("field1",
+						field(arg(0), "field1"))
+				.method("setter", sequence(
+						set(field(arg(0), "field1"), value(10)),
+						set(field(arg(0), "field2"), value(20)),
+						arg(0)))
+				.method("ctor", sequence(
+						local,
+						set(field(local, "field2"), value(2)),
+						local))
+				.method("getX",
+						field(self(), "x"))
+				.method("getY",
+						field(self(), "y"))
+				.method("allEqual",
+						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
+				.method("anyEqual",
+						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
+				.method("setPojoField1",
+						call(arg(0), "setField1", arg(1)))
+				.method("getPojoField1",
+						call(arg(0), "getField1"))
+				.method("toString",
+						asString()
+								.quotes("{", "}", ", ")
+								.add(field(self(), "x"))
+								.add("labelY: ", field(self(), "y")))
+				.defineClass();
+
+		Class<Test> testClass2 = new AsmBuilder<>(definingClassLoader, Test.class)
+				.field("x", int.class)
+				.field("y", Long.class)
+				.method("compare", int.class, asList(TestPojo.class, TestPojo.class),
+						compare(TestPojo.class, "field1", "field2"))
+				.method("int compareTo(io.datakernel.codegen.ExpressionTest$Test)",
+						compareTo("x"))
+				.method("equals",
+						asEquals("x"))
+				.method("setXY", sequence(
+						set(field(self(), "x"), arg(0)),
+						set(field(self(), "y"), arg(1))))
+				.method("test",
+						add(arg(0), value(1L)))
+				.method("hash",
+						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
+				.method("field1",
+						field(arg(0), "field1"))
+				.method("setter", sequence(
+						set(field(arg(0), "field1"), value(10)),
+						set(field(arg(0), "field2"), value(20)),
+						arg(0)))
+				.method("ctor", sequence(
+						local,
+						set(field(local, "field2"), value(2)),
+						local))
+				.method("getX",
+						field(self(), "x"))
+				.method("getY",
+						field(self(), "y"))
+				.method("allEqual",
+						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
+				.method("anyEqual",
+						or(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
+				.method("setPojoField1",
+						call(arg(0), "setField1", arg(1)))
+				.method("getPojoField1",
+						call(arg(0), "getField1"))
+				.method("toString",
+						asString()
+								.quotes("{", "}", ", ")
+								.add(field(self(), "x"))
+								.add("labelY: ", field(self(), "y")))
+				.defineClass();
+
+		assertEquals(testClass1, testClass2);
+	}
 }
