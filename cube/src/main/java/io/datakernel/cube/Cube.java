@@ -454,13 +454,13 @@ public final class Cube {
 
 		for (Aggregation aggregation : aggregations.values()) {
 			Set<String> aggregationMeasures = newHashSet();
-			aggregationMeasures.addAll(aggregation.getInputFields());
+			aggregationMeasures.addAll(aggregation.getOutputFields());
 
 			if (!all(dimensions, in(aggregation.getKeys()))) {
 				continue;
 			}
 
-			if (!any(allMeasures, in(aggregation.getInputFields()))) {
+			if (!any(allMeasures, in(aggregation.getOutputFields()))) {
 				continue;
 			}
 
