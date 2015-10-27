@@ -14,22 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.commands;
+package io.datakernel.hashfs2.protocol;
 
-import io.datakernel.hashfs2.ServerInfo;
+class HashFsResponseError extends HashFsResponse {
+	public final String msg;
 
-import java.util.Collections;
-import java.util.Set;
-
-public class HashFsResponseListServers extends HashFsResponse {
-	public final Set<ServerInfo> servers;
-
-	public HashFsResponseListServers(Set<ServerInfo> servers) {
-		this.servers = Collections.unmodifiableSet(servers);
+	public HashFsResponseError(String msg) {
+		this.msg = msg;
 	}
 
 	@Override
 	public String toString() {
-		return "Listed{" + servers.size() + "}";
+		return "Error{" + msg + "}";
 	}
 }

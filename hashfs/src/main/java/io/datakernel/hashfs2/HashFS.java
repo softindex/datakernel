@@ -20,33 +20,37 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.hashfs2.net.Protocol;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Set;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 public class HashFS implements Commands, Server {
+	private static final Logger logger = LoggerFactory.getLogger(HashFS.class);
+
 	private static final long TIME_TO_SLAY = 10 * 1000;
 	private static final long SERVER_UPDATE_TIME = 100 * 1000;
 	private static final long TIMEOUT_TO_UPDATE = 50 * 1000;
+
 	private final NioEventloop eventloop;
-	private Logic logic;
 	private final FileSystem fileSystem;
-	private final Protocol protocol;
+	private final Client client;
+	private Logic logic;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	public HashFS(NioEventloop eventloop, FileSystem fileSystem, Protocol protocol) {
+	public HashFS(NioEventloop eventloop, FileSystem fileSystem, Client client) {
 		this.eventloop = eventloop;
 		//this.logic = logic;
 		this.fileSystem = fileSystem;
-		this.protocol = protocol;
+		this.client = client;
 	}
 
-	public void wirelogic(Logic logic) {
+	public void wireLogic(Logic logic) {
 		this.logic = logic;
 	}
 
@@ -75,7 +79,7 @@ public class HashFS implements Commands, Server {
 	@Override
 	public void commit(final String filePath, final boolean success, final CompletionCallback callback) {
 		if (logic.canApprove(filePath)) {
-			fileSystem.commitTemporary(filePath, success, new CompletionCallback() {
+			CompletionCallback transit = new CompletionCallback() {
 				@Override
 				public void onComplete() {
 					logic.onApprove(filePath, success);
@@ -87,7 +91,12 @@ public class HashFS implements Commands, Server {
 					logic.onApprove(filePath, false);
 					callback.onException(e);
 				}
-			});
+			};
+			if (success) {
+				fileSystem.commitTemporary(filePath, transit);
+			} else {
+				fileSystem.deleteTemporary(filePath, transit);
+			}
 		} else {
 			callback.onException(new Exception("Can't approve file for commit"));
 		}
@@ -159,8 +168,8 @@ public class HashFS implements Commands, Server {
 	}
 
 	@Override
-	public void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result) {
-		logic.onOffer(forUpload, forDeletion, result);
+	public void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
+		logic.onOffer(forUpload, forDeletion, callback);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -174,7 +183,7 @@ public class HashFS implements Commands, Server {
 		// FIXME (arashev) don't like scheme with forwarder
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		fileSystem.get(filePath, forwarder);
-		protocol.upload(server, filePath, forwarder, new CompletionCallback() {
+		client.upload(server, filePath, forwarder, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logic.onReplicationComplete(filePath, server);
@@ -189,13 +198,13 @@ public class HashFS implements Commands, Server {
 
 	@Override
 	public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result) {
-		protocol.offer(server, forUpload, forDeletion, result);
+		client.offer(server, forUpload, forDeletion, result);
 	}
 
 	@Override
 	public void updateServerMap(final Set<ServerInfo> bootstrap, final ResultCallback<Set<ServerInfo>> callback) {
 		for (ServerInfo server : bootstrap) {
-			protocol.alive(server, new ResultCallback<Set<ServerInfo>>() {
+			client.alive(server, new ResultCallback<Set<ServerInfo>>() {
 				@Override
 				public void onResult(Set<ServerInfo> result) {
 					callback.onResult(result);
@@ -231,7 +240,7 @@ public class HashFS implements Commands, Server {
 	}
 
 	@Override
-	public void updateSystem() {
+	public void postUpdate() {
 		eventloop.schedule(eventloop.currentTimeMillis() + TIMEOUT_TO_UPDATE, new Runnable() {
 			@Override
 			public void run() {

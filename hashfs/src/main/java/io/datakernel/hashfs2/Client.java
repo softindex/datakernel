@@ -19,21 +19,22 @@ package io.datakernel.hashfs2;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.hashfs2.ServerInfo;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.Set;
 
 public interface Client {
-	void upload(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+	void upload(ServerInfo server, String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void download(String filePath, StreamConsumer<ByteBuf> consumer);
+	void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer);
 
-	void list(ResultCallback<Set<String>> files);
+	void delete(ServerInfo server, String filePath, CompletionCallback callback);
 
-	void delete(CompletionCallback callback);
+	void list(ServerInfo server, ResultCallback<Set<String>> callback);
 
-	void alive(ResultCallback<Set<ServerInfo>> servers);
+	void alive(ServerInfo server, ResultCallback<Set<ServerInfo>> servers);
 
-	void offer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
+	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
 }

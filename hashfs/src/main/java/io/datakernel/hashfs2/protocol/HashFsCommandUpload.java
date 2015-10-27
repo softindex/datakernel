@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.commands;
+package io.datakernel.hashfs2.protocol;
 
-public class HashFsResponseError extends HashFsResponse {
-	public final String msg;
+class HashFsCommandUpload extends HashFsCommand {
+	public final String filePath;
 
-	public HashFsResponseError(String msg) {
-		this.msg = msg;
+	public HashFsCommandUpload(String filePath) {
+		this.filePath = filePath;
 	}
 
 	@Override
 	public String toString() {
-		return "Error{" + msg + "}";
+		return "Upload{filepath=\'" + filePath + "\'}";
 	}
 }

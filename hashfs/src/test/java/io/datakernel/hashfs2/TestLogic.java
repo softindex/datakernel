@@ -197,7 +197,7 @@ public class TestLogic {
 		}
 
 		@Override
-		public void updateSystem() {
+		public void postUpdate() {
 			// ignored
 		}
 	}

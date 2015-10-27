@@ -17,48 +17,33 @@
 package io.datakernel.hashfs2;
 
 public class Config {
-	private int triesQuantity;
-	private int replicasQuantity;
-	private long timeoutToDeath;
+	public static final Config defaultConfig = new Config();
 
-	private ServerInfo myInfo;
+	private String inProgressExtension = ".partial";
+	private String tmpDirectoryName = "tmp";
+	private int fSBufferSize = 256 * 1024;
 
-	public Config(int triesQuantity, int replicasQuantity, long timeoutToDeath, ServerInfo myInfo) {
-		this.triesQuantity = triesQuantity;
-		this.replicasQuantity = replicasQuantity;
-		this.timeoutToDeath = timeoutToDeath;
-		this.myInfo = myInfo;
+	public String getInProgressExtension() {
+		return inProgressExtension;
 	}
 
-	public ServerInfo getMyInfo() {
-		return myInfo;
+	public void setInProgressExtension(String inProgressExtension) {
+		this.inProgressExtension = inProgressExtension;
 	}
 
-	public void setMyInfo(ServerInfo myInfo) {
-		this.myInfo = myInfo;
+	public String getTmpDirectoryName() {
+		return tmpDirectoryName;
 	}
 
-	public int getTriesQuantity() {
-		return triesQuantity;
+	public void setTmpDirectoryName(String tmpDirectoryName) {
+		this.tmpDirectoryName = tmpDirectoryName;
 	}
 
-	public void setTriesQuantity(int triesQuantity) {
-		this.triesQuantity = triesQuantity;
+	public int getfSBufferSize() {
+		return fSBufferSize;
 	}
 
-	public int getReplicasQuantity() {
-		return replicasQuantity;
-	}
-
-	public void setReplicasQuantity(int replicasQuantity) {
-		this.replicasQuantity = replicasQuantity;
-	}
-
-	public long getTimeoutToDeath() {
-		return timeoutToDeath;
-	}
-
-	public void setTimeoutToDeath(long timeoutToDeath) {
-		this.timeoutToDeath = timeoutToDeath;
+	public void setfSBufferSize(int fSBufferSize) {
+		this.fSBufferSize = fSBufferSize;
 	}
 }

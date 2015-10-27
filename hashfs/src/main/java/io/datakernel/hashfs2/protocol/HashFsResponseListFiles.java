@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.commands;
+package io.datakernel.hashfs2.protocol;
 
-public class HashFsResponseOk extends HashFsResponse {
+import java.util.Collections;
+import java.util.Set;
+
+class HashFsResponseListFiles extends HashFsResponse {
+	public final Set<String> files;
+
+	public HashFsResponseListFiles(Set<String> files) {
+		this.files = Collections.unmodifiableSet(files);
+	}
+
 	@Override
 	public String toString() {
-		return "Operation{OK}";
+		return "Listed{" + files.size() + "}";
 	}
 }

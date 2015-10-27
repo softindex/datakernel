@@ -19,36 +19,56 @@ package io.datakernel.hashfs2.example;
 import io.datakernel.eventloop.AbstractNioServer;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.hashfs2.*;
-import io.datakernel.hashfs2.net.Protocol;
-import io.datakernel.hashfs2.net.gson.ProtocolImpl;
-import io.datakernel.hashfs2.net.gson.TransportImp;
+import io.datakernel.hashfs2.Client;
+import io.datakernel.hashfs2.protocol.GsonClientProtocol;
+import io.datakernel.hashfs2.protocol.GsonServerProtocol;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Set;
 
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class ServerSetupExample {
 	public static void main(String[] args) throws IOException {
-		ServerInfo myId = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 5577), 1);
-		NioEventloop eventloop = new NioEventloop();
 
-		Protocol protocol = new ProtocolImpl(eventloop, 10 * 256);
+		final Set<ServerInfo> servers = new HashSet<>(Arrays.asList(new ServerInfo(0, new InetSocketAddress("127.0.0.1", 5577), 1),
+				new ServerInfo(1, new InetSocketAddress("127.0.0.1", 5577 + 1), 1),
+				new ServerInfo(2, new InetSocketAddress("127.0.0.1", 5577 + 2), 1),
+				new ServerInfo(3, new InetSocketAddress("127.0.0.1", 5577 + 3), 1),
+				new ServerInfo(4, new InetSocketAddress("127.0.0.1", 5577 + 4), 1)));
 
-		FileSystem fileSystem = FileSystemImpl.init(eventloop, newCachedThreadPool(), Paths.get("./test/server_storage_0"), 10 * 256);
+		for (int i = 0; i < 5; i++) {
+			final int finalI = i;
+			new Thread(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						ServerInfo myId = new ServerInfo(finalI, new InetSocketAddress("127.0.0.1", 5577 + finalI), 1);
+						NioEventloop eventloop = new NioEventloop();
 
-		HashFS server = new HashFS(eventloop, fileSystem, protocol);
+						Client client = new GsonClientProtocol(eventloop, 10 * 256);
 
-		LogicImpl logic = new LogicImpl(new RendezvousHashing(), myId, server);
-		server.wirelogic(logic);
-		logic.init(new HashSet<>(Collections.singletonList(myId)));
-		AbstractNioServer transport = new TransportImp(eventloop, server);
+						FileSystem fileSystem = FileSystemImpl.init(eventloop, newCachedThreadPool(), Paths.get("./test/server_storage_" + finalI), Config.defaultConfig);
 
-		transport.setListenPort(5577);
-		transport.listen();
-		eventloop.run();
+						HashFS server = new HashFS(eventloop, fileSystem, client);
+
+						LogicImpl logic = new LogicImpl(new RendezvousHashing(), myId, server);
+						server.wireLogic(logic);
+						logic.init(servers);
+						AbstractNioServer transport = new GsonServerProtocol(eventloop, server);
+
+						transport.setListenPort(5577 + finalI);
+						transport.listen();
+						eventloop.run();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}).start();
+		}
 	}
 }

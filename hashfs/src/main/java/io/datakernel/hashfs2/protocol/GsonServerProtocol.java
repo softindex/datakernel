@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.gson;
+package io.datakernel.hashfs2.protocol;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -24,8 +24,6 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.hashfs2.Server;
 import io.datakernel.hashfs2.ServerInfo;
-import io.datakernel.hashfs2.net.Transport;
-import io.datakernel.hashfs2.net.commands.*;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
@@ -36,10 +34,10 @@ import io.datakernel.stream.processor.StreamGsonSerializer;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
-public class TransportImp extends AbstractNioServer<TransportImp> implements Transport {
+public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 	private final Server server;
 
-	public TransportImp(NioEventloop eventloop, Server server) {
+	public GsonServerProtocol(NioEventloop eventloop, Server server) {
 		super(eventloop);
 		this.server = server;
 	}
@@ -102,8 +100,8 @@ public class TransportImp extends AbstractNioServer<TransportImp> implements Tra
 		};
 	}
 
-	// FIXME CRUTCH
 	private MessagingHandler<HashFsCommandDownload, HashFsResponse> defineDownloadHandler() {
+		// FIXME CRUTCH
 		return new MessagingHandler<HashFsCommandDownload, HashFsResponse>() {
 			@Override
 			public void onMessage(HashFsCommandDownload item, final Messaging<HashFsResponse> messaging) {

@@ -33,5 +33,5 @@ public interface Commands {
 
 	void scan(ResultCallback<Set<String>> callback);
 
-	void updateSystem();
+	void postUpdate();
 }

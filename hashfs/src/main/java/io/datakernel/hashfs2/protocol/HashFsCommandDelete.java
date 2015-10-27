@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.commands;
+package io.datakernel.hashfs2.protocol;
 
-public class HashFsCommandUpload extends HashFsCommand {
+class HashFsCommandDelete extends HashFsCommand {
 	public final String filePath;
 
-	public HashFsCommandUpload(String filePath) {
+	public HashFsCommandDelete(String filePath) {
 		this.filePath = filePath;
 	}
 
 	@Override
 	public String toString() {
-		return "Upload{filepath=\'" + filePath + "\'}";
+		return "Delete{filepath=\'" + filePath + "\'}";
 	}
 }

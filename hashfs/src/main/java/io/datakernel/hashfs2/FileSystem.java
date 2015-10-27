@@ -27,7 +27,9 @@ import java.util.Set;
 public interface FileSystem {
 	void saveToTemporary(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void commitTemporary(String filePath, boolean successful, CompletionCallback file);
+	void commitTemporary(String filePath, CompletionCallback callback);
+
+	void deleteTemporary(String filePath, CompletionCallback callback);
 
 	void get(String filePath, StreamConsumer<ByteBuf> consumer);
 

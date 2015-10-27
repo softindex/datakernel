@@ -14,23 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.commands;
+package io.datakernel.hashfs2.protocol;
 
-import java.util.Set;
-
-import static java.util.Collections.unmodifiableSet;
-
-public class HashFsCommandOffer extends HashFsCommand {
-	public final Set<String> forDeletion;
-	public final Set<String> forUpload;
-
-	public HashFsCommandOffer(Set<String> forDeletion, Set<String> forUpload) {
-		this.forDeletion = unmodifiableSet(forDeletion);
-		this.forUpload = unmodifiableSet(forUpload);
-	}
-
+class HashFsResponseAcknowledge extends HashFsResponse {
 	@Override
 	public String toString() {
-		return "Offer{forDeletion:" + forDeletion.size() + ",forUpload:" + forUpload.size() + "}";
+		return "Uploaded{OK}";
 	}
 }

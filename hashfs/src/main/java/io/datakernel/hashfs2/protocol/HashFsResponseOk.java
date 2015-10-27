@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net;
+package io.datakernel.hashfs2.protocol;
 
-public interface Transport {
+class HashFsResponseOk extends HashFsResponse {
+	@Override
+	public String toString() {
+		return "Operation{OK}";
+	}
 }

@@ -37,5 +37,5 @@ public interface Server {
 
 	void showAlive(ResultCallback<Set<ServerInfo>> alive);
 
-	void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
+	void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback);
 }

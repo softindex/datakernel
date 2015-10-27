@@ -14,17 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.commands;
+package io.datakernel.hashfs2.protocol;
 
-public class HashFsCommandDelete extends HashFsCommand {
-	public final String filePath;
-
-	public HashFsCommandDelete(String filePath) {
-		this.filePath = filePath;
-	}
-
+class HashFsCommandList extends HashFsCommand {
 	@Override
 	public String toString() {
-		return "Delete{filepath=\'" + filePath + "\'}";
+		return "List{all files}";
 	}
 }

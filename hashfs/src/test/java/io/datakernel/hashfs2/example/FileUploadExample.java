@@ -18,8 +18,9 @@ package io.datakernel.hashfs2.example;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.hashfs2.Client;
 import io.datakernel.hashfs2.ServerInfo;
-import io.datakernel.hashfs2.net.gson.ProtocolImpl;
+import io.datakernel.hashfs2.protocol.GsonClientProtocol;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
@@ -30,20 +31,20 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 public class FileUploadExample {
 	public static void main(String[] args) {
 		NioEventloop eventloop = new NioEventloop();
-		ProtocolImpl client = new ProtocolImpl(eventloop, 256 * 1024);
+		Client client = new GsonClientProtocol(eventloop, 256 * 1024);
 
-		client.upload(new ServerInfo(1, new InetSocketAddress("127.0.0.1", 5577), 1), "egegei.txt",
-				readFileFully(eventloop, newCachedThreadPool(), 10 * 256, Paths.get("./test/client_storage/egegei.txt")), new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				System.out.println("Ura!!!");
-			}
+		client.upload(new ServerInfo(1, new InetSocketAddress("127.0.0.1", 5580), 1), "downloaded.txt",
+				readFileFully(eventloop, newCachedThreadPool(), 10 * 256, Paths.get("./test/client_storage/downloaded.txt")), new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						System.out.println("Ura!!!");
+					}
 
-			@Override
-			public void onException(Exception exception) {
-
-			}
-		});
+					@Override
+					public void onException(Exception e) {
+						System.out.println("Failed!");
+					}
+				});
 		eventloop.run();
 	}
 }

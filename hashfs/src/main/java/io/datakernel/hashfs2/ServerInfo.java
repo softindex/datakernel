@@ -50,7 +50,7 @@ public final class ServerInfo {
 			state.update(status, heartBeat);
 	}
 
-	// TODO (arashev) better name for parameter - represents current time + timeout after which we consider server to be shut down
+	// TODO (arashev) better name for parameter - represents current time + timeout after which we consider the server to be shut down
 	public boolean isAlive(long maximumDieTime) {
 		return state.isAlive(maximumDieTime);
 	}

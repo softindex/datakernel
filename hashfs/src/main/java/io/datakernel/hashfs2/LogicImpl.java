@@ -23,9 +23,11 @@ import java.util.*;
 public class LogicImpl implements Logic {
 	private static final long MAXIMUM_DIE_TIME = 10 * 1000;
 	private static final int MAX_REPLICA_QUANTITY = 3;
+	public static final int MINIMUM_SAFE_REPLICAS_QUANTITY = 1;
+
+	private final Commands commands;
 	private final Hashing hashing;
 	private final ServerInfo myId;
-	private final Commands commands;
 
 	private final Map<String, Set<ServerInfo>> files = new HashMap<>();
 	private final Set<String> filesToBeDeleted = new HashSet<>();
@@ -69,6 +71,7 @@ public class LogicImpl implements Logic {
 			files.put(filePath, replicaHandlers);
 			replicaHandlers.add(myId);
 		}
+		update();
 	}
 
 	@Override
@@ -149,47 +152,60 @@ public class LogicImpl implements Logic {
 
 	@Override
 	public void update() {
-		Map<ServerInfo, Set<String>> filesForOffer = new HashMap<>();
-		Map<ServerInfo, Set<String>> filesForDeletion = new HashMap<>();
+		Map<ServerInfo, Set<String>> server2Offer = new HashMap<>();
+		Map<ServerInfo, Set<String>> server2Delete = new HashMap<>();
 
-		Set<String> currentFiles = files.keySet();
-		for (String file : currentFiles) {
+		for (String file : files.keySet()) {
 			List<ServerInfo> candidates = hashing.sortServers(servers, file);
 			candidates = candidates.subList(0, Math.min(candidates.size(), MAX_REPLICA_QUANTITY));
 			Set<ServerInfo> currentReplicas = files.get(file);
 
 			// removing servers that should not handle replica based on remote server default behavior
-			for (ServerInfo info : currentReplicas) {
-				if (!candidates.contains(info)) {
-					currentReplicas.remove(info);
-					if (info.equals(myId)) {
-						commands.delete(file);
-					}
+			for (ServerInfo server : currentReplicas) {
+				if (!server.equals(myId) && !candidates.contains(server)) {
+					currentReplicas.remove(server);
 				}
 			}
 
-			// defining files to be offered to remote servers
-			for (ServerInfo info : candidates) {
-				if (!currentReplicas.contains(info)) {
-					Set<String> currentServerFilesForOffer = filesForOffer.get(info);
+			// checking whether the current host should handle the file --> if exists more then 1 replica delete file
+			if (!candidates.contains(myId) && currentReplicas.size() > MINIMUM_SAFE_REPLICAS_QUANTITY) {
+				files.remove(file);
+				commands.delete(file);
+			}
+
+			// adding file to server2offerFiles map
+			for (ServerInfo server : candidates) {
+				if (!currentReplicas.contains(server)) {
+					Set<String> currentServerFilesForOffer = server2Offer.get(server);
 					if (currentServerFilesForOffer == null) {
 						currentServerFilesForOffer = new HashSet<>();
-						filesForOffer.put(info, currentServerFilesForOffer);
+						server2Offer.put(server, currentServerFilesForOffer);
 					}
 					currentServerFilesForOffer.add(file);
 				}
 			}
 		}
 
-		// TODO defining files to be deleted in remote servers
+		for (String file : filesToBeDeleted) {
+			List<ServerInfo> candidates = hashing.sortServers(servers, file);
+			candidates = candidates.subList(0, Math.min(candidates.size(), MAX_REPLICA_QUANTITY));
+			for (ServerInfo server : candidates) {
+				Set<String> currentServerFilesForDeletion = server2Delete.get(server);
+				if (currentServerFilesForDeletion == null) {
+					currentServerFilesForDeletion = new HashSet<>();
+					server2Delete.put(server, currentServerFilesForDeletion);
+				}
+				currentServerFilesForDeletion.add(file);
+			}
+		}
 
 		// Spreading files
-		for (final ServerInfo server : filesForOffer.keySet()) {
-			Set<String> forDeletion = filesForDeletion.get(server);
+		for (final ServerInfo server : server2Offer.keySet()) {
+			Set<String> forDeletion = server2Delete.get(server);
 			if (forDeletion == null) {
 				forDeletion = new HashSet<>();
 			}
-			commands.offer(server, filesForOffer.get(server), forDeletion, new ResultCallback<Set<String>>() {
+			commands.offer(server, server2Offer.get(server), forDeletion, new ResultCallback<Set<String>>() {
 				@Override
 				public void onResult(Set<String> result) {
 					for (String file : result) {
@@ -203,8 +219,7 @@ public class LogicImpl implements Logic {
 				}
 			});
 		}
-
-		commands.updateSystem();
+		commands.postUpdate();
 	}
 
 	@Override
@@ -224,6 +239,7 @@ public class LogicImpl implements Logic {
 				// ignored
 			}
 		});
+		servers.addAll(bootstrap);
 		commands.updateServerMap(bootstrap, new ResultCallback<Set<ServerInfo>>() {
 			@Override
 			public void onResult(Set<ServerInfo> result) {
@@ -235,6 +251,6 @@ public class LogicImpl implements Logic {
 				// ignored
 			}
 		});
-		commands.updateSystem();
+		commands.postUpdate();
 	}
 }

@@ -16,8 +16,12 @@
 
 package io.datakernel.hashfs2;
 
-public class ServerBuilder {
-	public static void createServer() {
+import io.datakernel.eventloop.NioService;
 
+import java.util.Set;
+
+public class ServerBuilder {
+	public static NioService createServer(FileSystem fs, Hashing h, Client p, Logic l, Config config, Set<ServerInfo> bootstrap) {
+		return null;
 	}
 }

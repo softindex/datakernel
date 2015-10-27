@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.gson;
+package io.datakernel.hashfs2.protocol;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -22,9 +22,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.hashfs2.Client;
 import io.datakernel.hashfs2.ServerInfo;
-import io.datakernel.hashfs2.net.Protocol;
-import io.datakernel.hashfs2.net.commands.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -41,19 +40,50 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
-public class ProtocolImpl implements Protocol {
+public class GsonClientProtocol implements Client {
 	private final NioEventloop eventloop;
 	private final int bufferSize;
 
-	public ProtocolImpl(NioEventloop eventloop, int bufferSize) {
+	public GsonClientProtocol(NioEventloop eventloop, int bufferSize) {
 		this.eventloop = eventloop;
 		this.bufferSize = bufferSize;
 	}
 
 	@Override
-	public void upload(final ServerInfo server, final String filePath,
-	                   final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
-		connect(server.getAddress(), new ConnectCallback() {
+	public void upload(ServerInfo server, String filePath,
+	                   StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+		connect(server.getAddress(), defineUpload(server, filePath, producer, callback));
+	}
+
+	@Override
+	public void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer) {
+		connect(server.getAddress(), defineDownload(filePath, consumer));
+	}
+
+	@Override
+	public void delete(ServerInfo server, String filePath, CompletionCallback callback) {
+		connect(server.getAddress(), defineDelete(filePath, callback));
+	}
+
+	@Override
+	public void list(ServerInfo server, ResultCallback<Set<String>> callback) {
+		connect(server.getAddress(), defineList(callback));
+	}
+
+	@Override
+	public void alive(ServerInfo server, ResultCallback<Set<ServerInfo>> callback) {
+		connect(server.getAddress(), defineAlive(callback));
+	}
+
+	@Override
+	public void offer(ServerInfo server, Set<String> forUpload,
+	                  Set<String> forDeletion, ResultCallback<Set<String>> callback) {
+		connect(server.getAddress(), defineOffer(forUpload, forDeletion, callback));
+	}
+
+	private ConnectCallback defineUpload(final ServerInfo server, final String filePath,
+	                                     final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				SocketConnection connection = createConnection(socketChannel)
@@ -115,15 +145,14 @@ public class ProtocolImpl implements Protocol {
 			public void onException(Exception e) {
 				callback.onException(e);
 			}
-		});
+		};
 	}
 
-	@Override
-	public void download(ServerInfo server, final String filePath, final StreamConsumer<ByteBuf> consumer) {
-		connect(server.getAddress(), new ConnectCallback() {
+	private ConnectCallback defineDownload(final String filePath, final StreamConsumer<ByteBuf> consumer) {
+		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
-				final SocketConnection connection = createConnection(socketChannel)
+				SocketConnection connection = createConnection(socketChannel)
 						.addStarter(new MessagingStarter<HashFsCommand>() {
 							@Override
 							public void onStart(Messaging<HashFsCommand> messaging) {
@@ -155,15 +184,14 @@ public class ProtocolImpl implements Protocol {
 				StreamProducers.<ByteBuf>closingWithError(eventloop, e)
 						.streamTo(consumer);
 			}
-		});
+		};
 	}
 
-	@Override
-	public void delete(ServerInfo server, final String filePath, final CompletionCallback callback) {
-		connect(server.getAddress(), new ConnectCallback() {
+	private ConnectCallback defineDelete(final String filePath, final CompletionCallback callback) {
+		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
-				final SocketConnection connection = createConnection(socketChannel)
+				SocketConnection connection = createConnection(socketChannel)
 						.addStarter(new MessagingStarter<HashFsCommand>() {
 							@Override
 							public void onStart(Messaging<HashFsCommand> messaging) {
@@ -193,12 +221,11 @@ public class ProtocolImpl implements Protocol {
 			public void onException(Exception e) {
 				callback.onException(e);
 			}
-		});
+		};
 	}
 
-	@Override
-	public void list(ServerInfo server, final ResultCallback<Set<String>> callback) {
-		connect(server.getAddress(), new ConnectCallback() {
+	private ConnectCallback defineList(final ResultCallback<Set<String>> callback) {
+		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				SocketConnection connection = createConnection(socketChannel)
@@ -231,12 +258,11 @@ public class ProtocolImpl implements Protocol {
 			public void onException(Exception e) {
 				callback.onException(e);
 			}
-		});
+		};
 	}
 
-	@Override
-	public void alive(ServerInfo server, final ResultCallback<Set<ServerInfo>> callback) {
-		connect(server.getAddress(), new ConnectCallback() {
+	private ConnectCallback defineAlive(final ResultCallback<Set<ServerInfo>> callback) {
+		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				SocketConnection connection = createConnection(socketChannel)
@@ -269,13 +295,12 @@ public class ProtocolImpl implements Protocol {
 			public void onException(Exception e) {
 				callback.onException(e);
 			}
-		});
+		};
 	}
 
-	@Override
-	public void offer(ServerInfo server, final Set<String> forUpload,
-	                  final Set<String> forDeletion, final ResultCallback<Set<String>> callback) {
-		connect(server.getAddress(), new ConnectCallback() {
+	private ConnectCallback defineOffer(final Set<String> forUpload, final Set<String> forDeletion,
+	                                    final ResultCallback<Set<String>> callback) {
+		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
 				SocketConnection connection = createConnection(socketChannel)
@@ -308,7 +333,7 @@ public class ProtocolImpl implements Protocol {
 			public void onException(Exception e) {
 				callback.onException(e);
 			}
-		});
+		};
 	}
 
 	private void commit(ServerInfo server, final String filePath,

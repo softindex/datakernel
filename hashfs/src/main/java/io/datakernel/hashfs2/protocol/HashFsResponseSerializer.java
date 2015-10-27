@@ -14,24 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.gson;
+package io.datakernel.hashfs2.protocol;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.datakernel.hashfs2.net.commands.*;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
-public class HashFsCommandSerializer {
+class HashFsResponseSerializer {
 	public static final Gson GSON = new GsonBuilder()
-			.registerTypeAdapter(HashFsCommand.class, GsonSubclassesAdapter.builder()
+			.registerTypeAdapter(HashFsResponse.class, GsonSubclassesAdapter.builder()
 					.subclassField("commandType")
-					.subclass("Upload", HashFsCommandUpload.class)
-					.subclass("Commit", HashFsCommandCommit.class)
-					.subclass("Download", HashFsCommandDownload.class)
-					.subclass("Delete", HashFsCommandDelete.class)
-					.subclass("List", HashFsCommandList.class)
-					.subclass("Alive", HashFsCommandAlive.class)
-					.subclass("Offer", HashFsCommandOffer.class)
+					.subclass("Error", HashFsResponseError.class)
+					.subclass("FileList", HashFsResponseListFiles.class)
+					.subclass("ServerList", HashFsResponseListServers.class)
+					.subclass("ResponseOk", HashFsResponseOk.class)
+					.subclass("Acknowledge", HashFsResponseAcknowledge.class)
 					.build())
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()

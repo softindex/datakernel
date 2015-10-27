@@ -14,19 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.net.commands;
+package io.datakernel.hashfs2.protocol;
 
-public class HashFsCommandCommit extends HashFsCommand{
-	public final String filePath;
-	public final boolean isOk;
-
-	public HashFsCommandCommit(String filePath, boolean isOk) {
-		this.filePath = filePath;
-		this.isOk = isOk;
-	}
-
-	@Override
-	public String toString() {
-		return "Commit{filepath=\'" + filePath + "\',isOk=" + isOk + "}";
-	}
+abstract class HashFsCommand {
 }

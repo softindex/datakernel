@@ -20,5 +20,5 @@ import java.util.Collection;
 import java.util.List;
 
 public interface Hashing {
-	public List<ServerInfo> sortServers(Collection<ServerInfo> servers, String fileName);
+	List<ServerInfo> sortServers(Collection<ServerInfo> servers, String fileName);
 }
