@@ -441,9 +441,9 @@ public class Aggregation {
 		PredicateDefAnd predicateDefAnd = and();
 
 		for (AggregationQuery.QueryPredicate predicate : predicates.asCollection()) {
-			if (keysAlreadyInChunk.contains(predicate.key))
-				continue;
 			if (predicate instanceof AggregationQuery.QueryPredicateEq) {
+//				if (keysAlreadyInChunk.contains(predicate.key))
+//					continue;
 				Object value = ((AggregationQuery.QueryPredicateEq) predicate).value;
 
 				predicateDefAnd.add(cmpEq(

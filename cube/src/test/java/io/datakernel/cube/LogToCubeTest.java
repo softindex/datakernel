@@ -62,7 +62,7 @@ public class LogToCubeTest {
 	                           AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
 	                           AggregationStructure aggregationStructure) {
 		return new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage,
-				aggregationStructure, 1_000_000, 1_000_000, 30 * 60 * 1000, 10 * 60 * 1000);
+				aggregationStructure, 1_000_000, 1_000_000);
 	}
 
 	public static AggregationStructure getStructure(DefiningClassLoader classLoader) {

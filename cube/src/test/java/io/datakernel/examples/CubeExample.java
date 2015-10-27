@@ -111,8 +111,8 @@ public class CubeExample {
 	                            AggregationMetadataStorage aggregationMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, cubeStructure
-		);
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, cubeStructure,
+				100_000, 1_000_000);
 		cube.addAggregation(new AggregationMetadata("detailed", LogItem.DIMENSIONS, LogItem.MEASURES));
 		cube.addAggregation(new AggregationMetadata("date", asList("date"), LogItem.MEASURES));
 		return cube;

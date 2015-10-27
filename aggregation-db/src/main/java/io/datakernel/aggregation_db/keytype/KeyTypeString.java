@@ -16,22 +16,42 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
+import io.datakernel.serializer.StringFormat;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenString;
 
 public class KeyTypeString extends KeyType {
+	private final StringFormat format;
+
 	public KeyTypeString() {
 		super(String.class);
+		format = null;
+	}
+
+	public KeyTypeString(StringFormat format) {
+		super(String.class);
+		this.format = format;
 	}
 
 	@Override
 	public SerializerGen serializerGen() {
-		return new SerializerGenString();
+		SerializerGenString serializer = new SerializerGenString();
+		if (format != null) {
+			serializer.encoding(format);
+		}
+		return serializer;
 	}
 
 	@Override
-	public Object toInternalRepresentation(String o) {
-		return o;
+	public JsonPrimitive toJson(Object value) {
+		return new JsonPrimitive((String) value);
+	}
+
+	@Override
+	public Object fromJson(JsonElement value) {
+		return value.getAsString();
 	}
 
 	@Override
