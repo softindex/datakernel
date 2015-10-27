@@ -29,7 +29,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 final class RequestSenderRendezvousHashing implements RequestSender {
 
-	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
+	private static final RpcNoSenderAvailableException NO_ACTIVE_SENDER_AVAILABLE_EXCEPTION
+			= new RpcNoSenderAvailableException("No active senders available");
 
 	private boolean active;
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
@@ -51,7 +52,7 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 		checkNotNull(callback);
 		RequestSender sender = getRequestSender(request);
 		if (sender == null) {
-			callback.onException(NO_AVAILABLE_CONNECTION);
+			callback.onException(NO_ACTIVE_SENDER_AVAILABLE_EXCEPTION);
 			return;
 		}
 		sender.sendRequest(request, timeout, callback);

@@ -18,9 +18,9 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.rpc.protocol.RpcException;
 
-public class RpcNoConnectionsException extends RpcException {
+public class RpcNoSenderAvailableException extends RpcException {
 
-	public RpcNoConnectionsException() {
-		super("No available connections");
+	public RpcNoSenderAvailableException(String message) {
+		super(message);
 	}
 }

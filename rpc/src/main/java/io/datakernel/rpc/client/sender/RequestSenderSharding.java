@@ -25,7 +25,8 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 final class RequestSenderSharding extends RequestSenderToGroup {
-	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
+	private static final RpcNoSenderAvailableException NO_ACTIVE_SENDER_AVAILABLE_EXCEPTION
+			= new RpcNoSenderAvailableException("No active senders available");
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 
 	public RequestSenderSharding(List<RequestSender> senders, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
@@ -46,7 +47,7 @@ final class RequestSenderSharding extends RequestSenderToGroup {
 			sender.sendRequest(request, timeout, callback);
 			return;
 		}
-		callback.onException(NO_AVAILABLE_CONNECTION);
+		callback.onException(NO_ACTIVE_SENDER_AVAILABLE_EXCEPTION);
 	}
 
 	private RequestSender chooseSender(RpcMessage.RpcMessageData request) {

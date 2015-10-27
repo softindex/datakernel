@@ -123,10 +123,6 @@ public abstract class RequestSenderFactory {
 		};
 	}
 
-	public static RequestSenderFactoryWithKeys rendezvousHashing(final HashFunction<RpcMessageData> hashFunction) {
-		checkNotNull(hashFunction);
-		return new RequestSenderFactoryWithKeys(hashFunction);
-	}
 
 
 	public static RequestSenderToGroupFactory sharding(final HashFunction<RpcMessageData> hashFunction,
@@ -152,6 +148,15 @@ public abstract class RequestSenderFactory {
 			}
 		};
 	}
+
+
+
+	public static RequestSenderFactoryWithKeys rendezvousHashing(final HashFunction<RpcMessageData> hashFunction) {
+		checkNotNull(hashFunction);
+		return new RequestSenderFactoryWithKeys(hashFunction);
+	}
+
+
 
 	@VisibleForTesting
 	static <T> List<T> flatten(List<List<T>> listOfList) {

@@ -31,10 +31,6 @@ final class RequestSenderRoundRobin extends RequestSenderToGroup {
 		nextSender = 0;
 	}
 
-//	public RequestSenderRoundRobin(List<RequestSender> senders) {
-//		this(senders, EMPTY_KEY);
-//	}
-
 	@Override
 	public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback) {
 		checkNotNull(callback);

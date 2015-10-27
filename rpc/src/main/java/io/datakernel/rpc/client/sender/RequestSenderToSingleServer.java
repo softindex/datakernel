@@ -9,7 +9,9 @@ import java.net.InetSocketAddress;
 
 
 final class RequestSenderToSingleServer implements RequestSender {
-	private static final RpcNoConnectionsException NO_AVAILABLE_CONNECTION = new RpcNoConnectionsException();
+	// TODO (vmykhalko): if do not use caching of connection, another exception class is probably needed
+	private static final RpcNoSenderAvailableException NO_AVAILABLE_CONNECTION
+			= new RpcNoSenderAvailableException("No available connection");
 
 	private final RpcClientConnectionPool connectionPool;
 	private final InetSocketAddress address;
