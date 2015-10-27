@@ -476,9 +476,13 @@ public class SerializerGenClass implements SerializerGen {
 	private Expression pushDefaultValue(Type type) {
 		switch (type.getSort()) {
 			case BOOLEAN:
+				return value(false);
 			case CHAR:
+				return value((char)0);
 			case BYTE:
+				return value((byte)0);
 			case SHORT:
+				return value((short)0);
 			case INT:
 				return value(0);
 			case Type.LONG:

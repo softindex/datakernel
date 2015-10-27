@@ -1493,4 +1493,37 @@ public class AsmSerializerTest {
 		ListOfObjectHolder testData2 = doTest(ListOfObjectHolder.class, testData1);
 		assertEquals(testData1.list, testData2.list);
 	}
+
+	public static class TestConstructorWithBoolean {
+		@Serialize(order = 0, added = 1)
+		public final String url;
+		@Serialize(order = 1, added = 2)
+		public final boolean resolve;
+
+		public TestConstructorWithBoolean(@Deserialize("url") String url, @Deserialize("resolve") boolean resolve) {
+			this.url = url;
+			this.resolve = resolve;
+		}
+	}
+
+	@Test
+	public void testConstructorWithBoolean() {
+		TestConstructorWithBoolean test = new TestConstructorWithBoolean("abc", true);
+
+		BufferSerializer<TestConstructorWithBoolean> serializer1 = SerializerBuilder
+				.newDefaultInstance(definingClassLoader)
+				.create(TestConstructorWithBoolean.class);
+
+		BufferSerializer<TestConstructorWithBoolean> serializer2 = SerializerBuilder
+				.newDefaultInstance(definingClassLoader)
+				.version(1)
+				.create(TestConstructorWithBoolean.class);
+
+		TestConstructorWithBoolean _test = doTest(test, serializer1, serializer1);
+		assertEquals(test.resolve, _test.resolve);
+		assertEquals(test.url, _test.url);
+
+		TestConstructorWithBoolean _test2 = doTest(test, serializer2, serializer2);
+		assertEquals(test.url, _test2.url);
+	}
 }
