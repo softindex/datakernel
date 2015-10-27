@@ -186,8 +186,8 @@ public class CombinedStrategiesTest {
 							roundRobin(
 									server(address1),
 									sharding(hashFunction,
-											server(1, address2),
-											server(2, address3))
+											server(address2),
+											server(address3))
 							)
 					)
 							.build();
