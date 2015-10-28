@@ -72,10 +72,11 @@ public class TestLogic {
 		assertFalse(logic.canUpload(b));
 
 		assertTrue(logic.canUpload(newFile));
+		logic.onUploadStart(newFile);
 		logic.onUploadComplete(newFile);
 		assertTrue(cMock.scheduledDeletions.contains(newFile) && cMock.scheduledDeletions.size() == 1);
 		assertTrue(logic.canApprove(newFile));
-		logic.onApprove(newFile, true);
+		logic.onApprove(newFile);
 		logic.update();
 
 		Set<String> real2 = cMock.servers.get(server2);

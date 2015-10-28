@@ -35,7 +35,9 @@ public interface Logic {
 
 	boolean canApprove(String filePath);
 
-	void onApprove(String filePath, boolean success);
+	void onApprove(String filePath);
+
+	void onApproveCancel(String filePath);
 
 	boolean canDownload(String filePath);
 
@@ -53,9 +55,9 @@ public interface Logic {
 
 	void onDeleteFailed(String filePath);
 
-	void onShowAlive(ResultCallback<Set<ServerInfo>> alive);
+	void onShowAliveRequest(ResultCallback<Set<ServerInfo>> alive);
 
-	void onOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
+	void onOfferRequest(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
 
 	void onReplicationComplete(String filePath, ServerInfo server);
 

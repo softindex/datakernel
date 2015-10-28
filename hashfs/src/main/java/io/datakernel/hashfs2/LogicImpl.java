@@ -29,24 +29,54 @@ public class LogicImpl implements Logic {
 	private final Hashing hashing;
 	private final ServerInfo myId;
 
-	private final Map<String, Set<ServerInfo>> files = new HashMap<>();
-	private final Set<String> filesToBeDeleted = new HashSet<>();
+	private final Map<String, FileInfo> files = new HashMap<>();
 	private final Set<ServerInfo> servers = new HashSet<>();
 
 	public LogicImpl(Hashing hashing, ServerInfo myId, Commands commands) {
+		this.commands = commands;
 		this.hashing = hashing;
 		this.myId = myId;
-		this.commands = commands;
 	}
 
 	@Override
+	public void init(Set<ServerInfo> bootstrap) {
+		servers.addAll(bootstrap);
+		commands.scan(new ResultCallback<Set<String>>() {
+			@Override
+			public void onResult(Set<String> result) {
+				for (String filePath : result) {
+					files.put(filePath, new FileInfo(myId));
+				}
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+				// ignored
+			}
+		});
+		commands.updateServerMap(bootstrap, new ResultCallback<Set<ServerInfo>>() {
+			@Override
+			public void onResult(Set<ServerInfo> result) {
+				servers.addAll(result);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+				// ignored
+			}
+		});
+		commands.postUpdate();
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	@Override
 	public boolean canUpload(String filePath) {
-		return !files.containsKey(filePath);
+		return !files.containsKey(filePath) || files.get(filePath).isDeleted();
 	}
 
 	@Override
 	public void onUploadStart(String filePath) {
-		// ignored
+		files.put(filePath, new FileInfo());
 	}
 
 	@Override
@@ -56,47 +86,52 @@ public class LogicImpl implements Logic {
 
 	@Override
 	public void onUploadFailed(String filePath) {
-		// ignored
+		files.remove(filePath);
 	}
 
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canApprove(String filePath) {
-		return true;
+		return files.keySet().contains(filePath);
 	}
 
 	@Override
-	public void onApprove(String filePath, boolean success) {
-		if (success) {
-			Set<ServerInfo> replicaHandlers = new HashSet<>();
-			files.put(filePath, replicaHandlers);
-			replicaHandlers.add(myId);
-		}
-		update();
+	public void onApprove(String filePath) {
+		files.get(filePath).onApprove(myId);
 	}
 
+	@Override
+	public void onApproveCancel(String filePath) {
+		files.get(filePath).onApprove(myId);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canDownload(String filePath) {
-		return files.containsKey(filePath);
+		FileInfo info = files.get(filePath);
+		return info != null && info.isReady();
 	}
 
 	@Override
 	public void onDownloadStart(String filePath) {
-		// ignored
+		files.get(filePath).onOperationStart();
 	}
 
 	@Override
 	public void onDownloadComplete(String filePath) {
-		// ignored
+		files.get(filePath).onOperationEnd();
 	}
 
 	@Override
 	public void onDownloadFailed(String filePath) {
-		// ignored
+		files.get(filePath).onOperationEnd();
 	}
 
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canDelete(String filePath) {
-		return files.containsKey(filePath);
+		FileInfo info = files.get(filePath);
+		return info != null && info.canDelete();
 	}
 
 	@Override
@@ -106,8 +141,7 @@ public class LogicImpl implements Logic {
 
 	@Override
 	public void onDeleteComplete(String filePath) {
-		files.remove(filePath);
-		filesToBeDeleted.add(filePath);
+		files.get(filePath).onDelete();
 	}
 
 	@Override
@@ -115,8 +149,20 @@ public class LogicImpl implements Logic {
 		// ignored
 	}
 
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
-	public void onShowAlive(ResultCallback<Set<ServerInfo>> callback) {
+	public void onReplicationComplete(String filePath, ServerInfo server) {
+		files.get(filePath).addReplica(server);
+	}
+
+	@Override
+	public void onReplicationFailed(String filePath, ServerInfo server) {
+		// ignore
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	@Override
+	public void onShowAliveRequest(ResultCallback<Set<ServerInfo>> callback) {
 		Set<ServerInfo> aliveServers = new HashSet<>();
 		for (ServerInfo server : servers) {
 			if (server.isAlive(MAXIMUM_DIE_TIME)) {
@@ -127,27 +173,20 @@ public class LogicImpl implements Logic {
 	}
 
 	@Override
-	public void onOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result) {
+	public void onOfferRequest(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
 		for (String filePath : forDeletion) {
+			// TODO
 			commands.delete(filePath);
 		}
+
 		Set<String> required = new HashSet<>();
 		for (String filePath : forUpload) {
-			if (!files.containsKey(filePath)) {
+			if (!files.containsKey(filePath) || files.get(filePath).isDeleted()) {
 				required.add(filePath);
 			}
 		}
-		result.onResult(required);
-	}
 
-	@Override
-	public void onReplicationComplete(String filePath, ServerInfo server) {
-		files.get(filePath).add(server);
-	}
-
-	@Override
-	public void onReplicationFailed(String filePath, ServerInfo server) {
-		// ignore
+		callback.onResult(required);
 	}
 
 	@Override
@@ -155,10 +194,14 @@ public class LogicImpl implements Logic {
 		Map<ServerInfo, Set<String>> server2Offer = new HashMap<>();
 		Map<ServerInfo, Set<String>> server2Delete = new HashMap<>();
 
-		for (String file : files.keySet()) {
+		for (Iterator<String> it = files.keySet().iterator(); it.hasNext(); ) {
+
+			String file = it.next();
+
+			// getting servers-candidates for file handling
 			List<ServerInfo> candidates = hashing.sortServers(servers, file);
 			candidates = candidates.subList(0, Math.min(candidates.size(), MAX_REPLICA_QUANTITY));
-			Set<ServerInfo> currentReplicas = files.get(file);
+			Set<ServerInfo> currentReplicas = files.get(file).getReplicas();
 
 			// removing servers that should not handle replica based on remote server default behavior
 			for (ServerInfo server : currentReplicas) {
@@ -167,35 +210,27 @@ public class LogicImpl implements Logic {
 				}
 			}
 
-			// checking whether the current host should handle the file --> if exists more then 1 replica delete file
-			if (!candidates.contains(myId) && currentReplicas.size() > MINIMUM_SAFE_REPLICAS_QUANTITY) {
-				files.remove(file);
-				commands.delete(file);
+			// checking whether the current node should care about the file
+			if (!candidates.contains(myId)) {
+				if ((!files.get(file).isDeleted() && currentReplicas.size() > MINIMUM_SAFE_REPLICAS_QUANTITY)
+						|| (files.get(file).isDeleted())) {
+					commands.delete(file);
+					it.remove();
+					continue;
+				}
 			}
 
 			// adding file to server2offerFiles map
 			for (ServerInfo server : candidates) {
+				Map<ServerInfo, Set<String>> workingMap = files.get(file).isDeleted() ? server2Delete : server2Offer;
 				if (!currentReplicas.contains(server)) {
-					Set<String> currentServerFilesForOffer = server2Offer.get(server);
+					Set<String> currentServerFilesForOffer = workingMap.get(server);
 					if (currentServerFilesForOffer == null) {
 						currentServerFilesForOffer = new HashSet<>();
-						server2Offer.put(server, currentServerFilesForOffer);
+						workingMap.put(server, currentServerFilesForOffer);
 					}
 					currentServerFilesForOffer.add(file);
 				}
-			}
-		}
-
-		for (String file : filesToBeDeleted) {
-			List<ServerInfo> candidates = hashing.sortServers(servers, file);
-			candidates = candidates.subList(0, Math.min(candidates.size(), MAX_REPLICA_QUANTITY));
-			for (ServerInfo server : candidates) {
-				Set<String> currentServerFilesForDeletion = server2Delete.get(server);
-				if (currentServerFilesForDeletion == null) {
-					currentServerFilesForDeletion = new HashSet<>();
-					server2Delete.put(server, currentServerFilesForDeletion);
-				}
-				currentServerFilesForDeletion.add(file);
 			}
 		}
 
@@ -219,38 +254,6 @@ public class LogicImpl implements Logic {
 				}
 			});
 		}
-		commands.postUpdate();
-	}
-
-	@Override
-	public void init(Set<ServerInfo> bootstrap) {
-		commands.scan(new ResultCallback<Set<String>>() {
-			@Override
-			public void onResult(Set<String> result) {
-				for (String filePath : result) {
-					Set<ServerInfo> replicas = new HashSet<>();
-					replicas.add(myId);
-					files.put(filePath, replicas);
-				}
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-				// ignored
-			}
-		});
-		servers.addAll(bootstrap);
-		commands.updateServerMap(bootstrap, new ResultCallback<Set<ServerInfo>>() {
-			@Override
-			public void onResult(Set<ServerInfo> result) {
-				servers.addAll(result);
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-				// ignored
-			}
-		});
 		commands.postUpdate();
 	}
 }

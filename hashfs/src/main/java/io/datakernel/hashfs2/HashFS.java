@@ -82,13 +82,13 @@ public class HashFS implements Commands, Server {
 			CompletionCallback transit = new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					logic.onApprove(filePath, success);
+					logic.onApprove(filePath);
 					callback.onComplete();
 				}
 
 				@Override
 				public void onException(Exception e) {
-					logic.onApprove(filePath, false);
+					logic.onApproveCancel(filePath);
 					callback.onException(e);
 				}
 			};
@@ -104,7 +104,6 @@ public class HashFS implements Commands, Server {
 
 	@Override
 	public void download(final String filePath, StreamForwarder<ByteBuf> consumer, ResultCallback<CompletionCallback> crutch) {
-		// FIXME (arashev) SLAY DAT CRUTCH
 		if (logic.canDownload(filePath)) {
 			logic.onDownloadStart(filePath);
 			fileSystem.get(filePath, consumer);
@@ -158,26 +157,21 @@ public class HashFS implements Commands, Server {
 	}
 
 	@Override
-	public void listFiles(ResultCallback<Set<String>> files) {
-		fileSystem.listFiles(files);
+	public void listFiles(ResultCallback<Set<String>> callback) {
+		fileSystem.listFiles(callback);
 	}
 
 	@Override
-	public void showAlive(ResultCallback<Set<ServerInfo>> alive) {
-		logic.onShowAlive(alive);
+	public void showAlive(ResultCallback<Set<ServerInfo>> callback) {
+		logic.onShowAliveRequest(callback);
 	}
 
 	@Override
 	public void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
-		logic.onOffer(forUpload, forDeletion, callback);
+		logic.onOfferRequest(forUpload, forDeletion, callback);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	@Override
-	public void delete(String filePath) {
-		fileSystem.deleteFile(filePath, ignoreCompletionCallback());
-	}
-
 	@Override
 	public void replicate(final String filePath, final ServerInfo server) {
 		// FIXME (arashev) don't like scheme with forwarder
@@ -197,6 +191,11 @@ public class HashFS implements Commands, Server {
 	}
 
 	@Override
+	public void delete(String filePath) {
+		// TODO
+	}
+
+	@Override
 	public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result) {
 		client.offer(server, forUpload, forDeletion, result);
 	}
@@ -204,19 +203,9 @@ public class HashFS implements Commands, Server {
 	@Override
 	public void updateServerMap(final Set<ServerInfo> bootstrap, final ResultCallback<Set<ServerInfo>> callback) {
 		for (ServerInfo server : bootstrap) {
-			client.alive(server, new ResultCallback<Set<ServerInfo>>() {
-				@Override
-				public void onResult(Set<ServerInfo> result) {
-					callback.onResult(result);
-				}
-
-				@Override
-				public void onException(Exception ignore) {
-					// Can't do anything. Bootstrap server doesn't answer.
-				}
-			});
+			client.alive(server, callback);
 		}
-		eventloop.schedule(eventloop.currentTimeMillis() + SERVER_UPDATE_TIME, new Runnable() {
+		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				updateServerMap(bootstrap, callback);
