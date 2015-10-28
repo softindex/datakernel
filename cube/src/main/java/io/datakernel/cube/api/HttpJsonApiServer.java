@@ -108,10 +108,11 @@ public final class HttpJsonApiServer {
 						return !childrenDimensions.contains(predicate.key) && !predicate.key.equals(dimension);
 					}
 				}));
+				Set<String> availableMeasures = cube.getAvailableMeasures(chain, measures);
 
 				final AggregationQuery query = new AggregationQuery()
 						.keys(chain)
-						.fields(measures)
+						.fields(newArrayList(availableMeasures))
 						.predicates(filteredPredicates);
 
 				final Class<?> resultClass = cube.getStructure().createResultClass(query);
@@ -168,11 +169,9 @@ public final class HttpJsonApiServer {
 					queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
 				}
 
-				Set<String> availableMeasures = cube.getAvailableMeasures(dimensions, measures);
-
 				final AggregationQuery finalQuery = new AggregationQuery()
 						.keys(dimensions)
-						.fields(newArrayList(availableMeasures));
+						.fields(measures);
 
 				if (queryPredicates != null) {
 					finalQuery.predicates(queryPredicates);

@@ -127,7 +127,7 @@ public class Aggregation {
 	}
 
 	public List<String> getAggregationFieldsForQuery(List<String> queryFields) {
-		return newArrayList(filter(queryFields, in(aggregationMetadata.getInputFields())));
+		return newArrayList(filter(queryFields, in(aggregationMetadata.getOutputFields())));
 	}
 
 	public boolean allKeysIn(List<String> requestedKeys) {
