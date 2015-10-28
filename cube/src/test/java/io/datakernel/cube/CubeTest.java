@@ -73,7 +73,7 @@ public class CubeTest {
 	                           AggregationStructure aggregationStructure) {
 		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		LogToCubeMetadataStorageStub cubeMetadataStorage = new LogToCubeMetadataStorageStub(aggregationMetadataStorage);
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, storage, aggregationStructure);
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, storage, aggregationStructure, 100_000, 1_000_000);
 		cube.addAggregation(new AggregationMetadata("detailedAggregation", asList("key1", "key2"),
 				asList("metric1", "metric2", "metric3")));
 		return cube;
@@ -83,7 +83,7 @@ public class CubeTest {
 	                                        AggregationStructure aggregationStructure) {
 		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		LogToCubeMetadataStorageStub cubeMetadataStorage = new LogToCubeMetadataStorageStub(aggregationMetadataStorage);
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, storage, aggregationStructure);
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, storage, aggregationStructure, 100_000, 1_000_000);
 		cube.addAggregation(new AggregationMetadata("detailedAggregation", asList("key1", "key2", "key3", "key4", "key5"),
 				asList("metric1", "metric2", "metric3")));
 		return cube;

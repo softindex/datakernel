@@ -23,6 +23,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamStatus;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
@@ -39,9 +40,6 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 	private LogFile currentLogFile;
 	private StreamProducers.Idle<ByteBuf> currentProducer;
 	private StreamFileWriter currentConsumer;
-
-	private boolean endOfStreamReceived = false;
-	private Exception receivedException = null;
 
 	private final ArrayDeque<ByteBuf> queue = new ArrayDeque<>();
 
@@ -75,12 +73,12 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 			@Override
 			public void onComplete() {
 				--activeWriters;
-				if (endOfStreamReceived && activeWriters == 0) {
+				if (getConsumerStatus() == StreamStatus.END_OF_STREAM && activeWriters == 0) {
 					if (callback != null)
 						callback.onComplete();
-				} else if (receivedException != null) {
+				} else if (error != null) {
 					if (callback != null)
-						callback.onException(receivedException);
+						callback.onException(error);
 				} else {
 					resume();
 				}
@@ -143,7 +141,7 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 				}
 				queue.clear();
 
-				if (endOfStreamReceived) {
+				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
 					new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(currentConsumer);
 				}
 			}
@@ -161,7 +159,6 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 	public void onEndOfStream() {
 		logger.trace("{}: upstream producer {} endOfStream.", this, upstreamProducer);
 
-		endOfStreamReceived = true;
 		if (isWriteStreamAvailable()) {
 			new StreamProducers.EndOfStream<ByteBuf>(eventloop).streamTo(currentConsumer);
 		}
@@ -171,9 +168,17 @@ class LogStreamConsumer_ByteBuffer extends AbstractStreamConsumer<ByteBuf> imple
 	public void onError(Exception e) {
 		logger.trace("{}: upstream producer {} error.", this, upstreamProducer, e);
 
-		receivedException = e;
 		if (isWriteStreamAvailable()) {
 			new StreamProducers.ClosingWithError<ByteBuf>(eventloop, e).streamTo(currentConsumer);
 		}
+		cleanupQueue();
 	}
+
+	protected void cleanupQueue() {
+		for (ByteBuf byteBuf: queue) {
+			byteBuf.recycle();
+		}
+	}
+
+
 }

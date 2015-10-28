@@ -127,7 +127,7 @@ public class Aggregation {
 	}
 
 	public List<String> getAggregationFieldsForQuery(List<String> queryFields) {
-		return newArrayList(filter(queryFields, in(aggregationMetadata.getInputFields())));
+		return newArrayList(filter(queryFields, in(aggregationMetadata.getOutputFields())));
 	}
 
 	public boolean allKeysIn(List<String> requestedKeys) {
@@ -441,9 +441,9 @@ public class Aggregation {
 		PredicateDefAnd predicateDefAnd = and();
 
 		for (AggregationQuery.QueryPredicate predicate : predicates.asCollection()) {
-			if (keysAlreadyInChunk.contains(predicate.key))
-				continue;
 			if (predicate instanceof AggregationQuery.QueryPredicateEq) {
+//				if (keysAlreadyInChunk.contains(predicate.key))
+//					continue;
 				Object value = ((AggregationQuery.QueryPredicateEq) predicate).value;
 
 				predicateDefAnd.add(cmpEq(

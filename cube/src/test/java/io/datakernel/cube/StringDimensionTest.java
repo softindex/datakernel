@@ -43,7 +43,7 @@ public class StringDimensionTest {
 	                           AggregationStructure structure) {
 		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		Cube cube = new Cube(eventloop, classLoader, new LogToCubeMetadataStorageStub(aggregationMetadataStorage), aggregationMetadataStorage,
-				storage, structure);
+				storage, structure, 100_000, 1_000_000);
 		cube.addAggregation(
 				new AggregationMetadata("detailedAggregation", asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
 		return cube;

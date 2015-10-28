@@ -16,6 +16,8 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import io.datakernel.serializer.asm.SerializerGen;
 
 import java.util.Comparator;
@@ -36,28 +38,9 @@ public abstract class KeyType implements Comparator<Object> {
 		return dataType;
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+	public abstract JsonPrimitive toJson(Object value);
 
-		KeyType that = (KeyType) o;
-
-		if (!dataType.equals(that.dataType)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		return dataType.hashCode();
-	}
-
-	public String toString(Object o) {
-		return o.toString();
-	}
-
-	public abstract Object toInternalRepresentation(String o);
+	public abstract Object fromJson(JsonElement value);
 
 	@Override
 	public String toString() {
