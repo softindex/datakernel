@@ -21,6 +21,7 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.sender.RequestSenderFactory;
+import io.datakernel.rpc.client.sender.RequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
@@ -37,7 +38,7 @@ import io.datakernel.serializer.annotations.Serialize;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static io.datakernel.rpc.client.sender.RequestSenderFactory.servers;
+import static io.datakernel.rpc.client.sender.RequestSendingStrategies.servers;
 
 /**
  * This class contains static factory methods to setup RPC client and server.
@@ -93,7 +94,7 @@ public final class CumulativeServiceHelper {
 				.connectSettings(connectSettings)
 				.waitForAllConnected()
 				.serializer(CumulativeServiceHelper.MESSAGE_SERIALIZER)
-				.requestSenderFactory(RequestSenderFactory.firstAvailable(servers(addresses)))
+				.requestSenderFactory(RequestSendingStrategies.firstAvailable(servers(addresses)))
 				.protocolFactory(PROTOCOL_FACTORY)
 				.build();
 	}

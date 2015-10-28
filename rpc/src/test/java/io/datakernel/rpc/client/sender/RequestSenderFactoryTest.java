@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
-import static io.datakernel.rpc.client.sender.RequestSenderFactory.*;
+import static io.datakernel.rpc.client.sender.RequestSendingStrategies.*;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;

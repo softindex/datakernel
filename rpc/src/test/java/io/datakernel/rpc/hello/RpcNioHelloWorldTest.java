@@ -19,7 +19,7 @@ package io.datakernel.rpc.hello;
 import static io.datakernel.async.AsyncCallbacks.closeFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
-import static io.datakernel.rpc.client.sender.RequestSenderFactory.servers;
+import static io.datakernel.rpc.client.sender.RequestSendingStrategies.servers;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 
@@ -40,6 +40,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.sender.RequestSenderFactory;
+import io.datakernel.rpc.client.sender.RequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage.AbstractRpcMessage;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
@@ -130,7 +131,7 @@ public class RpcNioHelloWorldTest {
 					.addresses(addresses)
 					.serializer(serializer())
 					.protocolFactory(protocolFactory)
-					.requestSenderFactory(RequestSenderFactory.firstAvailable(servers(addresses)))
+					.requestSenderFactory(RequestSendingStrategies.firstAvailable(servers(addresses)))
 					.build();
 
 			final BlockingCompletionCallback connectCompletion = new BlockingCompletionCallback();
