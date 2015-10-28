@@ -60,10 +60,31 @@ public class RequestSenderFactoryTest {
 								rendezvousHashing(hashFunction)
 										.put(1, server(address4))
 										.put(2, server(address5))
-						));
+						),
+						typeDispatching()
+								.on(DataTypeOne.class, server(address1))
+								.on(DataTypeTwo.class, roundRobin(servers(address1, address2)))
+								.onDefault(server(address3))
+				);
 
 		RequestSender strategy = requestSenderFactory.create(new RpcClientConnectionPool(new ArrayList<InetSocketAddress>()));
 
 		System.out.println("success");
+	}
+
+	public class DataTypeOne implements RpcMessage.RpcMessageData {
+
+		@Override
+		public boolean isMandatory() {
+			return false;
+		}
+	}
+
+	public class DataTypeTwo implements RpcMessage.RpcMessageData {
+
+		@Override
+		public boolean isMandatory() {
+			return false;
+		}
 	}
 }

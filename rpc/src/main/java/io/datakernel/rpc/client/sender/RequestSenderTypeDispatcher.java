@@ -6,7 +6,7 @@ import java.util.Map;
 
 import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
-public class RequestSenderTypeDispatcher implements RequestSender {
+class RequestSenderTypeDispatcher implements RequestSender {
 	private static final RpcNoSenderAvailableException SENDER_IS_NOT_SPECIFIED_EXCEPTION
 			= new RpcNoSenderAvailableException("Sender is not specified for this type of request");
 	private static final RpcNoSenderAvailableException NO_ACTIVE_SENDER_AVAILABLE_EXCEPTION

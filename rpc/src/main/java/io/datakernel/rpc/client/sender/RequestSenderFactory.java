@@ -29,6 +29,7 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 public abstract class RequestSenderFactory {
@@ -158,6 +159,12 @@ public abstract class RequestSenderFactory {
 
 
 
+	public static RequestSenderDispatcherFactory typeDispatching() {
+		return new RequestSenderDispatcherFactory();
+	}
+
+
+
 	@VisibleForTesting
 	static <T> List<T> flatten(List<List<T>> listOfList) {
 		List<T> flatList = new ArrayList<>();
@@ -212,17 +219,30 @@ public abstract class RequestSenderFactory {
 			return asList(create(pool));
 		}
 
+
+
+		// this group of similar methods was created to enable type checking
+		// and ensure that servers() result can't be applied in put() method as second argument
+		// because in this case we don't know how to choose one of them to send request
+
 		public RequestSenderFactoryWithKeys put(int key, RequestSenderToGroupFactory strategy) {
-			keyToFactory.put(key, strategy);
-			return this;
+			return putCommon(key, strategy);
 		}
 
 		public RequestSenderFactoryWithKeys put(int key, RequestSenderFactoryWithKeys strategy) {
-			keyToFactory.put(key, strategy);
-			return this;
+			return putCommon(key, strategy);
 		}
 
 		public RequestSenderFactoryWithKeys put(int key, RequestSenderToSingleServerFactory strategy) {
+			return putCommon(key, strategy);
+		}
+
+		public RequestSenderFactoryWithKeys put(int key, RequestSenderDispatcherFactory strategy) {
+			return putCommon(key, strategy);
+		}
+
+		private RequestSenderFactoryWithKeys putCommon(int key, RequestSenderFactory strategy) {
+			checkNotNull(strategy);
 			keyToFactory.put(key, strategy);
 			return this;
 		}
@@ -265,6 +285,94 @@ public abstract class RequestSenderFactory {
 		@Override
 		protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
 			return asList(create(pool));
+		}
+	}
+
+	public static final class RequestSenderDispatcherFactory extends RequestSenderFactory {
+
+		private Map<Class<? extends RpcMessageData>, RequestSenderFactory> dataTypeToFactory;
+		private RequestSenderFactory defaultSenderFactory;
+
+		private RequestSenderDispatcherFactory() {
+			dataTypeToFactory = new HashMap<>();
+			defaultSenderFactory = null;
+		}
+
+		@Override
+		public RequestSender create(RpcClientConnectionPool pool) {
+			Map<Class<? extends RpcMessageData>, RequestSender> dataTypeToSender
+					= new HashMap<>(dataTypeToFactory.size());
+			for (Class<? extends RpcMessageData> dataType : dataTypeToFactory.keySet()) {
+				dataTypeToSender.put(dataType, dataTypeToFactory.get(dataType).create(pool));
+			}
+			return new RequestSenderTypeDispatcher(dataTypeToSender, defaultSenderFactory.create(pool));
+		}
+
+		@Override
+		protected List<RequestSender> createAsList(RpcClientConnectionPool pool) {
+			return asList(create(pool));
+		}
+
+
+
+		// this group of similar methods was created to enable type checking
+		// and ensure that servers() result can't be applied in put() method as second argument
+		// because in this case we don't know how to choose one of them to send request
+
+		public RequestSenderDispatcherFactory on(Class<? extends RpcMessageData> dataType,
+		                                          RequestSenderToGroupFactory strategy) {
+			return onCommon(dataType, strategy);
+		}
+
+		public RequestSenderDispatcherFactory on(Class<? extends RpcMessageData> dataType,
+		                                          RequestSenderFactoryWithKeys strategy) {
+			return onCommon(dataType, strategy);
+		}
+
+		public RequestSenderDispatcherFactory on(Class<? extends RpcMessageData> dataType,
+		                                          RequestSenderToSingleServerFactory strategy) {
+			return onCommon(dataType, strategy);
+		}
+
+		public RequestSenderDispatcherFactory on(Class<? extends RpcMessageData> dataType,
+		                                         RequestSenderDispatcherFactory strategy) {
+			return onCommon(dataType, strategy);
+		}
+
+		private RequestSenderDispatcherFactory onCommon(Class<? extends RpcMessageData> dataType,
+		                                                RequestSenderFactory strategy) {
+			checkNotNull(dataType);
+			checkNotNull(strategy);
+			dataTypeToFactory.put(dataType, strategy);
+			return this;
+		}
+
+
+
+		// this group of similar methods was created to enable type checking
+		// and ensure that servers() result can't be applied in put() method as second argument
+		// because in this case we don't know how to choose one of them to send request
+
+		public RequestSenderDispatcherFactory onDefault(RequestSenderToGroupFactory strategy) {
+			return onDefaultCommon(strategy);
+		}
+
+		public RequestSenderDispatcherFactory onDefault(RequestSenderFactoryWithKeys strategy) {
+			return onDefaultCommon(strategy);
+		}
+
+		public RequestSenderDispatcherFactory onDefault(RequestSenderToSingleServerFactory strategy) {
+			return onDefaultCommon(strategy);
+		}
+
+		public RequestSenderDispatcherFactory onDefault(RequestSenderDispatcherFactory strategy) {
+			return onDefaultCommon(strategy);
+		}
+
+		private RequestSenderDispatcherFactory onDefaultCommon(RequestSenderFactory strategy) {
+			checkState(defaultSenderFactory == null, "Default Sender is already set");
+			defaultSenderFactory = strategy;
+			return this;
 		}
 	}
 }
