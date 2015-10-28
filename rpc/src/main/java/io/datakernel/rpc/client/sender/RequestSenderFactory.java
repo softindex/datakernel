@@ -18,6 +18,7 @@ package io.datakernel.rpc.client.sender;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
+import io.datakernel.rpc.hash.BucketHashFunction;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
@@ -197,21 +198,30 @@ public abstract class RequestSenderFactory {
 
 	public static final class RequestSenderFactoryWithKeys extends RequestSenderFactory {
 
-		private Map<Integer, RequestSenderFactory> keyToFactory;
+		private Map<Object, RequestSenderFactory> keyToFactory;
 		private HashFunction<RpcMessageData> hashFunction;
+		private BucketHashFunction bucketHashFunction;
 
 		private RequestSenderFactoryWithKeys(HashFunction<RpcMessageData> hashFunction) {
-			keyToFactory = new HashMap<>();
+			this(hashFunction, null);
+		}
+
+		private RequestSenderFactoryWithKeys(HashFunction<RpcMessageData> hashFunction,
+		                                     BucketHashFunction bucketHashFunction) {
+			this.keyToFactory = new HashMap<>();
 			this.hashFunction = hashFunction;
+			this.bucketHashFunction = bucketHashFunction;
 		}
 
 		@Override
 		public RequestSender create(RpcClientConnectionPool pool) {
-			Map<Integer, RequestSender> keyToSender = new HashMap<>(keyToFactory.size());
-			for (Integer key : keyToFactory.keySet()) {
+			Map<Object, RequestSender> keyToSender = new HashMap<>(keyToFactory.size());
+			for (Object key : keyToFactory.keySet()) {
 				keyToSender.put(key, keyToFactory.get(key).create(pool));
 			}
-			return new RequestSenderRendezvousHashing(keyToSender, hashFunction);
+			return bucketHashFunction != null ?
+					new RequestSenderRendezvousHashing(keyToSender, hashFunction, bucketHashFunction) :
+					new RequestSenderRendezvousHashing(keyToSender, hashFunction);
 		}
 
 		@Override
@@ -225,23 +235,23 @@ public abstract class RequestSenderFactory {
 		// and ensure that servers() result can't be applied in put() method as second argument
 		// because in this case we don't know how to choose one of them to send request
 
-		public RequestSenderFactoryWithKeys put(int key, RequestSenderToGroupFactory strategy) {
+		public RequestSenderFactoryWithKeys put(Object key, RequestSenderToGroupFactory strategy) {
 			return putCommon(key, strategy);
 		}
 
-		public RequestSenderFactoryWithKeys put(int key, RequestSenderFactoryWithKeys strategy) {
+		public RequestSenderFactoryWithKeys put(Object key, RequestSenderFactoryWithKeys strategy) {
 			return putCommon(key, strategy);
 		}
 
-		public RequestSenderFactoryWithKeys put(int key, RequestSenderToSingleServerFactory strategy) {
+		public RequestSenderFactoryWithKeys put(Object key, RequestSenderToSingleServerFactory strategy) {
 			return putCommon(key, strategy);
 		}
 
-		public RequestSenderFactoryWithKeys put(int key, RequestSenderDispatcherFactory strategy) {
+		public RequestSenderFactoryWithKeys put(Object key, RequestSenderDispatcherFactory strategy) {
 			return putCommon(key, strategy);
 		}
 
-		private RequestSenderFactoryWithKeys putCommon(int key, RequestSenderFactory strategy) {
+		private RequestSenderFactoryWithKeys putCommon(Object key, RequestSenderFactory strategy) {
 			checkNotNull(strategy);
 			keyToFactory.put(key, strategy);
 			return this;

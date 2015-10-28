@@ -19,6 +19,7 @@ package io.datakernel.rpc.client.sender;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.hash.Hashing;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.hash.BucketHashFunction;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 
@@ -31,6 +32,7 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 
 	private static final RpcNoSenderAvailableException NO_ACTIVE_SENDER_AVAILABLE_EXCEPTION
 			= new RpcNoSenderAvailableException("No active senders available");
+	private static final BucketHashFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultBucketHashFunction();
 
 	private boolean active;
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
@@ -38,12 +40,18 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 	final RendezvousHashBucket<RequestSender> hashBucket;
 
 
-	public RequestSenderRendezvousHashing(Map<Integer, RequestSender> keyToSender,
-	                                      HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+	public RequestSenderRendezvousHashing(Map<Object, RequestSender> keyToSender,
+	                                      HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	                                      BucketHashFunction bucketHashFunction) {
 		checkNotNull(keyToSender);
 		this.hashFunction = checkNotNull(hashFunction);
 		this.active = countActiveSenders(keyToSender) > 0;
-		this.hashBucket = new RendezvousHashBucket(keyToSender);
+		this.hashBucket = new RendezvousHashBucket(keyToSender, bucketHashFunction);
+	}
+
+	public RequestSenderRendezvousHashing(Map<Object, RequestSender> keyToSender,
+	                                      HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+		this(keyToSender, hashFunction, DEFAULT_BUCKET_HASH_FUNCTION);
 	}
 
 	@Override
@@ -68,7 +76,7 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 		return hashBucket.chooseSender(hash);
 	}
 
-	private static int countActiveSenders(Map<Integer, RequestSender> keyToSender) {
+	private static int countActiveSenders(Map<Object, RequestSender> keyToSender) {
 		int count = 0;
 		for (RequestSender sender : keyToSender.values()) {
 			if (sender.isActive()) {
@@ -79,34 +87,37 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 	}
 
 	@VisibleForTesting
-	static class RendezvousHashBucket<T> {
+	static final class RendezvousHashBucket<T> {
 		private static final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
 		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
 
-		private final int[] baseHashes;
+		private final Object[] baseHashes;
+		private final BucketHashFunction bucketHashFunction;
+		private final Map<Object, RequestSender> keyToSender;
 
-		private final Map<Integer, RequestSender> keyToSender;
-
-		public RendezvousHashBucket(Map<Integer, RequestSender> keyToSender) {
-			this(keyToSender, DEFAULT_BUCKET_CAPACITY);
+		public RendezvousHashBucket(Map<Object, RequestSender> keyToSender, BucketHashFunction bucketHashFunction) {
+			this(keyToSender, bucketHashFunction, DEFAULT_BUCKET_CAPACITY);
 		}
 
-		public RendezvousHashBucket(Map<Integer, RequestSender> keyToSender, int capacity) {
+		public RendezvousHashBucket(Map<Object, RequestSender> keyToSender,
+		                            BucketHashFunction bucketHashFunction, int capacity) {
 			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
-			this.keyToSender = checkNotNull(keyToSender, "addresses is not set");
-			this.baseHashes = new int[capacity];
+			checkNotNull(bucketHashFunction);
+			this.keyToSender = checkNotNull(keyToSender);
+			this.baseHashes = new Object[capacity];
+			this.bucketHashFunction = bucketHashFunction;
 			computeBaseHashes();
 		}
 
 		// if activeAddresses is empty fill bucket -1
 		private void computeBaseHashes() {
 			for (int n = 0; n < baseHashes.length; n++) {
-				int senderKey = -1;
+				Object senderKey = null;
 				int max = Integer.MIN_VALUE;
-				for (int key : keyToSender.keySet()) {
+				for (Object key : keyToSender.keySet()) {
 					RequestSender sender = keyToSender.get(key);
 					if (sender.isActive()) {
-						int hash = hashAddress(n, key, sender);
+						int hash = bucketHashFunction.hash(key, n);
 						if (hash >= max) {
 							senderKey = key;
 							max = hash;
@@ -117,16 +128,21 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 			}
 		}
 
-		private int hashAddress(int bucket, int senderKey, RequestSender sender) {
+		public RequestSender chooseSender(int hash) {
+			Object key = baseHashes[hash & (baseHashes.length - 1)];
+			return keyToSender.get(key);
+		}
+	}
+
+	private static final class DefaultBucketHashFunction implements BucketHashFunction {
+		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
+
+		@Override
+		public int hash(Object key, int bucket) {
 			return murmurHashAddressFunction.newHasher()
-					.putInt(senderKey)
+					.putInt(key.hashCode())
 					.putInt(bucket)
 					.hash().asInt();
-		}
-
-		public RequestSender chooseSender(int hash) {
-			int key = baseHashes[hash & (baseHashes.length - 1)];
-			return keyToSender.get(key);
 		}
 	}
 }
