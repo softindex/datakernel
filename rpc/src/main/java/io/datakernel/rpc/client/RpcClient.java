@@ -297,7 +297,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 						connect(address, connectSettings.attemptsReconnection(), ignoreCompletionCallback());
 					}
 				};
-				RpcClientConnection connection = new RpcClientConnection(eventloop, socketChannel, timeoutPrecision, serializer, protocolFactory, statusListener);
+				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel, timeoutPrecision, serializer, protocolFactory, statusListener);
 				connection.getSocketConnection().register();
 				successfulConnects++;
 				logger.info("Connection to {} established", address);
