@@ -34,19 +34,19 @@ public class DynamicClassCreationExample {
 				.field("y", String.class)
 				// setter for both fields - a sequence of actions
 				.method("setXY", sequence(
-						set(field(self(), "x"), arg(0)),
-						set(field(self(), "y"), arg(1))))
-				.method("getX", field(self(), "x"))
-				.method("getY", field(self(), "y"))
+						setter(self(), "x", arg(0)),
+						setter(self(), "y", arg(1))))
+				.method("getX", getter(self(), "x"))
+				.method("getY", getter(self(), "y"))
 				// compareTo, equals, hashCode and toString methods implementations follow the standard convention
 				.method("int compareTo(Test)", compareTo("x", "y"))
 				.method("equals", asEquals("x", "y"))
-				.method("hashOfPojo", hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
-				.method("hash", hashCodeOfArgs(field(self(), "x"), field(self(), "y")))
+				.method("hashOfPojo", hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
+				.method("hash", hashCodeOfArgs(getter(self(), "x"), getter(self(), "y")))
 				.method("toString", asString()
 						.quotes("{", "}", ", ")
-						.add("field1: ", field(self(), "x"))
-						.add("field2: ", field(self(), "y")))
+						.add("field1: ", getter(self(), "x"))
+						.add("field2: ", getter(self(), "y")))
 				.defineClass();
 
 		// Instantiate two objects of dynamically defined class

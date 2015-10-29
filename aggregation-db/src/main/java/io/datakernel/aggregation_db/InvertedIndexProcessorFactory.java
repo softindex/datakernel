@@ -46,19 +46,19 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 		// Define the function that constructs the accumulator.
 		Expression accumulator = let(constructor(outputClass));
 		ExpressionSequence onFirstItemDef = sequence(accumulator);
-		onFirstItemDef.add(set(field(accumulator, listFieldName),
+		onFirstItemDef.add(setter(accumulator, listFieldName,
 				constructor(ArrayList.class))); // call ArrayList constructor
 		// Copy names and values of keys from the record passed as the third argument
 		for (String key : keys) {
 			onFirstItemDef.add(set(
-					field(accumulator, key),
-					field(cast(arg(2), inputClass), key)));
+					getter(accumulator, key),
+					getter(cast(arg(2), inputClass), key)));
 		}
 		// Call <listName>.addAll(firstValue.<listName>);
 		onFirstItemDef.add(call(
-				field(accumulator, listFieldName),
+				getter(accumulator, listFieldName),
 				addAllMethodName,
-				cast(field(cast(arg(2), inputClass), listFieldName), Collection.class)
+				cast(getter(cast(arg(2), inputClass), listFieldName), Collection.class)
 		));
 		onFirstItemDef.add(accumulator);
 		builder.method("onFirstItem", onFirstItemDef);
@@ -66,9 +66,9 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 		// Call <listName>.addAll(nextValue.<listName>);
 		ExpressionSequence onNextItemDef = sequence();
 		onNextItemDef.add(call(
-				field(cast(arg(3), outputClass), listFieldName),
+				getter(cast(arg(3), outputClass), listFieldName),
 				addAllMethodName,
-				cast(field(cast(arg(2), inputClass), listFieldName), Collection.class)
+				cast(getter(cast(arg(2), inputClass), listFieldName), Collection.class)
 		));
 		onNextItemDef.add(arg(3));
 		builder.method("onNextItem", onNextItemDef);
@@ -91,28 +91,28 @@ public class InvertedIndexProcessorFactory implements ProcessorFactory {
 		ExpressionSequence createAccumulatorDef = sequence(result);
 
 		// call ArrayList constructor
-		createAccumulatorDef.add(set(field(result, listFieldName), constructor(ArrayList.class)));
+		createAccumulatorDef.add(set(getter(result, listFieldName), constructor(ArrayList.class)));
 		// Copy names and values of keys from the record passed as the third argument
 		for (String key : keys) {
 			createAccumulatorDef.add(set(
-					field(result, key),
-					field(cast(arg(0), inputClass), key)));
+					getter(result, key),
+					getter(cast(arg(0), inputClass), key)));
 		}
 
 		// Call <listName>.add(record.<valueName>)
 		createAccumulatorDef.add(call(
-				field(result, listFieldName),
+				getter(result, listFieldName),
 				addMethodName,
-				cast(field(cast(arg(0), inputClass), inputFields.get(0)), Object.class)
+				cast(getter(cast(arg(0), inputClass), inputFields.get(0)), Object.class)
 		));
 		createAccumulatorDef.add(result);
 		builder.method("createAccumulator", createAccumulatorDef);
 
 		// Call <listName>.add(record.<valueName>)
 		builder.method("accumulate", call(
-				field(cast(arg(0), outputClass), listFieldName),
+				getter(cast(arg(0), outputClass), listFieldName),
 				addMethodName,
-				cast(field(cast(arg(1), inputClass), inputFields.get(0)), Object.class)
+				cast(getter(cast(arg(1), inputClass), inputFields.get(0)), Object.class)
 		));
 
 		return builder.newInstance();
