@@ -42,6 +42,9 @@ final class RequestSenderSharding extends RequestSenderToGroup {
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
 	                                                              final ResultCallback<T> callback) {
 		checkNotNull(callback);
+
+		assert isActive();
+
 		RequestSender sender = chooseSender(request);
 		if (sender.isActive()) {
 			sender.sendRequest(request, timeout, callback);

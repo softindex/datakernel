@@ -8,7 +8,7 @@ import java.util.List;
 abstract class RequestSenderToGroup implements RequestSender {
 	private final List<RequestSender> allSubSenders;
 	private final List<RequestSender> activeSubSenders;
-	private boolean active;
+	private final boolean active;
 
 	public RequestSenderToGroup(List<RequestSender> senders) {
 		checkNotNull(senders);

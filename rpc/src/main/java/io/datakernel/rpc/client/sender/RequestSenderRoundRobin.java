@@ -34,6 +34,9 @@ final class RequestSenderRoundRobin extends RequestSenderToGroup {
 	@Override
 	public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback) {
 		checkNotNull(callback);
+
+		assert isActive();
+
 		RequestSender sender = getCurrentSubSender();
 		sender.sendRequest(request, timeout, callback);
 	}

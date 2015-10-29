@@ -37,7 +37,7 @@ final class RequestSenderToAll extends RequestSenderToGroup {
 		checkNotNull(callback);
 		List<RequestSender> activeSubSenders = getActiveSubSenders();
 
-		assert activeSubSenders.size() > 0;
+		assert isActive();
 
 		FirstResultCallback<T> resultCallback = new FirstResultCallback<>(callback);
 		for (RequestSender sender : activeSubSenders) {

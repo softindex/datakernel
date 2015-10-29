@@ -4,6 +4,7 @@ import io.datakernel.async.ResultCallback;
 
 import java.util.Map;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 class RequestSenderTypeDispatcher implements RequestSender {
@@ -14,15 +15,21 @@ class RequestSenderTypeDispatcher implements RequestSender {
 
 	private Map<Class<? extends RpcMessageData>, RequestSender> dataTypeToSender;
 	private RequestSender defaultSender;
+	private final boolean active;
 
 	public RequestSenderTypeDispatcher(Map<Class<? extends RpcMessageData>, RequestSender> dataTypeToSender,
 	                                   RequestSender defaultSender) {
 		this.dataTypeToSender = dataTypeToSender;
 		this.defaultSender = defaultSender;
+		this.active = countActiveSenders(dataTypeToSender) > 0 || (defaultSender != null && defaultSender.isActive());
 	}
 
 	@Override
 	public <T extends RpcMessageData> void sendRequest(RpcMessageData request,int timeout, ResultCallback<T> callback) {
+		checkNotNull(callback);
+
+		assert isActive();
+
 		RequestSender specifiedSender = dataTypeToSender.get(request);
 		RequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;
 		if (sender != null) {
@@ -38,6 +45,16 @@ class RequestSenderTypeDispatcher implements RequestSender {
 
 	@Override
 	public boolean isActive() {
-		return false;
+		return active;
+	}
+
+	private static int countActiveSenders(Map<Class<? extends RpcMessageData>, RequestSender> keyToSender) {
+		int count = 0;
+		for (RequestSender sender : keyToSender.values()) {
+			if (sender.isActive()) {
+				++count;
+			}
+		}
+		return count;
 	}
 }

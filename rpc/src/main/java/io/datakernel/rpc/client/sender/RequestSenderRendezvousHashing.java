@@ -34,7 +34,7 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 			= new RpcNoSenderAvailableException("No active senders available");
 	private static final BucketHashFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultBucketHashFunction();
 
-	private boolean active;
+	private final boolean active;
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 	@VisibleForTesting
 	final RendezvousHashBucket<RequestSender> hashBucket;
@@ -58,6 +58,9 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
 	                                                              final ResultCallback<T> callback) {
 		checkNotNull(callback);
+
+		assert isActive();
+
 		RequestSender sender = getRequestSender(request);
 		if (sender == null) {
 			callback.onException(NO_ACTIVE_SENDER_AVAILABLE_EXCEPTION);

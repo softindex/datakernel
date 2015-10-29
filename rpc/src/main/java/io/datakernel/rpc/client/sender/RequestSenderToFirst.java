@@ -35,7 +35,7 @@ final class RequestSenderToFirst extends RequestSenderToGroup {
 		checkNotNull(callback);
 		List<RequestSender> activeSubSenders = getActiveSubSenders();
 
-		assert activeSubSenders.size() > 0;
+		assert isActive();
 
 		RequestSender first = activeSubSenders.get(0);
 		first.sendRequest(request, timeout, callback);
