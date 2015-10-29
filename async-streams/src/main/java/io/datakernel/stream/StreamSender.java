@@ -156,4 +156,8 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 		downstreamDataReceiver.onData(item);
 	}
 
+	@Override
+	protected void doCleanup() {
+		queue.clear();
+	}
 }

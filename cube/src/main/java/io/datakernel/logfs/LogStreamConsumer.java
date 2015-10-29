@@ -20,7 +20,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerDecorator;
-import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
 import org.joda.time.DateTimeZone;
@@ -57,7 +56,7 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 
 		setActualConsumer(streamBinarySerializer);
 		streamBinarySerializer.streamTo(streamCompressor);
-		streamCompressor.streamTo(logStreamConsumer_byteBuffer);
+		streamCompressor.streamTo(logStreamConsumer_byteBuffer.getInput());
 	}
 
 	public void setCompletionCallback(CompletionCallback callback) {

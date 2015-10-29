@@ -82,7 +82,15 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	public void setFlushCallback(CompletionCallback flushCallback) {
-		this.flushCallback = flushCallback;
+		if (getConsumerStatus().isOpen()) {
+			this.flushCallback = flushCallback;
+		} else {
+			if (getConsumerStatus() == END_OF_STREAM) {
+				flushCallback.onComplete();
+			} else {
+				flushCallback.onException(getConsumerException());
+			}
+		}
 	}
 
 	/**
