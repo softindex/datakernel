@@ -16,13 +16,12 @@
 
 package io.datakernel.service;
 
-/**
- * Service which starts and stops asynchronously and does not block thread while startFuture/stopFuture methods are running.
- */
-public interface ConcurrentService {
-	void startFuture(SimpleCompletionFuture callback);
+import io.datakernel.annotation.Nullable;
+import io.datakernel.async.SimpleCompletionFuture;
 
-	void stopFuture(SimpleCompletionFuture callback);
+public interface FunctionCallback<F> {
+	void apply(F input, SimpleCompletionFuture callback);
 
+	@Override
+	boolean equals(@Nullable Object object);
 }
-

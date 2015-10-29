@@ -18,10 +18,10 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 

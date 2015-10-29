@@ -20,7 +20,6 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.util.Function;
 import org.slf4j.Logger;
 

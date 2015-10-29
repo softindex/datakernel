@@ -16,16 +16,16 @@
 
 package io.datakernel.service;
 
+import io.datakernel.async.SimpleCompletionFuture;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.slf4j.LoggerFactory.getLogger;
-
 public class SequentialService implements ConcurrentService {
-	private static final Logger logger = getLogger(SequentialService.class);
+	private static final Logger logger = LoggerFactory.getLogger(SequentialService.class);
 	private final List<ConcurrentService> services;
 
 	/**

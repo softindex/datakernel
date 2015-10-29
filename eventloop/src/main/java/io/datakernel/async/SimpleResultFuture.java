@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.async;
 
 import java.util.concurrent.CountDownLatch;
 

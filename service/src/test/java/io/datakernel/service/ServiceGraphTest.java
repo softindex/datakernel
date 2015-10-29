@@ -16,6 +16,7 @@
 
 package io.datakernel.service;
 
+import io.datakernel.async.SimpleCompletionFuture;
 import org.junit.Test;
 
 public class ServiceGraphTest {
