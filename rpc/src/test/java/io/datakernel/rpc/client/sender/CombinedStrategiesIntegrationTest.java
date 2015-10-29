@@ -51,7 +51,7 @@ import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Before;
 import org.junit.Test;
 
-public class CombinedStrategiesTest {
+public class CombinedStrategiesIntegrationTest {
 
 	private interface HelloService {
 		String hello(String name) throws Exception;
