@@ -8,8 +8,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 class RequestSenderTypeDispatcher implements RequestSender {
-	private static final RpcNoSenderAvailableException SENDER_IS_NOT_SPECIFIED_EXCEPTION
-			= new RpcNoSenderAvailableException("Sender is not specified for this type of request");
+	private static final RpcSenderNotSpecifiedException SENDER_IS_NOT_SPECIFIED_EXCEPTION
+			= new RpcSenderNotSpecifiedException("Sender is not specified for this type of request");
 	private static final RpcNoSenderAvailableException NO_ACTIVE_SENDER_AVAILABLE_EXCEPTION
 			= new RpcNoSenderAvailableException("No active senders available");
 
