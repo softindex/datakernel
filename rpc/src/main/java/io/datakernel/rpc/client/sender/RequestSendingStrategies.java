@@ -175,6 +175,11 @@ public final class RequestSendingStrategies {
 	}
 
 	public static abstract class AbstractRequestSenderFactory implements RequestSenderFactory{
+
+		private AbstractRequestSenderFactory() {
+
+		}
+
 		protected abstract List<RequestSender> createAsList(RpcClientConnectionPool pool);
 	}
 
