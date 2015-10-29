@@ -33,7 +33,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 public class HashFS implements Commands, Server {
 	private static final Logger logger = LoggerFactory.getLogger(HashFS.class);
 
-	private static final long TIME_TO_SLAY = 10 * 1000;
+	private static final long APPROVE_WAIT_TIME = 10 * 1000;
 	private static final long SERVER_UPDATE_TIME = 100 * 1000;
 	private static final long TIMEOUT_TO_UPDATE = 50 * 1000;
 
@@ -174,7 +174,6 @@ public class HashFS implements Commands, Server {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public void replicate(final String filePath, final ServerInfo server) {
-		// FIXME (arashev) don't like scheme with forwarder
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		fileSystem.get(filePath, forwarder);
 		client.upload(server, filePath, forwarder, new CompletionCallback() {
@@ -201,21 +200,31 @@ public class HashFS implements Commands, Server {
 	}
 
 	@Override
-	public void updateServerMap(final Set<ServerInfo> bootstrap, final ResultCallback<Set<ServerInfo>> callback) {
+	public void updateServerMap(final Set<ServerInfo> bootstrap) {
 		for (ServerInfo server : bootstrap) {
-			client.alive(server, callback);
+			client.alive(server, new ResultCallback<Set<ServerInfo>>() {
+				@Override
+				public void onResult(Set<ServerInfo> result) {
+					logic.onShowAliveResponse(result, eventloop.currentTimeMillis());
+				}
+
+				@Override
+				public void onException(Exception ignored) {
+
+				}
+			});
 		}
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				updateServerMap(bootstrap, callback);
+				updateServerMap(bootstrap);
 			}
 		});
 	}
 
 	@Override
 	public void scheduleTemporaryFileDeletion(final String filePath) {
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + TIME_TO_SLAY, new Runnable() {
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + APPROVE_WAIT_TIME, new Runnable() {
 			@Override
 			public void run() {
 				commit(filePath, false, ignoreCompletionCallback());

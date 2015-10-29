@@ -27,7 +27,7 @@ public interface Commands {
 
 	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
 
-	void updateServerMap(Set<ServerInfo> bootstrap, ResultCallback<Set<ServerInfo>> result);
+	void updateServerMap(Set<ServerInfo> bootstrap);
 
 	void scheduleTemporaryFileDeletion(String filePath);
 

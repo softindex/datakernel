@@ -22,6 +22,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.*;
 
+import static io.datakernel.hashfs2.Config.defaultConfig;
 import static org.junit.Assert.*;
 
 public class TestLogic {
@@ -31,6 +32,17 @@ public class TestLogic {
 	private final ServerInfo server2 = new ServerInfo(2, new InetSocketAddress("http://127.0.0.1", 3456), 0.1);
 	private final ServerInfo server3 = new ServerInfo(3, new InetSocketAddress("http://127.0.0.1", 4567), 0.1);
 
+	{
+		local.updateState(ServerStatus.RUNNING, 1);
+		server1.updateState(ServerStatus.RUNNING, 1);
+		server2.updateState(ServerStatus.RUNNING, 1);
+		server3.updateState(ServerStatus.RUNNING, 1);
+	}
+
+	private final Config config = defaultConfig.setupLogic(10 * 1000, 2, 1);
+
+	private final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(local, server1, server2, server3));
+
 	private final String a = "a.txt";
 	private final String b = "b.txt";
 	private final String c = "c.txt";
@@ -38,23 +50,22 @@ public class TestLogic {
 	private final String e = "e.txt";
 	private final String f = "f.txt";
 	private final String g = "g.txt";
-	private final String newFile = "new file";
+	private final String newFile = "new file.txt";
 
 	@Test
 	public void testUpdate() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = new LogicImpl(hMock, local, cMock);
-		logic.init(new HashSet<>(Arrays.asList(local, server1, server2, server3)));
+		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
 		logic.update();
 
-		Set<String> real1 = cMock.servers.get(server1);
-		Set<String> real2 = cMock.servers.get(server2);
-		Set<String> real3 = cMock.servers.get(server3);
+		Set<String> real1 = cMock.servers2files.get(server1);
+		Set<String> real2 = cMock.servers2files.get(server2);
+		Set<String> real3 = cMock.servers2files.get(server3);
 
-		Set<String> expected1 = new HashSet<>(Arrays.asList(a, c, d, f, g));
-		Set<String> expected2 = new HashSet<>(Arrays.asList(a, b, d, e, f));
-		Set<String> expected3 = new HashSet<>(Arrays.asList(a, b, c, e, g));
+		Set<String> expected1 = new HashSet<>(Arrays.asList(d, g, a));
+		Set<String> expected2 = new HashSet<>(Arrays.asList(a, b, e, f));
+		Set<String> expected3 = new HashSet<>(Arrays.asList(b, c, g));
 
 		assertEquals(expected1, real1);
 		assertEquals(expected2, real2);
@@ -65,8 +76,7 @@ public class TestLogic {
 	public void testUpload() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = new LogicImpl(hMock, local, cMock);
-		logic.init(new HashSet<>(Arrays.asList(local, server1, server2, server3)));
+		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
 		logic.update();
 
 		assertFalse(logic.canUpload(b));
@@ -79,26 +89,101 @@ public class TestLogic {
 		logic.onApprove(newFile);
 		logic.update();
 
-		Set<String> real2 = cMock.servers.get(server2);
-		Set<String> real3 = cMock.servers.get(server3);
+		Set<String> real2 = cMock.servers2files.get(server2);
 
 		assertTrue(real2.contains(newFile));
-		assertTrue(real3.contains(newFile));
+	}
+
+	@Test
+	public void testDelete() {
+		HashingMock hMock = new HashingMock();
+		CommandsMock cMock = new CommandsMock();
+		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		logic.update();
+		// first time due to the fact that there was only minimum safe replicas quantity in the whole system
+		// logic left the file and it is still accessible from this server unless this node manage to replicate it
+		logic.onReplicationComplete(a, server1);
+		logic.onReplicationComplete(a, server2);
+		assertTrue(logic.canDelete(a));
+		logic.update();
+		assertFalse(logic.canDelete(a));
+
+		logic.onReplicationComplete(e, server2);
+		assertTrue(logic.canDelete(e));
+		logic.onDeletionStart(e);
+		logic.onDeleteComplete(e);
+		assertTrue(logic.canUpload(e));
+		logic.update();
+
+		assertTrue(cMock.servers2deletedFiles.get(server2).contains(e));
+
+		logic.onReplicationComplete(f, server2);
+		logic.onDownloadStart(f);
+		assertFalse(logic.canDelete(f));
+		logic.onDownloadComplete(f);
+		assertTrue(logic.canDelete(f));
 	}
 
 	@Test
 	public void testDownload() {
-		fail("Not yet implemented");
+		HashingMock hMock = new HashingMock();
+		CommandsMock cMock = new CommandsMock();
+		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		logic.update();
+		logic.update();
+		assertFalse(logic.canDownload(a));
 	}
 
 	@Test
 	public void testOffer() {
-		fail("Not yet implemented");
+		HashingMock hMock = new HashingMock();
+		CommandsMock cMock = new CommandsMock();
+		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		logic.update();
+
+		logic.onReplicationComplete(a, server1);
+		logic.onReplicationComplete(a, server2);
+		logic.onReplicationComplete(d, server1);
+		logic.onReplicationComplete(e, server2);
+		logic.onReplicationComplete(c, server3);
+		logic.onReplicationComplete(f, server2);
+		logic.onReplicationComplete(g, server1);
+		logic.onReplicationComplete(g, server3);
+		logic.onReplicationComplete(b, server2);
+		logic.onReplicationComplete(b, server3);
+
+		logic.update();
+
+		logic.onOfferRequest(new HashSet<>(Arrays.asList(a, b, c, d, e, f, g)), new HashSet<String>(), new ResultCallback<Set<String>>() {
+			@Override
+			public void onResult(Set<String> result) {
+				assertEquals(new HashSet<>(Arrays.asList(a, b, g)), result);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+				fail("Can't sto here");
+			}
+		});
 	}
 
 	@Test
 	public void testAlive() {
-		fail("Not yet implemented");
+		HashingMock hMock = new HashingMock();
+		CommandsMock cMock = new CommandsMock();
+		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+
+		logic.onShowAliveRequest(new ResultCallback<Set<ServerInfo>>() {
+			@Override
+			public void onResult(Set<ServerInfo> result) {
+				assertEquals(new HashSet<>(bootstrap), result);
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				fail("Can't end here");
+			}
+		});
 	}
 
 	class HashingMock implements Hashing {
@@ -149,20 +234,26 @@ public class TestLogic {
 	}
 
 	class CommandsMock implements Commands {
-		Map<ServerInfo, Set<String>> servers = new HashMap<>();
+		Map<ServerInfo, Set<String>> servers2files = new HashMap<>();
+		Map<ServerInfo, Set<String>> servers2deletedFiles = new HashMap<>();
 		Set<String> filesDeletedFromThisServer = new HashSet<>();
 		Set<String> scheduledDeletions = new HashSet<>();
 
 		{
-			servers.put(local, new HashSet<String>());
-			servers.put(server1, new HashSet<String>());
-			servers.put(server2, new HashSet<String>());
-			servers.put(server3, new HashSet<String>());
+			servers2files.put(local, new HashSet<String>());
+			servers2files.put(server1, new HashSet<String>());
+			servers2files.put(server2, new HashSet<String>());
+			servers2files.put(server3, new HashSet<String>());
+
+			servers2deletedFiles.put(local, new HashSet<String>());
+			servers2deletedFiles.put(server1, new HashSet<String>());
+			servers2deletedFiles.put(server2, new HashSet<String>());
+			servers2deletedFiles.put(server3, new HashSet<String>());
 		}
 
 		@Override
 		public void replicate(String filePath, ServerInfo server) {
-			servers.get(server).add(filePath);
+			servers2files.get(server).add(filePath);
 		}
 
 		@Override
@@ -173,18 +264,21 @@ public class TestLogic {
 		@Override
 		public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result) {
 			Set<String> neededFiles = new HashSet<>();
-			Set<String> currentFiles = servers.get(server);
+			Set<String> currentFiles = servers2files.get(server);
 			for (String s : forUpload) {
 				if (!currentFiles.contains(s)) {
 					neededFiles.add(s);
 				}
-				result.onResult(neededFiles);
+			}
+			result.onResult(neededFiles);
+			for (String s : forDeletion) {
+				servers2deletedFiles.get(server).add(s);
 			}
 		}
 
 		@Override
-		public void updateServerMap(Set<ServerInfo> bootstrap, ResultCallback<Set<ServerInfo>> result) {
-			result.onResult(servers.keySet());
+		public void updateServerMap(Set<ServerInfo> bootstrap) {
+			// ignored
 		}
 
 		@Override

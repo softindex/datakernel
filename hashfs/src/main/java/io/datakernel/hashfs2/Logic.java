@@ -21,8 +21,6 @@ import io.datakernel.async.ResultCallback;
 import java.util.Set;
 
 public interface Logic {
-	void init(Set<ServerInfo> bootstrap);
-
 	void update();
 
 	boolean canUpload(String filePath);
@@ -56,6 +54,8 @@ public interface Logic {
 	void onDeleteFailed(String filePath);
 
 	void onShowAliveRequest(ResultCallback<Set<ServerInfo>> alive);
+
+	void onShowAliveResponse(Set<ServerInfo> result, long timestamp);
 
 	void onOfferRequest(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
 

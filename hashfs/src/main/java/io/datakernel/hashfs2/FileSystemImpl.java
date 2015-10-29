@@ -61,7 +61,7 @@ public class FileSystemImpl implements FileSystem {
 	public static FileSystem init(NioEventloop eventloop, ExecutorService executor,
 	                              Path fileStorage, Config config) throws IOException {
 
-		int bufferSize = config.getfSBufferSize();
+		int bufferSize = config.getFsBufferSize();
 		String tmp = config.getTmpDirectoryName();
 		String inProgress = config.getInProgressExtension();
 		Path tmpStorage = fileStorage.resolve(tmp);

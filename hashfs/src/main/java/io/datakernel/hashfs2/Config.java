@@ -19,31 +19,54 @@ package io.datakernel.hashfs2;
 public class Config {
 	public static final Config defaultConfig = new Config();
 
+	// FILESYSTEM
 	private String inProgressExtension = ".partial";
 	private String tmpDirectoryName = "tmp";
-	private int fSBufferSize = 256 * 1024;
+	private int fsBufferSize = 256 * 1024;
+	// LOGIC
+	private long serverDeathTimeout = 10 * 1000;
+	private int maxReplicaQuantity = 3;
+	private int minSafeReplicasQuantity = 1;
+	// PROTOCOL
+
+	// SERVER
+
+	public Config setupFs(String inProgressExtension, String tmpDirectoryName, int bufferSize) {
+		this.inProgressExtension = inProgressExtension;
+		this.tmpDirectoryName = tmpDirectoryName;
+		this.fsBufferSize = bufferSize;
+		return this;
+	}
+
+	public Config setupLogic(long serverDeathTimeout, int maxReplicaQuantity, int minSafeReplicasQuantity) {
+		this.serverDeathTimeout = serverDeathTimeout;
+		this.maxReplicaQuantity = maxReplicaQuantity;
+		this.minSafeReplicasQuantity = minSafeReplicasQuantity;
+		return this;
+	}
 
 	public String getInProgressExtension() {
 		return inProgressExtension;
-	}
-
-	public void setInProgressExtension(String inProgressExtension) {
-		this.inProgressExtension = inProgressExtension;
 	}
 
 	public String getTmpDirectoryName() {
 		return tmpDirectoryName;
 	}
 
-	public void setTmpDirectoryName(String tmpDirectoryName) {
-		this.tmpDirectoryName = tmpDirectoryName;
+	public int getFsBufferSize() {
+		return fsBufferSize;
 	}
 
-	public int getfSBufferSize() {
-		return fSBufferSize;
+	public long getServerDeathTimeout() {
+		return serverDeathTimeout;
 	}
 
-	public void setfSBufferSize(int fSBufferSize) {
-		this.fSBufferSize = fSBufferSize;
+	public int getMaxReplicaQuantity() {
+		return maxReplicaQuantity;
 	}
+
+	public int getMinSafeReplicasQuantity() {
+		return minSafeReplicasQuantity;
+	}
+
 }
