@@ -34,9 +34,6 @@ final class RequestSenderSharding extends RequestSenderToGroup {
 		this.hashFunction = checkNotNull(hashFunction);
 	}
 
-//	public RequestSenderSharding(List<RequestSender> senders, HashFunction<RpcMessage.RpcMessageData> hashFunction) {
-//		this(senders, EMPTY_KEY, hashFunction);
-//	}
 
 	@Override
 	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,

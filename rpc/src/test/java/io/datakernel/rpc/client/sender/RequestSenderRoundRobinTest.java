@@ -92,7 +92,7 @@ public class RequestSenderRoundRobinTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_4, connection4);
-		// we don't add connection for ADDRESS_3 and ADDRESS_5
+		// we don't add connections for ADDRESS_3 and ADDRESS_5
 		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
 		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
 		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
