@@ -104,8 +104,8 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 			return getProducerStatus() != StreamStatus.READY;
 		}
 
-		public void sendMessage(RpcMessage message) throws Exception {
-			downstreamDataReceiver.onData(message);
+		public void sendMessage(RpcMessage item) {
+			super.send(item);
 		}
 
 		public void close() {

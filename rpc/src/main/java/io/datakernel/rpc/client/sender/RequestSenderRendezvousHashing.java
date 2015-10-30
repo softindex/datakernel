@@ -133,11 +133,16 @@ final class RequestSenderRendezvousHashing implements RequestSender {
 
 		public RequestSender chooseSender(int hash) {
 			Object key = baseHashes[hash & (baseHashes.length - 1)];
-			return keyToSender.get(key);
+			if (key != null) {
+				return keyToSender.get(key);
+			} else {
+				return null;
+			}
 		}
 	}
 
-	private static final class DefaultBucketHashFunction implements BucketHashFunction {
+	@VisibleForTesting
+	static final class DefaultBucketHashFunction implements BucketHashFunction {
 		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
 
 		@Override
