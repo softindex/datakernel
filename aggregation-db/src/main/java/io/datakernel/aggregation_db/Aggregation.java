@@ -331,7 +331,7 @@ public class Aggregation {
 		Class<?> resultClass = structure.createRecordClass(getKeys(), fields);
 
 		consolidatedProducer(getKeys(), fields, resultClass, null, chunksToConsolidate)
-				.streamTo(new AggregationChunker(eventloop, getId(), getKeys(), fields, resultClass, aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback));
+				.streamTo(new AggregationChunker(eventloop, getId(), getKeys(), fields, resultClass, aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback).getInput());
 	}
 
 	private <T> StreamProducer<T> consolidatedProducer(List<String> keys, List<String> fields, Class<T> resultClass,

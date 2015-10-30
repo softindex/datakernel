@@ -17,7 +17,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.processor.InputGetter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,7 +30,7 @@ import static java.util.Collections.unmodifiableList;
  * @param <I> type of receiving items
  */
 @SuppressWarnings("unchecked")
-public abstract class AbstractStreamTransformer_1_N<I> implements InputGetter<I> {
+public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, HasOutputs {
 	protected final Eventloop eventloop;
 
 	protected AbstractUpstreamConsumer upstreamConsumer;
@@ -189,8 +188,13 @@ public abstract class AbstractStreamTransformer_1_N<I> implements InputGetter<I>
 		return upstreamConsumer;
 	}
 
-	public List<? extends StreamProducer<?>> getDownstreamProducers() {
+	@Override
+	public List<? extends StreamProducer<?>> getOutputs() {
 		return unmodifiableList(downstreamProducers);
 	}
 
+	@Override
+	public StreamProducer<?> getOutput(int index) {
+		return downstreamProducers.get(index);
+	}
 }

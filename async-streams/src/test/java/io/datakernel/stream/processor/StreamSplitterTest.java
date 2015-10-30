@@ -51,7 +51,7 @@ public class StreamSplitterTest {
 		assertEquals(asList(1, 2, 3), consumerToList2.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, streamConcat.getInput().getConsumerStatus());
-		assertProducerStatuses(END_OF_STREAM, streamConcat.getDownstreamProducers());
+		assertProducerStatuses(END_OF_STREAM, streamConcat.getOutputs());
 	}
 
 	@Test
@@ -99,7 +99,7 @@ public class StreamSplitterTest {
 
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamConcat.getInput().getConsumerStatus());
-		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getDownstreamProducers());
+		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getOutputs());
 	}
 
 	@Test
@@ -134,6 +134,6 @@ public class StreamSplitterTest {
 		assertTrue(list3.size() == 3);
 
 		assertEquals(CLOSED_WITH_ERROR, streamConcat.getInput().getConsumerStatus());
-		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getDownstreamProducers());
+		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getOutputs());
 	}
 }

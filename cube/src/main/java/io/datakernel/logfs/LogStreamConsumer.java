@@ -19,14 +19,15 @@ package io.datakernel.logfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.StreamConsumerDecorator;
+import io.datakernel.stream.HasInput;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
+public class LogStreamConsumer<T> implements HasInput<T> {
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 	public static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
 	public static final int DEFAULT_FLUSH_DELAY = 1000; // 1 second
@@ -45,7 +46,7 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 
 	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
 	                         String streamId, int bufferSize, int flushDelayMillis) {
-		super(eventloop);
+//		super(eventloop);
 		this.streamBinarySerializer = new StreamBinarySerializer<>(eventloop, serializer, bufferSize, StreamBinarySerializer.MAX_SIZE, flushDelayMillis, false);
 		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		logStreamConsumer_byteBuffer = new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
@@ -54,12 +55,17 @@ public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 		streamCompressor.setTag(streamId);
 		this.streamBinarySerializer.setTag(streamId);
 
-		setActualConsumer(streamBinarySerializer.getInput());
+//		setActualConsumer(streamBinarySerializer.getInput());
 		streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());
 		streamCompressor.getOutput().streamTo(logStreamConsumer_byteBuffer.getInput());
 	}
 
 	public void setCompletionCallback(CompletionCallback callback) {
 		logStreamConsumer_byteBuffer.setCompletionCallback(callback);
+	}
+
+	@Override
+	public StreamConsumer<T> getInput() {
+		return streamBinarySerializer.getInput();
 	}
 }

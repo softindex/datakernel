@@ -32,11 +32,15 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.aggregation_db.KeyValueTest.KeyValuePair;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class AggregationChunkerTest {
 
@@ -91,7 +95,6 @@ public class AggregationChunkerTest {
 
 			@Override
 			public void onException(Exception exception) {
-				fail(exception.getMessage());
 			}
 
 			@Override
@@ -119,7 +122,7 @@ public class AggregationChunkerTest {
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValuePair(3, 4, 6), new KeyValuePair(3, 6, 7), new KeyValuePair(1, 2, 1)));
-		producer.streamTo(aggregationChunker);
+		producer.streamTo(aggregationChunker.getInput());
 
 		eventloop.run();
 
@@ -130,8 +133,8 @@ public class AggregationChunkerTest {
 		assertEquals(map.get(2L), asList(new KeyValuePair(1, 2, 1)));
 
 		assertEquals(StreamStatus.END_OF_STREAM, producer.getProducerStatus());
-		assertEquals(StreamStatus.END_OF_STREAM, aggregationChunker.getConsumerStatus());
-		assertEquals(((StreamProducers.OfIterator) producer).getDownstream(), aggregationChunker);
+		assertEquals(StreamStatus.END_OF_STREAM, aggregationChunker.getInput().getConsumerStatus());
+		assertEquals(((StreamProducers.OfIterator) producer).getDownstream(), aggregationChunker.getInput());
 		for (StreamConsumer consumer : listConsumers) {
 			assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
@@ -184,7 +187,6 @@ public class AggregationChunkerTest {
 
 			@Override
 			public void onException(Exception exception) {
-				fail(exception.getMessage());
 			}
 
 			@Override
@@ -222,13 +224,13 @@ public class AggregationChunkerTest {
 				StreamProducers.<KeyValuePair>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 
-		producer.streamTo(aggregationChunker);
+		producer.streamTo(aggregationChunker.getInput());
 
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
 		assertEquals(StreamStatus.CLOSED_WITH_ERROR, producer.getProducerStatus());
-		assertEquals(StreamStatus.CLOSED_WITH_ERROR, aggregationChunker.getConsumerStatus());
+		assertEquals(StreamStatus.CLOSED_WITH_ERROR, aggregationChunker.getInput().getConsumerStatus());
 		for (int i = 0; i < listConsumers.size() - 1; i++) {
 			assertEquals(listConsumers.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
@@ -266,7 +268,7 @@ public class AggregationChunkerTest {
 			public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, CompletionCallback callback) {
 				List<T> list = new ArrayList<>();
 				map.put(aggregationId, list);
-				if (Objects.equals(aggregationId, "1")) {
+				if (id == 1) {
 					StreamConsumers.ToList<T> toList = StreamConsumers.toList(eventloop, list);
 					listConsumers.add(toList);
 					return toList;
@@ -292,7 +294,6 @@ public class AggregationChunkerTest {
 
 			@Override
 			public void onException(Exception exception) {
-				fail();
 			}
 
 			@Override
@@ -321,14 +322,14 @@ public class AggregationChunkerTest {
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
 				new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2))
 		);
-		producer.streamTo(aggregationChunker);
+		producer.streamTo(aggregationChunker.getInput());
 
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
 		assertEquals(StreamStatus.CLOSED_WITH_ERROR, producer.getProducerStatus());
-		assertEquals(((StreamProducers.OfIterator) producer).getDownstream(), aggregationChunker);
-		assertEquals(StreamStatus.CLOSED_WITH_ERROR, aggregationChunker.getConsumerStatus());
+		assertEquals(((StreamProducers.OfIterator) producer).getDownstream(), aggregationChunker.getInput());
+		assertEquals(StreamStatus.CLOSED_WITH_ERROR, aggregationChunker.getInput().getConsumerStatus());
 		for (int i = 0; i < listConsumers.size() - 1; i++) {
 			assertEquals(listConsumers.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}

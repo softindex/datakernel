@@ -124,17 +124,12 @@ public class StreamConsumers {
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return new StreamDataReceiver<T>() {
-				@Override
-				public void onData(T item) {
-					throw new RuntimeException("Extra item to ClosingWithError consumer");
-				}
-			};
+			return this;
 		}
 
 		@Override
 		public void onData(T item) {
-
+			closeWithError(exception);
 		}
 	}
 

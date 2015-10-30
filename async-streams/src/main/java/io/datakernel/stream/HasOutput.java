@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream;
 
-import io.datakernel.stream.HasInput;
-import io.datakernel.stream.HasOutput;
-
-public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O> {
+public interface HasOutput<O> {
+	StreamProducer<O> getOutput();
 }

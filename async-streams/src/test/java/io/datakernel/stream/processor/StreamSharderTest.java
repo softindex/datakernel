@@ -60,7 +60,7 @@ public class StreamSharderTest {
 
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, streamSharder.getInput().getConsumerStatus());
-		assertProducerStatuses(END_OF_STREAM, streamSharder.getDownstreamProducers());
+		assertProducerStatuses(END_OF_STREAM, streamSharder.getOutputs());
 		assertEquals(END_OF_STREAM, consumer1.getConsumerStatus());
 		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
 	}
@@ -86,7 +86,7 @@ public class StreamSharderTest {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(END_OF_STREAM, streamSharder.getInput().getConsumerStatus());
-		assertProducerStatuses(END_OF_STREAM, streamSharder.getDownstreamProducers());
+		assertProducerStatuses(END_OF_STREAM, streamSharder.getOutputs());
 		assertEquals(END_OF_STREAM, consumer1.getConsumerStatus());
 		assertEquals(END_OF_STREAM, consumer2.getConsumerStatus());
 	}
@@ -132,7 +132,7 @@ public class StreamSharderTest {
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, streamSharder.getInput().getConsumerStatus());
-		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getDownstreamProducers());
+		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getOutputs());
 		assertEquals(CLOSED_WITH_ERROR, consumer1.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer2.getConsumerStatus());
 	}
@@ -165,7 +165,7 @@ public class StreamSharderTest {
 		assertTrue(list2.size() == 2);
 
 		assertEquals(CLOSED_WITH_ERROR, streamSharder.getInput().getConsumerStatus());
-		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getDownstreamProducers());
+		assertProducerStatuses(CLOSED_WITH_ERROR, streamSharder.getOutputs());
 		assertEquals(CLOSED_WITH_ERROR, consumer1.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer2.getConsumerStatus());
 	}

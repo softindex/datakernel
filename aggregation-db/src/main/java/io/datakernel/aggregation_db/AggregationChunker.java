@@ -19,14 +19,16 @@ package io.datakernel.aggregation_db;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public final class AggregationChunker<T> extends StreamConsumerDecorator<T> implements StreamDataReceiver<T> {
+public final class AggregationChunker<T> extends AbstractStreamTransformer_1_1<T, T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationChunker.class);
 
 	private long newId;
@@ -46,12 +48,15 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 	private AggregationChunkStorage storage;
 	private AggregationMetadataStorage metadataStorage;
 
-	private StreamDataReceiver<T> actualDataReceiver;
+	private UpstreamConsumer upstreamConsumer;
+	private DownstreamProducer downstreamProducer;
 
 	public AggregationChunker(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
 	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 	                          int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		super(eventloop);
+		this.upstreamConsumer = new UpstreamConsumer();
+		this.downstreamProducer = new DownstreamProducer();
 		this.aggregationId = aggregationId;
 		this.keys = keys;
 		this.fields = fields;
@@ -61,84 +66,99 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> impl
 		this.metadataStorage = metadataStorage;
 		this.chunkSize = chunkSize;
 		this.pendingChunks = 1;
-		startNewChunk();
+		this.upstreamConsumer.startNewChunk();
 	}
 
-	@Override
-	public void onData(T item) {
-		if (first == null) {
-			first = item;
+	private class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			saveChunk();
+			downstreamProducer.sendEndOfStream();
+			logger.trace("{}: downstream producer {} closed.", this, downstreamProducer);
 		}
-		last = item;
 
-		actualDataReceiver.onData(item);
-
-		if (count++ == chunkSize) {
-			rotateChunk();
+		@Override
+		protected void onError(Exception e) {
+			super.onError(e);
+			chunksCallback.onException(e);
+			logger.error("{}: downstream producer {} exception.", this, downstreamProducer, e);
 		}
-	}
 
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		actualDataReceiver = super.getDataReceiver();
-		return this;
-	}
-
-	private void rotateChunk() {
-		saveChunk();
-		++pendingChunks;
-		downstreamProducer.getDownstream().onProducerEndOfStream();
-		startNewChunk();
-	}
-
-	private void saveChunk() {
-		if (count != 0) {
-			AggregationChunk.NewChunk chunk = new AggregationChunk.NewChunk(
-					this.newId,
-					fields,
-					PrimaryKey.ofObject(first, keys),
-					PrimaryKey.ofObject(last, keys),
-					count);
-			chunks.add(chunk);
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return this;
 		}
-	}
 
-	public void startNewChunk() {
-		newId = metadataStorage.newChunkId(); // TODO (dtkachenko): refactor as async
-		first = null;
-		last = null;
-		count = 0;
+		@Override
+		public void onData(T item) {
+			if (first == null) {
+				first = item;
+			}
+			last = item;
 
-		StreamConsumer<T> consumer = storage.chunkWriter(aggregationId, keys, fields, recordClass, newId, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				if (--pendingChunks == 0) {
-					chunksCallback.onResult(chunks);
+			downstreamProducer.send(item);
+
+			if (count++ == chunkSize) {
+				rotateChunk();
+			}
+		}
+
+		private void rotateChunk() {
+			saveChunk();
+			++pendingChunks;
+			downstreamProducer.getDownstream().onProducerEndOfStream();
+			startNewChunk();
+		}
+
+		private void saveChunk() {
+			if (count != 0) {
+				AggregationChunk.NewChunk chunk = new AggregationChunk.NewChunk(
+						AggregationChunker.this.newId,
+						fields,
+						PrimaryKey.ofObject(first, keys),
+						PrimaryKey.ofObject(last, keys),
+						count);
+				chunks.add(chunk);
+			}
+		}
+
+		public void startNewChunk() {
+			newId = metadataStorage.newChunkId(); // TODO (dtkachenko): refactor as async
+			first = null;
+			last = null;
+			count = 0;
+
+			StreamConsumer<T> consumer = storage.chunkWriter(aggregationId, keys, fields, recordClass, newId, new CompletionCallback() {
+				@Override
+				public void onComplete() {
+					if (--pendingChunks == 0) {
+						chunksCallback.onResult(chunks);
+					}
+					logger.trace("{}: saving new chunk with id {} to storage {} completed.", this, newId, storage);
 				}
-				logger.trace("{}: saving new chunk with id {} to storage {} completed.", this, newId, storage);
-			}
 
-			@Override
-			public void onException(Exception exception) {
-				logger.error("{}: saving new chunk with id {} to storage {} failed.", this, newId, storage);
-				onConsumerError(exception);
-			}
-		});
+				@Override
+				public void onException(Exception exception) {
+					logger.error("{}: saving new chunk with id {} to storage {} failed.", this, newId, storage);
+					closeWithError(exception);
+				}
+			});
 
-		setActualConsumer(consumer);
+			downstreamProducer.streamTo(consumer);
+		}
 	}
 
-	@Override
-	public void onProducerEndOfStream() {
-		saveChunk();
-		super.onProducerEndOfStream();
-		logger.trace("{}: downstream producer {} closed.", this, downstreamProducer);
-	}
+	private class DownstreamProducer extends AbstractDownstreamProducer {
 
-	@Override
-	public void onProducerError(Exception e) {
-		super.onProducerError(e);
-		chunksCallback.onException(e);
-		logger.error("{}: downstream producer {} exception.", this, downstreamProducer, e);
+		@Override
+		protected void onDownstreamSuspended() {
+			upstreamConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			upstreamConsumer.resume();
+		}
 	}
 }

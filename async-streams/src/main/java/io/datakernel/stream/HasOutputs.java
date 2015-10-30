@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream;
 
-import io.datakernel.stream.HasInput;
-import io.datakernel.stream.HasOutput;
+import java.util.List;
 
-public interface StreamTransformer<I, O> extends HasInput<I>, HasOutput<O> {
+public interface HasOutputs {
+	List<? extends StreamProducer<?>> getOutputs();
+
+	StreamProducer<?> getOutput(int index);
 }

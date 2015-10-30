@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream;
 
-import io.datakernel.stream.StreamConsumer;
+import java.util.List;
 
-public interface InputGetter<I> {
-	StreamConsumer<I> getInput();
+public interface HasInputs {
+	List<? extends StreamConsumer<?>> getInputs();
+
+	StreamConsumer<?> getInput(int index);
 }

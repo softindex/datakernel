@@ -32,7 +32,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
-public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
+public class LogStreamProducer<T> implements HasOutput<T> {
 	private final String logPartition;
 	private final LogPosition startPosition;
 	private LogFile currentLogFile;
@@ -42,17 +42,18 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	private BufferSerializer<T> serializer;
 	private final ResultCallback<LogPosition> positionCallback;
 	private final StreamForwarder<T> forwarder;
+	private final Eventloop eventloop;
 
 	public LogStreamProducer(final Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
 	                         String logPartition, LogPosition startPosition, ResultCallback<LogPosition> positionCallback) {
-		super(eventloop);
+		this.eventloop = eventloop;
 		this.logPartition = logPartition;
 		this.startPosition = startPosition;
 		this.fileSystem = fileSystem;
 		this.serializer = serializer;
 		this.positionCallback = positionCallback;
 		this.forwarder = new StreamForwarder<>(eventloop);
-		setActualProducer(forwarder.getOutput());
+//		setActualProducer(forwarder.getOutput());
 		fileSystem.list(logPartition, new ResultCallback<List<LogFile>>() {
 			@Override
 			public void onResult(List<LogFile> entries) {
@@ -116,4 +117,8 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 		return currentLogFile == null ? startPosition : new LogPosition(currentLogFile, currentReader.getPosition());
 	}
 
+	@Override
+	public StreamProducer<T> getOutput() {
+		return forwarder.getOutput();
+	}
 }

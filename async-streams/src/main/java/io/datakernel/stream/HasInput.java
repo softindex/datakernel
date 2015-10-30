@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream;
 
-import io.datakernel.stream.StreamProducer;
-
-public interface OutputGetter<O> {
-	StreamProducer<O> getOutput();
+public interface HasInput<I> {
+	StreamConsumer<I> getInput();
 }

@@ -64,7 +64,7 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, merger.getUpstreamConsumers());
+		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
 	}
 
 	@Test
@@ -92,7 +92,7 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, merger.getUpstreamConsumers());
+		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
 	}
 
 	@Test
@@ -141,7 +141,7 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, merger.getUpstreamConsumers());
+		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
 	}
 
 	@Test
@@ -184,7 +184,7 @@ public class StreamMergerTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, merger.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{END_OF_STREAM, END_OF_STREAM},
-				consumerStatuses(merger.getUpstreamConsumers()));
+				consumerStatuses(merger.getInputs()));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -222,7 +222,7 @@ public class StreamMergerTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, merger.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
-				consumerStatuses(merger.getUpstreamConsumers()));
+				consumerStatuses(merger.getInputs()));
 	}
 
 	@Test
@@ -251,6 +251,6 @@ public class StreamMergerTest {
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 		assertEquals(END_OF_STREAM, merger.getOutput().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, merger.getUpstreamConsumers());
+		assertConsumerStatuses(END_OF_STREAM, merger.getInputs());
 	}
 }
