@@ -39,7 +39,8 @@ class LogStreamConsumer_ByteBuffer {
 	}
 
 	public void setTag(Object tag) {
-		streamWriteLog.setTag(tag);
+		streamWriteLog.upstreamConsumer.setTag(tag);
+		streamWriteLog.downstreamProducer.setTag(tag);
 	}
 
 	private class StreamWriteLog extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
@@ -127,8 +128,8 @@ class LogStreamConsumer_ByteBuffer {
 						currentLogFile = result;
 						StreamFileWriter currentConsumer = fileSystem.writer(streamId, currentLogFile);
 						ConsumerErrorEgnoring consumerErrorEgnoring = new ConsumerErrorEgnoring(eventloop);
-						downstreamProducer.streamTo(consumerErrorEgnoring);
-						consumerErrorEgnoring.streamTo(currentConsumer);
+						downstreamProducer.streamTo(consumerErrorEgnoring.getInput());
+						consumerErrorEgnoring.getOutput().streamTo(currentConsumer);
 						currentConsumer.setFlushCallback(createCloseCompletionCallback());
 
 						if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
@@ -271,6 +272,6 @@ class LogStreamConsumer_ByteBuffer {
 	}
 
 	StreamConsumer<ByteBuf> getInput() {
-		return streamWriteLog;
+		return streamWriteLog.getInput();
 	}
 }

@@ -115,17 +115,17 @@ public class StreamProducers {
 				producerGetter.get(new ResultCallback<StreamProducer<T>>() {
 					@Override
 					public void onResult(StreamProducer<T> actualProducer) {
-						actualProducer.streamTo(forwarder);
+						actualProducer.streamTo(forwarder.getInput());
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						new ClosingWithError<T>(eventloop, exception).streamTo(forwarder);
+						new ClosingWithError<T>(eventloop, exception).streamTo(forwarder.getInput());
 					}
 				});
 			}
 		});
-		return forwarder;
+		return forwarder.getOutput();
 	}
 
 	/**

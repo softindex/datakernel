@@ -107,11 +107,11 @@ public final class DatagraphClient {
 						assert serialization.checkGson(commandDownload, DatagraphCommandDownload.class);
 						messaging.sendMessage(commandDownload);
 						messaging.shutdownWriter();
-						messaging.read().streamTo(streamDeserializer);
+						messaging.read().streamTo(streamDeserializer.getInput());
 					}
 				});
 
-		return streamDeserializer;
+		return streamDeserializer.getOutput();
 	}
 
 	public void execute(InetSocketAddress address, Collection<Node> nodes) {

@@ -16,8 +16,5 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
-
-public interface StreamTransformer<I, O> extends StreamConsumer<I>, StreamProducer<O> {
+public interface StreamTransformer<I, O> extends InputGetter<I>, OutputGetter<O> {
 }

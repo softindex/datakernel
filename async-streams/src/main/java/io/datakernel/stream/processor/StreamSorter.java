@@ -193,73 +193,14 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 				StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate));
 	}
 
-	// upstream
-
 	@Override
-	public final StreamDataReceiver<T> getDataReceiver() {
-		return upstreamConsumer.getDataReceiver();
+	public StreamConsumer<T> getInput() {
+		return upstreamConsumer;
 	}
 
 	@Override
-	public final void onProducerEndOfStream() {
-		upstreamConsumer.onProducerEndOfStream();
-	}
-
-	@Override
-	public final void onProducerError(Exception e) {
-		upstreamConsumer.onProducerError(e);
-	}
-
-	@Override
-	public final void streamFrom(StreamProducer<T> upstreamProducer) {
-		upstreamConsumer.streamFrom(upstreamProducer);
-	}
-
-	@Override
-	public StreamStatus getConsumerStatus() {
-		return upstreamConsumer.getConsumerStatus();
-	}
-
-	// downstream
-
-	@Override
-	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
-		upstreamConsumer.merger.streamTo(downstreamConsumer);
-	}
-
-	@Override
-	public final void onConsumerSuspended() {
-		upstreamConsumer.merger.onConsumerSuspended();
-	}
-
-	@Override
-	public final void onConsumerResumed() {
-		upstreamConsumer.merger.onConsumerResumed();
-	}
-
-	@Override
-	public final void onConsumerError(Exception e) {
-		upstreamConsumer.merger.onConsumerError(e);
-	}
-
-	@Override
-	public final void bindDataReceiver() {
-		upstreamConsumer.merger.bindDataReceiver();
-	}
-
-	@Override
-	public StreamStatus getProducerStatus() {
-		return upstreamConsumer.merger.getProducerStatus();
-	}
-
-	@Override
-	public Exception getConsumerException() {
-		return upstreamConsumer.getConsumerException();
-	}
-
-	@Override
-	public Exception getProducerException() {
-		return upstreamConsumer.merger.getProducerException();
+	public StreamProducer<T> getOutput() {
+		return upstreamConsumer.merger.getOutput();
 	}
 
 	//for test only
@@ -269,7 +210,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 
 	// for test only
 	StreamStatus getDownstreamProducerStatus() {
-		return upstreamConsumer.merger.getProducerStatus();
+		return upstreamConsumer.merger.getOutput().getProducerStatus();
 	}
 
 	@Override

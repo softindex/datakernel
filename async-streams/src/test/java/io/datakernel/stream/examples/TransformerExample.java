@@ -88,8 +88,8 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1<Stri
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(transformer);
-		transformer.streamTo(consumer);
+		source.streamTo(transformer.getInput());
+		transformer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 

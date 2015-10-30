@@ -145,83 +145,14 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		this.eventloop = eventloop;
 	}
 
-	// upstream
-
 	@Override
-	public final StreamDataReceiver<I> getDataReceiver() {
-		return upstreamConsumer.getDataReceiver();
+	public StreamConsumer<I> getInput() {
+		return upstreamConsumer;
 	}
 
 	@Override
-	public final void onProducerEndOfStream() {
-		upstreamConsumer.onProducerEndOfStream();
-	}
-
-	@Override
-	public final void onProducerError(Exception e) {
-		upstreamConsumer.onProducerError(e);
-	}
-
-	@Override
-	public final void streamFrom(StreamProducer<I> upstreamProducer) {
-		upstreamConsumer.streamFrom(upstreamProducer);
-	}
-
-	@Override
-	public StreamStatus getConsumerStatus() {
-		return upstreamConsumer.getConsumerStatus();
-	}
-
-	// downstream
-
-	@Override
-	public final void streamTo(StreamConsumer<O> downstreamConsumer) {
-		downstreamProducer.streamTo(downstreamConsumer);
-	}
-
-	@Override
-	public final void onConsumerSuspended() {
-		downstreamProducer.onConsumerSuspended();
-	}
-
-	@Override
-	public final void onConsumerResumed() {
-		downstreamProducer.onConsumerResumed();
-	}
-
-	@Override
-	public final void onConsumerError(Exception e) {
-		downstreamProducer.onConsumerError(e);
-	}
-
-	@Override
-	public final void bindDataReceiver() {
-		downstreamProducer.bindDataReceiver();
-	}
-
-	@Override
-	public StreamStatus getProducerStatus() {
-		return downstreamProducer.getProducerStatus();
-	}
-
-	@Override
-	public Exception getConsumerException() {
-		return upstreamConsumer.getConsumerException();
-	}
-
-	@Override
-	public Exception getProducerException() {
-		return downstreamProducer.getProducerException();
-	}
-
-	//for test only
-	StreamStatus getUpstreamConsumerStatus() {
-		return upstreamConsumer.getConsumerStatus();
-	}
-
-	// for test only
-	StreamStatus getDownstreamProducerStatus() {
-		return downstreamProducer.getProducerStatus();
+	public StreamProducer<O> getOutput() {
+		return downstreamProducer;
 	}
 
 	public void setTag(Object tag) {

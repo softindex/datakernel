@@ -69,8 +69,8 @@ public final class BinaryProtocolExample {
 				@Override
 				public void wire(StreamProducer<ByteBuf> socketReader,
 				                 StreamConsumer<ByteBuf> socketWriter) {
-					socketReader.streamTo(streamDeserializer);
-					streamDeserializer.streamTo(consumerToList);
+					socketReader.streamTo(streamDeserializer.getInput());
+					streamDeserializer.getOutput().streamTo(consumerToList);
 				}
 			};
 		}
@@ -90,9 +90,9 @@ public final class BinaryProtocolExample {
 							@Override
 							public void wire(StreamProducer<ByteBuf> socketReader,
 							                 StreamConsumer<ByteBuf> socketWriter) {
-								streamSerializer.streamTo(socketWriter);
+								streamSerializer.getOutput().streamTo(socketWriter);
 								StreamProducers.ofIterable(eventloop, Arrays.asList(6, 5, 4, 3, 2))
-										.streamTo(streamSerializer);
+										.streamTo(streamSerializer.getInput());
 							}
 						};
 				connection.register();

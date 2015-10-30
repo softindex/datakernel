@@ -226,8 +226,8 @@ public class StressClient {
 		StreamBinarySerializer<TestObject> serializer =
 				new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
-		producer.streamTo(serializer);
-		client.upload("someName" + i, serializer, new CompletionCallback() {
+		producer.streamTo(serializer.getInput());
+		client.upload("someName" + i, serializer.getOutput(), new CompletionCallback() {
 			@Override
 			public void onException(Exception exception) {
 

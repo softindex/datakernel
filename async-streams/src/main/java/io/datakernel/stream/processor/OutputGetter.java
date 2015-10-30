@@ -16,16 +16,8 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
-/**
- * Represent serializer which serializes data from some type to ByteBuffer. Is a {@link StreamConsumer} which
- * receives specified type and {@link StreamProducer} which streams ByteBuffers
- *
- * @param <T> original type of data
- */
-public interface StreamSerializer<T> extends StreamTransformer<T, ByteBuf> {
-	void flush();
+public interface OutputGetter<O> {
+	StreamProducer<O> getOutput();
 }

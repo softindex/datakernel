@@ -101,10 +101,10 @@ public class StreamProducerDecoratorTest {
 		};
 		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
 
-		producerDecorator.streamTo(function);
+		producerDecorator.streamTo(function.getInput());
 		eventloop.run();
 
-		function.streamTo(consumer);
+		function.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));

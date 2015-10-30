@@ -47,8 +47,8 @@ public class StreamFilterExample {
 
 		TestConsumerToList consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(filter);
-		filter.streamTo(consumer);
+		source.streamTo(filter.getInput());
+		filter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 

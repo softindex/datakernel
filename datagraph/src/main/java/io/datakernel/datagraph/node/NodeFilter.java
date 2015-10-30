@@ -48,8 +48,8 @@ public final class NodeFilter<T> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamFilter<T> streamFilter = new StreamFilter<>(taskContext.getEventloop(), predicate);
-		taskContext.bindChannel(input, streamFilter);
-		taskContext.export(output, streamFilter);
+		taskContext.bindChannel(input, streamFilter.getInput());
+		taskContext.export(output, streamFilter.getOutput());
 	}
 
 	public StreamId getOutput() {

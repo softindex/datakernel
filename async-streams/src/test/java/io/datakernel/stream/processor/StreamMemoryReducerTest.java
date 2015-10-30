@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.StreamStatus;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -26,12 +29,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static io.datakernel.stream.StreamStatus.*;
-import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.processor.Utils.consumerStatuses;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamMemoryReducerTest {
 
@@ -78,7 +80,7 @@ public class StreamMemoryReducerTest {
 
 		source1.streamTo(sorter.newInput());
 		source2.streamTo(sorter.newInput());
-		sorter.streamTo(consumer);
+		sorter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -160,7 +162,7 @@ public class StreamMemoryReducerTest {
 
 		source1.streamTo(sorter.newInput());
 		source2.streamTo(sorter.newInput());
-		sorter.streamTo(consumer);
+		sorter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -216,14 +218,14 @@ public class StreamMemoryReducerTest {
 
 		source1.streamTo(sorter.newInput());
 		source2.streamTo(sorter.newInput());
-		sorter.streamTo(consumer);
+		sorter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
 				consumerStatuses(sorter.getUpstreamConsumers()));
-		assertEquals(CLOSED_WITH_ERROR, sorter.getDownstreamProducer().getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
 	}
 
 	@Test
@@ -270,7 +272,7 @@ public class StreamMemoryReducerTest {
 		source2.streamTo(sorter.newInput());
 		eventloop.run();
 
-		sorter.streamTo(consumer);
+		sorter.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
