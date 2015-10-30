@@ -22,7 +22,8 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.hashfs2.Config.defaultConfig;
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.hashfs2.ServerInfo.ServerStatus.RUNNING;
 import static org.junit.Assert.*;
 
 public class TestLogic {
@@ -33,13 +34,17 @@ public class TestLogic {
 	private final ServerInfo server3 = new ServerInfo(3, new InetSocketAddress("http://127.0.0.1", 4567), 0.1);
 
 	{
-		local.updateState(ServerStatus.RUNNING, 1);
-		server1.updateState(ServerStatus.RUNNING, 1);
-		server2.updateState(ServerStatus.RUNNING, 1);
-		server3.updateState(ServerStatus.RUNNING, 1);
+		local.updateState(RUNNING, 1);
+		server1.updateState(RUNNING, 1);
+		server2.updateState(RUNNING, 1);
+		server3.updateState(RUNNING, 1);
 	}
 
-	private final Config config = defaultConfig.setupLogic(10 * 1000, 2, 1);
+	private final Config config = new Config();
+
+	{
+		config.setMaxReplicaQuantity(2);
+	}
 
 	private final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(local, server1, server2, server3));
 
@@ -56,7 +61,8 @@ public class TestLogic {
 	public void testUpdate() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		logic.start(ignoreCompletionCallback());
 		logic.update();
 
 		Set<String> real1 = cMock.servers2files.get(server1);
@@ -76,7 +82,8 @@ public class TestLogic {
 	public void testUpload() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		logic.start(ignoreCompletionCallback());
 		logic.update();
 
 		assertFalse(logic.canUpload(b));
@@ -98,7 +105,8 @@ public class TestLogic {
 	public void testDelete() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		logic.start(ignoreCompletionCallback());
 		logic.update();
 		// first time due to the fact that there was only minimum safe replicas quantity in the whole system
 		// logic left the file and it is still accessible from this server unless this node manage to replicate it
@@ -128,7 +136,7 @@ public class TestLogic {
 	public void testDownload() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
 		logic.update();
 		logic.update();
 		assertFalse(logic.canDownload(a));
@@ -138,7 +146,8 @@ public class TestLogic {
 	public void testOffer() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		logic.start(ignoreCompletionCallback());
 		logic.update();
 
 		logic.onReplicationComplete(a, server1);
@@ -171,7 +180,7 @@ public class TestLogic {
 	public void testAlive() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.init(bootstrap, cMock, hMock, local, config);
+		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
 
 		logic.onShowAliveRequest(new ResultCallback<Set<ServerInfo>>() {
 			@Override
@@ -282,7 +291,7 @@ public class TestLogic {
 		}
 
 		@Override
-		public void scheduleTemporaryFileDeletion(String filePath) {
+		public void scheduleTemporaryFileDeletion(String filePath, long waitTime) {
 			scheduledDeletions.add(filePath);
 		}
 

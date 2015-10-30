@@ -14,14 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
+package io.datakernel.hashfs2.protocol;
 
 import io.datakernel.eventloop.NioService;
 
-import java.util.Set;
-
-public class ServerBuilder {
-	public static NioService createServer(FileSystem fs, Hashing h, Client p, Logic l, Config config, Set<ServerInfo> bootstrap) {
-		return null;
-	}
+public interface ServerProtocol extends NioService {
 }

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
-class HashFsCommandDelete extends HashFsCommand {
+class HashFsCommandDownload extends HashFsCommand {
 	public final String filePath;
 
-	public HashFsCommandDelete(String filePath) {
+	public HashFsCommandDownload(String filePath) {
 		this.filePath = filePath;
 	}
 

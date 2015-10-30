@@ -18,7 +18,7 @@ package io.datakernel.hashfs2;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.hashfs2.ServerStatus.RUNNING;
+import static io.datakernel.hashfs2.ServerInfo.ServerStatus.RUNNING;
 
 public final class ServerInfo {
 	private final InetSocketAddress address;
@@ -50,9 +50,10 @@ public final class ServerInfo {
 			state.update(status, heartBeat);
 	}
 
-	// TODO (arashev) better name for parameter - represents current time + timeout after which we consider the server to be shut down
+	// TODO (arashev)
 	public boolean isAlive(long maximumDieTime) {
-		return state.isAlive(maximumDieTime);
+		return true;
+		//return state.isAlive(maximumDieTime);
 	}
 
 	@Override
@@ -86,5 +87,9 @@ public final class ServerInfo {
 			return serverStatus == RUNNING
 					&& lastHeartBeatReceived < maximumDieTime;
 		}
+	}
+
+	public enum ServerStatus {
+		RUNNING, SHUTDOWN
 	}
 }

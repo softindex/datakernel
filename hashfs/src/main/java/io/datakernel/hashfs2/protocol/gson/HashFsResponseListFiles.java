@@ -14,22 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
-
-import io.datakernel.hashfs2.ServerInfo;
+package io.datakernel.hashfs2.protocol.gson;
 
 import java.util.Collections;
 import java.util.Set;
 
-class HashFsResponseListServers extends HashFsResponse {
-	public final Set<ServerInfo> servers;
+class HashFsResponseListFiles extends HashFsResponse {
+	public final Set<String> files;
 
-	public HashFsResponseListServers(Set<ServerInfo> servers) {
-		this.servers = Collections.unmodifiableSet(servers);
+	public HashFsResponseListFiles(Set<String> files) {
+		this.files = Collections.unmodifiableSet(files);
 	}
 
 	@Override
 	public String toString() {
-		return "Listed{" + servers.size() + "}";
+		return "Listed{" + files.size() + "}";
 	}
 }

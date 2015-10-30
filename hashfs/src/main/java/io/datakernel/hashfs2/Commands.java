@@ -29,7 +29,7 @@ public interface Commands {
 
 	void updateServerMap(Set<ServerInfo> bootstrap);
 
-	void scheduleTemporaryFileDeletion(String filePath);
+	void scheduleTemporaryFileDeletion(String filePath, long waitTime);
 
 	void scan(ResultCallback<Set<String>> callback);
 

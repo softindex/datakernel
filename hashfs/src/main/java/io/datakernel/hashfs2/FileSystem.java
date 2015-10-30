@@ -19,21 +19,21 @@ package io.datakernel.hashfs2;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.Set;
 
-public interface FileSystem {
-	void saveToTemporary(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+public interface FileSystem extends NioService {
+	void saveToTemporary(String path, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void commitTemporary(String filePath, CompletionCallback callback);
+	void commitTemporary(String path, CompletionCallback callback);
 
-	void deleteTemporary(String filePath, CompletionCallback callback);
+	void deleteTemporary(String path, CompletionCallback callback);
 
-	void get(String filePath, StreamConsumer<ByteBuf> consumer);
+	StreamProducer<ByteBuf> get(String path);
 
-	void deleteFile(String filePath, CompletionCallback callback);
+	void delete(String path, CompletionCallback callback);
 
-	void listFiles(ResultCallback<Set<String>> files);
+	void list(ResultCallback<Set<String>> callback);
 }

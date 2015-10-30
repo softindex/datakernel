@@ -40,7 +40,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.hashfs2.Config.defaultConfig;
+import static io.datakernel.hashfs2.Config.getDefaultConfig;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
@@ -53,6 +53,8 @@ public class TestFileSystem {
 	private ExecutorService executor = newCachedThreadPool();
 	private Path storage;
 	private Path client;
+
+	private Config config = getDefaultConfig();
 
 	@Before
 	public void setup() throws IOException {
@@ -94,7 +96,8 @@ public class TestFileSystem {
 
 	@Test
 	public void testUpload() throws IOException {
-		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, defaultConfig);
+		FileSystem fs = ServerFactory.createFileSystem(eventloop, executor, storage.toString(), config);
+		fs.start(ignoreCompletionCallback());
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
 		fs.saveToTemporary("1/c.txt", producer, ignoreCompletionCallback());
@@ -115,7 +118,8 @@ public class TestFileSystem {
 
 	@Test
 	public void testUploadFailed() throws IOException {
-		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, defaultConfig);
+		FileSystem fs = ServerFactory.createFileSystem(eventloop, executor, storage.toString(), config);
+		fs.start(ignoreCompletionCallback());
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
 		fs.saveToTemporary("1/c.txt", producer, ignoreCompletionCallback());
@@ -135,10 +139,12 @@ public class TestFileSystem {
 
 	@Test
 	public void testGet() throws IOException {
-		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, defaultConfig);
+		FileSystem fs = ServerFactory.createFileSystem(eventloop, executor, storage.toString(), config);
+		fs.start(ignoreCompletionCallback());
+
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("d.txt"));
 
-		fs.get("2/b/d.txt", consumer);
+		fs.get("2/b/d.txt").streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdown();
@@ -148,7 +154,8 @@ public class TestFileSystem {
 
 	@Test
 	public void testGetFailed() throws Exception {
-		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, defaultConfig);
+		FileSystem fs = ServerFactory.createFileSystem(eventloop, executor, storage.toString(), config);
+		fs.start(ignoreCompletionCallback());
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("no_file.txt"));
 
 		consumer.setFlushCallback(new CompletionCallback() {
@@ -162,7 +169,7 @@ public class TestFileSystem {
 				assertTrue(e.getClass() == NoSuchFileException.class);
 			}
 		});
-		fs.get("2/b/no_file.txt", consumer);
+		fs.get("2/b/no_file.txt").streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdown();
@@ -172,9 +179,10 @@ public class TestFileSystem {
 
 	@Test
 	public void testDeleteFile() throws IOException {
-		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, defaultConfig);
+		FileSystem fs = ServerFactory.createFileSystem(eventloop, executor, storage.toString(), config);
+		fs.start(ignoreCompletionCallback());
 		assertTrue(Files.exists(storage.resolve("2/3/a.txt")));
-		fs.deleteFile("2/3/a.txt", ignoreCompletionCallback());
+		fs.delete("2/3/a.txt", ignoreCompletionCallback());
 		assertFalse(Files.exists(storage.resolve("2/3/a.txt")));
 		assertFalse(Files.exists(storage.resolve("2/3")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -182,8 +190,9 @@ public class TestFileSystem {
 
 	@Test
 	public void testDeleteFailed() throws IOException {
-		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, defaultConfig);
-		fs.deleteFile("2/3/z.txt", new CompletionCallback() {
+		FileSystem fs = ServerFactory.createFileSystem(eventloop, executor, storage.toString(), config);
+		fs.start(ignoreCompletionCallback());
+		fs.delete("2/3/z.txt", new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				fail("Should not end here");
@@ -199,10 +208,11 @@ public class TestFileSystem {
 
 	@Test
 	public void testListFiles() throws IOException {
-		FileSystem fs = FileSystemImpl.init(eventloop, executor, storage, defaultConfig);
+		FileSystem fs = ServerFactory.createFileSystem(eventloop, executor, storage.toString(), config);
+		fs.start(ignoreCompletionCallback());
 		final Set<String> expected = new HashSet<>();
 		expected.addAll(Arrays.asList("1/a.txt", "1/b.txt", "2/3/a.txt", "2/b/d.txt", "2/b/e.txt"));
-		fs.listFiles(new ResultCallback<Set<String>>() {
+		fs.list(new ResultCallback<Set<String>>() {
 			@Override
 			public void onResult(Set<String> result) {
 				assertEquals(expected, result);

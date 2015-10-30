@@ -14,23 +14,22 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
+import io.datakernel.hashfs2.ServerInfo;
+
+import java.util.Collections;
 import java.util.Set;
 
-import static java.util.Collections.unmodifiableSet;
+class HashFsResponseListServers extends HashFsResponse {
+	public final Set<ServerInfo> servers;
 
-class HashFsCommandOffer extends HashFsCommand {
-	public final Set<String> forDeletion;
-	public final Set<String> forUpload;
-
-	public HashFsCommandOffer(Set<String> forDeletion, Set<String> forUpload) {
-		this.forDeletion = unmodifiableSet(forDeletion);
-		this.forUpload = unmodifiableSet(forUpload);
+	public HashFsResponseListServers(Set<ServerInfo> servers) {
+		this.servers = Collections.unmodifiableSet(servers);
 	}
 
 	@Override
 	public String toString() {
-		return "Offer{forDeletion:" + forDeletion.size() + ",forUpload:" + forUpload.size() + "}";
+		return "Listed{" + servers.size() + "}";
 	}
 }

@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
-abstract class HashFsResponse {
+class HashFsCommandAlive extends HashFsCommand {
+	@Override
+	public String toString() {
+		return "Alive{servers}";
+	}
 }

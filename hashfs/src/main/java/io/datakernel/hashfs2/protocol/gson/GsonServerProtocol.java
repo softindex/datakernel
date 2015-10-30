@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -24,6 +24,7 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.hashfs2.Server;
 import io.datakernel.hashfs2.ServerInfo;
+import io.datakernel.hashfs2.protocol.ServerProtocol;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
@@ -31,22 +32,49 @@ import io.datakernel.stream.net.StreamMessagingConnection;
 import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
 
+import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
-public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
+public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> implements ServerProtocol {
 	private final Server server;
+	private final int deserializerBufferSize;
+	private final int serializerBufferSize;
+	private final int serializerMaxMessageSize;
+	private final int serializerFlushDelayMillis;
 
-	public GsonServerProtocol(NioEventloop eventloop, Server server) {
+	public GsonServerProtocol(NioEventloop eventloop, Server server, int deserializerBufferSize,
+	                          int serializerBufferSize, int serializerMaxMessageSize, int serializerFlushDelayMillis) {
 		super(eventloop);
 		this.server = server;
+		this.deserializerBufferSize = deserializerBufferSize;
+		this.serializerBufferSize = serializerBufferSize;
+		this.serializerMaxMessageSize = serializerMaxMessageSize;
+		this.serializerFlushDelayMillis = serializerFlushDelayMillis;
+	}
+
+	@Override
+	public void start(CompletionCallback callback) {
+		try {
+			self().listen();
+			callback.onComplete();
+		} catch (IOException e) {
+			callback.onException(e);
+		}
+	}
+
+	@Override
+	public void stop(CompletionCallback callback) {
+		self().close();
+		callback.onComplete();
 	}
 
 	@Override
 	protected SocketConnection createConnection(SocketChannel socketChannel) {
 		return new StreamMessagingConnection<>(eventloop, socketChannel,
-				new StreamGsonDeserializer<>(eventloop, HashFsCommandSerializer.GSON, HashFsCommand.class, 10),
-				new StreamGsonSerializer<>(eventloop, HashFsResponseSerializer.GSON, HashFsResponse.class, 256 * 1024, 256 * (1 << 20), 0))
+				new StreamGsonDeserializer<>(eventloop, HashFsCommandSerializer.GSON, HashFsCommand.class, deserializerBufferSize),
+				new StreamGsonSerializer<>(eventloop, HashFsResponseSerializer.GSON, HashFsResponse.class, serializerBufferSize,
+						serializerMaxMessageSize, serializerFlushDelayMillis))
 				.addHandler(HashFsCommandUpload.class, defineUploadHandler())
 				.addHandler(HashFsCommandCommit.class, defineCommitHandler())
 				.addHandler(HashFsCommandDownload.class, defineDownloadHandler())
@@ -57,7 +85,6 @@ public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 	}
 
 	private MessagingHandler<HashFsCommandUpload, HashFsResponse> defineUploadHandler() {
-		// FIXME (check) implement logic: req --> ok --> up --> ack (now: req+up --> ack)
 		return new MessagingHandler<HashFsCommandUpload, HashFsResponse>() {
 			@Override
 			public void onMessage(HashFsCommandUpload item, final Messaging<HashFsResponse> messaging) {
@@ -101,7 +128,6 @@ public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 	}
 
 	private MessagingHandler<HashFsCommandDownload, HashFsResponse> defineDownloadHandler() {
-		// FIXME CRUTCH
 		return new MessagingHandler<HashFsCommandDownload, HashFsResponse>() {
 			@Override
 			public void onMessage(HashFsCommandDownload item, final Messaging<HashFsResponse> messaging) {
@@ -109,12 +135,13 @@ public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 				server.download(item.filePath, forwarder, new ResultCallback<CompletionCallback>() {
 					@Override
 					public void onResult(CompletionCallback callback) {
+						messaging.sendMessage(new HashFsResponseOk());
 						messaging.write(forwarder, callback);
 					}
 
 					@Override
-					public void onException(Exception ignored) {
-						// ignored
+					public void onException(Exception e) {
+						messaging.sendMessage(new HashFsResponseError(e.getMessage()));
 					}
 				});
 			}

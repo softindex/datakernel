@@ -17,10 +17,11 @@
 package io.datakernel.hashfs2;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.eventloop.NioService;
 
 import java.util.Set;
 
-public interface Logic {
+public interface Logic extends NioService {
 	void update();
 
 	boolean canUpload(String filePath);

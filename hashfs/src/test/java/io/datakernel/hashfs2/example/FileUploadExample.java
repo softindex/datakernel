@@ -17,13 +17,19 @@
 package io.datakernel.hashfs2.example;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.hashfs2.Client;
+import io.datakernel.hashfs2.Config;
+import io.datakernel.hashfs2.FsClient;
+import io.datakernel.hashfs2.ServerFactory;
 import io.datakernel.hashfs2.ServerInfo;
-import io.datakernel.hashfs2.protocol.GsonClientProtocol;
+import io.datakernel.stream.StreamProducer;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import static io.datakernel.stream.file.StreamFileReader.readFileFully;
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -31,20 +37,26 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 public class FileUploadExample {
 	public static void main(String[] args) {
 		NioEventloop eventloop = new NioEventloop();
-		Client client = new GsonClientProtocol(eventloop, 256 * 1024);
+		ServerInfo server3 = new ServerInfo(3, new InetSocketAddress("127.0.0.1", 5573), 1);
+		ServerInfo server4 = new ServerInfo(4, new InetSocketAddress("127.0.0.1", 5574), 1);
 
-		client.upload(new ServerInfo(1, new InetSocketAddress("127.0.0.1", 5580), 1), "downloaded.txt",
-				readFileFully(eventloop, newCachedThreadPool(), 10 * 256, Paths.get("./test/client_storage/downloaded.txt")), new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						System.out.println("Ura!!!");
-					}
+		final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(server3, server4));
 
-					@Override
-					public void onException(Exception e) {
-						System.out.println("Failed!");
-					}
-				});
+		FsClient client = ServerFactory.getClient(eventloop, bootstrap, Config.getDefaultConfig());
+		StreamProducer<ByteBuf> producer = readFileFully(eventloop, newCachedThreadPool(), 10 * 1024, Paths.get("./test/client_storage/rejected.txt"));
+
+		client.upload("test.txt", producer, new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				System.out.println("Success");
+			}
+
+			@Override
+			public void onException(Exception e) {
+				System.out.println("Failed");
+			}
+		});
+
 		eventloop.run();
 	}
 }

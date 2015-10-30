@@ -16,14 +16,19 @@
 
 package io.datakernel.hashfs2;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.eventloop.NioEventloop;
 
 import java.util.*;
+
+import static io.datakernel.hashfs2.ServerInfo.ServerStatus.RUNNING;
 
 public class LogicImpl implements Logic {
 	private final long serverDeathTimeout;
 	private final int maxReplicaQuantity;
 	private final int minSafeReplicaQuantity;
+	private final long approveWaitTime;
 	private final ServerInfo myId;
 
 	private final Commands commands;
@@ -32,36 +37,48 @@ public class LogicImpl implements Logic {
 	private final Map<String, FileInfo> files = new HashMap<>();
 	private final Set<ServerInfo> servers = new HashSet<>();
 
-	public LogicImpl(Commands commands, Hashing hashing, ServerInfo myId,
-	                 long serverDeathTimeout, int maxReplicaQuantity, int minSafeReplicaQuantity) {
+	public LogicImpl(Commands commands, Hashing hashing, ServerInfo myId, Set<ServerInfo> bootstrap,
+	                 long serverDeathTimeout, int maxReplicaQuantity, int minSafeReplicaQuantity, long approveWaitTime) {
 		this.commands = commands;
 		this.hashing = hashing;
 		this.myId = myId;
 		this.serverDeathTimeout = serverDeathTimeout;
 		this.maxReplicaQuantity = maxReplicaQuantity;
 		this.minSafeReplicaQuantity = minSafeReplicaQuantity;
+		this.approveWaitTime = approveWaitTime;
+		this.servers.addAll(bootstrap);
 	}
 
-	public static Logic init(Set<ServerInfo> bootstrap, Commands commands, Hashing hashing, final ServerInfo myId, final Config config) {
-		final LogicImpl logic = new LogicImpl(commands, hashing, myId, config.getServerDeathTimeout(),
-				config.getMaxReplicaQuantity(), config.getMinSafeReplicasQuantity());
-		logic.servers.addAll(bootstrap);
+	@Override
+	public NioEventloop getNioEventloop() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void start(final CompletionCallback callback) {
 		commands.scan(new ResultCallback<Set<String>>() {
 			@Override
 			public void onResult(Set<String> result) {
 				for (String filePath : result) {
-					logic.files.put(filePath, new FileInfo(myId));
+					files.put(filePath, new FileInfo(myId));
 				}
+				commands.updateServerMap(servers);
+				commands.postUpdate();
+				callback.onComplete();
 			}
 
 			@Override
-			public void onException(Exception ignored) {
-				// ignored
+			public void onException(Exception e) {
+				callback.onException(e);
 			}
 		});
-		commands.updateServerMap(bootstrap);
-		commands.postUpdate();
-		return logic;
+
+	}
+
+	@Override
+	public void stop(CompletionCallback callback) {
+		// TODO (arashev) assume no pending operations left
+		callback.onComplete();
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +95,7 @@ public class LogicImpl implements Logic {
 
 	@Override
 	public void onUploadComplete(String filePath) {
-		commands.scheduleTemporaryFileDeletion(filePath);
+		commands.scheduleTemporaryFileDeletion(filePath, approveWaitTime);
 	}
 
 	@Override
@@ -175,13 +192,13 @@ public class LogicImpl implements Logic {
 	public void onShowAliveResponse(Set<ServerInfo> result, long timestamp) {
 		for (ServerInfo server : servers) {
 			if (result.contains(server)) {
-				server.updateState(ServerStatus.RUNNING, timestamp);
+				server.updateState(RUNNING, timestamp);
 			}
 		}
 		for (ServerInfo server : result) {
 			if (!servers.contains(server)) {
 				servers.add(server);
-				server.updateState(ServerStatus.RUNNING, timestamp);
+				server.updateState(RUNNING, timestamp);
 			}
 		}
 	}
@@ -247,7 +264,7 @@ public class LogicImpl implements Logic {
 			// adding file to server2offerFiles map
 			for (ServerInfo server : candidates) {
 				Map<ServerInfo, Set<String>> workingMap = files.get(file).isDeleted() ? server2Delete : server2Offer;
-				// FIXME possible bug
+
 				if (!currentReplicas.contains(server)) {
 					Set<String> workingFiles = workingMap.get(server);
 					if (workingFiles == null) {

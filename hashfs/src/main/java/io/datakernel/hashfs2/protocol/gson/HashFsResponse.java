@@ -14,11 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
-class HashFsResponseOk extends HashFsResponse {
-	@Override
-	public String toString() {
-		return "Operation{OK}";
-	}
+abstract class HashFsResponse {
 }

@@ -14,17 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
-class HashFsCommandUpload extends HashFsCommand {
-	public final String filePath;
-
-	public HashFsCommandUpload(String filePath) {
-		this.filePath = filePath;
-	}
-
+class HashFsResponseOk extends HashFsResponse {
 	@Override
 	public String toString() {
-		return "Upload{filepath=\'" + filePath + "\'}";
+		return "Operation{OK}";
 	}
 }

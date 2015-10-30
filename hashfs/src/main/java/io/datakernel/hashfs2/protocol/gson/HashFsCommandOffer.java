@@ -14,17 +14,23 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
-class HashFsResponseError extends HashFsResponse {
-	public final String msg;
+import java.util.Set;
 
-	public HashFsResponseError(String msg) {
-		this.msg = msg;
+import static java.util.Collections.unmodifiableSet;
+
+class HashFsCommandOffer extends HashFsCommand {
+	public final Set<String> forDeletion;
+	public final Set<String> forUpload;
+
+	public HashFsCommandOffer(Set<String> forDeletion, Set<String> forUpload) {
+		this.forDeletion = unmodifiableSet(forDeletion);
+		this.forUpload = unmodifiableSet(forUpload);
 	}
 
 	@Override
 	public String toString() {
-		return "Error{" + msg + "}";
+		return "Offer{forDeletion:" + forDeletion.size() + ",forUpload:" + forUpload.size() + "}";
 	}
 }

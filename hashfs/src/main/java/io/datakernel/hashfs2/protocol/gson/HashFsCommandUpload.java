@@ -14,8 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
+package io.datakernel.hashfs2.protocol.gson;
 
-public enum ServerStatus {
-	RUNNING, SHUTDOWN
+class HashFsCommandUpload extends HashFsCommand {
+	public final String filePath;
+
+	public HashFsCommandUpload(String filePath) {
+		this.filePath = filePath;
+	}
+
+	@Override
+	public String toString() {
+		return "Upload{filepath=\'" + filePath + "\'}";
+	}
 }

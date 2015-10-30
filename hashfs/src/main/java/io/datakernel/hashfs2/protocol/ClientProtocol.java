@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2;
+package io.datakernel.hashfs2.protocol;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -25,10 +25,10 @@ import io.datakernel.stream.StreamProducer;
 
 import java.util.Set;
 
-public interface Client {
+public interface ClientProtocol {
 	void upload(ServerInfo server, String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer);
+	void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer, CompletionCallback callback);
 
 	void delete(ServerInfo server, String filePath, CompletionCallback callback);
 

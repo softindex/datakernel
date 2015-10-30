@@ -14,11 +14,22 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2;
 
-class HashFsCommandList extends HashFsCommand {
-	@Override
-	public String toString() {
-		return "List{all files}";
-	}
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+
+import java.util.List;
+
+public interface FsClient {
+	void upload(String destinationFileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+
+	void download(String path, StreamConsumer<ByteBuf> consumer);
+
+	void listFiles(ResultCallback<List<String>> callback);
+
+	void deleteFile(String fileName, CompletionCallback callback);
 }

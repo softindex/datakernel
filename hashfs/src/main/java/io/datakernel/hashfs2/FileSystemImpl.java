@@ -20,7 +20,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -36,7 +35,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-public class FileSystemImpl implements FileSystem {
+class FileSystemImpl implements FileSystem {
 	private static final Logger logger = LoggerFactory.getLogger(FileSystemImpl.class);
 	private final String inProgressExtension;
 	private final int bufferSize;
@@ -47,9 +46,9 @@ public class FileSystemImpl implements FileSystem {
 	private final Path fileStorage;
 	private final Path tmpStorage;
 
-	private FileSystemImpl(NioEventloop eventloop, ExecutorService executor,
-	                       Path fileStorage, Path tmpStorage, int bufferSize,
-	                       String inProgressExtension) {
+	public FileSystemImpl(NioEventloop eventloop, ExecutorService executor,
+	                      Path fileStorage, Path tmpStorage, int bufferSize,
+	                      String inProgressExtension) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.fileStorage = fileStorage;
@@ -58,26 +57,34 @@ public class FileSystemImpl implements FileSystem {
 		this.inProgressExtension = inProgressExtension;
 	}
 
-	public static FileSystem init(NioEventloop eventloop, ExecutorService executor,
-	                              Path fileStorage, Config config) throws IOException {
-
-		int bufferSize = config.getFsBufferSize();
-		String tmp = config.getTmpDirectoryName();
-		String inProgress = config.getInProgressExtension();
-		Path tmpStorage = fileStorage.resolve(tmp);
-
-		FileSystemImpl fileSystem = new FileSystemImpl(eventloop, executor, fileStorage, tmpStorage, bufferSize, inProgress);
-		fileSystem.ensureInfrastructure();
-
-		return fileSystem;
+	@Override
+	public NioEventloop getNioEventloop() {
+		return eventloop;
 	}
 
 	@Override
-	public void saveToTemporary(String filePath, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-		logger.trace("Saving to temporary dir {}", filePath);
+	public void start(CompletionCallback callback) {
+		try {
+			this.ensureInfrastructure();
+			logger.trace("FileSystem for HashFs initiated");
+			callback.onComplete();
+		} catch (IOException e) {
+			logger.error("Can't initiate FileSystem for HashFs", e);
+			callback.onException(e);
+		}
+	}
+
+	@Override
+	public void stop(CompletionCallback callback) {
+		logger.trace("FileSystem stopped");
+	}
+
+	@Override
+	public void saveToTemporary(String path, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+		logger.trace("Saving to temporary dir {}", path);
 		Path tmpPath;
 		try {
-			tmpPath = ensureInProgressDirectory(filePath);
+			tmpPath = ensureInProgressDirectory(path);
 		} catch (IOException e) {
 			callback.onException(e);
 			return;
@@ -88,15 +95,15 @@ public class FileSystemImpl implements FileSystem {
 	}
 
 	@Override
-	public void commitTemporary(String filePath, CompletionCallback callback) {
-		logger.trace("Moving file from temporary dir to {}", filePath);
+	public void commitTemporary(String path, CompletionCallback callback) {
+		logger.trace("Moving file from temporary dir to {}", path);
 		Path destinationPath;
 		Path tmpPath;
 		try {
-			tmpPath = ensureInProgressDirectory(filePath);
-			destinationPath = ensureDestinationDirectory(filePath);
+			tmpPath = ensureInProgressDirectory(path);
+			destinationPath = ensureDestinationDirectory(path);
 		} catch (IOException e) {
-			logger.error("Can't ensure directory for {}", filePath, e);
+			logger.error("Can't ensure directory for {}", path, e);
 			callback.onException(e);
 			return;
 		}
@@ -104,7 +111,7 @@ public class FileSystemImpl implements FileSystem {
 			Files.move(tmpPath, destinationPath);
 			callback.onComplete();
 		} catch (IOException e) {
-			logger.error("Can't move file from temporary dir to {}", filePath, e);
+			logger.error("Can't move file from temporary dir to {}", path, e);
 			try {
 				Files.delete(tmpPath);
 			} catch (IOException ignored) {
@@ -128,15 +135,14 @@ public class FileSystemImpl implements FileSystem {
 	}
 
 	@Override
-	public void get(String filePath, StreamConsumer<ByteBuf> consumer) {
+	public StreamProducer<ByteBuf> get(String filePath) {
 		logger.trace("Streaming file {}", filePath);
 		Path destination = fileStorage.resolve(filePath);
-		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, bufferSize, destination);
-		producer.streamTo(consumer);
+		return StreamFileReader.readFileFully(eventloop, executor, bufferSize, destination);
 	}
 
 	@Override
-	public void deleteFile(String filePath, CompletionCallback callback) {
+	public void delete(String filePath, CompletionCallback callback) {
 		logger.trace("Deleting file {}", filePath);
 		Path path = fileStorage.resolve(filePath);
 		try {
@@ -149,15 +155,15 @@ public class FileSystemImpl implements FileSystem {
 	}
 
 	@Override
-	public void listFiles(ResultCallback<Set<String>> files) {
+	public void list(ResultCallback<Set<String>> callback) {
 		logger.trace("Listing files");
 		Set<String> result = new HashSet<>();
 		try {
 			listFiles(fileStorage, result, "");
-			files.onResult(result);
+			callback.onResult(result);
 		} catch (IOException e) {
 			logger.error("Can't list files", e);
-			files.onException(e);
+			callback.onException(e);
 		}
 	}
 

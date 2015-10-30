@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
 class HashFsCommandCommit extends HashFsCommand{
 	public final String filePath;

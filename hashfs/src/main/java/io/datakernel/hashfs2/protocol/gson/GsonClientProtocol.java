@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs2.protocol;
+package io.datakernel.hashfs2.protocol.gson;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -22,8 +22,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.hashfs2.Client;
 import io.datakernel.hashfs2.ServerInfo;
+import io.datakernel.hashfs2.protocol.ClientProtocol;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -40,13 +40,29 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
-public class GsonClientProtocol implements Client {
+public class GsonClientProtocol implements ClientProtocol {
 	private final NioEventloop eventloop;
-	private final int bufferSize;
+	private final int minChunkSize;
+	private final int maxChunkSize;
+	private final int deserializerBufferSize;
+	private final int connectTimeout;
+	private final int serializerBufferSize;
+	private final int serializerMaxMessageSize;
+	private final int serializerFlushDelayMillis;
+	private final SocketSettings socketSettings;
 
-	public GsonClientProtocol(NioEventloop eventloop, int bufferSize) {
+	public GsonClientProtocol(NioEventloop eventloop, int minChunkSize, int maxChunkSize, int deserializerBufferSize,
+	                          int connectTimeout, int serializerBufferSize, int serializerMaxMessageSize,
+	                          int serializerFlushDelayMillis, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
-		this.bufferSize = bufferSize;
+		this.minChunkSize = minChunkSize;
+		this.maxChunkSize = maxChunkSize;
+		this.deserializerBufferSize = deserializerBufferSize;
+		this.connectTimeout = connectTimeout;
+		this.serializerBufferSize = serializerBufferSize;
+		this.serializerMaxMessageSize = serializerMaxMessageSize;
+		this.serializerFlushDelayMillis = serializerFlushDelayMillis;
+		this.socketSettings = socketSettings;
 	}
 
 	@Override
@@ -56,8 +72,8 @@ public class GsonClientProtocol implements Client {
 	}
 
 	@Override
-	public void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer) {
-		connect(server.getAddress(), defineDownload(filePath, consumer));
+	public void download(ServerInfo server, String filePath, StreamConsumer<ByteBuf> consumer, CompletionCallback callback) {
+		connect(server.getAddress(), defineDownload(filePath, consumer, callback));
 	}
 
 	@Override
@@ -97,7 +113,7 @@ public class GsonClientProtocol implements Client {
 						.addHandler(HashFsResponseOk.class, new MessagingHandler<HashFsResponseOk, HashFsCommand>() {
 							@Override
 							public void onMessage(HashFsResponseOk item, Messaging<HashFsCommand> messaging) {
-								StreamByteChunker byteChunker = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
+								StreamByteChunker byteChunker = new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
 								producer.streamTo(byteChunker);
 								messaging.write(byteChunker, new CompletionCallback() {
 									@Override
@@ -148,7 +164,7 @@ public class GsonClientProtocol implements Client {
 		};
 	}
 
-	private ConnectCallback defineDownload(final String filePath, final StreamConsumer<ByteBuf> consumer) {
+	private ConnectCallback defineDownload(final String filePath, final StreamConsumer<ByteBuf> consumer, final CompletionCallback callback) {
 		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -166,14 +182,14 @@ public class GsonClientProtocol implements Client {
 								StreamProducer<ByteBuf> producer = messaging.read();
 								producer.streamTo(consumer);
 								messaging.shutdownWriter();
+								callback.onComplete();
 							}
 						})
 						.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {
 							@Override
 							public void onMessage(HashFsResponseError item, Messaging<HashFsCommand> messaging) {
 								Exception e = new Exception(item.msg);
-								StreamProducers.<ByteBuf>closingWithError(eventloop, e)
-										.streamTo(consumer);
+								callback.onException(e);
 							}
 						});
 				connection.register();
@@ -374,12 +390,13 @@ public class GsonClientProtocol implements Client {
 	}
 
 	private void connect(SocketAddress address, ConnectCallback callback) {
-		eventloop.connect(address, SocketSettings.defaultSocketSettings(), 0, callback);
+		eventloop.connect(address, socketSettings, connectTimeout, callback);
 	}
 
 	private StreamMessagingConnection<HashFsResponse, HashFsCommand> createConnection(SocketChannel socketChannel) {
 		return new StreamMessagingConnection<>(eventloop, socketChannel,
-				new StreamGsonDeserializer<>(eventloop, HashFsResponseSerializer.GSON, HashFsResponse.class, 10),
-				new StreamGsonSerializer<>(eventloop, HashFsCommandSerializer.GSON, HashFsCommand.class, 256 * 1024, 256 * (1 << 20), 0));
+				new StreamGsonDeserializer<>(eventloop, HashFsResponseSerializer.GSON, HashFsResponse.class, deserializerBufferSize),
+				new StreamGsonSerializer<>(eventloop, HashFsCommandSerializer.GSON, HashFsCommand.class,
+						serializerBufferSize, serializerMaxMessageSize, serializerFlushDelayMillis));
 	}
 }
