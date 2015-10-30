@@ -2,15 +2,13 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
-import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
-import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
+import io.datakernel.rpc.client.sender.helper.*;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.Arrays.asList;
@@ -40,7 +38,7 @@ public class RequestSenderShardingTest {
 		RequestSender senderToServer3;
 		RequestSenderSharding senderSharding;
 
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RequestDataHashFunction();
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -56,14 +54,14 @@ public class RequestSenderShardingTest {
 		senderSharding =
 				new RequestSenderSharding(asList(senderToServer1, senderToServer2, senderToServer3), hashFunction);
 
-		senderSharding.sendRequest(new RequestData(0), timeout, callback);
-		senderSharding.sendRequest(new RequestData(0), timeout, callback);
-		senderSharding.sendRequest(new RequestData(1), timeout, callback);
-		senderSharding.sendRequest(new RequestData(0), timeout, callback);
-		senderSharding.sendRequest(new RequestData(2), timeout, callback);
-		senderSharding.sendRequest(new RequestData(0), timeout, callback);
-		senderSharding.sendRequest(new RequestData(0), timeout, callback);
-		senderSharding.sendRequest(new RequestData(2), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(1), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(2), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(2), timeout, callback);
 
 
 
@@ -87,12 +85,12 @@ public class RequestSenderShardingTest {
 		RequestSender senderToServer3;
 		RequestSenderSharding senderSharding;
 
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RequestDataHashFunction();
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 
 		int timeout = 50;
-		ResultCallback<RequestData> callback = new ResultCallback<RequestData>() {
+		ResultCallback<RpcMessageDataStubWithKey> callback = new ResultCallback<RpcMessageDataStubWithKey>() {
 			@Override
-			public void onResult(RequestData result) {
+			public void onResult(RpcMessageDataStubWithKey result) {
 
 			}
 
@@ -113,38 +111,22 @@ public class RequestSenderShardingTest {
 		senderSharding =
 				new RequestSenderSharding(asList(senderToServer1, senderToServer2, senderToServer3), hashFunction);
 
-		senderSharding.sendRequest(new RequestData(0), timeout, callback);
-		senderSharding.sendRequest(new RequestData(1), timeout, callback);
-		senderSharding.sendRequest(new RequestData(2), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(1), timeout, callback);
+		senderSharding.sendRequest(new RpcMessageDataStubWithKey(2), timeout, callback);
 
 
 
 		assertEquals(1, onExceptionCallsAmount.get());
 	}
 
-	public static class RequestData implements RpcMessage.RpcMessageData {
-
-		private final int key;
-
-		public RequestData(int key) {
-			this.key = key;
-		}
-
-		public int getKey() {
-			return key;
-		}
-
-		@Override
-		public boolean isMandatory() {
-			return false;
-		}
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
+		RequestSenderSharding sender = new RequestSenderSharding(null, new RpcMessageDataStubWithKeyHashFunction());
 	}
 
-	public class RequestDataHashFunction implements HashFunction<RpcMessage.RpcMessageData> {
-
-		@Override
-		public int hashCode(RpcMessage.RpcMessageData item) {
-			return ((RequestData)item).getKey();
-		}
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
+		RequestSenderSharding sender = new RequestSenderSharding(new ArrayList<RequestSender>(), null);
 	}
 }

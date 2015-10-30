@@ -19,6 +19,8 @@ class RequestSenderTypeDispatcher implements RequestSender {
 
 	public RequestSenderTypeDispatcher(Map<Class<? extends RpcMessageData>, RequestSender> dataTypeToSender,
 	                                   RequestSender defaultSender) {
+		checkNotNull(dataTypeToSender);
+
 		this.dataTypeToSender = dataTypeToSender;
 		this.defaultSender = defaultSender;
 		this.active = countActiveSenders(dataTypeToSender) > 0 || (defaultSender != null && defaultSender.isActive());
@@ -30,7 +32,7 @@ class RequestSenderTypeDispatcher implements RequestSender {
 
 		assert isActive();
 
-		RequestSender specifiedSender = dataTypeToSender.get(request);
+		RequestSender specifiedSender = dataTypeToSender.get(request.getClass());
 		RequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;
 		if (sender != null) {
 			if (sender.isActive()) {

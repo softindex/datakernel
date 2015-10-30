@@ -4,6 +4,7 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
+import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 import org.junit.Test;
 
@@ -41,6 +42,17 @@ public class RequestSenderToSingleServerTest {
 		boolean active = sender.isActive();
 
 		assertFalse(active);
+	}
+
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenAddressIsNull() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
+		RequestSenderToSingleServer sender = new RequestSenderToSingleServer(null, pool);
+	}
+
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenConnectionPoolIsNull() {
+		RequestSenderToSingleServer sender = new RequestSenderToSingleServer(ADDRESS, null);
 	}
 
 	@Test

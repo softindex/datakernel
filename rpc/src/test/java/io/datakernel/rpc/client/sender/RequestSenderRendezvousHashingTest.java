@@ -1,9 +1,7 @@
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
-import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
+import io.datakernel.rpc.client.sender.helper.*;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 import org.junit.Test;
@@ -17,6 +15,7 @@ import static io.datakernel.rpc.client.sender.RequestSenderRendezvousHashing.Ren
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class RequestSenderRendezvousHashingTest {
 
@@ -50,7 +49,7 @@ public class RequestSenderRendezvousHashingTest {
 		RequestSender senderToServer3;
 		RequestSenderRendezvousHashing rendezvousSender;
 
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RequestDataHashFunction();
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 
 		int callsPerLoop = 10000;
 
@@ -72,7 +71,7 @@ public class RequestSenderRendezvousHashingTest {
 		rendezvousSender = new RequestSenderRendezvousHashing(keyToSender, hashFunction);
 
 		for (int i = 0; i < callsPerLoop; i++) {
-			rendezvousSender.sendRequest(new RequestData(i), timeout, callback);
+			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
 
 
@@ -87,7 +86,7 @@ public class RequestSenderRendezvousHashingTest {
 		keyToSender.put(key3, senderToServer3);
 		rendezvousSender = new RequestSenderRendezvousHashing(keyToSender, hashFunction);
 		for (int i = 0; i < callsPerLoop; i++) {
-			rendezvousSender.sendRequest(new RequestData(i), timeout, callback);
+			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
 
 
@@ -102,7 +101,7 @@ public class RequestSenderRendezvousHashingTest {
 		keyToSender.put(key3, senderToServer3);
 		rendezvousSender = new RequestSenderRendezvousHashing(keyToSender, hashFunction);
 		for (int i = 0; i < callsPerLoop; i++) {
-			rendezvousSender.sendRequest(new RequestData(i), timeout, callback);
+			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
 
 
@@ -118,6 +117,54 @@ public class RequestSenderRendezvousHashingTest {
 		assertEquals(expectedCallsOfConnection2, connection2.getCallsAmount(), delta);
 		assertEquals(expectedCallsOfConnection3, connection3.getCallsAmount(), delta);
 
+	}
+
+	@Test
+	public void itShouldBeActiveWhenThereIsAtLeastOneActiveSubSender() {
+		Map<Object, RequestSender> keyToSender = new HashMap<>();
+		keyToSender.put(1, new RequestSenderStub(1, NON_ACTIVE));
+		keyToSender.put(1, new RequestSenderStub(1, NON_ACTIVE));
+		keyToSender.put(1, new RequestSenderStub(1, ACTIVE));
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+
+		RequestSender rendezvousSender = new RequestSenderRendezvousHashing(keyToSender, hashFunction);
+
+		assertTrue(rendezvousSender.isActive());
+	}
+
+	@Test
+	public void itShouldNotBeActiveWhenThereIsNoActiveSubSenders() {
+		Map<Object, RequestSender> keyToSender = new HashMap<>();
+		keyToSender.put(1, new RequestSenderStub(1, NON_ACTIVE));
+		keyToSender.put(1, new RequestSenderStub(1, NON_ACTIVE));
+		keyToSender.put(1, new RequestSenderStub(1, NON_ACTIVE));
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+
+		RequestSender rendezvousSender = new RequestSenderRendezvousHashing(keyToSender, hashFunction);
+
+		assertFalse(rendezvousSender.isActive());
+	}
+
+	@Test
+	public void itShouldNotBeActiveWhenThereIsNoSendersInMap() {
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		RequestSender rendezvousSender
+				= new RequestSenderRendezvousHashing(new HashMap<Object, RequestSender>(), hashFunction);
+
+		assertFalse(rendezvousSender.isActive());
+	}
+
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenMapIsNull() {
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		RequestSender rendezvousSender
+				= new RequestSenderRendezvousHashing(null, hashFunction);
+	}
+
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
+		RequestSender rendezvousSender
+				= new RequestSenderRendezvousHashing(new HashMap<Object, RequestSender>(), null);
 	}
 
 	@Test
@@ -177,74 +224,6 @@ public class RequestSenderRendezvousHashingTest {
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			assertEquals(baseBucket[i], hashBucket.chooseSender(i));
-		}
-	}
-
-	static class RequestSenderStub implements RequestSender {
-
-		private final int id;
-		private final boolean active;
-		private int sendRequestCalls;
-
-		public RequestSenderStub(int id, boolean active) {
-			this.id = id;
-			this.active = active;
-			this.sendRequestCalls = 0;
-		}
-
-		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
-		                                                              ResultCallback<T> callback) {
-			++sendRequestCalls;
-		}
-
-		@Override
-		public boolean isActive() {
-			return active;
-		}
-
-		public int getId() {
-			return id;
-		}
-
-		public int getSendRequestCalls() {
-			return sendRequestCalls;
-		}
-
-		@Override
-		public boolean equals(Object obj) {
-			return ((RequestSenderStub)obj).getId() == id;
-		}
-
-		@Override
-		public int hashCode() {
-			return id;
-		}
-	}
-
-	public static class RequestData implements RpcMessage.RpcMessageData {
-
-		private final int key;
-
-		public RequestData(int key) {
-			this.key = key;
-		}
-
-		public int getKey() {
-			return key;
-		}
-
-		@Override
-		public boolean isMandatory() {
-			return false;
-		}
-	}
-
-	public class RequestDataHashFunction implements HashFunction<RpcMessage.RpcMessageData> {
-
-		@Override
-		public int hashCode(RpcMessage.RpcMessageData item) {
-			return ((RequestData)item).getKey();
 		}
 	}
 }

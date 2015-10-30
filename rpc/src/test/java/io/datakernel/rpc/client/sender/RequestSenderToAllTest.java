@@ -74,5 +74,8 @@ public class RequestSenderToAllTest {
 		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection3.getCallsAmount());
 	}
 
-
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
+		RequestSenderToAll sender = new RequestSenderToAll(null);
+	}
 }

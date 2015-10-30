@@ -8,6 +8,7 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -53,6 +54,13 @@ public class RequestSenderToFirstTest {
 		assertFalse(senderToServer2.isActive());
 		assertFalse(senderToServer3.isActive());
 		assertFalse(senderToFirst.isActive());
+	}
+
+	@Test
+	public void itShouldNotBeActiveWhenThereIsNoSubSenders() {
+		RequestSenderToFirst sender = new RequestSenderToFirst(new ArrayList<RequestSender>());
+
+		assertFalse(sender.isActive());
 	}
 
 	@Test
@@ -115,5 +123,10 @@ public class RequestSenderToFirstTest {
 		assertEquals(callsToSender1, connection1.getCallsAmount());
 		assertEquals(callsToSender2, connection2.getCallsAmount());
 		assertEquals(callsToSender3, connection3.getCallsAmount());
+	}
+
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
+		RequestSenderToFirst sender = new RequestSenderToFirst(null);
 	}
 }

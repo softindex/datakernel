@@ -110,4 +110,9 @@ public class RequestSenderRoundRobinTest {
 		assertEquals(3, connection2.getCallsAmount());
 		assertEquals(3, connection4.getCallsAmount());
 	}
+
+	@Test(expected = Exception.class)
+	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
+		RequestSenderRoundRobin sender = new RequestSenderRoundRobin(null);
+	}
 }
