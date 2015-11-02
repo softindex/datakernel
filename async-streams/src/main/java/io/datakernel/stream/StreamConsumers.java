@@ -85,11 +85,31 @@ public class StreamConsumers {
 
 	public static final class ClosingWithError<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		protected static final Logger logger = LoggerFactory.getLogger(ClosingWithError.class);
+		private CompletionCallback callback;
 		private final Exception exception;
+
+		public void setCompletionCallback(CompletionCallback callback) {
+			if (getConsumerStatus().isOpen()) {
+				this.callback = callback;
+			} else {
+				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+					callback.onComplete();
+				} else {
+					callback.onException(getConsumerException());
+				}
+			}
+		}
 
 		public ClosingWithError(Eventloop eventloop, Exception exception) {
 			super(eventloop);
 			this.exception = exception;
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			if (callback != null) {
+				callback.onException(e);
+			}
 		}
 
 		@Override
@@ -164,11 +184,28 @@ public class StreamConsumers {
 		}
 
 		public void setCompletionCallback(CompletionCallback completionCallback) {
-			this.completionCallback = completionCallback;
+			if (getConsumerStatus().isOpen()) {
+				this.completionCallback = completionCallback;
+			} else {
+				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+					completionCallback.onComplete();
+				} else {
+					completionCallback.onException(getConsumerException());
+				}
+			}
 		}
 
 		public void setResultCallback(ResultCallback<List<T>> resultCallback) {
-			this.resultCallback = resultCallback;
+			if (getConsumerStatus().isOpen()) {
+				this.resultCallback = resultCallback;
+			} else {
+				if (error != null) {
+					onError(getConsumerException());
+				} else {
+					onEndOfStream();
+				}
+			}
+
 		}
 
 		@Override
