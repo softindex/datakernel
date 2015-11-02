@@ -34,8 +34,13 @@ public class StreamConsumerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<Integer>(eventloop, consumer) {};
+		final TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<Integer>(new HasInput<Integer>() {
+			@Override
+			public StreamConsumer<Integer> getInput() {
+				return consumer;
+			}
+		});
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
@@ -54,8 +59,13 @@ public class StreamConsumerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
-		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<Integer>(eventloop, consumer) {};
+		final StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
+		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<Integer>(new HasInput<Integer>() {
+			@Override
+			public StreamConsumer<Integer> getInput() {
+				return consumer;
+			}
+		});
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 
 		producer.streamTo(decorator);

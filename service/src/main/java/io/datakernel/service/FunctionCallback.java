@@ -16,37 +16,12 @@
 
 package io.datakernel.service;
 
-import java.util.concurrent.CountDownLatch;
+import io.datakernel.annotation.Nullable;
+import io.datakernel.async.SimpleCompletionFuture;
 
-public class SimpleResultFuture<T> {
-	private CountDownLatch latch = new CountDownLatch(1);
-	private T result;
-	private Exception exception;
+public interface FunctionCallback<F> {
+	void apply(F input, SimpleCompletionFuture callback);
 
-	protected void doOnResult(T item) {
-	}
-
-	public final void onResult(T item) {
-		result = item;
-		doOnResult(item);
-		latch.countDown();
-	}
-
-	protected void doOnError(Exception e) {
-
-	}
-
-	public final void onError(Exception e) {
-		doOnError(e);
-		exception = e;
-		latch.countDown();
-	}
-
-	public final T get() throws Exception {
-		latch.await();
-		if (exception != null) {
-			throw exception;
-		}
-		return result;
-	}
+	@Override
+	boolean equals(@Nullable Object object);
 }

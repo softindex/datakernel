@@ -115,17 +115,17 @@ public class StreamProducers {
 				producerGetter.get(new ResultCallback<StreamProducer<T>>() {
 					@Override
 					public void onResult(StreamProducer<T> actualProducer) {
-						actualProducer.streamTo(forwarder);
+						actualProducer.streamTo(forwarder.getInput());
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						new ClosingWithError<T>(eventloop, exception).streamTo(forwarder);
+						new ClosingWithError<T>(eventloop, exception).streamTo(forwarder.getInput());
 					}
 				});
 			}
 		});
-		return forwarder;
+		return forwarder.getOutput();
 	}
 
 	/**
@@ -136,7 +136,7 @@ public class StreamProducers {
 	 * @param <T>           type of output data
 	 */
 	public static <T> StreamProducer<T> concat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> asyncIterator) {
-		return new StreamProducerConcat<>(eventloop, asyncIterator);
+		return new StreamProducerConcat<>(eventloop, asyncIterator).getOutput();
 	}
 
 	/**
@@ -389,7 +389,6 @@ public class StreamProducers {
 		protected void onResumed() {
 			resumeProduce();
 		}
-
 	}
 
 	/**
@@ -398,51 +397,89 @@ public class StreamProducers {
 	 *
 	 * @param <T> type of received data
 	 */
-	public static class StreamProducerConcat<T> extends StreamProducerDecorator<T> {
+	public static class StreamProducerConcat<T> implements HasOutput<T> {
 		private final AsyncIterator<StreamProducer<T>> iterator;
+		private final ForwarderConcat forwarderConcat;
 
 		public StreamProducerConcat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> iterator) {
-			super(eventloop);
-			this.iterator = checkNotNull(iterator);
-		}
-
-		/**
-		 * This method is called if consumer was changed for changing consumer status. It begins streaming
-		 * from producers from iterator
-		 */
-		@Override
-		protected void onStarted() {
-			doNext();
+			this.forwarderConcat = new ForwarderConcat(eventloop);
+			this.iterator = iterator;
 		}
 
 		@Override
-		protected void onProducerEndOfStream() {
-			doNext();
+		public StreamProducer<T> getOutput() {
+			return forwarderConcat.getOutput();
 		}
 
-		private void doNext() {
-			eventloop.post(new Runnable() {
-				@Override
-				public void run() {
-					iterator.next(new IteratorCallback<StreamProducer<T>>() {
-						@Override
-						public void onNext(StreamProducer<T> actualProducer) {
-							StreamProducerConcat.this.setActualProducer(actualProducer);
-						}
+		private class ForwarderConcat extends AbstractStreamTransformer_1_1<T, T> {
+			protected UpstreamConsumer upstreamConsumer;
+			protected DownstreamProducer downstreamProducer;
 
-						@Override
-						public void onEnd() {
-							sendEndOfStream();
-						}
+			protected ForwarderConcat(Eventloop eventloop) {
+				super(eventloop);
+				upstreamConsumer = new UpstreamConsumer();
+				downstreamProducer = new DownstreamProducer();
+			}
 
+			private class UpstreamConsumer extends AbstractUpstreamConsumer {
+
+				private void doNext() {
+					eventloop.post(new Runnable() {
 						@Override
-						public void onException(Exception e) {
-							closeWithError(e);
+						public void run() {
+							iterator.next(new IteratorCallback<StreamProducer<T>>() {
+								@Override
+								public void onNext(StreamProducer<T> actualProducer) {
+									actualProducer.streamTo(new StreamConsumerDecorator<T>(ForwarderConcat.this) {
+										@Override
+										public void onProducerEndOfStream() {
+											upstreamConsumer.onUpstreamEndOfStream();
+										}
+									});
+								}
+
+								@Override
+								public void onEnd() {
+									downstreamProducer.sendEndOfStream();
+								}
+
+								@Override
+								public void onException(Exception e) {
+									closeWithError(e);
+								}
+							});
 						}
 					});
 				}
-			});
-		}
 
+				@Override
+				protected void onUpstreamEndOfStream() {
+					doNext();
+				}
+
+				@Override
+				public StreamDataReceiver<T> getDataReceiver() {
+					return downstreamProducer.getDownstreamDataReceiver();
+				}
+			}
+
+			private class DownstreamProducer extends AbstractDownstreamProducer {
+
+				@Override
+				protected void onDownstreamStarted() {
+					upstreamConsumer.doNext();
+				}
+
+				@Override
+				protected void onDownstreamSuspended() {
+					upstreamConsumer.suspend();
+				}
+
+				@Override
+				protected void onDownstreamResumed() {
+					upstreamConsumer.resume();
+				}
+			}
+		}
 	}
 }

@@ -73,8 +73,8 @@ public final class TcpStreamSocketConnectionTest {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
 						StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
-						streamDeserializer.streamTo(consumerToList);
-						socketReader.streamTo(streamDeserializer);
+						streamDeserializer.getOutput().streamTo(consumerToList);
+						socketReader.streamTo(streamDeserializer.getInput());
 					}
 				};
 			}
@@ -89,8 +89,8 @@ public final class TcpStreamSocketConnectionTest {
 				SocketConnection connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						streamSerializer.streamTo(socketWriter);
-						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
+						streamSerializer.getOutput().streamTo(socketWriter);
+						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 					}
 				};
 				connection.register();
@@ -142,13 +142,13 @@ public final class TcpStreamSocketConnectionTest {
 				SocketConnection connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						streamSerializer.streamTo(socketWriter);
-						socketReader.streamTo(streamDeserializer);
+						streamSerializer.getOutput().streamTo(socketWriter);
+						socketReader.streamTo(streamDeserializer.getInput());
 					}
 				};
 				connection.register();
-				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-				streamDeserializer.streamTo(consumerToList);
+				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
+				streamDeserializer.getOutput().streamTo(consumerToList);
 			}
 
 			@Override
@@ -207,13 +207,13 @@ public final class TcpStreamSocketConnectionTest {
 				SocketConnection connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						streamSerializer.streamTo(socketWriter);
-						socketReader.streamTo(streamDeserializer);
+						streamSerializer.getOutput().streamTo(socketWriter);
+						socketReader.streamTo(streamDeserializer.getInput());
 					}
 				};
 				connection.register();
-				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-				streamDeserializer.streamTo(consumerToListWithError);
+				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
+				streamDeserializer.getOutput().streamTo(consumerToListWithError);
 			}
 
 			@Override
@@ -257,8 +257,8 @@ public final class TcpStreamSocketConnectionTest {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
 						final StreamGsonDeserializer<Integer> streamDeserializer = new StreamGsonDeserializer<>(eventloop, new Gson(), Integer.class, 10);
-						streamDeserializer.streamTo(consumerToListWithError);
-						socketReader.streamTo(streamDeserializer);
+						streamDeserializer.getOutput().streamTo(consumerToListWithError);
+						socketReader.streamTo(streamDeserializer.getInput());
 					}
 				};
 			}
@@ -273,8 +273,8 @@ public final class TcpStreamSocketConnectionTest {
 				SocketConnection connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
 					@Override
 					protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-						streamSerializer.streamTo(socketWriter);
-						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
+						streamSerializer.getOutput().streamTo(socketWriter);
+						StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 					}
 				};
 				connection.register();

@@ -70,17 +70,17 @@ public class StreamConsumers {
 				consumerGetter.get(new ResultCallback<StreamConsumer<T>>() {
 					@Override
 					public void onResult(StreamConsumer<T> result) {
-						forwarder.streamTo(result);
+						forwarder.getOutput().streamTo(result);
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						forwarder.streamTo(new ClosingWithError<T>(eventloop, exception));
+						forwarder.getOutput().streamTo(new ClosingWithError<T>(eventloop, exception));
 					}
 				});
 			}
 		});
-		return forwarder;
+		return forwarder.getInput();
 	}
 
 	public static final class ClosingWithError<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
@@ -124,17 +124,12 @@ public class StreamConsumers {
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return new StreamDataReceiver<T>() {
-				@Override
-				public void onData(T item) {
-					throw new RuntimeException("Extra item to ClosingWithError consumer");
-				}
-			};
+			return this;
 		}
 
 		@Override
 		public void onData(T item) {
-
+			closeWithError(exception);
 		}
 	}
 

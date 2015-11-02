@@ -33,6 +33,11 @@
             <version>1.1.2</version>
         </dependency>
         <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>service</artifactId>
+            <version>1.1.2</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
         </dependency>

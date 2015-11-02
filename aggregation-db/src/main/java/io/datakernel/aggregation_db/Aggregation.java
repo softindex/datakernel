@@ -292,8 +292,8 @@ public class Aggregation {
 					outputClass, aggregationMetadata.getKeys(), aggregationFields);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, keyFunction, Ordering.natural(), false,
 					sorterItemsInMemory);
-			streamProducer.streamTo(sorter);
-			return sorter;
+			streamProducer.streamTo(sorter.getInput());
+			return sorter.getOutput();
 		} else {
 			return streamProducer;
 		}
@@ -331,7 +331,7 @@ public class Aggregation {
 		Class<?> resultClass = structure.createRecordClass(getKeys(), fields);
 
 		consolidatedProducer(getKeys(), fields, resultClass, null, chunksToConsolidate)
-				.streamTo(new AggregationChunker(eventloop, getId(), getKeys(), fields, resultClass, aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback));
+				.streamTo(new AggregationChunker(eventloop, getId(), getKeys(), fields, resultClass, aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback).getInput());
 	}
 
 	private <T> StreamProducer<T> consolidatedProducer(List<String> keys, List<String> fields, Class<T> resultClass,
@@ -399,7 +399,7 @@ public class Aggregation {
 
 			producer.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
 		}
-		return streamReducer;
+		return streamReducer.getOutput();
 	}
 
 	private StreamProducer sequentialProducer(AggregationMetadata aggregation, AggregationQuery.QueryPredicates predicates,
@@ -420,8 +420,8 @@ public class Aggregation {
 			return chunkReader;
 		StreamFilter streamFilter = new StreamFilter<>(eventloop,
 				createPredicate(aggregationMetadata, chunk, chunkRecordClass, predicates));
-		chunkReader.streamTo(streamFilter);
-		return streamFilter;
+		chunkReader.streamTo(streamFilter.getInput());
+		return streamFilter.getOutput();
 	}
 
 	private Predicate createPredicate(AggregationMetadata aggregationMetadata, AggregationChunk chunk,

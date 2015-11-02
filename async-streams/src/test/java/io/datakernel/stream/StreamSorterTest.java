@@ -52,16 +52,16 @@ public class StreamSorterTest {
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(sorter);
-		sorter.streamTo(consumerToList);
+		source.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
 		storage.cleanup();
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, sorter.getProducerStatus());
-		assertEquals(END_OF_STREAM, sorter.getConsumerStatus());
+		assertEquals(END_OF_STREAM, sorter.getOutput().getProducerStatus());
+		assertEquals(END_OF_STREAM, sorter.getInput().getConsumerStatus());
 	}
 
 	@Test
@@ -76,18 +76,18 @@ public class StreamSorterTest {
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(sorter);
+		source.streamTo(sorter.getInput());
 		eventloop.run();
 
-		sorter.streamTo(consumerToList);
+		sorter.getOutput().streamTo(consumerToList);
 		eventloop.run();
 
 		storage.cleanup();
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, sorter.getProducerStatus());
-		assertEquals(END_OF_STREAM, sorter.getConsumerStatus());
+		assertEquals(END_OF_STREAM, sorter.getOutput().getProducerStatus());
+		assertEquals(END_OF_STREAM, sorter.getInput().getConsumerStatus());
 	}
 
 	@Test
@@ -135,11 +135,11 @@ public class StreamSorterTest {
 		List<Integer> list2 = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList2 = TestStreamConsumers.toListRandomlySuspending(eventloop, list2);
 
-		iterableSource.streamTo(sorter2);
-		scheduledSource.streamTo(sorter1);
+		iterableSource.streamTo(sorter2.getInput());
+		scheduledSource.streamTo(sorter1.getInput());
 
-		sorter1.streamTo(consumerToList1);
-		sorter2.streamTo(consumerToList2);
+		sorter1.getOutput().streamTo(consumerToList1);
+		sorter2.getOutput().streamTo(consumerToList2);
 
 		eventloop.run();
 		storage.cleanup();
@@ -150,10 +150,10 @@ public class StreamSorterTest {
 		assertEquals(END_OF_STREAM, iterableSource.getProducerStatus());
 		assertEquals(END_OF_STREAM, scheduledSource.getProducerStatus());
 
-		assertEquals(END_OF_STREAM, sorter1.getProducerStatus());
-		assertEquals(END_OF_STREAM, sorter1.getConsumerStatus());
-		assertEquals(END_OF_STREAM, sorter2.getProducerStatus());
-		assertEquals(END_OF_STREAM, sorter2.getConsumerStatus());
+		assertEquals(END_OF_STREAM, sorter1.getOutput().getProducerStatus());
+		assertEquals(END_OF_STREAM, sorter1.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, sorter2.getOutput().getProducerStatus());
+		assertEquals(END_OF_STREAM, sorter2.getInput().getConsumerStatus());
 	}
 
 	@Test
@@ -167,16 +167,16 @@ public class StreamSorterTest {
 		final List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop, list);
 
-		source.streamTo(sorter);
-		sorter.streamTo(consumerToList);
+		source.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
 		storage.cleanup();
 
 		assertTrue(list.size() == 0);
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, sorter.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, sorter.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getInput().getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
 
 		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
 	}
@@ -212,16 +212,16 @@ public class StreamSorterTest {
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList = TestStreamConsumers.toListRandomlySuspending(eventloop, list);
 
-		source.streamTo(sorter);
-		sorter.streamTo(consumerToList);
+		source.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
 		storage.cleanup();
 
 		assertTrue(list.size() == 0);
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, sorter.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, sorter.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
 	}
 
@@ -246,16 +246,16 @@ public class StreamSorterTest {
 			}
 		};
 
-		source.streamTo(sorter);
-		sorter.streamTo(consumerToList);
+		source.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
 		storage.cleanup();
 
 		assertTrue(list.size() == 2);
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, sorter.getProducerStatus());
-		assertEquals(END_OF_STREAM, sorter.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
+		assertEquals(END_OF_STREAM, sorter.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
 	}
 
@@ -275,8 +275,8 @@ public class StreamSorterTest {
 		final List<Integer> list = new ArrayList<>();
 		StreamConsumers.ToList<Integer> consumerToList = new StreamConsumers.ToList<>(eventloop, list);
 
-		source.streamTo(sorter);
-		sorter.streamTo(consumerToList);
+		source.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
 		storage.cleanup();
@@ -285,9 +285,8 @@ public class StreamSorterTest {
 		assertTrue(sorter.getItems() == 4);
 
 		assertEquals(CLOSED_WITH_ERROR, consumerToList.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, sorter.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, sorter.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, sorter.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, sorter.getInput().getConsumerStatus());
 	}
 
 	// override onData(T item) with error
@@ -295,6 +294,16 @@ public class StreamSorterTest {
 		protected long jmxItems;
 
 		private UpstreamConsumer upstreamConsumer;
+
+		@Override
+		public StreamConsumer<T> getInput() {
+			return upstreamConsumer;
+		}
+
+		@Override
+		public StreamProducer<T> getOutput() {
+			return upstreamConsumer.merger.getOutput();
+		}
 
 		private final class UpstreamConsumer extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 			private final StreamMergeSorterStorage<T> storage;
@@ -451,75 +460,6 @@ public class StreamSorterTest {
 					StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate));
 		}
 
-		// upstream
-
-		@Override
-		public final StreamDataReceiver<T> getDataReceiver() {
-			return upstreamConsumer.getDataReceiver();
-		}
-
-		@Override
-		public final void onProducerEndOfStream() {
-			upstreamConsumer.onProducerEndOfStream();
-		}
-
-		@Override
-		public final void onProducerError(Exception e) {
-			upstreamConsumer.onProducerError(e);
-		}
-
-		@Override
-		public final void streamFrom(StreamProducer<T> upstreamProducer) {
-			upstreamConsumer.streamFrom(upstreamProducer);
-		}
-
-		@Override
-		public StreamStatus getConsumerStatus() {
-			return upstreamConsumer.getConsumerStatus();
-		}
-
-		// downstream
-
-		@Override
-		public final void streamTo(StreamConsumer<T> downstreamConsumer) {
-			upstreamConsumer.merger.streamTo(downstreamConsumer);
-		}
-
-		@Override
-		public final void onConsumerSuspended() {
-			upstreamConsumer.merger.onConsumerSuspended();
-		}
-
-		@Override
-		public final void onConsumerResumed() {
-			upstreamConsumer.merger.onConsumerResumed();
-		}
-
-		@Override
-		public final void onConsumerError(Exception e) {
-			upstreamConsumer.merger.onConsumerError(e);
-		}
-
-		@Override
-		public final void bindDataReceiver() {
-			upstreamConsumer.merger.bindDataReceiver();
-		}
-
-		@Override
-		public StreamStatus getProducerStatus() {
-			return upstreamConsumer.merger.getProducerStatus();
-		}
-
-		@Override
-		public Exception getConsumerException() {
-			return upstreamConsumer.getConsumerException();
-		}
-
-		@Override
-		public Exception getProducerException() {
-			return upstreamConsumer.merger.getProducerException();
-		}
-
 		//for test only
 		StreamStatus getUpstreamConsumerStatus() {
 			return upstreamConsumer.getConsumerStatus();
@@ -527,7 +467,7 @@ public class StreamSorterTest {
 
 		// for test only
 		StreamStatus getDownstreamProducerStatus() {
-			return upstreamConsumer.merger.getProducerStatus();
+			return upstreamConsumer.merger.getOutput().getProducerStatus();
 		}
 
 		@Override

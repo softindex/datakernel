@@ -17,6 +17,7 @@
 package io.datakernel.service;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioService;
 
 import java.util.Arrays;

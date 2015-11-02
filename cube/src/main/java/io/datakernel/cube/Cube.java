@@ -18,7 +18,6 @@ package io.datakernel.cube;
 
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
@@ -32,7 +31,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
@@ -210,7 +208,7 @@ public final class Cube {
 			++streamSplitterOutputs[0];
 		}
 
-		return streamSplitter;
+		return streamSplitter.getInput();
 	}
 
 	private Comparator<Aggregation> aggregationCostComparator(final AggregationQuery query) {
@@ -460,10 +458,10 @@ public final class Cube {
 			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure, resultClass, dimensions, measures);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, sortingMeasureFunction,
 					fieldComparator, false, sorterItemsInMemory);
-			rawResultStream.streamTo(sorter);
-			return sorter;
+			rawResultStream.getOutput().streamTo(sorter.getInput());
+			return sorter.getOutput();
 		} else {
-			return rawResultStream;
+			return rawResultStream.getOutput();
 		}
 	}
 

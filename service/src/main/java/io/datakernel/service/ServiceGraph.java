@@ -16,8 +16,11 @@
 
 package io.datakernel.service;
 
+import io.datakernel.async.SimpleCompletionFuture;
+import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -25,13 +28,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.slf4j.LoggerFactory.getLogger;
 
 public class ServiceGraph implements ConcurrentService {
 
@@ -82,7 +82,7 @@ public class ServiceGraph implements ConcurrentService {
 		}
 	}
 
-	private static final Logger logger = getLogger(ServiceGraph.class);
+	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
 
 	private final ThreadFactory threadFactory;
 
@@ -170,7 +170,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * @return changed service graph
 	 */
 	public final ServiceGraph add(Node service, Node... dependencies) {
-		check(!started, "Already started");
+		Preconditions.check(!started, "Already started");
 		return add(service, Arrays.asList(dependencies));
 	}
 
@@ -183,7 +183,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * @return changed service graph
 	 */
 	public ServiceGraph add(Node service, Iterable<Node> dependencies) {
-		check(!started, "Already started");
+		Preconditions.check(!started, "Already started");
 		vertices.add(service);
 		for (Node dependency : dependencies) {
 			vertices.add(dependency);
@@ -496,7 +496,7 @@ public class ServiceGraph implements ConcurrentService {
 	}
 
 	private static String repeat(String s, int count) {
-		checkNotNull(s);
+		Preconditions.checkNotNull(s);
 		StringBuilder builder = new StringBuilder();
 
 		while (count-- > 0) {
@@ -510,7 +510,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * Removes nodes which don't have services
 	 */
 	public void removeIntermediateNodes() {
-		check(!started, "Already started");
+		Preconditions.check(!started, "Already started");
 		List<Node> toRemove = new ArrayList<>();
 		for (Node v : vertices) {
 			if (v.getService() == null) {
@@ -528,7 +528,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * dependencies.
 	 */
 	public void breakCircularDependencies() {
-		check(!started, "Already started");
+		Preconditions.check(!started, "Already started");
 		Set<Node> visited = new LinkedHashSet<>();
 		List<Node> path = new ArrayList<>();
 		next:

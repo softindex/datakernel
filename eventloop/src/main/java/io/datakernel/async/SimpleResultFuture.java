@@ -14,20 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.async;
 
 import java.util.concurrent.CountDownLatch;
 
-public class SimpleCompletionFuture {
+public class SimpleResultFuture<T> {
 	private CountDownLatch latch = new CountDownLatch(1);
+	private T result;
 	private Exception exception;
 
-	protected void doOnSuccess() {
-
+	protected void doOnResult(T item) {
 	}
 
-	public final void onSuccess() {
-		doOnSuccess();
+	public final void onResult(T item) {
+		result = item;
+		doOnResult(item);
 		latch.countDown();
 	}
 
@@ -41,8 +42,11 @@ public class SimpleCompletionFuture {
 		latch.countDown();
 	}
 
-	public final void await() throws Exception {
+	public final T get() throws Exception {
 		latch.await();
-		if (exception != null) throw exception;
+		if (exception != null) {
+			throw exception;
+		}
+		return result;
 	}
 }

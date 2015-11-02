@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.stream;
 
-import io.datakernel.annotation.Nullable;
-
-public interface FunctionCallback<F> {
-	void apply(F input, SimpleCompletionFuture callback);
-
-	@Override
-	boolean equals(@Nullable Object object);
+public interface HasInput<I> {
+	StreamConsumer<I> getInput();
 }

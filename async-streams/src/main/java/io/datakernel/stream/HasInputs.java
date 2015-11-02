@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.stream;
 
-/**
- * Service which starts and stops asynchronously and does not block thread while startFuture/stopFuture methods are running.
- */
-public interface ConcurrentService {
-	void startFuture(SimpleCompletionFuture callback);
+import java.util.List;
 
-	void stopFuture(SimpleCompletionFuture callback);
+public interface HasInputs {
+	List<? extends StreamConsumer<?>> getInputs();
 
+	StreamConsumer<?> getInput(int index);
 }
-

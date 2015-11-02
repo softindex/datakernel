@@ -30,7 +30,7 @@ import static java.util.Collections.unmodifiableList;
  * @param <O> type of sending items
  */
 @SuppressWarnings("unchecked")
-public abstract class AbstractStreamTransformer_N_1<O> implements StreamProducer<O> {
+public abstract class AbstractStreamTransformer_N_1<O> implements HasOutput<O>, HasInputs {
 	protected final Eventloop eventloop;
 
 	protected final List<AbstractUpstreamConsumer<?>> upstreamConsumers = new ArrayList<>();
@@ -193,48 +193,17 @@ public abstract class AbstractStreamTransformer_N_1<O> implements StreamProducer
 	}
 
 	@Override
-	public Exception getProducerException() {
-		return downstreamProducer.getProducerException();
-	}
-
-	// StreamConsumer interface
-
-	@Override
-	public final void bindDataReceiver() {
-		downstreamProducer.bindDataReceiver();
-	}
-
-	@Override
-	public final void streamTo(StreamConsumer<O> downstreamConsumer) {
-		downstreamProducer.streamTo(downstreamConsumer);
-	}
-
-	@Override
-	public final void onConsumerSuspended() {
-		downstreamProducer.onConsumerSuspended();
-	}
-
-	@Override
-	public final void onConsumerResumed() {
-		downstreamProducer.onConsumerResumed();
-	}
-
-	@Override
-	public final void onConsumerError(Exception e) {
-		downstreamProducer.onConsumerError(e);
-	}
-
-	@Override
-	public StreamStatus getProducerStatus() {
-		return downstreamProducer.getProducerStatus();
-	}
-
-	public final StreamProducer getDownstreamProducer() {
+	public StreamProducer<O> getOutput() {
 		return downstreamProducer;
 	}
 
-	public final List<? extends StreamConsumer<?>> getUpstreamConsumers() {
+	@Override
+	public final List<? extends StreamConsumer<?>> getInputs() {
 		return unmodifiableList(upstreamConsumers);
 	}
 
+	@Override
+	public StreamConsumer<?> getInput(int index) {
+		return upstreamConsumers.get(index);
+	}
 }

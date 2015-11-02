@@ -37,16 +37,16 @@ public class ErrorIgnoringTransformerTest {
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
 
-		producer.streamTo(errorIgnoringTransformer);
-		errorIgnoringTransformer.streamTo(consumer);
+		producer.streamTo(errorIgnoringTransformer.getInput());
+		errorIgnoringTransformer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
 		assertEquals(consumer.getList(), asList(1, 2, 3));
 		assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		assertEquals(producer.getProducerStatus(), StreamStatus.END_OF_STREAM);
-		assertEquals(errorIgnoringTransformer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
-		assertEquals(errorIgnoringTransformer.getProducerStatus(), StreamStatus.END_OF_STREAM);
+		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.END_OF_STREAM);
+		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.END_OF_STREAM);
 	}
 
 	@Test
@@ -61,16 +61,16 @@ public class ErrorIgnoringTransformerTest {
 		List<Integer> list = new ArrayList<>();
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
 
-		producer.streamTo(errorIgnoringTransformer);
-		errorIgnoringTransformer.streamTo(consumer);
+		producer.streamTo(errorIgnoringTransformer.getInput());
+		errorIgnoringTransformer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3));
 		assertEquals(consumer.getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		assertEquals(producer.getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertEquals(errorIgnoringTransformer.getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertEquals(errorIgnoringTransformer.getProducerStatus(), StreamStatus.END_OF_STREAM);
+		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
+		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.END_OF_STREAM);
 	}
 
 	@Test
@@ -91,15 +91,15 @@ public class ErrorIgnoringTransformerTest {
 			}
 		};
 
-		producer.streamTo(errorIgnoringTransformer);
-		errorIgnoringTransformer.streamTo(consumer);
+		producer.streamTo(errorIgnoringTransformer.getInput());
+		errorIgnoringTransformer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2));
 		assertEquals(consumer.getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 		assertEquals(producer.getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertEquals(errorIgnoringTransformer.getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
-		assertEquals(errorIgnoringTransformer.getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
+		assertEquals(errorIgnoringTransformer.getInput().getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
+		assertEquals(errorIgnoringTransformer.getOutput().getProducerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 	}
 }
