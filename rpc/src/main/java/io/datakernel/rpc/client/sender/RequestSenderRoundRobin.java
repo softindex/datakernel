@@ -41,9 +41,7 @@ final class RequestSenderRoundRobin extends RequestSenderToGroup {
 		sender.sendRequest(request, timeout, callback);
 	}
 
-	// TODO (vmykhalko): method doesn't seem to be thread safe
 	private RequestSender getCurrentSubSender() {
-		// TODO (vmykhalko): maybe change subSenders to immutable list?
 		List<RequestSender> activeSubSenders = getActiveSubSenders();
 
 		assert activeSubSenders.size() > 0;
