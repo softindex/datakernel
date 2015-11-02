@@ -20,6 +20,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
+import java.net.InetSocketAddress;
+
 class HashFsCommandSerializer {
 	public static final Gson GSON = new GsonBuilder()
 			.registerTypeAdapter(HashFsCommand.class, GsonSubclassesAdapter.builder()

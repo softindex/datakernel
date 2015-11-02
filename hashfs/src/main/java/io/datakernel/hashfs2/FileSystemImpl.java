@@ -77,6 +77,7 @@ class FileSystemImpl implements FileSystem {
 	@Override
 	public void stop(CompletionCallback callback) {
 		logger.trace("FileSystem stopped");
+		callback.onComplete();
 	}
 
 	@Override

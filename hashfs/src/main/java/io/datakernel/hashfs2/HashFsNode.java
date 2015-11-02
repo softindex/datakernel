@@ -91,13 +91,11 @@ public class HashFsNode implements Commands, Server {
 		CompletionCallback waiter = AsyncCallbacks.waitAll(2, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.info("Stopped HashFsServer");
-				callback.onComplete();
+				transport.stop(callback);
 			}
 
 			@Override
 			public void onException(Exception e) {
-				logger.error("HashFsServer stopped with exception", e);
 				callback.onException(e);
 			}
 		});
@@ -321,7 +319,7 @@ public class HashFsNode implements Commands, Server {
 
 	@Override
 	public void postUpdate() {
-		eventloop.schedule(eventloop.currentTimeMillis() + updateTimeout, new Runnable() {
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + updateTimeout, new Runnable() {
 			@Override
 			public void run() {
 				logger.info("Updating...");

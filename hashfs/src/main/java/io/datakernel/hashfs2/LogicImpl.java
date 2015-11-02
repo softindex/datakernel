@@ -22,6 +22,8 @@ import io.datakernel.eventloop.NioEventloop;
 
 import java.util.*;
 
+import static io.datakernel.hashfs2.LogicImpl.FileState.READY;
+import static io.datakernel.hashfs2.LogicImpl.FileState.TOMBSTONE;
 import static io.datakernel.hashfs2.ServerInfo.ServerStatus.RUNNING;
 
 public class LogicImpl implements Logic {
@@ -36,6 +38,8 @@ public class LogicImpl implements Logic {
 
 	private final Map<String, FileInfo> files = new HashMap<>();
 	private final Set<ServerInfo> servers = new HashSet<>();
+
+	private CompletionCallback onStopCallback;
 
 	public LogicImpl(Commands commands, Hashing hashing, ServerInfo myId, Set<ServerInfo> bootstrap,
 	                 long serverDeathTimeout, int maxReplicaQuantity, int minSafeReplicaQuantity, long approveWaitTime) {
@@ -72,13 +76,27 @@ public class LogicImpl implements Logic {
 				callback.onException(e);
 			}
 		});
-
 	}
 
 	@Override
-	public void stop(CompletionCallback callback) {
-		// TODO (arashev) assume no pending operations left
+	public void stop(final CompletionCallback callback) {
+		for (Map.Entry<String, FileInfo> file : files.entrySet()) {
+			if (file.getValue().getPendingOperationsCounter() != 0) {
+				onStopCallback = callback;
+				return;
+			}
+		}
+		files.clear();
+		servers.clear();
 		callback.onComplete();
+	}
+
+	private void onOperationFinished() {
+		if (onStopCallback != null) {
+			files.clear();
+			servers.clear();
+			onStopCallback.onComplete();
+		}
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,5 +329,68 @@ public class LogicImpl implements Logic {
 			});
 		}
 		commands.postUpdate();
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	final class FileInfo {
+		private final Set<ServerInfo> replicas = new HashSet<>();
+		private FileState state;
+		private int pendingOperationsCounter;
+
+		public FileInfo() {
+			state = FileState.UPLOADING;
+		}
+
+		public FileInfo(ServerInfo myId) {
+			state = READY;
+			replicas.add(myId);
+		}
+
+		public void onApprove(ServerInfo holder) {
+			replicas.add(holder);
+			state = READY;
+		}
+
+		public void onDelete() {
+			replicas.clear();
+			state = TOMBSTONE;
+		}
+
+		public void onOperationStart() {
+			pendingOperationsCounter++;
+		}
+
+		public void onOperationEnd() {
+			pendingOperationsCounter--;
+			onOperationFinished();
+		}
+
+		public boolean isReady() {
+			return state == READY;
+		}
+
+		public boolean isDeleted() {
+			return state == TOMBSTONE;
+		}
+
+		public boolean canDelete() {
+			return pendingOperationsCounter == 0;
+		}
+
+		public void addReplica(ServerInfo server) {
+			replicas.add(server);
+		}
+
+		public Set<ServerInfo> getReplicas() {
+			return replicas;
+		}
+
+		public int getPendingOperationsCounter() {
+			return pendingOperationsCounter;
+		}
+	}
+
+	enum FileState {
+		UPLOADING, TOMBSTONE, READY
 	}
 }

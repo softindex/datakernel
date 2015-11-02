@@ -24,8 +24,8 @@ import java.util.Set;
 class HashFsResponseListServers extends HashFsResponse {
 	public final Set<ServerInfo> servers;
 
-	public HashFsResponseListServers(Set<ServerInfo> servers) {
-		this.servers = Collections.unmodifiableSet(servers);
+	public HashFsResponseListServers(Set<ServerInfo> infos) {
+		servers = Collections.unmodifiableSet(infos);
 	}
 
 	@Override

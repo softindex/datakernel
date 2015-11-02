@@ -37,8 +37,8 @@ public class Config {
 	private long approveWaitTime = 10 * 1000;
 
 	// PROTOCOL
-	private int minChunkSize = 256 * 1024;
-	private int maxChunkSize = 256 * 512;
+	private int minChunkSize = 128 * 1024;
+	private int maxChunkSize = 128 * 512;
 	private int deserializerBufferSize = 10;
 	private int connectTimeout = 0;
 	private int serializerBufferSize = 256 * 1024;
@@ -48,7 +48,7 @@ public class Config {
 
 	// SERVER
 	private long updateTimeout = 10 * 1000;
-	private long mapUpdateTimeout = 5 * 1000;
+	private long mapUpdateTimeout = 10 * 1000;
 
 	// CLIENT
 	private long baseRetryTimeout = 100;
