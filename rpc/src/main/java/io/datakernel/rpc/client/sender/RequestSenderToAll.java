@@ -41,7 +41,7 @@ final class RequestSenderToAll extends RequestSenderToGroup {
 
 		FirstResultCallback<T> resultCallback = new FirstResultCallback<>(callback);
 		for (RequestSender sender : activeSubSenders) {
-			sender.sendRequest(request, timeout, callback);
+			sender.sendRequest(request, timeout, resultCallback);
 		}
 		resultCallback.resultOf(activeSubSenders.size());
 	}

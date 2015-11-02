@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -97,10 +98,10 @@ public class RequestSenderTypeDispatcherTest {
 
 	}
 
-	// TODO (vmykhalko): fix test
 	@Test
-	@Ignore
-	public void itShouldThrowExceptionWhenSenderForDataIsNotSpecifiedAndDefaultSenderIsNull() {
+	public void itShouldRaiseRpcSenderNotSpecifiedExceptionWhenSenderForDataIsNotSpecifiedAndDefaultSenderIsNull() {
+
+		final AtomicReference<Exception> raisedException = new AtomicReference<>(null);
 
 		RequestSenderStub sender1 = new RequestSenderStub(1, ACTIVE);
 		RequestSenderStub sender2 = new RequestSenderStub(2, ACTIVE);
@@ -121,18 +122,19 @@ public class RequestSenderTypeDispatcherTest {
 
 			@Override
 			public void onException(Exception exception) {
-				throw new RuntimeException(exception);
+				raisedException.compareAndSet(null, exception);
 			}
 		};
 
+
 		RequestSenderTypeDispatcher senderDispatcher = new RequestSenderTypeDispatcher(typeToSender, null);
 
-
-
+		// sender is not specified for RpcMessageDataStub, default sender is null
 		senderDispatcher.sendRequest(new RpcMessageDataStub(), timeout, callback);
 
-
+		assertEquals(RpcSenderNotSpecifiedException.class, raisedException.get().getClass());
 	}
+
 
 	@Test
 	public void itShouldBeActiveWhenThereIsAtLeastOneActiveSubSender() {
