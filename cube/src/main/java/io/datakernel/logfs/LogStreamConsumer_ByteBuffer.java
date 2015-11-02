@@ -21,57 +21,59 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamStatus;
+import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class LogStreamConsumer_ByteBuffer {
+public final class LogStreamConsumer_ByteBuffer implements HasInput<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(LogStreamConsumer_ByteBuffer.class);
-	public StreamWriteLog streamWriteLog;
+	private final StreamWriteLog streamWriteLog;
+
+	public LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String streamId) {
+		this.streamWriteLog = new StreamWriteLog(eventloop, datetimeFormat, fileSystem, streamId);
+	}
 
 	public void setCompletionCallback(CompletionCallback completionCallback) {
-		streamWriteLog.callback = completionCallback;
+		streamWriteLog.upstreamConsumer.callback = completionCallback;
 	}
 
 	public void setTag(Object tag) {
-		streamWriteLog.upstreamConsumer.setTag(tag);
-		streamWriteLog.downstreamProducer.setTag(tag);
+		streamWriteLog.setTag(tag);
 	}
 
 	private class StreamWriteLog extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 		private UpstreamConsumer upstreamConsumer;
 		private DownstreamProducer downstreamProducer;
 
-		private static final long ONE_HOUR = 60 * 60 * 1000L;
-		private final String streamId;
-
-		private long currentHour = -1;
-		private LogFile currentLogFile;
-
-		private final DateTimeFormatter datetimeFormat;
-		private final LogFileSystem fileSystem;
-		private boolean createFile;
-		private boolean newFile;
-
-		private int activeWriters = 0;
-
-		private CompletionCallback callback;
-
 		protected StreamWriteLog(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String streamId) {
 			super(eventloop);
-			this.datetimeFormat = datetimeFormat;
-			this.fileSystem = fileSystem;
-			this.streamId = streamId;
-			upstreamConsumer = new UpstreamConsumer();
 			downstreamProducer = new DownstreamProducer();
+			upstreamConsumer = new UpstreamConsumer(datetimeFormat, fileSystem, streamId);
 		}
 
 		private class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<ByteBuf> {
+			private static final long ONE_HOUR = 60 * 60 * 1000L;
+			private final String streamId;
+
+			private long currentHour = -1;
+			private LogFile currentLogFile;
+
+			private final DateTimeFormatter datetimeFormat;
+			private final LogFileSystem fileSystem;
+			private boolean createFile;
+			private boolean newFile;
+
+			private int activeWriters = 0;
+
+			private CompletionCallback callback;
+
+			public UpstreamConsumer(DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String streamId) {
+				this.streamId = streamId;
+				this.datetimeFormat = datetimeFormat;
+				this.fileSystem = fileSystem;
+			}
 
 			@Override
 			protected void onUpstreamEndOfStream() {
@@ -81,14 +83,8 @@ class LogStreamConsumer_ByteBuffer {
 					downstreamProducer.sendEndOfStream();
 				}
 
-				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					callback.onException(getConsumerException());
-					callback = null;
-					return;
-				}
-				if (error != null) {
-					callback.onComplete();
-					callback = null;
+				if (activeWriters == 0) {
+					zeroActiveWriters();
 				}
 			}
 
@@ -127,9 +123,9 @@ class LogStreamConsumer_ByteBuffer {
 
 						currentLogFile = result;
 						StreamFileWriter currentConsumer = fileSystem.writer(streamId, currentLogFile);
-						ConsumerErrorEgnoring consumerErrorEgnoring = new ConsumerErrorEgnoring(eventloop);
-						downstreamProducer.streamTo(consumerErrorEgnoring.getInput());
-						consumerErrorEgnoring.getOutput().streamTo(currentConsumer);
+						ConsumerErrorIgnoring consumerErrorIgnoring = new ConsumerErrorIgnoring(eventloop);
+						downstreamProducer.streamTo(consumerErrorIgnoring.getInput());
+						consumerErrorIgnoring.getOutput().streamTo(currentConsumer);
 						currentConsumer.setFlushCallback(createCloseCompletionCallback());
 
 						if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
@@ -202,7 +198,6 @@ class LogStreamConsumer_ByteBuffer {
 		}
 
 		private class DownstreamProducer extends AbstractDownstreamProducer {
-
 			@Override
 			protected void doCleanup() {
 				for (ByteBuf byteBuf : downstreamProducer.bufferedList) {
@@ -223,11 +218,11 @@ class LogStreamConsumer_ByteBuffer {
 		}
 	}
 
-	private class ConsumerErrorEgnoring extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+	private class ConsumerErrorIgnoring extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 		private UpstreamConsumer upstreamConsumer;
 		private DownstreamProducer downstreamProducer;
 
-		protected ConsumerErrorEgnoring(Eventloop eventloop) {
+		protected ConsumerErrorIgnoring(Eventloop eventloop) {
 			super(eventloop);
 			upstreamConsumer = new UpstreamConsumer();
 			downstreamProducer = new DownstreamProducer();
@@ -264,14 +259,10 @@ class LogStreamConsumer_ByteBuffer {
 			}
 		}
 
-
 	}
 
-	LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String streamId) {
-		streamWriteLog = new StreamWriteLog(eventloop, datetimeFormat, fileSystem, streamId);
-	}
-
-	StreamConsumer<ByteBuf> getInput() {
+	@Override
+	public StreamConsumer<ByteBuf> getInput() {
 		return streamWriteLog.getInput();
 	}
 }

@@ -55,13 +55,12 @@ public class StreamProducerDecoratorTest {
 		};
 
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(new HasOutput<Integer>() {
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(new HasOutput<Integer>() {
 			@Override
 			public StreamProducer<Integer> getOutput() {
 				return producer;
 			}
-		}) {
-		};
+		});
 
 		producerDecorator.streamTo(consumer);
 
@@ -80,13 +79,12 @@ public class StreamProducerDecoratorTest {
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(new HasOutput<Integer>() {
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(new HasOutput<Integer>() {
 			@Override
 			public StreamProducer<Integer> getOutput() {
 				return producer;
 			}
-		}) {
-		};
+		});
 
 		producerDecorator.streamTo(consumer);
 

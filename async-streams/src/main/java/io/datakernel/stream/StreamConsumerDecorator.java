@@ -26,16 +26,9 @@ package io.datakernel.stream;
  */
 public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 
-	private HasInput<T> input;
-
-	public StreamConsumerDecorator() {
-	}
+	private final HasInput<T> input;
 
 	public StreamConsumerDecorator(HasInput<T> input) {
-		this.input = input;
-	}
-
-	public void setInput(HasInput<T> input) {
 		this.input = input;
 	}
 
@@ -45,7 +38,7 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public void streamFrom(StreamProducer<T> upstreamProducer) {
+	public final void streamFrom(StreamProducer<T> upstreamProducer) {
 		input.getInput().streamFrom(upstreamProducer);
 	}
 
@@ -60,7 +53,7 @@ public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 	}
 
 	@Override
-	public StreamStatus getConsumerStatus() {
+	public final StreamStatus getConsumerStatus() {
 		return input.getInput().getConsumerStatus();
 	}
 
