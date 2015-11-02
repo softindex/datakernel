@@ -136,7 +136,7 @@ public class StreamProducers {
 	 * @param <T>           type of output data
 	 */
 	public static <T> StreamProducer<T> concat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> asyncIterator) {
-		return new StreamProducerConcat<>(eventloop, asyncIterator).getOutput();
+		return new StreamProducerConcat<>(eventloop, asyncIterator);
 	}
 
 	/**
@@ -397,18 +397,14 @@ public class StreamProducers {
 	 *
 	 * @param <T> type of received data
 	 */
-	public static class StreamProducerConcat<T> implements HasOutput<T> {
+	public static class StreamProducerConcat<T> extends StreamProducerDecorator<T> {
 		private final AsyncIterator<StreamProducer<T>> iterator;
 		private final ForwarderConcat forwarderConcat;
 
 		public StreamProducerConcat(Eventloop eventloop, AsyncIterator<StreamProducer<T>> iterator) {
 			this.forwarderConcat = new ForwarderConcat(eventloop);
 			this.iterator = iterator;
-		}
-
-		@Override
-		public StreamProducer<T> getOutput() {
-			return forwarderConcat.getOutput();
+			setActualProducer(forwarderConcat.getOutput());
 		}
 
 		private class ForwarderConcat extends AbstractStreamTransformer_1_1<T, T> {
@@ -430,7 +426,7 @@ public class StreamProducers {
 							iterator.next(new IteratorCallback<StreamProducer<T>>() {
 								@Override
 								public void onNext(StreamProducer<T> actualProducer) {
-									actualProducer.streamTo(new StreamConsumerDecorator<T>(ForwarderConcat.this) {
+									actualProducer.streamTo(new StreamConsumerDecorator<T>(ForwarderConcat.this.getInput()) {
 										@Override
 										public void onProducerEndOfStream() {
 											upstreamConsumer.onUpstreamEndOfStream();

@@ -128,7 +128,7 @@ public final class LogCommitTransaction<T> {
 						logCallback.onException(exception);
 						logger.error("Log producer exception. Log partition: {}. Log position: {}", logPartition, logPosition);
 					}
-				}).getOutput();
+				});
 	}
 
 }

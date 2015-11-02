@@ -20,8 +20,8 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.HasInput;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerDecorator;
 import io.datakernel.stream.StreamDataReceiver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,20 +29,15 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class AggregationChunker<T> implements HasInput<T> {
+public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationChunker.class);
-	private ChunkerTransformer chunkerTransformer;
 
 	public AggregationChunker(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
 	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 	                          int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
-		this.chunkerTransformer = new ChunkerTransformer(eventloop, aggregationId, keys, fields, recordClass,
+		ChunkerTransformer chunkerTransformer = new ChunkerTransformer(eventloop, aggregationId, keys, fields, recordClass,
 				storage, metadataStorage, chunkSize, chunksCallback);
-	}
-
-	@Override
-	public StreamConsumer<T> getInput() {
-		return chunkerTransformer.getInput();
+		setActualConsumer(chunkerTransformer.getInput());
 	}
 
 	private class ChunkerTransformer extends AbstractStreamTransformer_1_1<T, T> {

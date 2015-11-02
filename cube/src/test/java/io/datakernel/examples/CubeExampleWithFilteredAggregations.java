@@ -233,7 +233,7 @@ public class CubeExampleWithFilteredAggregations {
 
 		/* Stream data to logs. */
 		StreamProducers.OfIterator<LogItemWithFilteredAggregations> producerOfRandomLogItemWithFilteredAggregationss = getProducerOfRandomLogItemWithFilteredAggregationss(eventloop);
-		producerOfRandomLogItemWithFilteredAggregationss.streamTo(logManager.consumer(LOG_PARTITION_NAME).getInput());
+		producerOfRandomLogItemWithFilteredAggregationss.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
 		/* Read logs, aggregate data and save to cube. */

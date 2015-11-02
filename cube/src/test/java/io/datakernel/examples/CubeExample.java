@@ -204,7 +204,7 @@ public class CubeExample {
 
 		/* Stream data to logs. */
 		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems = getProducerOfRandomLogItems(eventloop);
-		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME).getInput());
+		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
 		/* Read logs, aggregate data and save to cube. */

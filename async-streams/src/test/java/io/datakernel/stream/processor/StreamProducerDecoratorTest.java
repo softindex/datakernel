@@ -18,7 +18,10 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducerDecorator;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -55,12 +58,7 @@ public class StreamProducerDecoratorTest {
 		};
 
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(new HasOutput<Integer>() {
-			@Override
-			public StreamProducer<Integer> getOutput() {
-				return producer;
-			}
-		});
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
 
 		producerDecorator.streamTo(consumer);
 
@@ -79,12 +77,7 @@ public class StreamProducerDecoratorTest {
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(new HasOutput<Integer>() {
-			@Override
-			public StreamProducer<Integer> getOutput() {
-				return producer;
-			}
-		});
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
 
 		producerDecorator.streamTo(consumer);
 
@@ -100,14 +93,9 @@ public class StreamProducerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(new HasOutput<Integer>() {
-			@Override
-			public StreamProducer<Integer> getOutput() {
-				return producer;
-			}
-		});
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
 		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
 
 		producerDecorator.streamTo(function.getInput());

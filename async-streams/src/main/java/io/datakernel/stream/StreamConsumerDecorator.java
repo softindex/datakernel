@@ -16,6 +16,8 @@
 
 package io.datakernel.stream;
 
+import static com.google.common.base.Preconditions.checkState;
+
 /**
  * See also:
  * <br><a href="http://en.wikipedia.org/wiki/Decorator_pattern">Decorator Pattern</a>
@@ -26,39 +28,48 @@ package io.datakernel.stream;
  */
 public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 
-	private final HasInput<T> input;
+	private StreamConsumer<T> actualConsumer;
 
-	public StreamConsumerDecorator(HasInput<T> input) {
-		this.input = input;
+	public StreamConsumerDecorator() {
+
+	}
+
+	public StreamConsumerDecorator(StreamConsumer<T> actualConsumer) {
+		setActualConsumer(actualConsumer);
+	}
+
+	public void setActualConsumer(StreamConsumer<T> actualConsumer) {
+		checkState(this.actualConsumer == null, "Decorator is already wired");
+		this.actualConsumer = actualConsumer;
 	}
 
 	@Override
 	public StreamDataReceiver<T> getDataReceiver() {
-		return input.getInput().getDataReceiver();
+		return actualConsumer.getDataReceiver();
 	}
 
 	@Override
 	public final void streamFrom(StreamProducer<T> upstreamProducer) {
-		input.getInput().streamFrom(upstreamProducer);
+		actualConsumer.streamFrom(upstreamProducer);
 	}
 
 	@Override
 	public void onProducerEndOfStream() {
-		input.getInput().onProducerEndOfStream();
+		actualConsumer.onProducerEndOfStream();
 	}
 
 	@Override
 	public void onProducerError(Exception e) {
-		input.getInput().onProducerError(e);
+		actualConsumer.onProducerError(e);
 	}
 
 	@Override
 	public final StreamStatus getConsumerStatus() {
-		return input.getInput().getConsumerStatus();
+		return actualConsumer.getConsumerStatus();
 	}
 
 	@Override
 	public Exception getConsumerException() {
-		return input.getInput().getConsumerException();
+		return actualConsumer.getConsumerException();
 	}
 }

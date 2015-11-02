@@ -81,18 +81,18 @@ public class LogManagerTest {
 		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, testDir);
 		LogManager<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.stringSerializer());
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("1", "2", "3").iterator())
-				.streamTo(logManager.consumer("p1").getInput());
+				.streamTo(logManager.consumer("p1"));
 		eventloop.run();
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:50:00").toDateTime(DateTimeZone.UTC).getMillis());
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("4", "5", "6").iterator())
-				.streamTo(logManager.consumer("p1").getInput());
+				.streamTo(logManager.consumer("p1"));
 		eventloop.run();
 		timeProvider.setTime(new LocalDateTime("1970-01-01T01:50:00").toDateTime(DateTimeZone.UTC).getMillis());
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("7", "8", "9").iterator())
-				.streamTo(logManager.consumer("p1").getInput());
+				.streamTo(logManager.consumer("p1"));
 		eventloop.run();
 
-		StreamProducer<String> p1 = logManager.producer("p1", new LogFile("1970-01-01_00", 1), 0L, null).getOutput();
+		StreamProducer<String> p1 = logManager.producer("p1", new LogFile("1970-01-01_00", 1), 0L, null);
 		StreamConsumers.ToList<String> consumerToList = new StreamConsumers.ToList<>(eventloop);
 		p1.streamTo(consumerToList);
 		eventloop.run();
@@ -113,7 +113,7 @@ public class LogManagerTest {
 		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, testDir);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.stringSerializer());
 		final StreamSender<String> streamSender = new StreamSender<>(eventloop, false);
-		streamSender.streamTo(logManager.consumer(logPartition).getInput());
+		streamSender.streamTo(logManager.consumer(logPartition));
 
 		Map<Long, String> testData = new LinkedHashMap<>();
 		testData.put(ONE_HOUR - 2 * ONE_SECOND, "1");
@@ -157,15 +157,15 @@ public class LogManagerTest {
 		final StreamConsumers.ToList<String> consumerToList1 = new StreamConsumers.ToList<>(eventloop);
 		final StreamConsumers.ToList<String> consumerToList2 = new StreamConsumers.ToList<>(eventloop);
 
-		logManager.producer(logPartition, new LogFile(testDate.toString() + "_00", 0), 0L, null).getOutput()
+		logManager.producer(logPartition, new LogFile(testDate.toString() + "_00", 0), 0L, null)
 				.streamTo(consumerToList0);
 		eventloop.run();
 
-		logManager.producer(logPartition, new LogFile(testDate.toString() + "_01", 0), 0L, null).getOutput()
+		logManager.producer(logPartition, new LogFile(testDate.toString() + "_01", 0), 0L, null)
 				.streamTo(consumerToList1);
 		eventloop.run();
 
-		logManager.producer(logPartition, new LogFile(testDate.toString() + "_02", 0), 0L, null).getOutput()
+		logManager.producer(logPartition, new LogFile(testDate.toString() + "_02", 0), 0L, null)
 				.streamTo(consumerToList2);
 		eventloop.run();
 

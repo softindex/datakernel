@@ -107,7 +107,7 @@ public class LogToCubeTest {
 				new TestPubRequest(1001, 2, asList(new TestPubRequest.TestAdvRequest(10), new TestPubRequest.TestAdvRequest(20))),
 				new TestPubRequest(1002, 1, asList(new TestPubRequest.TestAdvRequest(30))),
 				new TestPubRequest(1002, 2, Arrays.<TestPubRequest.TestAdvRequest>asList())).iterator())
-				.streamTo(logManager.consumer("partitionA").getInput());
+				.streamTo(logManager.consumer("partitionA"));
 
 		eventloop.run();
 

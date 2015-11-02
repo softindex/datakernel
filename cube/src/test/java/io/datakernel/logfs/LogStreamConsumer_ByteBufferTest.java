@@ -128,13 +128,13 @@ public class LogStreamConsumer_ByteBufferTest {
 				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 
-		producer.streamTo(logStreamConsumerByteBuffer.getInput());
+		producer.streamTo(logStreamConsumerByteBuffer);
 		eventloop.run();
 
 		assertEquals(callbackСallCount.isCalledOnce(), true);
 		assertEquals(callbackСallCount.isCalledOnError(), true);
 		assertEquals(StreamStatus.CLOSED_WITH_ERROR, producer.getProducerStatus());
-		assertEquals(StreamStatus.CLOSED_WITH_ERROR, logStreamConsumerByteBuffer.getInput().getConsumerStatus());
+		assertEquals(StreamStatus.CLOSED_WITH_ERROR, logStreamConsumerByteBuffer.getConsumerStatus());
 		assertEquals(listWriter.size(), 2);
 
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
@@ -192,13 +192,13 @@ public class LogStreamConsumer_ByteBufferTest {
 				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 
-		producer.streamTo(logStreamConsumerByteBuffer.getInput());
+		producer.streamTo(logStreamConsumerByteBuffer);
 		eventloop.run();
 
 		assertEquals(callbackСallCount.isCalledOnce(), true);
 		assertEquals(callbackСallCount.isCalledOnComplite(), true);
 		assertEquals(StreamStatus.END_OF_STREAM, producer.getProducerStatus());
-		assertEquals(StreamStatus.END_OF_STREAM, logStreamConsumerByteBuffer.getInput().getConsumerStatus());
+		assertEquals(StreamStatus.END_OF_STREAM, logStreamConsumerByteBuffer.getConsumerStatus());
 		for (int i = 0; i < listWriter.size() - 1; i++) {
 			assertEquals(listWriter.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}

@@ -19,15 +19,14 @@ package io.datakernel.logfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.HasInput;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamConsumerDecorator;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-public class LogStreamConsumer<T> implements HasInput<T> {
+public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 	private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 	public static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
 	public static final int DEFAULT_FLUSH_DELAY = 1000; // 1 second
@@ -54,16 +53,12 @@ public class LogStreamConsumer<T> implements HasInput<T> {
 		streamCompressor.setTag(streamId);
 		this.streamBinarySerializer.setTag(streamId);
 
+		setActualConsumer(streamBinarySerializer.getInput());
 		streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());
-		streamCompressor.getOutput().streamTo(logStreamConsumer_byteBuffer.getInput());
+		streamCompressor.getOutput().streamTo(logStreamConsumer_byteBuffer);
 	}
 
 	public void setCompletionCallback(CompletionCallback callback) {
 		logStreamConsumer_byteBuffer.setCompletionCallback(callback);
-	}
-
-	@Override
-	public StreamConsumer<T> getInput() {
-		return streamBinarySerializer.getInput();
 	}
 }

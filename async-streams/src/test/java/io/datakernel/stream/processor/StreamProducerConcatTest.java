@@ -40,7 +40,7 @@ public class StreamProducerConcatTest {
 
 		AsyncIteratorWithSetter<StreamProducer<Integer>> producerSetter = AsyncIteratorWithSetter.createAsyncIteratorWithSetter(eventloop);
 
-		StreamProducer<Integer> producer = new StreamProducers.StreamProducerConcat<>(eventloop, producerSetter).getOutput();
+		StreamProducer<Integer> producer = new StreamProducers.StreamProducerConcat<>(eventloop, producerSetter);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		producer.streamTo(consumer);
@@ -70,7 +70,7 @@ public class StreamProducerConcatTest {
 
 		AsyncIteratorWithSetter<StreamProducer<Integer>> producerSetter = AsyncIteratorWithSetter.createAsyncIteratorWithSetter(eventloop);
 
-		StreamProducer<Integer> producer = new StreamProducers.StreamProducerConcat<>(eventloop, producerSetter).getOutput();
+		StreamProducer<Integer> producer = new StreamProducers.StreamProducerConcat<>(eventloop, producerSetter);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop, list);
 
 		producer.streamTo(consumer);

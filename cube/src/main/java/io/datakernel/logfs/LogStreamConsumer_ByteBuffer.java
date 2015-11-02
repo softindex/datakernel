@@ -21,18 +21,22 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
+import io.datakernel.stream.StreamConsumerDecorator;
+import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamStatus;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class LogStreamConsumer_ByteBuffer implements HasInput<ByteBuf> {
+public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(LogStreamConsumer_ByteBuffer.class);
 	private final StreamWriteLog streamWriteLog;
 
 	public LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String streamId) {
 		this.streamWriteLog = new StreamWriteLog(eventloop, datetimeFormat, fileSystem, streamId);
+		setActualConsumer(streamWriteLog.getInput());
 	}
 
 	public void setCompletionCallback(CompletionCallback completionCallback) {
@@ -259,10 +263,5 @@ public final class LogStreamConsumer_ByteBuffer implements HasInput<ByteBuf> {
 			}
 		}
 
-	}
-
-	@Override
-	public StreamConsumer<ByteBuf> getInput() {
-		return streamWriteLog.getInput();
 	}
 }
