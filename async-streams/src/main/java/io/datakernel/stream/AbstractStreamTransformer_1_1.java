@@ -32,16 +32,16 @@ import static com.google.common.base.Preconditions.checkState;
 public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTransformer<I, O> {
 	protected final Eventloop eventloop;
 
-	private AbstractUpstreamConsumer upstreamConsumer;
-	private AbstractDownstreamProducer downstreamProducer;
+	private AbstractInputConsumer inputConsumer;
+	private AbstractOutputProducer outputProducer;
 
 	protected Object tag;
 
-	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
-		public AbstractUpstreamConsumer() {
+	protected abstract class AbstractInputConsumer extends AbstractStreamConsumer<I> {
+		public AbstractInputConsumer() {
 			super(AbstractStreamTransformer_1_1.this.eventloop);
-			checkState(upstreamConsumer == null);
-			upstreamConsumer = this;
+			checkState(inputConsumer == null);
+			inputConsumer = this;
 		}
 
 		@Override
@@ -62,7 +62,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected void onError(Exception e) {
-			downstreamProducer.closeWithError(e);
+			outputProducer.closeWithError(e);
 		}
 
 		@Override
@@ -82,23 +82,23 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 	}
 
-	protected abstract class AbstractDownstreamProducer extends AbstractStreamProducer<O> {
-		public AbstractDownstreamProducer() {
+	protected abstract class AbstractOutputProducer extends AbstractStreamProducer<O> {
+		public AbstractOutputProducer() {
 			super(AbstractStreamTransformer_1_1.this.eventloop);
-			checkState(downstreamProducer == null);
-			downstreamProducer = this;
+			checkState(outputProducer == null);
+			outputProducer = this;
 		}
 
 		@Override
 		protected final void onDataReceiverChanged() {
-			if (upstreamConsumer.getUpstream() != null) {
-				upstreamConsumer.getUpstream().bindDataReceiver();
+			if (inputConsumer.getUpstream() != null) {
+				inputConsumer.getUpstream().bindDataReceiver();
 			}
 		}
 
 		@Override
 		protected final void onStarted() {
-			upstreamConsumer.bindUpstream();
+			inputConsumer.bindUpstream();
 			onDownstreamStarted();
 		}
 
@@ -108,7 +108,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected void onError(Exception e) {
-			upstreamConsumer.closeWithError(e);
+			inputConsumer.closeWithError(e);
 		}
 
 		@Override
@@ -147,12 +147,12 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 	@Override
 	public StreamConsumer<I> getInput() {
-		return upstreamConsumer;
+		return inputConsumer;
 	}
 
 	@Override
 	public StreamProducer<O> getOutput() {
-		return downstreamProducer;
+		return outputProducer;
 	}
 
 	public void setTag(Object tag) {

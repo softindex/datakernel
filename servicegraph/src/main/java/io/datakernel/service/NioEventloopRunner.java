@@ -35,10 +35,6 @@ import java.util.concurrent.ThreadFactory;
 
 import static io.datakernel.service.ConcurrentServices.*;
 
-//import static io.datakernel.async.AsyncCallbacks.waitAll;
-//import static io.datakernel.service.ConcurrentServices.*;
-//import static org.slf4j.LoggerFactory.getLogger;
-
 public class NioEventloopRunner implements ConcurrentService {
 	private static final Logger logger = LoggerFactory.getLogger(NioEventloopRunner.class);
 

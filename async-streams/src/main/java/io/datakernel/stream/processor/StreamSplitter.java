@@ -26,7 +26,7 @@ public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implement
 
 	public StreamSplitter(Eventloop eventloop) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer() {
+		this.inputConsumer = new InputConsumer() {
 			@Override
 			public void onData(T item) {
 				assert jmxItems != ++jmxItems;
@@ -38,7 +38,7 @@ public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implement
 	}
 
 	public StreamProducer<T> newOutput() {
-		return addOutput(new DownstreamProducer<T>());
+		return addOutput(new OutputProducer<T>());
 	}
 
 	@Override

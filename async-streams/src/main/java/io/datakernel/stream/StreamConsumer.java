@@ -26,7 +26,7 @@ package io.datakernel.stream;
  */
 public interface StreamConsumer<T> {
 	/**
-	 * Returns StreamDataCallback that will process receiving data.
+	 * Returns StreamDataReceiver that will process receiving data.
 	 * <p>Stream consumer is free to use any appropriate instance implementing the receiver interface, including itself.
 	 * <p>Moreover, it is possible (and encouraged) to forward data receiver from 'downstream' consumers.
 	 * This design principle makes it possible to implement zero-overhead stream transformers:

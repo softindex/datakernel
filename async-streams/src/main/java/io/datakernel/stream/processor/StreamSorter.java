@@ -39,9 +39,9 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class StreamSorter<K, T> implements StreamTransformer<T, T>, StreamSorterMBean {
 	protected long jmxItems;
 
-	private UpstreamConsumer upstreamConsumer;
+	private InputConsumer inputConsumer;
 
-	private final class UpstreamConsumer extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+	private final class InputConsumer extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 		private final StreamMergeSorterStorage<T> storage;
 		private final Comparator<T> itemComparator;
 		private final StreamMerger<K, T> merger;
@@ -51,7 +51,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 
 		private boolean writing;
 
-		protected UpstreamConsumer(Eventloop eventloop, int itemsInMemorySize, Comparator<T> itemComparator, StreamMergeSorterStorage<T> storage, StreamMerger<K, T> merger) {
+		protected InputConsumer(Eventloop eventloop, int itemsInMemorySize, Comparator<T> itemComparator, StreamMergeSorterStorage<T> storage, StreamMerger<K, T> merger) {
 			super(eventloop);
 			this.itemsInMemorySize = itemsInMemorySize;
 			this.itemComparator = itemComparator;
@@ -189,28 +189,28 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 			}
 		};
 
-		this.upstreamConsumer = new UpstreamConsumer(eventloop, itemsInMemorySize, itemComparator, storage,
+		this.inputConsumer = new InputConsumer(eventloop, itemsInMemorySize, itemComparator, storage,
 				StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate));
 	}
 
 	@Override
 	public StreamConsumer<T> getInput() {
-		return upstreamConsumer;
+		return inputConsumer;
 	}
 
 	@Override
 	public StreamProducer<T> getOutput() {
-		return upstreamConsumer.merger.getOutput();
+		return inputConsumer.merger.getOutput();
 	}
 
 	//for test only
 	StreamStatus getUpstreamConsumerStatus() {
-		return upstreamConsumer.getConsumerStatus();
+		return inputConsumer.getConsumerStatus();
 	}
 
 	// for test only
 	StreamStatus getDownstreamProducerStatus() {
-		return upstreamConsumer.merger.getOutput().getProducerStatus();
+		return inputConsumer.merger.getOutput().getProducerStatus();
 	}
 
 	@Override

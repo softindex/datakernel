@@ -34,7 +34,7 @@
         <module>serializer</module>
         <module>hashfs</module>
         <module>simplefs</module>
-        <module>service</module>
+        <module>servicegraph</module>
     </modules>
 
     <licenses>

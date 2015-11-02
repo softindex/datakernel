@@ -166,17 +166,17 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 		super(eventloop);
 		this.keyComparator = checkNotNull(keyComparator);
 		this.joiner = checkNotNull(joiner);
-		this.left = addInput(new UpstreamConsumer<>(leftDeque));
-		this.right = addInput(new UpstreamConsumer<>(rightDeque));
+		this.left = addInput(new InputConsumer<>(leftDeque));
+		this.right = addInput(new InputConsumer<>(rightDeque));
 		this.leftKeyFunction = checkNotNull(leftKeyFunction);
 		this.rightKeyFunction = checkNotNull(rightKeyFunction);
-		this.downstreamProducer = new DownstreamProducer();
+		this.outputProducer = new OutputProducer();
 	}
 
-	protected final class UpstreamConsumer<I> extends AbstractUpstreamConsumer<I> implements StreamDataReceiver<I> {
+	protected final class InputConsumer<I> extends AbstractInputConsumer<I> implements StreamDataReceiver<I> {
 		private final ArrayDeque<I> deque;
 
-		public UpstreamConsumer(ArrayDeque<I> deque) {
+		public InputConsumer(ArrayDeque<I> deque) {
 			this.deque = deque;
 		}
 
@@ -188,21 +188,21 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 		@Override
 		public void onData(I item) {
 			deque.add(item);
-			downstreamProducer.produce();
+			outputProducer.produce();
 		}
 
 		@Override
 		protected void onUpstreamStarted() {
-			downstreamProducer.produce();
+			outputProducer.produce();
 		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.produce();
+			outputProducer.produce();
 		}
 	}
 
-	protected final class DownstreamProducer extends AbstractDownstreamProducer {
+	protected final class OutputProducer extends AbstractOutputProducer {
 		@Override
 		protected void onDownstreamStarted() {
 			produce();

@@ -32,41 +32,41 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <T>
  */
 public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> implements StreamFilterMBean {
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.sendEndOfStream();
+			outputProducer.sendEndOfStream();
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return downstreamProducer.predicate == Predicates.alwaysTrue() ?
-					downstreamProducer.getDownstreamDataReceiver() :
-					downstreamProducer;
+			return outputProducer.predicate == Predicates.alwaysTrue() ?
+					outputProducer.getDownstreamDataReceiver() :
+					outputProducer;
 		}
 	}
 
-	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<T> {
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<T> {
 		private final Predicate<T> predicate;
 
 		private int jmxInputItems;
 		private int jmxOutputItems;
 
-		public DownstreamProducer(Predicate<T> predicate) {this.predicate = predicate;}
+		public OutputProducer(Predicate<T> predicate) {this.predicate = predicate;}
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 
 		@SuppressWarnings("AssertWithSideEffects")
@@ -89,18 +89,18 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 	public StreamFilter(Eventloop eventloop, Predicate<T> predicate) {
 		super(eventloop);
 		checkNotNull(predicate);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer(predicate);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(predicate);
 	}
 
 	@Override
 	public int getInputItems() {
-		return downstreamProducer.jmxInputItems;
+		return outputProducer.jmxInputItems;
 	}
 
 	@Override
 	public int getOutputItems() {
-		return downstreamProducer.jmxOutputItems;
+		return outputProducer.jmxOutputItems;
 	}
 
 	@SuppressWarnings("AssertWithSideEffects")
@@ -108,8 +108,8 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 	public String toString() {
 		String in = "?";
 		String out = "?";
-		assert (in = "" + downstreamProducer.jmxInputItems) != null;
-		assert (out = "" + downstreamProducer.jmxOutputItems) != null;
+		assert (in = "" + outputProducer.jmxInputItems) != null;
+		assert (out = "" + outputProducer.jmxOutputItems) != null;
 		return '{' + super.toString() + " in:" + in + " out:" + out + '}';
 	}
 }

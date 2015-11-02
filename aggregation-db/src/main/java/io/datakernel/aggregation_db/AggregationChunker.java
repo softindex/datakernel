@@ -41,19 +41,19 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	}
 
 	private class ChunkerTransformer extends AbstractStreamTransformer_1_1<T, T> {
-		private UpstreamConsumer upstreamConsumer;
-		private DownstreamProducer downstreamProducer;
+		private InputConsumer inputConsumer;
+		private OutputProducer outputProducer;
 
 		protected ChunkerTransformer(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
 		                             Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 		                             int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 			super(eventloop);
-			this.downstreamProducer = new DownstreamProducer();
-			this.upstreamConsumer = new UpstreamConsumer(aggregationId, keys, fields, recordClass,
+			this.outputProducer = new OutputProducer();
+			this.inputConsumer = new InputConsumer(aggregationId, keys, fields, recordClass,
 					storage, metadataStorage, chunkSize, chunksCallback);
 		}
 
-		private class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
+		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
 			private long newId;
 			private final String aggregationId;
 			private final List<String> keys;
@@ -71,9 +71,9 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			private AggregationChunkStorage storage;
 			private AggregationMetadataStorage metadataStorage;
 
-			public UpstreamConsumer(String aggregationId, List<String> keys, List<String> fields,
-			                        Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-			                        int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+			public InputConsumer(String aggregationId, List<String> keys, List<String> fields,
+			                     Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
+			                     int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 				this.aggregationId = aggregationId;
 				this.keys = keys;
 				this.fields = fields;
@@ -89,15 +89,15 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			@Override
 			protected void onUpstreamEndOfStream() {
 				saveChunk();
-				downstreamProducer.sendEndOfStream();
-				logger.trace("{}: downstream producer {} closed.", this, downstreamProducer);
+				outputProducer.sendEndOfStream();
+				logger.trace("{}: downstream producer {} closed.", this, outputProducer);
 			}
 
 			@Override
 			protected void onError(Exception e) {
 				super.onError(e);
 				chunksCallback.onException(e);
-				logger.error("{}: downstream producer {} exception.", this, downstreamProducer, e);
+				logger.error("{}: downstream producer {} exception.", this, outputProducer, e);
 			}
 
 			@Override
@@ -112,7 +112,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				}
 				last = item;
 
-				downstreamProducer.send(item);
+				outputProducer.send(item);
 
 				if (count++ == chunkSize) {
 					rotateChunk();
@@ -122,14 +122,14 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			private void rotateChunk() {
 				saveChunk();
 				++pendingChunks;
-				downstreamProducer.getDownstream().onProducerEndOfStream();
+				outputProducer.getDownstream().onProducerEndOfStream();
 				startNewChunk();
 			}
 
 			private void saveChunk() {
 				if (count != 0) {
 					AggregationChunk.NewChunk chunk = new AggregationChunk.NewChunk(
-							UpstreamConsumer.this.newId,
+							InputConsumer.this.newId,
 							fields,
 							PrimaryKey.ofObject(first, keys),
 							PrimaryKey.ofObject(last, keys),
@@ -160,20 +160,20 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 					}
 				});
 
-				downstreamProducer.streamTo(consumer);
+				outputProducer.streamTo(consumer);
 			}
 		}
 
-		private class DownstreamProducer extends AbstractDownstreamProducer {
+		private class OutputProducer extends AbstractOutputProducer {
 
 			@Override
 			protected void onDownstreamSuspended() {
-				upstreamConsumer.suspend();
+				inputConsumer.suspend();
 			}
 
 			@Override
 			protected void onDownstreamResumed() {
-				upstreamConsumer.resume();
+				inputConsumer.resume();
 			}
 		}
 	}

@@ -22,11 +22,11 @@ import io.datakernel.stream.StreamDataReceiver;
 
 public abstract class AbstractStreamSplitter<I> extends AbstractStreamTransformer_1_N<I>{
 
-	protected abstract class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<I> {
+	protected abstract class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<I> {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+			for (AbstractOutputProducer<?> downstreamProducer : outputProducers) {
 				downstreamProducer.sendEndOfStream();
 			}
 		}
@@ -39,19 +39,19 @@ public abstract class AbstractStreamSplitter<I> extends AbstractStreamTransforme
 		public abstract void onData(I item);
 	}
 
-	protected class DownstreamProducer<O> extends AbstractDownstreamProducer<O> {
-		public DownstreamProducer() {
+	protected class OutputProducer<O> extends AbstractOutputProducer<O> {
+		public OutputProducer() {
 		}
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.getUpstream().onConsumerSuspended();
+			inputConsumer.getUpstream().onConsumerSuspended();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
 			if (allOutputsResumed()) {
-				upstreamConsumer.getUpstream().onConsumerResumed();
+				inputConsumer.getUpstream().onConsumerResumed();
 			}
 		}
 	}

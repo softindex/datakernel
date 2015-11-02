@@ -293,19 +293,19 @@ public class StreamSorterTest {
 	public final class StreamSorterWithError<K, T> implements StreamTransformer<T, T>, StreamSorterMBean {
 		protected long jmxItems;
 
-		private UpstreamConsumer upstreamConsumer;
+		private InputConsumer inputConsumer;
 
 		@Override
 		public StreamConsumer<T> getInput() {
-			return upstreamConsumer;
+			return inputConsumer;
 		}
 
 		@Override
 		public StreamProducer<T> getOutput() {
-			return upstreamConsumer.merger.getOutput();
+			return inputConsumer.merger.getOutput();
 		}
 
-		private final class UpstreamConsumer extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+		private final class InputConsumer extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 			private final StreamMergeSorterStorage<T> storage;
 			protected final int itemsInMemorySize;
 			private final Comparator<T> itemComparator;
@@ -314,7 +314,7 @@ public class StreamSorterTest {
 			private final StreamMerger<K, T> merger;
 			private boolean writing;
 
-			protected UpstreamConsumer(Eventloop eventloop, int itemsInMemorySize, Comparator<T> itemComparator, StreamMergeSorterStorage<T> storage, StreamMerger<K, T> merger) {
+			protected InputConsumer(Eventloop eventloop, int itemsInMemorySize, Comparator<T> itemComparator, StreamMergeSorterStorage<T> storage, StreamMerger<K, T> merger) {
 				super(eventloop);
 				this.itemsInMemorySize = itemsInMemorySize;
 				this.itemComparator = itemComparator;
@@ -456,18 +456,18 @@ public class StreamSorterTest {
 				}
 			};
 
-			this.upstreamConsumer = new UpstreamConsumer(eventloop, itemsInMemorySize, itemComparator, storage,
+			this.inputConsumer = new InputConsumer(eventloop, itemsInMemorySize, itemComparator, storage,
 					StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate));
 		}
 
 		//for test only
 		StreamStatus getUpstreamConsumerStatus() {
-			return upstreamConsumer.getConsumerStatus();
+			return inputConsumer.getConsumerStatus();
 		}
 
 		// for test only
 		StreamStatus getDownstreamProducerStatus() {
-			return upstreamConsumer.merger.getOutput().getProducerStatus();
+			return inputConsumer.merger.getOutput().getProducerStatus();
 		}
 
 		@Override

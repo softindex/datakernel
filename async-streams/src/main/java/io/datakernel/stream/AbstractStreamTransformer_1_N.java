@@ -33,14 +33,14 @@ import static java.util.Collections.unmodifiableList;
 public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, HasOutputs {
 	protected final Eventloop eventloop;
 
-	protected AbstractUpstreamConsumer upstreamConsumer;
-	protected final List<AbstractDownstreamProducer<?>> downstreamProducers = new ArrayList<>();
+	protected AbstractInputConsumer inputConsumer;
+	protected final List<AbstractOutputProducer<?>> outputProducers = new ArrayList<>();
 	private int suspendedProducersCount;
 
-	protected abstract class AbstractUpstreamConsumer extends AbstractStreamConsumer<I> {
+	protected abstract class AbstractInputConsumer extends AbstractStreamConsumer<I> {
 		protected StreamDataReceiver<?>[] dataReceivers = new StreamDataReceiver[0];
 
-		public AbstractUpstreamConsumer() {
+		public AbstractInputConsumer() {
 			super(AbstractStreamTransformer_1_N.this.eventloop);
 		}
 
@@ -62,7 +62,7 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 
 		@Override
 		protected void onError(Exception e) {
-			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+			for (AbstractOutputProducer<?> downstreamProducer : outputProducers) {
 				downstreamProducer.closeWithError(e);
 			}
 		}
@@ -84,26 +84,26 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 
 	}
 
-	protected abstract class AbstractDownstreamProducer<O> extends AbstractStreamProducer<O> {
+	protected abstract class AbstractOutputProducer<O> extends AbstractStreamProducer<O> {
 		protected int index;
 
-		public AbstractDownstreamProducer() {
+		public AbstractOutputProducer() {
 			super(AbstractStreamTransformer_1_N.this.eventloop);
 		}
 
 		@Override
 		protected final void onError(Exception e) {
-			for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+			for (AbstractOutputProducer<?> downstreamProducer : outputProducers) {
 				if (downstreamProducer != this) {
 					downstreamProducer.closeWithError(e);
 				}
 			}
-			upstreamConsumer.closeWithError(e);
+			inputConsumer.closeWithError(e);
 		}
 
 		@Override
 		protected final void onDataReceiverChanged() {
-			upstreamConsumer.dataReceivers[index] = downstreamDataReceiver;
+			inputConsumer.dataReceivers[index] = downstreamDataReceiver;
 		}
 
 		@Override
@@ -147,18 +147,18 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 		this.eventloop = eventloop;
 	}
 
-	protected void setUpstreamConsumer(AbstractUpstreamConsumer upstreamConsumer) {
-		this.upstreamConsumer = upstreamConsumer;
+	protected void setInputConsumer(AbstractInputConsumer inputConsumer) {
+		this.inputConsumer = inputConsumer;
 	}
 
-	protected <T> StreamProducer<T> addOutput(final AbstractDownstreamProducer<T> downstreamProducer) {
-		StreamDataReceiver<?>[] oldDataReceivers = upstreamConsumer.dataReceivers;
+	protected <T> StreamProducer<T> addOutput(final AbstractOutputProducer<T> downstreamProducer) {
+		StreamDataReceiver<?>[] oldDataReceivers = inputConsumer.dataReceivers;
 		StreamDataReceiver<?>[] newDataReceivers = new StreamDataReceiver[oldDataReceivers.length + 1];
 		arraycopy(oldDataReceivers, 0, newDataReceivers, 0, oldDataReceivers.length);
-		upstreamConsumer.dataReceivers = newDataReceivers;
+		inputConsumer.dataReceivers = newDataReceivers;
 
-		downstreamProducer.index = downstreamProducers.size();
-		downstreamProducers.add(downstreamProducer);
+		downstreamProducer.index = outputProducers.size();
+		outputProducers.add(downstreamProducer);
 		return downstreamProducer;
 	}
 
@@ -172,29 +172,29 @@ public abstract class AbstractStreamTransformer_1_N<I> implements HasInput<I>, H
 	}
 
 	protected void sendEndOfStreamToDownstreams() {
-		for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+		for (AbstractOutputProducer<?> downstreamProducer : outputProducers) {
 			downstreamProducer.sendEndOfStream();
 		}
 	}
 
 	protected void closeWithError(Exception e) {
-		upstreamConsumer.closeWithError(e);
-		for (AbstractDownstreamProducer<?> downstreamProducer : downstreamProducers) {
+		inputConsumer.closeWithError(e);
+		for (AbstractOutputProducer<?> downstreamProducer : outputProducers) {
 			downstreamProducer.closeWithError(e);
 		}
 	}
 
 	public StreamConsumer<I> getInput() {
-		return upstreamConsumer;
+		return inputConsumer;
 	}
 
 	@Override
 	public List<? extends StreamProducer<?>> getOutputs() {
-		return unmodifiableList(downstreamProducers);
+		return unmodifiableList(outputProducers);
 	}
 
 	@Override
 	public StreamProducer<?> getOutput(int index) {
-		return downstreamProducers.get(index);
+		return outputProducers.get(index);
 	}
 }

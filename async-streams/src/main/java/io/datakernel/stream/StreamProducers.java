@@ -408,16 +408,16 @@ public class StreamProducers {
 		}
 
 		private class ForwarderConcat extends AbstractStreamTransformer_1_1<T, T> {
-			protected UpstreamConsumer upstreamConsumer;
-			protected DownstreamProducer downstreamProducer;
+			protected InputConsumer inputConsumer;
+			protected OutputProducer outputProducer;
 
 			protected ForwarderConcat(Eventloop eventloop) {
 				super(eventloop);
-				upstreamConsumer = new UpstreamConsumer();
-				downstreamProducer = new DownstreamProducer();
+				inputConsumer = new InputConsumer();
+				outputProducer = new OutputProducer();
 			}
 
-			private class UpstreamConsumer extends AbstractUpstreamConsumer {
+			private class InputConsumer extends AbstractInputConsumer {
 
 				private void doNext() {
 					eventloop.post(new Runnable() {
@@ -429,14 +429,14 @@ public class StreamProducers {
 									actualProducer.streamTo(new StreamConsumerDecorator<T>(ForwarderConcat.this.getInput()) {
 										@Override
 										public void onProducerEndOfStream() {
-											upstreamConsumer.onUpstreamEndOfStream();
+											inputConsumer.onUpstreamEndOfStream();
 										}
 									});
 								}
 
 								@Override
 								public void onEnd() {
-									downstreamProducer.sendEndOfStream();
+									outputProducer.sendEndOfStream();
 								}
 
 								@Override
@@ -455,25 +455,25 @@ public class StreamProducers {
 
 				@Override
 				public StreamDataReceiver<T> getDataReceiver() {
-					return downstreamProducer.getDownstreamDataReceiver();
+					return outputProducer.getDownstreamDataReceiver();
 				}
 			}
 
-			private class DownstreamProducer extends AbstractDownstreamProducer {
+			private class OutputProducer extends AbstractOutputProducer {
 
 				@Override
 				protected void onDownstreamStarted() {
-					upstreamConsumer.doNext();
+					inputConsumer.doNext();
 				}
 
 				@Override
 				protected void onDownstreamSuspended() {
-					upstreamConsumer.suspend();
+					inputConsumer.suspend();
 				}
 
 				@Override
 				protected void onDownstreamResumed() {
-					upstreamConsumer.resume();
+					inputConsumer.resume();
 				}
 			}
 		}

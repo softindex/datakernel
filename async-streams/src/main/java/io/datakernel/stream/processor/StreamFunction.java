@@ -32,38 +32,38 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <O> type of output data
  */
 public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I, O> {
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.sendEndOfStream();
+			outputProducer.sendEndOfStream();
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public StreamDataReceiver<I> getDataReceiver() {
-			return downstreamProducer.function == Functions.identity() ?
-					(StreamDataReceiver<I>) downstreamProducer.getDownstreamDataReceiver() :
-					downstreamProducer;
+			return outputProducer.function == Functions.identity() ?
+					(StreamDataReceiver<I>) outputProducer.getDownstreamDataReceiver() :
+					outputProducer;
 		}
 	}
 
-	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<I> {
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<I> {
 		private final Function<I, O> function;
 
-		public DownstreamProducer(Function<I, O> function) {this.function = checkNotNull(function);}
+		public OutputProducer(Function<I, O> function) {this.function = checkNotNull(function);}
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 
 		@Override
@@ -74,8 +74,8 @@ public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I,
 
 	public StreamFunction(Eventloop eventloop, Function<I, O> function) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer(function);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(function);
 	}
 
 }
