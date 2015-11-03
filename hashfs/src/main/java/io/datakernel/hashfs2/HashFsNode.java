@@ -23,6 +23,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.hashfs2.protocol.ClientProtocol;
 import io.datakernel.hashfs2.protocol.ServerProtocol;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -158,7 +159,7 @@ public class HashFsNode implements Commands, Server {
 	}
 
 	@Override
-	public void download(final String filePath, StreamForwarder<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
+	public void download(final String filePath, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
 		logger.info("Received request for file download {}", filePath);
 		if (logic.canDownload(filePath)) {
 			logic.onDownloadStart(filePath);

@@ -132,11 +132,11 @@ public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> im
 			@Override
 			public void onMessage(HashFsCommandDownload item, final Messaging<HashFsResponse> messaging) {
 				final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-				server.download(item.filePath, forwarder, new ResultCallback<CompletionCallback>() {
+				server.download(item.filePath, forwarder.getInput(), new ResultCallback<CompletionCallback>() {
 					@Override
 					public void onResult(CompletionCallback callback) {
 						messaging.sendMessage(new HashFsResponseOk());
-						messaging.write(forwarder, callback);
+						messaging.write(forwarder.getOutput(), callback);
 					}
 
 					@Override
