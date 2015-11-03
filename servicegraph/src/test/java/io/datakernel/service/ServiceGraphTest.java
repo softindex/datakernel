@@ -16,7 +16,9 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.SimpleCompletionFuture;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioService;
 import org.junit.Test;
 
 public class ServiceGraphTest {
@@ -35,16 +37,71 @@ public class ServiceGraphTest {
 		graph.add(new ServiceGraph.Node("t2", ConcurrentServices.immediateService()), new ServiceGraph.Node("t1", null));
 
 		try {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			graph.startFuture(callback);
 			callback.await();
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			graph.stopFuture(callback);
 			callback.await();
 		}
 	}
 
+	@Test
+	public void testNioService() throws InterruptedException {
+		final NioEventloop eventloop = new NioEventloop();
+		NioService nioService = new NioService() {
+
+			@Override
+			public NioEventloop getNioEventloop() {
+				return eventloop;
+			}
+
+			@Override
+			public void start(CompletionCallback callback) {
+				callback.onComplete();
+			}
+
+			@Override
+			public void stop(CompletionCallback callback) {
+				callback.onComplete();
+			}
+		};
+
+		ConcurrentService nioConcurrentService = ConcurrentServices.concurrentServiceOfNioServiceCallback(nioService);
+		ConcurrentService eventloopService = new ConcurrentService() {
+			@Override
+			public void startFuture(ConcurrentServiceCallback callback) {
+				eventloop.run();
+				callback.onComplete();
+			}
+
+			@Override
+			public void stopFuture(ConcurrentServiceCallback callback) {
+				eventloop.run();
+				callback.onComplete();
+			}
+		};
+
+		ServiceGraph graph = new ServiceGraph();
+		ServiceGraph.Node nioNode1 = new ServiceGraph.Node("nioService1", nioConcurrentService);
+		ServiceGraph.Node nioNode2 = new ServiceGraph.Node("nioService2", nioConcurrentService);
+		ServiceGraph.Node eventloopNode = new ServiceGraph.Node("eventloopService", eventloopService);
+		graph.add(nioNode1, eventloopNode, stringNode("a"), stringNode("b"), stringNode("c"));
+		graph.add(nioNode2, eventloopNode, nioNode1);
+
+		try {
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			graph.startFuture(callback);
+			callback.await();
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			graph.stopFuture(callback);
+			callback.await();
+		}
+	}
 }

@@ -18,7 +18,6 @@ package io.datakernel.service;
 
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
@@ -135,10 +134,10 @@ public class NioEventloopRunner implements ConcurrentService {
 		}
 	}
 
-	synchronized private void doStartAsync(final SimpleCompletionFuture callback) {
+	synchronized private void doStartAsync(final ConcurrentServiceCallback callback) {
 		assert startFuture == null || stopFuture == null;
 		if (startFuture != null) {
-			callback.onSuccess();
+			callback.onComplete();
 			return;
 		}
 		if (thread != null) {
@@ -163,7 +162,7 @@ public class NioEventloopRunner implements ConcurrentService {
 						synchronized (NioEventloopRunner.this) {
 							assert startFuture == null || stopFuture == null;
 							if (startFuture != null) {
-								callback.onSuccess();
+								callback.onComplete();
 								startFuture = null;
 							}
 						}
@@ -187,7 +186,7 @@ public class NioEventloopRunner implements ConcurrentService {
 								synchronized (NioEventloopRunner.this) {
 									assert startFuture == null || stopFuture == null;
 									if (startFuture != null) {
-										callback.onError(exception);
+										callback.onException(exception);
 										startFuture = null;
 									}
 								}
@@ -200,7 +199,7 @@ public class NioEventloopRunner implements ConcurrentService {
 					assert startFuture == null || stopFuture == null;
 					NioEventloopRunner.this.thread = null;
 					if (stopFuture != null) {
-						callback.onSuccess();
+						callback.onComplete();
 						stopFuture = null;
 					}
 				}
@@ -209,7 +208,7 @@ public class NioEventloopRunner implements ConcurrentService {
 		thread.start();
 	}
 
-	synchronized private void doStopAsync(final SimpleCompletionFuture callback) {
+	synchronized private void doStopAsync(final ConcurrentServiceCallback callback) {
 		assert startFuture == null || stopFuture == null;
 		if (thread == null) {
 			immediateFailedService(new IllegalStateException("Service is being started now")).startFuture(callback);
@@ -226,12 +225,12 @@ public class NioEventloopRunner implements ConcurrentService {
 		runInEventloopThread(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.onSuccess();
+				callback.onComplete();
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				callback.onError(exception);
+				callback.onException(exception);
 			}
 		});
 	}
@@ -318,24 +317,24 @@ public class NioEventloopRunner implements ConcurrentService {
 	private ConcurrentService getConcurrentService() {
 		return sequentialService(parallelService(concurrentServices), new ConcurrentService() {
 			@Override
-			public void startFuture(SimpleCompletionFuture callback) {
+			public void startFuture(ConcurrentServiceCallback callback) {
 				doStartAsync(callback);
 			}
 
 			@Override
-			public void stopFuture(SimpleCompletionFuture callback) {
+			public void stopFuture(ConcurrentServiceCallback callback) {
 				doStopAsync(callback);
 			}
 		});
 	}
 
 	@Override
-	public void startFuture(SimpleCompletionFuture callback) {
+	public void startFuture(ConcurrentServiceCallback callback) {
 		getConcurrentService().startFuture(callback);
 	}
 
 	@Override
-	public void stopFuture(SimpleCompletionFuture callback) {
+	public void stopFuture(ConcurrentServiceCallback callback) {
 		getConcurrentService().stopFuture(callback);
 	}
 }

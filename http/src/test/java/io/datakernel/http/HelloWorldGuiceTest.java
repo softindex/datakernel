@@ -19,13 +19,13 @@ package io.datakernel.http;
 import com.google.common.io.Closeables;
 import com.google.inject.*;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.guice.workers.*;
 import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.service.ConcurrentServiceCallbacks;
 import io.datakernel.service.NioEventloopRunner;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
@@ -133,7 +133,7 @@ public class HelloWorldGuiceTest {
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			primaryNioEventloopRunner.startFuture(callback);
 			callback.await();
 
@@ -154,7 +154,7 @@ public class HelloWorldGuiceTest {
 				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 29\r\n\r\nHello world: worker server #1");
 			}
 		} finally {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			primaryNioEventloopRunner.stopFuture(callback);
 			callback.await();
 			Closeables.close(socket0, true);
@@ -168,7 +168,7 @@ public class HelloWorldGuiceTest {
 		Injector injector = Guice.createInjector(new TestModule());
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
 		try {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			primaryNioEventloopRunner.startFuture(callback);
 			callback.await();
 
@@ -176,7 +176,7 @@ public class HelloWorldGuiceTest {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			primaryNioEventloopRunner.stopFuture(callback);
 			callback.await();
 		}

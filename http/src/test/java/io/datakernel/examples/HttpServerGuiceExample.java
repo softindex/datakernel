@@ -18,7 +18,6 @@ package io.datakernel.examples;
 
 import com.google.inject.*;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
@@ -27,6 +26,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.service.ConcurrentServiceCallbacks;
 import io.datakernel.service.NioEventloopRunner;
 
 import java.io.BufferedReader;
@@ -125,7 +125,7 @@ public class HttpServerGuiceExample {
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class,
 				PrimaryThread.class));
 		try {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			primaryNioEventloopRunner.startFuture(callback);
 			callback.await();
 
@@ -133,7 +133,7 @@ public class HttpServerGuiceExample {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			primaryNioEventloopRunner.stopFuture(callback);
 			callback.await();
 		}

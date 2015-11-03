@@ -17,10 +17,9 @@
 package io.datakernel.service;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.SimpleCompletionFuture;
 
 public interface FunctionCallback<F> {
-	void apply(F input, SimpleCompletionFuture callback);
+	void apply(F input, ConcurrentServiceCallback callback);
 
 	@Override
 	boolean equals(@Nullable Object object);

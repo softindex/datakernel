@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.SimpleCompletionFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,10 +37,10 @@ public class SequentialService implements ConcurrentService {
 	}
 
 	@Override
-	public void startFuture(SimpleCompletionFuture callback) {
+	public void startFuture(ConcurrentServiceCallback callback) {
 		doAction(services, new FunctionCallback<ConcurrentService>() {
 			@Override
-			public void apply(ConcurrentService input, SimpleCompletionFuture callback) {
+			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
 				input.startFuture(callback);
 			}
 
@@ -53,10 +52,10 @@ public class SequentialService implements ConcurrentService {
 	}
 
 	@Override
-	public void stopFuture(SimpleCompletionFuture callback) {
+	public void stopFuture(ConcurrentServiceCallback callback) {
 		doAction(reverse(services), new FunctionCallback<ConcurrentService>() {
 			@Override
-			public void apply(ConcurrentService input, SimpleCompletionFuture callback) {
+			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
 				input.stopFuture(callback);
 			}
 
@@ -67,34 +66,34 @@ public class SequentialService implements ConcurrentService {
 		}, callback);
 	}
 
-	private void doAction(Iterable<ConcurrentService> iterable, FunctionCallback<ConcurrentService> action, SimpleCompletionFuture callback) {
+	private void doAction(Iterable<ConcurrentService> iterable, FunctionCallback<ConcurrentService> action, ConcurrentServiceCallback callback) {
 		next(iterable.iterator(), action, callback);
 	}
 
 	private void next(final Iterator<ConcurrentService> it,
 	                  final FunctionCallback<ConcurrentService> action,
-	                  final SimpleCompletionFuture callback) {
+	                  final ConcurrentServiceCallback callback) {
 		while (it.hasNext()) {
 			final ConcurrentService service = it.next();
 			logger.info("{} {}", action, service);
-			SimpleCompletionFuture applyCallback = new SimpleCompletionFuture() {
+			ConcurrentServiceCallback applyCallback = new ConcurrentServiceCallback() {
 				@Override
-				public void doOnSuccess() {
+				public void doOnComplete() {
 					logger.info("{} {} complete", action, service);
 					next(it, action, callback);
 				}
 
 				@Override
-				public void doOnError(Exception e) {
+				public void doOnExeption(Exception e) {
 					logger.error("Exception while {} {}", action, service);
-					callback.onError(e);
+					callback.onException(e);
 					throw new RuntimeException(e);
 				}
 			};
 			action.apply(service, applyCallback);
 			return;
 		}
-		callback.onSuccess();
+		callback.onComplete();
 	}
 
 	private List<ConcurrentService> reverse(List<ConcurrentService> list) {

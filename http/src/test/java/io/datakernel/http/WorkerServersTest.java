@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.service.ConcurrentServiceCallbacks;
 import io.datakernel.service.NioEventloopRunner;
 import org.junit.Assert;
 import org.junit.Before;
@@ -108,7 +109,6 @@ public class WorkerServersTest {
 		assertTrue(toByteArray(socket2.getInputStream()).length == 0);
 		socket2.close();
 
-
 		SimpleCompletionFuture callbackPrimaty = new SimpleCompletionFuture();
 		primaryNioServer.closeFuture(callbackPrimaty);
 		callbackPrimaty.await();
@@ -147,7 +147,7 @@ public class WorkerServersTest {
 				.addNioServers(primaryNioServer)
 				.addConcurrentServices(workerServices);
 
-		SimpleCompletionFuture callback = new SimpleCompletionFuture();
+		ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 		primaryService.startFuture(callback);
 		callback.await();
 
@@ -170,7 +170,7 @@ public class WorkerServersTest {
 		assertTrue(toByteArray(socket2.getInputStream()).length == 0);
 		socket2.close();
 
-		SimpleCompletionFuture callbackStop = new SimpleCompletionFuture();
+		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStop = ConcurrentServiceCallbacks.withCountDownLatch();
 		primaryService.stopFuture(callbackStop);
 		callbackStop.await();
 

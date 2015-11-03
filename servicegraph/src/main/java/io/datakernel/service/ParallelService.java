@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.SimpleCompletionFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,11 +37,11 @@ public class ParallelService implements ConcurrentService {
 	}
 
 	@Override
-	public void startFuture(SimpleCompletionFuture callback) {
+	public void startFuture(ConcurrentServiceCallback callback) {
 		doAction(new FunctionCallback<ConcurrentService>() {
 
 			@Override
-			public void apply(ConcurrentService input, SimpleCompletionFuture callback) {
+			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
 				input.startFuture(callback);
 			}
 
@@ -54,10 +53,10 @@ public class ParallelService implements ConcurrentService {
 	}
 
 	@Override
-	public void stopFuture(final SimpleCompletionFuture callback) {
+	public void stopFuture(final ConcurrentServiceCallback callback) {
 		doAction(new FunctionCallback<ConcurrentService>() {
 			@Override
-			public void apply(ConcurrentService input, SimpleCompletionFuture callback) {
+			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
 				input.stopFuture(callback);
 			}
 
@@ -69,31 +68,31 @@ public class ParallelService implements ConcurrentService {
 	}
 
 	@SuppressWarnings("ConstantConditions")
-	private void doAction(final FunctionCallback<ConcurrentService> action, final SimpleCompletionFuture callback) {
+	private void doAction(final FunctionCallback<ConcurrentService> action, final ConcurrentServiceCallback callback) {
 		if (services.isEmpty()) {
-			callback.onSuccess();
+			callback.onComplete();
 			return;
 		}
 		final AtomicInteger counter = new AtomicInteger(services.size());
 		for (final ConcurrentService service : services) {
 			final Boolean[] breakCallback = {Boolean.FALSE};
-			SimpleCompletionFuture applyCallback = new SimpleCompletionFuture() {
+			ConcurrentServiceCallback applyCallback = new ConcurrentServiceCallback() {
 				@Override
-				public void doOnSuccess() {
+				public void doOnComplete() {
 					logger.info("{} {} complete", action, service);
 					if (counter.decrementAndGet() == 0) {
-						callback.onSuccess();
+						callback.onComplete();
 					}
 
 				}
 
 				@Override
-				public void doOnError(Exception e) {
+				public void doOnExeption(Exception e) {
 					logger.error("Exception while {} {}", action, service);
 					breakCallback[0] = Boolean.TRUE;
 
 					if (counter.decrementAndGet() == 0) {
-						callback.onSuccess();
+						callback.onComplete();
 					}
 					throw new RuntimeException(e);
 				}

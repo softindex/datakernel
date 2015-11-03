@@ -16,8 +16,8 @@
 
 package io.datakernel.guice.servicegraph;
 
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.service.ConcurrentService;
+import io.datakernel.service.ConcurrentServiceCallback;
 import io.datakernel.service.Service;
 import org.slf4j.Logger;
 
@@ -59,30 +59,30 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Service service, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(final SimpleCompletionFuture callback) {
+					public void startFuture(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
 									service.start();
-									callback.onSuccess();
+									callback.onComplete();
 								} catch (Exception e) {
-									callback.onError(e);
+									callback.onException(e);
 								}
 							}
 						});
 					}
 
 					@Override
-					public void stopFuture(final SimpleCompletionFuture callback) {
+					public void stopFuture(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
 									service.stop();
-									callback.onSuccess();
+									callback.onComplete();
 								} catch (Exception e) {
-									callback.onError(e);
+									callback.onException(e);
 								}
 							}
 						});
@@ -101,14 +101,14 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Timer timer, Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(SimpleCompletionFuture callback) {
-						callback.onSuccess();
+					public void startFuture(ConcurrentServiceCallback callback) {
+						callback.onComplete();
 					}
 
 					@Override
-					public void stopFuture(SimpleCompletionFuture callback) {
+					public void stopFuture(ConcurrentServiceCallback callback) {
 						timer.cancel();
-						callback.onSuccess();
+						callback.onComplete();
 					}
 				};
 			}
@@ -124,17 +124,17 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final ExecutorService executorService, Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(SimpleCompletionFuture callback) {
-						callback.onSuccess();
+					public void startFuture(ConcurrentServiceCallback callback) {
+						callback.onComplete();
 					}
 
 					@Override
-					public void stopFuture(SimpleCompletionFuture callback) {
+					public void stopFuture(ConcurrentServiceCallback callback) {
 						List<Runnable> runnables = executorService.shutdownNow();
 						for (Runnable runnable : runnables) {
 							logger.warn("Remaining tasks {}", runnable);
 						}
-						callback.onSuccess();
+						callback.onComplete();
 					}
 				};
 			}
@@ -150,20 +150,20 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Closeable closeable, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(SimpleCompletionFuture callback) {
-						callback.onSuccess();
+					public void startFuture(ConcurrentServiceCallback callback) {
+						callback.onComplete();
 					}
 
 					@Override
-					public void stopFuture(final SimpleCompletionFuture callback) {
+					public void stopFuture(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
 									closeable.close();
-									callback.onSuccess();
+									callback.onComplete();
 								} catch (IOException e) {
-									callback.onError(e);
+									callback.onException(e);
 								}
 							}
 						});
@@ -182,37 +182,37 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final DataSource dataSource, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(final SimpleCompletionFuture callback) {
+					public void startFuture(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
 									Connection connection = dataSource.getConnection();
 									connection.close();
-									callback.onSuccess();
+									callback.onComplete();
 								} catch (Exception e) {
-									callback.onError(e);
+									callback.onException(e);
 								}
 							}
 						});
 					}
 
 					@Override
-					public void stopFuture(final SimpleCompletionFuture callback) {
+					public void stopFuture(final ConcurrentServiceCallback callback) {
 						if (dataSource instanceof Closeable) {
 							executor.execute(new Runnable() {
 								@Override
 								public void run() {
 									try {
 										((Closeable) dataSource).close();
-										callback.onSuccess();
+										callback.onComplete();
 									} catch (IOException e) {
-										callback.onError(e);
+										callback.onException(e);
 									}
 								}
 							});
 						} else
-							callback.onSuccess();
+							callback.onComplete();
 					}
 				};
 			}

@@ -17,7 +17,6 @@
 package io.datakernel.service;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioService;
 
 import java.util.Arrays;
@@ -31,13 +30,13 @@ public class ConcurrentServices {
 	public static ConcurrentService immediateService() {
 		return new ConcurrentService() {
 			@Override
-			public void startFuture(SimpleCompletionFuture callback) {
-				callback.onSuccess();
+			public void startFuture(ConcurrentServiceCallback callback) {
+				callback.onComplete();
 			}
 
 			@Override
-			public void stopFuture(SimpleCompletionFuture callback) {
-				callback.onSuccess();
+			public void stopFuture(ConcurrentServiceCallback callback) {
+				callback.onComplete();
 			}
 		};
 	}
@@ -45,13 +44,13 @@ public class ConcurrentServices {
 	public static ConcurrentService immediateFailedService(final Exception e) {
 		return new ConcurrentService() {
 			@Override
-			public void startFuture(SimpleCompletionFuture callback) {
-				callback.onError(e);
+			public void startFuture(ConcurrentServiceCallback callback) {
+				callback.onException(e);
 			}
 
 			@Override
-			public void stopFuture(SimpleCompletionFuture callback) {
-				callback.onSuccess();
+			public void stopFuture(ConcurrentServiceCallback callback) {
+				callback.onComplete();
 			}
 		};
 	}
@@ -72,7 +71,7 @@ public class ConcurrentServices {
 		return new SequentialService(callbacks);
 	}
 
-	public static void startFuture(final NioService nioService, final SimpleCompletionFuture callback) {
+	public static void startFuture(final NioService nioService, final ConcurrentServiceCallback callback) {
 		nioService.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
@@ -81,7 +80,7 @@ public class ConcurrentServices {
 		});
 	}
 
-	public static void stopFuture(final NioService nioService, final SimpleCompletionFuture callback) {
+	public static void stopFuture(final NioService nioService, final ConcurrentServiceCallback callback) {
 		nioService.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
@@ -90,37 +89,37 @@ public class ConcurrentServices {
 		});
 	}
 
-	public static ConcurrentService concurrentServiceOfNioServiceCallback(final NioService nioService, final SimpleCompletionFuture callback) {
+	public static ConcurrentService concurrentServiceOfNioServiceCallback(final NioService nioService) {
 		return new ConcurrentService() {
 			@Override
-			public void startFuture(SimpleCompletionFuture callback) {
+			public void startFuture(ConcurrentServiceCallback callback) {
 				ConcurrentServices.startFuture(nioService, callback);
 			}
 
 			@Override
-			public void stopFuture(SimpleCompletionFuture callback) {
+			public void stopFuture(ConcurrentServiceCallback callback) {
 				ConcurrentServices.stopFuture(nioService, callback);
 			}
 		};
 	}
 
-	public static CompletionCallback completionCallbackOfServiceCallback(SimpleCompletionFuture callback) {
+	public static CompletionCallback completionCallbackOfServiceCallback(ConcurrentServiceCallback callback) {
 		return new ComletionCallbackOfService(callback);
 	}
 
 	private static final class ComletionCallbackOfService implements CompletionCallback {
-		private final SimpleCompletionFuture simpleCompletionFuture;
+		private final ConcurrentServiceCallback concurrentServiceCallback;
 
-		private ComletionCallbackOfService(SimpleCompletionFuture simpleCompletionFuture) {this.simpleCompletionFuture = simpleCompletionFuture;}
+		private ComletionCallbackOfService(ConcurrentServiceCallback concurrentServiceCallback) {this.concurrentServiceCallback = concurrentServiceCallback;}
 
 		@Override
 		public void onComplete() {
-			simpleCompletionFuture.onSuccess();
+			concurrentServiceCallback.onComplete();
 		}
 
 		@Override
 		public void onException(Exception exception) {
-			simpleCompletionFuture.onError(exception);
+			concurrentServiceCallback.onException(exception);
 		}
 	}
 }
