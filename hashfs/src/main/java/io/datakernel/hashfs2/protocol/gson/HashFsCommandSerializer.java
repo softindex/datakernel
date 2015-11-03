@@ -14,35 +14,27 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs.protocol.gson.commands;
+package io.datakernel.hashfs2.protocol.gson;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.datakernel.hashfs2.protocol.gson.GsonInetSocketAddressAdapter;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
 import java.net.InetSocketAddress;
 
-public class HashFsResponseSerialization {
-
+class HashFsCommandSerializer {
 	public static final Gson GSON = new GsonBuilder()
-			.registerTypeAdapter(InetSocketAddress.class, new GsonInetSocketAddressAdapter())
-			.registerTypeAdapter(HashFsResponse.class, GsonSubclassesAdapter.builder()
+			.registerTypeAdapter(HashFsCommand.class, GsonSubclassesAdapter.builder()
 					.subclassField("commandType")
-					.subclass("Error", HashFsResponseError.class)
-					.subclass("FileList", HashFsResponseFiles.class)
-					.subclass("Delete", HashFsResponseDeletedByUser.class)
-					.subclass("Replicas", HashFsResponseFileReplicas.class)
-					.subclass("ResponseOperationOk", HashFsResponseOperationOk.class)
-					.subclass("ResponseFileUploaded", HashFsResponseFileUploaded.class)
-					.subclass("ResponseForListeners", HashFsResponseForListeners.class)
-					.subclass("ResponseAliveServers", HashFsResponseAliveServers.class)
+					.subclass("Upload", HashFsCommandUpload.class)
+					.subclass("Commit", HashFsCommandCommit.class)
+					.subclass("Download", HashFsCommandDownload.class)
+					.subclass("Delete", HashFsCommandDelete.class)
+					.subclass("List", HashFsCommandList.class)
+					.subclass("Alive", HashFsCommandAlive.class)
+					.subclass("Offer", HashFsCommandOffer.class)
 					.build())
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()
 			.create();
-
 }
-
-
-

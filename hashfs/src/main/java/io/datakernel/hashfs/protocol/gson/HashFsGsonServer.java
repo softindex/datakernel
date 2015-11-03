@@ -104,7 +104,7 @@ public class HashFsGsonServer extends AbstractNioServer<HashFsGsonServer> {
 							@Override
 							public void onResult(StreamProducer<ByteBuf> result) {
 								messaging.sendMessage(new HashFsResponseOperationOk());
-								result.streamTo(messaging.binarySocketWriter());
+//								result.streamTo(messaging.write());
 								messaging.shutdownReader();
 							}
 

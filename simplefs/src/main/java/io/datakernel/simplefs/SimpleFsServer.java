@@ -337,27 +337,6 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 		};
 	}
 
-	private void deleteFile(Path path) throws IOException {
-		if (Files.isDirectory(path)) {
-			if (isDirEmpty(path)) {
-				Files.delete(path);
-			}
-			path = path.getParent();
-			if (path != null && !path.equals(fileStorage)) {
-				deleteFile(path);
-			}
-		} else {
-			Files.delete(path);
-			deleteFile(path.getParent());
-		}
-	}
-
-	private boolean isDirEmpty(final Path directory) throws IOException {
-		try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(directory)) {
-			return !dirStream.iterator().hasNext();
-		}
-	}
-
 	private MessagingHandler<SimpleFsCommandList, SimpleFsResponse> defineListHandler() {
 		return new MessagingHandler<SimpleFsCommandList, SimpleFsResponse>() {
 			@Override
@@ -381,6 +360,27 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 				messaging.shutdown();
 			}
 		};
+	}
+
+	private void deleteFile(Path path) throws IOException {
+		if (Files.isDirectory(path)) {
+			if (isDirEmpty(path)) {
+				Files.delete(path);
+			}
+			path = path.getParent();
+			if (path != null && !path.equals(fileStorage)) {
+				deleteFile(path);
+			}
+		} else {
+			Files.delete(path);
+			deleteFile(path.getParent());
+		}
+	}
+
+	private boolean isDirEmpty(final Path directory) throws IOException {
+		try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(directory)) {
+			return !dirStream.iterator().hasNext();
+		}
 	}
 
 	private Path getDestinationDirectory(String path) throws IOException {

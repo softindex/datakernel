@@ -14,35 +14,26 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs.protocol.gson.commands;
+package io.datakernel.hashfs2.protocol.gson;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.datakernel.hashfs2.protocol.gson.GsonInetSocketAddressAdapter;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
 import java.net.InetSocketAddress;
 
-public class HashFsResponseSerialization {
-
+class HashFsResponseSerializer {
 	public static final Gson GSON = new GsonBuilder()
 			.registerTypeAdapter(InetSocketAddress.class, new GsonInetSocketAddressAdapter())
 			.registerTypeAdapter(HashFsResponse.class, GsonSubclassesAdapter.builder()
 					.subclassField("commandType")
 					.subclass("Error", HashFsResponseError.class)
-					.subclass("FileList", HashFsResponseFiles.class)
-					.subclass("Delete", HashFsResponseDeletedByUser.class)
-					.subclass("Replicas", HashFsResponseFileReplicas.class)
-					.subclass("ResponseOperationOk", HashFsResponseOperationOk.class)
-					.subclass("ResponseFileUploaded", HashFsResponseFileUploaded.class)
-					.subclass("ResponseForListeners", HashFsResponseForListeners.class)
-					.subclass("ResponseAliveServers", HashFsResponseAliveServers.class)
+					.subclass("FileList", HashFsResponseListFiles.class)
+					.subclass("ServerList", HashFsResponseListServers.class)
+					.subclass("ResponseOk", HashFsResponseOk.class)
+					.subclass("Acknowledge", HashFsResponseAcknowledge.class)
 					.build())
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()
 			.create();
-
 }
-
-
-
