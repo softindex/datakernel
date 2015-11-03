@@ -18,80 +18,370 @@ package io.datakernel.hashfs2;
 
 import com.google.common.collect.Sets;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
-import org.junit.Before;
-import org.junit.Rule;
+import io.datakernel.stream.file.StreamFileWriter;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static com.google.common.base.Charsets.UTF_8;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static java.util.concurrent.Executors.newCachedThreadPool;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class IntegrationSingleNodeTest {
 	private static final Logger logger = LoggerFactory.getLogger(IntegrationSingleNodeTest.class);
 
-	private final ServerInfo local = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 4455), 1.0);
-	private final Config config = Config.getDefaultConfig();
+	private ServerInfo local = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 4455), 1.0);
+	private static Config config;
+	private static Path serverStorage;
+	private static Path clientStorage;
 
-	private String serverStorage = "server_storage";
-	private String clientStorage = "client_storage";
+	@ClassRule
+	public static final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	@Rule
-	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+	@BeforeClass
+	public static void setup() throws IOException {
+		clientStorage = Paths.get(temporaryFolder.newFolder("client_storage").toURI());
+		serverStorage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
 
-	@Before
-	public void setup() {
+		Files.createDirectories(clientStorage);
+		Files.createDirectories(serverStorage);
 
+		Path clientA = clientStorage.resolve("a.txt");
+		Files.write(clientA, "this is a.txt in ./this/is directory".getBytes(UTF_8));
+		Path clientB = clientStorage.resolve("b.txt");
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 1_000_000; i++) {
+			sb.append(i).append("\r\n");
+		}
+		Files.write(clientB, sb.toString().getBytes(UTF_8));
+		Path clientC = clientStorage.resolve("c.txt");
+		Files.createFile(clientC);
+
+		Path thisFolder = serverStorage.resolve("this");
+		Files.createDirectories(thisFolder);
+		Path thisA = thisFolder.resolve("a.txt");
+		Files.write(thisA, "Local a.txt".getBytes(UTF_8));
+
+		config = new Config();
+		config.setMinSafeReplicasQuantity(0);
+		config.setMaxReplicaQuantity(1);
+		config.setMaxRetryAttempts(1);
 	}
 
 	@Test
-	public void testUpload() {
+	public void testUpload() throws IOException {
 		NioEventloop eventloop = new NioEventloop();
-		ExecutorService executor = newCachedThreadPool();
+		final ExecutorService executor = newCachedThreadPool();
 		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
-		FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
-		StreamProducer<ByteBuf> producer = StreamFileReader.readFileFully(eventloop, executor, 10 * 256, Paths.get("./test/client_storage/rejected.txt"));
+		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		final StreamProducer<ByteBuf> producerA = StreamFileReader.readFileFully(eventloop, executor, 16 * 256, clientStorage.resolve("a.txt"));
+		final StreamProducer<ByteBuf> producerB = StreamFileReader.readFileFully(eventloop, executor, 16 * 256, clientStorage.resolve("b.txt"));
+		final StreamProducer<ByteBuf> producerC = StreamFileReader.readFileFully(eventloop, executor, 16 * 256, clientStorage.resolve("c.txt"));
 
-		server.start(ignoreCompletionCallback());
-		client.upload("rejected.txt", producer, new CompletionCallback() {
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.upload("this/is/a.txt", producerA, new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.info("Uploaded this/is/a.txt");
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Failed to upload file this/is/a.txt", e);
+					}
+				});
+				client.upload("this/is/b.txt", producerB, new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.info("Uploaded this/is/b.txt");
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Failed to upload file this/is/b.txt", e);
+					}
+				});
+				client.upload("c.txt", producerC, new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.info("Uploaded this/is/b.txt");
+						server.stop(new CompletionCallback() {
+							@Override
+							public void onComplete() {
+								logger.info("Server stooped");
+							}
+
+							@Override
+							public void onException(Exception e) {
+								logger.info("Can't stop the server", e);
+							}
+						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Failed to upload file this/is/b.txt", e);
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Didn't manage to start the server", e);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("a.txt").toFile(), serverStorage.resolve("this/is/a.txt").toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("b.txt").toFile(), serverStorage.resolve("this/is/b.txt").toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("c.txt").toFile(), serverStorage.resolve("c.txt").toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testFailedUpload() throws Exception {
+		// TODO
+		NioEventloop eventloop = new NioEventloop();
+		final ExecutorService executor = newCachedThreadPool();
+		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
+		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		final StreamProducer<ByteBuf> producer = new StreamProducers.ClosingWithError<>(eventloop, new Exception("Test Exception"));
+
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.upload("non_existing_file", producer, new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.info("Miracle happened!... or ... bug!?");
+						server.stop(new CompletionCallback() {
+							@Override
+							public void onComplete() {
+								logger.info("Server stooped");
+							}
+
+							@Override
+							public void onException(Exception e) {
+								logger.info("Can't stop the server", e);
+							}
+						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.info("Failed to upload: {}", e.getMessage());
+						server.stop(new CompletionCallback() {
+							@Override
+							public void onComplete() {
+								logger.info("Server stooped");
+							}
+
+							@Override
+							public void onException(Exception e) {
+								logger.info("Can't stop the server", e);
+							}
+						});
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Didn't manage to start the server", e);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("a.txt").toFile(), serverStorage.resolve("this/is/a.txt").toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("b.txt").toFile(), serverStorage.resolve("this/is/b.txt").toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("c.txt").toFile(), serverStorage.resolve("c.txt").toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testMultipleUpload() throws IOException {
+		fail("Not yet implemented");
+	}
+
+	@Test
+	public void testDownload() throws IOException {
+		NioEventloop eventloop = new NioEventloop();
+		final ExecutorService executor = newCachedThreadPool();
+		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
+		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		final StreamFileWriter consumerA = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("a_downloaded.txt"), true);
+		consumerA.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				server.stop(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						System.out.println("Stopped");
+						logger.info("Stopped");
 					}
 
 					@Override
 					public void onException(Exception e) {
-						System.out.println("Failed to stop");
+						logger.error("Can't stop ", e);
 					}
 				});
-				System.out.println("Uploaded");
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Can't flush the file");
+			}
+		});
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.download("this/a.txt", consumerA);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Didn't manage to start the server", e);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
+
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("a_downloaded.txt").toFile(), serverStorage.resolve("this/a.txt").toFile()));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testFailedDownload() throws IOException {
+		fail("Not yet implemented");
+	}
+
+	@Test
+	public void testMultipleDownload() throws IOException {
+		fail("Not yet implemented");
+	}
+
+	@Test
+	public void testDelete() throws IOException {
+		NioEventloop eventloop = new NioEventloop();
+		final ExecutorService executor = newCachedThreadPool();
+		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
+		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.deleteFile("this/a.txt", new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.info("Deleted");
+						server.stop(new CompletionCallback() {
+							@Override
+							public void onComplete() {
+								logger.info("Stopped");
+							}
+
+							@Override
+							public void onException(Exception e) {
+								logger.error("Can't stop ", e);
+							}
+						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Can't delete file ", e);
+						fail("Can't end here");
+					}
+				});
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				System.out.println("Failed");
+
 			}
 		});
 		eventloop.run();
-		executor.shutdownNow();
+		assertFalse(Files.exists(serverStorage.resolve("this/a.txt")));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
-	public void testDownload() {
+	public void testFailedDelete() throws IOException {
 		fail("Not yet implemented");
+	}
+
+	@Test
+	public void testList() throws Exception {
+		NioEventloop eventloop = new NioEventloop();
+		final ExecutorService executor = newCachedThreadPool();
+		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
+		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+
+		final Set<String> expected = Sets.newHashSet("this/a.txt");
+		final Set<String> actual = new HashSet<>();
+
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.listFiles(new ResultCallback<List<String>>() {
+					@Override
+					public void onResult(List<String> result) {
+						actual.addAll(result);
+						server.stop(new CompletionCallback() {
+							@Override
+							public void onComplete() {
+								logger.info("Stopped");
+							}
+
+							@Override
+							public void onException(Exception e) {
+								logger.error("Can't stop ", e);
+							}
+						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Can't list files");
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception exception) {
+
+			}
+		});
+		eventloop.run();
+
+		assertEquals(expected, actual);
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

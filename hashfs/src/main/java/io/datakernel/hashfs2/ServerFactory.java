@@ -20,31 +20,35 @@ import com.google.common.collect.Lists;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.hashfs2.protocol.ClientProtocol;
+import io.datakernel.hashfs2.protocol.ServerProtocol;
 import io.datakernel.hashfs2.protocol.gson.GsonClientProtocol;
 import io.datakernel.hashfs2.protocol.gson.GsonServerProtocol;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 public class ServerFactory {
-	public static NioService getServer(NioEventloop eventloop, ExecutorService executor, String storagePath,
+
+	private static GsonServerProtocol serverProtocol;
+
+	public static NioService getServer(NioEventloop eventloop, ExecutorService executor, Path storagePath,
 	                                   Config config, ServerInfo myId, Set<ServerInfo> bootstrap) {
 		ClientProtocol protocol = createGsonClientProtocol(eventloop, config);
 		FileSystem fileSystem = createFileSystem(eventloop, executor, storagePath, config);
 		HashFsNode node = new HashFsNode(eventloop, fileSystem, protocol, config.getUpdateTimeout(), config.getMapUpdateTimeout());
 		Hashing hashing = createRendezvousHashing();
 		Logic logic = createLogic(node, hashing, myId, bootstrap, config);
-		GsonServerProtocol transport = createGsonServerProtocol(eventloop, node, config);
-		transport.setListenPort(myId.getAddress().getPort());
+		ServerProtocol transport = createGsonServerProtocol(eventloop, node, config, myId.getAddress().getPort());
 		node.wire(logic, transport);
 		return node;
 	}
 
-	public static GsonServerProtocol createGsonServerProtocol(NioEventloop eventloop, Server server, Config config) {
-		return new GsonServerProtocol(eventloop, server, config.getDeserializerBufferSize(), config.getSerializerBufferSize(),
+	public static ServerProtocol createGsonServerProtocol(NioEventloop eventloop, Server server, Config config, int port) {
+		serverProtocol = new GsonServerProtocol(eventloop, server, config.getDeserializerBufferSize(), config.getSerializerBufferSize(),
 				config.getSerializerMaxMessageSize(), config.getSerializerFlushDelayMillis());
+		serverProtocol.setListenPort(port);
+		return serverProtocol;
 	}
 
 	public static FsClient getClient(NioEventloop eventloop, Set<ServerInfo> bootstrap, Config config) {
@@ -54,7 +58,7 @@ public class ServerFactory {
 				config.getBaseRetryTimeout(), config.getMaxRetryAttempts());
 	}
 
-	public static RendezvousHashing createRendezvousHashing() {return new RendezvousHashing();}
+	public static Hashing createRendezvousHashing() {return new RendezvousHashing();}
 
 	public static ClientProtocol createGsonClientProtocol(NioEventloop eventloop, Config c) {
 		return new GsonClientProtocol(eventloop, c.getMinChunkSize(), c.getMaxChunkSize(),
@@ -64,11 +68,10 @@ public class ServerFactory {
 	}
 
 	public static FileSystem createFileSystem(NioEventloop eventloop, ExecutorService executor,
-	                                          String storagePath, Config config) {
-		Path fileStorage = Paths.get(storagePath);
-		Path tmpStorage = fileStorage.resolve(config.getTmpDirectoryName());
+	                                          Path storagePath, Config config) {
+		Path tmpStorage = storagePath.resolve(config.getTmpDirectoryName());
 
-		return new FileSystemImpl(eventloop, executor, fileStorage, tmpStorage,
+		return new FileSystemImpl(eventloop, executor, storagePath, tmpStorage,
 				config.getFsBufferSize(), config.getInProgressExtension());
 	}
 

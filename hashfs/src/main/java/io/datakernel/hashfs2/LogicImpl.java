@@ -28,9 +28,9 @@ import static io.datakernel.hashfs2.ServerInfo.ServerStatus.RUNNING;
 
 public class LogicImpl implements Logic {
 	private final long serverDeathTimeout;
+	private final long approveWaitTime;
 	private final int maxReplicaQuantity;
 	private final int minSafeReplicaQuantity;
-	private final long approveWaitTime;
 	private final ServerInfo myId;
 
 	private final Commands commands;
@@ -81,7 +81,7 @@ public class LogicImpl implements Logic {
 	@Override
 	public void stop(final CompletionCallback callback) {
 		for (Map.Entry<String, FileInfo> file : files.entrySet()) {
-			if (file.getValue().getPendingOperationsCounter() != 0) {
+			if (file.getValue().isProcessed()) {
 				onStopCallback = callback;
 				return;
 			}
@@ -93,6 +93,11 @@ public class LogicImpl implements Logic {
 
 	private void onOperationFinished() {
 		if (onStopCallback != null) {
+			for (Map.Entry<String, FileInfo> file : files.entrySet()) {
+				if (file.getValue().isProcessed()) {
+					return;
+				}
+			}
 			files.clear();
 			servers.clear();
 			onStopCallback.onComplete();
@@ -113,6 +118,7 @@ public class LogicImpl implements Logic {
 
 	@Override
 	public void onUploadComplete(String filePath) {
+
 		commands.scheduleTemporaryFileDeletion(filePath, approveWaitTime);
 	}
 
@@ -124,8 +130,9 @@ public class LogicImpl implements Logic {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canApprove(String filePath) {
+		// TODO (arashev)
 		FileInfo info = files.get(filePath);
-		return info != null && !info.isDeleted() && !info.isReady();
+		return info != null && info.isReady();
 	}
 
 	@Override
@@ -136,6 +143,7 @@ public class LogicImpl implements Logic {
 	@Override
 	public void onApproveCancel(String filePath) {
 		files.remove(filePath);
+		onOperationFinished();
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -338,6 +346,7 @@ public class LogicImpl implements Logic {
 		private int pendingOperationsCounter;
 
 		public FileInfo() {
+			onOperationStart();
 			state = FileState.UPLOADING;
 		}
 
@@ -348,6 +357,7 @@ public class LogicImpl implements Logic {
 
 		public void onApprove(ServerInfo holder) {
 			replicas.add(holder);
+			onOperationEnd();
 			state = READY;
 		}
 
@@ -385,12 +395,12 @@ public class LogicImpl implements Logic {
 			return replicas;
 		}
 
-		public int getPendingOperationsCounter() {
-			return pendingOperationsCounter;
+		public boolean isProcessed() {
+			return pendingOperationsCounter != 0;
 		}
 	}
 
 	enum FileState {
-		UPLOADING, TOMBSTONE, READY
+		UPLOADING, TOMBSTONE, PENDING, READY
 	}
 }

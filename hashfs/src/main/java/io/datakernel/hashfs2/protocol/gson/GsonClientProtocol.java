@@ -113,9 +113,11 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addHandler(HashFsResponseOk.class, new MessagingHandler<HashFsResponseOk, HashFsCommand>() {
 							@Override
 							public void onMessage(HashFsResponseOk item, Messaging<HashFsCommand> messaging) {
-								StreamByteChunker byteChunker = new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
-								producer.streamTo(byteChunker.getInput());
-								messaging.write(byteChunker.getOutput(), new CompletionCallback() {
+								//TODO (arashev) Странно ведет себя:  если напрямую - все нормально работает, если через чанкер - выскакивает ексепшн внутри
+//								StreamByteChunker byteChunker = new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
+//								producer.streamTo(byteChunker.getInput());
+//								messaging.write(byteChunker.getOutput(), new CompletionCallback() {
+								messaging.write(producer, new CompletionCallback() {
 									@Override
 									public void onComplete() {
 

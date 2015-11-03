@@ -24,7 +24,6 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.hashfs2.protocol.ClientProtocol;
 import io.datakernel.hashfs2.protocol.ServerProtocol;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.slf4j.Logger;
@@ -57,7 +56,7 @@ public class HashFsNode implements Commands, Server {
 	}
 
 	public void wire(Logic logic, ServerProtocol transport) {
-		logger.info(" Wired logic and transport");
+		logger.info("Wired logic and transport");
 		this.logic = logic;
 		this.transport = transport;
 	}
@@ -133,7 +132,7 @@ public class HashFsNode implements Commands, Server {
 
 	@Override
 	public void commit(final String filePath, final boolean success, final CompletionCallback callback) {
-		logger.info("Server received request for file approve {}", filePath);
+		logger.info("Server received request for file " + (success ? "approve" : "deletion") + " {}", filePath);
 		if (logic.canApprove(filePath)) {
 			if (success) {
 				fileSystem.commitTemporary(filePath, new CompletionCallback() {
@@ -149,8 +148,10 @@ public class HashFsNode implements Commands, Server {
 						callback.onException(e);
 					}
 				});
+				logic.onApprove(filePath);
 			} else {
 				fileSystem.deleteTemporary(filePath, callback);
+				logic.onApproveCancel(filePath);
 			}
 		} else {
 			logger.warn("Refused commit {}", filePath);

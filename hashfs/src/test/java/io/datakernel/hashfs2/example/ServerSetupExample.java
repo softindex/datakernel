@@ -23,6 +23,8 @@ import io.datakernel.hashfs2.ServerInfo;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -47,7 +49,8 @@ public class ServerSetupExample {
 				public void run() {
 					NioEventloop eventloop = new NioEventloop();
 					server.updateState(ServerInfo.ServerStatus.RUNNING, eventloop.currentTimeMillis());
-					ServerFactory.getServer(eventloop, newCachedThreadPool(), "./test/server_storage_" + server.hashCode(),
+					Path serverStorage = Paths.get("./test/server_storage_" + server.hashCode());
+					ServerFactory.getServer(eventloop, newCachedThreadPool(), serverStorage,
 							Config.getDefaultConfig(), server, bootstrap).start(ignoreCompletionCallback());
 					eventloop.run();
 				}
