@@ -317,7 +317,7 @@ public final class Cube {
 
 			queryResultProducer.streamTo(streamReducerInput);
 
-			logger.trace("Streaming query {} result from aggregation {}.", filteredQuery, aggregation);
+			logger.info("Streaming query {} result from aggregation '{}'", filteredQuery, aggregation.getId());
 
 			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getInputFields()))));
 		}
