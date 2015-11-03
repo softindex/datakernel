@@ -1,6 +1,6 @@
 dependencies {
     compile project(':datakernel/eventloop')
-    compile project(':datakernel/service')
+    compile project(':datakernel/servicegraph')
     compile('com.google.inject:guice:4.0')
     compile('org.slf4j:slf4j-api:1.7.12')
 

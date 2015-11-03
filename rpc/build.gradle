@@ -1,6 +1,6 @@
 dependencies {
     compile project(':datakernel/eventloop')
-    compile project(':datakernel/service')
+    compile project(':datakernel/servicegraph')
     compile project(':datakernel/serializer')
     compile project(':datakernel/async-streams')
 
