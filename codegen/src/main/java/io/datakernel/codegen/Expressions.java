@@ -95,8 +95,20 @@ public final class Expressions {
 	 * @param field name of the field which will be returned
 	 * @return new instance of the VarField
 	 */
-	public static VarField field(Expression owner, String field) {
+	public static VarField getter(Expression owner, String field) {
 		return new VarField(owner, field);
+	}
+
+	/**
+	 * Sets value to the field in owner
+	 *
+	 * @param owner owner of the field
+	 * @param field name of field which will be changed
+	 * @param value new value for the field
+	 * @return new instance of the ExpressionSet
+	 */
+	public static Expression setter(Expression owner, String field, Expression value) {
+		return set(getter(owner, field), value);
 	}
 
 	/**
@@ -199,8 +211,8 @@ public final class Expressions {
 		PredicateDefAnd predicate = and();
 		for (String field : fields) {
 			predicate.add(cmpEq(
-					field(self(), field),
-					field(cast(arg(0), ExpressionCast.THIS_TYPE), field)));
+					getter(self(), field),
+					getter(cast(arg(0), ExpressionCast.THIS_TYPE), field)));
 		}
 		return predicate;
 	}
@@ -214,7 +226,7 @@ public final class Expressions {
 	public static ExpressionToString asString(List<String> fields) {
 		ExpressionToString toString = new ExpressionToString();
 		for (String field : fields) {
-			toString.add(field + "=", field(self(), field));
+			toString.add(field + "=", getter(self(), field));
 		}
 		return toString;
 	}
@@ -259,8 +271,8 @@ public final class Expressions {
 		ExpressionComparator comparator = comparator();
 		for (String field : fields) {
 			comparator.add(
-					field(cast(arg(0), type), field),
-					field(cast(arg(1), type), field));
+					getter(cast(arg(0), type), field),
+					getter(cast(arg(1), type), field));
 		}
 		return comparator;
 	}
@@ -286,8 +298,8 @@ public final class Expressions {
 		ExpressionComparator comparator = comparator();
 		for (String field : fields) {
 			comparator.add(
-					field(self(), field),
-					field(cast(arg(0), ExpressionCast.THIS_TYPE), field));
+					getter(self(), field),
+					getter(cast(arg(0), ExpressionCast.THIS_TYPE), field));
 		}
 		return comparator;
 	}
@@ -321,7 +333,7 @@ public final class Expressions {
 	public static ExpressionHash hashCodeOfThis(List<String> fields) {
 		List<Expression> arguments = new ArrayList<>();
 		for (String field : fields) {
-			arguments.add(field(new VarThis(), field));
+			arguments.add(getter(new VarThis(), field));
 		}
 		return new ExpressionHash(arguments);
 	}

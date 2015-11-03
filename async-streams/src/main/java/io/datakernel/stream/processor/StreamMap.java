@@ -117,36 +117,36 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> i
 		};
 	}
 
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.sendEndOfStream();
+			outputProducer.sendEndOfStream();
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public StreamDataReceiver<I> getDataReceiver() {
-			return downstreamProducer;
+			return outputProducer;
 		}
 	}
 
-	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<I> {
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<I> {
 		private final Mapper<I, O> mapper;
 
-		public DownstreamProducer(Mapper<I, O> mapper) {this.mapper = checkNotNull(mapper);}
+		public OutputProducer(Mapper<I, O> mapper) {this.mapper = checkNotNull(mapper);}
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 
 		@SuppressWarnings("AssertWithSideEffects")
@@ -159,8 +159,8 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> i
 
 	public StreamMap(Eventloop eventloop, Mapper<I, O> mapper) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer(mapper);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(mapper);
 	}
 
 	@Override

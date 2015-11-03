@@ -17,13 +17,13 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.SimpleCompletionFuture;
 
 import java.io.BufferedReader;
 import java.io.IOException;

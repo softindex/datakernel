@@ -22,13 +22,13 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.example.CumulativeServiceHelper;
 import io.datakernel.rpc.protocol.RpcException;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.service.NioEventloopRunner;
 import org.slf4j.LoggerFactory;
 

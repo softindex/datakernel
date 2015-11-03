@@ -96,7 +96,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 	@Override
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
-
+		logger.info("Reading chunk #" + id);
 		StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
 				path(id), 0L);
 
@@ -104,25 +104,26 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE);
 
-		streamFileReader.streamTo(decompressor);
-		decompressor.streamTo(deserializer);
+		streamFileReader.streamTo(decompressor.getInput());
+		decompressor.getOutput().streamTo(deserializer.getInput());
 
-		return deserializer;
+		return deserializer.getOutput();
 	}
 
 	@Override
 	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id,
 	                                         CompletionCallback callback) {
+		logger.info("Writing chunk #" + id);
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id));
 
-		serializer.streamTo(compressor);
-		compressor.streamTo(writer);
+		serializer.getOutput().streamTo(compressor.getInput());
+		compressor.getOutput().streamTo(writer);
 
 		writer.setFlushCallback(callback);
 
-		return serializer;
+		return serializer.getInput();
 	}
 }

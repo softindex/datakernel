@@ -17,7 +17,6 @@
 package io.datakernel.aggregation_db;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
@@ -60,11 +59,11 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, dimensions, measures);
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE);
-		decompressor.streamTo(deserializer);
+		decompressor.getOutput().streamTo(deserializer.getInput());
 
-		client.download(path(id), decompressor);
+		client.download(path(id), decompressor.getInput());
 
-		return deserializer;
+		return deserializer.getOutput();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -74,9 +73,9 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, dimensions, measures);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
-		serializer.streamTo(compressor);
+		serializer.getOutput().streamTo(compressor.getInput());
 
-		client.upload(path(id), compressor, new CompletionCallback() {
+		client.upload(path(id), compressor.getOutput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Uploaded chunk #{} to SimpleFS successfully", id);
@@ -90,7 +89,7 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 			}
 		});
 
-		return serializer;
+		return serializer.getInput();
 	}
 
 	private String path(long id) {

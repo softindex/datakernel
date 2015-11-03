@@ -58,8 +58,8 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 		ExpressionSequence applyDef = sequence(result);
 		for (String key : keys) {
 			applyDef.add(set(
-					field(result, key),
-					field(cast(arg(0), sourceClass), key)));
+					getter(result, key),
+					getter(cast(arg(0), sourceClass), key)));
 		}
 
 //		applyDef.add(set(
@@ -68,8 +68,8 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 //		));
 		for (String metric : fields) {
 			applyDef.add(set(
-					field(result, metric),
-					field(cast(arg(0), sourceClass), metric)));
+					getter(result, metric),
+					getter(cast(arg(0), sourceClass), metric)));
 		}
 
 		applyDef.add(result);

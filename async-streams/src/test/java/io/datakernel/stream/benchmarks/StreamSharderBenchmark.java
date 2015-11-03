@@ -70,7 +70,7 @@ public class StreamSharderBenchmark implements Runnable {
 		TestStreamConsumers.TestConsumerToList<Integer> consumer4 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer5 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(streamSharder);
+		source.streamTo(streamSharder.getInput());
 		streamSharder.newOutput().streamTo(consumer1);
 		streamSharder.newOutput().streamTo(consumer2);
 		streamSharder.newOutput().streamTo(consumer3);

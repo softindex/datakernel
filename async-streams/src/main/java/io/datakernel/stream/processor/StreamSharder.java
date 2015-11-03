@@ -35,11 +35,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> implements StreamSharderMBean {
 	private long jmxItems;
 
-	protected final class UpstreamConsumer extends AbstractUpstreamConsumer implements StreamDataReceiver<T> {
+	protected final class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
 		private final Sharder<K> sharder;
 		private final Function<T, K> keyFunction;
 
-		public UpstreamConsumer(Sharder<K> sharder, Function<T, K> keyFunction) {
+		public InputConsumer(Sharder<K> sharder, Function<T, K> keyFunction) {
 			this.sharder = sharder;
 			this.keyFunction = keyFunction;
 		}
@@ -65,18 +65,18 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		}
 	}
 
-	protected final class DownstreamProducer extends AbstractDownstreamProducer<T> {
-		private final UpstreamConsumer upstreamConsumer = (UpstreamConsumer) StreamSharder.this.upstreamConsumer;
+	protected final class OutputProducer extends AbstractOutputProducer<T> {
+		private final InputConsumer inputConsumer = (InputConsumer) StreamSharder.this.inputConsumer;
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
 			if (allOutputsResumed()) {
-				upstreamConsumer.resume();
+				inputConsumer.resume();
 			}
 		}
 	}
@@ -85,11 +85,11 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		super(eventloop);
 		checkNotNull(sharder);
 		checkNotNull(keyFunction);
-		setUpstreamConsumer(new UpstreamConsumer(sharder, keyFunction));
+		setInputConsumer(new InputConsumer(sharder, keyFunction));
 	}
 
 	public StreamProducer<T> newOutput() {
-		return addOutput(new DownstreamProducer());
+		return addOutput(new OutputProducer());
 	}
 
 	@Override

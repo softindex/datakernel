@@ -41,6 +41,7 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.*;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,8 +98,9 @@ public final class HttpJsonApiServer {
 	                                                         final DefiningClassLoader classLoader) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				logger.info("Got request {} for dimensions.", request);
+				final Stopwatch sw = Stopwatch.createStarted();
 				String predicatesJson = request.getParameter("filters");
 				String measuresJson = request.getParameter("measures");
 				final String dimension = request.getParameter("dimension");
@@ -128,7 +130,7 @@ public final class HttpJsonApiServer {
 					public void onResult(List result) {
 						String jsonResult = constructDimensionsJson(cube, resultClass, result, query, classLoader);
 						callback.onResult(createResponse(jsonResult));
-						logger.trace("Sending response {} to /dimensions query. Constructed query: {}", jsonResult, query);
+						logger.info("Sent response to /dimensions request {} (query: {}) in {}", request, query, sw);
 					}
 
 					@Override
@@ -163,8 +165,9 @@ public final class HttpJsonApiServer {
 	                                             final DefiningClassLoader classLoader) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				logger.info("Got query {}", request);
+				final Stopwatch sw = Stopwatch.createStarted();
 				List<String> dimensions = getListOfStrings(gson, request.getParameter("dimensions"));
 				List<String> measures = getListOfStrings(gson, request.getParameter("measures"));
 				String predicatesJson = request.getParameter("filters");
@@ -191,7 +194,7 @@ public final class HttpJsonApiServer {
 						String jsonResult = constructQueryJson(cube, resultClass, result, finalQuery,
 								classLoader);
 						callback.onResult(createResponse(jsonResult));
-						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
+						logger.info("Sent response to request {} (query: {}) in {}", request, finalQuery, sw);
 					}
 
 					@Override
@@ -580,7 +583,7 @@ public final class HttpJsonApiServer {
 		AsmBuilder<FieldGetter> builder = new AsmBuilder<>(classLoader, FieldGetter.class);
 		// TODO (dtkachenko): use getter expression instead of field expression
 		// TODO (vsavchuk): implement getter and setter expressions
-		builder.method("get", field(cast(arg(0), objClass), propertyName));
+		builder.method("get", getter(cast(arg(0), objClass), propertyName));
 		return builder.newInstance();
 	}
 

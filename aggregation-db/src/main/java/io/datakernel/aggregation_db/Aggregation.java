@@ -292,8 +292,8 @@ public class Aggregation {
 					outputClass, aggregationMetadata.getKeys(), aggregationFields);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, keyFunction, Ordering.natural(), false,
 					sorterItemsInMemory);
-			streamProducer.streamTo(sorter);
-			return sorter;
+			streamProducer.streamTo(sorter.getInput());
+			return sorter.getOutput();
 		} else {
 			return streamProducer;
 		}
@@ -399,7 +399,7 @@ public class Aggregation {
 
 			producer.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
 		}
-		return streamReducer;
+		return streamReducer.getOutput();
 	}
 
 	private StreamProducer sequentialProducer(AggregationMetadata aggregation, AggregationQuery.QueryPredicates predicates,
@@ -420,8 +420,8 @@ public class Aggregation {
 			return chunkReader;
 		StreamFilter streamFilter = new StreamFilter<>(eventloop,
 				createPredicate(aggregationMetadata, chunk, chunkRecordClass, predicates));
-		chunkReader.streamTo(streamFilter);
-		return streamFilter;
+		chunkReader.streamTo(streamFilter.getInput());
+		return streamFilter.getOutput();
 	}
 
 	private Predicate createPredicate(AggregationMetadata aggregationMetadata, AggregationChunk chunk,
@@ -447,18 +447,18 @@ public class Aggregation {
 				Object value = ((AggregationQuery.QueryPredicateEq) predicate).value;
 
 				predicateDefAnd.add(cmpEq(
-						field(cast(arg(0), chunkRecordClass), predicate.key),
+						getter(cast(arg(0), chunkRecordClass), predicate.key),
 						value(value)));
 			} else if (predicate instanceof AggregationQuery.QueryPredicateBetween) {
 				Object from = ((AggregationQuery.QueryPredicateBetween) predicate).from;
 				Object to = ((AggregationQuery.QueryPredicateBetween) predicate).to;
 
 				predicateDefAnd.add(cmpGe(
-						field(cast(arg(0), chunkRecordClass), predicate.key),
+						getter(cast(arg(0), chunkRecordClass), predicate.key),
 						value(from)));
 
 				predicateDefAnd.add(cmpLe(
-						field(cast(arg(0), chunkRecordClass), predicate.key),
+						getter(cast(arg(0), chunkRecordClass), predicate.key),
 						value(to)));
 			} else {
 				throw new IllegalArgumentException("Unsupported predicate " + predicate);

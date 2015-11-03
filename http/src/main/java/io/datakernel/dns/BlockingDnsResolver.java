@@ -18,9 +18,9 @@ package io.datakernel.dns;
 
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleResultFuture;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.service.SimpleResultFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

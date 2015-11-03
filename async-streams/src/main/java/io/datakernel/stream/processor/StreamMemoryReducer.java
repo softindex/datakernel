@@ -61,12 +61,12 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 		while (true) {
 			if (!iterator.hasNext())
 				break;
-			if (!downstreamProducer.isStatusReady())
+			if (!outputProducer.isStatusReady())
 				return;
 			A accumulator = iterator.next();
-			downstreamProducer.getDownstreamDataReceiver().onData(reducer.produceResult(accumulator));
+			outputProducer.getDownstreamDataReceiver().onData(reducer.produceResult(accumulator));
 		}
-		downstreamProducer.sendEndOfStream();
+		outputProducer.sendEndOfStream();
 	}
 
 	/**

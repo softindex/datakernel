@@ -17,11 +17,11 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

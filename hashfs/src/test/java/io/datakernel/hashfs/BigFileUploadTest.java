@@ -68,18 +68,18 @@ public class BigFileUploadTest {
 		StreamConsumer<ByteBuf> consumer = client.upload(address, destination.toAbsolutePath().toString());
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, source);
 		producer.streamTo(consumer);
-
-		consumer.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				gsonServer.close();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				gsonServer.close();
-			}
-		});
+//
+//		consumer.addCompletionCallback(new CompletionCallback() {
+//			@Override
+//			public void onComplete() {
+//				gsonServer.close();
+//			}
+//
+//			@Override
+//			public void onException(Exception exception) {
+//				gsonServer.close();
+//			}
+//		});
 
 		eventloop.run();
 		assertTrue(com.google.common.io.Files.equal(source.toFile(), destination.toFile()));

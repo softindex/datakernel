@@ -140,8 +140,8 @@ public class BinaryProtocolTest {
 								assertEquals("start", item);
 								messaging.shutdownReader();
 								StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
-								StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-								messaging.write(streamSerializer, new CompletionCallback() {
+								StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
+								messaging.write(streamSerializer.getOutput(), new CompletionCallback() {
 									@Override
 									public void onComplete() {
 
@@ -171,8 +171,8 @@ public class BinaryProtocolTest {
 										messaging.sendMessage("start");
 										messaging.shutdownWriter();
 										StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-										messaging.read().streamTo(streamDeserializer);
-										streamDeserializer.streamTo(consumerToList);
+										messaging.read().streamTo(streamDeserializer.getInput());
+										streamDeserializer.getOutput().streamTo(consumerToList);
 									}
 								});
 						connection.register();
@@ -214,8 +214,8 @@ public class BinaryProtocolTest {
 								assertEquals("start", item);
 
 								StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-								messaging.read().streamTo(streamDeserializer);
-								streamDeserializer.streamTo(consumerToList);
+								messaging.read().streamTo(streamDeserializer.getInput());
+								streamDeserializer.getOutput().streamTo(consumerToList);
 
 								messaging.shutdownWriter();
 							}
@@ -237,8 +237,8 @@ public class BinaryProtocolTest {
 										messaging.sendMessage("start");
 
 										StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
-										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-										messaging.write(streamSerializer, new CompletionCallback() {
+										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
+										messaging.write(streamSerializer.getOutput(), new CompletionCallback() {
 
 											@Override
 											public void onException(Exception exception) {
@@ -297,8 +297,8 @@ public class BinaryProtocolTest {
 								System.out.println("receive start");
 
 								StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-								messaging.read().streamTo(streamDeserializer);
-								streamDeserializer.streamTo(consumerToList);
+								messaging.read().streamTo(streamDeserializer.getInput());
+								streamDeserializer.getOutput().streamTo(consumerToList);
 
 								consumerToList.setCompletionCallback(new CompletionCallback() {
 									@Override
@@ -333,8 +333,8 @@ public class BinaryProtocolTest {
 										messaging.sendMessage("start");
 
 										StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
-										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-										messaging.write(streamSerializer, new CompletionCallback() {
+										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
+										messaging.write(streamSerializer.getOutput(), new CompletionCallback() {
 											@Override
 											public void onComplete() {
 
@@ -397,8 +397,8 @@ public class BinaryProtocolTest {
 								assertEquals("start", item);
 
 								StreamBinaryDeserializer<Long> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, longSerializer(), 10);
-								messaging.read().streamTo(streamDeserializer);
-								streamDeserializer.streamTo(consumerToList);
+								messaging.read().streamTo(streamDeserializer.getInput());
+								streamDeserializer.getOutput().streamTo(consumerToList);
 
 								messaging.shutdownWriter();
 							}
@@ -420,8 +420,8 @@ public class BinaryProtocolTest {
 										messaging.sendMessage("start");
 
 										StreamBinarySerializer<Long> streamSerializer = new StreamBinarySerializer<>(eventloop, longSerializer(), 1, 10, 0, false);
-										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer);
-										messaging.write(streamSerializer, new CompletionCallback() {
+										StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
+										messaging.write(streamSerializer.getOutput(), new CompletionCallback() {
 											@Override
 											public void onComplete() {
 

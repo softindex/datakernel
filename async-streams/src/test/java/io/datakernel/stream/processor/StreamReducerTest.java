@@ -51,13 +51,13 @@ public class StreamReducerTest {
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(streamReducer.newInput(keyFunction, reducer));
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
+		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
 	}
 
 	@Test
@@ -87,7 +87,7 @@ public class StreamReducerTest {
 		source5.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -100,8 +100,8 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source6.getProducerStatus());
 		assertEquals(END_OF_STREAM, source7.getProducerStatus());
 
-		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
+		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
 	}
 
 	@Test
@@ -142,7 +142,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER);
 		source3.streamTo(streamConsumer3);
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -152,9 +152,9 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, source3.getProducerStatus());
 
-		assertEquals(CLOSED_WITH_ERROR, streamReducer.getDownstreamProducer().getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamReducer.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM, END_OF_STREAM},
-				consumerStatuses(streamReducer.getUpstreamConsumers()));
+				consumerStatuses(streamReducer.getInputs()));
 	}
 
 
@@ -184,7 +184,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER);
 		source3.streamTo(streamConsumer3);
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 0);
@@ -399,7 +399,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER_TO_ACCUMULATOR.inputToOutput());
 		source3.streamTo(streamConsumer3);
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(asList(
@@ -433,7 +433,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER);
 		source3.streamTo(streamConsumer3);
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(asList(
@@ -475,7 +475,7 @@ public class StreamReducerTest {
 		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
 		eventloop.run();
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -488,7 +488,7 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source6.getProducerStatus());
 		assertEquals(END_OF_STREAM, source7.getProducerStatus());
 
-		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
+		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
 	}
 }

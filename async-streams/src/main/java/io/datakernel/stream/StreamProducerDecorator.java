@@ -16,7 +16,7 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.eventloop.Eventloop;
+import static com.google.common.base.Preconditions.checkState;
 
 /**
  * See also:
@@ -27,153 +27,54 @@ import io.datakernel.eventloop.Eventloop;
  * @param <T> item type
  */
 public class StreamProducerDecorator<T> implements StreamProducer<T> {
-	protected final Eventloop eventloop;
-	private final AbstractStreamConsumer<T> upstreamConsumer;
-	private final AbstractStreamProducer<T> downstreamProducer;
 
-	public StreamProducerDecorator(Eventloop eventloop, StreamProducer<T> actualProducer) {
-		this(eventloop);
+	private StreamProducer<T> actualProducer;
+
+	public StreamProducerDecorator() {
+
+	}
+
+	public StreamProducerDecorator(StreamProducer<T> actualProducer) {
 		setActualProducer(actualProducer);
 	}
 
-	public StreamProducerDecorator(Eventloop eventloop) {
-		this.eventloop = eventloop;
-		this.upstreamConsumer = new AbstractStreamConsumer<T>(eventloop) {
-			@Override
-			protected void onStarted() {
-			}
-
-			@Override
-			protected void onEndOfStream() {
-				downstreamProducer.sendEndOfStream();
-			}
-
-			@Override
-			protected void onError(Exception e) {
-				downstreamProducer.closeWithError(e);
-			}
-
-			@Override
-			public StreamDataReceiver<T> getDataReceiver() {
-				return downstreamProducer.getDownstreamDataReceiver();
-			}
-		};
-		this.downstreamProducer = new AbstractStreamProducer<T>(eventloop) {
-			@Override
-			protected void onStarted() {
-				StreamProducerDecorator.this.onStarted();
-			}
-
-			@Override
-			protected void onDataReceiverChanged() {
-				upstreamConsumer.bindUpstream();
-			}
-
-			@Override
-			protected void onSuspended() {
-				upstreamConsumer.suspend();
-			}
-
-			@Override
-			protected void onResumed() {
-				upstreamConsumer.resume();
-			}
-
-			@Override
-			protected void onError(Exception e) {
-				upstreamConsumer.closeWithError(e);
-			}
-		};
-	}
-
-	public final void setActualProducer(StreamProducer<T> actualProducer) {
-		actualProducer.streamTo(new StreamConsumer<T>() {
-			@Override
-			public StreamDataReceiver<T> getDataReceiver() {
-				return upstreamConsumer.getDataReceiver();
-			}
-
-			@Override
-			public void streamFrom(StreamProducer<T> upstreamProducer) {
-				upstreamConsumer.streamFrom(upstreamProducer);
-			}
-
-			@Override
-			public void onProducerEndOfStream() {
-				StreamProducerDecorator.this.onProducerEndOfStream();
-			}
-
-			@Override
-			public void onProducerError(Exception e) {
-				StreamProducerDecorator.this.onProducerError(e);
-			}
-
-			@Override
-			public StreamStatus getConsumerStatus() {
-				return upstreamConsumer.getConsumerStatus();
-			}
-
-			@Override
-			public Exception getConsumerException() {
-				return upstreamConsumer.getConsumerException();
-			}
-		});
+	public void setActualProducer(StreamProducer<T> actualProducer) {
+		checkState(this.actualProducer == null, "Decorator is already wired");
+		this.actualProducer = actualProducer;
 	}
 
 	@Override
 	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
-		downstreamProducer.streamTo(downstreamConsumer);
+		actualProducer.streamTo(downstreamConsumer);
 	}
 
 	@Override
-	public final void bindDataReceiver() {
-		downstreamProducer.bindDataReceiver();
-	}
-
-	public void sendEndOfStream() {
-		downstreamProducer.sendEndOfStream();
-	}
-
-	public void closeWithError(Exception e) {
-		upstreamConsumer.closeWithError(e);
-		downstreamProducer.closeWithError(e);
-	}
-
-	// extension hooks, intended for override:
-
-	protected void onStarted() {
-	}
-
-	protected void onProducerEndOfStream() {
-		upstreamConsumer.onProducerEndOfStream();
-	}
-
-	protected void onProducerError(Exception e) {
-		upstreamConsumer.onProducerError(e);
+	public void bindDataReceiver() {
+		actualProducer.bindDataReceiver();
 	}
 
 	@Override
 	public void onConsumerSuspended() {
-		downstreamProducer.onConsumerSuspended();
+		actualProducer.onConsumerSuspended();
 	}
 
 	@Override
 	public void onConsumerResumed() {
-		downstreamProducer.onConsumerResumed();
+		actualProducer.onConsumerResumed();
 	}
 
 	@Override
 	public void onConsumerError(Exception e) {
-		downstreamProducer.onConsumerError(e);
+		actualProducer.onConsumerError(e);
 	}
 
 	@Override
 	public final StreamStatus getProducerStatus() {
-		return downstreamProducer.getProducerStatus();
+		return actualProducer.getProducerStatus();
 	}
 
 	@Override
 	public Exception getProducerException() {
-		return downstreamProducer.getProducerException();
+		return actualProducer.getProducerException();
 	}
 }

@@ -19,6 +19,7 @@ package io.datakernel.service;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.guice.servicegraph.ServiceGraphFactory;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
 import org.junit.Test;

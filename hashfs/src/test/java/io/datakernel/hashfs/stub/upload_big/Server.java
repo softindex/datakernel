@@ -40,7 +40,7 @@ public class Server {
 		Path destination = Paths.get(destinationfilename);
 		StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, destination, true);
 		producer.streamTo(diskWrite);
-		diskWrite.addCompletionCallback(callback);
+		//diskWrite.addCompletionCallback(callback);
 	}
 
 }

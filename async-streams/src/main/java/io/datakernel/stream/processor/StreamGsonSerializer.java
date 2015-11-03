@@ -38,24 +38,24 @@ import static java.lang.Math.min;
 public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements StreamSerializer<T>, StreamGsonSerializerMBean {
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	private final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.flushBuffer(downstreamProducer.getDownstreamDataReceiver());
-			downstreamProducer.sendEndOfStream();
+			outputProducer.flushBuffer(outputProducer.getDownstreamDataReceiver());
+			outputProducer.sendEndOfStream();
 		}
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return downstreamProducer;
+			return outputProducer;
 		}
 	}
 
-	private final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<T> {
+	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<T> {
 		private final BufferAppendable appendable = new BufferAppendable();
 		private final int defaultBufferSize;
 		private final int maxMessageSize;
@@ -74,7 +74,7 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		private int jmxBufs;
 		private long jmxBytes;
 
-		public DownstreamProducer(Gson gson, Class<T> type, int defaultBufferSize, int maxMessageSize, int flushDelayMillis) {
+		public OutputProducer(Gson gson, Class<T> type, int defaultBufferSize, int maxMessageSize, int flushDelayMillis) {
 			checkArgument(maxMessageSize > 0, "maxMessageSize must be positive value, got %s", maxMessageSize);
 			checkArgument(defaultBufferSize > 0, "defaultBufferSize must be positive value, got %s", defaultBufferSize);
 
@@ -89,12 +89,12 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 
 		/**
@@ -206,10 +206,10 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 				buf.recycle();
 				buf = null;
 			}
-			for (ByteBuf buf : downstreamProducer.bufferedList) {
+			for (ByteBuf buf : outputProducer.bufferedList) {
 				buf.recycle();
 			}
-			downstreamProducer.bufferedList.clear();
+			outputProducer.bufferedList.clear();
 		}
 
 	}
@@ -225,8 +225,8 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 	 */
 	public StreamGsonSerializer(Eventloop eventloop, Gson gson, Class<T> type, int defaultBufferSize, int maxMessageSize, int flushDelayMillis) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer(gson, type, defaultBufferSize, maxMessageSize, flushDelayMillis);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(gson, type, defaultBufferSize, maxMessageSize, flushDelayMillis);
 	}
 
 	/**
@@ -234,22 +234,22 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 	 */
 	@Override
 	public void flush() {
-		downstreamProducer.flush();
+		outputProducer.flush();
 	}
 
 	@Override
 	public int getItems() {
-		return downstreamProducer.jmxItems;
+		return outputProducer.jmxItems;
 	}
 
 	@Override
 	public int getBufs() {
-		return downstreamProducer.jmxBufs;
+		return outputProducer.jmxBufs;
 	}
 
 	@Override
 	public long getBytes() {
-		return downstreamProducer.jmxBytes;
+		return outputProducer.jmxBytes;
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
@@ -258,9 +258,9 @@ public final class StreamGsonSerializer<T> extends AbstractStreamTransformer_1_1
 		boolean assertOn = false;
 		assert assertOn = true;
 		return '{' + super.toString()
-				+ " items:" + (assertOn ? "" + downstreamProducer.jmxItems : "?")
-				+ " bufs:" + downstreamProducer.jmxBufs
-				+ " bytes:" + downstreamProducer.jmxBytes + '}';
+				+ " items:" + (assertOn ? "" + outputProducer.jmxItems : "?")
+				+ " bufs:" + outputProducer.jmxBufs
+				+ " bytes:" + outputProducer.jmxBytes + '}';
 	}
 
 }

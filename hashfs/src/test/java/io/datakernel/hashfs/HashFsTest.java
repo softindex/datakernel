@@ -335,24 +335,24 @@ public class HashFsTest {
 		final Path destination = dirPath.resolve(copyFile);
 		StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, destination, true);
 		producer.streamTo(diskWrite);
-		diskWrite.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				boolean fileContentEquals = false;
-				try {
-					fileContentEquals = com.google.common.io.Files.equal(dirPath.resolve(fileName).toFile(), destination.toFile());
-				} catch (IOException e) {
-					logger.error("Can't compare files", e);
-				}
-				logger.info("Download file equals to uploaded: {}.", fileContentEquals);
-				closeServers(eventloop, servers, finishSucceed, fileContentEquals);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				closeServers(eventloop, servers, finishSucceed, false);
-			}
-		});
+//		diskWrite.addCompletionCallback(new CompletionCallback() {
+//			@Override
+//			public void onComplete() {
+//				boolean fileContentEquals = false;
+//				try {
+//					fileContentEquals = com.google.common.io.Files.equal(dirPath.resolve(fileName).toFile(), destination.toFile());
+//				} catch (IOException e) {
+//					logger.error("Can't compare files", e);
+//				}
+//				logger.info("Download file equals to uploaded: {}.", fileContentEquals);
+//				closeServers(eventloop, servers, finishSucceed, fileContentEquals);
+//			}
+//
+//			@Override
+//			public void onException(Exception exception) {
+//				closeServers(eventloop, servers, finishSucceed, false);
+//			}
+//		});
 
 		eventloop.run();
 		Assert.assertTrue(finishSucceed.get());
@@ -516,17 +516,17 @@ public class HashFsTest {
 
 		final StreamFileReader producerSecond = StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, dirPath.resolve(filename));
 		producerSecond.streamTo(consumerSecond);
-		consumerSecond.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				closeServers(eventloop, servers, finishSucceed, false);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				closeServers(eventloop, servers, finishSucceed, true);
-			}
-		});
+//		consumerSecond.addCompletionCallback(new CompletionCallback() {
+//			@Override
+//			public void onComplete() {
+//				closeServers(eventloop, servers, finishSucceed, false);
+//			}
+//
+//			@Override
+//			public void onException(Exception exception) {
+//				closeServers(eventloop, servers, finishSucceed, true);
+//			}
+//		});
 
 		eventloop.run();
 		Assert.assertTrue(finishSucceed.get());
@@ -550,18 +550,18 @@ public class HashFsTest {
 		final Path destination = dirPath.resolve("copy_t1");
 		StreamConsumer<ByteBuf> diskWrite = StreamFileWriter.createFile(eventloop, executor, destination, true);
 		producer.streamTo(diskWrite);
-		diskWrite.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				closeServers(eventloop, servers, finishSucceed, false);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.info("Write to disk exception: {}", exception.getMessage());
-				closeServers(eventloop, servers, finishSucceed, true);
-			}
-		});
+//		diskWrite.addCompletionCallback(new CompletionCallback() {
+//			@Override
+//			public void onComplete() {
+//				closeServers(eventloop, servers, finishSucceed, false);
+//			}
+//
+//			@Override
+//			public void onException(Exception exception) {
+//				logger.info("Write to disk exception: {}", exception.getMessage());
+//				closeServers(eventloop, servers, finishSucceed, true);
+//			}
+//		});
 
 		eventloop.run();
 		Assert.assertTrue(finishSucceed.get());

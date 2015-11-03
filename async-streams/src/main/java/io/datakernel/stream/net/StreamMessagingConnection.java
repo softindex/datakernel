@@ -71,9 +71,9 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		super(eventloop, socketChannel);
 		this.streamDeserializer = streamDeserializer;
 		this.streamSerializer = streamSerializer;
-		currentConsumer = streamDeserializer;
-		this.streamDeserializer.streamTo(this.messageConsumer);
-		this.messageProducer.streamTo(this.streamSerializer);
+		currentConsumer = streamDeserializer.getInput();
+		this.streamDeserializer.getOutput().streamTo(this.messageConsumer);
+		this.messageProducer.streamTo(this.streamSerializer.getInput());
 	}
 
 	public <T extends I> StreamMessagingConnection<I, O> addHandler(Class<T> type, MessagingHandler<T, O> handler) {
@@ -107,7 +107,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		this.socketReader = socketReader;
 		this.socketWriter = socketWriter;
 		this.socketReader.streamTo(currentConsumer);
-		streamSerializer.streamTo(this.socketWriter);
+		streamSerializer.getOutput().streamTo(this.socketWriter);
 
 		output = messageProducer.getDownstreamDataReceiver();
 		onStart();
@@ -131,7 +131,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 		@Override
 		protected void onEndOfStream() {
-			if (currentConsumer == streamDeserializer) {
+			if (currentConsumer == streamDeserializer.getInput()) {
 				shutdown();
 			}
 		}
@@ -226,10 +226,10 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	@Override
 	public StreamProducer<ByteBuf> read() {
 		StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
-		socketReader.streamTo(forwarder);
-		currentConsumer = forwarder;
-		streamDeserializer.drainBuffersTo(forwarder.getDataReceiver());
-		return forwarder;
+		socketReader.streamTo(forwarder.getInput());
+		currentConsumer = forwarder.getInput();
+		streamDeserializer.drainBuffersTo(forwarder.getInput().getDataReceiver());
+		return forwarder.getOutput();
 	}
 
 	@Override

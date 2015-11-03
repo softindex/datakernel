@@ -18,9 +18,9 @@ package io.datakernel.http;
 
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.service.NioEventloopRunner;
 
 import java.util.concurrent.CountDownLatch;

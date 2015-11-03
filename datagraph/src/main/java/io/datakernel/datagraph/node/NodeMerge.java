@@ -62,6 +62,6 @@ public final class NodeMerge<K, T> implements Node {
 		for (StreamId input : inputs) {
 			taskContext.bindChannel(input, streamMerger.newInput());
 		}
-		taskContext.export(output, streamMerger);
+		taskContext.export(output, streamMerger.getOutput());
 	}
 }

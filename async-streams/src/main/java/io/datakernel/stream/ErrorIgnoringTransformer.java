@@ -23,45 +23,45 @@ import org.slf4j.LoggerFactory;
 public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T, T> {
 	private static final Logger logger = LoggerFactory.getLogger(ErrorIgnoringTransformer.class);
 
-	private UpstreamConsumer upstreamConsumer;
-	private DownstreamProducer downstreamProducer;
+	private InputConsumer inputConsumer;
+	private OutputProducer outputProducer;
 
-	private class UpstreamConsumer extends AbstractUpstreamConsumer {
+	private class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.sendEndOfStream();
+			outputProducer.sendEndOfStream();
 		}
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return downstreamProducer.getDownstreamDataReceiver();
+			return outputProducer.getDownstreamDataReceiver();
 		}
 
 		@Override
 		protected void onError(Exception e) {
 			logger.info("Ignoring exception", e);
-			downstreamProducer.sendEndOfStream();
+			outputProducer.sendEndOfStream();
 		}
 	}
 
-	private class DownstreamProducer extends AbstractDownstreamProducer {
+	private class OutputProducer extends AbstractOutputProducer {
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 	}
 
 	public ErrorIgnoringTransformer(Eventloop eventloop) {
 		super(eventloop);
-		upstreamConsumer = new UpstreamConsumer();
-		downstreamProducer = new DownstreamProducer();
+		inputConsumer = new InputConsumer();
+		outputProducer = new OutputProducer();
 	}
 
 }

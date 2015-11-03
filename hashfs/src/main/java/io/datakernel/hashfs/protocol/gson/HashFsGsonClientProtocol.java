@@ -80,8 +80,8 @@ public class HashFsGsonClientProtocol implements HashFsClientProtocol {
 								.addHandler(HashFsResponseOperationOk.class, new MessagingHandler<HashFsResponseOperationOk, HashFsCommand>() {
 									@Override
 									public void onMessage(HashFsResponseOperationOk item, Messaging<HashFsCommand> messaging) {
-										ackConsumer.streamTo(messaging.binarySocketWriter());
-										callback.onResult(ackConsumer);
+//										ackConsumer.streamTo(messaging.binarySocketWriter());
+									//	callback.onResult(ackConsumer);
 									}
 								})
 								.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {

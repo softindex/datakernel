@@ -132,12 +132,12 @@ public class HashFsImpl implements HashFs {
 				StreamByteChunker streamByteChunkerBefore = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
 				StreamLZ4Compressor compressor = compressorFactory.getInstance(eventloop);
 				StreamByteChunker streamByteChunkerAfter = new StreamByteChunker(eventloop, bufferSize / 2, bufferSize);
-
-				streamByteChunkerBefore.streamTo(compressor);
-				compressor.streamTo(streamByteChunkerAfter);
-				streamByteChunkerAfter.streamTo(streamConsumer);
-
-				callback.onResult(streamByteChunkerBefore);
+//
+//				streamByteChunkerBefore.streamTo(compressor);
+//				compressor.streamTo(streamByteChunkerAfter);
+//				streamByteChunkerAfter.streamTo(streamConsumer);
+//
+//				callback.onResult(streamByteChunkerBefore);
 			}
 
 			@Override
@@ -179,9 +179,9 @@ public class HashFsImpl implements HashFs {
 
 			@Override
 			public void onResult(StreamProducer<ByteBuf> result) {
-				StreamLZ4Decompressor lz4Decompressor = new StreamLZ4Decompressor(eventloop);
-				result.streamTo(lz4Decompressor);
-				producerResultCallback.onResult(lz4Decompressor);
+//				StreamLZ4Decompressor lz4Decompressor = new StreamLZ4Decompressor(eventloop);
+//				result.streamTo(lz4Decompressor);
+//				producerResultCallback.onResult(lz4Decompressor);
 			}
 
 			@Override
@@ -233,16 +233,17 @@ public class HashFsImpl implements HashFs {
 		upload(destinationFilePath, new ResultCallback<StreamConsumer<ByteBuf>>() {
 			@Override
 			public void onResult(StreamConsumer<ByteBuf> actualConsumer) {
-				forwarder.streamTo(actualConsumer);
+				//forwarder.streamTo(actualConsumer);
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				logger.error("Upload file {} failed", destinationFilePath, exception);
-				forwarder.streamTo(StreamConsumers.<ByteBuf>closingWithError(eventloop, exception));
+//				forwarder.streamTo(StreamConsumers.<ByteBuf>closingWithError(eventloop, exception));
 			}
 		});
-		return forwarder;
+//		return forwarder;
+		return null;
 	}
 
 	@Override
@@ -252,17 +253,21 @@ public class HashFsImpl implements HashFs {
 		download(filename, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
 			public void onResult(StreamProducer<ByteBuf> actualProducer) {
-				actualProducer.streamTo(forwarder);
+
+				//actualProducer.streamTo(forwarder);
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				forwarder.onConsumerError(exception);
+
+				//forwarder.onConsumerError(exception);
 			}
 		});
 
-		return forwarder;
+//		return forwarder;
+		return null;
 	}
+
 
 	@Override
 	public void deleteFile(final String filename, final ResultCallback<Boolean> callback) {

@@ -63,9 +63,9 @@ public class StreamSerializerBenchmark implements Runnable {
 		StreamBinaryDeserializer<Integer> deserializerStream = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 12);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop);
 
-		source.streamTo(serializerStream);
-		serializerStream.streamTo(deserializerStream);
-		deserializerStream.streamTo(consumer);
+		source.streamTo(serializerStream.getInput());
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
+		deserializerStream.getOutput().streamTo(consumer);
 	}
 
 	@Override

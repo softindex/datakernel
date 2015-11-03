@@ -155,7 +155,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.streamTo(consumer);
+		streamJoin.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -235,7 +235,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.streamTo(consumer);
+		streamJoin.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 1);
@@ -294,7 +294,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.streamTo(consumer);
+		streamJoin.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 0);

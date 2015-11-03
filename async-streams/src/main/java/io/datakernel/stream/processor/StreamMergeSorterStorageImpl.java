@@ -84,11 +84,11 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		StreamByteChunker streamByteChunkerAfter = new StreamByteChunker(eventloop, blockSize / 2, blockSize);
 		StreamFileWriter streamWriter = StreamFileWriter.createFile(eventloop, executorService, partitionPath(partition++));
 
-		producer.streamTo(streamSerializer);
-		streamSerializer.streamTo(streamByteChunkerBefore);
-		streamByteChunkerBefore.streamTo(streamCompressor);
-		streamCompressor.streamTo(streamByteChunkerAfter);
-		streamByteChunkerAfter.streamTo(streamWriter);
+		producer.streamTo(streamSerializer.getInput());
+		streamSerializer.getOutput().streamTo(streamByteChunkerBefore.getInput());
+		streamByteChunkerBefore.getOutput().streamTo(streamCompressor.getInput());
+		streamCompressor.getOutput().streamTo(streamByteChunkerAfter.getInput());
+		streamByteChunkerAfter.getOutput().streamTo(streamWriter);
 		streamWriter.setFlushCallback(completionCallback);
 	}
 
@@ -105,9 +105,9 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		StreamFileReader streamReader = StreamFileReader.readFileFrom(eventloop, executorService, blockSize, partitionPath(partition), 0L);
 		StreamLZ4Decompressor streamDecompressor = new StreamLZ4Decompressor(eventloop);
 		StreamBinaryDeserializer<T> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, serializer, blockSize);
-		streamReader.streamTo(streamDecompressor);
-		streamDecompressor.streamTo(streamDeserializer);
-		return streamDeserializer;
+		streamReader.streamTo(streamDecompressor.getInput());
+		streamDecompressor.getOutput().streamTo(streamDeserializer.getInput());
+		return streamDeserializer.getOutput();
 	}
 
 	/**

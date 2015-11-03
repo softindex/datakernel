@@ -140,10 +140,10 @@ public class StreamProducerConcatTest {
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop);
 		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
 
-		producer.streamTo(function);
+		producer.streamTo(function.getInput());
 		eventloop.run();
 
-		function.streamTo(consumer);
+		function.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6), consumer.getList());

@@ -88,21 +88,21 @@ public class StreamGsonSerializerTest {
 
 		StreamGsonSerializer<TestItem> serializerStream = new StreamGsonSerializer<>(eventloop, new Gson(), TestItem.class, 1, 50, 0);
 
-		StreamProducers.ofIterable(eventloop, items).streamTo(serializerStream);
+		StreamProducers.ofIterable(eventloop, items).streamTo(serializerStream.getInput());
 
 		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
-		serializerStream.streamTo(deserializerStream);
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
 
 		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop);
-		deserializerStream.streamTo(consumerToList);
+		deserializerStream.getOutput().streamTo(consumerToList);
 		eventloop.run();
 
 		assertEquals(items, consumerToList.getList());
-		assertEquals(END_OF_STREAM, serializerStream.getConsumerStatus());
-		assertEquals(END_OF_STREAM, serializerStream.getProducerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
 
-		assertEquals(END_OF_STREAM, deserializerStream.getConsumerStatus());
-		assertEquals(END_OF_STREAM, deserializerStream.getProducerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getOutput().getProducerStatus());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -115,23 +115,23 @@ public class StreamGsonSerializerTest {
 
 		StreamGsonSerializer<TestItem> serializerStream = new StreamGsonSerializer<>(eventloop, new Gson(), TestItem.class, 1, 50, 0);
 
-		StreamProducers.ofIterable(eventloop, items).streamTo(serializerStream);
+		StreamProducers.ofIterable(eventloop, items).streamTo(serializerStream.getInput());
 		eventloop.run();
 
 		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
-		serializerStream.streamTo(deserializerStream);
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
 		eventloop.run();
 
 		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop);
-		deserializerStream.streamTo(consumerToList);
+		deserializerStream.getOutput().streamTo(consumerToList);
 		eventloop.run();
 
 		assertEquals(items, consumerToList.getList());
-		assertEquals(END_OF_STREAM, serializerStream.getConsumerStatus());
-		assertEquals(END_OF_STREAM, serializerStream.getProducerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
 
-		assertEquals(END_OF_STREAM, deserializerStream.getConsumerStatus());
-		assertEquals(END_OF_STREAM, deserializerStream.getProducerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getOutput().getProducerStatus());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -149,21 +149,21 @@ public class StreamGsonSerializerTest {
 				StreamProducers.ofValue(eventloop, new TestItem(1, "item2")),
 				StreamProducers.<TestItem>closingWithError(eventloop, new Exception("Test Exception"))
 		);
-		producer.streamTo(serializerStream);
+		producer.streamTo(serializerStream.getInput());
 
 		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
-		serializerStream.streamTo(deserializerStream);
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
 
 		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop, list);
-		deserializerStream.streamTo(consumerToList);
+		deserializerStream.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
 
-		assertEquals(CLOSED_WITH_ERROR, serializerStream.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, serializerStream.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, serializerStream.getInput().getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, serializerStream.getOutput().getProducerStatus());
 
-		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getInput().getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getOutput().getProducerStatus());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

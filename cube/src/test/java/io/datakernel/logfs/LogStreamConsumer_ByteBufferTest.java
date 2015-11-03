@@ -19,7 +19,6 @@ package io.datakernel.logfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -56,7 +55,6 @@ import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
 import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 public class LogStreamConsumer_ByteBufferTest {
 	@Rule
@@ -87,7 +85,7 @@ public class LogStreamConsumer_ByteBufferTest {
 	public void testProducerWithError() throws InterruptedException {
 		final SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
 		final NioEventloop eventloop = new NioEventloop(timeProvider);
-		timeProvider.setTime(new LocalDateTime("1970-01-01T00:59:55").toDateTime(DateTimeZone.UTC).getMillis());
+		timeProvider.setTime(new LocalDateTime("1970-01-01T00:59:59").toDateTime(DateTimeZone.UTC).getMillis());
 		final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 
 		final LogFileSystem fileSystem = new SimpleLogFileSystem(eventloop, executor, testDir, listWriter);
@@ -114,28 +112,29 @@ public class LogStreamConsumer_ByteBufferTest {
 		};
 
 		String streamId = "newId";
-		final boolean[] called = new boolean[1];
-		CompletionCallback completionCallback = new SimpleCompletionCallback() {
+		final CallbackСallCount callbackСallCount = new CallbackСallCount();
+		CompletionCallback completionCallback = new CompletionCallback() {
+			@Override
+			public void onException(Exception exception) {
+				callbackСallCount.incrementOnError();
+			}
 
 			@Override
-			protected void onCompleteOrException() {
-				if (called[0]) {
-					fail("Callback called twice");
-					return;
-				}
-				called[0] = true;
+			public void onComplete() {
+				callbackСallCount.incrementOnComplite();
 			}
 		};
 		LogStreamConsumer_ByteBuffer logStreamConsumerByteBuffer =
 				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 
-		producer.streamTo(logStreamConsumerByteBuffer.getInput());
+		producer.streamTo(logStreamConsumerByteBuffer);
 		eventloop.run();
 
-		assertEquals(called[0], true);
+		assertEquals(callbackСallCount.isCalledOnce(), true);
+		assertEquals(callbackСallCount.isCalledOnError(), true);
 		assertEquals(StreamStatus.CLOSED_WITH_ERROR, producer.getProducerStatus());
-		assertEquals(StreamStatus.CLOSED_WITH_ERROR, logStreamConsumerByteBuffer.getInput().getConsumerStatus());
+		assertEquals(StreamStatus.CLOSED_WITH_ERROR, logStreamConsumerByteBuffer.getConsumerStatus());
 		assertEquals(listWriter.size(), 2);
 
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
@@ -177,28 +176,29 @@ public class LogStreamConsumer_ByteBufferTest {
 		};
 
 		String streamId = "newId";
-		final boolean[] called = new boolean[1];
-		CompletionCallback completionCallback = new SimpleCompletionCallback() {
+		final CallbackСallCount callbackСallCount = new CallbackСallCount();
+		CompletionCallback completionCallback = new CompletionCallback() {
+			@Override
+			public void onException(Exception exception) {
+				callbackСallCount.incrementOnError();
+			}
 
 			@Override
-			protected void onCompleteOrException() {
-				if (called[0]) {
-					fail("Callback called twice");
-					return;
-				}
-				called[0] = true;
+			public void onComplete() {
+				callbackСallCount.incrementOnComplite();
 			}
 		};
 		LogStreamConsumer_ByteBuffer logStreamConsumerByteBuffer =
 				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 
-		producer.streamTo(logStreamConsumerByteBuffer.getInput());
+		producer.streamTo(logStreamConsumerByteBuffer);
 		eventloop.run();
 
-		assertEquals(called[0], true);
+		assertEquals(callbackСallCount.isCalledOnce(), true);
+		assertEquals(callbackСallCount.isCalledOnComplite(), true);
 		assertEquals(StreamStatus.END_OF_STREAM, producer.getProducerStatus());
-		assertEquals(StreamStatus.END_OF_STREAM, logStreamConsumerByteBuffer.getInput().getConsumerStatus());
+		assertEquals(StreamStatus.END_OF_STREAM, logStreamConsumerByteBuffer.getConsumerStatus());
 		for (int i = 0; i < listWriter.size() - 1; i++) {
 			assertEquals(listWriter.get(i).getConsumerStatus(), StreamStatus.END_OF_STREAM);
 		}
@@ -411,5 +411,35 @@ public class LogStreamConsumer_ByteBufferTest {
 		protected void onSuspended() {
 
 		}
-	};
+	}
+
+	class CallbackСallCount {
+		private int onError;
+		private int onComplite;
+
+		public CallbackСallCount() {
+			this.onError = 0;
+			this.onComplite = 0;
+		}
+
+		public void incrementOnError() {
+			onError++;
+		}
+
+		public void incrementOnComplite() {
+			onComplite++;
+		}
+
+		public boolean isCalledOnce() {
+			return (onComplite == 1 && onError == 0) || (onComplite == 0 && onError == 1);
+		}
+
+		public boolean isCalledOnError() {
+			return onError == 1;
+		}
+
+		public boolean isCalledOnComplite() {
+			return onComplite == 1;
+		}
+	}
 }

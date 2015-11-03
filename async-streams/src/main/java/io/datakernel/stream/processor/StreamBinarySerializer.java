@@ -48,23 +48,23 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 	private static final int MAX_HEADER_BYTES = 3;
 
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	private final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.flushAndClose();
+			outputProducer.flushAndClose();
 		}
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return downstreamProducer;
+			return outputProducer;
 		}
 	}
 
-	private final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<T> {
+	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<T> {
 		private final BufferSerializer<T> serializer;
 
 		private final int defaultBufferSize;
@@ -86,7 +86,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		private long jmxBytes;
 		private int jmxBufs;
 
-		public DownstreamProducer(BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
+		public OutputProducer(BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
 			checkArgument(maxMessageSize > 0 && maxMessageSize <= MAX_SIZE, "maxMessageSize must be in [4B..2MB) range, got %s", maxMessageSize);
 			checkArgument(defaultBufferSize > 0, "defaultBufferSize must be positive value, got %s", defaultBufferSize);
 
@@ -102,12 +102,12 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 			resumeProduce();
 		}
 
@@ -131,7 +131,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				byteBuf.limit(size);
 				jmxBytes += size;
 				jmxBufs++;
-				if (downstreamProducer.getProducerStatus().isOpen()) {
+				if (outputProducer.getProducerStatus().isOpen()) {
 					receiver.onData(byteBuf);
 				}
 			} else {
@@ -142,7 +142,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 
 		private void ensureSize(int size) {
 			if (outputBuffer.remaining() < size) {
-				flushBuffer(downstreamProducer.getDownstreamDataReceiver());
+				flushBuffer(outputProducer.getDownstreamDataReceiver());
 			}
 		}
 
@@ -216,12 +216,12 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void flushAndClose() {
-			flushBuffer(downstreamProducer.getDownstreamDataReceiver());
+			flushBuffer(outputProducer.getDownstreamDataReceiver());
 			byteBuf.recycle();
 			byteBuf = null;
 			outputBuffer.set(null, 0);
-			logger.trace("endOfStream {}, upstream: {}", this, upstreamConsumer.getUpstream());
-			downstreamProducer.sendEndOfStream();
+			logger.trace("endOfStream {}, upstream: {}", this, inputConsumer.getUpstream());
+			outputProducer.sendEndOfStream();
 		}
 
 		private void handleSerializationError(Exception e) {
@@ -237,7 +237,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		 * Bytes will be sent immediately.
 		 */
 		private void flush() {
-			flushBuffer(downstreamProducer.getDownstreamDataReceiver());
+			flushBuffer(outputProducer.getDownstreamDataReceiver());
 			flushPosted = false;
 		}
 
@@ -247,7 +247,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				eventloop.postLater(new Runnable() {
 					@Override
 					public void run() {
-						if (downstreamProducer.getProducerStatus().isOpen()) {
+						if (outputProducer.getProducerStatus().isOpen()) {
 							flush();
 						}
 					}
@@ -256,7 +256,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 				eventloop.scheduleBackground(eventloop.currentTimeMillis() + flushDelayMillis, new Runnable() {
 					@Override
 					public void run() {
-						if (downstreamProducer.getProducerStatus().isOpen()) {
+						if (outputProducer.getProducerStatus().isOpen()) {
 							flush();
 						}
 					}
@@ -282,8 +282,8 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	 */
 	public StreamBinarySerializer(Eventloop eventloop, BufferSerializer<T> serializer, int defaultBufferSize, int maxMessageSize, int flushDelayMillis, boolean skipSerializationErrors) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
 	}
 
 	/**
@@ -291,30 +291,30 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 	 */
 	@Override
 	public void flush() {
-		downstreamProducer.flush();
+		outputProducer.flush();
 	}
 
 	// JMX
 
 	@Override
 	public int getItems() {
-		return downstreamProducer.jmxItems;
+		return outputProducer.jmxItems;
 	}
 
 	@Override
 	public int getBufs() {
-		return downstreamProducer.jmxBufs;
+		return outputProducer.jmxBufs;
 	}
 
 	@Override
 	public long getBytes() {
-		return downstreamProducer.jmxBytes;
+		return outputProducer.jmxBytes;
 	}
 
 	@SuppressWarnings("AssertWithSideEffects")
 	@Override
 	public int getSerializationErrors() {
-		return downstreamProducer.serializationErrors;
+		return outputProducer.serializationErrors;
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
@@ -323,9 +323,9 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		boolean assertOn = false;
 		assert assertOn = true;
 		return '{' + super.toString()
-				+ (downstreamProducer.serializationErrors != 0 ? "serializationErrors:" + downstreamProducer.serializationErrors : "")
-				+ " items:" + (assertOn ? "" + downstreamProducer.jmxItems : "?")
-				+ " bufs:" + downstreamProducer.jmxBufs
-				+ " bytes:" + downstreamProducer.jmxBytes + '}';
+				+ (outputProducer.serializationErrors != 0 ? "serializationErrors:" + outputProducer.serializationErrors : "")
+				+ " items:" + (assertOn ? "" + outputProducer.jmxItems : "?")
+				+ " bufs:" + outputProducer.jmxBufs
+				+ " bytes:" + outputProducer.jmxBytes + '}';
 	}
 }

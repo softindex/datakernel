@@ -16,26 +16,13 @@
 
 package io.datakernel.rpc.hello;
 
-import static io.datakernel.async.AsyncCallbacks.closeFuture;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.junit.Assert.*;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -52,9 +39,22 @@ import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.datakernel.async.AsyncCallbacks.closeFuture;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.junit.Assert.*;
 
 public class RpcNioHelloWorldTest {
 

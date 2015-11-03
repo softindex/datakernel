@@ -32,11 +32,15 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static io.datakernel.aggregation_db.KeyValueTest.KeyValuePair;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class AggregationChunkerTest {
 
@@ -71,7 +75,7 @@ public class AggregationChunkerTest {
 			public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, CompletionCallback callback) {
 				List<T> list = new ArrayList<>();
 				map.put(id, list);
-				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, list);
+				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
 				return consumer;
@@ -91,7 +95,6 @@ public class AggregationChunkerTest {
 
 			@Override
 			public void onException(Exception exception) {
-				fail(exception.getMessage());
 			}
 
 			@Override
@@ -164,7 +167,7 @@ public class AggregationChunkerTest {
 			public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, CompletionCallback callback) {
 				List<T> list = new ArrayList<>();
 				map.put(aggregationId, list);
-				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, list);
+				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
 				return consumer;
@@ -184,7 +187,6 @@ public class AggregationChunkerTest {
 
 			@Override
 			public void onException(Exception exception) {
-				fail(exception.getMessage());
 			}
 
 			@Override
@@ -266,12 +268,12 @@ public class AggregationChunkerTest {
 			public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, CompletionCallback callback) {
 				List<T> list = new ArrayList<>();
 				map.put(aggregationId, list);
-				if (Objects.equals(aggregationId, "1")) {
+				if (id == 1) {
 					StreamConsumers.ToList<T> toList = StreamConsumers.toList(eventloop, list);
 					listConsumers.add(toList);
 					return toList;
 				} else {
-					StreamConsumers.ClosingWithError consumer = StreamConsumers.closingWithError(eventloop, new Exception("Test Exception"));
+					StreamConsumers.ClosingWithError<T> consumer = StreamConsumers.closingWithError(eventloop, new Exception("Test Exception"));
 					consumer.setCompletionCallback(callback);
 					listConsumers.add(consumer);
 					return consumer;
@@ -292,7 +294,6 @@ public class AggregationChunkerTest {
 
 			@Override
 			public void onException(Exception exception) {
-				fail();
 			}
 
 			@Override

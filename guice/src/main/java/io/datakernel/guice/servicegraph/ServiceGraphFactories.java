@@ -16,8 +16,8 @@
 
 package io.datakernel.guice.servicegraph;
 
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.service.ConcurrentService;
-import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.service.Service;
 import org.slf4j.Logger;
 

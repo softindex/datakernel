@@ -47,7 +47,7 @@ public class WriteTransformerAck<I> extends AbstractStreamTransformer_1_1<I, I> 
 
 	public WriteTransformerAck(Eventloop eventloop) {
 		super(eventloop);
-		super.addCompletionCallback(parentFinished);
+//		super.addCompletionCallback(parentFinished);
 	}
 
 	public void receiveAck() {
@@ -60,19 +60,19 @@ public class WriteTransformerAck<I> extends AbstractStreamTransformer_1_1<I, I> 
 			parentFinished.onException(new Exception("Receive ack from server before complete write"));
 		}
 	}
-
-	@Override
-	public StreamDataReceiver<I> getDataReceiver() {
-		return downstreamDataReceiver;
-	}
-
-	@Override
-	public void onProducerEndOfStream() {
-		sendEndOfStream();
-	}
-
-	@Override
-	public void addCompletionCallback(CompletionCallback completionCallback) {
-		callback.add(completionCallback);
-	}
 }
+//	@Override
+//	public StreamDataReceiver<I> getDataReceiver() {
+//		return downstreamDataReceiver;
+//	}
+//
+//	@Override
+//	public void onProducerEndOfStream() {
+//		sendEndOfStream();
+//	}
+//
+//	@Override
+//	public void addCompletionCallback(CompletionCallback completionCallback) {
+//		callback.add(completionCallback);
+//	}
+//}

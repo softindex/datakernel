@@ -108,7 +108,7 @@ public final class LogToCubeRunner<T> {
 
 		AggregatorSplitter<T> aggregator = aggregatorSplitterFactory.create(eventloop);
 
-		streamUnion.streamTo(aggregator);
+		streamUnion.getOutput().streamTo(aggregator.getInput());
 
 		aggregator.streamTo(cube, logCommitTransaction);
 	}

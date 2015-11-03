@@ -41,7 +41,7 @@ public abstract class AggregatorSplitter<T> extends AbstractStreamSplitter<T> {
 
 	public AggregatorSplitter(Eventloop eventloop) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer() {
+		this.inputConsumer = new InputConsumer() {
 			@Override
 			public void onData(T item) {
 				processItem(item);
@@ -50,7 +50,7 @@ public abstract class AggregatorSplitter<T> extends AbstractStreamSplitter<T> {
 	}
 
 	public final StreamProducer<T> newOutput() {
-		return addOutput(new DownstreamProducer<T>());
+		return addOutput(new OutputProducer<T>());
 	}
 
 	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions, List<String> measures) {

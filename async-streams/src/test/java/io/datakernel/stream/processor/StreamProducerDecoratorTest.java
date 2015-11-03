@@ -57,9 +57,8 @@ public class StreamProducerDecoratorTest {
 			}
 		};
 
-		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(eventloop, producer) {
-		};
+		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
 
 		producerDecorator.streamTo(consumer);
 
@@ -77,9 +76,8 @@ public class StreamProducerDecoratorTest {
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(eventloop, producer) {
-		};
+		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
 
 		producerDecorator.streamTo(consumer);
 
@@ -95,16 +93,15 @@ public class StreamProducerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
-		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<Integer>(eventloop, producer) {
-		};
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		final StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
+		StreamProducerDecorator<Integer> producerDecorator = new StreamProducerDecorator<>(producer);
 		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
 
-		producerDecorator.streamTo(function);
+		producerDecorator.streamTo(function.getInput());
 		eventloop.run();
 
-		function.streamTo(consumer);
+		function.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(consumer.getList(), asList(1, 2, 3, 4, 5));

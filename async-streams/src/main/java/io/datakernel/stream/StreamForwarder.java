@@ -26,39 +26,39 @@ import io.datakernel.eventloop.Eventloop;
  */
 public final class StreamForwarder<T> extends AbstractStreamTransformer_1_1<T, T> {
 
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.sendEndOfStream();
+			outputProducer.sendEndOfStream();
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return downstreamProducer.getDownstreamDataReceiver();
+			return outputProducer.getDownstreamDataReceiver();
 		}
 	}
 
-	protected final class DownstreamProducer extends AbstractDownstreamProducer {
+	protected final class OutputProducer extends AbstractOutputProducer {
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 	}
 
 	public StreamForwarder(Eventloop eventloop) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer();
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer();
 	}
 }

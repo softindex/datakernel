@@ -35,33 +35,33 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1<Stri
 
 	private static final int MAX_LENGTH = 10;
 
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.sendEndOfStream();
+			outputProducer.sendEndOfStream();
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public StreamDataReceiver<String> getDataReceiver() {
-			return downstreamProducer;
+			return outputProducer;
 		}
 	}
 
-	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<String> {
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<String> {
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 
 		@Override
@@ -75,8 +75,8 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1<Stri
 
 	protected TransformerExample(Eventloop eventloop) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer();
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer();
 	}
 
 	public static void main(String[] args) {
@@ -88,8 +88,8 @@ public final class TransformerExample extends AbstractStreamTransformer_1_1<Stri
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(transformer);
-		transformer.streamTo(consumer);
+		source.streamTo(transformer.getInput());
+		transformer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
