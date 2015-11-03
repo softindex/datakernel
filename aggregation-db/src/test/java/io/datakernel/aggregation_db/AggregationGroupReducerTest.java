@@ -18,6 +18,7 @@ package io.datakernel.aggregation_db;
 
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
+import io.datakernel.aggregation_db.api.ReportingDSLExpression;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeList;
@@ -66,7 +67,8 @@ public class AggregationGroupReducerTest {
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
 						.build(),
-				ImmutableMap.<String, String>of());
+				ImmutableMap.<String, String>of(),
+				ImmutableMap.<String, ReportingDSLExpression>of());
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final Map<Long, List> map = new HashMap<>();
@@ -160,7 +162,8 @@ public class AggregationGroupReducerTest {
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
 						.build(),
-				ImmutableMap.<String, String>of());
+				ImmutableMap.<String, String>of(),
+				ImmutableMap.<String, ReportingDSLExpression>of());
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final Map<String, List> map = new HashMap<>();
@@ -259,7 +262,8 @@ public class AggregationGroupReducerTest {
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
 						.build(),
-				ImmutableMap.<String, String>of());
+				ImmutableMap.<String, String>of(),
+				ImmutableMap.<String, ReportingDSLExpression>of());
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final Map<String, List> map = new HashMap<>();

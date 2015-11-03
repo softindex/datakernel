@@ -45,12 +45,12 @@ public class ReportingTest {
 				.field("b", long.class)
 				.field("c", double.class)
 				.field("d", double.class)
-				.method("computeMeasures", set(field(self(), "d"), d.getExpression()))
+				.method("computeMeasures", set(getter(self(), "d"), d.getExpression()))
 				.method("init", sequence(
-						set(field(self(), "a"), value(1)),
-						set(field(self(), "b"), value(100)),
-						set(field(self(), "c"), value(5))))
-				.method("getResult", field(self(), "d"))
+						set(getter(self(), "a"), value(1)),
+						set(getter(self(), "b"), value(100)),
+						set(getter(self(), "c"), value(5))))
+				.method("getResult", getter(self(), "d"))
 				.newInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.compute();
@@ -68,12 +68,12 @@ public class ReportingTest {
 				.field("b", long.class)
 				.field("c", double.class)
 				.field("d", double.class)
-				.method("computeMeasures", set(field(self(), "d"), d.getExpression()))
+				.method("computeMeasures", set(getter(self(), "d"), d.getExpression()))
 				.method("init", sequence(
-						set(field(self(), "a"), value(1)),
-						set(field(self(), "b"), value(0)),
-						set(field(self(), "c"), value(0))))
-				.method("getResult", field(self(), "d"))
+						set(getter(self(), "a"), value(1)),
+						set(getter(self(), "b"), value(0)),
+						set(getter(self(), "c"), value(0))))
+				.method("getResult", getter(self(), "d"))
 				.newInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.compute();

@@ -532,7 +532,7 @@ public final class HttpJsonApiServer {
 		ExpressionSequence computeSequence = sequence();
 		for (String computedMeasure : computedMeasureNames) {
 			builder.field(computedMeasure, double.class);
-			computeSequence.add(set(field(self(), computedMeasure), structure.getComputedMeasureExpression(computedMeasure)));
+			computeSequence.add(set(getter(self(), computedMeasure), structure.getComputedMeasureExpression(computedMeasure)));
 		}
 		builder.method("computeMeasures", computeSequence);
 		return builder.defineClass();
@@ -555,24 +555,24 @@ public final class HttpJsonApiServer {
 
 		for (String field : requestedStoredFields) {
 			initAccumulatorSequence.add(set(
-					field(self(), field),
-					field(cast(arg(0), inputClass), field)));
+					getter(self(), field),
+					getter(cast(arg(0), inputClass), field)));
 		}
 		builder.method("initAccumulator", initAccumulatorSequence);
 
 		ExpressionSequence accumulateSequence = sequence();
 		for (String field : requestedStoredFields) {
 			accumulateSequence.add(set(
-					field(self(), field),
+					getter(self(), field),
 					add(
-							field(self(), field),
-							field(cast(arg(0), inputClass), field))));
+							getter(self(), field),
+							getter(cast(arg(0), inputClass), field))));
 		}
 		builder.method("accumulate", accumulateSequence);
 
 		ExpressionSequence computeSequence = sequence();
 		for (String computedMeasure : computedMeasureNames) {
-			computeSequence.add(set(field(self(), computedMeasure), structure.getComputedMeasureExpression(computedMeasure)));
+			computeSequence.add(set(getter(self(), computedMeasure), structure.getComputedMeasureExpression(computedMeasure)));
 		}
 		builder.method("computeMeasures", computeSequence);
 
@@ -593,12 +593,12 @@ public final class HttpJsonApiServer {
 		ExpressionComparator comparator = comparator();
 		if (ascending)
 			comparator.add(
-					field(cast(arg(0), fieldClass), fieldName),
-					field(cast(arg(1), fieldClass), fieldName));
+					getter(cast(arg(0), fieldClass), fieldName),
+					getter(cast(arg(1), fieldClass), fieldName));
 		else
 			comparator.add(
-					field(cast(arg(1), fieldClass), fieldName),
-					field(cast(arg(0), fieldClass), fieldName));
+					getter(cast(arg(1), fieldClass), fieldName),
+					getter(cast(arg(0), fieldClass), fieldName));
 
 		builder.method("compare", comparator);
 
