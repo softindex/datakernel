@@ -114,8 +114,8 @@ public class GsonClientProtocol implements ClientProtocol {
 							@Override
 							public void onMessage(HashFsResponseOk item, Messaging<HashFsCommand> messaging) {
 								StreamByteChunker byteChunker = new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
-								producer.streamTo(byteChunker);
-								messaging.write(byteChunker, new CompletionCallback() {
+								producer.streamTo(byteChunker.getInput());
+								messaging.write(byteChunker.getOutput(), new CompletionCallback() {
 									@Override
 									public void onComplete() {
 

@@ -152,10 +152,10 @@ public class HashFsClient implements FsClient {
 	private void download(final String filePath, final int currentAttempt, final List<ServerInfo> candidates, final StreamConsumer<ByteBuf> consumer) {
 		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.download(server, filePath, forwarder, new CompletionCallback() {
+		protocol.download(server, filePath, forwarder.getInput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				forwarder.streamTo(consumer);
+				forwarder.getOutput().streamTo(consumer);
 			}
 
 			@Override

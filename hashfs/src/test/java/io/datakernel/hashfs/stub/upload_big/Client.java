@@ -93,16 +93,18 @@ public class Client {
 		upload(address, destinationFilePath, new ResultCallback<StreamConsumer<ByteBuf>>() {
 			@Override
 			public void onResult(StreamConsumer<ByteBuf> actualConsumer) {
-				forwarder.streamTo(actualConsumer);
+				//forwarder.streamTo(actualConsumer);
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				logger.error("fail", exception);
-				forwarder.streamTo(StreamConsumers.<ByteBuf>closingWithError(eventloop, exception));
+				//forwarder.streamTo(StreamConsumers.<ByteBuf>closingWithError(eventloop, exception));
 			}
 		});
-		return forwarder;
+//		return forwarder;
+		return null;
 	}
+
 
 }
