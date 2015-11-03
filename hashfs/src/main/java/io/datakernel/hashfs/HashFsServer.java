@@ -193,20 +193,20 @@ public class HashFsServer implements ServerStatusChangeListeners {
 //		producer.streamTo(lz4DecompressorValidate);
 //		lz4DecompressorValidate.streamTo(diskWrite);
 
-		diskWrite.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				onUploadFinished(destinationFilename);
-				logger.info("Server {} send file {} uploaded", myId.serverId, destinationFilename);
-				callback.onComplete();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				onUploadFail(destinationFilename);
-				callback.onException(new Exception("Upload fail"));
-			}
-		});
+//		diskWrite.addCompletionCallback(new CompletionCallback() {
+//			@Override
+//			public void onComplete() {
+//				onUploadFinished(destinationFilename);
+//				logger.info("Server {} send file {} uploaded", myId.serverId, destinationFilename);
+//				callback.onComplete();
+//			}
+//
+//			@Override
+//			public void onException(Exception exception) {
+//				onUploadFail(destinationFilename);
+//				callback.onException(new Exception("Upload fail"));
+//			}
+//		});
 	}
 
 	@Override
@@ -350,12 +350,12 @@ public class HashFsServer implements ServerStatusChangeListeners {
 							Path filePath = metadata.getFilePath(uploadTask.filename);
 							final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, filePath);
 							producer.streamTo(consumer);
-							consumer.addCompletionCallback(new SimpleCompletionCallback() {
-								@Override
-								protected void onCompleteOrException() {
-									uploadQueue.finishTask(uploadTask);
-								}
-							});
+//							consumer.addCompletionCallback(new SimpleCompletionCallback() {
+//								@Override
+//								protected void onCompleteOrException() {
+//									uploadQueue.finishTask(uploadTask);
+//								}
+//							});
 						} catch (IOException e) {
 							logger.error("Can't get file path for {} on {}", uploadTask.filename, myId.serverId);
 						}

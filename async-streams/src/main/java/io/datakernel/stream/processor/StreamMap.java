@@ -17,20 +17,20 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * Provides to create some MapperProjection which will change received data, and send it to the
- * destination. It is {@link AbstractStreamTransformer_1_1_Stateless} which receives original
+ * destination. It is {@link AbstractStreamTransformer_1_1} which receives original
  * data and streams changed data.
  *
  * @param <I> type of input data
  * @param <O> type of output data
  */
-public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1_Stateless<I, O> implements StreamDataReceiver<I>, StreamMapMBean {
+public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> implements StreamMapMBean {
 	private int jmxItems;
 
 	/**
@@ -117,37 +117,50 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1_Statele
 		};
 	}
 
-	private final Mapper<I, O> mapper;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	/**
-	 * Creates a new instance of stream map
-	 *
-	 * @param eventloop eventloop in which runs StreamMap
-	 * @param mapper    mapper for applying to input data
-	 */
+	protected final class InputConsumer extends AbstractInputConsumer {
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			outputProducer.sendEndOfStream();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public StreamDataReceiver<I> getDataReceiver() {
+			return outputProducer;
+		}
+	}
+
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<I> {
+		private final Mapper<I, O> mapper;
+
+		public OutputProducer(Mapper<I, O> mapper) {this.mapper = checkNotNull(mapper);}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			inputConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			inputConsumer.resume();
+		}
+
+		@SuppressWarnings("AssertWithSideEffects")
+		@Override
+		public void onData(I item) {
+			assert jmxItems != ++jmxItems;
+			mapper.map(item, downstreamDataReceiver);
+		}
+	}
+
 	public StreamMap(Eventloop eventloop, Mapper<I, O> mapper) {
 		super(eventloop);
-		this.mapper = checkNotNull(mapper);
-	}
-
-	/**
-	 * Always return this object
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public StreamDataReceiver<I> getDataReceiver() {
-		return this;
-	}
-
-	/**
-	 * Changes input data and receive it to the destination
-	 *
-	 * @param item received data
-	 */
-	@Override
-	public void onData(I item) {
-		assert jmxItems != ++jmxItems;
-		mapper.map(item, downstreamDataReceiver);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(mapper);
 	}
 
 	@Override
@@ -162,4 +175,5 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1_Statele
 		assert (items = "" + jmxItems) != null;
 		return '{' + super.toString() + " items:" + items + '}';
 	}
+
 }

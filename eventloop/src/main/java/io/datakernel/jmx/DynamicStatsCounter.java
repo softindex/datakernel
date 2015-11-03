@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.check;
 import static java.lang.Integer.bitCount;
 import static java.lang.Integer.numberOfTrailingZeros;
 
@@ -31,7 +31,7 @@ public final class DynamicStatsCounter {
 	private int lastValue;
 
 	public DynamicStatsCounter(int period) {
-		checkArgument(bitCount(period) == 1, "Period must be power of two");
+		check(bitCount(period) == 1, "Period must be power of two");
 		this.log2Period = numberOfTrailingZeros(period);
 	}
 

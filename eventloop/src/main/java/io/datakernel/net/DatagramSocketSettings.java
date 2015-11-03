@@ -19,7 +19,7 @@ package io.datakernel.net;
 import java.io.IOException;
 import java.nio.channels.DatagramChannel;
 
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.check;
 import static java.net.StandardSocketOptions.*;
 
 /**
@@ -90,7 +90,7 @@ public class DatagramSocketSettings {
 	}
 
 	public int getReceiveBufferSize() {
-		checkState(hasReceiveBufferSize());
+		check(hasReceiveBufferSize());
 		return receiveBufferSize;
 	}
 
@@ -99,7 +99,7 @@ public class DatagramSocketSettings {
 	}
 
 	public boolean getReuseAddress() {
-		checkState(hasReuseAddress());
+		check(hasReuseAddress());
 		return reuseAddress != FALSE;
 	}
 
@@ -108,7 +108,7 @@ public class DatagramSocketSettings {
 	}
 
 	public int getSendBufferSize() {
-		checkState(hasSendBufferSize());
+		check(hasSendBufferSize());
 		return sendBufferSize;
 	}
 
@@ -117,7 +117,7 @@ public class DatagramSocketSettings {
 	}
 
 	public boolean getBroadcast() {
-		checkState(hasBroadcast());
+		check(hasBroadcast());
 		return broadcast != FALSE;
 	}
 }

@@ -20,7 +20,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
-public class SimpleFsResponseSerialization {
+final class SimpleFsResponseSerialization {
 
 	public static final Gson GSON = new GsonBuilder()
 			.registerTypeAdapter(SimpleFsResponse.class, GsonSubclassesAdapter.builder()

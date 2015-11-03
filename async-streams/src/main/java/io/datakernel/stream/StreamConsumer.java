@@ -16,8 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
-
 /**
  * It represents an object which can asynchronous receive streams of data.
  * Implementors of this interface are strongly encouraged to extend one of the abstract classes
@@ -28,7 +26,7 @@ import io.datakernel.async.CompletionCallback;
  */
 public interface StreamConsumer<T> {
 	/**
-	 * Returns StreamDataCallback that will process receiving data.
+	 * Returns StreamDataReceiver that will process receiving data.
 	 * <p>Stream consumer is free to use any appropriate instance implementing the receiver interface, including itself.
 	 * <p>Moreover, it is possible (and encouraged) to forward data receiver from 'downstream' consumers.
 	 * This design principle makes it possible to implement zero-overhead stream transformers:
@@ -45,31 +43,21 @@ public interface StreamConsumer<T> {
 	 *
 	 * @param upstreamProducer stream producer for setting
 	 */
-	void setUpstream(StreamProducer<T> upstreamProducer);
-
-	/**
-	 * Returns StreamProducer which sent data to this consumer
-	 *
-	 * @return wired producer for this consumer
-	 */
-	StreamProducer<T> getUpstream();
+	void streamFrom(StreamProducer<T> upstreamProducer);
 
 	/**
 	 * This method is called when consumer has finished with sending information
 	 */
-	void onEndOfStream();
+	void onProducerEndOfStream();
 
 	/**
 	 * This method is called when consumer has error
 	 *
 	 * @param e exception which was found
 	 */
-	void onError(Exception e);
+	void onProducerError(Exception e);
 
-	/**
-	 * Adds new CompletionCallback which will be called when consumer closed or closed with error
-	 *
-	 * @param completionCallback new instance of CompletionCallback
-	 */
-	void addCompletionCallback(CompletionCallback completionCallback);
+	StreamStatus getConsumerStatus();
+
+	Exception getConsumerException();
 }

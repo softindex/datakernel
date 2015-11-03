@@ -19,22 +19,30 @@ package io.datakernel.simplefs.stress;
 import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.simplefs.StopAndHugeFileUploadTest;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
+import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -52,7 +60,7 @@ public class StressClient {
 
 	private static Random rand = new Random();
 
-	private static final Path clientStorage = Paths.get("./tmp/stress_test/clients_storage");
+	private static final Path clientStorage = Paths.get("./test/clients_storage");
 	private static Path downloads;
 
 	List<String> existingClientFiles = new ArrayList<>();
@@ -74,8 +82,7 @@ public class StressClient {
 					StreamFileReader producer =
 							StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, file);
 
-					StreamConsumer<ByteBuf> consumer = client.upload(fileName);
-					consumer.addCompletionCallback(new CompletionCallback() {
+					client.upload(fileName, producer, new CompletionCallback() {
 						@Override
 						public void onComplete() {
 							logger.info("Uploaded: " + fileName);
@@ -86,7 +93,6 @@ public class StressClient {
 							logger.info("Failed to upload: {}", e.getMessage());
 						}
 					});
-					producer.streamTo(consumer);
 				} catch (IOException e) {
 					logger.info(e.getMessage());
 				}
@@ -106,7 +112,7 @@ public class StressClient {
 
 				StreamFileWriter consumer =
 						StreamFileWriter.createFile(eventloop, executor, downloads.resolve(fileName));
-				consumer.addCompletionCallback(new CompletionCallback() {
+				consumer.setFlushCallback(new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.info("Downloaded: " + fileName);
@@ -134,6 +140,7 @@ public class StressClient {
 				client.deleteFile(fileName, new CompletionCallback() {
 					@Override
 					public void onComplete() {
+						existingClientFiles.remove(fileName);
 						logger.info("Deleted: " + fileName);
 					}
 
@@ -204,4 +211,43 @@ public class StressClient {
 
 		return name.toString();
 	}
+
+	public void uploadSerializedObject(int i) throws UnknownHostException {
+		DefiningClassLoader classLoader = new DefiningClassLoader();
+		BufferSerializer<TestObject> bufferSerializer = SerializerBuilder
+				.newDefaultInstance(classLoader)
+				.create(TestObject.class);
+
+		TestObject obj = new TestObject();
+		obj.name = "someName";
+		obj.ip = InetAddress.getLocalHost();
+
+		StreamProducer<TestObject> producer = StreamProducers.ofIterable(eventloop, Collections.singletonList(obj));
+		StreamBinarySerializer<TestObject> serializer =
+				new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
+
+		producer.streamTo(serializer.getInput());
+		client.upload("someName" + i, serializer.getOutput(), new CompletionCallback() {
+			@Override
+			public void onException(Exception exception) {
+
+			}
+
+			@Override
+			public void onComplete() {
+
+			}
+		});
+
+		eventloop.run();
+	}
+
+	public static class TestObject {
+		@Serialize(order = 0)
+		public String name;
+
+		@Serialize(order = 1)
+		public InetAddress ip;
+	}
+
 }

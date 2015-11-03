@@ -33,6 +33,16 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 		super(eventloop);
 	}
 
+	@Override
+	protected void onStarted() {
+		scheduleNext();
+	}
+
+	@Override
+	protected void onDataReceiverChanged() {
+
+	}
+
 	private void cancel() {
 		if (scheduledRunnable != null) {
 			scheduledRunnable.cancel();
@@ -46,8 +56,7 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 	}
 
 	public void scheduleNext() {
-		// statuses are ordered: READY, SUSPENDED, END_OF_STREAM, CLOSED, CLOSED_WITH_ERROR
-		if (scheduledRunnable != null && status >= END_OF_STREAM)
+		if (scheduledRunnable != null && getProducerStatus().isClosed())
 			return;
 		scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 1000L, new Runnable() {
 			@Override
@@ -56,11 +65,6 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 				scheduleNext();
 			}
 		});
-	}
-
-	@Override
-	public void onProducerStarted() {
-		scheduleNext();
 	}
 
 	@Override
@@ -73,13 +77,4 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 		scheduleNext();
 	}
 
-	@Override
-	protected void onClosed() {
-		cancel();
-	}
-
-	@Override
-	protected void onClosedWithError(Exception e) {
-		cancel();
-	}
 }

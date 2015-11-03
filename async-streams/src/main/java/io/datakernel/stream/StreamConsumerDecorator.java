@@ -16,87 +16,60 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.eventloop.Eventloop;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
-public class StreamConsumerDecorator<T> extends AbstractStreamConsumer<T> {
+/**
+ * See also:
+ * <br><a href="http://en.wikipedia.org/wiki/Decorator_pattern">Decorator Pattern</a>
+ * <br>{@link com.google.common.collect.ForwardingObject}
+ * <br>{@link com.google.common.collect.ForwardingCollection}
+ *
+ * @param <T> item type
+ */
+public class StreamConsumerDecorator<T> implements StreamConsumer<T> {
 
-	protected StreamConsumer<T> decoratedConsumer;
-	protected InternalProducer internalProducer;
+	private StreamConsumer<T> actualConsumer;
 
-	private class InternalProducer extends AbstractStreamProducer<T> {
-		protected InternalProducer(Eventloop eventloop) {
-			super(eventloop);
-		}
+	public StreamConsumerDecorator() {
 
-		@Override
-		protected void onSuspended() {
-			StreamConsumerDecorator.this.onSuspended();
-		}
-
-		@Override
-		protected void onResumed() {
-			StreamConsumerDecorator.this.onResumed();
-		}
-
-		@Override
-		protected void onClosed() {
-			StreamConsumerDecorator.this.onClosed();
-		}
-
-		@Override
-		protected void onClosedWithError(Exception e) {
-			StreamConsumerDecorator.this.onClosedWithError(e);
-		}
 	}
 
-	protected StreamConsumerDecorator(Eventloop eventloop) {
-		super(eventloop);
+	public StreamConsumerDecorator(StreamConsumer<T> actualConsumer) {
+		setActualConsumer(actualConsumer);
 	}
 
-	public StreamConsumerDecorator(Eventloop eventloop, StreamConsumer<T> decoratedConsumer) {
-		this(eventloop);
-		decorate(decoratedConsumer);
-	}
-
-	public void decorate(StreamConsumer<T> decoratedConsumer) {
-		checkState(this.decoratedConsumer == null, "Already decorated: %s, new: %s", this.decoratedConsumer, decoratedConsumer);
-		this.decoratedConsumer = checkNotNull(decoratedConsumer);
-		this.internalProducer = new InternalProducer(eventloop);
-		this.internalProducer.streamTo(this.decoratedConsumer);
+	public void setActualConsumer(StreamConsumer<T> actualConsumer) {
+		checkState(this.actualConsumer == null, "Decorator is already wired");
+		this.actualConsumer = actualConsumer;
 	}
 
 	@Override
 	public StreamDataReceiver<T> getDataReceiver() {
-		return decoratedConsumer.getDataReceiver();
-	}
-
-	protected void onSuspended() {
-		suspendUpstream();
-	}
-
-	protected void onResumed() {
-		resumeUpstream();
-	}
-
-	protected void onClosed() {
-		closeUpstream();
-	}
-
-	protected void onClosedWithError(Exception e) {
-		closeUpstreamWithError(e);
+		return actualConsumer.getDataReceiver();
 	}
 
 	@Override
-	public void onEndOfStream() {
-		decoratedConsumer.onEndOfStream();
+	public final void streamFrom(StreamProducer<T> upstreamProducer) {
+		actualConsumer.streamFrom(upstreamProducer);
 	}
 
 	@Override
-	public void onError(Exception e) {
-		decoratedConsumer.onError(e);
+	public void onProducerEndOfStream() {
+		actualConsumer.onProducerEndOfStream();
 	}
 
+	@Override
+	public void onProducerError(Exception e) {
+		actualConsumer.onProducerError(e);
+	}
+
+	@Override
+	public final StreamStatus getConsumerStatus() {
+		return actualConsumer.getConsumerStatus();
+	}
+
+	@Override
+	public Exception getConsumerException() {
+		return actualConsumer.getConsumerException();
+	}
 }

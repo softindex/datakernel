@@ -16,12 +16,11 @@
 
 package io.datakernel.async;
 
-import com.google.common.base.Function;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
+import io.datakernel.util.Function;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -33,10 +32,14 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Static utility methods pertaining to {@link ResultCallback}, {@link CompletionCallback} and working with
- * {@link NioServer} and {@link NioService} with monitoring used {@link ListenableFuture} .
+ * {@link NioServer} and {@link NioService}.
  */
-public class AsyncCallbacks {
+public final class AsyncCallbacks {
 	private static final Logger logger = getLogger(AsyncCallbacks.class);
+
+	private AsyncCallbacks() {
+
+	}
 
 	private static final CompletionCallback IGNORE_COMPLETION_CALLBACK = new CompletionCallback() {
 		@Override
@@ -889,155 +892,87 @@ public class AsyncCallbacks {
 		return new AsyncCompletionCallback(count, totalCount, callback);
 	}
 
-	private static final class CompletionCallbackToFuture implements CompletionCallback {
-		private final SettableFuture<Void> future;
-
-		private CompletionCallbackToFuture(SettableFuture<Void> future) {
-			this.future = future;
-		}
-
-		@Override
-		public void onComplete() {
-			future.set(null);
-		}
-
-		@Override
-		public void onException(Exception exception) {
-			future.setException(exception);
-		}
-	}
-
-	private static final class ResultCallbackToFuture<T> implements ResultCallback<T> {
-		private final SettableFuture<T> future;
-
-		private ResultCallbackToFuture(SettableFuture<T> future) {
-			this.future = future;
-		}
-
-		@Override
-		public void onResult(T result) {
-			future.set(result);
-		}
-
-		@Override
-		public void onException(Exception exception) {
-			future.setException(exception);
-		}
-	}
-
-	/**
-	 * Returns CompletionCallback which created with SettableFuture. After calling onException() it sets it to
-	 * this future
-	 *
-	 * @param future the future for exception monitoring
-	 */
-	public static CompletionCallback completionCallbackOfFuture(SettableFuture<Void> future) {
-		return new CompletionCallbackToFuture(future);
-	}
-
-	/**
-	 * Returns ResultCallback which created with SettableFuture. After calling onResult() or onException() it sets its
-	 * parameters to this future
-	 *
-	 * @param future the future for result and exception monitoring
-	 */
-	public static <T> ResultCallback<T> resultCallbackOfFuture(SettableFuture<T> future) {
-		return new ResultCallbackToFuture<>(future);
-	}
-
 	/**
 	 * Sets this NioServer as listen, sets future true if it was successfully, else sets exception which was
 	 * threw.
 	 *
 	 * @param nioServer the NioServer which it sets listen.
-	 * @return ListenableFuture with result of setting.
 	 */
-	public static ListenableFuture<?> listenFuture(final NioServer nioServer) {
-		final SettableFuture<Boolean> future = SettableFuture.create();
+	public static void listenFuture(final NioServer nioServer, final SimpleCompletionFuture callback) {
 		nioServer.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
 				try {
 					nioServer.listen();
-					future.set(true);
+					callback.onSuccess();
 				} catch (IOException e) {
-					future.setException(e);
+					callback.onError(e);
 				}
 			}
 		});
-		return future;
 	}
 
 	/**
 	 * Closes this NioServer, sets future true if it was successfully.
 	 *
 	 * @param nioServer the NioServer which it will close.
-	 * @return ListenableFuture with result of closing.
 	 */
-	public static ListenableFuture<?> closeFuture(final NioServer nioServer) {
-		final SettableFuture<Boolean> future = SettableFuture.create();
+	public static void closeFuture(final NioServer nioServer, final SimpleCompletionFuture callback) {
 		nioServer.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
 				nioServer.close();
-				future.set(true);
+				callback.onSuccess();
 			}
 		});
-		return future;
 	}
 
 	/**
 	 * Starts this NioService, sets future true, if it was successfully, else sets exception which was throwing.
 	 *
 	 * @param nioService the NioService which will be ran.
-	 * @return ListenableFuture with result of starting.
 	 */
-	public static ListenableFuture<?> startFuture(final NioService nioService) {
-		final SettableFuture<Boolean> future = SettableFuture.create();
+	public static void startFuture(final NioService nioService, final SimpleCompletionFuture callback) {
 		nioService.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
 				nioService.start(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						future.set(true);
+						callback.onSuccess();
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						future.setException(exception);
+						callback.onError(exception);
 					}
 				});
 			}
 		});
-		return future;
 	}
 
 	/**
 	 * Stops this NioService, sets future true, if it was successfully, else sets exception which was throwing.
 	 *
 	 * @param nioService the NioService which will be stopped.
-	 * @return ListenableFuture with result of stoping.
 	 */
-	public static ListenableFuture<?> stopFuture(final NioService nioService) {
-		final SettableFuture<Boolean> future = SettableFuture.create();
+	public static void stopFuture(final NioService nioService, final SimpleCompletionFuture callback) {
 		nioService.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
 				nioService.stop(new CompletionCallback() {
 					@Override
 					public void onComplete() {
-						future.set(true);
+						callback.onSuccess();
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						future.setException(exception);
+						callback.onError(exception);
 					}
 				});
 			}
 		});
-		return future;
 	}
 
 	/**
@@ -1052,5 +987,72 @@ public class AsyncCallbacks {
 			this.results = results;
 			this.exceptions = exceptions;
 		}
+	}
+
+	/**
+	 * Returns {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
+	 * to specified eventloop
+	 * @param eventloop {@link Eventloop} to which calls will be forwarded
+	 * @param callback {@link ResultCallback}
+	 * @param <T>
+	 * @return {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
+	 * to specified eventloop
+	 */
+	public static <T> ResultCallback<T> concurrentResultCallback(final NioEventloop eventloop,
+	                                                             final ResultCallback<T> callback) {
+		return new ResultCallback<T>() {
+			@Override
+			public void onResult(final T result) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onResult(result);
+					}
+				});
+			}
+
+			@Override
+			public void onException(final Exception exception) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onException(exception);
+					}
+				});
+			}
+		};
+	}
+
+	/**
+	 * Returns {@link CompletionCallback} which forwards {@code onComplete()} or {@code onException()} calls
+	 * to specified eventloop
+	 * @param eventloop {@link Eventloop} to which calls will be forwarded
+	 * @param callback {@link CompletionCallback}
+	 * @return {@link CompletionCallback} which forwards {@code onComplete()} or {@code onException()} calls
+	 * to specified eventloop
+	 */
+	public static CompletionCallback concurrentCompletionCallback(final NioEventloop eventloop,
+	                                                              final CompletionCallback callback) {
+		return new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onComplete();
+					}
+				});
+			}
+
+			@Override
+			public void onException(final Exception exception) {
+				eventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onException(exception);
+					}
+				});
+			}
+		};
 	}
 }

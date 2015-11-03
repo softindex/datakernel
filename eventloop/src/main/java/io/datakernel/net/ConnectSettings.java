@@ -16,7 +16,7 @@
 
 package io.datakernel.net;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.check;
 
 public final class ConnectSettings {
 	public static final int DEFAULT_RECONNECT_MILLIS = 30_000;
@@ -34,9 +34,9 @@ public final class ConnectSettings {
 	}
 
 	public ConnectSettings(int connectTimeoutMillis, int attemptsReconnection, int reconnectIntervalMillis) {
-		checkArgument(connectTimeoutMillis >= 0, "connectTimeoutMillis must be positive value, got %s", connectTimeoutMillis);
-		checkArgument(attemptsReconnection >= 0, "attemptsReconnection must be positive value, got %s", attemptsReconnection);
-		checkArgument(reconnectIntervalMillis >= 0, "reconnectIntervalMillis must be positive value, got %s", reconnectIntervalMillis);
+		check(connectTimeoutMillis >= 0, "connectTimeoutMillis must be positive value, got %s", connectTimeoutMillis);
+		check(attemptsReconnection >= 0, "attemptsReconnection must be positive value, got %s", attemptsReconnection);
+		check(reconnectIntervalMillis >= 0, "reconnectIntervalMillis must be positive value, got %s", reconnectIntervalMillis);
 		this.connectTimeoutMillis = connectTimeoutMillis;
 		this.attemptsReconnection = attemptsReconnection;
 		this.reconnectIntervalMillis = reconnectIntervalMillis;

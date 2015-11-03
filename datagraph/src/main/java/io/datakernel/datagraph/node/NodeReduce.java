@@ -76,6 +76,6 @@ public final class NodeReduce<K, O, A> implements Node {
 					(StreamReducers.Reducer<K, Object, O, A>) koaInput.reducer);
 			taskContext.bindChannel(streamId, input);
 		}
-		taskContext.export(output, streamReducer);
+		taskContext.export(output, streamReducer.getOutput());
 	}
 }

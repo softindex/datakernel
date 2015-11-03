@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackObserver;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
@@ -26,6 +26,7 @@ import io.datakernel.http.server.AsyncHttpServlet;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -51,7 +52,7 @@ public class HttpClientTest {
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
-		final ResultCallbackObserver<String> resultObserver = new ResultCallbackObserver<>();
+		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpServer.listen();
 
@@ -73,13 +74,13 @@ public class HttpClientTest {
 
 		eventloop.run();
 
-		assertEquals(decodeUTF8(HelloWorldServer.HELLO_WORLD), resultObserver.getResultOrException());
+		assertEquals(decodeUTF8(HelloWorldServer.HELLO_WORLD), resultObserver.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test(expected = TimeoutException.class)
-	public void testTimeout() throws Exception {
+	public void testTimeout() throws Throwable {
 		final int TIMEOUT = 100;
 		final NioEventloop eventloop = new NioEventloop();
 
@@ -98,7 +99,7 @@ public class HttpClientTest {
 
 		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
-		final ResultCallbackObserver<String> resultObserver = new ResultCallbackObserver<>();
+		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpServer.listen();
 
@@ -120,17 +121,21 @@ public class HttpClientTest {
 
 		eventloop.run();
 
-		System.err.println("Result: " + resultObserver.getResultOrException());
+		try {
+			System.err.println("Result: " + resultObserver.get());
+		} catch (ExecutionException e) {
+			throw e.getCause();
+		}
 	}
 
 	@Test(expected = TimeoutException.class)
-	public void testClientTimeoutConnect() throws Exception {
+	public void testClientTimeoutConnect() throws Throwable {
 		final int TIMEOUT = 1;
 		final NioEventloop eventloop = new NioEventloop();
 
 		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
-		final ResultCallbackObserver<String> resultObserver = new ResultCallbackObserver<>();
+		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpClient.getHttpResultAsync(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
@@ -148,7 +153,11 @@ public class HttpClientTest {
 
 		eventloop.run();
 
-		System.err.println("Result: " + resultObserver.getResultOrException());
+		try {
+			System.err.println("Result: " + resultObserver.get());
+		} catch (ExecutionException e) {
+			throw e.getCause();
+		}
 	}
 
 }

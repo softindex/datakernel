@@ -20,7 +20,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
 import io.datakernel.stream.StreamDataReceiver;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -32,38 +31,51 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <I> type of input data
  * @param <O> type of output data
  */
-public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1_Stateless<I, O> implements StreamDataReceiver<I> {
-	private final Function<I, O> function;
+public final class StreamFunction<I, O> extends AbstractStreamTransformer_1_1<I, O> {
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	/**
-	 * Creates a new instance of this class
-	 *
-	 * @param eventloop eventloop in which filter will be running
-	 * @param function  function for applying
-	 */
+	protected final class InputConsumer extends AbstractInputConsumer {
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			outputProducer.sendEndOfStream();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public StreamDataReceiver<I> getDataReceiver() {
+			return outputProducer.function == Functions.identity() ?
+					(StreamDataReceiver<I>) outputProducer.getDownstreamDataReceiver() :
+					outputProducer;
+		}
+	}
+
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<I> {
+		private final Function<I, O> function;
+
+		public OutputProducer(Function<I, O> function) {this.function = checkNotNull(function);}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			inputConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			inputConsumer.resume();
+		}
+
+		@Override
+		public void onData(I item) {
+			send(function.apply(item));
+		}
+	}
+
 	public StreamFunction(Eventloop eventloop, Function<I, O> function) {
 		super(eventloop);
-		checkNotNull(function);
-		this.function = function;
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(function);
 	}
 
-	/**
-	 * Returns callback for right sending data, if its function is identity, returns dataReceiver
-	 * for sending data without filtering.
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public StreamDataReceiver<I> getDataReceiver() {
-		return function == Functions.identity() ? (StreamDataReceiver<I>) downstreamDataReceiver : this;
-	}
-
-	/**
-	 * Applies function to received data and sends result to the destination
-	 *
-	 * @param item received data
-	 */
-	@Override
-	public void onData(I item) {
-		downstreamDataReceiver.onData(function.apply(item));
-	}
 }

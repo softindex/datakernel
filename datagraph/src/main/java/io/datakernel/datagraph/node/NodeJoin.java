@@ -26,7 +26,7 @@ import java.util.Collection;
 import java.util.Comparator;
 
 /**
- * Represents a node, which joins two inputs streams (left and right) into one, based on logic, defined by key functions and joiner.
+ * Represents a node, which joins two internalConsumers streams (left and right) into one, based on logic, defined by key functions and joiner.
  *
  * @param <K> keys type
  * @param <L> left stream data type
@@ -65,7 +65,7 @@ public final class NodeJoin<K, L, R, V> implements Node {
 	@Override
 	public void createAndBind(TaskContext taskContext) {
 		StreamJoin<K, L, R, V> join = new StreamJoin<>(taskContext.getEventloop(), keyComparator, leftKeyFunction, rightKeyFunction, joiner);
-		taskContext.export(result, join);
+		taskContext.export(result, join.getOutput());
 		taskContext.bindChannel(left, join.getLeft());
 		taskContext.bindChannel(right, join.getRight());
 	}

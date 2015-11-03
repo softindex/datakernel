@@ -18,7 +18,6 @@ package io.datakernel.cube;
 
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
@@ -32,7 +31,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
@@ -182,6 +180,7 @@ public final class Cube {
 		final StreamSplitter<T> streamSplitter = new StreamSplitter<>(eventloop);
 		final Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks = LinkedHashMultimap.create();
 		final int[] aggregationsDone = {0};
+		final int[] streamSplitterOutputs = {0};
 
 		Collection<Aggregation> preparedAggregations = findAggregationsForWriting(predicates);
 
@@ -199,28 +198,17 @@ public final class Cube {
 						public void onResult(List<AggregationChunk.NewChunk> chunks) {
 							resultChunks.putAll(aggregation.getAggregationMetadata(), chunks);
 							++aggregationsDone[0];
-							if (aggregationsDone[0] == streamSplitter.getOutputsCount()) {
+							if (aggregationsDone[0] == streamSplitterOutputs[0]) {
 								callback.onCommit(resultChunks);
 							}
 						}
 					});
 
 			streamSplitter.newOutput().streamTo(groupReducer);
+			++streamSplitterOutputs[0];
 		}
 
-		streamSplitter.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.trace("Populating cube {} completed.", Cube.this);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("Populating cube {} failed.", Cube.this, e);
-			}
-		});
-
-		return streamSplitter;
+		return streamSplitter.getInput();
 	}
 
 	private Comparator<Aggregation> aggregationCostComparator(final AggregationQuery query) {
@@ -329,7 +317,7 @@ public final class Cube {
 
 			queryResultProducer.streamTo(streamReducerInput);
 
-			logger.trace("Streaming query {} result from aggregation {}.", filteredQuery, aggregation);
+			logger.info("Streaming query {} result from aggregation '{}'", filteredQuery, aggregation.getId());
 
 			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getInputFields()))));
 		}
@@ -340,18 +328,6 @@ public final class Cube {
 				query.getResultKeys(), query.getResultFields());
 
 		logger.trace("Finished building StreamProducer for query.");
-
-		orderedResultStream.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.trace("Streaming query result from stream {} completed.", orderedResultStream);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("Streaming query result from stream {} failed.", orderedResultStream, e);
-			}
-		});
 
 		return orderedResultStream;
 	}
@@ -482,13 +458,10 @@ public final class Cube {
 			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure, resultClass, dimensions, measures);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, sortingMeasureFunction,
 					fieldComparator, false, sorterItemsInMemory);
-			rawResultStream.streamTo(sorter);
-			StreamForwarder<T> sortedStream = (StreamForwarder<T>) sorter.getSortedStream();
-			sortedStream.setTag(query);
-			return sortedStream;
+			rawResultStream.getOutput().streamTo(sorter.getInput());
+			return sorter.getOutput();
 		} else {
-			rawResultStream.setTag(query);
-			return rawResultStream;
+			return rawResultStream.getOutput();
 		}
 	}
 

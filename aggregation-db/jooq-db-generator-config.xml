@@ -17,15 +17,10 @@
 
             <includeExcludeColumns>true</includeExcludeColumns>
             <includes>
-                aggregation_db_log(\..*)? |
                 aggregation_db_revision(\..*)? |
                 aggregation_db_structure(\..*)? |
                 aggregation_db_chunk(\..*)?
             </includes>
-            <!--<excludes>-->
-            <!--index_chunk\.d[0-9]+_min |-->
-            <!--index_chunk\.d[0-9]+_max |-->
-            <!--</excludes>-->
         </database>
 
         <target>

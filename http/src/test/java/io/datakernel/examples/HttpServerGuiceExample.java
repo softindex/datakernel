@@ -18,6 +18,7 @@ package io.datakernel.examples;
 
 import com.google.inject.*;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
@@ -29,10 +30,8 @@ import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.service.NioEventloopRunner;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -121,17 +120,22 @@ public class HttpServerGuiceExample {
 		}
 	}
 
-	public static void main(String[] args) throws ExecutionException, InterruptedException, IOException {
+	public static void main(String[] args) throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class,
 				PrimaryThread.class));
 		try {
-			primaryNioEventloopRunner.startFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			primaryNioEventloopRunner.startFuture(callback);
+			callback.await();
+
 			System.out.format("Server started at http://localhost:%d/, press 'enter' to shut it down.", PORT);
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			primaryNioEventloopRunner.stopFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			primaryNioEventloopRunner.stopFuture(callback);
+			callback.await();
 		}
 	}
 }

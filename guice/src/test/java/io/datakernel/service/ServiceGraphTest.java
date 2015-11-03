@@ -19,6 +19,7 @@ package io.datakernel.service;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.guice.servicegraph.ServiceGraphFactory;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
 import org.junit.Test;
@@ -54,8 +55,13 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		serviceGraph.startFuture().get();
-		serviceGraph.stopFuture().get();
+		SimpleCompletionFuture startCallback = new SimpleCompletionFuture();
+		serviceGraph.startFuture(startCallback);
+		startCallback.await();
+
+		SimpleCompletionFuture stopCallback = new SimpleCompletionFuture();
+		serviceGraph.stopFuture(stopCallback);
+		stopCallback.await();
 	}
 
 	@Test
@@ -78,8 +84,13 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		serviceGraph.startFuture().get();
-		serviceGraph.stopFuture().get();
+		SimpleCompletionFuture startCallback = new SimpleCompletionFuture();
+		serviceGraph.startFuture(startCallback);
+		startCallback.await();
+
+		SimpleCompletionFuture stopCallback = new SimpleCompletionFuture();
+		serviceGraph.stopFuture(stopCallback);
+		stopCallback.await();
 	}
 
 }

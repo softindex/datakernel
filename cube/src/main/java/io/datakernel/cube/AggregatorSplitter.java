@@ -22,7 +22,7 @@ import io.datakernel.logfs.LogCommitTransaction;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.processor.StreamSplitter;
+import io.datakernel.stream.processor.AbstractStreamSplitter;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ import java.util.List;
  *
  * @param <T> type of input records
  */
-public abstract class AggregatorSplitter<T> extends StreamSplitter<T> implements StreamDataReceiver<T> {
+public abstract class AggregatorSplitter<T> extends AbstractStreamSplitter<T> {
 	public interface Factory<T> {
 		AggregatorSplitter<T> create(Eventloop eventloop);
 	}
@@ -41,32 +41,37 @@ public abstract class AggregatorSplitter<T> extends StreamSplitter<T> implements
 
 	public AggregatorSplitter(Eventloop eventloop) {
 		super(eventloop);
+		this.inputConsumer = new InputConsumer() {
+			@Override
+			public void onData(T item) {
+				processItem(item);
+			}
+		};
 	}
 
-	@Override
-	@SuppressWarnings("unchecked")
-	public StreamDataReceiver getDataReceiver() {
-		return this;
+	public final StreamProducer<T> newOutput() {
+		return addOutput(new OutputProducer<T>());
 	}
 
-	protected <O> StreamDataReceiver<O> addOutput(Class<?> aggregationItemType, List<String> dimensions, List<String> measures) {
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions, List<String> measures) {
 		return addOutput(aggregationItemType, dimensions, measures, null);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <O> StreamDataReceiver<O> addOutput(Class<?> aggregationItemType, List<String> dimensions, List<String> measures,
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions, List<String> measures,
 	                                              AggregationQuery.QueryPredicates predicates) {
 		StreamProducer streamProducer = newOutput();
 		StreamConsumer streamConsumer = cube.consumer(aggregationItemType, dimensions, measures, predicates,
 				transaction.addCommitCallback());
 		streamProducer.streamTo(streamConsumer);
-		return (StreamDataReceiver<O>) streamConsumer;
+		return streamConsumer.getDataReceiver();
 	}
 
 	protected abstract void addOutputs();
 
-	@SuppressWarnings("unchecked")
-	public void streamTo(Cube cube, LogCommitTransaction<?> transaction) {
+	protected abstract void processItem(T item);
+
+	public final void streamTo(Cube cube, LogCommitTransaction<?> transaction) {
 		this.cube = cube;
 		this.transaction = transaction;
 		addOutputs();

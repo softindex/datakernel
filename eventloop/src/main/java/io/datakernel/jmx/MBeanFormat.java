@@ -16,20 +16,18 @@
 
 package io.datakernel.jmx;
 
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
-import com.google.common.io.CharStreams;
-
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import java.io.PrintWriter;
+import java.io.*;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
-import static com.google.common.base.Throwables.propagate;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class MBeanFormat {
-	private static final Splitter SPLITTER_LN = Splitter.on('\n');
+	private static final char SPLITTER_LN = '\n';
 
 	private MBeanFormat() {
 	}
@@ -55,7 +53,7 @@ public final class MBeanFormat {
 		try {
 			return new ObjectName(name);
 		} catch (MalformedObjectNameException e) {
-			throw propagate(e);
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -63,7 +61,7 @@ public final class MBeanFormat {
 		if (exception == null)
 			return null;
 		StringBuilder sb = new StringBuilder();
-		exception.printStackTrace(new PrintWriter(CharStreams.asWriter(sb)));
+		exception.printStackTrace(new PrintWriter(new AppendableWriter(sb)));
 		return formatMultilines(sb.toString());
 	}
 
@@ -97,7 +95,64 @@ public final class MBeanFormat {
 	public static String[] formatMultilines(String s) {
 		if (s == null)
 			return null;
-		return Iterables.toArray(SPLITTER_LN.split(s), String.class);
+
+		return split(s);
 	}
 
+	private static String[] split(String s) {
+		List<String> list = new ArrayList<>();
+		int position = 0;
+
+		int indexOfSplitter = s.indexOf(SPLITTER_LN, position);
+		while(s.indexOf(SPLITTER_LN, position) != -1) {
+
+			list.add(s.substring(position, indexOfSplitter));
+			position = indexOfSplitter+1;
+
+			indexOfSplitter = s.indexOf(SPLITTER_LN, position);
+		}
+		if (position != s.length()) {
+			list.add(s.substring(position, s.length()));
+		}
+		if (s.charAt(s.length()-1) == SPLITTER_LN) {
+			list.add("");
+		}
+
+		return list.toArray(new String[list.size()]);
+	}
+
+	private static class AppendableWriter extends Writer {
+		private final Appendable appendable;
+		private boolean closed;
+
+		private AppendableWriter(Appendable appendable) {this.appendable = checkNotNull(appendable);}
+
+		@Override
+		public void write(char[] chars, int off, int len) throws IOException {
+			checkNotClosed();
+			appendable.append(new String(chars, off, len));
+		}
+
+		@Override
+		public void flush() throws IOException {
+			checkNotClosed();
+			if (appendable instanceof Flushable) {
+				((Flushable) appendable).flush();
+			}
+		}
+
+		@Override
+		public void close() throws IOException {
+			this.closed = true;
+			if (appendable instanceof Closeable) {
+				((Closeable) appendable).close();
+			}
+		}
+
+		private void checkNotClosed() throws IOException {
+			if (closed) {
+				throw new IOException("Cannot write to a closed writer.");
+			}
+		}
+	}
 }

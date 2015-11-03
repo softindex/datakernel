@@ -97,7 +97,7 @@ public class SumAggregationExample {
 		AggregationQuery query = new AggregationQuery()
 				.keys(DataRecord.KEYS)
 				.fields(DataRecord.FIELDS);
-		StreamConsumers.ToList<DataRecord> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
+		StreamConsumers.ToList<DataRecord> consumerToList = StreamConsumers.toList(eventloop);
 		aggregation.query(query, DataRecord.class).streamTo(consumerToList);
 		eventloop.run();
 

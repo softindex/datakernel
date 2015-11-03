@@ -20,7 +20,6 @@ import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.AbstractStreamTransformer_1_1_Stateless;
 import io.datakernel.stream.StreamDataReceiver;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -32,11 +31,54 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @param <T>
  */
-public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Stateless<T, T> implements StreamDataReceiver<T>, StreamFilterMBean {
-	private final Predicate<T> predicate;
+public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> implements StreamFilterMBean {
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	private int jmxInputItems;
-	private int jmxOutputItems;
+	protected final class InputConsumer extends AbstractInputConsumer {
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			outputProducer.sendEndOfStream();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return outputProducer.predicate == Predicates.alwaysTrue() ?
+					outputProducer.getDownstreamDataReceiver() :
+					outputProducer;
+		}
+	}
+
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<T> {
+		private final Predicate<T> predicate;
+
+		private int jmxInputItems;
+		private int jmxOutputItems;
+
+		public OutputProducer(Predicate<T> predicate) {this.predicate = predicate;}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			inputConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			inputConsumer.resume();
+		}
+
+		@SuppressWarnings("AssertWithSideEffects")
+		@Override
+		public void onData(T item) {
+			assert jmxInputItems != ++jmxInputItems;
+			if (predicate.apply(item)) {
+				assert jmxOutputItems != ++jmxOutputItems;
+				send(item);
+			}
+		}
+	}
 
 	/**
 	 * Creates a new instance of this class
@@ -47,41 +89,18 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Statele
 	public StreamFilter(Eventloop eventloop, Predicate<T> predicate) {
 		super(eventloop);
 		checkNotNull(predicate);
-		this.predicate = predicate;
-	}
-
-	/**
-	 * Returns callback for right sending data, if its predicate always is true, returns dataReceiver
-	 * for sending data without filtering.
-	 */
-	@SuppressWarnings("unchecked")
-	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return predicate == Predicates.alwaysTrue() ? downstreamDataReceiver : this;
-	}
-
-	/**
-	 * Checks  predicate's verity and if it is true, sends data to the destination.
-	 *
-	 * @param item received data
-	 */
-	@Override
-	public void onData(T item) {
-		assert jmxInputItems != ++jmxInputItems;
-		if (predicate.apply(item)) {
-			assert jmxOutputItems != ++jmxOutputItems;
-			downstreamDataReceiver.onData(item);
-		}
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(predicate);
 	}
 
 	@Override
 	public int getInputItems() {
-		return jmxInputItems;
+		return outputProducer.jmxInputItems;
 	}
 
 	@Override
 	public int getOutputItems() {
-		return jmxOutputItems;
+		return outputProducer.jmxOutputItems;
 	}
 
 	@SuppressWarnings("AssertWithSideEffects")
@@ -89,8 +108,8 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1_Statele
 	public String toString() {
 		String in = "?";
 		String out = "?";
-		assert (in = "" + jmxInputItems) != null;
-		assert (out = "" + jmxOutputItems) != null;
+		assert (in = "" + outputProducer.jmxInputItems) != null;
+		assert (out = "" + outputProducer.jmxOutputItems) != null;
 		return '{' + super.toString() + " in:" + in + " out:" + out + '}';
 	}
 }

@@ -56,6 +56,19 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 
 	}
 
+	@Override
+	protected void downstreamProducerDoProduce() {
+		while (true) {
+			if (!iterator.hasNext())
+				break;
+			if (!outputProducer.isStatusReady())
+				return;
+			A accumulator = iterator.next();
+			outputProducer.getDownstreamDataReceiver().onData(reducer.produceResult(accumulator));
+		}
+		outputProducer.sendEndOfStream();
+	}
+
 	/**
 	 * Creates a new storage for containing particle states of accumulator
 	 */
@@ -70,6 +83,7 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 	 * @param state collections which is storage of states
 	 * @param item  received item
 	 */
+	@SuppressWarnings("AssertWithSideEffects")
 	@Override
 	protected void apply(HashMap<K, A> state, I item) {
 		assert jmxItems != ++jmxItems;
@@ -96,22 +110,6 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 		this.iterator = state.values().iterator();
 	}
 
-	/**
-	 * Produces each intermediate state and streams it
-	 */
-	@Override
-	protected void doProduce() {
-		while (true) {
-			if (!iterator.hasNext())
-				break;
-			if (status != READY)
-				return;
-			A accumulator = iterator.next();
-			downstreamDataReceiver.onData(reducer.produceResult(accumulator));
-		}
-		sendEndOfStream();
-	}
-
 	@Override
 	public int getItems() {
 		return jmxItems;
@@ -124,5 +122,4 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 		assert (items = "" + jmxItems) != null;
 		return '{' + super.toString() + " items:" + items + '}';
 	}
-
 }

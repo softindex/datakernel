@@ -16,25 +16,13 @@
 
 package io.datakernel.rpc.hello;
 
-import static io.datakernel.async.AsyncCallbacks.closeFuture;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.junit.Assert.*;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.BlockingCompletionCallback;
-import io.datakernel.async.BlockingResultObserver;
+import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -53,6 +41,20 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.datakernel.async.AsyncCallbacks.closeFuture;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.junit.Assert.*;
 
 public class RpcNioHelloWorldTest {
 
@@ -131,7 +133,7 @@ public class RpcNioHelloWorldTest {
 					.requestSenderFactory(RequestSenderFactory.firstAvailable())
 					.build();
 
-			final BlockingCompletionCallback connectCompletion = new BlockingCompletionCallback();
+			final CompletionCallbackFuture connectCompletion = new CompletionCallbackFuture();
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {
@@ -143,9 +145,13 @@ public class RpcNioHelloWorldTest {
 
 		@Override
 		public String hello(String name) throws Exception {
-			BlockingResultObserver<HelloResponse> result = new BlockingResultObserver<>();
+			ResultCallbackFuture<HelloResponse> result = new ResultCallbackFuture<>();
 			helloAsync(name, result);
-			return result.getResult().message;
+			try {
+				return result.get().message;
+			} catch (ExecutionException e) {
+				throw (Exception)e.getCause();
+			}
 		}
 
 		public void helloAsync(final String name, final ResultCallback<HelloResponse> callback) {
@@ -159,7 +165,7 @@ public class RpcNioHelloWorldTest {
 
 		@Override
 		public void close() throws IOException {
-			final BlockingCompletionCallback callback = new BlockingCompletionCallback();
+			final CompletionCallbackFuture callback = new CompletionCallbackFuture();
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {
@@ -197,14 +203,17 @@ public class RpcNioHelloWorldTest {
 				assertEquals("Hello, World!", client.hello("World"));
 			}
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionCallback = new SimpleCompletionFuture();
+			closeFuture(server, completionCallback);
+			completionCallback.await();
+
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testAsyncCall() throws Exception {
-		int count = 100; // amount requests
+		int count = 1; // amount requests
 		final AtomicInteger success = new AtomicInteger();
 		try (HelloClient client = new HelloClient(eventloop, protocolFactory)) {
 			final CountDownLatch latch = new CountDownLatch(count);
@@ -227,7 +236,9 @@ public class RpcNioHelloWorldTest {
 			}
 			latch.await();
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 		assertTrue(success.get() > 0);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -240,7 +251,9 @@ public class RpcNioHelloWorldTest {
 			assertEquals("Hello, John!", client2.hello("John"));
 			assertEquals("Hello, World!", client1.hello("World"));
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -253,7 +266,9 @@ public class RpcNioHelloWorldTest {
 		} catch (RpcRemoteException e) {
 			assertEquals("java.lang.Exception: Illegal name", e.getMessage());
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -299,7 +314,9 @@ public class RpcNioHelloWorldTest {
 			latch1.await();
 			latch2.await();
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -335,7 +352,9 @@ public class RpcNioHelloWorldTest {
 						+ " (" + success.get() + "/" + count + " [" + error.get() + "])");
 			}
 		} finally {
-			closeFuture(server).get();
+			SimpleCompletionFuture completionFuture = new SimpleCompletionFuture();
+			closeFuture(server, completionFuture);
+			completionFuture.await();
 		}
 	}
 }

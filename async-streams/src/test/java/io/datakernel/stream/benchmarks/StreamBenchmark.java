@@ -22,7 +22,10 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.processor.*;
 import org.openjdk.jmh.annotations.*;
 
@@ -69,8 +72,8 @@ public class StreamBenchmark {
 		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
 
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
-		generator.streamTo(filter);
-		filter.streamTo(consumer);
+		generator.streamTo(filter.getInput());
+		filter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -99,17 +102,17 @@ public class StreamBenchmark {
 
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
 
-		generator.streamTo(filter1);
-		filter1.streamTo(filter2);
-		filter2.streamTo(filter3);
-		filter3.streamTo(filter4);
-		filter4.streamTo(filter5);
-		filter5.streamTo(filter6);
-		filter6.streamTo(filter7);
-		filter7.streamTo(filter8);
-		filter8.streamTo(filter9);
-		filter9.streamTo(filter10);
-		filter10.streamTo(consumer);
+		generator.streamTo(filter1.getInput());
+		filter1.getOutput().streamTo(filter2.getInput());
+		filter2.getOutput().streamTo(filter3.getInput());
+		filter3.getOutput().streamTo(filter4.getInput());
+		filter4.getOutput().streamTo(filter5.getInput());
+		filter5.getOutput().streamTo(filter6.getInput());
+		filter6.getOutput().streamTo(filter7.getInput());
+		filter7.getOutput().streamTo(filter8.getInput());
+		filter8.getOutput().streamTo(filter9.getInput());
+		filter9.getOutput().streamTo(filter10.getInput());
+		filter10.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -128,25 +131,25 @@ public class StreamBenchmark {
 		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
 
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
-		generator.streamTo(filter);
-		filter.streamTo(consumer);
+		generator.streamTo(filter.getInput());
+		filter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
 
-	@Benchmark
-	public void testForwarder() {
-		NioEventloop eventloop = new NioEventloop();
-		SequenceGenerator generator = new SequenceGenerator(eventloop, sequenceLength);
-
-		StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
-
-		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
-		generator.streamTo(forwarder);
-		forwarder.streamTo(consumer);
-
-		eventloop.run();
-	}
+//	@Benchmark
+//	public void testForwarder() {
+//		NioEventloop eventloop = new NioEventloop();
+//		SequenceGenerator generator = new SequenceGenerator(eventloop, sequenceLength);
+//
+//		StreamForwarder<Integer> forwarder = new StreamForwarder<>(eventloop);
+//
+//		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
+//		generator.streamTo(forwarder);
+//		forwarder.streamTo(consumer);
+//
+//		eventloop.run();
+//	}
 
 	@Benchmark
 	public void simpleTransformer() {
@@ -161,8 +164,8 @@ public class StreamBenchmark {
 		});
 
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
-		generator.streamTo(transformer);
-		transformer.streamTo(consumer);
+		generator.streamTo(transformer.getInput());
+		transformer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -188,9 +191,9 @@ public class StreamBenchmark {
 		});
 
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
-		generator.streamTo(filter);
-		filter.streamTo(transformer);
-		transformer.streamTo(consumer);
+		generator.streamTo(filter.getInput());
+		filter.getOutput().streamTo(transformer.getInput());
+		transformer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -205,8 +208,8 @@ public class StreamBenchmark {
 				storage, Functions.<Integer>identity(), Ordering.<Integer>natural(), true, 1000);
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
 
-		generator.streamTo(sorter);
-		sorter.getSortedStream().streamTo(consumer);
+		generator.streamTo(sorter.getInput());
+		sorter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -220,7 +223,7 @@ public class StreamBenchmark {
 		SuspendConsumer consumer1 = new SuspendConsumer(eventloop, suspendInterval);
 		SuspendConsumer consumer2 = new SuspendConsumer(eventloop, suspendInterval);
 
-		generator.streamTo(streamConcat);
+		generator.streamTo(streamConcat.getInput());
 		streamConcat.newOutput().streamTo(consumer1);
 		streamConcat.newOutput().streamTo(consumer2);
 		eventloop.run();
@@ -235,10 +238,10 @@ public class StreamBenchmark {
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
 
-		generator.streamTo(streamConcat);
+		generator.streamTo(streamConcat.getInput());
 		streamConcat.newOutput().streamTo(streamUnion.newInput());
 		streamConcat.newOutput().streamTo(streamUnion.newInput());
-		streamUnion.streamTo(consumer);
+		streamUnion.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -268,9 +271,9 @@ public class StreamBenchmark {
 
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
 
-		generator.streamTo(toKeyValueMap);
-		toKeyValueMap.streamTo(fromKeyValueMap);
-		fromKeyValueMap.streamTo(consumer);
+		generator.streamTo(toKeyValueMap.getInput());
+		toKeyValueMap.getOutput().streamTo(fromKeyValueMap.getInput());
+		fromKeyValueMap.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -322,11 +325,11 @@ public class StreamBenchmark {
 		};
 		StreamMap<KeyValueWrapper, Integer> fromKeyValueMap = new StreamMap<>(eventloop, functionFromKeyValue);
 
-		generator.streamTo(toKeyValueMap);
-		toKeyValueMap.streamTo(streamConsumer);
+		generator.streamTo(toKeyValueMap.getInput());
+		toKeyValueMap.getOutput().streamTo(streamConsumer);
 
-		streamReducer.streamTo(fromKeyValueMap);
-		fromKeyValueMap.streamTo(consumer);
+		streamReducer.getOutput().streamTo(fromKeyValueMap.getInput());
+		fromKeyValueMap.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -340,9 +343,9 @@ public class StreamBenchmark {
 		StreamBinaryDeserializer<Integer> deserializerStream = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 12);
 		SuspendConsumer consumer = new SuspendConsumer(eventloop, suspendInterval);
 
-		generator.streamTo(serializerStream);
-		serializerStream.streamTo(deserializerStream);
-		deserializerStream.streamTo(consumer);
+		generator.streamTo(serializerStream.getInput());
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
+		deserializerStream.getOutput().streamTo(consumer);
 
 		eventloop.run();
 	}
@@ -390,7 +393,7 @@ public class StreamBenchmark {
 		protected void doProduce() {
 
 			while (currentValue < maxValue) {
-				if (status != READY) {
+				if (!isStatusReady()) {
 					return;
 				}
 
@@ -402,14 +405,25 @@ public class StreamBenchmark {
 		}
 
 		@Override
-		protected void onProducerStarted() {
+		protected void onStarted() {
 			produce();
+		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+
+		}
+
+		@Override
+		protected void onSuspended() {
+
 		}
 
 		@Override
 		protected void onResumed() {
 			resumeProduce();
 		}
+
 	}
 
 	public static class SuspendConsumer extends AbstractStreamConsumer<Integer> implements StreamDataReceiver<Integer> {
@@ -428,22 +442,30 @@ public class StreamBenchmark {
 		}
 
 		@Override
-		public void onEndOfStream() {
-			upstreamProducer.close();
+		protected void onStarted() {
+
+		}
+
+		@Override
+		protected void onEndOfStream() {
+		}
+
+		@Override
+		protected void onError(Exception e) {
+
 		}
 
 		@Override
 		public void onData(Integer item) {
 			if (receivedValues == suspendPeriod) {
 				receivedValues = 0;
-				suspendUpstream();
+				suspend();
 				this.eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						resumeUpstream();
+						resume();
 					}
 				});
-
 			}
 			receivedValues++;
 		}

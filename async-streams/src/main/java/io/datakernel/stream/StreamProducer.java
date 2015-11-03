@@ -16,9 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.annotation.Nullable;
-import io.datakernel.async.CompletionCallback;
-
 /**
  * It represents object for asynchronous sending streams of data.
  * Implementors of this interface are strongly encouraged to extend one of the abstract classes
@@ -43,60 +40,24 @@ public interface StreamProducer<T> {
 	void bindDataReceiver();
 
 	/**
-	 * Returns consumer for this producer
-	 *
-	 * @return consumer for this producer
-	 */
-	StreamConsumer<T> getDownstream();
-
-	/**
 	 * This method is called for stop streaming of this producer
 	 */
-	void suspend();
+	void onConsumerSuspended();
 
 	/**
 	 * This method is called for restore streaming of this producer
 	 */
-	void resume();
-
-	/**
-	 * This method is called for close streaming
-	 */
-	void close();
+	void onConsumerResumed();
 
 	/**
 	 * This method is called for close with error
 	 *
 	 * @param e exception which was found
 	 */
-	void closeWithError(Exception e);
+	void onConsumerError(Exception e);
 
-	byte READY = 0;
-	byte SUSPENDED = 1;
-	byte END_OF_STREAM = 2;
-	byte CLOSED = 3;
-	byte CLOSED_WITH_ERROR = 4;
+	StreamStatus getProducerStatus();
 
-	/**
-	 * Returns current status of this producer
-	 *
-	 * @return current status of this producer
-	 */
-	byte getStatus();
-
-	/**
-	 * Returns exception which was found
-	 *
-	 * @return exception which was found
-	 */
-	@Nullable
-	Exception getError();
-
-	/**
-	 * Adds new CompletionCallback which will be called when consumer closed or closed with error
-	 *
-	 * @param completionCallback new instance of CompletionCallback
-	 */
-	void addCompletionCallback(CompletionCallback completionCallback);
+	Exception getProducerException();
 
 }

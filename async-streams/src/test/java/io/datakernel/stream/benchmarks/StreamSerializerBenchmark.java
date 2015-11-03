@@ -18,9 +18,9 @@ package io.datakernel.stream.benchmarks;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 
@@ -61,11 +61,11 @@ public class StreamSerializerBenchmark implements Runnable {
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, list);
 		StreamBinarySerializer<Integer> serializerStream = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, StreamBinarySerializer.MAX_SIZE, 0, false);
 		StreamBinaryDeserializer<Integer> deserializerStream = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 12);
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListOneByOne(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop);
 
-		source.streamTo(serializerStream);
-		serializerStream.streamTo(deserializerStream);
-		deserializerStream.streamTo(consumer);
+		source.streamTo(serializerStream.getInput());
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
+		deserializerStream.getOutput().streamTo(consumer);
 	}
 
 	@Override

@@ -17,6 +17,7 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
 
 import java.util.ArrayDeque;
@@ -35,19 +36,34 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 		}
 	}
 
-	public StreamSender(NioEventloop eventloop) {
-		this(eventloop, false);
+	protected StreamSender(Eventloop eventloop) {
+		super(eventloop);
 	}
 
-	public StreamSender(NioEventloop eventloop, boolean sendEndOfStream) {
-		super(eventloop);
-		this.sendEndOfStream = sendEndOfStream;
+	@Override
+	protected void onStarted() {
+		produce();
+	}
+
+	@Override
+	protected void onDataReceiverChanged() {
+
+	}
+
+	@Override
+	protected void onSuspended() {
+
+	}
+
+	@Override
+	protected void onResumed() {
+		resumeProduce();
 	}
 
 	@Override
 	protected void doProduce() {
 		while (!queue.isEmpty()) {
-			if (status != READY)
+			if (getProducerStatus().isClosed())
 				return;
 
 			T item = retrieveFromBuffer();
@@ -57,6 +73,15 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 
 		if (sendEndOfStream)
 			sendEndOfStream();
+	}
+
+	public StreamSender(NioEventloop eventloop) {
+		this(eventloop, false);
+	}
+
+	public StreamSender(NioEventloop eventloop, boolean sendEndOfStream) {
+		super(eventloop);
+		this.sendEndOfStream = sendEndOfStream;
 	}
 
 	public void forceSendBuffer() {
@@ -72,13 +97,13 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 	}
 
 	public void send(T item, CompletionCallback callback) {
-		if (status == READY) {
+		if (getProducerStatus() == StreamStatus.READY) {
 			doSend(item);
 			callback.onComplete();
 			return;
 		}
 
-		if (status == SUSPENDED) {
+		if (getProducerStatus() == StreamStatus.SUSPENDED) {
 			addToBuffer(item, callback);
 		} else {
 			callback.onException(new IllegalStateException("StreamSender closed."));
@@ -86,12 +111,12 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 	}
 
 	public boolean trySend(T item) {
-		if (status == READY) {
+		if (getProducerStatus() == StreamStatus.READY) {
 			doSend(item);
 			return true;
 		}
 
-		if (status == SUSPENDED) {
+		if (getProducerStatus() == StreamStatus.SUSPENDED) {
 			addToBuffer(item, null);
 		} else {
 			queue.clear();
@@ -132,12 +157,7 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 	}
 
 	@Override
-	protected void onProducerStarted() {
-		produce();
-	}
-
-	@Override
-	protected void onResumed() {
-		resumeProduce();
+	protected void doCleanup() {
+		queue.clear();
 	}
 }

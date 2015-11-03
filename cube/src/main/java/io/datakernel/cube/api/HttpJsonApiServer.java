@@ -26,7 +26,6 @@ import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -36,6 +35,7 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.*;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +47,7 @@ import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.ByteBufStrings.wrapUTF8;
 
+@SuppressWarnings("unchecked")
 public final class HttpJsonApiServer {
 	private static final Logger logger = LoggerFactory.getLogger(HttpJsonApiServer.class);
 	private static final String DIMENSIONS_REQUEST_PATH = "/dimensions/";
@@ -92,8 +93,9 @@ public final class HttpJsonApiServer {
 	                                                         final DefiningClassLoader classLoader) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				logger.info("Got request {} for dimensions.", request);
+				final Stopwatch sw = Stopwatch.createStarted();
 				String predicatesJson = request.getParameter("filters");
 				String measuresJson = request.getParameter("measures");
 				final String dimension = request.getParameter("dimension");
@@ -116,19 +118,19 @@ public final class HttpJsonApiServer {
 						.predicates(filteredPredicates);
 
 				final Class<?> resultClass = cube.getStructure().createResultClass(query);
-				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, query, cube, eventloop);
+				final StreamConsumers.ToList consumerStream = queryCube(resultClass, query, cube, eventloop);
 
-				consumerStream.addCompletionCallback(new CompletionCallback() {
+				consumerStream.setResultCallback(new ResultCallback<List>() {
 					@Override
-					public void onComplete() {
-						String jsonResult = constructDimensionsJson(cube, resultClass, consumerStream.getList(), query, classLoader);
+					public void onResult(List result) {
+						String jsonResult = constructDimensionsJson(cube, resultClass, result, query, classLoader);
 						callback.onResult(createResponse(jsonResult));
-						logger.trace("Sending response {} to /dimensions query. Constructed query: {}", jsonResult, query);
+						logger.info("Sent response to /dimensions request {} (query: {}) in {}", request, query, sw);
 					}
 
 					@Override
 					public void onException(Exception e) {
-						processException(e);
+						callback.onResult(processException(e));
 						logger.error("Sending response to /dimensions query failed. Constructed query: {}", query, e);
 					}
 				});
@@ -158,8 +160,9 @@ public final class HttpJsonApiServer {
 	                                             final DefiningClassLoader classLoader) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				logger.info("Got query {}", request);
+				final Stopwatch sw = Stopwatch.createStarted();
 				List<String> dimensions = getListOfStringsFromJsonArray(gson, request.getParameter("dimensions"));
 				List<String> measures = getListOfStringsFromJsonArray(gson, request.getParameter("measures"));
 				String predicatesJson = request.getParameter("filters");
@@ -178,20 +181,20 @@ public final class HttpJsonApiServer {
 				}
 
 				final Class<?> resultClass = cube.getStructure().createResultClass(finalQuery);
-				final StreamConsumers.ToList<?> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
+				final StreamConsumers.ToList consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
-				consumerStream.addCompletionCallback(new CompletionCallback() {
+				consumerStream.setResultCallback(new ResultCallback<List>() {
 					@Override
-					public void onComplete() {
-						String jsonResult = constructQueryJson(cube, resultClass, consumerStream.getList(), finalQuery,
+					public void onResult(List result) {
+						String jsonResult = constructQueryJson(cube, resultClass, result, finalQuery,
 								classLoader);
 						callback.onResult(createResponse(jsonResult));
-						logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
+						logger.info("Sent response to request {} (query: {}) in {}", request, finalQuery, sw);
 					}
 
 					@Override
 					public void onException(Exception e) {
-						processException(e);
+						callback.onResult(processException(e));
 						logger.error("Sending response to query {} failed.", finalQuery, e);
 					}
 				});
@@ -199,9 +202,9 @@ public final class HttpJsonApiServer {
 		};
 	}
 
-	private static <T> StreamConsumers.ToList<T> queryCube(Class<T> resultClass, AggregationQuery query, Cube cube,
+	private static StreamConsumers.ToList queryCube(Class<?> resultClass, AggregationQuery query, Cube cube,
 	                                                       NioEventloop eventloop) {
-		StreamConsumers.ToList<T> consumerStream = StreamConsumers.toList(eventloop);
+		StreamConsumers.ToList consumerStream = StreamConsumers.toList(eventloop);
 		cube.query(resultClass, query).streamTo(consumerStream);
 		return consumerStream;
 	}

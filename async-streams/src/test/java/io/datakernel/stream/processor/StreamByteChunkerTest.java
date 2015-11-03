@@ -20,10 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.*;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -90,8 +87,8 @@ public class StreamByteChunkerTest {
 		StreamByteChunker resizer = new StreamByteChunker(eventloop, bufSize / 2, bufSize);
 		StreamFixedSizeConsumer streamFixedSizeConsumer = new StreamFixedSizeConsumer();
 
-		source.streamTo(resizer);
-		resizer.streamTo(streamFixedSizeConsumer);
+		source.streamTo(resizer.getInput());
+		resizer.getOutput().streamTo(streamFixedSizeConsumer);
 
 		eventloop.run();
 
@@ -125,30 +122,30 @@ public class StreamByteChunkerTest {
 		}
 
 		@Override
-		public void setUpstream(StreamProducer<ByteBuf> upstreamProducer) {
+		public void streamFrom(StreamProducer<ByteBuf> upstreamProducer) {
 
 		}
 
 		@Override
-		public StreamProducer<ByteBuf> getUpstream() {
-			return null;
-		}
-
-		@Override
-		public void onEndOfStream() {
+		public void onProducerEndOfStream() {
 			for (CompletionCallback callback : callbacks) {
 				callback.onComplete();
 			}
 		}
 
 		@Override
-		public void onError(Exception e) {
+		public void onProducerError(Exception e) {
 
 		}
 
 		@Override
-		public void addCompletionCallback(CompletionCallback completionCallback) {
-			callbacks.add(completionCallback);
+		public StreamStatus getConsumerStatus() {
+			return null;
+		}
+
+		@Override
+		public Exception getConsumerException() {
+			return null;
 		}
 
 		@Override

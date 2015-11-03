@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Random;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.check;
 import static java.lang.Math.pow;
 
 public final class ThrottlingController implements ThrottlingControllerMBean {
@@ -178,7 +178,7 @@ public final class ThrottlingController implements ThrottlingControllerMBean {
 
 	@Override
 	public void setTargetTimeMillis(int targetTimeMillis) {
-		checkArgument(targetTimeMillis > 0);
+		check(targetTimeMillis > 0);
 		this.targetTimeMillis = targetTimeMillis;
 	}
 
@@ -189,7 +189,7 @@ public final class ThrottlingController implements ThrottlingControllerMBean {
 
 	@Override
 	public void setGcTimeMillis(int gcTimeMillis) {
-		checkArgument(gcTimeMillis > 0);
+		check(gcTimeMillis > 0);
 		this.gcTimeMillis = gcTimeMillis;
 	}
 
@@ -200,7 +200,7 @@ public final class ThrottlingController implements ThrottlingControllerMBean {
 
 	@Override
 	public void setThrottlingDecrease(double throttlingDecrease) {
-		checkArgument(throttlingDecrease >= 0.0 && throttlingDecrease <= 1.0);
+		check(throttlingDecrease >= 0.0 && throttlingDecrease <= 1.0);
 		this.throttlingDecrease = throttlingDecrease;
 	}
 
@@ -211,7 +211,7 @@ public final class ThrottlingController implements ThrottlingControllerMBean {
 
 	@Override
 	public void setSmoothingWindow(int smoothingWindow) {
-		checkArgument(smoothingWindow > 0);
+		check(smoothingWindow > 0);
 		this.smoothingWindow = smoothingWindow;
 	}
 

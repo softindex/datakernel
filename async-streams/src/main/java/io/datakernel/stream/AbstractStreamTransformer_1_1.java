@@ -16,11 +16,9 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.StreamTransformer;
 
-import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 
 /**
@@ -31,85 +29,132 @@ import static com.google.common.base.Preconditions.checkState;
  * @param <O> type of output data of producer
  */
 @SuppressWarnings("unchecked")
-public abstract class AbstractStreamTransformer_1_1<I, O> extends AbstractStreamProducer<O> implements StreamConsumer<I>, StreamTransformer<I, O> {
-	protected StreamProducer<I> upstreamProducer;
+public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTransformer<I, O> {
+	protected final Eventloop eventloop;
+
+	private AbstractInputConsumer inputConsumer;
+	private AbstractOutputProducer outputProducer;
 
 	protected Object tag;
 
-	protected AbstractStreamTransformer_1_1(Eventloop eventloop) {
-		super(eventloop);
+	protected abstract class AbstractInputConsumer extends AbstractStreamConsumer<I> {
+		public AbstractInputConsumer() {
+			super(AbstractStreamTransformer_1_1.this.eventloop);
+			checkState(inputConsumer == null);
+			inputConsumer = this;
+		}
+
+		@Override
+		protected final void onStarted() {
+			onUpstreamStarted();
+		}
+
+		protected void onUpstreamStarted() {
+
+		}
+
+		@Override
+		protected final void onEndOfStream() {
+			onUpstreamEndOfStream();
+		}
+
+		protected abstract void onUpstreamEndOfStream();
+
+		@Override
+		protected void onError(Exception e) {
+			outputProducer.closeWithError(e);
+		}
+
+		@Override
+		public void suspend() {
+			super.suspend();
+		}
+
+		@Override
+		public void resume() {
+			super.resume();
+		}
+
+		@Override
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+
 	}
 
-	@Override
-	public void setUpstream(StreamProducer<I> upstreamProducer) {
-		checkNotNull(upstreamProducer);
-		checkState(this.upstreamProducer == null, "Already wired");
-		this.upstreamProducer = upstreamProducer;
+	protected abstract class AbstractOutputProducer extends AbstractStreamProducer<O> {
+		public AbstractOutputProducer() {
+			super(AbstractStreamTransformer_1_1.this.eventloop);
+			checkState(outputProducer == null);
+			outputProducer = this;
+		}
 
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				onConsumerStarted();
+		@Override
+		protected final void onDataReceiverChanged() {
+			if (inputConsumer.getUpstream() != null) {
+				inputConsumer.getUpstream().bindDataReceiver();
 			}
-		});
-	}
+		}
 
-	protected void onConsumerStarted() {
-	}
+		@Override
+		protected final void onStarted() {
+			inputConsumer.bindUpstream();
+			onDownstreamStarted();
+		}
 
-	@Override
-	public void bindDataReceiver() {
-		super.bindDataReceiver();
-		if (upstreamProducer != null) {
-			upstreamProducer.bindDataReceiver();
+		protected void onDownstreamStarted() {
+
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			inputConsumer.closeWithError(e);
+		}
+
+		@Override
+		protected final void onSuspended() {
+			onDownstreamSuspended();
+		}
+
+		protected abstract void onDownstreamSuspended();
+
+		@Override
+		protected final void onResumed() {
+			onDownstreamResumed();
+		}
+
+		protected abstract void onDownstreamResumed();
+
+		@Override
+		public void produce() {
+			super.produce();
+		}
+
+		@Override
+		public void send(O item) {
+			super.send(item);
+		}
+
+		@Override
+		public void sendEndOfStream() {
+			super.sendEndOfStream();
 		}
 	}
 
-	@Override
-	@Nullable
-	public StreamProducer<I> getUpstream() {
-		return upstreamProducer;
-	}
-
-	public byte getUpstreamStatus() {
-		return upstreamProducer.getStatus();
+	protected AbstractStreamTransformer_1_1(Eventloop eventloop) {
+		this.eventloop = eventloop;
 	}
 
 	@Override
-	public void onClosed() {
-		upstreamProducer.close();
+	public StreamConsumer<I> getInput() {
+		return inputConsumer;
 	}
 
 	@Override
-	protected void onClosedWithError(Exception e) {
-		upstreamProducer.closeWithError(e);
-		downstreamConsumer.onError(e);
+	public StreamProducer<O> getOutput() {
+		return outputProducer;
 	}
 
-	@Override
-	public void onError(Exception e) {
-		closeWithError(e);
-	}
-
-	protected final void resumeUpstream() {
-		upstreamProducer.resume();
-	}
-
-	protected final void suspendUpstream() {
-		upstreamProducer.suspend();
-	}
-
-	protected final void closeUpstream() {
-		upstreamProducer.close();
-	}
-
-	protected final void closeUpstreamWithError(Exception e) {
-		upstreamProducer.closeWithError(e);
-	}
-
-	// misc
-
-	@Override
 	public void setTag(Object tag) {
 		this.tag = tag;
 	}

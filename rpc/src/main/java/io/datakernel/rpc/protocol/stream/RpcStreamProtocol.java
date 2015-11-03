@@ -45,6 +45,11 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		}
 
 		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
 		public StreamDataReceiver<RpcMessage> getDataReceiver() {
 			return this;
 		}
@@ -55,20 +60,39 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		}
 
 		@Override
-		public void onEndOfStream() {
-			sender.sendEndOfStream();
+		protected void onEndOfStream() {
+//			RpcStreamProtocol.this.close();
+			sender.close();
+//			deserializer.onProducerEndOfStream();
+			connection.close();
 		}
 
 		@Override
-		public void onError(Exception e) {
+		protected void onError(Exception e) {
 			sender.closeWithError(e);
+//			closeProtocolWithError(e);
 		}
+
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+
 	}
 
 	private class Sender extends AbstractStreamProducer<RpcMessage> {
 
 		public Sender(Eventloop eventloop) {
 			super(eventloop);
+		}
+
+		@Override
+		protected void onStarted() {
+
+		}
+
+		@Override
+		protected void onDataReceiverChanged() {
+
 		}
 
 		@Override
@@ -79,22 +103,26 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		public void onResumed() {
 		}
 
-		@Override
-		public void onClosed() {
-			receiver.closeUpstream();
-		}
-
-		@Override
-		public void onClosedWithError(Exception e) {
-			receiver.closeUpstreamWithError(e);
-		}
-
 		public boolean isOverloaded() {
-			return status != READY;
+			return getProducerStatus() != StreamStatus.READY;
 		}
 
 		public void sendMessage(RpcMessage message) throws Exception {
 			downstreamDataReceiver.onData(message);
+		}
+
+		public void close() {
+			sendEndOfStream();
+		}
+
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			receiver.closeWithError(e);
+//			closeProtocolWithError(e);
 		}
 	}
 
@@ -130,17 +158,17 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 			@Override
 			protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
 				if (compression) {
-					socketReader.streamTo(decompressor);
-					decompressor.streamTo(deserializer);
+					socketReader.streamTo(decompressor.getInput());
+					decompressor.getOutput().streamTo(deserializer.getInput());
 
-					serializer.streamTo(compressor);
-					compressor.streamTo(socketWriter);
+					serializer.getOutput().streamTo(compressor.getInput());
+					compressor.getOutput().streamTo(socketWriter);
 				} else {
-					socketReader.streamTo(deserializer);
-					serializer.streamTo(socketWriter);
+					socketReader.streamTo(deserializer.getInput());
+					serializer.getOutput().streamTo(socketWriter);
 				}
-				deserializer.streamTo(receiver);
-				sender.streamTo(serializer);
+				deserializer.getOutput().streamTo(receiver);
+				sender.streamTo(serializer.getInput());
 
 				onWired();
 			}
@@ -175,8 +203,13 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 	@Override
 	public void close() {
-		sender.sendEndOfStream();
-		receiver.closeUpstream();
+		sender.close();
+		if (compression) {
+			decompressor.getInput().onProducerEndOfStream();
+		} else {
+			deserializer.getInput().onProducerEndOfStream();
+		}
+		connection.close();
 	}
 
 	// JMX

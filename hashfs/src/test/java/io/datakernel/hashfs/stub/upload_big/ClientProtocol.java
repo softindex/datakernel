@@ -66,7 +66,7 @@ class ClientProtocol {
 									public void onStart(Messaging<HashFsCommand> messaging) {
 										HashFsCommand commandUpload = new HashFsCommandUpload(destinationName);
 										messaging.sendMessage(commandUpload);
-										callback.onResult(messaging.binarySocketWriter());
+										//callback.onResult(messaging.binarySocketWriter());
 									}
 								})
 								.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {

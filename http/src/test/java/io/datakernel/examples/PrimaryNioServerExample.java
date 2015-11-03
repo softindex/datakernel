@@ -17,6 +17,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.http.AsyncHttpServer;
@@ -28,7 +29,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -55,7 +55,7 @@ public class PrimaryNioServerExample {
 
 	/* Creates multiple worker echo servers, each in a separate thread.
 	Instantiates a PrimaryNioServer with the specified worker servers. */
-	public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
+	public static void main(String[] args) throws Exception {
 		final ArrayList<AsyncHttpServer> workerServers = new ArrayList<>();
 
 		// Create and run worker servers
@@ -85,12 +85,16 @@ public class PrimaryNioServerExample {
 			waitForExit();
 
 			// Close PrimaryNioServer
-			primaryNioServer.closeFuture().get();
+			SimpleCompletionFuture callback = new SimpleCompletionFuture();
+			primaryNioServer.closeFuture(callback);
+			callback.await();
 			primaryThread.join();
 		} finally {
 			// Close all servers
 			for (AsyncHttpServer worker : workerServers) {
-				worker.closeFuture().get(); // close worker
+				SimpleCompletionFuture callback = new SimpleCompletionFuture();
+				worker.closeFuture(callback); // close worker
+				callback.await();
 				worker.getNioEventloop().keepAlive(false); // end of eventloop
 			}
 		}

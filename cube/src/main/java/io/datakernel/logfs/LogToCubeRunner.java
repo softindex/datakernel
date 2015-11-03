@@ -95,7 +95,6 @@ public final class LogToCubeRunner<T> {
 		});
 
 		final StreamUnion<T> streamUnion = new StreamUnion<>(eventloop);
-		streamUnion.setTag(positions);
 
 		for (String logPartition : positions.keySet()) {
 			LogPosition logPosition = positions.get(logPartition);
@@ -109,21 +108,9 @@ public final class LogToCubeRunner<T> {
 
 		AggregatorSplitter<T> aggregator = aggregatorSplitterFactory.create(eventloop);
 
-		streamUnion.streamTo(aggregator);
+		streamUnion.getOutput().streamTo(aggregator.getInput());
 
 		aggregator.streamTo(cube, logCommitTransaction);
-
-		streamUnion.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.trace("{} endOfStream.", streamUnion);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.trace("Exception while streamUnion", exception);
-			}
-		});
 	}
 
 	private void processLog_doCommit(String log, Map<String, LogPosition> oldPositions,

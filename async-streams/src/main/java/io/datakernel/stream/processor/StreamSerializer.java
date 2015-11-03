@@ -26,6 +26,6 @@ import io.datakernel.stream.StreamProducer;
  *
  * @param <T> original type of data
  */
-public interface StreamSerializer<T> extends StreamConsumer<T>, StreamProducer<ByteBuf> {
+public interface StreamSerializer<T> extends StreamTransformer<T, ByteBuf> {
 	void flush();
 }

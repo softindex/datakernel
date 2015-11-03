@@ -21,9 +21,9 @@ import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamReducer;
 import io.datakernel.stream.processor.StreamReducers;
 
@@ -73,7 +73,7 @@ public class StreamReduceBenchmark implements Runnable {
 		Function<Integer, Integer> keyFunction = Functions.identity();
 		StreamReducers.Reducer<Integer, Integer, Integer, Void> reducer = mergeDeduplicateReducer();
 
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source0.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source1.streamTo(streamReducer.newInput(keyFunction, reducer));
@@ -84,7 +84,7 @@ public class StreamReduceBenchmark implements Runnable {
 		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 	}
 
 	@Override

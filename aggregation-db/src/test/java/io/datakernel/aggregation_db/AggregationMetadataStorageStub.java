@@ -16,12 +16,17 @@
 
 package io.datakernel.aggregation_db;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 
 public class AggregationMetadataStorageStub implements AggregationMetadataStorage {
 	private long chunkId;
@@ -44,6 +49,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	@Override
 	public void saveChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		this.tmpChunks.put(aggregationMetadata.getId(), newChunks);
+		callback.onComplete();
 	}
 
 	@Override
@@ -52,17 +58,15 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void loadChunks(Aggregation aggregation, int lastRevisionId, ResultCallback<LoadedChunks> callback) {
-/*
+	public void loadChunks(Aggregation aggregation, final int lastRevisionId, ResultCallback<LoadedChunks> callback) {
 		List<AggregationChunk.NewChunk> newChunks = tmpChunks.get(aggregation.getId());
-		callback.onResult(new LoadedChunks(lastRevisionId + 1, Collections.emptyList(),
+		callback.onResult(new LoadedChunks(lastRevisionId + 1, Collections.<Long>emptyList(),
 				Collections2.transform(newChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
 					@Override
 					public AggregationChunk apply(AggregationChunk.NewChunk input) {
 						return createChunk(lastRevisionId, input);
 					}
 				})));
-*/
 	}
 
 	@Override

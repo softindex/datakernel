@@ -38,15 +38,14 @@ import static java.nio.file.StandardOpenOption.READ;
  * This class allows you to read data from file non-blocking. It represents a {@link AbstractStreamProducer}
  * which streams data from file.
  */
-public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
+public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
 
 	private final ExecutorService executor;
-
-	protected final int bufferSize;
+	protected AsyncFile asyncFile;
 	private Path path;
 
-	protected AsyncFile asyncFile;
+	protected final int bufferSize;
 	protected long position;
 	protected long length;
 
@@ -57,17 +56,17 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	                        Path path, long position, long length) {
 		super(eventloop);
 		this.executor = checkNotNull(executor);
+		this.bufferSize = bufferSize;
 		this.path = path;
 		this.position = position;
 		this.length = length;
-		this.bufferSize = bufferSize;
 	}
 
 	/**
 	 * Returns new StreamFileReader for reading file segment
 	 *
 	 * @param eventloop  event loop in which it will work
-	 * @param executor   executor it which file will be opened
+	 * @param executor   executor in which file will be opened
 	 * @param bufferSize size of buffer, size of data which can be read at once
 	 * @param path       location of file
 	 * @param position   position after which reader will read file
@@ -109,7 +108,7 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	protected void doFlush() {
-		if (status >= END_OF_STREAM || asyncFile == null)
+		if (getProducerStatus().isClosed() || asyncFile == null)
 			return;
 
 		if (length == 0L) {
@@ -123,7 +122,7 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		asyncFile.read(buf, position, new ResultCallback<Integer>() {
 			@Override
 			public void onResult(Integer result) {
-				if (status >= END_OF_STREAM) {
+				if (getProducerStatus().isClosed()) {
 					buf.recycle();
 					doCleanup();
 					return;
@@ -141,12 +140,13 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					if (length != Long.MAX_VALUE)
 						length -= result;
 				}
-				if (status == READY)
+				if (isStatusReady())
 					postFlush();
 			}
 
 			@Override
 			public void onException(Exception e) {
+				buf.recycle();
 				doCleanup();
 				closeWithError(e);
 			}
@@ -176,19 +176,7 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	}
 
 	@Override
-	public void onClosed() {
-		logger.trace("{}: downstream consumer {} closed.", this, downstreamConsumer);
-		doCleanup();
-	}
-
-	@Override
-	protected void onClosedWithError(Exception e) {
-		logger.error("{}: downstream consumer {} exception.", this, downstreamConsumer);
-		downstreamConsumer.onError(e);
-	}
-
-	@Override
-	protected void onProducerStarted() {
+	protected void onStarted() {
 		if (asyncFile != null || pendingAsyncOperation)
 			return;
 		pendingAsyncOperation = true;
@@ -202,9 +190,19 @@ public class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 			@Override
 			public void onException(Exception exception) {
-				sendError(exception);
+				closeWithError(exception);
 			}
 		});
+	}
+
+	@Override
+	protected void onDataReceiverChanged() {
+
+	}
+
+	@Override
+	protected void onError(Exception e) {
+		logger.error("{}: onError", this, e);
 	}
 
 	protected void doCleanup() {

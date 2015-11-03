@@ -16,15 +16,17 @@
 
 package io.datakernel.simplefs;
 
-public class SimpleFsCommandCommit extends SimpleFsCommand {
+final class SimpleFsCommandCommit extends SimpleFsCommand {
 	public final String fileName;
+	public final boolean isOk;
 
-	public SimpleFsCommandCommit(String fileName) {
+	public SimpleFsCommandCommit(String fileName, boolean isOk) {
 		this.fileName = fileName;
+		this.isOk = isOk;
 	}
 
 	@Override
 	public String toString() {
-		return "Commit{filename=\'" + fileName + "\'} ";
+		return "Commit{filename=\'" + fileName + "\'}";
 	}
 }

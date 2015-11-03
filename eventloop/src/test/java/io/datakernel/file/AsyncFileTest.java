@@ -16,8 +16,6 @@
 
 package io.datakernel.file;
 
-import com.google.common.base.Throwables;
-import com.google.common.io.Files;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -29,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -36,7 +35,7 @@ import java.util.concurrent.Executors;
 
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 public class AsyncFileTest {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncFileTest.class);
@@ -66,10 +65,10 @@ public class AsyncFileTest {
 									public void onComplete() {
 										logger.info("Finished writing file");
 										try {
-											assertTrue(Files.equal(srcPath.toFile(), destPath.toFile()));
+											assertEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));
 										} catch (IOException e) {
 											logger.info("Could not compare files {} and {}", srcPath, destPath);
-											throw Throwables.propagate(e);
+											throw new RuntimeException(e);
 										}
 									}
 

@@ -87,18 +87,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	private void doNext() {
-		if (getUpstreamStatus() == StreamProducer.CLOSED) {
-			return;
-		}
-
 		if (saving) {
-			suspendUpstream();
+			suspend();
 			return;
 		}
 
-		if (getUpstreamStatus() == StreamProducer.END_OF_STREAM && map.isEmpty()) {
+		if (getConsumerStatus() == StreamStatus.END_OF_STREAM && map.isEmpty()) {
 			chunksCallback.onResult(chunks);
-			closeUpstream();
 			logger.trace("{}: completed saving chunks {} for aggregation {}. Closing itself.", this, chunks, aggregationMetadata);
 			return;
 		}
@@ -143,11 +138,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 				final StreamProducer<Object> producer = StreamProducers.ofIterable(eventloop, list);
 
-				StreamConsumer consumer = storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId);
-
-				producer.streamTo(consumer);
-
-				producer.addCompletionCallback(new CompletionCallback() {
+				StreamConsumer consumer = storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						saving = false;
@@ -162,27 +153,32 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 					@Override
 					public void onException(Exception e) {
 						logger.error("Saving chunks {} to aggregation storage {} failed.", chunks, storage, e);
+						closeWithError(e);
 					}
 				});
-				AggregationGroupReducer.this.resumeUpstream();
+
+				producer.streamTo(consumer);
+
+				AggregationGroupReducer.this.resume();
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				logger.error("Failed to retrieve new chunk id from the metadata storage {}.", metadataStorage);
-				// TODO (dtkachenko): implement proper exception handling after merge with async-streams2
+				closeWithError(exception);
 			}
 		});
 	}
 
 	@Override
 	public void onEndOfStream() {
-		logger.trace("{}: upstream producer {} closed.", this, upstreamProducer);
+		logger.trace("{}: upstream producer {} closed", this, upstreamProducer);
 		doNext();
 	}
 
 	@Override
-	public void onError(Exception e) {
-		logger.trace("{}: upstream producer {} exception.", this, upstreamProducer, e);
+	protected void onError(Exception e) {
+		logger.error("{}: upstream producer {} exception", this, upstreamProducer, e);
+		chunksCallback.onException(e);
 	}
 }

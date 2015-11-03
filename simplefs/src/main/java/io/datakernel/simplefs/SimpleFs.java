@@ -20,12 +20,13 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
 
 public interface SimpleFs {
 
-	StreamConsumer<ByteBuf> upload(String destinationFileName);
+	void upload(String destinationFileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
 	void download(String path, StreamConsumer<ByteBuf> consumer);
 

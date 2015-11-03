@@ -17,14 +17,16 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -44,14 +46,16 @@ public class StreamMapTest {
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(projection);
-		projection.streamTo(consumer);
+		source.streamTo(projection.getInput());
+		projection.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(asList(11, 12, 13), consumer.getList());
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, projection.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, projection.getOutput().getProducerStatus());
 	}
 
 	@Test
@@ -62,66 +66,33 @@ public class StreamMapTest {
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
 
-		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 			@Override
 			public void onData(Integer item) {
-				super.onData(item);
+				list.add(item);
 				if (item == 12) {
-					onError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
-				upstreamProducer.suspend();
+				upstreamProducer.onConsumerSuspended();
 				eventloop.post(new Runnable() {
 					@Override
 					public void run() {
-						upstreamProducer.resume();
+						upstreamProducer.onConsumerResumed();
 					}
 				});
 			}
 		};
 
-		source.streamTo(projection);
-		projection.streamTo(consumer);
+		source.streamTo(projection.getInput());
+		projection.getOutput().streamTo(consumer);
 
 		eventloop.run();
-
 		assertTrue(list.size() == 2);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
-	}
-
-	@Test
-	public void testEndofStream() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
-		List<Integer> list = new ArrayList<>();
-
-		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
-		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
-
-		StreamConsumers.ToList<Integer> consumer = new StreamConsumers.ToList<Integer>(eventloop, list) {
-			@Override
-			public void onData(Integer item) {
-				super.onData(item);
-				if (item == 12) {
-					onEndOfStream();
-					return;
-				}
-				upstreamProducer.suspend();
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						upstreamProducer.resume();
-					}
-				});
-			}
-		};
-
-		source.streamTo(projection);
-		projection.streamTo(consumer);
-
-		eventloop.run();
-
-		assertTrue(list.size() == 2);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED);
+		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, projection.getInput().getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, projection.getOutput().getProducerStatus());
 	}
 
 	@Test
@@ -131,19 +102,38 @@ public class StreamMapTest {
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()),
-				StreamProducers.ofValue(eventloop, 3));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
+
 		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListOneByOne(eventloop, list);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
 
-		source.streamTo(projection);
-		projection.streamTo(consumer);
+		source.streamTo(projection.getInput());
+		projection.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 2);
-		assertTrue(source.getStatus() == StreamProducer.CLOSED_WITH_ERROR);
+		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
 	}
 
+	@Test
+	public void testWithoutConsumer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
+		StreamMap<Integer, Integer> projection = new StreamMap<>(eventloop, FUNCTION);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+
+		source.streamTo(projection.getInput());
+		eventloop.run();
+
+		projection.getOutput().streamTo(consumer);
+		eventloop.run();
+
+		assertEquals(asList(11, 12, 13), consumer.getList());
+		assertEquals(END_OF_STREAM, source.getProducerStatus());
+		assertEquals(END_OF_STREAM, projection.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, projection.getOutput().getProducerStatus());
+	}
 }

@@ -49,7 +49,8 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields,
+	                                         Class<T> recordClass, long id) {
 		Class<?> sourceClass = chunkTypes.get(id);
 		AsmBuilder<Function> factory = new AsmBuilder(classLoader, Function.class);
 
@@ -74,17 +75,21 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 		applyDef.add(result);
 		factory.method("apply", applyDef);
 		Function function = factory.newInstance();
-		StreamProducers.OfIterator<T> chunkReader = (StreamProducers.OfIterator<T>) StreamProducers.ofIterable(eventloop, Iterables.transform(lists.get(id), function));
+		StreamProducers.OfIterator<T> chunkReader = (StreamProducers.OfIterator<T>) StreamProducers.ofIterable(eventloop,
+				Iterables.transform(lists.get(id), function));
 		chunkReader.setTag(id);
 		return chunkReader;
 	}
 
 	@Override
-	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields,
+	                                         Class<T> recordClass, long id, CompletionCallback callback) {
 		chunkTypes.put(id, recordClass);
 		ArrayList<Object> list = new ArrayList<>();
 		lists.put(id, list);
-		return (StreamConsumer<T>) StreamConsumers.toList(eventloop, list);
+		StreamConsumers.ToList<Object> listConsumer = StreamConsumers.toList(eventloop, list);
+		listConsumer.setCompletionCallback(callback);
+		return  (StreamConsumer<T>) listConsumer;
 	}
 
 	@Override

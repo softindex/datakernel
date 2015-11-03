@@ -26,7 +26,7 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.async.CompletionCallbackObserver;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeMetadataStorage;
@@ -199,10 +199,8 @@ public class CubeExample {
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
 		/* Save the specified aggregations to metadata storage. */
-		CompletionCallbackObserver cb = new CompletionCallbackObserver();
-		cube.saveAggregations(cb);
+		cube.saveAggregations(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
-		cb.check();
 
 		/* Stream data to logs. */
 		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems = getProducerOfRandomLogItems(eventloop);
@@ -210,7 +208,7 @@ public class CubeExample {
 		eventloop.run();
 
 		/* Read logs, aggregate data and save to cube. */
-		logToCubeRunner.processLog(cb);
+		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
 		/* Launch HTTP server, that accepts JSON queries to cube. */

@@ -18,11 +18,12 @@ package io.datakernel.stream.examples;
 
 import com.google.common.base.Predicate;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamFilter;
 
 import static io.datakernel.stream.StreamProducers.ofIterable;
+import static io.datakernel.stream.TestStreamConsumers.TestConsumerToList;
 import static java.util.Arrays.asList;
 
 /**
@@ -44,10 +45,10 @@ public class StreamFilterExample {
 		};
 		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
 
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toListRandomlySuspending(eventloop);
+		TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(filter);
-		filter.streamTo(consumer);
+		source.streamTo(filter.getInput());
+		filter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 

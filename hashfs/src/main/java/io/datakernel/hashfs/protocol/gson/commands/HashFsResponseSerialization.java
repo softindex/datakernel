@@ -18,11 +18,15 @@ package io.datakernel.hashfs.protocol.gson.commands;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import io.datakernel.hashfs2.protocol.gson.GsonInetSocketAddressAdapter;
 import io.datakernel.serializer.GsonSubclassesAdapter;
+
+import java.net.InetSocketAddress;
 
 public class HashFsResponseSerialization {
 
 	public static final Gson GSON = new GsonBuilder()
+			.registerTypeAdapter(InetSocketAddress.class, new GsonInetSocketAddressAdapter())
 			.registerTypeAdapter(HashFsResponse.class, GsonSubclassesAdapter.builder()
 					.subclassField("commandType")
 					.subclass("Error", HashFsResponseError.class)

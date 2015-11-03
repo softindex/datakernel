@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
@@ -32,7 +33,7 @@ public interface StreamMergeSorterStorage<T> {
 	 *
 	 * @return consumer for streaming to storage
 	 */
-	StreamConsumer<T> streamWriter();
+	void write(StreamProducer<T> producer, CompletionCallback completionCallback);
 
 	/**
 	 * Method for creating producer for reading from storage partition of elements
@@ -40,7 +41,7 @@ public interface StreamMergeSorterStorage<T> {
 	 * @param partition index of partition
 	 * @return producer for streaming to storage
 	 */
-	StreamProducer<T> streamReader(int partition);
+	StreamProducer<T> read(int partition);
 
 	/**
 	 * Method for removing all stored created objects

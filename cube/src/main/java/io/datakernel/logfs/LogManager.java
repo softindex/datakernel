@@ -17,8 +17,6 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 
 /**
  * Manages persistence of logs.
@@ -30,7 +28,7 @@ public interface LogManager<T> {
 	 * @param streamId id of stream (log partition name)
 	 * @return StreamConsumer, which will write records, streamed from wired producer.
 	 */
-	StreamConsumer<T> consumer(String streamId);
+	LogStreamConsumer<T> consumer(String streamId);
 
 	/**
 	 * Creates a {@code StreamProducer} that streams items, contained in a given partition and file, starting at the specified position.
@@ -41,6 +39,6 @@ public interface LogManager<T> {
 	 * @param positionCallback callback which is called once streaming is done. Final read position is passed to callback.
 	 * @return StreamProducer, which will stream read items to its wired consumer.
 	 */
-	StreamProducer<T> producer(String logPartition, LogFile logFile, long position,
+	LogStreamProducer<T> producer(String logPartition, LogFile logFile, long position,
 	                           ResultCallback<LogPosition> positionCallback);
 }

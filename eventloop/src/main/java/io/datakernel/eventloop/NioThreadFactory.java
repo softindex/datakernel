@@ -16,9 +16,9 @@
 
 package io.datakernel.eventloop;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
-
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class NioThreadFactory {
 	private static class NioThreadFactoryHolder {
@@ -29,8 +29,18 @@ public final class NioThreadFactory {
 		return NioThreadFactoryHolder.DEFAULT_NIO_THREAD_FACTORY;
 	}
 
-	public static ThreadFactory createNioThreadFactory(int priority, boolean daemon) {
-		return new ThreadFactoryBuilder().setDaemon(daemon).setNameFormat("NioThread-%d").setPriority(priority).build();
+	public static ThreadFactory createNioThreadFactory(final int priority, final boolean daemon) {
+		final AtomicLong count = new AtomicLong(0);
+		return new ThreadFactory() {
+			@Override
+			public Thread newThread(Runnable runnable) {
+				Thread thread = Executors.defaultThreadFactory().newThread(runnable);
+				thread.setName(String.format("NioThread-%d", count.getAndIncrement()));
+				thread.setDaemon(daemon);
+				thread.setPriority(priority);
+				return thread;
+			}
+		};
 	}
 
 	private NioThreadFactory() {

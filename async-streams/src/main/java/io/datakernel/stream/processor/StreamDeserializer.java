@@ -17,7 +17,9 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamDataReceiver;
 
 /**
  * Represent deserializer which deserializes data from ByteBuffer to some type. Is a {@link AbstractStreamConsumer} which
@@ -25,6 +27,6 @@ import io.datakernel.stream.*;
  *
  * @param <T> original type of data
  */
-public interface StreamDeserializer<T> extends StreamConsumer<ByteBuf>, StreamProducer<T> {
+public interface StreamDeserializer<T> extends StreamTransformer<ByteBuf, T> {
 	void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver);
 }

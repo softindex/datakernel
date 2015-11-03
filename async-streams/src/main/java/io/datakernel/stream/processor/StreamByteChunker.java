@@ -22,69 +22,93 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
-public class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamDataReceiver<ByteBuf> {
-	private final int minChunkSize;
-	private final int maxChunkSize;
-	private ByteBuf internalBuf;
+public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
+
+	protected final class InputConsumer extends AbstractInputConsumer {
+
+		@Override
+		protected void onUpstreamEndOfStream() {
+			outputProducer.flushAndClose();
+		}
+
+		@Override
+		public StreamDataReceiver<ByteBuf> getDataReceiver() {
+			return outputProducer;
+		}
+	}
+
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
+		private final int minChunkSize;
+		private final int maxChunkSize;
+		private ByteBuf internalBuf;
+
+		public OutputProducer(int minChunkSize, int maxChunkSize) {
+			this.minChunkSize = minChunkSize;
+			this.maxChunkSize = maxChunkSize;
+			this.internalBuf = ByteBufPool.allocate(maxChunkSize);
+		}
+
+		@Override
+		protected void onDownstreamSuspended() {
+			inputConsumer.suspend();
+		}
+
+		@Override
+		protected void onDownstreamResumed() {
+			inputConsumer.resume();
+		}
+
+		@Override
+		public void onData(ByteBuf buf) {
+			try {
+				while (internalBuf.position() + buf.remaining() >= minChunkSize) {
+					if (internalBuf.position() == 0) {
+						int chunkSize = Math.min(maxChunkSize, buf.remaining());
+						send(buf.slice(buf.position(), chunkSize));
+						buf.advance(chunkSize);
+					} else {
+						buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
+						internalBuf.flip();
+						send(internalBuf);
+						internalBuf = ByteBufPool.allocate(maxChunkSize);
+					}
+				}
+
+				buf.drainTo(internalBuf, buf.remaining());
+				assert internalBuf.position() < minChunkSize;
+
+				buf.recycle();
+			} catch (Exception e) {
+				closeWithError(e);
+			}
+		}
+
+		private void flushAndClose() {
+			internalBuf.flip();
+			if (internalBuf.hasRemaining()) {
+				outputProducer.send(internalBuf);
+			} else {
+				internalBuf.recycle();
+			}
+			internalBuf = null;
+			outputProducer.sendEndOfStream();
+		}
+
+		@Override
+		protected void doCleanup() {
+			if (internalBuf != null) {
+				internalBuf.recycle();
+				internalBuf = null;
+			}
+		}
+	}
 
 	public StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
 		super(eventloop);
-		this.minChunkSize = minChunkSize;
-		this.maxChunkSize = maxChunkSize;
-		this.internalBuf = ByteBufPool.allocate(maxChunkSize);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(minChunkSize, maxChunkSize);
 	}
 
-	@Override
-	public StreamDataReceiver<ByteBuf> getDataReceiver() {
-		return this;
-	}
-
-	@Override
-	public void onData(ByteBuf buf) {
-		if (status >= END_OF_STREAM)
-			return;
-		try {
-			while (internalBuf.position() + buf.remaining() >= minChunkSize) {
-				if (internalBuf.position() == 0) {
-					int chunkSize = Math.min(maxChunkSize, buf.remaining());
-					send(buf.slice(buf.position(), chunkSize));
-					buf.advance(chunkSize);
-				} else {
-					buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
-					internalBuf.flip();
-					send(internalBuf);
-					internalBuf = ByteBufPool.allocate(maxChunkSize);
-				}
-			}
-
-			buf.drainTo(internalBuf, buf.remaining());
-			assert internalBuf.position() < minChunkSize;
-
-			buf.recycle();
-		} catch (Exception e) {
-			onInternalError(e);
-		}
-	}
-
-	@Override
-	public void onEndOfStream() {
-		internalBuf.flip();
-		if (internalBuf.hasRemaining()) {
-			send(internalBuf);
-		} else {
-			internalBuf.recycle();
-		}
-		internalBuf = null;
-		sendEndOfStream();
-	}
-
-	@Override
-	protected void onSuspended() {
-		suspendUpstream(); // TODO ?
-	}
-
-	@Override
-	protected void onResumed() {
-		resumeUpstream();
-	}
 }

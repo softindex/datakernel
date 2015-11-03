@@ -16,16 +16,16 @@
 
 package io.datakernel.stream.net;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 public interface Messaging<O> {
 	void sendMessage(O outputItem);
 
-	StreamConsumer<ByteBuf> binarySocketWriter();
+	void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback);
 
-	StreamProducer<ByteBuf> binarySocketReader();
+	StreamProducer<ByteBuf> read();
 
 	void shutdown();
 

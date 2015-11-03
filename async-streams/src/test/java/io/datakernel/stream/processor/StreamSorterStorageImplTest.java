@@ -18,9 +18,9 @@ package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,11 +31,12 @@ import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamSorterStorageImplTest {
 	@Rule
@@ -59,20 +60,20 @@ public class StreamSorterStorageImplTest {
 		StreamMergeSorterStorageImpl<Integer> storage = new StreamMergeSorterStorageImpl<>(eventloop, executor, intSerializer(), Paths.get(workPath.getAbsolutePath(), "%d.part"), 64);
 
 		int firstStorage = storage.nextPartition();
-		source1.streamTo(storage.streamWriter());
+		storage.write(source1, ignoreCompletionCallback());
 
 		int secondStorage = storage.nextPartition();
-		source2.streamTo(storage.streamWriter());
+		storage.write(source2, ignoreCompletionCallback());
 
 		eventloop.run();
 
-		assertTrue(source1.getStatus() == StreamProducer.CLOSED);
-		assertTrue(source2.getStatus() == StreamProducer.CLOSED);
+		assertEquals(END_OF_STREAM, source1.getProducerStatus());
+		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 
-		StreamConsumers.ToList<Integer> consumer1 = StreamConsumers.toListOneByOne(eventloop);
-		StreamConsumers.ToList<Integer> consumer2 = StreamConsumers.toListRandomlySuspending(eventloop);
-		storage.streamReader(firstStorage).streamTo(consumer1);
-		storage.streamReader(secondStorage).streamTo(consumer2);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop);
+		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		storage.read(firstStorage).streamTo(consumer1);
+		storage.read(secondStorage).streamTo(consumer2);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());

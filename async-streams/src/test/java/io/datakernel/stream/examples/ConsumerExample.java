@@ -41,14 +41,13 @@ public class ConsumerExample<T> extends AbstractStreamConsumer<T> implements Str
 	}
 
 	@Override
-	public void onEndOfStream() {
+	protected void onEndOfStream() {
 		System.out.println("End of stream received. " +
 				"StreamConsumer must be acked and closed by replying 'finish' to upstream");
-		closeUpstream();
 	}
 
 	@Override
-	public void onError(Exception e) {
+	protected void onError(Exception e) {
 		System.out.println("Error handling logic must be here. No confirmation to upstream is needed");
 	}
 }

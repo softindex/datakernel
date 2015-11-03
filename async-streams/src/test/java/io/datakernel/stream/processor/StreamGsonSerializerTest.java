@@ -20,13 +20,17 @@ import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
@@ -84,18 +88,83 @@ public class StreamGsonSerializerTest {
 
 		StreamGsonSerializer<TestItem> serializerStream = new StreamGsonSerializer<>(eventloop, new Gson(), TestItem.class, 1, 50, 0);
 
-		StreamProducers.ofIterable(eventloop, items).streamTo(serializerStream);
+		StreamProducers.ofIterable(eventloop, items).streamTo(serializerStream.getInput());
 
 		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
-		serializerStream.streamTo(deserializerStream);
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
 
 		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop);
-		deserializerStream.streamTo(consumerToList);
+		deserializerStream.getOutput().streamTo(consumerToList);
 		eventloop.run();
 
 		assertEquals(items, consumerToList.getList());
+		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
+
+		assertEquals(END_OF_STREAM, deserializerStream.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getOutput().getProducerStatus());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
+	@Test
+	public void testWithoutConsumer() {
+		List<TestItem> items = asList(new TestItem(1, "item1"), new TestItem(1, "item2"), new TestItem(1, "item3"));
+
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamGsonSerializer<TestItem> serializerStream = new StreamGsonSerializer<>(eventloop, new Gson(), TestItem.class, 1, 50, 0);
+
+		StreamProducers.ofIterable(eventloop, items).streamTo(serializerStream.getInput());
+		eventloop.run();
+
+		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
+		eventloop.run();
+
+		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop);
+		deserializerStream.getOutput().streamTo(consumerToList);
+		eventloop.run();
+
+		assertEquals(items, consumerToList.getList());
+		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
+
+		assertEquals(END_OF_STREAM, deserializerStream.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, deserializerStream.getOutput().getProducerStatus());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void testProducerWithError() throws Exception {
+		NioEventloop eventloop = new NioEventloop();
+
+		List<TestItem> list = new ArrayList<>();
+
+		StreamGsonSerializer<TestItem> serializerStream = new StreamGsonSerializer<>(eventloop, new Gson(), TestItem.class, 1, 50, 0);
+
+		StreamProducer<TestItem> producer = StreamProducers.concat(eventloop,
+				StreamProducers.ofValue(eventloop, new TestItem(1, "item1")),
+				StreamProducers.ofValue(eventloop, new TestItem(1, "item2")),
+				StreamProducers.<TestItem>closingWithError(eventloop, new Exception("Test Exception"))
+		);
+		producer.streamTo(serializerStream.getInput());
+
+		StreamGsonDeserializer<TestItem> deserializerStream = new StreamGsonDeserializer<>(eventloop, new Gson(), TestItem.class, 10);
+		serializerStream.getOutput().streamTo(deserializerStream.getInput());
+
+		StreamConsumers.ToList<TestItem> consumerToList = StreamConsumers.toList(eventloop, list);
+		deserializerStream.getOutput().streamTo(consumerToList);
+
+		eventloop.run();
+
+		assertEquals(CLOSED_WITH_ERROR, serializerStream.getInput().getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, serializerStream.getOutput().getProducerStatus());
+
+		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getInput().getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, deserializerStream.getOutput().getProducerStatus());
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
 }

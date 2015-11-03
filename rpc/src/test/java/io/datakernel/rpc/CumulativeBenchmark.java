@@ -22,6 +22,7 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
@@ -32,7 +33,6 @@ import io.datakernel.service.NioEventloopRunner;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.util.concurrent.ExecutionException;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -79,10 +79,12 @@ public final class CumulativeBenchmark {
 		System.out.println("RpcMessage size    : " + CumulativeServiceHelper.calculateRpcMessageSize(incrementMessage) + " bytes");
 	}
 
-	private void run() throws ExecutionException, InterruptedException {
+	private void run() throws Exception {
 		printBenchmarkInfo();
 
-		serverRunner.startFuture().get();
+		SimpleCompletionFuture startServiceCallback = new SimpleCompletionFuture();
+		serverRunner.startFuture(startServiceCallback);
+		startServiceCallback.await();
 
 		try {
 			final CompletionCallback finishCallback = new CompletionCallback() {
@@ -115,7 +117,9 @@ public final class CumulativeBenchmark {
 			eventloop.run();
 
 		} finally {
-			serverRunner.stopFuture().get();
+			SimpleCompletionFuture callbackStop = new SimpleCompletionFuture();
+			serverRunner.stopFuture(callbackStop);
+			callbackStop.await();
 		}
 	}
 
@@ -229,7 +233,7 @@ public final class CumulativeBenchmark {
 		});
 	}
 
-	public static void main(String[] args) throws ExecutionException, InterruptedException {
+	public static void main(String[] args) throws Exception {
 		loggerLevel(Level.OFF);
 
 		new CumulativeBenchmark().run();
