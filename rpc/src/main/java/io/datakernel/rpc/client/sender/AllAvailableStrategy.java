@@ -9,13 +9,13 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class SendingToAllStrategy extends RequestSendingStrategyToGroup{
+public class AllAvailableStrategy extends RequestSendingStrategyToGroup{
 
-	public SendingToAllStrategy(List<RequestSendingStrategy> subStrategies) {
+	public AllAvailableStrategy(List<RequestSendingStrategy> subStrategies) {
 		super(subStrategies);
 	}
 
-	public SendingToAllStrategy(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
+	public AllAvailableStrategy(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
 		super(subStrategies, minSubStrategiesForCreation);
 	}
 

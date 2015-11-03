@@ -13,31 +13,19 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrategy {
-	private final boolean minSubStrategiesForCreationUsed;
+	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
+
 	private final int minSubStrategiesForCreation;
 	private final List<RequestSendingStrategy> subStrategies;
 
 	RequestSendingStrategyToGroup(List<RequestSendingStrategy> subStrategies) {
-		this.subStrategies = checkNotNull(subStrategies);
-		this.minSubStrategiesForCreation = -1;
-		this.minSubStrategiesForCreationUsed = false;
+		this(subStrategies, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT);
 	}
 
 	RequestSendingStrategyToGroup(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
-		checkArgument(minSubStrategiesForCreation > 0 || minSubStrategiesForCreation == -1,
-				"minSubStrategiesForCreation must be greater than 0");
+		checkArgument(minSubStrategiesForCreation > 0, "minSubStrategiesForCreation must be greater than 0");
 		this.subStrategies = checkNotNull(subStrategies);
 		this.minSubStrategiesForCreation = minSubStrategiesForCreation;
-		this.minSubStrategiesForCreationUsed = true;
-	}
-
-	final int getMinSubStrategiesForCreation() {
-		checkState(minSubStrategiesForCreationUsed);
-		return minSubStrategiesForCreation;
-	}
-
-	final boolean isMinSubStrategiesForCreationUsed() {
-		return minSubStrategiesForCreationUsed;
 	}
 
 	@Override
@@ -48,20 +36,16 @@ abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrat
 	@Override
 	public final Optional<RequestSender> create(RpcClientConnectionPool pool) {
 		List<Optional<RequestSender>> subSenders = createSubSenders(pool);
-		if (isMinSubStrategiesForCreationUsed()) {
-			if (isThereEnoughValues(subSenders, getMinSubStrategiesForCreation())) {
-				return Optional.of(createSenderInstance(filterAbsent(subSenders)));
-			} else {
-				return Optional.absent();
-			}
-		} else {
+		if (countPresentValues(subSenders) >= minSubStrategiesForCreation) {
 			return Optional.of(createSenderInstance(filterAbsent(subSenders)));
+		} else {
+			return Optional.absent();
 		}
 	}
 
 	protected abstract RequestSender createSenderInstance(List<RequestSender> subSenders);
 
-	final List<Optional<RequestSender>> createSubSenders(RpcClientConnectionPool pool) {
+	private final List<Optional<RequestSender>> createSubSenders(RpcClientConnectionPool pool) {
 
 		assert subStrategies != null;
 
@@ -83,14 +67,14 @@ abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrat
 		return flatList;
 	}
 
-	static <T> boolean isThereEnoughValues(List<Optional<T>> values, int min) {
+	static <T> int countPresentValues(List<Optional<T>> values) {
 		int counter = 0;
 		for (Optional<T> value : values) {
 			if (value.isPresent()) {
 				++counter;
 			}
 		}
-		return counter >= min;
+		return counter;
 	}
 
 	static <T> List<T> filterAbsent(List<Optional<T>> list) {
