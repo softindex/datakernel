@@ -16,16 +16,26 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.SimpleCompletionFuture;
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ParallelService implements ConcurrentService {
-	private static final Logger logger = LoggerFactory.getLogger(ParallelService.class);
+import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
+import static org.slf4j.LoggerFactory.getLogger;
+
+/**
+ * ParallelService  processes services in parallel, in no specific sequence. It is implementation
+ * of the {@link ConcurrentService}
+ */
+public final class ParallelService implements ConcurrentService {
+	private static final Logger logger = getLogger(ParallelService.class);
 	private final List<ConcurrentService> services;
 
 	/**
@@ -34,75 +44,92 @@ public class ParallelService implements ConcurrentService {
 	 * @param services services for new parallel service
 	 */
 	public ParallelService(List<? extends ConcurrentService> services) {
-		this.services = new ArrayList<>(services);
+		this.services = ImmutableList.copyOf(services);
 	}
 
-	@Override
-	public void startFuture(SimpleCompletionFuture callback) {
-		doAction(new FunctionCallback<ConcurrentService>() {
+	@SuppressWarnings("ConstantConditions")
+	private ListenableFuture<?> doAction(final Function<ConcurrentService, ListenableFuture<?>> action) {
+		if (services.isEmpty())
+			return Futures.immediateFuture(true);
+		final SettableFuture<Boolean> future = SettableFuture.create();
+		final AtomicInteger counter = new AtomicInteger(services.size());
+		for (final ConcurrentService service : services) {
+			final ListenableFuture<?> serviceFuture = action.apply(service);
+			if (serviceFuture.isDone()) {
+				try {
+					serviceFuture.get();
+					logger.info("{} {} complete", action, service);
+				} catch (InterruptedException | ExecutionException e) {
+					future.setException(e);
+					logger.error("Exception while {} {}", action, service);
+					break;
+				}
 
+				if (counter.decrementAndGet() == 0) {
+					future.set(true);
+				}
+			} else {
+				serviceFuture.addListener(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							serviceFuture.get();
+							logger.info("{} {} complete", action, service);
+						} catch (InterruptedException | ExecutionException e) {
+							future.setException(e);
+							logger.error("Exception while {} {}", action, service);
+							return;
+						}
+
+						if (counter.decrementAndGet() == 0) {
+							future.set(true);
+						}
+					}
+				}, sameThreadExecutor());
+			}
+		}
+		return future;
+	}
+
+	/**
+	 * Starts all asynchronous services
+	 *
+	 * @return ListenableFuture with listener which guaranteed to be called once the action is
+	 * complete.It is used as an input to another derived Future
+	 */
+	@Override
+	public ListenableFuture<?> startFuture() {
+		return doAction(new Function<ConcurrentService, ListenableFuture<?>>() {
 			@Override
-			public void apply(ConcurrentService input, SimpleCompletionFuture callback) {
-				input.startFuture(callback);
+			public ListenableFuture<?> apply(ConcurrentService input) {
+				return input.startFuture();
 			}
 
 			@Override
 			public String toString() {
 				return "Starting";
 			}
-		}, callback);
+		});
 	}
 
+	/**
+	 * Stops all asynchronous services
+	 *
+	 * @return ListenableFuture with listener which guaranteed to be called once the action is
+	 * complete.It is used as an input to another derived Future
+	 */
 	@Override
-	public void stopFuture(final SimpleCompletionFuture callback) {
-		doAction(new FunctionCallback<ConcurrentService>() {
+	public ListenableFuture<?> stopFuture() {
+		return doAction(new Function<ConcurrentService, ListenableFuture<?>>() {
 			@Override
-			public void apply(ConcurrentService input, SimpleCompletionFuture callback) {
-				input.stopFuture(callback);
+			public ListenableFuture<?> apply(ConcurrentService input) {
+				return input.stopFuture();
 			}
 
 			@Override
 			public String toString() {
 				return "Stopping";
 			}
-		}, callback);
-	}
-
-	@SuppressWarnings("ConstantConditions")
-	private void doAction(final FunctionCallback<ConcurrentService> action, final SimpleCompletionFuture callback) {
-		if (services.isEmpty()) {
-			callback.onSuccess();
-			return;
-		}
-		final AtomicInteger counter = new AtomicInteger(services.size());
-		for (final ConcurrentService service : services) {
-			final Boolean[] breakCallback = {Boolean.FALSE};
-			SimpleCompletionFuture applyCallback = new SimpleCompletionFuture() {
-				@Override
-				public void doOnSuccess() {
-					logger.info("{} {} complete", action, service);
-					if (counter.decrementAndGet() == 0) {
-						callback.onSuccess();
-					}
-
-				}
-
-				@Override
-				public void doOnError(Exception e) {
-					logger.error("Exception while {} {}", action, service);
-					breakCallback[0] = Boolean.TRUE;
-
-					if (counter.decrementAndGet() == 0) {
-						callback.onSuccess();
-					}
-					throw new RuntimeException(e);
-				}
-			};
-			action.apply(service, applyCallback);
-			if (breakCallback[0]) {
-				break;
-			}
-
-		}
+		});
 	}
 }

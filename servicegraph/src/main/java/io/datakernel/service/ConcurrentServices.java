@@ -16,111 +16,174 @@
 
 package io.datakernel.service;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.SimpleCompletionFuture;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioService;
 
 import java.util.Arrays;
 import java.util.List;
 
-
-public class ConcurrentServices {
+public final class ConcurrentServices {
 	private ConcurrentServices() {
 	}
 
+	/**
+	 * Returns new  {@link ConcurrentService} which after each method returns ListenableFuture which has
+	 * its value true
+	 */
 	public static ConcurrentService immediateService() {
 		return new ConcurrentService() {
 			@Override
-			public void startFuture(SimpleCompletionFuture callback) {
-				callback.onSuccess();
+			public ListenableFuture<?> startFuture() {
+				return Futures.immediateFuture(true);
 			}
 
 			@Override
-			public void stopFuture(SimpleCompletionFuture callback) {
-				callback.onSuccess();
+			public ListenableFuture<?> stopFuture() {
+				return Futures.immediateFuture(true);
 			}
 		};
 	}
 
-	public static ConcurrentService immediateFailedService(final Exception e) {
+	/**
+	 * Returns {@link ConcurrentService} which after starting returns immediateFailedFuture and after
+	 * stopping returns immediateFuture with its value true
+	 */
+	public static ConcurrentService immediateFailedService() {
 		return new ConcurrentService() {
 			@Override
-			public void startFuture(SimpleCompletionFuture callback) {
-				callback.onError(e);
+			public ListenableFuture<?> startFuture() {
+				return Futures.immediateFailedFuture(new Exception());
 			}
 
 			@Override
-			public void stopFuture(SimpleCompletionFuture callback) {
-				callback.onSuccess();
+			public ListenableFuture<?> stopFuture() {
+				return Futures.immediateFuture(true);
 			}
 		};
 	}
 
-	public static ConcurrentService parallelService(ConcurrentService... callbacks) {
-		return new ParallelService(Arrays.asList(callbacks));
+	/**
+	 * Starts and stops services in parallel way
+	 *
+	 * @param services list of services which will be processed
+	 */
+	public static ConcurrentService parallelService(ConcurrentService... services) {
+		return new ParallelService(Arrays.asList(services));
 	}
 
-	public static ConcurrentService parallelService(List<? extends ConcurrentService> callbacks) {
-		return new ParallelService(callbacks);
+	/**
+	 * Starts and stops services in parallel way
+	 *
+	 * @param services list of services which will be processed
+	 */
+	public static ConcurrentService parallelService(List<? extends ConcurrentService> services) {
+		return new ParallelService(services);
 	}
 
-	public static ConcurrentService sequentialService(ConcurrentService... callbacks) {
-		return new SequentialService(Arrays.asList(callbacks));
+	/**
+	 * Starts services sequentially, from first one to last one.
+	 * Stops services sequentially in reverse order: from last one to first one.
+	 *
+	 * @param services list of services which will be processed
+	 */
+	public static ConcurrentService sequentialService(ConcurrentService... services) {
+		return new SequentialService(Arrays.asList(services));
 	}
 
-	public static ConcurrentService sequentialService(List<? extends ConcurrentService> callbacks) {
-		return new SequentialService(callbacks);
+	/**
+	 * Starts services sequentially, from first one to last one.
+	 * Stops services sequentially in reverse order: from last one to first one.
+	 *
+	 * @param services list of services which will be processed
+	 */
+	public static ConcurrentService sequentialService(List<? extends ConcurrentService> services) {
+		return new SequentialService(services);
 	}
 
-	public static void startFuture(final NioService nioService, final SimpleCompletionFuture callback) {
+	public static ListenableFuture<Void> startFuture(final NioService nioService) {
+		final SettableFuture<Void> future = SettableFuture.create();
 		nioService.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
-				nioService.start(completionCallbackOfServiceCallback(callback));
+				nioService.start(completionCallbackOfFuture(future));
 			}
 		});
+		return future;
 	}
 
-	public static void stopFuture(final NioService nioService, final SimpleCompletionFuture callback) {
+	public static ListenableFuture<Void> stopFuture(final NioService nioService) {
+		final SettableFuture<Void> future = SettableFuture.create();
 		nioService.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
-				nioService.stop(completionCallbackOfServiceCallback(callback));
+				nioService.stop(completionCallbackOfFuture(future));
 			}
 		});
+		return future;
 	}
 
-	public static ConcurrentService concurrentServiceOfNioServiceCallback(final NioService nioService, final SimpleCompletionFuture callback) {
+	public static ConcurrentService concurrentServiceOfNioService(final NioService nioService) {
 		return new ConcurrentService() {
 			@Override
-			public void startFuture(SimpleCompletionFuture callback) {
-				ConcurrentServices.startFuture(nioService, callback);
+			public ListenableFuture<?> startFuture() {
+				return ConcurrentServices.startFuture(nioService);
 			}
 
 			@Override
-			public void stopFuture(SimpleCompletionFuture callback) {
-				ConcurrentServices.stopFuture(nioService, callback);
+			public ListenableFuture<?> stopFuture() {
+				return ConcurrentServices.stopFuture(nioService);
 			}
 		};
 	}
 
-	public static CompletionCallback completionCallbackOfServiceCallback(SimpleCompletionFuture callback) {
-		return new ComletionCallbackOfService(callback);
+	/**
+	 * Returns CompletionCallback which created with SettableFuture. After calling onException() it sets it to
+	 * this future
+	 *
+	 * @param future the future for exception monitoring
+	 */
+	public static CompletionCallback completionCallbackOfFuture(SettableFuture<Void> future) {
+		return new CompletionCallbackToFuture(future);
 	}
 
-	private static final class ComletionCallbackOfService implements CompletionCallback {
-		private final SimpleCompletionFuture simpleCompletionFuture;
+	private static final class CompletionCallbackToFuture implements CompletionCallback {
+		private final SettableFuture<Void> future;
 
-		private ComletionCallbackOfService(SimpleCompletionFuture simpleCompletionFuture) {this.simpleCompletionFuture = simpleCompletionFuture;}
+		private CompletionCallbackToFuture(SettableFuture<Void> future) {
+			this.future = future;
+		}
 
 		@Override
 		public void onComplete() {
-			simpleCompletionFuture.onSuccess();
+			future.set(null);
 		}
 
 		@Override
 		public void onException(Exception exception) {
-			simpleCompletionFuture.onError(exception);
+			future.setException(exception);
 		}
 	}
+
+	private static final class ResultCallbackToFuture<T> implements ResultCallback<T> {
+		private final SettableFuture<T> future;
+
+		private ResultCallbackToFuture(SettableFuture<T> future) {
+			this.future = future;
+		}
+
+		@Override
+		public void onResult(T result) {
+			future.set(result);
+		}
+
+		@Override
+		public void onException(Exception exception) {
+			future.setException(exception);
+		}
+	}
+
 }

@@ -16,15 +16,19 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.SimpleCompletionFuture;
+import com.google.common.util.concurrent.ListenableFuture;
 
 /**
  * Service which starts and stops asynchronously and does not block thread while startFuture/stopFuture methods are running.
  */
 public interface ConcurrentService {
-	void startFuture(SimpleCompletionFuture callback);
+	/**
+	 * Initiates starting of this component and returns immediately.
+	 */
+	ListenableFuture<?> startFuture();
 
-	void stopFuture(SimpleCompletionFuture callback);
-
+	/**
+	 * Initiates stopping of this component and returns immediately.
+	 */
+	ListenableFuture<?> stopFuture();
 }
-

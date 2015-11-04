@@ -147,9 +147,7 @@ public class WorkerServersTest {
 				.addNioServers(primaryNioServer)
 				.addConcurrentServices(workerServices);
 
-		SimpleCompletionFuture callback = new SimpleCompletionFuture();
-		primaryService.startFuture(callback);
-		callback.await();
+		primaryService.startFuture().get();
 
 		Socket socket1 = new Socket();
 		Socket socket2 = new Socket();
@@ -170,9 +168,7 @@ public class WorkerServersTest {
 		assertTrue(toByteArray(socket2.getInputStream()).length == 0);
 		socket2.close();
 
-		SimpleCompletionFuture callbackStop = new SimpleCompletionFuture();
-		primaryService.stopFuture(callbackStop);
-		callbackStop.await();
+		primaryService.stopFuture().get();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
