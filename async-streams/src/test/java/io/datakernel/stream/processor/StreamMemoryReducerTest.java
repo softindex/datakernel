@@ -17,11 +17,9 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.StreamStatus;
-import io.datakernel.stream.TestStreamConsumers;
+import io.datakernel.stream.*;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -291,5 +289,68 @@ public class StreamMemoryReducerTest {
 
 		assertArrayEquals(new DataItemResult[]{new DataItemResult(1, 1, 30, 60, 0), new DataItemResult(1, 2, 60, 90, 0)},
 				result.toArray(new DataItemResult[0]));
+	}
+
+	@Test
+	public void testWithoutProducer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult> reducer = new StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult>() {
+			@Override
+			public DataItemResult createAccumulator(DataItemKey key) {
+				return new DataItemResult(key.key1, key.key2, 0, 0, 0);
+			}
+
+			@Override
+			public DataItemResult accumulate(DataItemResult accumulator, DataItem1 value) {
+				accumulator.metric1 += value.metric1;
+				accumulator.metric2 += value.metric2;
+				return accumulator;
+			}
+		};
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+				reducer,
+				new Function<DataItem1, DataItemKey>() {
+					@Override
+					public DataItemKey apply(DataItem1 input) {
+						return new DataItemKey(input.key1, input.key2);
+					}
+				}
+		);
+		CheckCallCallback checkCallCallback = new CheckCallCallback();
+		StreamConsumers.ToList<DataItemResult> toList = StreamConsumers.toList(eventloop);
+		toList.setCompletionCallback(checkCallCallback);
+
+		sorter.getOutput().streamTo(toList);
+		eventloop.run();
+
+		assertTrue(checkCallCallback.isCall());
+	}
+
+	class CheckCallCallback implements CompletionCallback {
+		private int onComplete;
+		private int onException;
+
+		@Override
+		public void onComplete() {
+			onComplete++;
+		}
+
+		@Override
+		public void onException(Exception exception) {
+			onException++;
+		}
+
+		public int getOnComplete() {
+			return onComplete;
+		}
+
+		public int getOnException() {
+			return onException;
+		}
+
+		public boolean isCall() {
+			return (onComplete == 1 && onException == 0) || (onComplete == 0 && onException == 1);
+		}
 	}
 }
