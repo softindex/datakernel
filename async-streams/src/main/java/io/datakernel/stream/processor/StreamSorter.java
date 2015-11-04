@@ -48,6 +48,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 		private List<Integer> listOfPartitions;
 		private final int itemsInMemorySize;
 		private ArrayList<T> list;
+		private StreamForwarder<T> forwarder;
 
 		private boolean writing;
 
@@ -59,11 +60,13 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 			this.merger = merger;
 			this.list = new ArrayList<>(this.itemsInMemorySize + (this.itemsInMemorySize >> 4));
 			this.listOfPartitions = new ArrayList<>();
+			this.forwarder = new StreamForwarder<>(eventloop);
 		}
 
 		@Override
 		protected void onError(Exception e) {
 			StreamProducers.<T>closingWithError(eventloop, e).streamTo(merger.newInput());
+			merger.getOutput().streamTo(forwarder.getInput());
 		}
 
 		@Override
@@ -104,6 +107,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 				for (int partition : listOfPartitions) {
 					storage.read(partition).streamTo(merger.newInput());
 				}
+				merger.getOutput().streamTo(forwarder.getInput());
 
 				return;
 			}
@@ -200,17 +204,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 
 	@Override
 	public StreamProducer<T> getOutput() {
-		return inputConsumer.merger.getOutput();
-	}
-
-	//for test only
-	StreamStatus getUpstreamConsumerStatus() {
-		return inputConsumer.getConsumerStatus();
-	}
-
-	// for test only
-	StreamStatus getDownstreamProducerStatus() {
-		return inputConsumer.merger.getOutput().getProducerStatus();
+		return inputConsumer.forwarder.getOutput();
 	}
 
 	@Override
