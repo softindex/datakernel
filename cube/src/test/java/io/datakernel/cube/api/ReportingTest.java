@@ -29,7 +29,7 @@ import static org.junit.Assert.assertEquals;
 
 public class ReportingTest {
 	public interface TestQueryResultPlaceholder {
-		void compute();
+		void computeMeasures();
 
 		void init();
 
@@ -53,7 +53,7 @@ public class ReportingTest {
 				.method("getResult", getter(self(), "d"))
 				.newInstance();
 		resultPlaceholder.init();
-		resultPlaceholder.compute();
+		resultPlaceholder.computeMeasures();
 
 		assertEquals(0.2, resultPlaceholder.getResult());
 		assertEquals(newHashSet("a", "b", "c"), d.getMeasureDependencies());
@@ -76,7 +76,7 @@ public class ReportingTest {
 				.method("getResult", getter(self(), "d"))
 				.newInstance();
 		resultPlaceholder.init();
-		resultPlaceholder.compute();
+		resultPlaceholder.computeMeasures();
 
 		assertEquals(0.0, resultPlaceholder.getResult());
 	}

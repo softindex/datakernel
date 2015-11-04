@@ -22,6 +22,8 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
+import static io.datakernel.codegen.PredicateDefCmp.Operation.EQ;
+import static io.datakernel.codegen.PredicateDefCmp.Operation.NE;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 
@@ -31,7 +33,7 @@ import static org.objectweb.asm.Type.BOOLEAN_TYPE;
 public final class PredicateDefCmp implements PredicateDef {
 	private Expression left;
 	private Expression right;
-	private Operation operation = Operation.EQ;
+	private Operation operation = EQ;
 
 	public enum Operation {
 		EQ(GeneratorAdapter.EQ, "=="),
@@ -81,9 +83,9 @@ public final class PredicateDefCmp implements PredicateDef {
 		left.load(ctx);
 		right.load(ctx);
 
-		if (operation == Operation.EQ && !isPrimitiveType(leftFieldType)) {
+		if ((operation == EQ || operation == NE) && !isPrimitiveType(leftFieldType)) {
 			g.invokeVirtual(leftFieldType, new Method("equals", BOOLEAN_TYPE, new Type[]{Type.getType(Object.class)}));
-			g.push(true);
+			g.push(operation == EQ);
 			g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelTrue);
 		} else {
 			g.ifCmp(leftFieldType, operation.opCode, labelTrue);

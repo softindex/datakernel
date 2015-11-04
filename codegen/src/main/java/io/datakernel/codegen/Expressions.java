@@ -161,6 +161,10 @@ public final class Expressions {
 		return cmp(PredicateDefCmp.Operation.LE, left, right);
 	}
 
+	public static PredicateDefCmp cmpNe(Expression left, Expression right) {
+		return cmp(PredicateDefCmp.Operation.NE, left, right);
+	}
+
 	/**
 	 * Returns result of logical 'and' for the list of predicates
 	 *

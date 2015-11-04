@@ -106,7 +106,7 @@ public class CubeHttpApiTest {
 		final HttpResponseCallback responseCallback = new HttpResponseCallback();
 
 		// create HTTP server
-		final AsyncHttpServer httpServer = HttpJsonApiServer.httpServer(cube, eventloop, classLoader, PORT);
+		final AsyncHttpServer httpServer = CubeHttpServer.createServer(cube, eventloop, classLoader, PORT);
 
 		logger.info("Starting HTTP server on port " + PORT);
 		httpServer.listen();
