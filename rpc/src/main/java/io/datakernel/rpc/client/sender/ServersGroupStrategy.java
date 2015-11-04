@@ -12,7 +12,7 @@ public final class ServersGroupStrategy extends AbstractRequestSendingStrategy {
 
 	private List<InetSocketAddress> addresses;
 
-	private ServersGroupStrategy(List<InetSocketAddress> addresses) {
+	ServersGroupStrategy(List<InetSocketAddress> addresses) {
 		this.addresses = addresses;
 	}
 

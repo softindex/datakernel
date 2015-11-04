@@ -27,21 +27,21 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 	private final BucketHashFunction bucketHashFunction;
 
-	private RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+	RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction) {
 		this(hashFunction, DEFAULT_BUCKET_HASH_FUNCTION);
 	}
 
-	private RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
 	                                     BucketHashFunction bucketHashFunction) {
 		this(hashFunction, bucketHashFunction, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT);
 	}
 
-	private RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
 	                                  int minSubStrategiesForCreation) {
 		this(hashFunction, DEFAULT_BUCKET_HASH_FUNCTION, minSubStrategiesForCreation);
 	}
 
-	private RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
 	                                  BucketHashFunction bucketHashFunction,
 	                                  int minSubStrategiesForCreation) {
 		this.keyToStrategy = new HashMap<>();
@@ -67,7 +67,7 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 		return putCommon(key, strategy);
 	}
 
-	public RendezvousHashingStrategy put(Object key, RequestSendingStrategies.RequestSenderDispatcherFactory strategy) {
+	public RendezvousHashingStrategy put(Object key, TypeDispatchingStrategy strategy) {
 		return putCommon(key, strategy);
 	}
 

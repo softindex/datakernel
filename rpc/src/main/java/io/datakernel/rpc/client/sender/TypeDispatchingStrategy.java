@@ -22,7 +22,7 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 	private Map<Class<? extends RpcMessage.RpcMessageData>, DataTypeSpecifications> dataTypeToSpecification;
 	private RequestSendingStrategy defaultSendingStrategy;
 
-	private TypeDispatchingStrategy() {
+	TypeDispatchingStrategy() {
 		dataTypeToSpecification = new HashMap<>();
 		defaultSendingStrategy = null;
 	}
@@ -54,31 +54,32 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 	// and ensure that servers() result can't be applied in put() method as second argument
 	// because in this case we don't know how to choose one of them to send request
 
-	public RequestSenderDispatcherFactory on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                         RequestSenderToGroupFactory strategy) {
-		return onCommon(dataType, strategy);
+	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                         RequestSendingStrategyToGroup strategy) {
+		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	public RequestSenderDispatcherFactory on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                         RequestSenderFactoryWithKeys strategy) {
-		return onCommon(dataType, strategy);
+	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                         SingleServerStrategy strategy) {
+		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	public RequestSenderDispatcherFactory on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                         RequestSenderToSingleServerFactory strategy) {
-		return onCommon(dataType, strategy);
+	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                          RendezvousHashingStrategy strategy) {
+		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	public RequestSenderDispatcherFactory on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                         RequestSenderDispatcherFactory strategy) {
-		return onCommon(dataType, strategy);
+	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                         TypeDispatchingStrategy strategy) {
+		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	private RequestSenderDispatcherFactory onCommon(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                                RequestSenderFactory strategy, Importance importance) {
+	private TypeDispatchingStrategy onCommon(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                                RequestSendingStrategy strategy, Importance importance) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
-		dataTypeToFactory.put(dataType, strategy);
+		checkNotNull(importance);
+		dataTypeToSpecification.put(dataType, new DataTypeSpecifications(strategy, importance));
 		return this;
 	}
 
@@ -88,25 +89,25 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 	// and ensure that servers() result can't be applied in put() method as second argument
 	// because in this case we don't know how to choose one of them to send request
 
-	public RequestSenderDispatcherFactory onDefault(RequestSenderToGroupFactory strategy) {
+	public TypeDispatchingStrategy onDefault(RequestSendingStrategyToGroup strategy) {
 		return onDefaultCommon(strategy);
 	}
 
-	public RequestSenderDispatcherFactory onDefault(RequestSenderFactoryWithKeys strategy) {
+	public TypeDispatchingStrategy onDefault(SingleServerStrategy strategy) {
 		return onDefaultCommon(strategy);
 	}
 
-	public RequestSenderDispatcherFactory onDefault(RequestSenderToSingleServerFactory strategy) {
+	public TypeDispatchingStrategy onDefault(RendezvousHashingStrategy strategy) {
 		return onDefaultCommon(strategy);
 	}
 
-	public RequestSenderDispatcherFactory onDefault(RequestSenderDispatcherFactory strategy) {
+	public TypeDispatchingStrategy onDefault(TypeDispatchingStrategy strategy) {
 		return onDefaultCommon(strategy);
 	}
 
-	private RequestSenderDispatcherFactory onDefaultCommon(RequestSenderFactory strategy) {
-		checkState(defaultSenderFactory == null, "Default Sender is already set");
-		defaultSenderFactory = strategy;
+	private TypeDispatchingStrategy onDefaultCommon(RequestSendingStrategy strategy) {
+		checkState(defaultSendingStrategy == null, "Default Strategy is already set");
+		defaultSendingStrategy = strategy;
 		return this;
 	}
 
