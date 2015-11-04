@@ -18,19 +18,16 @@ package io.datakernel.hashfs2;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.hashfs2.ServerInfo.ServerStatus.RUNNING;
-
 public final class ServerInfo {
 	private final InetSocketAddress address;
-	private final int serverId;
 	private final double weight;
-	private final State state;
+	private final int serverId;
+	private long lastHeartBeatReceived;
 
 	public ServerInfo(int serverId, InetSocketAddress address, double weight) {
-		this.address = address;
 		this.serverId = serverId;
+		this.address = address;
 		this.weight = weight;
-		state = new State();
 	}
 
 	public InetSocketAddress getAddress() {
@@ -45,15 +42,12 @@ public final class ServerInfo {
 		return weight;
 	}
 
-	public void updateState(ServerStatus status, long heartBeat) {
-		if (status != null && heartBeat > state.lastHeartBeatReceived)
-			state.update(status, heartBeat);
+	public void updateState(long heartBeat) {
+		lastHeartBeatReceived = heartBeat;
 	}
 
-	// TODO (arashev)
-	public boolean isAlive(long maximumDieTime) {
-		return true;
-		//return state.isAlive(maximumDieTime);
+	public boolean isAlive(long dieTimeout) {
+		return lastHeartBeatReceived > dieTimeout;
 	}
 
 	@Override
@@ -72,24 +66,5 @@ public final class ServerInfo {
 	@Override
 	public String toString() {
 		return "FileServer id: " + serverId;
-	}
-
-	private class State {
-		private ServerStatus serverStatus;
-		private long lastHeartBeatReceived;
-
-		void update(ServerStatus serverStatus, long lastHeartBeat) {
-			this.serverStatus = serverStatus;
-			this.lastHeartBeatReceived = lastHeartBeat;
-		}
-
-		boolean isAlive(long maximumDieTime) {
-			return serverStatus == RUNNING
-					&& lastHeartBeatReceived < maximumDieTime;
-		}
-	}
-
-	public enum ServerStatus {
-		RUNNING, SHUTDOWN
 	}
 }

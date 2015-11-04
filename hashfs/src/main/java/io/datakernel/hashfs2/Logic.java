@@ -22,7 +22,7 @@ import io.datakernel.eventloop.NioService;
 import java.util.Set;
 
 public interface Logic extends NioService {
-	void update();
+	void update(long timestamp);
 
 	boolean canUpload(String filePath);
 
@@ -54,11 +54,13 @@ public interface Logic extends NioService {
 
 	void onDeleteFailed(String filePath);
 
-	void onShowAliveRequest(ResultCallback<Set<ServerInfo>> alive);
+	void onShowAliveRequest(long timestamp, ResultCallback<Set<ServerInfo>> result);
 
 	void onShowAliveResponse(Set<ServerInfo> result, long timestamp);
 
 	void onOfferRequest(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
+
+	void onReplicationStart(String filePath);
 
 	void onReplicationComplete(String filePath, ServerInfo server);
 

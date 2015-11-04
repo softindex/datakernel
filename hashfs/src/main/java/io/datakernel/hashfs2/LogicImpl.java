@@ -21,12 +21,11 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 
 import java.util.*;
+import java.util.Map.Entry;
 
-import static io.datakernel.hashfs2.LogicImpl.FileState.READY;
-import static io.datakernel.hashfs2.LogicImpl.FileState.TOMBSTONE;
-import static io.datakernel.hashfs2.ServerInfo.ServerStatus.RUNNING;
+import static io.datakernel.hashfs2.LogicImpl.FileState.*;
 
-public class LogicImpl implements Logic {
+public final class LogicImpl implements Logic {
 	private final long serverDeathTimeout;
 	private final long approveWaitTime;
 	private final int maxReplicaQuantity;
@@ -80,21 +79,15 @@ public class LogicImpl implements Logic {
 
 	@Override
 	public void stop(final CompletionCallback callback) {
-		for (Map.Entry<String, FileInfo> file : files.entrySet()) {
-			if (file.getValue().isProcessed()) {
-				onStopCallback = callback;
-				return;
-			}
-		}
-		files.clear();
-		servers.clear();
-		callback.onComplete();
+		onStopCallback = callback;
+		onOperationFinished();
 	}
 
 	private void onOperationFinished() {
 		if (onStopCallback != null) {
-			for (Map.Entry<String, FileInfo> file : files.entrySet()) {
-				if (file.getValue().isProcessed()) {
+			for (Entry<String, FileInfo> file : files.entrySet()) {
+				FileInfo info = file.getValue();
+				if (info.pendingOperationsCounter != 0) {
 					return;
 				}
 			}
@@ -108,36 +101,41 @@ public class LogicImpl implements Logic {
 	@Override
 	public boolean canUpload(String filePath) {
 		FileInfo info = files.get(filePath);
-		return info == null || info.isDeleted();
+		return info == null || info.state == TOMBSTONE;
 	}
 
 	@Override
 	public void onUploadStart(String filePath) {
-		files.put(filePath, new FileInfo());
+		FileInfo info = new FileInfo();
+		info.pendingOperationsCounter++;
+		info.state = UPLOADING;
+		files.put(filePath, info);
 	}
 
 	@Override
 	public void onUploadComplete(String filePath) {
-
 		commands.scheduleTemporaryFileDeletion(filePath, approveWaitTime);
 	}
 
 	@Override
 	public void onUploadFailed(String filePath) {
-		files.remove(filePath);
+		onApproveCancel(filePath);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canApprove(String filePath) {
-		// TODO (arashev)
+		// assuming commit message won't be send unless upload finished
 		FileInfo info = files.get(filePath);
-		return info != null && info.isReady();
+		return info != null && info.state == UPLOADING;
 	}
 
 	@Override
 	public void onApprove(String filePath) {
-		files.get(filePath).onApprove(myId);
+		FileInfo info = files.get(filePath);
+		info.state = READY;
+		info.pendingOperationsCounter--;
+		onOperationFinished();
 	}
 
 	@Override
@@ -150,34 +148,38 @@ public class LogicImpl implements Logic {
 	@Override
 	public boolean canDownload(String filePath) {
 		FileInfo info = files.get(filePath);
-		return info != null && info.isReady();
+		return info != null && info.state == READY;
 	}
 
 	@Override
 	public void onDownloadStart(String filePath) {
-		files.get(filePath).onOperationStart();
+		FileInfo info = files.get(filePath);
+		info.pendingOperationsCounter++;
 	}
 
 	@Override
 	public void onDownloadComplete(String filePath) {
-		files.get(filePath).onOperationEnd();
+		FileInfo info = files.get(filePath);
+		info.pendingOperationsCounter--;
 	}
 
 	@Override
 	public void onDownloadFailed(String filePath) {
-		files.get(filePath).onOperationEnd();
+		onDownloadComplete(filePath);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canDelete(String filePath) {
 		FileInfo info = files.get(filePath);
-		return info != null && info.canDelete();
+		return info != null && info.pendingOperationsCounter == 0;
 	}
 
 	@Override
 	public void onDeletionStart(String filePath) {
-		files.get(filePath).onDelete();
+		FileInfo info = files.get(filePath);
+		info.state = TOMBSTONE;
+		info.replicas.clear();
 	}
 
 	@Override
@@ -192,22 +194,30 @@ public class LogicImpl implements Logic {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
+	public void onReplicationStart(String filePath) {
+		FileInfo info = files.get(filePath);
+		info.pendingOperationsCounter++;
+	}
+
+	@Override
 	public void onReplicationComplete(String filePath, ServerInfo server) {
-		files.get(filePath).addReplica(server);
-		files.get(filePath).onOperationEnd();
+		FileInfo info = files.get(filePath);
+		info.replicas.add(server);
+		info.pendingOperationsCounter--;
 	}
 
 	@Override
 	public void onReplicationFailed(String filePath, ServerInfo server) {
-		files.get(filePath).onOperationEnd();
+		FileInfo info = files.get(filePath);
+		info.pendingOperationsCounter--;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
-	public void onShowAliveRequest(ResultCallback<Set<ServerInfo>> callback) {
+	public void onShowAliveRequest(long timestamp, ResultCallback<Set<ServerInfo>> callback) {
 		Set<ServerInfo> aliveServers = new HashSet<>();
 		for (ServerInfo server : servers) {
-			if (server.isAlive(serverDeathTimeout)) {
+			if (server.isAlive(timestamp - serverDeathTimeout)) {
 				aliveServers.add(server);
 			}
 		}
@@ -218,13 +228,13 @@ public class LogicImpl implements Logic {
 	public void onShowAliveResponse(Set<ServerInfo> result, long timestamp) {
 		for (ServerInfo server : servers) {
 			if (result.contains(server)) {
-				server.updateState(RUNNING, timestamp);
+				server.updateState(timestamp);
 			}
 		}
 		for (ServerInfo server : result) {
 			if (!servers.contains(server)) {
 				servers.add(server);
-				server.updateState(RUNNING, timestamp);
+				server.updateState(timestamp);
 			}
 		}
 	}
@@ -233,14 +243,15 @@ public class LogicImpl implements Logic {
 	public void onOfferRequest(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
 		for (String filePath : forDeletion) {
 			FileInfo info = files.get(filePath);
-			if (info.canDelete()) {
-				info.onDelete();
+			if (info.pendingOperationsCounter == 0) {
+				info.replicas.clear();
+				info.state = TOMBSTONE;
 				commands.delete(filePath);
 			}
 		}
 		Set<String> required = new HashSet<>();
 		for (String filePath : forUpload) {
-			if (!files.containsKey(filePath)) {
+			if (!files.containsKey(filePath) || files.get(filePath).state != READY) {
 				required.add(filePath);
 			}
 		}
@@ -249,24 +260,31 @@ public class LogicImpl implements Logic {
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
-	public void update() {
+	public void update(long timestamp) {
 		Map<ServerInfo, Set<String>> server2Offer = new HashMap<>();
 		Map<ServerInfo, Set<String>> server2Delete = new HashMap<>();
 
-		for (Iterator<String> it = files.keySet().iterator(); it.hasNext(); ) {
+		for (Iterator<Entry<String, FileInfo>> it = files.entrySet().iterator(); it.hasNext(); ) {
 
-			String file = it.next();
+			Entry<String, FileInfo> entry = it.next();
+			String file = entry.getKey();
+			FileInfo info = entry.getValue();
+
+			// if file state is not consistent yet omit it
+			if (info.state == UPLOADING) {
+				continue;
+			}
 
 			// getting servers-candidates for file handling
 			Set<ServerInfo> alive = new HashSet<>();
 			for (ServerInfo server : servers) {
-				if (server.isAlive(serverDeathTimeout)) {
+				if (server.isAlive(timestamp - serverDeathTimeout)) {
 					alive.add(server);
 				}
 			}
 			List<ServerInfo> candidates = hashing.sortServers(alive, file);
 			candidates = candidates.subList(0, Math.min(candidates.size(), maxReplicaQuantity));
-			Set<ServerInfo> currentReplicas = files.get(file).getReplicas();
+			Set<ServerInfo> currentReplicas = files.get(file).replicas;
 
 			// removing servers that should not handle replica based on remote server default behavior
 			for (ServerInfo server : currentReplicas) {
@@ -275,11 +293,15 @@ public class LogicImpl implements Logic {
 				}
 			}
 
-			// checking whether the current node should care about the file
+			// checking if this node should care about the file
 			if (!candidates.contains(myId)) {
-				if ((!files.get(file).isDeleted() && currentReplicas.size() > minSafeReplicaQuantity)
-						|| (files.get(file).isDeleted())) {
+				if ((info.state == READY) && currentReplicas.size() > minSafeReplicaQuantity) {
 					commands.delete(file);
+					info.replicas.clear();
+					it.remove();
+					continue;
+				} else if (info.state == TOMBSTONE) {
+					info.replicas.clear();
 					it.remove();
 					continue;
 				}
@@ -289,15 +311,14 @@ public class LogicImpl implements Logic {
 
 			// adding file to server2offerFiles map
 			for (ServerInfo server : candidates) {
-				Map<ServerInfo, Set<String>> workingMap = files.get(file).isDeleted() ? server2Delete : server2Offer;
-
+				Map<ServerInfo, Set<String>> map = (info.state == TOMBSTONE) ? server2Delete : server2Offer;
 				if (!currentReplicas.contains(server)) {
-					Set<String> workingFiles = workingMap.get(server);
-					if (workingFiles == null) {
-						workingFiles = new HashSet<>();
-						workingMap.put(server, workingFiles);
+					Set<String> set = map.get(server);
+					if (set == null) {
+						set = new HashSet<>();
+						map.put(server, set);
 					}
-					workingFiles.add(file);
+					set.add(file);
 				}
 			}
 		}
@@ -314,18 +335,17 @@ public class LogicImpl implements Logic {
 				@Override
 				public void onResult(Set<String> result) {
 					// assume that all of suggested files being rejected exist at remote server
-					for (String filePath : forUpload) {
-						if (!result.contains(filePath)) {
-							FileInfo info = files.get(filePath);
-							if (info != null && info.isReady()) {
-								info.addReplica(server);
+					for (String file : forUpload) {
+						if (!result.contains(file)) {
+							FileInfo info = files.get(file);
+							if (info != null && info.state == READY) {
+								info.replicas.add(server);
 							}
 						}
 					}
 
 					// trying to replicate welcomed files
 					for (String file : result) {
-						files.get(file).onOperationStart();
 						commands.replicate(file, server);
 					}
 				}
@@ -340,67 +360,21 @@ public class LogicImpl implements Logic {
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	final class FileInfo {
-		private final Set<ServerInfo> replicas = new HashSet<>();
-		private FileState state;
-		private int pendingOperationsCounter;
+	private final class FileInfo {
+		final Set<ServerInfo> replicas = new HashSet<>();
+		FileState state;
+		int pendingOperationsCounter;
 
 		public FileInfo() {
-			onOperationStart();
-			state = FileState.UPLOADING;
 		}
 
 		public FileInfo(ServerInfo myId) {
 			state = READY;
 			replicas.add(myId);
 		}
-
-		public void onApprove(ServerInfo holder) {
-			replicas.add(holder);
-			onOperationEnd();
-			state = READY;
-		}
-
-		public void onDelete() {
-			replicas.clear();
-			state = TOMBSTONE;
-		}
-
-		public void onOperationStart() {
-			pendingOperationsCounter++;
-		}
-
-		public void onOperationEnd() {
-			pendingOperationsCounter--;
-			onOperationFinished();
-		}
-
-		public boolean isReady() {
-			return state == READY;
-		}
-
-		public boolean isDeleted() {
-			return state == TOMBSTONE;
-		}
-
-		public boolean canDelete() {
-			return pendingOperationsCounter == 0;
-		}
-
-		public void addReplica(ServerInfo server) {
-			replicas.add(server);
-		}
-
-		public Set<ServerInfo> getReplicas() {
-			return replicas;
-		}
-
-		public boolean isProcessed() {
-			return pendingOperationsCounter != 0;
-		}
 	}
 
 	enum FileState {
-		UPLOADING, TOMBSTONE, PENDING, READY
+		UPLOADING, TOMBSTONE, READY
 	}
 }

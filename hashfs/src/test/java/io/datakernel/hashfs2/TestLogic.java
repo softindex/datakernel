@@ -23,7 +23,6 @@ import java.net.InetSocketAddress;
 import java.util.*;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.hashfs2.ServerInfo.ServerStatus.RUNNING;
 import static org.junit.Assert.*;
 
 public class TestLogic {
@@ -34,10 +33,10 @@ public class TestLogic {
 	private final ServerInfo server3 = new ServerInfo(3, new InetSocketAddress("http://127.0.0.1", 4567), 0.1);
 
 	{
-		local.updateState(RUNNING, 1);
-		server1.updateState(RUNNING, 1);
-		server2.updateState(RUNNING, 1);
-		server3.updateState(RUNNING, 1);
+		local.updateState(1);
+		server1.updateState(1);
+		server2.updateState(1);
+		server3.updateState(1);
 	}
 
 	private final Config config = new Config();
@@ -63,7 +62,7 @@ public class TestLogic {
 		CommandsMock cMock = new CommandsMock();
 		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
 		logic.start(ignoreCompletionCallback());
-		logic.update();
+		logic.update(1);
 
 		Set<String> real1 = cMock.servers2files.get(server1);
 		Set<String> real2 = cMock.servers2files.get(server2);
@@ -84,7 +83,7 @@ public class TestLogic {
 		CommandsMock cMock = new CommandsMock();
 		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
 		logic.start(ignoreCompletionCallback());
-		logic.update();
+		logic.update(1);
 
 		assertFalse(logic.canUpload(b));
 
@@ -94,7 +93,7 @@ public class TestLogic {
 		assertTrue(cMock.scheduledDeletions.contains(newFile) && cMock.scheduledDeletions.size() == 1);
 		assertTrue(logic.canApprove(newFile));
 		logic.onApprove(newFile);
-		logic.update();
+		logic.update(1);
 
 		Set<String> real2 = cMock.servers2files.get(server2);
 
@@ -107,24 +106,28 @@ public class TestLogic {
 		CommandsMock cMock = new CommandsMock();
 		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
 		logic.start(ignoreCompletionCallback());
-		logic.update();
+		logic.update(1);
+		logic.onReplicationStart(a);
+		logic.onReplicationStart(a);
 		// first time due to the fact that there was only minimum safe replicas quantity in the whole system
 		// logic left the file and it is still accessible from this server unless this node manage to replicate it
 		logic.onReplicationComplete(a, server1);
 		logic.onReplicationComplete(a, server2);
 		assertTrue(logic.canDelete(a));
-		logic.update();
+		logic.update(1);
 		assertFalse(logic.canDelete(a));
 
+		logic.onReplicationStart(e);
 		logic.onReplicationComplete(e, server2);
 		assertTrue(logic.canDelete(e));
 		logic.onDeletionStart(e);
 		logic.onDeleteComplete(e);
 		assertTrue(logic.canUpload(e));
-		logic.update();
+		logic.update(1);
 
 		assertTrue(cMock.servers2deletedFiles.get(server2).contains(e));
 
+		logic.onReplicationStart(f);
 		logic.onReplicationComplete(f, server2);
 		logic.onDownloadStart(f);
 		assertFalse(logic.canDelete(f));
@@ -137,8 +140,8 @@ public class TestLogic {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
 		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
-		logic.update();
-		logic.update();
+		logic.update(1);
+		logic.update(1);
 		assertFalse(logic.canDownload(a));
 	}
 
@@ -148,7 +151,7 @@ public class TestLogic {
 		CommandsMock cMock = new CommandsMock();
 		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
 		logic.start(ignoreCompletionCallback());
-		logic.update();
+		logic.update(1);
 
 		logic.onReplicationComplete(a, server1);
 		logic.onReplicationComplete(a, server2);
@@ -161,7 +164,7 @@ public class TestLogic {
 		logic.onReplicationComplete(b, server2);
 		logic.onReplicationComplete(b, server3);
 
-		logic.update();
+		logic.update(1);
 
 		logic.onOfferRequest(new HashSet<>(Arrays.asList(a, b, c, d, e, f, g)), new HashSet<String>(), new ResultCallback<Set<String>>() {
 			@Override
@@ -182,7 +185,7 @@ public class TestLogic {
 		CommandsMock cMock = new CommandsMock();
 		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
 
-		logic.onShowAliveRequest(new ResultCallback<Set<ServerInfo>>() {
+		logic.onShowAliveRequest(1, new ResultCallback<Set<ServerInfo>>() {
 			@Override
 			public void onResult(Set<ServerInfo> result) {
 				assertEquals(new HashSet<>(bootstrap), result);

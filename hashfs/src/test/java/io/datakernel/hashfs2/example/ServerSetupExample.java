@@ -48,7 +48,7 @@ public class ServerSetupExample {
 				@Override
 				public void run() {
 					NioEventloop eventloop = new NioEventloop();
-					server.updateState(ServerInfo.ServerStatus.RUNNING, eventloop.currentTimeMillis());
+					server.updateState(eventloop.currentTimeMillis());
 					Path serverStorage = Paths.get("./test/server_storage_" + server.hashCode());
 					ServerFactory.getServer(eventloop, newCachedThreadPool(), serverStorage,
 							Config.getDefaultConfig(), server, bootstrap).start(ignoreCompletionCallback());

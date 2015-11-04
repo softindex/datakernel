@@ -135,6 +135,7 @@ public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> im
 				server.download(item.filePath, forwarder.getInput(), new ResultCallback<CompletionCallback>() {
 					@Override
 					public void onResult(CompletionCallback callback) {
+						// TODO (arashev) check possible bug: will it send exception "through the internets"?
 						messaging.sendMessage(new HashFsResponseOk());
 						messaging.write(forwarder.getOutput(), callback);
 					}

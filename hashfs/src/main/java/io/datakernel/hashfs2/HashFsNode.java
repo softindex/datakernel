@@ -33,7 +33,7 @@ import java.util.Set;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
-public class HashFsNode implements Commands, Server {
+class HashFsNode implements Commands, Server {
 	private static final Logger logger = LoggerFactory.getLogger(HashFsNode.class);
 	private final NioEventloop eventloop;
 
@@ -41,6 +41,7 @@ public class HashFsNode implements Commands, Server {
 	private final FileSystem fileSystem;
 	private ServerProtocol transport;
 	private Logic logic;
+	private State state;
 
 	private final long updateTimeout;
 	private final long mapUpdateTimeout;
@@ -68,6 +69,7 @@ public class HashFsNode implements Commands, Server {
 
 	@Override
 	public void start(final CompletionCallback callback) {
+		state = State.RUNNING;
 		CompletionCallback waiter = AsyncCallbacks.waitAll(3, new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -78,6 +80,7 @@ public class HashFsNode implements Commands, Server {
 			@Override
 			public void onException(Exception e) {
 				logger.error("Can't start HashFsServer", e);
+				state = null;
 				callback.onException(e);
 			}
 		});
@@ -88,6 +91,7 @@ public class HashFsNode implements Commands, Server {
 
 	@Override
 	public void stop(final CompletionCallback callback) {
+		state = State.SHUTDOWN;
 		CompletionCallback waiter = AsyncCallbacks.waitAll(2, new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -107,6 +111,13 @@ public class HashFsNode implements Commands, Server {
 	@Override
 	public void upload(final String filePath, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		logger.info("Server received request for upload {}", filePath);
+
+		if (state != State.RUNNING) {
+			logger.trace("Refused upload {}. Server is down.", filePath);
+			callback.onException(new Exception("Server is down"));
+			return;
+		}
+
 		if (logic.canUpload(filePath)) {
 			logic.onUploadStart(filePath);
 			fileSystem.saveToTemporary(filePath, producer, new CompletionCallback() {
@@ -132,8 +143,17 @@ public class HashFsNode implements Commands, Server {
 
 	@Override
 	public void commit(final String filePath, final boolean success, final CompletionCallback callback) {
-		logger.info("Server received request for file " + (success ? "approve" : "deletion") + " {}", filePath);
-		if (logic.canApprove(filePath)) {
+		logger.info("Server received request for file commit: {}, {}", filePath, success);
+
+		boolean canApprove = logic.canApprove(filePath);
+
+		if (state != State.RUNNING && !canApprove) {
+			logger.trace("Refused commit {}. Server is down.", filePath);
+			callback.onException(new Exception("Server is down"));
+			return;
+		}
+
+		if (canApprove) {
 			if (success) {
 				fileSystem.commitTemporary(filePath, new CompletionCallback() {
 					@Override
@@ -162,9 +182,17 @@ public class HashFsNode implements Commands, Server {
 	@Override
 	public void download(final String filePath, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
 		logger.info("Received request for file download {}", filePath);
+
+		if (state != State.RUNNING) {
+			logger.trace("Refused download {}. Server is down.", filePath);
+			callback.onException(new Exception("Server is down"));
+			return;
+		}
+
 		if (logic.canDownload(filePath)) {
 			logic.onDownloadStart(filePath);
-			fileSystem.get(filePath).streamTo(consumer);
+			StreamProducer<ByteBuf> producer = fileSystem.get(filePath);
+			producer.streamTo(consumer);
 			callback.onResult(new CompletionCallback() {
 				@Override
 				public void onComplete() {
@@ -181,14 +209,20 @@ public class HashFsNode implements Commands, Server {
 		} else {
 			logger.warn("Refused download {}", filePath);
 			callback.onResult(ignoreCompletionCallback());
-			logic.onDownloadFailed(filePath);
-			StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Can't ")).streamTo(consumer);
+			StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Can't download")).streamTo(consumer);
 		}
 	}
 
 	@Override
 	public void delete(final String filePath, final CompletionCallback callback) {
 		logger.info("Received request for file deletion {}", filePath);
+
+		if (state != State.RUNNING) {
+			logger.trace("Refused delete {}. Server is down.", filePath);
+			callback.onException(new Exception("Server is down"));
+			return;
+		}
+
 		if (logic.canDelete(filePath)) {
 			logic.onDeletionStart(filePath);
 			fileSystem.delete(filePath, new CompletionCallback() {
@@ -215,18 +249,39 @@ public class HashFsNode implements Commands, Server {
 	@Override
 	public void listFiles(ResultCallback<Set<String>> callback) {
 		logger.info("Received request to list files");
+
+		if (state != State.RUNNING) {
+			logger.trace("Refused listing files. Server is down.");
+			callback.onException(new Exception("Server is down"));
+			return;
+		}
+
 		fileSystem.list(callback);
 	}
 
 	@Override
 	public void showAlive(ResultCallback<Set<ServerInfo>> callback) {
 		logger.info("Received request to show alive servers");
-		logic.onShowAliveRequest(callback);
+
+		if (state != State.RUNNING) {
+			logger.trace("Refused listing alive servers. Server is down.");
+			callback.onException(new Exception("Server is down"));
+			return;
+		}
+
+		logic.onShowAliveRequest(eventloop.currentTimeMillis(), callback);
 	}
 
 	@Override
 	public void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
 		logger.info("Received offer (forUpload: {}, forDeletion: {})", forUpload.size(), forDeletion.size());
+
+		if (state != State.RUNNING) {
+			logger.trace("Refused checking offer. Server is down.");
+			callback.onException(new Exception("Server is down"));
+			return;
+		}
+
 		logic.onOfferRequest(forUpload, forDeletion, callback);
 	}
 
@@ -235,6 +290,7 @@ public class HashFsNode implements Commands, Server {
 	public void replicate(final String filePath, final ServerInfo server) {
 		logger.info("Received command to replicate file {} to server {}", filePath, server);
 		StreamProducer<ByteBuf> producer = fileSystem.get(filePath);
+		logic.onReplicationStart(filePath);
 		clientProtocol.upload(server, filePath, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -256,12 +312,12 @@ public class HashFsNode implements Commands, Server {
 		fileSystem.delete(filePath, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.info("File {} deleted", filePath);
+				logger.info("File {} deleted by server", filePath);
 			}
 
 			@Override
 			public void onException(Exception e) {
-				logger.error("Can't delete file {}", filePath, e);
+				logger.error("Can't delete file {} by server", filePath, e);
 			}
 		});
 	}
@@ -280,9 +336,7 @@ public class HashFsNode implements Commands, Server {
 				@Override
 				public void onResult(Set<ServerInfo> result) {
 					logger.info("Received {} alive servers from {}", result.size(), server);
-					for (ServerInfo s : result) {
-						s.updateState(ServerInfo.ServerStatus.RUNNING, eventloop.currentTimeMillis());
-					}
+					result.addAll(bootstrap);
 					logic.onShowAliveResponse(result, eventloop.currentTimeMillis());
 				}
 
@@ -292,6 +346,7 @@ public class HashFsNode implements Commands, Server {
 				}
 			});
 		}
+
 		eventloop.scheduleBackground(eventloop.currentTimeMillis() + mapUpdateTimeout, new Runnable() {
 			@Override
 			public void run() {
@@ -306,6 +361,7 @@ public class HashFsNode implements Commands, Server {
 			@Override
 			public void run() {
 				if (logic.canApprove(filePath)) {
+					logic.onApproveCancel(filePath);
 					logger.info("Deleting uploaded but not commited file {}", filePath);
 					fileSystem.deleteTemporary(filePath, ignoreCompletionCallback());
 				}
@@ -321,12 +377,18 @@ public class HashFsNode implements Commands, Server {
 
 	@Override
 	public void postUpdate() {
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + updateTimeout, new Runnable() {
+		final long timestamp = eventloop.currentTimeMillis() + updateTimeout;
+		eventloop.scheduleBackground(timestamp, new Runnable() {
 			@Override
 			public void run() {
-				logger.info("Updating...");
-				logic.update();
+				logger.info("Updating HashFs system state");
+				logic.update(timestamp);
 			}
 		});
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	private enum State {
+		RUNNING, SHUTDOWN
 	}
 }
