@@ -16,9 +16,9 @@
 
 package io.datakernel.cube.api;
 
-import com.google.common.base.Preconditions;
 import com.google.gson.*;
 import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.keytype.KeyType;
 
 import java.lang.reflect.Type;
@@ -41,7 +41,8 @@ public final class HavingPredicateNotEqualsGsonSerializer implements JsonDeseria
 
 	@Override
 	public List<HavingPredicateNotEquals> deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-		Preconditions.checkArgument(json instanceof JsonObject);
+		if (!(json instanceof JsonObject))
+			throw new QueryException("Incorrect having predicate format. Should be represented as a JSON object");
 
 		JsonObject predicatesJson = (JsonObject) json;
 		List<HavingPredicateNotEquals> havingPredicates = newArrayList();

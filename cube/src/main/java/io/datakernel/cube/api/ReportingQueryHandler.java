@@ -17,13 +17,11 @@
 package io.datakernel.cube.api;
 
 import com.google.common.base.Predicate;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.api.QueryResultPlaceholder;
 import io.datakernel.aggregation_db.api.ReportingDSLExpression;
 import io.datakernel.aggregation_db.api.TotalsPlaceholder;
@@ -78,8 +76,14 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		try {
 			processRequest(request, callback);
 		} catch (QueryException e) {
-			logger.info("Responding to request {} with error: {}", request, e.getMessage());
+			logger.info("Request {} could not be processed because of error: {}", request, e.getMessage());
 			callback.onResult(response500(e.getMessage()));
+		} catch (JsonParseException e) {
+			logger.info("Failed to parse JSON in request {}", request);
+			callback.onResult(response500("Failed to parse JSON request"));
+		} catch (RuntimeException e) {
+			logger.error("Unknown exception occurred while processing request {}", request);
+			callback.onResult(response500("Unknown server error"));
 		}
 	}
 
@@ -87,7 +91,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		logger.info("Got query {}", request);
 		final AggregationStructure structure = cube.getStructure();
 
-		List<String> dimensions = getListOfStrings(gson, request.getParameter("dimensions"));
+		Set<String> dimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
 
 		for (String dimension : dimensions) {
 			if (!structure.containsKey(dimension)) {
@@ -123,7 +127,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		}
 
 		final AggregationQuery finalQuery = new AggregationQuery()
-				.keys(dimensions)
+				.keys(newArrayList(dimensions))
 				.fields(newArrayList(storedMeasures));
 
 		List<String> ordering = getListOfStrings(gson, orderingsJson);
@@ -133,15 +137,13 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 		if (ordering != null) {
 			if (ordering.size() != 2) {
-				callback.onResult(response500("Incorrect 'sort' parameter format"));
-				return;
+				throw new QueryException("Incorrect 'sort' parameter format");
 			}
 			orderingField = ordering.get(0);
 			orderingByComputedMeasure = computedMeasures.contains(orderingField);
 
 			if (!dimensions.contains(orderingField) && !storedMeasures.contains(orderingField) && !orderingByComputedMeasure) {
-				callback.onResult(response500("Incorrect field specified in 'sort' parameter"));
-				return;
+				throw new QueryException("Ordering is specified by not requested field");
 			}
 
 			String direction = ordering.get(1);
@@ -162,18 +164,18 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		}
 
 		final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, structure);
-		Predicate havingPredicate = getHavingPredicate(gson, classLoader, resultClass, havingPredicatesJson);
+		Predicate havingPredicate = getHavingPredicate(havingPredicatesJson, dimensions, classLoader, resultClass, gson);
 		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery, havingPredicate, cube, eventloop);
 
 		final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
 		final Integer offset = offsetString == null ? null : Integer.valueOf(offsetString);
 
 		final boolean sortingRequired = orderingByComputedMeasure;
-		Comparator comparator = null;
+		Comparator<QueryResultPlaceholder> comparator = null;
 		if (sortingRequired) {
 			comparator = generateComparator(classLoader, orderingField, ascendingOrdering, resultClass);
 		}
-		final Comparator finalComparator = comparator;
+		final Comparator<QueryResultPlaceholder> finalComparator = comparator;
 
 		consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 			@Override
@@ -217,9 +219,21 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		});
 	}
 
-	private static Predicate getHavingPredicate(Gson gson, DefiningClassLoader classLoader, Class<?> recordClass, String havingPredicateJson) {
+
+
+	private static Predicate getHavingPredicate(String havingPredicateJson, Set<String> dimensions,
+	                                            DefiningClassLoader classLoader, Class<?> recordClass, Gson gson) {
 		List<HavingPredicateNotEquals> predicates = getListOfHavingPredicates(gson, havingPredicateJson);
-		return predicates == null || predicates.isEmpty() ? null : createHavingPredicateNotEquals(classLoader, recordClass, predicates);
+
+		if (predicates == null || predicates.isEmpty())
+			return null;
+
+		for (HavingPredicateNotEquals predicate : predicates) {
+			if (!dimensions.contains(predicate.getDimension()))
+				throw new QueryException("Having predicate is specified for not requested dimension");
+		}
+
+		return createHavingPredicateNotEquals(classLoader, recordClass, predicates);
 	}
 
 	private static AggregationQuery addOrdering(AggregationQuery query, String fieldName, boolean ascendingOrdering, Set<String> computedMeasures) {
@@ -379,7 +393,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		return builder.newInstance();
 	}
 
-	private static Comparator generateComparator(DefiningClassLoader classLoader, String fieldName, boolean ascending,
+	private static Comparator<QueryResultPlaceholder> generateComparator(DefiningClassLoader classLoader, String fieldName, boolean ascending,
 	                                            Class<QueryResultPlaceholder> fieldClass) {
 		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();

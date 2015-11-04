@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.cube.api;
+package io.datakernel.aggregation_db.api;
 
 public class QueryException extends RuntimeException {
 	public QueryException(String message) {

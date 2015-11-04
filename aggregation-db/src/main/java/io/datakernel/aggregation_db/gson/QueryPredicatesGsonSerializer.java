@@ -16,10 +16,10 @@
 
 package io.datakernel.aggregation_db.gson;
 
-import com.google.common.base.Preconditions;
 import com.google.gson.*;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.keytype.KeyType;
 
 import java.lang.reflect.Type;
@@ -46,7 +46,8 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 	@SuppressWarnings("ConstantConditions")
 	@Override
 	public AggregationQuery.QueryPredicates deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-		Preconditions.checkArgument(json instanceof JsonObject);
+		if (!(json instanceof JsonObject))
+			throw new QueryException("Incorrect filters format. Should be represented as a JSON object");
 
 		JsonObject predicates = (JsonObject) json;
 		AggregationQuery.QueryPredicates queryPredicates = new AggregationQuery.QueryPredicates();
