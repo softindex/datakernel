@@ -151,7 +151,6 @@ public class NioEventloopRunner implements ConcurrentService {
 		}
 		startFuture = Boolean.TRUE;
 
-
 		thread = threadFactory.newThread(new Runnable() {
 			@Override
 			public void run() {

@@ -16,9 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioService;
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -69,57 +66,5 @@ public class ConcurrentServices {
 
 	public static ConcurrentService sequentialService(List<? extends ConcurrentService> callbacks) {
 		return new SequentialService(callbacks);
-	}
-
-	public static void startFuture(final NioService nioService, final ConcurrentServiceCallback callback) {
-		nioService.getNioEventloop().postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				nioService.start(completionCallbackOfServiceCallback(callback));
-			}
-		});
-	}
-
-	public static void stopFuture(final NioService nioService, final ConcurrentServiceCallback callback) {
-		nioService.getNioEventloop().postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				nioService.stop(completionCallbackOfServiceCallback(callback));
-			}
-		});
-	}
-
-	public static ConcurrentService concurrentServiceOfNioServiceCallback(final NioService nioService) {
-		return new ConcurrentService() {
-			@Override
-			public void startFuture(ConcurrentServiceCallback callback) {
-				ConcurrentServices.startFuture(nioService, callback);
-			}
-
-			@Override
-			public void stopFuture(ConcurrentServiceCallback callback) {
-				ConcurrentServices.stopFuture(nioService, callback);
-			}
-		};
-	}
-
-	public static CompletionCallback completionCallbackOfServiceCallback(ConcurrentServiceCallback callback) {
-		return new ComletionCallbackOfService(callback);
-	}
-
-	private static final class ComletionCallbackOfService implements CompletionCallback {
-		private final ConcurrentServiceCallback concurrentServiceCallback;
-
-		private ComletionCallbackOfService(ConcurrentServiceCallback concurrentServiceCallback) {this.concurrentServiceCallback = concurrentServiceCallback;}
-
-		@Override
-		public void onComplete() {
-			concurrentServiceCallback.onComplete();
-		}
-
-		@Override
-		public void onException(Exception exception) {
-			concurrentServiceCallback.onException(exception);
-		}
 	}
 }

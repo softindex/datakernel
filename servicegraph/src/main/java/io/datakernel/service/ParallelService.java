@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ParallelService implements ConcurrentService {
@@ -74,14 +75,21 @@ public class ParallelService implements ConcurrentService {
 			return;
 		}
 		final AtomicInteger counter = new AtomicInteger(services.size());
+		final AtomicBoolean callbackComplete = new AtomicBoolean(true);
 		for (final ConcurrentService service : services) {
-			final Boolean[] breakCallback = {Boolean.FALSE};
+//			final Boolean[] breakCallback = {Boolean.FALSE};
 			ConcurrentServiceCallback applyCallback = new ConcurrentServiceCallback() {
 				@Override
 				public void doOnComplete() {
 					logger.info("{} {} complete", action, service);
 					if (counter.decrementAndGet() == 0) {
-						callback.onComplete();
+						if (callbackComplete.get()) {
+							callback.onComplete();
+						} else {
+							// TODO (vsavchuk) check this
+							callback.onException(new Exception());
+						}
+
 					}
 
 				}
@@ -89,19 +97,20 @@ public class ParallelService implements ConcurrentService {
 				@Override
 				public void doOnExeption(Exception e) {
 					logger.error("Exception while {} {}", action, service);
-					breakCallback[0] = Boolean.TRUE;
+//					breakCallback[0] = Boolean.TRUE;
+					callbackComplete.set(false);
 
 					if (counter.decrementAndGet() == 0) {
-						callback.onComplete();
+						if (callbackComplete.get()) {
+							callback.onComplete();
+						} else {
+							callback.onException(new Exception());
+						}
 					}
 					throw new RuntimeException(e);
 				}
 			};
 			action.apply(service, applyCallback);
-			if (breakCallback[0]) {
-				break;
-			}
-
 		}
 	}
 }

@@ -24,6 +24,7 @@ import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.service.ConcurrentServiceCallbacks;
 import io.datakernel.service.NioEventloopRunner;
+import io.datakernel.service.ServiceGraph;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -126,8 +127,8 @@ public class WorkerServersTest {
 
 	@Test
 	public void serviceRunner() throws Exception {
-		ArrayList<NioEventloopRunner> workerServices = new ArrayList<>();
-		ArrayList<AsyncHttpServer> workerServers = new ArrayList<>();
+		final ArrayList<NioEventloopRunner> workerServices = new ArrayList<>();
+		final ArrayList<AsyncHttpServer> workerServers = new ArrayList<>();
 
 		for (int i = 0; i < WORKERS; i++) {
 			NioEventloop workerEventloop = new NioEventloop();
@@ -147,8 +148,12 @@ public class WorkerServersTest {
 				.addNioServers(primaryNioServer)
 				.addConcurrentServices(workerServices);
 
+		ServiceGraph graph = new ServiceGraph();
+		graph.add(new ServiceGraph.Node("s1", primaryService));
+
 		ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-		primaryService.startFuture(callback);
+//		primaryService.startFuture(callback);
+		graph.startFuture(callback);
 		callback.await();
 
 		Socket socket1 = new Socket();
@@ -171,7 +176,8 @@ public class WorkerServersTest {
 		socket2.close();
 
 		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStop = ConcurrentServiceCallbacks.withCountDownLatch();
-		primaryService.stopFuture(callbackStop);
+		graph.stopFuture(callback);
+//		primaryService.stopFuture(callbackStop);
 		callbackStop.await();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
