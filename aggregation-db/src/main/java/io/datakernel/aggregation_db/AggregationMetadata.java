@@ -505,8 +505,7 @@ public class AggregationMetadata {
 
 				betweenSets.add(set);
 				betweenPredicatePositions[j] = true;
-			} else
-				break;
+			}
 		}
 	}
 

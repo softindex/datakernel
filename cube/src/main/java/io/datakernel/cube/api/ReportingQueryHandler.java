@@ -16,9 +16,7 @@
 
 package io.datakernel.cube.api;
 
-import com.google.common.base.Predicate;
 import com.google.gson.*;
-import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.api.QueryException;
@@ -31,7 +29,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.ExpressionSequence;
-import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.NioEventloop;
@@ -40,11 +37,9 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.processor.StreamFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -54,7 +49,6 @@ import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.cube.api.CommonUtils.*;
-import static java.util.Arrays.asList;
 
 public final class ReportingQueryHandler implements AsyncHttpServlet {
 	private static final Logger logger = LoggerFactory.getLogger(ReportingQueryHandler.class);
@@ -82,7 +76,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			logger.info("Failed to parse JSON in request {}", request);
 			callback.onResult(response500("Failed to parse JSON request"));
 		} catch (RuntimeException e) {
-			logger.error("Unknown exception occurred while processing request {}", request);
+			logger.error("Unknown exception occurred while processing request {}", request, e);
 			callback.onResult(response500("Unknown server error"));
 		}
 	}
@@ -119,7 +113,6 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		String orderingsJson = request.getParameter("sort");
 		String limitString = request.getParameter("limit");
 		String offsetString = request.getParameter("offset");
-		String havingPredicatesJson = request.getParameter("having");
 
 		AggregationQuery.QueryPredicates queryPredicates = null;
 		if (predicatesJson != null) {
@@ -164,8 +157,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		}
 
 		final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, structure);
-		Predicate havingPredicate = getHavingPredicate(havingPredicatesJson, dimensions, classLoader, resultClass, gson);
-		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery, havingPredicate, cube, eventloop);
+		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
 		final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
 		final Integer offset = offsetString == null ? null : Integer.valueOf(offsetString);
@@ -219,23 +211,6 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		});
 	}
 
-
-
-	private static Predicate getHavingPredicate(String havingPredicateJson, Set<String> dimensions,
-	                                            DefiningClassLoader classLoader, Class<?> recordClass, Gson gson) {
-		List<HavingPredicateNotEquals> predicates = getListOfHavingPredicates(gson, havingPredicateJson);
-
-		if (predicates == null || predicates.isEmpty())
-			return null;
-
-		for (HavingPredicateNotEquals predicate : predicates) {
-			if (!dimensions.contains(predicate.getDimension()))
-				throw new QueryException("Having predicate is specified for not requested dimension");
-		}
-
-		return createHavingPredicateNotEquals(classLoader, recordClass, predicates);
-	}
-
 	private static AggregationQuery addOrdering(AggregationQuery query, String fieldName, boolean ascendingOrdering, Set<String> computedMeasures) {
 		if (computedMeasures.contains(fieldName))
 			return query;
@@ -248,31 +223,19 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		return query;
 	}
 
-	private static List<HavingPredicateNotEquals> getListOfHavingPredicates(Gson gson, String json) {
-		Type type = new TypeToken<List<HavingPredicateNotEquals>>() {}.getType();
-		return gson.fromJson(json, type);
-	}
-
 	@SuppressWarnings("unchecked")
 	private static StreamConsumers.ToList<QueryResultPlaceholder> queryCube(Class<QueryResultPlaceholder> resultClass,
 	                                                                        AggregationQuery query,
-	                                                                        Predicate havingPredicate,
 	                                                                        Cube cube,
 	                                                                        NioEventloop eventloop) {
 		StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = StreamConsumers.toList(eventloop);
 		StreamProducer<QueryResultPlaceholder> queryResultProducer = cube.query(resultClass, query);
-		if (havingPredicate == null) {
-			queryResultProducer.streamTo(consumerStream);
-		} else {
-			StreamFilter streamFilter = new StreamFilter<>(eventloop, havingPredicate);
-			queryResultProducer.streamTo(streamFilter.getInput());
-			streamFilter.getOutput().streamTo(consumerStream);
-		}
+		queryResultProducer.streamTo(consumerStream);
 		return consumerStream;
 	}
 
 	private static Class<QueryResultPlaceholder> createResultClass(DefiningClassLoader classLoader, AggregationQuery query,
-	                                                              Set<String> computedMeasureNames, AggregationStructure structure) {
+	                                                               Set<String> computedMeasureNames, AggregationStructure structure) {
 		AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(classLoader, QueryResultPlaceholder.class);
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
@@ -353,8 +316,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 	}
 
 	private static TotalsPlaceholder createTotalsPlaceholder(DefiningClassLoader classLoader,
-	                                                        AggregationStructure structure, Class<?> inputClass,
-	                                                        Set<String> requestedStoredFields, Set<String> computedMeasureNames) {
+	                                                         AggregationStructure structure, Class<?> inputClass,
+	                                                         Set<String> requestedStoredFields, Set<String> computedMeasureNames) {
 		AsmBuilder<TotalsPlaceholder> builder = new AsmBuilder<>(classLoader, TotalsPlaceholder.class);
 
 		ExpressionSequence initAccumulatorSequence = sequence();
@@ -394,7 +357,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 	}
 
 	private static Comparator<QueryResultPlaceholder> generateComparator(DefiningClassLoader classLoader, String fieldName, boolean ascending,
-	                                            Class<QueryResultPlaceholder> fieldClass) {
+	                                                                     Class<QueryResultPlaceholder> fieldClass) {
 		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();
 		if (ascending)
@@ -408,20 +371,6 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 		builder.method("compare", comparator);
 
-		return builder.newInstance();
-	}
-
-	private static Predicate createHavingPredicateNotEquals(DefiningClassLoader classLoader, Class<?> recordClass,
-	                                                       List<HavingPredicateNotEquals> notEqualsPredicates) {
-		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class);
-		PredicateDefAnd predicateDefAnd = and();
-		for (HavingPredicateNotEquals notEqualsPredicate : notEqualsPredicates) {
-			predicateDefAnd.add(cmpNe(
-					getter(cast(arg(0), recordClass), notEqualsPredicate.getDimension()),
-					value(notEqualsPredicate.getValue())
-			));
-		}
-		builder.method("apply", boolean.class, asList(Object.class), predicateDefAnd);
 		return builder.newInstance();
 	}
 }

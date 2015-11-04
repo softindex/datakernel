@@ -48,8 +48,7 @@ public final class InfoRequestHandler implements AsyncHttpServlet {
 		Set<String> dimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
 		Set<String> measures = getSetOfStrings(gson, request.getParameter("measures"));
 		AggregationQuery.QueryPredicates queryPredicates = gson.fromJson(request.getParameter("filters"), AggregationQuery.QueryPredicates.class);
-		AvailableDrillDowns availableDrillDowns =
-				cube.getAvailableDrillDowns(dimensions, queryPredicates, measures);
+		AvailableDrillDowns availableDrillDowns = cube.getAvailableDrillDowns(dimensions, queryPredicates, measures);
 
 		String responseJson = gson.toJson(availableDrillDowns);
 

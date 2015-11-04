@@ -36,6 +36,7 @@ import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Paths;
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -287,16 +288,38 @@ public class Aggregation {
 		StreamProducer streamProducer = consolidatedProducer(query.getAllKeys(), aggregationFields,
 				outputClass, query.getPredicates(), allChunks);
 
+		StreamProducer queryResultProducer = streamProducer;
+
+		List<AggregationQuery.QueryPredicateNotEquals> notEqualsPredicates = getNotEqualsPredicates(query.getPredicates());
+
+		if (!notEqualsPredicates.isEmpty()) {
+			StreamFilter streamFilter = new StreamFilter<>(eventloop, createNotEqualsPredicate(outputClass, notEqualsPredicates));
+			streamProducer.streamTo(streamFilter.getInput());
+			queryResultProducer = streamFilter.getOutput();
+		}
+
 		if (sortingRequired(resultKeys, aggregationMetadata.getKeys())) {
 			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure,
 					outputClass, aggregationMetadata.getKeys(), aggregationFields);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, keyFunction, Ordering.natural(), false,
 					sorterItemsInMemory);
-			streamProducer.streamTo(sorter.getInput());
-			return sorter.getOutput();
-		} else {
-			return streamProducer;
+			queryResultProducer.streamTo(sorter.getInput());
+			queryResultProducer = sorter.getOutput();
 		}
+
+		return queryResultProducer;
+	}
+
+	private List<AggregationQuery.QueryPredicateNotEquals> getNotEqualsPredicates(AggregationQuery.QueryPredicates queryPredicates) {
+		List<AggregationQuery.QueryPredicateNotEquals> notEqualsPredicates = newArrayList();
+
+		for (AggregationQuery.QueryPredicate queryPredicate : queryPredicates.asCollection()) {
+			if (queryPredicate instanceof AggregationQuery.QueryPredicateNotEquals) {
+				notEqualsPredicates.add((AggregationQuery.QueryPredicateNotEquals) queryPredicate);
+			}
+		}
+
+		return notEqualsPredicates;
 	}
 
 	private boolean sortingRequired(List<String> resultKeys, List<String> aggregationKeys) {
@@ -424,6 +447,19 @@ public class Aggregation {
 		return streamFilter.getOutput();
 	}
 
+	private Predicate createNotEqualsPredicate(Class<?> recordClass, List<AggregationQuery.QueryPredicateNotEquals> notEqualsPredicates) {
+		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class).setBytecodeSaveDir(Paths.get("./codegenOutput"));
+		PredicateDefAnd predicateDefAnd = and();
+		for (AggregationQuery.QueryPredicateNotEquals notEqualsPredicate : notEqualsPredicates) {
+			predicateDefAnd.add(cmpNe(
+					getter(cast(arg(0), recordClass), notEqualsPredicate.key),
+					value(notEqualsPredicate.value)
+			));
+		}
+		builder.method("apply", boolean.class, asList(Object.class), predicateDefAnd);
+		return builder.newInstance();
+	}
+
 	private Predicate createPredicate(AggregationMetadata aggregationMetadata, AggregationChunk chunk,
 	                                  Class<?> chunkRecordClass, AggregationQuery.QueryPredicates predicates) {
 		List<String> keysAlreadyInChunk = new ArrayList<>();
@@ -460,8 +496,6 @@ public class Aggregation {
 				predicateDefAnd.add(cmpLe(
 						getter(cast(arg(0), chunkRecordClass), predicate.key),
 						value(to)));
-			} else {
-				throw new IllegalArgumentException("Unsupported predicate " + predicate);
 			}
 		}
 		builder.method("apply", boolean.class, asList(Object.class), predicateDefAnd);

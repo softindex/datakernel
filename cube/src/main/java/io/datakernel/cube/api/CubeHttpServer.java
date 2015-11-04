@@ -38,7 +38,6 @@ public final class CubeHttpServer {
 	public static MiddlewareServlet createServlet(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
 		final Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
-				.registerTypeAdapter(new TypeToken<List<HavingPredicateNotEquals>>() {}.getType(), new HavingPredicateNotEqualsGsonSerializer(cube.getStructure()))
 				.create();
 
 		MiddlewareServlet servlet = new MiddlewareServlet();
