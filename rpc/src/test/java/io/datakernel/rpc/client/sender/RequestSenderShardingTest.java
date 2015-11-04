@@ -33,12 +33,16 @@ public class RequestSenderShardingTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 
-		RequestSender senderToServer1;
-		RequestSender senderToServer2;
-		RequestSender senderToServer3;
-		RequestSenderSharding senderSharding;
-
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+
+		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy shardingStrategy =
+				new ShardingStrategy(hashFunction,
+						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+
+		RequestSender senderSharding;
 
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -48,11 +52,7 @@ public class RequestSenderShardingTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderSharding =
-				new RequestSenderSharding(asList(senderToServer1, senderToServer2, senderToServer3), hashFunction);
+		senderSharding = shardingStrategy.create(pool).get();
 
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
@@ -80,12 +80,16 @@ public class RequestSenderShardingTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 
-		RequestSender senderToServer1;
-		RequestSender senderToServer2;
-		RequestSender senderToServer3;
-		RequestSenderSharding senderSharding;
-
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+
+		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy shardingStrategy =
+				new ShardingStrategy(hashFunction,
+						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+
+		RequestSender senderSharding;
 
 		int timeout = 50;
 		ResultCallback<RpcMessageDataStubWithKey> callback = new ResultCallback<RpcMessageDataStubWithKey>() {
@@ -105,11 +109,7 @@ public class RequestSenderShardingTest {
 		// we don't add connection for ADDRESS_1
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderSharding =
-				new RequestSenderSharding(asList(senderToServer1, senderToServer2, senderToServer3), hashFunction);
+		senderSharding = shardingStrategy.create(pool).get();
 
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(1), timeout, callback);
@@ -122,11 +122,11 @@ public class RequestSenderShardingTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		RequestSenderSharding sender = new RequestSenderSharding(null, new RpcMessageDataStubWithKeyHashFunction());
+		ShardingStrategy strategy = new ShardingStrategy(new RpcMessageDataStubWithKeyHashFunction(), null);
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
-		RequestSenderSharding sender = new RequestSenderSharding(new ArrayList<RequestSender>(), null);
+		ShardingStrategy strategy = new ShardingStrategy(null, new ArrayList<RequestSendingStrategy>());
 	}
 }

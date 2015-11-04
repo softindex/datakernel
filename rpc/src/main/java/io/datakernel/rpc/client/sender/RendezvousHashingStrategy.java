@@ -45,8 +45,8 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 	                                  BucketHashFunction bucketHashFunction,
 	                                  int minSubStrategiesForCreation) {
 		this.keyToStrategy = new HashMap<>();
-		this.hashFunction = hashFunction;
-		this.bucketHashFunction = bucketHashFunction;
+		this.hashFunction = checkNotNull(hashFunction);
+		this.bucketHashFunction = checkNotNull(bucketHashFunction);
 		this.minSubStrategiesForCreation = minSubStrategiesForCreation;
 	}
 
@@ -64,6 +64,10 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 	}
 
 	public RendezvousHashingStrategy put(Object key, SingleServerStrategy strategy) {
+		return putCommon(key, strategy);
+	}
+
+	public RendezvousHashingStrategy put(Object key, ShardingStrategy strategy) {
 		return putCommon(key, strategy);
 	}
 

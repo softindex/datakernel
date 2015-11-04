@@ -8,7 +8,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class RoundRobinStrategy extends RequestSendingStrategyToGroup {
+public final class RoundRobinStrategy extends RequestSendingStrategyToGroup {
 
 	public RoundRobinStrategy(List<RequestSendingStrategy> subStrategies) {
 		super(subStrategies);

@@ -34,10 +34,13 @@ public class RequestSenderRoundRobinTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 
-		RequestSender senderToServer1;
-		RequestSender senderToServer2;
-		RequestSender senderToServer3;
-		RequestSenderRoundRobin senderRoundRobin;
+		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy roundRobinStrategy =
+				new RoundRobinStrategy(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+
+		RequestSender senderRoundRobin;
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -50,10 +53,7 @@ public class RequestSenderRoundRobinTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderRoundRobin = new RequestSenderRoundRobin(asList(senderToServer1, senderToServer2, senderToServer3));
+		senderRoundRobin = roundRobinStrategy.create(pool).get();
 		for (int i = 0; i < callsAmount; i++) {
 			senderRoundRobin.sendRequest(data, timeout, callback);
 		}
@@ -74,12 +74,16 @@ public class RequestSenderRoundRobinTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
 
-		RequestSender senderToServer1;
-		RequestSender senderToServer2;
-		RequestSender senderToServer3;
-		RequestSender senderToServer4;
-		RequestSender senderToServer5;
-		RequestSenderRoundRobin senderRoundRobin;
+		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy singleServerStrategy4 = new SingleServerStrategy(ADDRESS_4);
+		RequestSendingStrategy singleServerStrategy5 = new SingleServerStrategy(ADDRESS_5);
+		RequestSendingStrategy roundRobinStrategy =
+				new RoundRobinStrategy(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3,
+						singleServerStrategy4, singleServerStrategy5));
+
+		RequestSender senderRoundRobin;
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -93,13 +97,7 @@ public class RequestSenderRoundRobinTest {
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_4, connection4);
 		// we don't add connections for ADDRESS_3 and ADDRESS_5
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderToServer4 = new RequestSenderToSingleServer(ADDRESS_4, pool);
-		senderToServer5 = new RequestSenderToSingleServer(ADDRESS_5, pool);
-		senderRoundRobin = new RequestSenderRoundRobin(
-				asList(senderToServer1, senderToServer2, senderToServer3, senderToServer4, senderToServer5));
+		senderRoundRobin = roundRobinStrategy.create(pool).get();
 		for (int i = 0; i < callsAmount; i++) {
 			senderRoundRobin.sendRequest(data, timeout, callback);
 		}
@@ -113,6 +111,6 @@ public class RequestSenderRoundRobinTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		RequestSenderRoundRobin sender = new RequestSenderRoundRobin(null);
+		RequestSendingStrategy strategy = new RoundRobinStrategy(null);
 	}
 }

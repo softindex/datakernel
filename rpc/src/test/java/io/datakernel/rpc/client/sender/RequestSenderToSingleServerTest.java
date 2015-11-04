@@ -1,5 +1,6 @@
 package io.datakernel.rpc.client.sender;
 
+import com.google.common.base.Optional;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
@@ -22,37 +23,38 @@ public class RequestSenderToSingleServerTest {
 	private static final InetSocketAddress ADDRESS = new InetSocketAddress(HOST, PORT);
 
 	@Test
-	public void itShouldBeActiveWhenThereIsConnectionInPool() {
+	public void itShouldBeCreatedWhenThereIsConnectionInPool() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
 		RpcClientConnectionStub connection = new RpcClientConnectionStub();
 		pool.add(ADDRESS, connection);
-		RequestSenderToSingleServer sender = new RequestSenderToSingleServer(ADDRESS, pool);
+		SingleServerStrategy singleServerStrategy = new SingleServerStrategy(ADDRESS);
 
-		boolean active = sender.isActive();
+		Optional<RequestSender> singleServer = singleServerStrategy.create(pool);
 
-		assertTrue(active);
+		assertTrue(singleServer.isPresent());
 	}
 
 	@Test
-	public void itShouldNotBeActiveWhenThereIsNoConnectionInPool() {
+	public void itShouldNotBeCreatedWhenThereIsNoConnectionInPool() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
 		// no connections were added to pool
-		RequestSenderToSingleServer sender = new RequestSenderToSingleServer(ADDRESS, pool);
+		SingleServerStrategy singleServerStrategy = new SingleServerStrategy(ADDRESS);
 
-		boolean active = sender.isActive();
+		Optional<RequestSender> singleServer = singleServerStrategy.create(pool);
 
-		assertFalse(active);
+		assertFalse(singleServer.isPresent());
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenAddressIsNull() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
-		RequestSenderToSingleServer sender = new RequestSenderToSingleServer(null, pool);
+		SingleServerStrategy singleServerStrategy = new SingleServerStrategy(null);
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenConnectionPoolIsNull() {
-		RequestSenderToSingleServer sender = new RequestSenderToSingleServer(ADDRESS, null);
+		SingleServerStrategy singleServerStrategy = new SingleServerStrategy(null);
+		singleServerStrategy.create(null);
 	}
 
 	@Test
@@ -60,7 +62,8 @@ public class RequestSenderToSingleServerTest {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
 		RpcClientConnectionStub connection = new RpcClientConnectionStub();
 		pool.add(ADDRESS, connection);
-		RequestSenderToSingleServer sender = new RequestSenderToSingleServer(ADDRESS, pool);
+		SingleServerStrategy singleServerStrategy = new SingleServerStrategy(ADDRESS);
+		RequestSender sender = singleServerStrategy.create(pool).get();
 		final int calls = 100;
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();

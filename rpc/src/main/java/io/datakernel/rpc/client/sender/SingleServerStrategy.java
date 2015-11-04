@@ -10,18 +10,20 @@ import java.net.InetSocketAddress;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Arrays.asList;
 
 public final class SingleServerStrategy extends AbstractRequestSendingStrategy {
 
 	private final InetSocketAddress address;
 
 	public SingleServerStrategy(InetSocketAddress address) {
+		checkNotNull(address);
 		this.address = address;
 	}
 
 	@Override
 	protected List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
-		return null;
+		return asList(create(pool));
 	}
 
 	@Override

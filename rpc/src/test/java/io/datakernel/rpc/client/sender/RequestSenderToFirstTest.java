@@ -9,6 +9,7 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -26,41 +27,46 @@ public class RequestSenderToFirstTest {
 	private static final InetSocketAddress ADDRESS_3 = new InetSocketAddress(HOST, PORT_3);
 
 	@Test
-	public void itShouldBeActiveWhenThereIsAtLeastOneActiveSubSender() {
+	public void itShouldBeCreatedWhenThereIsAtLeastOneActiveSubSender() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		RpcClientConnectionStub connection = new RpcClientConnectionStub();
+		// one connection is added
 		pool.add(ADDRESS_2, connection);
-		RequestSender senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		RequestSender senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		RequestSenderToFirst senderToFirst = new RequestSenderToFirst(asList(senderToServer1, senderToServer2));
+		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
+		RequestSendingStrategy firstAvailableStrategy =
+				new FirstAvailableStrategy(asList(singleServerStrategy1, singleServerStrategy2));
 
-		assertFalse(senderToServer1.isActive());
-		assertTrue(senderToServer2.isActive());
-		assertTrue(senderToFirst.isActive());
+		assertFalse(singleServerStrategy1.create(pool).isPresent());
+		assertTrue(singleServerStrategy2.create(pool).isPresent());
+		assertTrue(firstAvailableStrategy.create(pool).isPresent());
 	}
 
 	@Test
-	public void itShouldNotBeActiveWhenThereIsNoActiveSubSenders() {
+	public void itShouldNotBeCreatedWhenThereIsNoActiveSubSenders() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		// no connections were added to pool
-		RequestSender senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		RequestSender senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		RequestSender senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		RequestSenderToFirst senderToFirst =
-				new RequestSenderToFirst(asList(senderToServer1, senderToServer2, senderToServer3));
+		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy firstAvailableStrategy =
+				new FirstAvailableStrategy(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
 
-		assertFalse(senderToServer1.isActive());
-		assertFalse(senderToServer2.isActive());
-		assertFalse(senderToServer3.isActive());
-		assertFalse(senderToFirst.isActive());
+		assertFalse(singleServerStrategy1.create(pool).isPresent());
+		assertFalse(singleServerStrategy2.create(pool).isPresent());
+		assertFalse(singleServerStrategy3.create(pool).isPresent());
+		assertFalse(firstAvailableStrategy.create(pool).isPresent());
 	}
 
 	@Test
 	public void itShouldNotBeActiveWhenThereIsNoSubSenders() {
-		RequestSenderToFirst sender = new RequestSenderToFirst(new ArrayList<RequestSender>());
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		// no connections were added to pool
+		RequestSendingStrategy firstAvailableStrategy =
+				new FirstAvailableStrategy(new ArrayList<RequestSendingStrategy>());
 
-		assertFalse(sender.isActive());
+		assertFalse(firstAvailableStrategy.create(pool).isPresent());
 	}
 
 	@Test
@@ -71,10 +77,14 @@ public class RequestSenderToFirstTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 
-		RequestSender senderToServer1;
-		RequestSender senderToServer2;
-		RequestSender senderToServer3;
-		RequestSenderToFirst senderToFirstAvailable;
+		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy firstAvailableStrategy =
+				new FirstAvailableStrategy(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+
+		RequestSender senderToFirst;
+
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -90,35 +100,26 @@ public class RequestSenderToFirstTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderToFirstAvailable = new RequestSenderToFirst(asList(senderToServer1, senderToServer2, senderToServer3));
+		senderToFirst = firstAvailableStrategy.create(pool).get();
 		for (int i = 0; i < callsToSender1; i++) {
-			senderToFirstAvailable.sendRequest(data, timeout, callback);
+			senderToFirst.sendRequest(data, timeout, callback);
 		}
 
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderToFirstAvailable = new RequestSenderToFirst(asList(senderToServer1, senderToServer2, senderToServer3));
+		senderToFirst = firstAvailableStrategy.create(pool).get();
 		for (int i = 0; i < callsToSender2; i++) {
-			senderToFirstAvailable.sendRequest(data, timeout, callback);
+			senderToFirst.sendRequest(data, timeout, callback);
 		}
 
 		pool.remove(ADDRESS_2);
 		// we should recreate sender after changing in pool
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderToFirstAvailable = new RequestSenderToFirst(asList(senderToServer1, senderToServer2, senderToServer3));
+		senderToFirst = firstAvailableStrategy.create(pool).get();
 		for (int i = 0; i < callsToSender3; i++) {
-			senderToFirstAvailable.sendRequest(data, timeout, callback);
+			senderToFirst.sendRequest(data, timeout, callback);
 		}
 
-		
+
 
 		assertEquals(callsToSender1, connection1.getCallsAmount());
 		assertEquals(callsToSender2, connection2.getCallsAmount());
@@ -127,6 +128,6 @@ public class RequestSenderToFirstTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		RequestSenderToFirst sender = new RequestSenderToFirst(null);
+		RequestSendingStrategy strategy = new FirstAvailableStrategy(null);
 	}
 }

@@ -46,7 +46,7 @@ public class RequestSendingStrategiesTest {
 		pool.add(ADDRESS_4, connection4);
 		pool.add(ADDRESS_5, connection5);
 
-		RequestSenderFactory strategy =
+		RequestSendingStrategy strategy =
 				roundRobin(
 						server(ADDRESS_1),
 						server(ADDRESS_2),
@@ -61,7 +61,7 @@ public class RequestSendingStrategiesTest {
 
 
 
-		RequestSender sender = strategy.create(pool);
+		RequestSender sender = strategy.create(pool).get();
 		for (int i = 0; i < iterations; i++) {
 			sender.sendRequest(data, timeout, callback);
 		}
@@ -88,7 +88,7 @@ public class RequestSendingStrategiesTest {
 		// we don't add connection3
 		pool.add(ADDRESS_4, connection4);
 
-		RequestSenderFactory strategy =
+		RequestSendingStrategy strategy =
 				roundRobin(
 						firstAvailable(
 								servers(ADDRESS_1, ADDRESS_2)
@@ -106,7 +106,7 @@ public class RequestSendingStrategiesTest {
 
 
 
-		RequestSender sender = strategy.create(pool);
+		RequestSender sender = strategy.create(pool).get();
 		for (int i = 0; i < iterations; i++) {
 			sender.sendRequest(data, timeout, callback);
 		}
@@ -137,7 +137,7 @@ public class RequestSendingStrategiesTest {
 
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 
-		RequestSenderFactory strategy =
+		RequestSendingStrategy strategy =
 				sharding(
 						hashFunction,
 						allAvailable(
@@ -155,7 +155,7 @@ public class RequestSendingStrategiesTest {
 
 
 
-		RequestSender sender = strategy.create(pool);
+		RequestSender sender = strategy.create(pool).get();
 		sender.sendRequest(data0, timeout, callback);
 		sender.sendRequest(data0, timeout, callback);
 		sender.sendRequest(data1, timeout, callback);
@@ -183,7 +183,7 @@ public class RequestSendingStrategiesTest {
 
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 
-		RequestSenderFactory strategy =
+		RequestSendingStrategy strategy =
 				rendezvousHashing(hashFunction)
 						.put(1, firstAvailable(servers(ADDRESS_1, ADDRESS_2)))
 						.put(2, firstAvailable(servers(ADDRESS_3, ADDRESS_4)))
@@ -204,7 +204,7 @@ public class RequestSendingStrategiesTest {
 		pool.add(ADDRESS_3, connection3);
 		pool.add(ADDRESS_4, connection4);
 		pool.add(ADDRESS_5, connection5);
-		sender = strategy.create(pool);
+		sender = strategy.create(pool).get();
 		for (int i = 0; i < iterationsPerLoop; i++) {
 			RpcMessage.RpcMessageData data = new RpcMessageDataStubWithKey(i);
 			sender.sendRequest(data, timeout, callback);
@@ -212,7 +212,7 @@ public class RequestSendingStrategiesTest {
 
 		pool.remove(ADDRESS_3);
 		pool.remove(ADDRESS_4);
-		sender = strategy.create(pool);
+		sender = strategy.create(pool).get();
 		for (int i = 0; i < iterationsPerLoop; i++) {
 			RpcMessage.RpcMessageData data = new RpcMessageDataStubWithKey(i);
 			sender.sendRequest(data,timeout, callback);
@@ -247,7 +247,7 @@ public class RequestSendingStrategiesTest {
 		pool.add(ADDRESS_4, connection4);
 		pool.add(ADDRESS_5, connection5);
 
-		RequestSenderFactory strategy =
+		RequestSendingStrategy strategy =
 				typeDispatching()
 						.on(RpcMessageDataStubWithKey.class,
 								allAvailable(
@@ -270,7 +270,7 @@ public class RequestSendingStrategiesTest {
 
 
 
-		sender = strategy.create(pool);
+		sender = strategy.create(pool).get();
 		for (int i = 0; i < iterationsPerDataStub; i++) {
 			RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 			sender.sendRequest(data, timeout, callback);

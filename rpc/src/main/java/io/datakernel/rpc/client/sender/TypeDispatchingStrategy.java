@@ -44,7 +44,8 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 				return Optional.absent();
 			}
 		}
-		Optional<RequestSender> defaultSender = defaultSendingStrategy.create(pool);
+		Optional<RequestSender> defaultSender =
+				defaultSendingStrategy != null ? defaultSendingStrategy.create(pool) : Optional.<RequestSender>absent();
 		return Optional.<RequestSender>of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender.orNull()));
 	}
 
@@ -71,6 +72,11 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 
 	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
 	                                         TypeDispatchingStrategy strategy) {
+		return onCommon(dataType, strategy, Importance.MANDATORY);
+	}
+
+	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                  ShardingStrategy strategy) {
 		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
@@ -102,6 +108,9 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 	}
 
 	public TypeDispatchingStrategy onDefault(TypeDispatchingStrategy strategy) {
+		return onDefaultCommon(strategy);
+	}
+	public TypeDispatchingStrategy onDefault(ShardingStrategy strategy) {
 		return onDefaultCommon(strategy);
 	}
 

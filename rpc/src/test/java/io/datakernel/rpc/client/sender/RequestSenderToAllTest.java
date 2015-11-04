@@ -32,10 +32,11 @@ public class RequestSenderToAllTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 
-		RequestSender senderToServer1;
-		RequestSender senderToServer2;
-		RequestSender senderToServer3;
-		RequestSenderToAll senderToAll;
+		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy allAvailableStrategy =
+				new AllAvailableStrategy(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -44,26 +45,22 @@ public class RequestSenderToAllTest {
 		int callsAmountIterationOne = 10;
 		int callsAmountIterationTwo = 25;
 
+		RequestSender senderToAll;
+
 
 
 
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderToAll = new RequestSenderToAll(asList(senderToServer1, senderToServer2, senderToServer3));
+		senderToAll = allAvailableStrategy.create(pool).get();
 		for (int i = 0; i < callsAmountIterationOne; i++) {
 			senderToAll.sendRequest(data, timeout, callback);
 		}
 
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
-		senderToServer1 = new RequestSenderToSingleServer(ADDRESS_1, pool);
-		senderToServer2 = new RequestSenderToSingleServer(ADDRESS_2, pool);
-		senderToServer3 = new RequestSenderToSingleServer(ADDRESS_3, pool);
-		senderToAll = new RequestSenderToAll(asList(senderToServer1, senderToServer2, senderToServer3));
+		senderToAll = allAvailableStrategy.create(pool).get();
 		for (int i = 0; i < callsAmountIterationTwo; i++) {
 			senderToAll.sendRequest(data, timeout, callback);
 		}
@@ -84,7 +81,8 @@ public class RequestSenderToAllTest {
 		RequestSender sender1 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender2 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender3 = new RequestSenderOnResultWithNullCaller();
-		RequestSenderToAll senderToAll = new RequestSenderToAll(asList(sender1, sender2, sender3));
+		AllAvailableStrategy.RequestSenderToAll senderToAll =
+				new AllAvailableStrategy.RequestSenderToAll(asList(sender1, sender2, sender3));
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -115,7 +113,8 @@ public class RequestSenderToAllTest {
 		RequestSender sender1 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender2 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender3 = new RequestSenderOnResultWithValueCaller();
-		RequestSenderToAll senderToAll = new RequestSenderToAll(asList(sender1, sender2, sender3));
+		AllAvailableStrategy.RequestSenderToAll senderToAll =
+				new AllAvailableStrategy.RequestSenderToAll(asList(sender1, sender2, sender3));
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -143,7 +142,7 @@ public class RequestSenderToAllTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		RequestSenderToAll sender = new RequestSenderToAll(null);
+		RequestSendingStrategy strategy = new AllAvailableStrategy(null);
 	}
 
 	static final class RequestSenderOnResultWithNullCaller implements RequestSender {
@@ -152,11 +151,6 @@ public class RequestSenderToAllTest {
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
 			callback.onResult(null);
 		}
-
-		@Override
-		public boolean isActive() {
-			return true;
-		}
 	}
 
 	static final class RequestSenderOnResultWithValueCaller implements RequestSender {
@@ -164,11 +158,6 @@ public class RequestSenderToAllTest {
 		@Override
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
 			callback.onResult((T)new RpcMessageDataStub());
-		}
-
-		@Override
-		public boolean isActive() {
-			return true;
 		}
 	}
 }

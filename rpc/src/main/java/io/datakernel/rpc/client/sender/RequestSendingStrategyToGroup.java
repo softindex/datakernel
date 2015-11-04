@@ -6,10 +6,11 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.rpc.client.sender.Utils.*;
+
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrategy {
@@ -55,35 +56,5 @@ abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrat
 			listOfListOfSenders.add(abstractSubSendingStrategy.createAsList(pool));
 		}
 		return flatten(listOfListOfSenders);
-	}
-
-	static <T> List<T> flatten(List<List<T>> listOfList) {
-		List<T> flatList = new ArrayList<>();
-		for (List<T> list : listOfList) {
-			for (T element : list) {
-				flatList.add(element);
-			}
-		}
-		return flatList;
-	}
-
-	static <T> int countPresentValues(List<Optional<T>> values) {
-		int counter = 0;
-		for (Optional<T> value : values) {
-			if (value.isPresent()) {
-				++counter;
-			}
-		}
-		return counter;
-	}
-
-	static <T> List<T> filterAbsent(List<Optional<T>> list) {
-		List<T> filtered = new ArrayList<>();
-		for (Optional<T> value : list) {
-			if (value.isPresent()) {
-				filtered.add(value.get());
-			}
-		}
-		return filtered;
 	}
 }

@@ -1,31 +1,49 @@
 package io.datakernel.rpc.client.sender;
 
+import com.google.common.base.Optional;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
 
+import static io.datakernel.rpc.client.sender.Utils.*;
 import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Arrays.asList;
 
-public final class ShardingStrategy extends RequestSendingStrategyToGroup {
+public final class ShardingStrategy extends AbstractRequestSendingStrategy {
+	private final List<RequestSendingStrategy> subStrategies;
 	private final HashFunction<RpcMessageData> hashFunction;
 
 	public ShardingStrategy(HashFunction<RpcMessageData> hashFunction, List<RequestSendingStrategy> subStrategies) {
-		super(subStrategies);
 		this.hashFunction = checkNotNull(hashFunction);
-	}
-
-	public ShardingStrategy(HashFunction<RpcMessageData> hashFunction, List<RequestSendingStrategy> subStrategies,
-	                        int minSubStrategiesForCreation) {
-		super(subStrategies, minSubStrategiesForCreation);
-		this.hashFunction = checkNotNull(hashFunction);
+		this.subStrategies = checkNotNull(subStrategies);
 	}
 
 	@Override
-	protected RequestSender createSenderInstance(List<RequestSender> subSenders) {
-		return new RequestSenderSharding(hashFunction, subSenders);
+	protected final List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+		return asList(create(pool));
+	}
+
+	@Override
+	public final Optional<RequestSender> create(RpcClientConnectionPool pool) {
+		List<Optional<RequestSender>> subSenders = createSubSenders(pool);
+		return Optional.<RequestSender>of(new RequestSenderSharding(hashFunction, replaceAbsentToNull(subSenders)));
+	}
+
+	private final List<Optional<RequestSender>> createSubSenders(RpcClientConnectionPool pool) {
+
+		assert subStrategies != null;
+
+		List<List<Optional<RequestSender>>> listOfListOfSenders = new ArrayList<>();
+		for (RequestSendingStrategy subStrategy : subStrategies) {
+			AbstractRequestSendingStrategy abstractSubSendingStrategy = (AbstractRequestSendingStrategy)subStrategy;
+			listOfListOfSenders.add(abstractSubSendingStrategy.createAsList(pool));
+		}
+		return flatten(listOfListOfSenders);
 	}
 
 	final static class RequestSenderSharding implements RequestSender {

@@ -39,7 +39,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.client.sender.RequestSenderFactory;
 import io.datakernel.rpc.client.sender.RequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage.AbstractRpcMessage;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;

@@ -7,12 +7,10 @@ import io.datakernel.rpc.protocol.RpcMessage;
 public class RequestSenderStub implements RequestSender {
 
 	private final int id;
-	private final boolean active;
 	private int sendRequestCalls;
 
-	public RequestSenderStub(int id, boolean active) {
+	public RequestSenderStub(int id) {
 		this.id = id;
-		this.active = active;
 		this.sendRequestCalls = 0;
 	}
 
@@ -22,10 +20,6 @@ public class RequestSenderStub implements RequestSender {
 		++sendRequestCalls;
 	}
 
-	@Override
-	public boolean isActive() {
-		return active;
-	}
 
 	public int getId() {
 		return id;

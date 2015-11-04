@@ -9,7 +9,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public class AllAvailableStrategy extends RequestSendingStrategyToGroup{
+public final class AllAvailableStrategy extends RequestSendingStrategyToGroup{
 
 	public AllAvailableStrategy(List<RequestSendingStrategy> subStrategies) {
 		super(subStrategies);
