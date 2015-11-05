@@ -15,11 +15,11 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-public final class ShardingStrategy extends AbstractRequestSendingStrategy {
+public final class StrategySharding extends AbstractRequestSendingStrategy {
 	private final List<RequestSendingStrategy> subStrategies;
 	private final HashFunction<RpcMessageData> hashFunction;
 
-	public ShardingStrategy(HashFunction<RpcMessageData> hashFunction, List<RequestSendingStrategy> subStrategies) {
+	public StrategySharding(HashFunction<RpcMessageData> hashFunction, List<RequestSendingStrategy> subStrategies) {
 		this.hashFunction = checkNotNull(hashFunction);
 		this.subStrategies = checkNotNull(subStrategies);
 	}

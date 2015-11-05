@@ -9,13 +9,13 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 
-public final class RoundRobinStrategy extends RequestSendingStrategyToGroup {
+public final class StrategyRoundRobin extends RequestSendingStrategyToGroup {
 
-	public RoundRobinStrategy(List<RequestSendingStrategy> subStrategies) {
+	public StrategyRoundRobin(List<RequestSendingStrategy> subStrategies) {
 		super(subStrategies);
 	}
 
-	public RoundRobinStrategy(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
+	public StrategyRoundRobin(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
 		super(subStrategies, minSubStrategiesForCreation);
 	}
 

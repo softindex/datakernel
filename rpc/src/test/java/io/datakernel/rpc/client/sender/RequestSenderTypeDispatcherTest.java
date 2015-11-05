@@ -3,14 +3,10 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.*;
-import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Arrays.asList;
@@ -43,13 +39,13 @@ public class RequestSenderTypeDispatcherTest {
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
 
-		SingleServerStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
-		SingleServerStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
-		SingleServerStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
-		RequestSendingStrategy typeDispatchingStrategy = new TypeDispatchingStrategy()
-				.on(RpcMessageDataTypeOne.class, singleServerStrategy1)
-				.on(RpcMessageDataTypeTwo.class, singleServerStrategy2)
-				.on(RpcMessageDataTypeThree.class, singleServerStrategy3);
+		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
+		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
+		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
+		RequestSendingStrategy typeDispatchingStrategy = new StrategyTypeDispatching()
+				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
+				.on(RpcMessageDataTypeTwo.class, strategySingleServer2)
+				.on(RpcMessageDataTypeThree.class, strategySingleServer3);
 
 		int dataTypeOneRequests = 1;
 		int dataTypeTwoRequests = 2;
@@ -99,15 +95,15 @@ public class RequestSenderTypeDispatcherTest {
 		pool.add(ADDRESS_3, connection3);
 		pool.add(ADDRESS_4, connection4);
 
-		SingleServerStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
-		SingleServerStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
-		SingleServerStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
-		SingleServerStrategy singleServerStrategy4 = new SingleServerStrategy(ADDRESS_4);
-		RequestSendingStrategy typeDispatchingStrategy = new TypeDispatchingStrategy()
-				.on(RpcMessageDataTypeOne.class, singleServerStrategy1)
-				.on(RpcMessageDataTypeTwo.class, singleServerStrategy2)
-				.on(RpcMessageDataTypeThree.class, singleServerStrategy3)
-				.onDefault(singleServerStrategy4);
+		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
+		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
+		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
+		StrategySingleServer strategySingleServer4 = new StrategySingleServer(ADDRESS_4);
+		RequestSendingStrategy typeDispatchingStrategy = new StrategyTypeDispatching()
+				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
+				.on(RpcMessageDataTypeTwo.class, strategySingleServer2)
+				.on(RpcMessageDataTypeThree.class, strategySingleServer3)
+				.onDefault(strategySingleServer4);
 
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -141,13 +137,13 @@ public class RequestSenderTypeDispatcherTest {
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
 
-		SingleServerStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
-		SingleServerStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
-		SingleServerStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
-		RequestSendingStrategy typeDispatchingStrategy = new TypeDispatchingStrategy()
-				.on(RpcMessageDataTypeOne.class, singleServerStrategy1)
-				.on(RpcMessageDataTypeTwo.class, singleServerStrategy2)
-				.on(RpcMessageDataTypeThree.class, singleServerStrategy3);
+		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
+		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
+		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
+		RequestSendingStrategy typeDispatchingStrategy = new StrategyTypeDispatching()
+				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
+				.on(RpcMessageDataTypeTwo.class, strategySingleServer2)
+				.on(RpcMessageDataTypeThree.class, strategySingleServer3);
 
 		int timeout = 50;
 		ResultCallback<RpcMessageDataStubWithKey> callback = new ResultCallback<RpcMessageDataStubWithKey>() {

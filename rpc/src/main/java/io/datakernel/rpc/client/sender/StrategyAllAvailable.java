@@ -10,13 +10,13 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 
-public final class AllAvailableStrategy extends RequestSendingStrategyToGroup{
+public final class StrategyAllAvailable extends RequestSendingStrategyToGroup{
 
-	public AllAvailableStrategy(List<RequestSendingStrategy> subStrategies) {
+	public StrategyAllAvailable(List<RequestSendingStrategy> subStrategies) {
 		super(subStrategies);
 	}
 
-	public AllAvailableStrategy(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
+	public StrategyAllAvailable(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
 		super(subStrategies, minSubStrategiesForCreation);
 	}
 

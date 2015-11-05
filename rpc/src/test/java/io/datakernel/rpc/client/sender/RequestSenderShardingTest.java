@@ -35,11 +35,11 @@ public class RequestSenderShardingTest {
 
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 
-		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy shardingStrategy =
-				new ShardingStrategy(hashFunction,
+				new StrategySharding(hashFunction,
 						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
 		RequestSender senderSharding;
@@ -82,11 +82,11 @@ public class RequestSenderShardingTest {
 
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 
-		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy shardingStrategy =
-				new ShardingStrategy(hashFunction,
+				new StrategySharding(hashFunction,
 						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
 		RequestSender senderSharding;
@@ -122,11 +122,11 @@ public class RequestSenderShardingTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		ShardingStrategy strategy = new ShardingStrategy(new RpcMessageDataStubWithKeyHashFunction(), null);
+		StrategySharding strategy = new StrategySharding(new RpcMessageDataStubWithKeyHashFunction(), null);
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
-		ShardingStrategy strategy = new ShardingStrategy(null, new ArrayList<RequestSendingStrategy>());
+		StrategySharding strategy = new StrategySharding(null, new ArrayList<RequestSendingStrategy>());
 	}
 }

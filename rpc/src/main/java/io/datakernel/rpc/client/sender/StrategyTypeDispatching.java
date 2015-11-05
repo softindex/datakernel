@@ -13,7 +13,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
-public final class TypeDispatchingStrategy extends AbstractRequestSendingStrategy {
+public final class StrategyTypeDispatching extends AbstractRequestSendingStrategy {
 
 	public enum Importance {
 		MANDATORY, OPTIONAL
@@ -22,7 +22,7 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 	private Map<Class<? extends RpcMessage.RpcMessageData>, DataTypeSpecifications> dataTypeToSpecification;
 	private RequestSendingStrategy defaultSendingStrategy;
 
-	TypeDispatchingStrategy() {
+	StrategyTypeDispatching() {
 		dataTypeToSpecification = new HashMap<>();
 		defaultSendingStrategy = null;
 	}
@@ -55,32 +55,32 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 	// and ensure that servers() result can't be applied in put() method as second argument
 	// because in this case we don't know how to choose one of them to send request
 
-	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	public StrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
 	                                         RequestSendingStrategyToGroup strategy) {
 		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                         SingleServerStrategy strategy) {
+	public StrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                         StrategySingleServer strategy) {
 		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                          RendezvousHashingStrategy strategy) {
+	public StrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                          StrategyRendezvousHashing strategy) {
 		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                         TypeDispatchingStrategy strategy) {
+	public StrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                         StrategyTypeDispatching strategy) {
 		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	public TypeDispatchingStrategy on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                  ShardingStrategy strategy) {
+	public StrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                  StrategySharding strategy) {
 		return onCommon(dataType, strategy, Importance.MANDATORY);
 	}
 
-	private TypeDispatchingStrategy onCommon(Class<? extends RpcMessage.RpcMessageData> dataType,
+	private StrategyTypeDispatching onCommon(Class<? extends RpcMessage.RpcMessageData> dataType,
 	                                                RequestSendingStrategy strategy, Importance importance) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
@@ -95,26 +95,26 @@ public final class TypeDispatchingStrategy extends AbstractRequestSendingStrateg
 	// and ensure that servers() result can't be applied in put() method as second argument
 	// because in this case we don't know how to choose one of them to send request
 
-	public TypeDispatchingStrategy onDefault(RequestSendingStrategyToGroup strategy) {
+	public StrategyTypeDispatching onDefault(RequestSendingStrategyToGroup strategy) {
 		return onDefaultCommon(strategy);
 	}
 
-	public TypeDispatchingStrategy onDefault(SingleServerStrategy strategy) {
+	public StrategyTypeDispatching onDefault(StrategySingleServer strategy) {
 		return onDefaultCommon(strategy);
 	}
 
-	public TypeDispatchingStrategy onDefault(RendezvousHashingStrategy strategy) {
+	public StrategyTypeDispatching onDefault(StrategyRendezvousHashing strategy) {
 		return onDefaultCommon(strategy);
 	}
 
-	public TypeDispatchingStrategy onDefault(TypeDispatchingStrategy strategy) {
+	public StrategyTypeDispatching onDefault(StrategyTypeDispatching strategy) {
 		return onDefaultCommon(strategy);
 	}
-	public TypeDispatchingStrategy onDefault(ShardingStrategy strategy) {
+	public StrategyTypeDispatching onDefault(StrategySharding strategy) {
 		return onDefaultCommon(strategy);
 	}
 
-	private TypeDispatchingStrategy onDefaultCommon(RequestSendingStrategy strategy) {
+	private StrategyTypeDispatching onDefaultCommon(RequestSendingStrategy strategy) {
 		checkState(defaultSendingStrategy == null, "Default Strategy is already set");
 		defaultSendingStrategy = strategy;
 		return this;

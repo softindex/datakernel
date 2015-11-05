@@ -34,11 +34,11 @@ public class RequestSenderRoundRobinTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 
-		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy roundRobinStrategy =
-				new RoundRobinStrategy(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+				new StrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
 		RequestSender senderRoundRobin;
 
@@ -74,13 +74,13 @@ public class RequestSenderRoundRobinTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
 
-		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
-		RequestSendingStrategy singleServerStrategy4 = new SingleServerStrategy(ADDRESS_4);
-		RequestSendingStrategy singleServerStrategy5 = new SingleServerStrategy(ADDRESS_5);
+		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
+		RequestSendingStrategy singleServerStrategy4 = new StrategySingleServer(ADDRESS_4);
+		RequestSendingStrategy singleServerStrategy5 = new StrategySingleServer(ADDRESS_5);
 		RequestSendingStrategy roundRobinStrategy =
-				new RoundRobinStrategy(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3,
+				new StrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3,
 						singleServerStrategy4, singleServerStrategy5));
 
 		RequestSender senderRoundRobin;
@@ -111,6 +111,6 @@ public class RequestSenderRoundRobinTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		RequestSendingStrategy strategy = new RoundRobinStrategy(null);
+		RequestSendingStrategy strategy = new StrategyRoundRobin(null);
 	}
 }

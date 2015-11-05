@@ -16,17 +16,11 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.annotations.VisibleForTesting;
-import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.hash.BucketHashFunction;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -39,82 +33,82 @@ public final class RequestSendingStrategies {
 
 	}
 
-	public static SingleServerStrategy server(final InetSocketAddress address) {
+	public static StrategySingleServer server(final InetSocketAddress address) {
 		checkNotNull(address);
-		return new SingleServerStrategy(address);
+		return new StrategySingleServer(address);
 	}
 
 
-	public static ServersGroupStrategy servers(InetSocketAddress ... addresses) {
+	public static StrategyServersGroup servers(InetSocketAddress ... addresses) {
 		return servers(asList(addresses));
 	}
 
-	public static ServersGroupStrategy servers(final List<InetSocketAddress> addresses) {
+	public static StrategyServersGroup servers(final List<InetSocketAddress> addresses) {
 		checkNotNull(addresses);
 		checkArgument(addresses.size() > 0, "at least one address must be present");
-		return new ServersGroupStrategy(addresses);
+		return new StrategyServersGroup(addresses);
 	}
 
 
-	public static FirstAvailableStrategy firstAvailable(RequestSendingStrategy ... senders) {
+	public static StrategyFirstAvailable firstAvailable(RequestSendingStrategy ... senders) {
 		return firstAvailable(asList(senders));
 	}
 
-	public static FirstAvailableStrategy firstAvailable(final List<RequestSendingStrategy> senders) {
+	public static StrategyFirstAvailable firstAvailable(final List<RequestSendingStrategy> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
-		return new FirstAvailableStrategy(senders);
+		return new StrategyFirstAvailable(senders);
 	}
 
 
-	public static AllAvailableStrategy allAvailable(RequestSendingStrategy ... senders) {
+	public static StrategyAllAvailable allAvailable(RequestSendingStrategy ... senders) {
 		return allAvailable(asList(senders));
 	}
 
 
-	public static AllAvailableStrategy allAvailable(final List<RequestSendingStrategy> senders) {
+	public static StrategyAllAvailable allAvailable(final List<RequestSendingStrategy> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
-		return new AllAvailableStrategy(senders);
+		return new StrategyAllAvailable(senders);
 	}
 
 
-	public static RoundRobinStrategy roundRobin(RequestSendingStrategy ... senders) {
+	public static StrategyRoundRobin roundRobin(RequestSendingStrategy ... senders) {
 		return roundRobin(asList(senders));
 	}
 
-	public static RoundRobinStrategy roundRobin(final List<RequestSendingStrategy> senders) {
+	public static StrategyRoundRobin roundRobin(final List<RequestSendingStrategy> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
-		return new RoundRobinStrategy(senders);
+		return new StrategyRoundRobin(senders);
 	}
 
 
 
-	public static ShardingStrategy sharding(final HashFunction<RpcMessageData> hashFunction,
+	public static StrategySharding sharding(final HashFunction<RpcMessageData> hashFunction,
 	                                                   RequestSendingStrategy ... senders) {
 		return sharding(hashFunction, asList(senders));
 	}
 
-	public static ShardingStrategy sharding(final HashFunction<RpcMessageData> hashFunction,
+	public static StrategySharding sharding(final HashFunction<RpcMessageData> hashFunction,
 	                                                   final List<RequestSendingStrategy> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
-		return new ShardingStrategy(hashFunction, senders);
+		return new StrategySharding(hashFunction, senders);
 	}
 
 
 
-	public static RendezvousHashingStrategy rendezvousHashing(final HashFunction<RpcMessageData> hashFunction) {
+	public static StrategyRendezvousHashing rendezvousHashing(final HashFunction<RpcMessageData> hashFunction) {
 		checkNotNull(hashFunction);
-		return new RendezvousHashingStrategy(hashFunction);
+		return new StrategyRendezvousHashing(hashFunction);
 	}
 
 
 
-	public static TypeDispatchingStrategy typeDispatching() {
-		return new TypeDispatchingStrategy();
+	public static StrategyTypeDispatching typeDispatching() {
+		return new StrategyTypeDispatching();
 	}
 
 

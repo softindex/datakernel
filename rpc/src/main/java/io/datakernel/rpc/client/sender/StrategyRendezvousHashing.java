@@ -18,7 +18,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
-public final class RendezvousHashingStrategy extends AbstractRequestSendingStrategy{
+public final class StrategyRendezvousHashing extends AbstractRequestSendingStrategy{
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
 	private static final BucketHashFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultBucketHashFunction();
 
@@ -27,23 +27,23 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 	private final BucketHashFunction bucketHashFunction;
 
-	RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+	StrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction) {
 		this(hashFunction, DEFAULT_BUCKET_HASH_FUNCTION);
 	}
 
-	RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
-	                                     BucketHashFunction bucketHashFunction) {
+	StrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	                          BucketHashFunction bucketHashFunction) {
 		this(hashFunction, bucketHashFunction, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT);
 	}
 
-	RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
-	                                  int minSubStrategiesForCreation) {
+	StrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	                          int minSubStrategiesForCreation) {
 		this(hashFunction, DEFAULT_BUCKET_HASH_FUNCTION, minSubStrategiesForCreation);
 	}
 
-	RendezvousHashingStrategy(HashFunction<RpcMessage.RpcMessageData> hashFunction,
-	                                  BucketHashFunction bucketHashFunction,
-	                                  int minSubStrategiesForCreation) {
+	StrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	                          BucketHashFunction bucketHashFunction,
+	                          int minSubStrategiesForCreation) {
 		this.keyToStrategy = new HashMap<>();
 		this.hashFunction = checkNotNull(hashFunction);
 		this.bucketHashFunction = checkNotNull(bucketHashFunction);
@@ -55,27 +55,27 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 	// and ensure that servers() result can't be applied in put() method as second argument
 	// because in this case we don't know how to choose one of them to send request
 
-	public RendezvousHashingStrategy put(Object key, RequestSendingStrategyToGroup strategy) {
+	public StrategyRendezvousHashing put(Object key, RequestSendingStrategyToGroup strategy) {
 		return putCommon(key, strategy);
 	}
 
-	public RendezvousHashingStrategy put(Object key, RendezvousHashingStrategy strategy) {
+	public StrategyRendezvousHashing put(Object key, StrategyRendezvousHashing strategy) {
 		return putCommon(key, strategy);
 	}
 
-	public RendezvousHashingStrategy put(Object key, SingleServerStrategy strategy) {
+	public StrategyRendezvousHashing put(Object key, StrategySingleServer strategy) {
 		return putCommon(key, strategy);
 	}
 
-	public RendezvousHashingStrategy put(Object key, ShardingStrategy strategy) {
+	public StrategyRendezvousHashing put(Object key, StrategySharding strategy) {
 		return putCommon(key, strategy);
 	}
 
-	public RendezvousHashingStrategy put(Object key, TypeDispatchingStrategy strategy) {
+	public StrategyRendezvousHashing put(Object key, StrategyTypeDispatching strategy) {
 		return putCommon(key, strategy);
 	}
 
-	private RendezvousHashingStrategy putCommon(Object key, RequestSendingStrategy strategy) {
+	private StrategyRendezvousHashing putCommon(Object key, RequestSendingStrategy strategy) {
 		checkNotNull(strategy);
 		keyToStrategy.put(key, strategy);
 		return this;

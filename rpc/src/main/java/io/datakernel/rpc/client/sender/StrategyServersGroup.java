@@ -8,11 +8,11 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class ServersGroupStrategy extends AbstractRequestSendingStrategy {
+public final class StrategyServersGroup extends AbstractRequestSendingStrategy {
 
 	private List<InetSocketAddress> addresses;
 
-	ServersGroupStrategy(List<InetSocketAddress> addresses) {
+	StrategyServersGroup(List<InetSocketAddress> addresses) {
 		this.addresses = addresses;
 	}
 
@@ -23,7 +23,7 @@ public final class ServersGroupStrategy extends AbstractRequestSendingStrategy {
 			RpcClientConnection connection = pool.get(address);
 			if (connection != null) {
 				senders.add(
-						Optional.<RequestSender>of(new SingleServerStrategy.RequestSenderToSingleServer(connection))
+						Optional.<RequestSender>of(new StrategySingleServer.RequestSenderToSingleServer(connection))
 				);
 			} else {
 				senders.add(Optional.<RequestSender>absent());

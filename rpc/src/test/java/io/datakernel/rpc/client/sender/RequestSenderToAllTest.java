@@ -32,11 +32,11 @@ public class RequestSenderToAllTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 
-		RequestSendingStrategy singleServerStrategy1 = new SingleServerStrategy(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new SingleServerStrategy(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new SingleServerStrategy(ADDRESS_3);
+		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
+		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
+		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy allAvailableStrategy =
-				new AllAvailableStrategy(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+				new StrategyAllAvailable(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -81,8 +81,8 @@ public class RequestSenderToAllTest {
 		RequestSender sender1 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender2 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender3 = new RequestSenderOnResultWithNullCaller();
-		AllAvailableStrategy.RequestSenderToAll senderToAll =
-				new AllAvailableStrategy.RequestSenderToAll(asList(sender1, sender2, sender3));
+		StrategyAllAvailable.RequestSenderToAll senderToAll =
+				new StrategyAllAvailable.RequestSenderToAll(asList(sender1, sender2, sender3));
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -113,8 +113,8 @@ public class RequestSenderToAllTest {
 		RequestSender sender1 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender2 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender3 = new RequestSenderOnResultWithValueCaller();
-		AllAvailableStrategy.RequestSenderToAll senderToAll =
-				new AllAvailableStrategy.RequestSenderToAll(asList(sender1, sender2, sender3));
+		StrategyAllAvailable.RequestSenderToAll senderToAll =
+				new StrategyAllAvailable.RequestSenderToAll(asList(sender1, sender2, sender3));
 
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
@@ -142,7 +142,7 @@ public class RequestSenderToAllTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		RequestSendingStrategy strategy = new AllAvailableStrategy(null);
+		RequestSendingStrategy strategy = new StrategyAllAvailable(null);
 	}
 
 	static final class RequestSenderOnResultWithNullCaller implements RequestSender {

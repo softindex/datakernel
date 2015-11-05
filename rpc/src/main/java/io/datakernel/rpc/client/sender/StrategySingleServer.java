@@ -12,11 +12,11 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-public final class SingleServerStrategy extends AbstractRequestSendingStrategy {
+public final class StrategySingleServer extends AbstractRequestSendingStrategy {
 
 	private final InetSocketAddress address;
 
-	public SingleServerStrategy(InetSocketAddress address) {
+	public StrategySingleServer(InetSocketAddress address) {
 		checkNotNull(address);
 		this.address = address;
 	}
