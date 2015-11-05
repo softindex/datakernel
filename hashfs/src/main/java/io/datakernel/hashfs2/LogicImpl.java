@@ -161,6 +161,7 @@ public final class LogicImpl implements Logic {
 	public void onDownloadComplete(String filePath) {
 		FileInfo info = files.get(filePath);
 		info.pendingOperationsCounter--;
+		onOperationFinished();
 	}
 
 	@Override
@@ -221,11 +222,12 @@ public final class LogicImpl implements Logic {
 				aliveServers.add(server);
 			}
 		}
+		aliveServers.add(myId);
 		callback.onResult(aliveServers);
 	}
 
 	@Override
-	public void onShowAliveResponse(Set<ServerInfo> result, long timestamp) {
+	public void onShowAliveResponse(long timestamp, Set<ServerInfo> result) {
 		for (ServerInfo server : servers) {
 			if (result.contains(server)) {
 				server.updateState(timestamp);
@@ -235,6 +237,14 @@ public final class LogicImpl implements Logic {
 			if (!servers.contains(server)) {
 				servers.add(server);
 				server.updateState(timestamp);
+			}
+		}
+		for (FileInfo info : files.values()) {
+			for (Iterator<ServerInfo> it = info.replicas.iterator(); it.hasNext(); ) {
+				ServerInfo server = it.next();
+				if (!result.contains(server)) {
+					it.remove();
+				}
 			}
 		}
 	}

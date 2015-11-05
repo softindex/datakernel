@@ -83,9 +83,16 @@ public class IntegrationSingleNodeTest {
 		Files.createDirectories(thisFolder);
 		Path thisA = thisFolder.resolve("a.txt");
 		Files.write(thisA, "Local a.txt".getBytes(UTF_8));
+		Path thisG = thisFolder.resolve("g.txt");
+		Files.write(thisG, "Local g.txt".getBytes(UTF_8));
+		Path d = serverStorage.resolve("d.txt");
+		Files.write(d, "Local d.txt".getBytes(UTF_8));
+		Path e = serverStorage.resolve("e.txt");
+		Files.write(e, "Local e.txt".getBytes(UTF_8));
+		Path f = serverStorage.resolve("f.txt");
+		Files.write(f, "Local f.txt".getBytes(UTF_8));
 
 		config = new Config();
-		config.setMinSafeReplicasQuantity(0);
 		config.setMaxReplicaQuantity(1);
 		config.setMaxRetryAttempts(1);
 	}
@@ -166,7 +173,6 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testFailedUpload() throws Exception {
-		// TODO
 		NioEventloop eventloop = new NioEventloop();
 		final ExecutorService executor = newCachedThreadPool();
 		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
@@ -176,7 +182,7 @@ public class IntegrationSingleNodeTest {
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				client.upload("non_existing_file", producer, new CompletionCallback() {
+				client.upload("non_existing_file.txt", producer, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						logger.info("Miracle happened!... or ... bug!?");
@@ -220,15 +226,8 @@ public class IntegrationSingleNodeTest {
 		eventloop.run();
 		executor.shutdownNow();
 
-		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("a.txt").toFile(), serverStorage.resolve("this/is/a.txt").toFile()));
-		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("b.txt").toFile(), serverStorage.resolve("this/is/b.txt").toFile()));
-		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("c.txt").toFile(), serverStorage.resolve("c.txt").toFile()));
+		assertFalse(Files.exists(serverStorage.resolve("non_existing_file.txt")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-	}
-
-	@Test
-	public void testMultipleUpload() throws IOException {
-		fail("Not yet implemented");
 	}
 
 	@Test
@@ -237,10 +236,13 @@ public class IntegrationSingleNodeTest {
 		final ExecutorService executor = newCachedThreadPool();
 		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
 		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
-		final StreamFileWriter consumerA = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("a_downloaded.txt"), true);
-		consumerA.setFlushCallback(new CompletionCallback() {
+		final StreamFileWriter consumerG = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("g_downloaded.txt"), true);
+		final StreamFileWriter consumerE = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("e_downloaded.txt"), true);
+		final StreamFileWriter consumerF = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("f_downloaded.txt"), true);
+		consumerE.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
+				logger.info("Flushed e");
 				server.stop(new CompletionCallback() {
 					@Override
 					public void onComplete() {
@@ -262,7 +264,9 @@ public class IntegrationSingleNodeTest {
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				client.download("this/a.txt", consumerA);
+				client.download("this/g.txt", consumerG);
+				client.download("e.txt", consumerE);
+				client.download("f.txt", consumerF);
 			}
 
 			@Override
@@ -274,18 +278,58 @@ public class IntegrationSingleNodeTest {
 		eventloop.run();
 		executor.shutdownNow();
 
-		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("a_downloaded.txt").toFile(), serverStorage.resolve("this/a.txt").toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("g_downloaded.txt").toFile(), serverStorage.resolve("this/g.txt").toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("e_downloaded.txt").toFile(), serverStorage.resolve("e.txt").toFile()));
+		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("f_downloaded.txt").toFile(), serverStorage.resolve("f.txt").toFile()));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testFailedDownload() throws IOException {
-		fail("Not yet implemented");
-	}
+		NioEventloop eventloop = new NioEventloop();
+		final ExecutorService executor = newCachedThreadPool();
+		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
+		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		final StreamFileWriter consumerA = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"), true);
+		consumerA.setFlushCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Can't flush the file");
+			}
 
-	@Test
-	public void testMultipleDownload() throws IOException {
-		fail("Not yet implemented");
+			@Override
+			public void onException(Exception e) {
+				server.stop(new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.info("Stopped");
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Can't stop ", e);
+					}
+				});
+				logger.error("Can't flush the file");
+			}
+		});
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.download("file_does_not_exist", consumerA);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Didn't manage to start the server", e);
+			}
+		});
+
+		eventloop.run();
+		executor.shutdownNow();
+
+		assertFalse(Files.exists(clientStorage.resolve("file_should_not exist.txt")));
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -334,7 +378,45 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testFailedDelete() throws IOException {
-		fail("Not yet implemented");
+		NioEventloop eventloop = new NioEventloop();
+		final ExecutorService executor = newCachedThreadPool();
+		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
+		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		server.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.deleteFile("not_exist.txt", new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.info("Impossible situation: deleted non existing file");
+						fail("Can't end here");
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Can't delete file ", e);
+						server.stop(new CompletionCallback() {
+							@Override
+							public void onComplete() {
+								logger.info("Stopped");
+							}
+
+							@Override
+							public void onException(Exception e) {
+								logger.error("Can't stop ", e);
+							}
+						});
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception exception) {
+
+			}
+		});
+		eventloop.run();
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -344,7 +426,7 @@ public class IntegrationSingleNodeTest {
 		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
 		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
 
-		final Set<String> expected = Sets.newHashSet("this/a.txt");
+		final Set<String> expected = Sets.newHashSet("this/a.txt", "this/g.txt", "e.txt", "f.txt", "d.txt");
 		final Set<String> actual = new HashSet<>();
 
 		server.start(new CompletionCallback() {

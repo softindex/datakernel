@@ -31,14 +31,14 @@ public class Config {
 	private int fsBufferSize = 256 * 1024;
 
 	// LOGIC
-	private long serverDeathTimeout = 50 * 1000;
+	private long serverDeathTimeout = 11 * 1000;
 	private int maxReplicaQuantity = 3;
 	private int minSafeReplicasQuantity = 1;
 	private long approveWaitTime = 10 * 1000;
 
 	// PROTOCOL
-	private int minChunkSize = 128 * 1024;
-	private int maxChunkSize = 128 * 512;
+	private int minChunkSize = 128 * 512;
+	private int maxChunkSize = 128 * 1024;
 	private int deserializerBufferSize = 10;
 	private int connectTimeout = 0;
 	private int serializerBufferSize = 256 * 1024;

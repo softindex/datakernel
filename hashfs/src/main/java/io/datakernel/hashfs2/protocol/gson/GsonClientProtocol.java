@@ -113,11 +113,9 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addHandler(HashFsResponseOk.class, new MessagingHandler<HashFsResponseOk, HashFsCommand>() {
 							@Override
 							public void onMessage(HashFsResponseOk item, Messaging<HashFsCommand> messaging) {
-								//TODO (arashev) Странно ведет себя:  если напрямую - все нормально работает, если через чанкер - выскакивает ексепшн внутри
-//								StreamByteChunker byteChunker = new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
-//								producer.streamTo(byteChunker.getInput());
-//								messaging.write(byteChunker.getOutput(), new CompletionCallback() {
-								messaging.write(producer, new CompletionCallback() {
+								StreamByteChunker byteChunker = new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
+								producer.streamTo(byteChunker.getInput());
+								messaging.write(byteChunker.getOutput(), new CompletionCallback() {
 									@Override
 									public void onComplete() {
 
@@ -183,7 +181,7 @@ public class GsonClientProtocol implements ClientProtocol {
 							public void onMessage(HashFsResponseOk item, Messaging<HashFsCommand> messaging) {
 								StreamProducer<ByteBuf> producer = messaging.read();
 								producer.streamTo(consumer);
-								messaging.shutdownWriter();
+								messaging.shutdown();
 								callback.onComplete();
 							}
 						})
@@ -192,6 +190,7 @@ public class GsonClientProtocol implements ClientProtocol {
 							public void onMessage(HashFsResponseError item, Messaging<HashFsCommand> messaging) {
 								Exception e = new Exception(item.msg);
 								callback.onException(e);
+								messaging.shutdown();
 							}
 						});
 				connection.register();

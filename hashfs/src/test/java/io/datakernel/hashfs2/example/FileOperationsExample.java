@@ -24,39 +24,85 @@ import io.datakernel.hashfs2.FsClient;
 import io.datakernel.hashfs2.ServerFactory;
 import io.datakernel.hashfs2.ServerInfo;
 import io.datakernel.stream.StreamProducer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.file.StreamFileReader.readFileFully;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
-public class FileUploadExample {
+public class FileOperationsExample {
 	public static void main(String[] args) {
+		final Logger logger = LoggerFactory.getLogger(FileOperationsExample.class);
+
 		NioEventloop eventloop = new NioEventloop();
+		ExecutorService executor = newCachedThreadPool();
+
 		ServerInfo server3 = new ServerInfo(3, new InetSocketAddress("127.0.0.1", 5573), 1);
 		ServerInfo server4 = new ServerInfo(4, new InetSocketAddress("127.0.0.1", 5574), 1);
 
 		final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(server3, server4));
 
 		FsClient client = ServerFactory.getClient(eventloop, bootstrap, Config.getDefaultConfig());
-		StreamProducer<ByteBuf> producer = readFileFully(eventloop, newCachedThreadPool(), 10 * 1024, Paths.get("./test/client_storage/rejected.txt"));
+		StreamProducer<ByteBuf> producer = readFileFully(eventloop, newCachedThreadPool(), 10 * 1024, Paths.get("./test/client_storage/ptt.txt"));
 
-		client.upload("test.txt", producer, new CompletionCallback() {
+		client.upload("ptt.txt", producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				System.out.println("Success");
+				logger.info("Successfully uploaded: c++.txt");
 			}
 
 			@Override
 			public void onException(Exception e) {
-				System.out.println("Failed");
+				logger.info("Failed to upload: c++.txt");
 			}
 		});
 
+//		client.listFiles(new ResultCallback<List<String>>() {
+//			@Override
+//			public void onResult(List<String> result) {
+//				logger.info("Received list of files on server: {}", result);
+//			}
+//
+//			@Override
+//			public void onException(Exception e) {
+//				logger.info("Can't get list of files on server");
+//			}
+//		});
+
+//		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, Paths.get("./test/client_storage/lang.txt"));
+//		consumer.setFlushCallback(new CompletionCallback() {
+//			@Override
+//			public void onComplete() {
+//				logger.info("Downloaded");
+//			}
+//
+//			@Override
+//			public void onException(Exception e) {
+//				logger.error("Failed to download", e);
+//			}
+//		});
+//		client.download("c++.txt", consumer);
+
+//		client.deleteFile("java.txt", new CompletionCallback() {
+//			@Override
+//			public void onComplete() {
+//				logger.info("Deleted: ptt.txt");
+//			}
+//
+//			@Override
+//			public void onException(Exception e) {
+//				logger.error("Can't delete: ptt.txt", e);
+//			}
+//		});
+
 		eventloop.run();
+		executor.shutdown();
 	}
 }

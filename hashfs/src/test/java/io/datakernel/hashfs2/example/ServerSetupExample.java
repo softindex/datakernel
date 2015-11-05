@@ -43,18 +43,11 @@ public class ServerSetupExample {
 
 		final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(server0, server1, server2, server3, server4));
 
-		for (final ServerInfo server : bootstrap) {
-			new Thread(new Runnable() {
-				@Override
-				public void run() {
-					NioEventloop eventloop = new NioEventloop();
-					server.updateState(eventloop.currentTimeMillis());
-					Path serverStorage = Paths.get("./test/server_storage_" + server.hashCode());
-					ServerFactory.getServer(eventloop, newCachedThreadPool(), serverStorage,
-							Config.getDefaultConfig(), server, bootstrap).start(ignoreCompletionCallback());
-					eventloop.run();
-				}
-			}).start();
-		}
+		NioEventloop eventloop = new NioEventloop();
+
+		Path serverStorage = Paths.get("./test/server_storage_" + server0.hashCode());
+		ServerFactory.getServer(eventloop, newCachedThreadPool(), serverStorage,
+				Config.getDefaultConfig(), server0, bootstrap).start(ignoreCompletionCallback());
+		eventloop.run();
 	}
 }

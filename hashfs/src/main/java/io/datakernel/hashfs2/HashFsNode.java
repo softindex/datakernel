@@ -25,10 +25,10 @@ import io.datakernel.hashfs2.protocol.ClientProtocol;
 import io.datakernel.hashfs2.protocol.ServerProtocol;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
@@ -208,8 +208,7 @@ class HashFsNode implements Commands, Server {
 			});
 		} else {
 			logger.warn("Refused download {}", filePath);
-			callback.onResult(ignoreCompletionCallback());
-			StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Can't download")).streamTo(consumer);
+			callback.onException(new Exception("Can't download"));
 		}
 	}
 
@@ -331,18 +330,38 @@ class HashFsNode implements Commands, Server {
 	@Override
 	public void updateServerMap(final Set<ServerInfo> bootstrap) {
 		logger.info("Updating alive servers map");
+
+		final Set<ServerInfo> possiblyDown = new HashSet<>();
+		final Set<ServerInfo> possiblyUp = new HashSet<>();
+
+		final int[] counter = {bootstrap.size()};
+
 		for (final ServerInfo server : bootstrap) {
 			clientProtocol.alive(server, new ResultCallback<Set<ServerInfo>>() {
 				@Override
 				public void onResult(Set<ServerInfo> result) {
-					logger.info("Received {} alive servers from {}", result.size(), server);
-					result.addAll(bootstrap);
-					logic.onShowAliveResponse(result, eventloop.currentTimeMillis());
+					logger.trace("Received {} alive servers from {}", result.size(), server);
+					possiblyUp.addAll(result);
+					counter[0]--;
+					if (counter[0] == 0) {
+						for (ServerInfo server : possiblyDown) {
+							possiblyUp.remove(server);
+						}
+						logic.onShowAliveResponse(eventloop.currentTimeMillis(), possiblyUp);
+					}
 				}
 
 				@Override
 				public void onException(Exception ignored) {
+					possiblyDown.add(server);
 					logger.warn("Server {} doesn't answer", server);
+					counter[0]--;
+					if (counter[0] == 0) {
+						for (ServerInfo server : possiblyDown) {
+							possiblyUp.remove(server);
+						}
+						logic.onShowAliveResponse(eventloop.currentTimeMillis(), possiblyUp);
+					}
 				}
 			});
 		}

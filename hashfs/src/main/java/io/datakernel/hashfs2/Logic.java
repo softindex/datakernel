@@ -56,7 +56,7 @@ public interface Logic extends NioService {
 
 	void onShowAliveRequest(long timestamp, ResultCallback<Set<ServerInfo>> result);
 
-	void onShowAliveResponse(Set<ServerInfo> result, long timestamp);
+	void onShowAliveResponse(long timestamp, Set<ServerInfo> result);
 
 	void onOfferRequest(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> result);
 

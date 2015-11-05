@@ -134,10 +134,10 @@ public class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> im
 				final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 				server.download(item.filePath, forwarder.getInput(), new ResultCallback<CompletionCallback>() {
 					@Override
-					public void onResult(CompletionCallback callback) {
-						// TODO (arashev) check possible bug: will it send exception "through the internets"?
+					public void onResult(final CompletionCallback callback) {
 						messaging.sendMessage(new HashFsResponseOk());
 						messaging.write(forwarder.getOutput(), callback);
+						messaging.shutdown();
 					}
 
 					@Override
