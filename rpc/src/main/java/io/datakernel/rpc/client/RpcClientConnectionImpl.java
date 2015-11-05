@@ -99,7 +99,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	private boolean monitoring;
 
 	public RpcClientConnectionImpl(NioEventloop eventloop, SocketChannel socketChannel, int timeoutPrecision, RpcMessageSerializer serializer,
-	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
+	                               RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;
 		this.statusListener = statusListener;
 		this.timeoutPrecision = timeoutPrecision;

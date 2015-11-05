@@ -26,7 +26,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 
-public final class StrategyAllAvailable extends RequestSendingStrategyToGroup implements SingleSenderStrategy{
+public final class StrategyAllAvailable extends RequestSendingStrategyToGroup implements SingleSenderStrategy {
 
 	public StrategyAllAvailable(List<RequestSendingStrategy> subStrategies) {
 		super(subStrategies);

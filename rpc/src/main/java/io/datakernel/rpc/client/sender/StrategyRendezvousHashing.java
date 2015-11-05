@@ -31,7 +31,6 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 public final class StrategyRendezvousHashing extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
@@ -66,14 +65,11 @@ public final class StrategyRendezvousHashing extends AbstractRequestSendingStrat
 		this.minSubStrategiesForCreation = minSubStrategiesForCreation;
 	}
 
-
 	public StrategyRendezvousHashing put(Object key, SingleSenderStrategy strategy) {
 		checkNotNull(strategy);
 		keyToStrategy.put(key, strategy);
 		return this;
 	}
-
-
 
 	@Override
 	protected List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
@@ -92,7 +88,7 @@ public final class StrategyRendezvousHashing extends AbstractRequestSendingStrat
 	}
 
 	private static Map<Object, Optional<RequestSender>> createKeyToSender(RpcClientConnectionPool pool,
-			Map<Object, SingleSenderStrategy> keyToStrategy) {
+	                                                                      Map<Object, SingleSenderStrategy> keyToStrategy) {
 
 		assert keyToStrategy != null;
 
@@ -115,7 +111,6 @@ public final class StrategyRendezvousHashing extends AbstractRequestSendingStrat
 		return counter;
 	}
 
-
 	@VisibleForTesting
 	final static class RequestSenderRendezvousHashing implements RequestSender {
 
@@ -124,7 +119,6 @@ public final class StrategyRendezvousHashing extends AbstractRequestSendingStrat
 
 		private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 		final RendezvousHashBucket<RequestSender> hashBucket;
-
 
 		public RequestSenderRendezvousHashing(Map<Object, Optional<RequestSender>> keyToSender,
 		                                      HashFunction<RpcMessage.RpcMessageData> hashFunction,

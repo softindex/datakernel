@@ -71,7 +71,7 @@ public final class StrategyTypeDispatching extends AbstractRequestSendingStrateg
 	}
 
 	private StrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                                SingleSenderStrategy strategy, Importance importance) {
+	                                   SingleSenderStrategy strategy, Importance importance) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
 		checkNotNull(importance);
@@ -103,7 +103,6 @@ public final class StrategyTypeDispatching extends AbstractRequestSendingStrateg
 		}
 	}
 
-
 	final static class RequestSenderTypeDispatcher implements RequestSender {
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No active senders available");
@@ -120,7 +119,8 @@ public final class StrategyTypeDispatching extends AbstractRequestSendingStrateg
 		}
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request,int timeout, ResultCallback<T> callback) {
+		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+		                                                              ResultCallback<T> callback) {
 			checkNotNull(callback);
 
 			RequestSender specifiedSender = dataTypeToSender.get(request.getClass());

@@ -415,11 +415,9 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		return requestSender;
 	}
 
-
 	private static final class RequestSenderError implements RequestSender {
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No senders available");
-
 
 		@Override
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request,
@@ -427,8 +425,6 @@ public final class RpcClient implements NioService, RpcClientMBean {
 			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 	}
-
-
 
 	// JMX
 	public void registerMBean(MBeanServer mbeanServer, String domain, String serviceName, String clientName) {

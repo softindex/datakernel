@@ -21,14 +21,14 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
-import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
-
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.flatten;
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.replaceAbsentToNull;
+import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import static java.util.Arrays.asList;
 
 public final class StrategySharding extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
@@ -57,7 +57,7 @@ public final class StrategySharding extends AbstractRequestSendingStrategy imple
 
 		List<List<Optional<RequestSender>>> listOfListOfSenders = new ArrayList<>();
 		for (RequestSendingStrategy subStrategy : subStrategies) {
-			AbstractRequestSendingStrategy abstractSubSendingStrategy = (AbstractRequestSendingStrategy)subStrategy;
+			AbstractRequestSendingStrategy abstractSubSendingStrategy = (AbstractRequestSendingStrategy) subStrategy;
 			listOfListOfSenders.add(abstractSubSendingStrategy.createAsList(pool));
 		}
 		return flatten(listOfListOfSenders);
@@ -76,10 +76,9 @@ public final class StrategySharding extends AbstractRequestSendingStrategy imple
 			this.subSenders = senders.toArray(new RequestSender[senders.size()]);
 		}
 
-
 		@Override
 		public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout,
-		                                                              final ResultCallback<T> callback) {
+		                                                   final ResultCallback<T> callback) {
 			checkNotNull(callback);
 
 			RequestSender sender = chooseSender(request);

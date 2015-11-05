@@ -50,7 +50,6 @@ public final class StrategyRoundRobin extends RequestSendingStrategyToGroup impl
 			this.nextSender = 0;
 		}
 
-
 		@Override
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
 			checkNotNull(callback);

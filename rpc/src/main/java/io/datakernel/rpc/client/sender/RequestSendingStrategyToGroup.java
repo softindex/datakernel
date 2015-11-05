@@ -22,11 +22,9 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
-
-
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
 import static java.util.Arrays.asList;
 
 public abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrategy {
@@ -68,7 +66,7 @@ public abstract class RequestSendingStrategyToGroup extends AbstractRequestSendi
 
 		List<List<Optional<RequestSender>>> listOfListOfSenders = new ArrayList<>();
 		for (RequestSendingStrategy subStrategy : subStrategies) {
-			AbstractRequestSendingStrategy abstractSubSendingStrategy = (AbstractRequestSendingStrategy)subStrategy;
+			AbstractRequestSendingStrategy abstractSubSendingStrategy = (AbstractRequestSendingStrategy) subStrategy;
 			listOfListOfSenders.add(abstractSubSendingStrategy.createAsList(pool));
 		}
 		return flatten(listOfListOfSenders);
