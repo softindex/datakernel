@@ -433,8 +433,8 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		callback.onComplete();
 	}
 
-	public void closeFuture(SimpleCompletionFuture callback) {
-		AsyncCallbacks.stopFuture(this, callback);
+	public CompletionCallbackFuture closeFuture() {
+		return AsyncCallbacks.stopFuture(this);
 	}
 
 	// JMX

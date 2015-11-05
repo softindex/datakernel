@@ -898,18 +898,20 @@ public final class AsyncCallbacks {
 	 *
 	 * @param nioServer the NioServer which it sets listen.
 	 */
-	public static void listenFuture(final NioServer nioServer, final SimpleCompletionFuture callback) {
+	public static CompletionCallbackFuture listenFuture(final NioServer nioServer) {
+		final CompletionCallbackFuture future = new CompletionCallbackFuture();
 		nioServer.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
 				try {
 					nioServer.listen();
-					callback.onSuccess();
+					future.onComplete();
 				} catch (IOException e) {
-					callback.onError(e);
+					future.onException(e);
 				}
 			}
 		});
+		return future;
 	}
 
 	/**
@@ -917,14 +919,16 @@ public final class AsyncCallbacks {
 	 *
 	 * @param nioServer the NioServer which it will close.
 	 */
-	public static void closeFuture(final NioServer nioServer, final SimpleCompletionFuture callback) {
+	public static CompletionCallbackFuture closeFuture(final NioServer nioServer) {
+		final CompletionCallbackFuture future = new CompletionCallbackFuture();
 		nioServer.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
 				nioServer.close();
-				callback.onSuccess();
+				future.onComplete();
 			}
 		});
+		return future;
 	}
 
 	/**
@@ -932,23 +936,15 @@ public final class AsyncCallbacks {
 	 *
 	 * @param nioService the NioService which will be ran.
 	 */
-	public static void startFuture(final NioService nioService, final SimpleCompletionFuture callback) {
+	public static CompletionCallbackFuture startFuture(final NioService nioService) {
+		final CompletionCallbackFuture future = new CompletionCallbackFuture();
 		nioService.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
-				nioService.start(new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						callback.onSuccess();
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						callback.onError(exception);
-					}
-				});
+				nioService.start(future);
 			}
 		});
+		return future;
 	}
 
 	/**
@@ -956,23 +952,15 @@ public final class AsyncCallbacks {
 	 *
 	 * @param nioService the NioService which will be stopped.
 	 */
-	public static void stopFuture(final NioService nioService, final SimpleCompletionFuture callback) {
+	public static CompletionCallbackFuture stopFuture(final NioService nioService) {
+		final CompletionCallbackFuture future = new CompletionCallbackFuture();
 		nioService.getNioEventloop().postConcurrently(new Runnable() {
 			@Override
 			public void run() {
-				nioService.stop(new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						callback.onSuccess();
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						callback.onError(exception);
-					}
-				});
+				nioService.stop(future);
 			}
 		});
+		return future;
 	}
 
 	/**
