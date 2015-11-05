@@ -51,36 +51,6 @@ public final class StrategyRendezvousHashing extends AbstractRequestSendingStrat
 	}
 
 
-//	// this group of similar methods was created to enable type checking
-//	// and ensure that servers() result can't be applied in put() method as second argument
-//	// because in this case we don't know how to choose one of them to send request
-//
-//	public StrategyRendezvousHashing put(Object key, RequestSendingStrategyToGroup strategy) {
-//		return putCommon(key, strategy);
-//	}
-//
-//	public StrategyRendezvousHashing put(Object key, StrategyRendezvousHashing strategy) {
-//		return putCommon(key, strategy);
-//	}
-//
-//	public StrategyRendezvousHashing put(Object key, StrategySingleServer strategy) {
-//		return putCommon(key, strategy);
-//	}
-//
-//	public StrategyRendezvousHashing put(Object key, StrategySharding strategy) {
-//		return putCommon(key, strategy);
-//	}
-//
-//	public StrategyRendezvousHashing put(Object key, StrategyTypeDispatching strategy) {
-//		return putCommon(key, strategy);
-//	}
-//
-//	private StrategyRendezvousHashing putCommon(Object key, RequestSendingStrategy strategy) {
-//		checkNotNull(strategy);
-//		keyToStrategy.put(key, strategy);
-//		return this;
-//	}
-
 	public StrategyRendezvousHashing put(Object key, SingleSenderStrategy strategy) {
 		checkNotNull(strategy);
 		keyToStrategy.put(key, strategy);
