@@ -12,7 +12,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-public final class StrategySingleServer extends AbstractRequestSendingStrategy {
+public final class StrategySingleServer extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
 
 	private final InetSocketAddress address;
 

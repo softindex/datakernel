@@ -18,12 +18,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
-public final class StrategyRendezvousHashing extends AbstractRequestSendingStrategy{
+public final class StrategyRendezvousHashing extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
 	private static final BucketHashFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultBucketHashFunction();
 
 	private final int minSubStrategiesForCreation;
-	private final Map<Object, RequestSendingStrategy> keyToStrategy;
+	private final Map<Object, SingleSenderStrategy> keyToStrategy;
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 	private final BucketHashFunction bucketHashFunction;
 
@@ -51,36 +51,41 @@ public final class StrategyRendezvousHashing extends AbstractRequestSendingStrat
 	}
 
 
-	// this group of similar methods was created to enable type checking
-	// and ensure that servers() result can't be applied in put() method as second argument
-	// because in this case we don't know how to choose one of them to send request
+//	// this group of similar methods was created to enable type checking
+//	// and ensure that servers() result can't be applied in put() method as second argument
+//	// because in this case we don't know how to choose one of them to send request
+//
+//	public StrategyRendezvousHashing put(Object key, RequestSendingStrategyToGroup strategy) {
+//		return putCommon(key, strategy);
+//	}
+//
+//	public StrategyRendezvousHashing put(Object key, StrategyRendezvousHashing strategy) {
+//		return putCommon(key, strategy);
+//	}
+//
+//	public StrategyRendezvousHashing put(Object key, StrategySingleServer strategy) {
+//		return putCommon(key, strategy);
+//	}
+//
+//	public StrategyRendezvousHashing put(Object key, StrategySharding strategy) {
+//		return putCommon(key, strategy);
+//	}
+//
+//	public StrategyRendezvousHashing put(Object key, StrategyTypeDispatching strategy) {
+//		return putCommon(key, strategy);
+//	}
+//
+//	private StrategyRendezvousHashing putCommon(Object key, RequestSendingStrategy strategy) {
+//		checkNotNull(strategy);
+//		keyToStrategy.put(key, strategy);
+//		return this;
+//	}
 
-	public StrategyRendezvousHashing put(Object key, RequestSendingStrategyToGroup strategy) {
-		return putCommon(key, strategy);
-	}
-
-	public StrategyRendezvousHashing put(Object key, StrategyRendezvousHashing strategy) {
-		return putCommon(key, strategy);
-	}
-
-	public StrategyRendezvousHashing put(Object key, StrategySingleServer strategy) {
-		return putCommon(key, strategy);
-	}
-
-	public StrategyRendezvousHashing put(Object key, StrategySharding strategy) {
-		return putCommon(key, strategy);
-	}
-
-	public StrategyRendezvousHashing put(Object key, StrategyTypeDispatching strategy) {
-		return putCommon(key, strategy);
-	}
-
-	private StrategyRendezvousHashing putCommon(Object key, RequestSendingStrategy strategy) {
+	public StrategyRendezvousHashing put(Object key, SingleSenderStrategy strategy) {
 		checkNotNull(strategy);
 		keyToStrategy.put(key, strategy);
 		return this;
 	}
-
 
 
 
@@ -101,13 +106,13 @@ public final class StrategyRendezvousHashing extends AbstractRequestSendingStrat
 	}
 
 	private static Map<Object, Optional<RequestSender>> createKeyToSender(RpcClientConnectionPool pool,
-			Map<Object, RequestSendingStrategy> keyToStrategy) {
+			Map<Object, SingleSenderStrategy> keyToStrategy) {
 
 		assert keyToStrategy != null;
 
 		Map<Object, Optional<RequestSender>> keyToSender = new HashMap<>();
 		for (Object key : keyToStrategy.keySet()) {
-			RequestSendingStrategy strategy = keyToStrategy.get(key);
+			SingleSenderStrategy strategy = keyToStrategy.get(key);
 			Optional<RequestSender> sender = strategy.create(pool);
 			keyToSender.put(key, sender);
 		}

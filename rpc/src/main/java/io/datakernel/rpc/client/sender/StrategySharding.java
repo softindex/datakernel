@@ -15,7 +15,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-public final class StrategySharding extends AbstractRequestSendingStrategy {
+public final class StrategySharding extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
 	private final List<RequestSendingStrategy> subStrategies;
 	private final HashFunction<RpcMessageData> hashFunction;
 
