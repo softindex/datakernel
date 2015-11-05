@@ -698,4 +698,29 @@ public class ExpressionTest {
 
 		assertEquals(testClass1, testClass2);
 	}
+
+	public interface TestCompare {
+		boolean compareObjectLE(Integer i1, Integer i2);
+		boolean comparePrimitiveLE(int i1, int i2);
+		boolean compareObjectEQ(Integer i1, Integer i2);
+		boolean compareObjectNE(Integer i1, Integer i2);
+
+	}
+
+	@org.junit.Test
+	public void testCompare() throws IllegalAccessException, InstantiationException {
+		DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		Class<TestCompare> test1 = new AsmBuilder<>(definingClassLoader, TestCompare.class)
+				.method("compareObjectLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
+				.method("comparePrimitiveLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
+				.method("compareObjectEQ", cmp(PredicateDefCmp.Operation.EQ, arg(0), arg(1)))
+				.method("compareObjectNE", cmp(PredicateDefCmp.Operation.NE, arg(0), arg(1)))
+				.defineClass();
+
+		TestCompare testCompare = test1.newInstance();
+		assertTrue(testCompare.compareObjectLE(5, 5));
+		assertTrue(testCompare.comparePrimitiveLE(5, 6));
+		assertTrue(testCompare.compareObjectEQ(5, 5));
+		assertTrue(testCompare.compareObjectNE(5, -5));
+	}
 }

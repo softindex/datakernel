@@ -22,7 +22,6 @@ import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
@@ -82,9 +81,7 @@ public final class CumulativeBenchmark {
 	private void run() throws Exception {
 		printBenchmarkInfo();
 
-		SimpleCompletionFuture startServiceCallback = new SimpleCompletionFuture();
-		serverRunner.startFuture(startServiceCallback);
-		startServiceCallback.await();
+		serverRunner.startFuture().get();
 
 		try {
 			final CompletionCallback finishCallback = new CompletionCallback() {
@@ -117,9 +114,7 @@ public final class CumulativeBenchmark {
 			eventloop.run();
 
 		} finally {
-			SimpleCompletionFuture callbackStop = new SimpleCompletionFuture();
-			serverRunner.stopFuture(callbackStop);
-			callbackStop.await();
+			serverRunner.stopFuture().get();
 		}
 	}
 

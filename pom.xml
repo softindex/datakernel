@@ -6,19 +6,18 @@
 
     <groupId>io.datakernel</groupId>
     <artifactId>datakernel</artifactId>
-    <version>1.1.2</version>
+    <version>1.2.1</version>
     <packaging>pom</packaging>
 
     <name>DataKernel</name>
     <description>
-        Java components for building extremely fast and scalable applications with asynchronous I/O,
+        Java components for building high-performance and scalable applications with asynchronous I/O,
         ranging from standalone applications with high-performance I/O, to cluster-wide solutions.
     </description>
     <url>http://datakernel.io/</url>
 
     <properties>
-        <version>1.1.2</version>
-        <version-snapshot>1.1.2-SNAPSHOT</version-snapshot>
+        <version>1.2.1</version>
     </properties>
 
     <modules>
@@ -94,6 +93,11 @@
                 <version>1.10.2</version>
             </dependency>
             <dependency>
+                <groupId>org.openjdk.jmh</groupId>
+                <artifactId>jmh-generator-annprocess</artifactId>
+                <version>1.10.5</version>
+            </dependency>
+            <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>18.0</version>
@@ -143,10 +147,22 @@
                 <artifactId>HikariCP</artifactId>
                 <version>2.3.8</version>
             </dependency>
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+                <version>5.1.36</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <build>
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.wagon</groupId>
+                <artifactId>wagon-webdav-jackrabbit</artifactId>
+                <version>2.10</version>
+            </extension>
+        </extensions>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

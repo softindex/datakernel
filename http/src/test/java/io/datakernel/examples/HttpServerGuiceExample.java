@@ -18,7 +18,6 @@ package io.datakernel.examples;
 
 import com.google.inject.*;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
@@ -125,17 +124,13 @@ public class HttpServerGuiceExample {
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class,
 				PrimaryThread.class));
 		try {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			primaryNioEventloopRunner.startFuture(callback);
-			callback.await();
+			primaryNioEventloopRunner.startFuture().get();
 
 			System.out.format("Server started at http://localhost:%d/, press 'enter' to shut it down.", PORT);
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			primaryNioEventloopRunner.stopFuture(callback);
-			callback.await();
+			primaryNioEventloopRunner.stopFuture().get();
 		}
 	}
 }

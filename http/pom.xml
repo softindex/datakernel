@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>1.1.2</version>
+        <version>1.2.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -19,6 +19,18 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>eventloop</artifactId>
+            <version>${version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>guice</artifactId>
+            <version>${version}</version>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <scope>test</scope>
@@ -28,26 +40,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>eventloop</artifactId>
-            <version>1.1.2</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>guice</artifactId>
-            <version>1.1.2</version>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
             <groupId>org.openjdk.jmh</groupId>
             <artifactId>jmh-core</artifactId>
-            <version>1.10.5</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.openjdk.jmh</groupId>
             <artifactId>jmh-generator-annprocess</artifactId>
-            <version>1.10.5</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

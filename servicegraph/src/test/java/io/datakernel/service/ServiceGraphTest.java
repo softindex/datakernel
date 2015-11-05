@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.SimpleCompletionFuture;
 import org.junit.Test;
 
 public class ServiceGraphTest {
@@ -35,15 +34,11 @@ public class ServiceGraphTest {
 		graph.add(new ServiceGraph.Node("t2", ConcurrentServices.immediateService()), new ServiceGraph.Node("t1", null));
 
 		try {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			graph.startFuture(callback);
-			callback.await();
+			graph.startFuture().get();
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			graph.stopFuture(callback);
-			callback.await();
+			graph.stopFuture().get();
 		}
 	}
 

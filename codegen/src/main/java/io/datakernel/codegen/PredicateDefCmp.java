@@ -22,10 +22,10 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import static io.datakernel.codegen.PredicateDefCmp.Operation.EQ;
-import static io.datakernel.codegen.PredicateDefCmp.Operation.NE;
+import static io.datakernel.codegen.PredicateDefCmp.Operation.*;
 import static io.datakernel.codegen.Utils.isPrimitiveType;
 import static org.objectweb.asm.Type.BOOLEAN_TYPE;
+import static org.objectweb.asm.Type.INT_TYPE;
 
 /**
  * Defines methods for comparing functions
@@ -52,7 +52,7 @@ public final class PredicateDefCmp implements PredicateDef {
 		}
 
 		public static Operation operation(String symbol) {
-			for (Operation operation : Operation.values()) {
+			for (Operation operation : values()) {
 				if (operation.symbol.equals(symbol)) {
 					return operation;
 				}
@@ -83,12 +83,25 @@ public final class PredicateDefCmp implements PredicateDef {
 		left.load(ctx);
 		right.load(ctx);
 
-		if ((operation == EQ || operation == NE) && !isPrimitiveType(leftFieldType)) {
-			g.invokeVirtual(leftFieldType, new Method("equals", BOOLEAN_TYPE, new Type[]{Type.getType(Object.class)}));
-			g.push(operation == EQ);
-			g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelTrue);
-		} else {
+		if (isPrimitiveType(leftFieldType)) {
 			g.ifCmp(leftFieldType, operation.opCode, labelTrue);
+		} else {
+			if (operation == EQ || operation == NE) {
+				g.invokeVirtual(leftFieldType, new Method("equals", BOOLEAN_TYPE, new Type[]{Type.getType(Object.class)}));
+				g.push(operation == EQ);
+				g.ifCmp(BOOLEAN_TYPE, GeneratorAdapter.EQ, labelTrue);
+			} else {
+				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
+				if (operation == LT) {
+					g.ifZCmp(GeneratorAdapter.LT, labelTrue);
+				} else if (operation == GT) {
+					g.ifZCmp(GeneratorAdapter.GT, labelTrue);
+				} else if (operation == LE) {
+					g.ifZCmp(GeneratorAdapter.LE, labelTrue);
+				} else if (operation == GE) {
+					g.ifZCmp(GeneratorAdapter.GE, labelTrue);
+				}
+			}
 		}
 
 		g.push(false);
