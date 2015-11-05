@@ -20,7 +20,6 @@ public class RequestSenderStub implements RequestSender {
 		++sendRequestCalls;
 	}
 
-
 	public int getId() {
 		return id;
 	}
@@ -31,7 +30,7 @@ public class RequestSenderStub implements RequestSender {
 
 	@Override
 	public boolean equals(Object obj) {
-		return ((RequestSenderStub)obj).getId() == id;
+		return ((RequestSenderStub) obj).getId() == id;
 	}
 
 	@Override

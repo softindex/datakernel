@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class RequestSenderToAllTest {
+public class StrategyAllAvailableTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -27,28 +27,20 @@ public class RequestSenderToAllTest {
 	@Test
 	public void itShouldSendRequestToAllAvailableSenders() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-
 		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
 		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
 		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy allAvailableStrategy =
 				new StrategyAllAvailable(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
-
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
-
 		int callsAmountIterationOne = 10;
 		int callsAmountIterationTwo = 25;
-
 		RequestSender senderToAll;
-
-
-
 
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
@@ -57,16 +49,12 @@ public class RequestSenderToAllTest {
 		for (int i = 0; i < callsAmountIterationOne; i++) {
 			senderToAll.sendRequest(data, timeout, callback);
 		}
-
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
 		senderToAll = allAvailableStrategy.create(pool).get();
 		for (int i = 0; i < callsAmountIterationTwo; i++) {
 			senderToAll.sendRequest(data, timeout, callback);
 		}
-
-
-
 
 		assertEquals(callsAmountIterationOne, connection1.getCallsAmount());
 		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection2.getCallsAmount());
@@ -75,15 +63,12 @@ public class RequestSenderToAllTest {
 
 	@Test
 	public void itShouldCallOnResultWithNullIfAllSendersReturnedNull() {
-
 		final AtomicInteger onResultWithNullWasCalledTimes = new AtomicInteger(0);
-
 		RequestSender sender1 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender2 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender3 = new RequestSenderOnResultWithNullCaller();
 		StrategyAllAvailable.RequestSenderToAll senderToAll =
 				new StrategyAllAvailable.RequestSenderToAll(asList(sender1, sender2, sender3));
-
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallback<RpcMessageDataStub> callback = new ResultCallback<RpcMessageDataStub>() {
@@ -109,13 +94,11 @@ public class RequestSenderToAllTest {
 
 		final AtomicInteger onResultWithNullWasCalledTimes = new AtomicInteger(0);
 		final AtomicInteger onResultWithValueWasCalledTimes = new AtomicInteger(0);
-
 		RequestSender sender1 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender2 = new RequestSenderOnResultWithNullCaller();
 		RequestSender sender3 = new RequestSenderOnResultWithValueCaller();
 		StrategyAllAvailable.RequestSenderToAll senderToAll =
 				new StrategyAllAvailable.RequestSenderToAll(asList(sender1, sender2, sender3));
-
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallback<RpcMessageDataStub> callback = new ResultCallback<RpcMessageDataStub>() {
@@ -157,7 +140,7 @@ public class RequestSenderToAllTest {
 
 		@Override
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
-			callback.onResult((T)new RpcMessageDataStub());
+			callback.onResult((T) new RpcMessageDataStub());
 		}
 	}
 }

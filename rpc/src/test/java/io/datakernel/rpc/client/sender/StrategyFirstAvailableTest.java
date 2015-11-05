@@ -11,11 +11,9 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
-public class RequestSenderToFirstTest {
+public class StrategyFirstAvailableTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -51,7 +49,6 @@ public class RequestSenderToFirstTest {
 		RequestSendingStrategy firstAvailableStrategy =
 				new StrategyFirstAvailable(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
-
 		assertFalse(singleServerStrategy1.create(pool).isPresent());
 		assertFalse(singleServerStrategy2.create(pool).isPresent());
 		assertFalse(singleServerStrategy3.create(pool).isPresent());
@@ -71,30 +68,21 @@ public class RequestSenderToFirstTest {
 	@Test
 	public void itShouldSendRequestToFirstAvailableSubSender() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-
 		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
 		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
 		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy firstAvailableStrategy =
 				new StrategyFirstAvailable(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
-
 		RequestSender senderToFirst;
-
-
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
-
 		int callsToSender1 = 10;
 		int callsToSender2 = 25;
 		int callsToSender3 = 32;
-
-
-
 
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
@@ -103,22 +91,18 @@ public class RequestSenderToFirstTest {
 		for (int i = 0; i < callsToSender1; i++) {
 			senderToFirst.sendRequest(data, timeout, callback);
 		}
-
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
 		senderToFirst = firstAvailableStrategy.create(pool).get();
 		for (int i = 0; i < callsToSender2; i++) {
 			senderToFirst.sendRequest(data, timeout, callback);
 		}
-
 		pool.remove(ADDRESS_2);
 		// we should recreate sender after changing in pool
 		senderToFirst = firstAvailableStrategy.create(pool).get();
 		for (int i = 0; i < callsToSender3; i++) {
 			senderToFirst.sendRequest(data, timeout, callback);
 		}
-
-
 
 		assertEquals(callsToSender1, connection1.getCallsAmount());
 		assertEquals(callsToSender2, connection2.getCallsAmount());

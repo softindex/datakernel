@@ -14,11 +14,9 @@ import java.util.Map;
 import static io.datakernel.rpc.client.sender.StrategyRendezvousHashing.DefaultBucketHashFunction;
 import static io.datakernel.rpc.client.sender.StrategyRendezvousHashing.RendezvousHashBucket;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
-public class RequestSenderRendezvousHashingTest {
+public class StrategyRendezvousHashingTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -31,17 +29,13 @@ public class RequestSenderRendezvousHashingTest {
 	@Test
 	public void itShouldDistributeCallsBetweenActiveSenders() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-
 		int key1 = 1;
 		int key2 = 2;
 		int key3 = 3;
-
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-
 		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
 		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
 		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
@@ -50,15 +44,10 @@ public class RequestSenderRendezvousHashingTest {
 						.put(key1, strategySingleServer1)
 						.put(key2, strategySingleServer2)
 						.put(key3, strategySingleServer3);
-
 		RequestSender rendezvousSender;
-
 		int callsPerLoop = 10000;
-
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
-
-
 
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
@@ -67,32 +56,21 @@ public class RequestSenderRendezvousHashingTest {
 		for (int i = 0; i < callsPerLoop; i++) {
 			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
-
-
-
 		pool.remove(ADDRESS_1);
 		rendezvousSender = rendezvousHashingStrategy.create(pool).get();
 		for (int i = 0; i < callsPerLoop; i++) {
 			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
-
-
-
 		pool.remove(ADDRESS_3);
 		rendezvousSender = rendezvousHashingStrategy.create(pool).get();
 		for (int i = 0; i < callsPerLoop; i++) {
 			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
 
-
-
-
 		int expectedCallsOfConnection1 = callsPerLoop / 3;
 		int expectedCallsOfConnection2 = (callsPerLoop / 3) + (callsPerLoop / 2) + callsPerLoop;
 		int expectedCallsOfConnection3 = (callsPerLoop / 3) + (callsPerLoop / 2);
-
 		double delta = callsPerLoop / 20.0;
-
 		assertEquals(expectedCallsOfConnection1, connection1.getCallsAmount(), delta);
 		assertEquals(expectedCallsOfConnection2, connection2.getCallsAmount(), delta);
 		assertEquals(expectedCallsOfConnection3, connection3.getCallsAmount(), delta);
@@ -102,15 +80,11 @@ public class RequestSenderRendezvousHashingTest {
 	@Test
 	public void itShouldBeCreatedWhenThereIsAtLeastOneActiveSubSender() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-
 		int key1 = 1;
 		int key2 = 2;
 		int key3 = 3;
-
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-
 		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
 		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
 		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
@@ -120,10 +94,8 @@ public class RequestSenderRendezvousHashingTest {
 						.put(key2, strategySingleServer2)
 						.put(key3, strategySingleServer3);
 
-
 		// server3 is active
 		pool.add(ADDRESS_3, connection3);
-
 
 		assertTrue(rendezvousHashingStrategy.create(pool).isPresent());
 	}
@@ -131,13 +103,10 @@ public class RequestSenderRendezvousHashingTest {
 	@Test
 	public void itShouldNotBeCreatedWhenThereIsNoActiveSubSenders() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-
 		int key1 = 1;
 		int key2 = 2;
 		int key3 = 3;
-
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-
 		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
 		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
 		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
@@ -147,9 +116,7 @@ public class RequestSenderRendezvousHashingTest {
 						.put(key2, strategySingleServer2)
 						.put(key3, strategySingleServer3);
 
-
 		// no connections were added to pool, so there are no active servers
-
 
 		assertFalse(rendezvousHashingStrategy.create(pool).isPresent());
 	}
@@ -178,13 +145,11 @@ public class RequestSenderRendezvousHashingTest {
 		}
 		RendezvousHashBucket hashBucket;
 
-
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		RequestSender[] baseBucket = new RequestSender[DEFAULT_BUCKET_CAPACITY];
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			baseBucket[i] = hashBucket.chooseSender(i);
 		}
-
 
 		int key1 = 1;
 		RequestSender sender1 = keyToSender.get(key1).get();
@@ -196,7 +161,6 @@ public class RequestSenderRendezvousHashingTest {
 			else
 				assertFalse(hashBucket.chooseSender(i).equals(sender1));
 		}
-
 
 		int key2 = 2;
 		RequestSender sender2 = keyToSender.get(key2).get();
@@ -210,7 +174,6 @@ public class RequestSenderRendezvousHashingTest {
 			assertFalse(hashBucket.chooseSender(i).equals(sender2));
 		}
 
-
 		keyToSender.put(key1, Optional.<RequestSender>of(new RequestSenderStub(key1)));
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
@@ -219,7 +182,6 @@ public class RequestSenderRendezvousHashingTest {
 			else
 				assertFalse(hashBucket.chooseSender(i).equals(sender2));
 		}
-
 
 		keyToSender.put(key2, Optional.<RequestSender>of(new RequestSenderStub(key2)));
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);

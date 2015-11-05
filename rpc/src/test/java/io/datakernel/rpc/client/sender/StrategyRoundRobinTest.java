@@ -12,7 +12,7 @@ import java.net.InetSocketAddress;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class RequestSenderRoundRobinTest {
+public class StrategyRoundRobinTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -29,26 +29,19 @@ public class RequestSenderRoundRobinTest {
 	@Test
 	public void itShouldSendRequestUsingRoundRobinAlgorithm() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-
 		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
 		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
 		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy roundRobinStrategy =
 				new StrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
-
 		RequestSender senderRoundRobin;
-
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
-
 		int callsAmount = 5;
-
-
 
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
@@ -57,8 +50,6 @@ public class RequestSenderRoundRobinTest {
 		for (int i = 0; i < callsAmount; i++) {
 			senderRoundRobin.sendRequest(data, timeout, callback);
 		}
-
-
 
 		assertEquals(2, connection1.getCallsAmount());
 		assertEquals(2, connection2.getCallsAmount());
@@ -69,11 +60,9 @@ public class RequestSenderRoundRobinTest {
 	public void itShouldNotSendRequestToNonActiveSubSenders() {
 		RpcClientConnectionPool pool
 				= new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4, ADDRESS_5));
-
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
-
 		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
 		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
 		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
@@ -82,16 +71,11 @@ public class RequestSenderRoundRobinTest {
 		RequestSendingStrategy roundRobinStrategy =
 				new StrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3,
 						singleServerStrategy4, singleServerStrategy5));
-
 		RequestSender senderRoundRobin;
-
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
-
 		int callsAmount = 10;
-
-
 
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
@@ -101,8 +85,6 @@ public class RequestSenderRoundRobinTest {
 		for (int i = 0; i < callsAmount; i++) {
 			senderRoundRobin.sendRequest(data, timeout, callback);
 		}
-
-
 
 		assertEquals(4, connection1.getCallsAmount());
 		assertEquals(3, connection2.getCallsAmount());

@@ -2,7 +2,10 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.client.sender.helper.*;
+import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
+import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
+import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKey;
+import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKeyHashFunction;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
 import org.junit.Test;
@@ -13,9 +16,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-public class RequestSenderShardingTest {
+public class StrategyShardingTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -28,32 +30,24 @@ public class RequestSenderShardingTest {
 	@Test
 	public void itShouldSelectSubSenderConsideringHashCodeOfRequestData() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-
 		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
 		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
 		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy shardingStrategy =
 				new StrategySharding(hashFunction,
 						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
-
 		RequestSender senderSharding;
-
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
-
-
 
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
 		senderSharding = shardingStrategy.create(pool).get();
-
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(1), timeout, callback);
@@ -63,9 +57,6 @@ public class RequestSenderShardingTest {
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(2), timeout, callback);
 
-
-
-
 		assertEquals(5, connection1.getCallsAmount());
 		assertEquals(1, connection2.getCallsAmount());
 		assertEquals(2, connection3.getCallsAmount());
@@ -74,23 +65,17 @@ public class RequestSenderShardingTest {
 	@Test
 	public void itShouldCallOnExceptionOfCallbackWhenChosenServerIsNotActive() {
 		final AtomicInteger onExceptionCallsAmount = new AtomicInteger(0);
-
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-
 		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
 		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
 		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
 		RequestSendingStrategy shardingStrategy =
 				new StrategySharding(hashFunction,
 						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
-
 		RequestSender senderSharding;
-
 		int timeout = 50;
 		ResultCallback<RpcMessageDataStubWithKey> callback = new ResultCallback<RpcMessageDataStubWithKey>() {
 			@Override
@@ -104,18 +89,13 @@ public class RequestSenderShardingTest {
 			}
 		};
 
-
-
 		// we don't add connection for ADDRESS_1
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
 		senderSharding = shardingStrategy.create(pool).get();
-
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(1), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(2), timeout, callback);
-
-
 
 		assertEquals(1, onExceptionCallsAmount.get());
 	}

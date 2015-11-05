@@ -5,11 +5,12 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.protocol.RpcMessage;
-import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 public class RpcClientConnectionStub implements RpcClientConnection {
 
@@ -59,9 +60,6 @@ public class RpcClientConnectionStub implements RpcClientConnection {
 	public NioEventloop getEventloop() {
 		throw new UnsupportedOperationException();
 	}
-
-
-
 
 	// JMX
 

@@ -13,7 +13,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrategy {
+public abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
 
 	private final int minSubStrategiesForCreation;

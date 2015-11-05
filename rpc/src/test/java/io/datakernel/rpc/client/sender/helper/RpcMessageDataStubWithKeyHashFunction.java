@@ -7,6 +7,6 @@ public class RpcMessageDataStubWithKeyHashFunction implements HashFunction<RpcMe
 
 	@Override
 	public int hashCode(RpcMessage.RpcMessageData item) {
-		return ((RpcMessageDataStubWithKey)item).getKey();
+		return ((RpcMessageDataStubWithKey) item).getKey();
 	}
 }

@@ -11,11 +11,9 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
-public class RequestSenderToSingleServerTest {
+public class StrategySingleServerTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT = 10000;

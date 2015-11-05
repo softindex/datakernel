@@ -16,17 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import static io.datakernel.async.AsyncCallbacks.closeFuture;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
-import static io.datakernel.rpc.client.sender.RequestSendingStrategies.*;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.junit.Assert.*;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.util.List;
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.BlockingCompletionCallback;
@@ -50,6 +39,17 @@ import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.List;
+
+import static io.datakernel.async.AsyncCallbacks.closeFuture;
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
+import static io.datakernel.rpc.client.sender.RequestSendingStrategies.*;
+import static org.junit.Assert.assertEquals;
 
 public class CombinedStrategiesIntegrationTest {
 
@@ -86,7 +86,6 @@ public class CombinedStrategiesIntegrationTest {
 			return "Hello Hello Hello, " + name + "!";
 		}
 	}
-
 
 	protected static class HelloRequest extends AbstractRpcMessage {
 		@Serialize(order = 0)
@@ -166,7 +165,7 @@ public class CombinedStrategiesIntegrationTest {
 			HashFunction<RpcMessageData> hashFunction = new HashFunction<RpcMessageData>() {
 				@Override
 				public int hashCode(RpcMessageData item) {
-					HelloRequest helloRequest = (HelloRequest)item;
+					HelloRequest helloRequest = (HelloRequest) item;
 					int hash = 0;
 					if (helloRequest.name.startsWith("S")) {
 						hash = 1;
@@ -190,7 +189,7 @@ public class CombinedStrategiesIntegrationTest {
 											server(address3))
 							)
 					)
-							.build();
+					.build();
 
 			final BlockingCompletionCallback connectCompletion = new BlockingCompletionCallback();
 			eventloop.postConcurrently(new Runnable() {
