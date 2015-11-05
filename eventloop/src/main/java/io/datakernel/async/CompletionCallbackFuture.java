@@ -5,18 +5,23 @@ import java.util.concurrent.*;
 public class CompletionCallbackFuture implements Future<Void>, CompletionCallback {
 	private static final Void NOTHING = null;
 
-	private CountDownLatch latch = new CountDownLatch(1);
+	private final CountDownLatch latch = new CountDownLatch(1);
 	private Exception exception;
 
 	@Override
 	public void onComplete() {
 		latch.countDown();
+		onCompleteOrException();
 	}
 
 	@Override
 	public void onException(Exception exception) {
 		this.exception = exception;
 		latch.countDown();
+		onCompleteOrException();
+	}
+
+	protected void onCompleteOrException() {
 	}
 
 	@Override

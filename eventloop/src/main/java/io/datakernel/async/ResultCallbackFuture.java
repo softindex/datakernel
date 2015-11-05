@@ -3,8 +3,7 @@ package io.datakernel.async;
 import java.util.concurrent.*;
 
 public class ResultCallbackFuture<T> implements ResultCallback<T>, Future<T> {
-
-	private CountDownLatch latch = new CountDownLatch(1);
+	private final CountDownLatch latch = new CountDownLatch(1);
 	private T result;
 	private Exception exception;
 
@@ -12,12 +11,17 @@ public class ResultCallbackFuture<T> implements ResultCallback<T>, Future<T> {
 	public void onResult(T result) {
 		this.result = result;
 		latch.countDown();
+		onResultOrException();
 	}
 
 	@Override
 	public void onException(Exception exception) {
 		this.exception = exception;
 		latch.countDown();
+		onResultOrException();
+	}
+
+	protected void onResultOrException() {
 	}
 
 	@Override

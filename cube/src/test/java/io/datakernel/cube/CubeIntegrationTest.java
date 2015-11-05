@@ -41,6 +41,7 @@ import org.jooq.Configuration;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DataSourceConnectionProvider;
 import org.jooq.impl.DefaultConfiguration;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -144,6 +145,7 @@ public class CubeIntegrationTest {
 		return new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems.iterator());
 	}
 
+	@Ignore
 	@Test
 	public void test() throws Exception {
 		ExecutorService executor = Executors.newCachedThreadPool();
