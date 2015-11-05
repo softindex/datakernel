@@ -5,7 +5,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
 
-import static io.datakernel.rpc.client.sender.Utils.*;
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
 import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 import java.util.ArrayList;
@@ -50,11 +50,11 @@ public final class ShardingStrategy extends AbstractRequestSendingStrategy {
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No senders available");
 		private final HashFunction<RpcMessageData> hashFunction;
-		private final List<RequestSender> subSenders;
+		private final RequestSender[] subSenders;
 
 		public RequestSenderSharding(HashFunction<RpcMessageData> hashFunction, List<RequestSender> senders) {
 			this.hashFunction = checkNotNull(hashFunction);
-			this.subSenders = senders;
+			this.subSenders = senders.toArray(new RequestSender[senders.size()]);
 		}
 
 
@@ -72,8 +72,8 @@ public final class ShardingStrategy extends AbstractRequestSendingStrategy {
 		}
 
 		private RequestSender chooseSender(RpcMessageData request) {
-			int index = Math.abs(hashFunction.hashCode(request)) % subSenders.size();
-			return subSenders.get(index);
+			int index = Math.abs(hashFunction.hashCode(request)) % subSenders.length;
+			return subSenders[index];
 		}
 	}
 }

@@ -165,11 +165,8 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 	@VisibleForTesting
 	static final class RendezvousHashBucket<T> {
 		private static final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
-		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
 
-		private final Object[] baseHashes;
-		private final BucketHashFunction bucketHashFunction;
-		private final Map<Object, Optional<RequestSender>> keyToSender;
+		private final RequestSender[] baseHashes;
 
 		public RendezvousHashBucket(Map<Object, Optional<RequestSender>> keyToSender,
 		                            BucketHashFunction bucketHashFunction) {
@@ -180,39 +177,32 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 		                            BucketHashFunction bucketHashFunction, int capacity) {
 			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
 			checkNotNull(bucketHashFunction);
-			this.keyToSender = checkNotNull(keyToSender);
-			this.baseHashes = new Object[capacity];
-			this.bucketHashFunction = bucketHashFunction;
-			computeBaseHashes();
+			this.baseHashes = new RequestSender[capacity];
+			computeBaseHashes(keyToSender, bucketHashFunction);
 		}
 
-		// if activeAddresses is empty fill bucket -1
-		private void computeBaseHashes() {
+		// if activeAddresses is empty fill bucket with null
+		private void computeBaseHashes(Map<Object, Optional<RequestSender>> keyToSender,
+		                               BucketHashFunction bucketHashFunction) {
 			for (int n = 0; n < baseHashes.length; n++) {
-				Object senderKey = null;
+				RequestSender chosenSender = null;
 				int max = Integer.MIN_VALUE;
 				for (Object key : keyToSender.keySet()) {
 					Optional<RequestSender> sender = keyToSender.get(key);
 					if (sender.isPresent()) {
 						int hash = bucketHashFunction.hash(key, n);
 						if (hash >= max) {
-							senderKey = key;
+							chosenSender = sender.get();
 							max = hash;
 						}
 					}
 				}
-				baseHashes[n] = senderKey;
+				baseHashes[n] = chosenSender;
 			}
 		}
 
 		public RequestSender chooseSender(int hash) {
-			Object key = baseHashes[hash & (baseHashes.length - 1)];
-			if (key != null) {
-				assert keyToSender.get(key).isPresent();
-				return keyToSender.get(key).get();
-			} else {
-				return null;
-			}
+			return baseHashes[hash & (baseHashes.length - 1)];
 		}
 	}
 

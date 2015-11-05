@@ -7,6 +7,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 
 public final class RoundRobinStrategy extends RequestSendingStrategyToGroup {
 
@@ -25,11 +26,11 @@ public final class RoundRobinStrategy extends RequestSendingStrategyToGroup {
 
 	final static class RequestSenderRoundRobin implements RequestSender {
 		private int nextSender;
-		private List<RequestSender> subSenders;
+		private RequestSender[] subSenders;
 
 		public RequestSenderRoundRobin(List<RequestSender> senders) {
-			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders;
+			checkArgument(senders != null && senders.size() > 0 && !containsNullValues(senders));
+			this.subSenders = senders.toArray(new RequestSender[senders.size()]);
 			this.nextSender = 0;
 		}
 
@@ -43,8 +44,8 @@ public final class RoundRobinStrategy extends RequestSendingStrategyToGroup {
 		}
 
 		private RequestSender getCurrentSubSender() {
-			RequestSender currentSender = subSenders.get(nextSender);
-			nextSender = (nextSender + 1) % subSenders.size();
+			RequestSender currentSender = subSenders[nextSender];
+			nextSender = (nextSender + 1) % subSenders.length;
 			return currentSender;
 		}
 	}

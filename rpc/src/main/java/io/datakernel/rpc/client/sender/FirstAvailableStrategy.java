@@ -26,11 +26,11 @@ final class FirstAvailableStrategy extends RequestSendingStrategyToGroup {
 	}
 
 	final static class RequestSenderToFirst implements RequestSender{
-		private List<RequestSender> subSenders;
+		private final RequestSender first;
 
 		public RequestSenderToFirst(List<RequestSender> senders) {
 			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders;
+			this.first = senders.get(0);
 		}
 
 		@Override
@@ -38,7 +38,6 @@ final class FirstAvailableStrategy extends RequestSendingStrategyToGroup {
 		                                                              ResultCallback<T> callback) {
 			checkNotNull(callback);
 
-			RequestSender first = subSenders.get(0);
 			first.sendRequest(request, timeout, callback);
 		}
 	}

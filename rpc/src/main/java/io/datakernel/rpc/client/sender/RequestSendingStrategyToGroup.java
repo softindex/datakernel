@@ -6,7 +6,7 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.rpc.client.sender.Utils.*;
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
 
 
 import static com.google.common.base.Preconditions.checkArgument;

@@ -5,9 +5,9 @@ import com.google.common.base.Optional;
 import java.util.ArrayList;
 import java.util.List;
 
-final class Utils {
+final class RpcSendersUtils {
 
-	private Utils() {}
+	private RpcSendersUtils() {}
 
 	static <T> List<T> flatten(List<List<T>> listOfList) {
 		List<T> flatList = new ArrayList<>();
@@ -45,5 +45,14 @@ final class Utils {
 			afterReplacingList.add(value.orNull());
 		}
 		return afterReplacingList;
+	}
+
+	static <T> boolean containsNullValues(List<T> list) {
+		for (int i = 0; i < list.size(); i++) {
+			if (list.get(i) == null) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

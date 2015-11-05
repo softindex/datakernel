@@ -8,6 +8,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 
 public final class AllAvailableStrategy extends RequestSendingStrategyToGroup{
 
@@ -26,11 +27,11 @@ public final class AllAvailableStrategy extends RequestSendingStrategyToGroup{
 
 	final static class RequestSenderToAll implements RequestSender {
 
-		private List<RequestSender> subSenders;
+		private final RequestSender[] subSenders;
 
 		public RequestSenderToAll(List<RequestSender> senders) {
-			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders;
+			checkArgument(senders != null && senders.size() > 0 && !containsNullValues(senders));
+			this.subSenders = senders.toArray(new RequestSender[senders.size()]);
 		}
 
 		@Override
@@ -42,7 +43,7 @@ public final class AllAvailableStrategy extends RequestSendingStrategyToGroup{
 			for (RequestSender sender : subSenders) {
 				sender.sendRequest(request, timeout, resultCallback);
 			}
-			resultCallback.resultOf(subSenders.size());
+			resultCallback.resultOf(subSenders.length);
 		}
 	}
 }
