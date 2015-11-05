@@ -30,7 +30,7 @@ final class FirstAvailableStrategy extends RequestSendingStrategyToGroup {
 
 		public RequestSenderToFirst(List<RequestSender> senders) {
 			checkArgument(senders != null && senders.size() > 0);
-			this.first = senders.get(0);
+			this.first = checkNotNull(senders.get(0));
 		}
 
 		@Override

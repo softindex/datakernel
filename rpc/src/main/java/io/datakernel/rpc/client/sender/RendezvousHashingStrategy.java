@@ -166,7 +166,7 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 	static final class RendezvousHashBucket<T> {
 		private static final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
 
-		private final RequestSender[] baseHashes;
+		private final RequestSender[] sendersBucket;
 
 		public RendezvousHashBucket(Map<Object, Optional<RequestSender>> keyToSender,
 		                            BucketHashFunction bucketHashFunction) {
@@ -177,14 +177,14 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 		                            BucketHashFunction bucketHashFunction, int capacity) {
 			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
 			checkNotNull(bucketHashFunction);
-			this.baseHashes = new RequestSender[capacity];
+			this.sendersBucket = new RequestSender[capacity];
 			computeBaseHashes(keyToSender, bucketHashFunction);
 		}
 
 		// if activeAddresses is empty fill bucket with null
 		private void computeBaseHashes(Map<Object, Optional<RequestSender>> keyToSender,
 		                               BucketHashFunction bucketHashFunction) {
-			for (int n = 0; n < baseHashes.length; n++) {
+			for (int n = 0; n < sendersBucket.length; n++) {
 				RequestSender chosenSender = null;
 				int max = Integer.MIN_VALUE;
 				for (Object key : keyToSender.keySet()) {
@@ -197,12 +197,12 @@ public final class RendezvousHashingStrategy extends AbstractRequestSendingStrat
 						}
 					}
 				}
-				baseHashes[n] = chosenSender;
+				sendersBucket[n] = chosenSender;
 			}
 		}
 
 		public RequestSender chooseSender(int hash) {
-			return baseHashes[hash & (baseHashes.length - 1)];
+			return sendersBucket[hash & (sendersBucket.length - 1)];
 		}
 	}
 

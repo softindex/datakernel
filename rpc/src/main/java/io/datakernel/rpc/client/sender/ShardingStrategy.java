@@ -5,6 +5,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
 import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
@@ -53,6 +54,8 @@ public final class ShardingStrategy extends AbstractRequestSendingStrategy {
 		private final RequestSender[] subSenders;
 
 		public RequestSenderSharding(HashFunction<RpcMessageData> hashFunction, List<RequestSender> senders) {
+			// null values are allowed in senders list
+			checkArgument(senders != null && senders.size() > 0);
 			this.hashFunction = checkNotNull(hashFunction);
 			this.subSenders = senders.toArray(new RequestSender[senders.size()]);
 		}
