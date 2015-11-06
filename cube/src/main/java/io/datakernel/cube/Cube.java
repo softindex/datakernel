@@ -29,6 +29,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -63,6 +64,7 @@ public final class Cube {
 	private final int sorterItemsInMemory;
 
 	private final AggregationStructure structure;
+	private final ReportingConfiguration reportingConfiguration;
 
 	private Map<String, Aggregation> aggregations = new LinkedHashMap<>();
 
@@ -83,15 +85,23 @@ public final class Cube {
 	 */
 	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
 	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory) {
+	            AggregationStructure structure, ReportingConfiguration reportingConfiguration,
+	            int aggregationChunkSize, int sorterItemsInMemory) {
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
 		this.cubeMetadataStorage = cubeMetadataStorage;
 		this.aggregationMetadataStorage = aggregationMetadataStorage;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.structure = structure;
+		this.reportingConfiguration = reportingConfiguration;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
+	}
+
+	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
+	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory) {
+		this(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, structure, null, aggregationChunkSize, sorterItemsInMemory);
 	}
 
 	public Map<String, Aggregation> getAggregations() {
@@ -100,6 +110,10 @@ public final class Cube {
 
 	public AggregationStructure getStructure() {
 		return structure;
+	}
+
+	public ReportingConfiguration getReportingConfiguration() {
+		return reportingConfiguration;
 	}
 
 	/**
@@ -319,7 +333,7 @@ public final class Cube {
 
 			logger.info("Streaming query {} result from aggregation '{}'", filteredQuery, aggregation.getId());
 
-			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getInputFields()))));
+			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getOutputFields()))));
 		}
 
 		checkArgument(queryMeasures.isEmpty());

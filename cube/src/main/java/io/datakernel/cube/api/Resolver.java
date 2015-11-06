@@ -1,5 +1,6 @@
 package io.datakernel.cube.api;
 
+import io.datakernel.aggregation_db.api.NameResolver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.util.Preconditions;
 
@@ -20,13 +21,13 @@ public final class Resolver {
 	}
 
 	public List<Object> resolve(List<Object> records, Class<?> resultClass,
-	                            Map<String, List<String>> dimensionsMapping,
+	                            Map<String, List<String>> nameKeys,
 	                            Map<String, Class<?>> nameTypes,
 	                            final Map<String, Object> keyConstants) {
-		if (dimensionsMapping.isEmpty())
+		if (nameKeys.isEmpty())
 			return records;
 
-		for (Map.Entry<String, List<String>> mapping : dimensionsMapping.entrySet()) {
+		for (Map.Entry<String, List<String>> mapping : nameKeys.entrySet()) {
 			String resultDimensionName = mapping.getKey();
 			List<String> keyDimensionNames = mapping.getValue();
 

@@ -1,5 +1,6 @@
 package io.datakernel.cube.api;
 
+import io.datakernel.aggregation_db.api.NameResolver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import org.junit.Test;
 
@@ -23,7 +24,7 @@ public class ResolverTest {
 
 	public static class TestConstantResolver implements NameResolver {
 		@Override
-		public List<Object> resolveByKey(List<String> columnNames, List<List<Object>> keys) {
+		public List<Object> resolveByKey(List<String> keyNames, List<List<Object>> keys) {
 			List<Object> names = newArrayList();
 			for (List<Object> key : keys) {
 				names.add(key.get(0).toString() + key.get(1).toString());
@@ -39,8 +40,8 @@ public class ResolverTest {
 		Map<String, NameResolver> nameResolvers = newHashMap();
 		nameResolvers.put("name", new TestConstantResolver());
 
-		Map<String, List<String>> dimensionsMapping = newHashMap();
-		dimensionsMapping.put("name", Arrays.asList("id", "constantId"));
+		Map<String, List<String>> nameKeys = newHashMap();
+		nameKeys.put("name", Arrays.asList("id", "constantId"));
 
 		Map<String, Class<?>> nameTypes = newHashMap();
 		nameTypes.put("name", String.class);
@@ -51,7 +52,7 @@ public class ResolverTest {
  		Resolver resolver = new Resolver(new DefiningClassLoader(), nameResolvers);
 
 
-		List<Object> resultRecords = resolver.resolve(records, Record.class, dimensionsMapping, nameTypes, keyConstants);
+		List<Object> resultRecords = resolver.resolve(records, Record.class, nameKeys, nameTypes, keyConstants);
 
 
 		assertEquals("1ab", ((Record) resultRecords.get(0)).name);

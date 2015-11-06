@@ -19,7 +19,6 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
-import io.datakernel.aggregation_db.api.ReportingDSLExpression;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.codegen.AsmBuilder;
@@ -36,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -58,7 +56,6 @@ public class AggregationStructure {
 	private final Map<String, FieldType> fields;
 	private final Map<String, FieldType> outputFields;
 	private final AggregationKeyRelationships childParentRelationships;
-	private final Map<String, ReportingDSLExpression> computedMeasures;
 
 	private final static Logger logger = LoggerFactory.getLogger(AggregationStructure.class);
 
@@ -70,30 +67,22 @@ public class AggregationStructure {
 	 * @param fields      map of aggregation fields (key is field name)
 	 */
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields) {
-		this(classLoader, keys, fields, fields, ImmutableMap.<String, String>of(), new HashMap<String, ReportingDSLExpression>());
+		this(classLoader, keys, fields, fields, ImmutableMap.<String, String>of());
 	}
 
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields,
 	                            Map<String, String> childParentRelationships) {
-		this(classLoader, keys, fields, fields, childParentRelationships, new HashMap<String, ReportingDSLExpression>());
-	}
-
-	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields,
-	                            Map<String, String> childParentRelationships,
-	                            Map<String, ReportingDSLExpression> computedMeasures) {
-		this(classLoader, keys, fields, fields, childParentRelationships, computedMeasures);
+		this(classLoader, keys, fields, fields, childParentRelationships);
 	}
 
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys,
 	                            Map<String, FieldType> fields, Map<String, FieldType> outputFields,
-	                            Map<String, String> childParentRelationships,
-	                            Map<String, ReportingDSLExpression> computedMeasures) {
+	                            Map<String, String> childParentRelationships) {
 		this.classLoader = classLoader;
 		this.keys = keys;
 		this.fields = fields;
 		this.outputFields = outputFields;
 		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
-		this.computedMeasures = computedMeasures;
 	}
 
 	public Map<String, KeyType> getKeys() {
@@ -112,20 +101,12 @@ public class AggregationStructure {
 		return outputFields.get(outputField);
 	}
 
-	public Expression getComputedMeasureExpression(String computedMeasure) {
-		return computedMeasures.get(computedMeasure).getExpression();
-	}
-
 	public Map<String, FieldType> getFields() {
 		return fields;
 	}
 
 	public Map<String, FieldType> getOutputFields() {
 		return outputFields;
-	}
-
-	public Map<String, ReportingDSLExpression> getComputedMeasures() {
-		return computedMeasures;
 	}
 
 	public AggregationKeyRelationships getChildParentRelationships() {
@@ -142,10 +123,6 @@ public class AggregationStructure {
 
 	public boolean containsOutputField(String field) {
 		return outputFields.containsKey(field);
-	}
-
-	public boolean containsComputedMeasure(String computedMeasure) {
-		return computedMeasures.containsKey(computedMeasure);
 	}
 
 	public Class<?> createKeyClass(List<String> keys) {

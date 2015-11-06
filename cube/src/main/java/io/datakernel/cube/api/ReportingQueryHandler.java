@@ -40,12 +40,10 @@ import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.cube.api.CommonUtils.*;
@@ -57,12 +55,15 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 	private final Cube cube;
 	private final NioEventloop eventloop;
 	private final DefiningClassLoader classLoader;
+	private final Resolver resolver;
 
-	public ReportingQueryHandler(Gson gson, Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
+	public ReportingQueryHandler(Gson gson, Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader,
+	                             Resolver resolver) {
 		this.gson = gson;
 		this.cube = cube;
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
+		this.resolver = resolver;
 	}
 
 	@Override
@@ -84,13 +85,23 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 	private void processRequest(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		logger.info("Got query {}", request);
 		final AggregationStructure structure = cube.getStructure();
+		final ReportingConfiguration reportingConfiguration = cube.getReportingConfiguration();
+		final Map<String, List<String>> nameKeys = newHashMap();
+		final Map<String, Class<?>> nameTypes = newHashMap();
 
-		Set<String> dimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
+		Set<String> requestDimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
+		Set<String> dimensions = newHashSet();
 
-		for (String dimension : dimensions) {
-			if (!structure.containsKey(dimension)) {
+		for (String dimension : requestDimensions) {
+			if (structure.containsKey(dimension))
+				dimensions.add(dimension);
+			else if (reportingConfiguration.containsName(dimension)) {
+				List<String> keys = reportingConfiguration.getNameKey(dimension);
+				dimensions.addAll(keys);
+				nameKeys.put(dimension, keys);
+				nameTypes.put(dimension, reportingConfiguration.getNameType(dimension));
+			} else
 				throw new QueryException("Cube does not contain dimension with name '" + dimension + "'");
-			}
 		}
 
 		final List<String> queryMeasures = getListOfStrings(gson, request.getParameter("measures"));
@@ -100,8 +111,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		for (String queryMeasure : queryMeasures) {
 			if (structure.containsOutputField(queryMeasure)) {
 				storedMeasures.add(queryMeasure);
-			} else if (structure.containsComputedMeasure(queryMeasure)) {
-				ReportingDSLExpression reportingDSLExpression = structure.getComputedMeasures().get(queryMeasure);
+			} else if (reportingConfiguration.containsComputedMeasure(queryMeasure)) {
+				ReportingDSLExpression reportingDSLExpression = reportingConfiguration.getExpressionForMeasure(queryMeasure);
 				storedMeasures.addAll(reportingDSLExpression.getMeasureDependencies());
 				computedMeasures.add(queryMeasure);
 			} else {
@@ -149,7 +160,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 		addPredicatesToQuery(finalQuery, predicatesJson);
 
-		final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, structure);
+		final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, nameTypes, structure, reportingConfiguration);
 		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
 		final Integer limit = valueOrNull(limitString);
@@ -167,7 +178,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 				}
 
 				// compute totals
-				TotalsPlaceholder totalsPlaceholder = createTotalsPlaceholder(classLoader, structure, resultClass, storedMeasures, computedMeasures);
+				TotalsPlaceholder totalsPlaceholder = createTotalsPlaceholder(classLoader, structure, resultClass, reportingConfiguration, storedMeasures, computedMeasures);
 				totalsPlaceholder.initAccumulator(results.get(0));
 				if (results.size() > 1) {
 					for (int i = 1; i < results.size(); ++i) {
@@ -180,6 +191,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 				for (QueryResultPlaceholder queryResult : results) {
 					queryResult.computeMeasures();
 				}
+
+				resolver.resolve((List) results, resultClass, nameKeys, nameTypes, new HashMap<String, Object>());
 
 				// sort
 				if (sortingRequired) {
@@ -238,7 +251,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 	}
 
 	private static Class<QueryResultPlaceholder> createResultClass(DefiningClassLoader classLoader, AggregationQuery query,
-	                                                               Set<String> computedMeasureNames, AggregationStructure structure) {
+	                                                               Set<String> computedMeasureNames, Map<String, Class<?>> nameTypes,
+	                                                               AggregationStructure structure, ReportingConfiguration reportingConfiguration) {
 		AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(classLoader, QueryResultPlaceholder.class);
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
@@ -250,10 +264,13 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			FieldType fieldType = structure.getOutputFieldType(field);
 			builder.field(field, fieldType.getDataType());
 		}
+		for (Map.Entry<String, Class<?>> nameEntry : nameTypes.entrySet()) {
+			builder.field(nameEntry.getKey(), nameEntry.getValue());
+		}
 		ExpressionSequence computeSequence = sequence();
 		for (String computedMeasure : computedMeasureNames) {
 			builder.field(computedMeasure, double.class);
-			computeSequence.add(set(getter(self(), computedMeasure), structure.getComputedMeasureExpression(computedMeasure)));
+			computeSequence.add(set(getter(self(), computedMeasure), reportingConfiguration.getComputedMeasureExpression(computedMeasure)));
 		}
 		builder.method("computeMeasures", computeSequence);
 		return builder.defineClass();
@@ -318,8 +335,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		return jsonResult.toString();
 	}
 
-	private static TotalsPlaceholder createTotalsPlaceholder(DefiningClassLoader classLoader,
-	                                                         AggregationStructure structure, Class<?> inputClass,
+	private static TotalsPlaceholder createTotalsPlaceholder(DefiningClassLoader classLoader, AggregationStructure structure,
+	                                                         Class<?> inputClass, ReportingConfiguration reportingConfiguration,
 	                                                         Set<String> requestedStoredFields, Set<String> computedMeasureNames) {
 		AsmBuilder<TotalsPlaceholder> builder = new AsmBuilder<>(classLoader, TotalsPlaceholder.class);
 
@@ -352,7 +369,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 		ExpressionSequence computeSequence = sequence();
 		for (String computedMeasure : computedMeasureNames) {
-			computeSequence.add(set(getter(self(), computedMeasure), structure.getComputedMeasureExpression(computedMeasure)));
+			computeSequence.add(set(getter(self(), computedMeasure), reportingConfiguration.getComputedMeasureExpression(computedMeasure)));
 		}
 		builder.method("computeMeasures", computeSequence);
 
