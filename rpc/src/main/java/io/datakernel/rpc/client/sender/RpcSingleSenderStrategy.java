@@ -16,11 +16,9 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
+import com.google.common.base.Optional;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
 
-public interface RequestSender {
-
-	<T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback);
-
+public interface RpcSingleSenderStrategy {
+	Optional<RpcRequestSender> create(RpcClientConnectionPool pool);
 }

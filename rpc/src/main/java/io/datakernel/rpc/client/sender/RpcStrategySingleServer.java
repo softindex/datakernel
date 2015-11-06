@@ -28,31 +28,31 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-public final class StrategySingleServer implements RequestSendingStrategy, SingleSenderStrategy {
+public final class RpcStrategySingleServer implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
 
 	private final InetSocketAddress address;
 
-	public StrategySingleServer(InetSocketAddress address) {
+	public RpcStrategySingleServer(InetSocketAddress address) {
 		checkNotNull(address);
 		this.address = address;
 	}
 
 	@Override
-	public List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public Optional<RequestSender> create(RpcClientConnectionPool pool) {
+	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
 		RpcClientConnection connection = pool.get(address);
 		if (connection != null) {
-			return Optional.<RequestSender>of(new RequestSenderToSingleServer(connection));
+			return Optional.<RpcRequestSender>of(new RequestSenderToSingleServer(connection));
 		} else {
 			return Optional.absent();
 		}
 	}
 
-	final static class RequestSenderToSingleServer implements RequestSender {
+	final static class RequestSenderToSingleServer implements RpcRequestSender {
 		private final RpcClientConnection connection;
 
 		public RequestSenderToSingleServer(RpcClientConnection connection) {

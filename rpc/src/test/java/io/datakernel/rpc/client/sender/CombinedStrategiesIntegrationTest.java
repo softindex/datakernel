@@ -48,7 +48,7 @@ import java.util.List;
 import static io.datakernel.async.AsyncCallbacks.closeFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
-import static io.datakernel.rpc.client.sender.RequestSendingStrategies.*;
+import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.*;
 import static org.junit.Assert.assertEquals;
 
 public class CombinedStrategiesIntegrationTest {

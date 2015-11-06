@@ -26,7 +26,7 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.RpcClientSettings;
-import io.datakernel.rpc.client.sender.RequestSendingStrategies;
+import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.server.RequestHandlers;
@@ -45,7 +45,7 @@ import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.rpc.client.sender.RequestSendingStrategies.server;
+import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
 import static org.junit.Assert.assertEquals;
 
 public class RpcBinaryProtocolTest {
@@ -134,7 +134,7 @@ public class RpcBinaryProtocolTest {
 				.packetSize(1 << 10, 1 << 16).compression(true);
 		final RpcClient client = new RpcClient.Builder(eventloop, clientSettings)
 				.serializer(serializer)
-				.requestSenderFactory(RequestSendingStrategies.firstAvailable(server(address)))
+				.requestSenderFactory(RpcRequestSendingStrategies.firstAvailable(server(address)))
 				.connectSettings(new ConnectSettings(100))
 				.protocolFactory(new RpcStreamProtocolFactory(protocolSettings))
 				.build();

@@ -16,15 +16,11 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Optional;
-import io.datakernel.rpc.client.RpcClientConnectionPool;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
-import java.util.List;
+public interface RpcRequestSender {
 
-public interface RequestSendingStrategy {
-
-	Optional<RequestSender> create(RpcClientConnectionPool pool);
-
-	List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool);
+	<T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback);
 
 }

@@ -24,25 +24,25 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public final class StrategyFirstAvailable extends RequestSendingStrategyToGroup implements SingleSenderStrategy {
+public final class RpcStrategyFirstAvailable extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
 
-	public StrategyFirstAvailable(List<RequestSendingStrategy> subStrategies) {
+	public RpcStrategyFirstAvailable(List<RpcRequestSendingStrategy> subStrategies) {
 		super(subStrategies);
 	}
 
-	public StrategyFirstAvailable(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
+	public RpcStrategyFirstAvailable(List<RpcRequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
 		super(subStrategies, minSubStrategiesForCreation);
 	}
 
 	@Override
-	protected RequestSender createSenderInstance(List<RequestSender> subSenders) {
+	protected RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders) {
 		return new RequestSenderToFirst(subSenders);
 	}
 
-	final static class RequestSenderToFirst implements RequestSender {
-		private final RequestSender first;
+	final static class RequestSenderToFirst implements RpcRequestSender {
+		private final RpcRequestSender first;
 
-		public RequestSenderToFirst(List<RequestSender> senders) {
+		public RequestSenderToFirst(List<RpcRequestSender> senders) {
 			checkArgument(senders != null && senders.size() > 0);
 			this.first = checkNotNull(senders.get(0));
 		}

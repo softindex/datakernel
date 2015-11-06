@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class StrategyAllAvailableTest {
+public class RpcStrategyAllAvailableTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -46,17 +46,17 @@ public class StrategyAllAvailableTest {
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy allAvailableStrategy =
-				new StrategyAllAvailable(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy allAvailableStrategy =
+				new RpcStrategyAllAvailable(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int callsAmountIterationOne = 10;
 		int callsAmountIterationTwo = 25;
-		RequestSender senderToAll;
+		RpcRequestSender senderToAll;
 
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
@@ -80,11 +80,11 @@ public class StrategyAllAvailableTest {
 	@Test
 	public void itShouldCallOnResultWithNullIfAllSendersReturnedNull() {
 		final AtomicInteger onResultWithNullWasCalledTimes = new AtomicInteger(0);
-		RequestSender sender1 = new RequestSenderOnResultWithNullCaller();
-		RequestSender sender2 = new RequestSenderOnResultWithNullCaller();
-		RequestSender sender3 = new RequestSenderOnResultWithNullCaller();
-		StrategyAllAvailable.RequestSenderToAll senderToAll =
-				new StrategyAllAvailable.RequestSenderToAll(asList(sender1, sender2, sender3));
+		RpcRequestSender sender1 = new RequestSenderOnResultWithNullCaller();
+		RpcRequestSender sender2 = new RequestSenderOnResultWithNullCaller();
+		RpcRequestSender sender3 = new RequestSenderOnResultWithNullCaller();
+		RpcStrategyAllAvailable.RequestSenderToAll senderToAll =
+				new RpcStrategyAllAvailable.RequestSenderToAll(asList(sender1, sender2, sender3));
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallback<RpcMessageDataStub> callback = new ResultCallback<RpcMessageDataStub>() {
@@ -110,11 +110,11 @@ public class StrategyAllAvailableTest {
 
 		final AtomicInteger onResultWithNullWasCalledTimes = new AtomicInteger(0);
 		final AtomicInteger onResultWithValueWasCalledTimes = new AtomicInteger(0);
-		RequestSender sender1 = new RequestSenderOnResultWithNullCaller();
-		RequestSender sender2 = new RequestSenderOnResultWithNullCaller();
-		RequestSender sender3 = new RequestSenderOnResultWithValueCaller();
-		StrategyAllAvailable.RequestSenderToAll senderToAll =
-				new StrategyAllAvailable.RequestSenderToAll(asList(sender1, sender2, sender3));
+		RpcRequestSender sender1 = new RequestSenderOnResultWithNullCaller();
+		RpcRequestSender sender2 = new RequestSenderOnResultWithNullCaller();
+		RpcRequestSender sender3 = new RequestSenderOnResultWithValueCaller();
+		RpcStrategyAllAvailable.RequestSenderToAll senderToAll =
+				new RpcStrategyAllAvailable.RequestSenderToAll(asList(sender1, sender2, sender3));
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallback<RpcMessageDataStub> callback = new ResultCallback<RpcMessageDataStub>() {
@@ -141,10 +141,10 @@ public class StrategyAllAvailableTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		RequestSendingStrategy strategy = new StrategyAllAvailable(null);
+		RpcRequestSendingStrategy strategy = new RpcStrategyAllAvailable(null);
 	}
 
-	static final class RequestSenderOnResultWithNullCaller implements RequestSender {
+	static final class RequestSenderOnResultWithNullCaller implements RpcRequestSender {
 
 		@Override
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
@@ -152,7 +152,7 @@ public class StrategyAllAvailableTest {
 		}
 	}
 
-	static final class RequestSenderOnResultWithValueCaller implements RequestSender {
+	static final class RequestSenderOnResultWithValueCaller implements RpcRequestSender {
 
 		@Override
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {

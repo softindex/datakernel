@@ -24,32 +24,32 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class StrategyServersGroup implements RequestSendingStrategy {
+public final class RpcStrategyServersGroup implements RpcRequestSendingStrategy {
 
 	private List<InetSocketAddress> addresses;
 
-	StrategyServersGroup(List<InetSocketAddress> addresses) {
+	RpcStrategyServersGroup(List<InetSocketAddress> addresses) {
 		this.addresses = addresses;
 	}
 
 	@Override
-	public List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
-		List<Optional<RequestSender>> senders = new ArrayList<>();
+	public List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
+		List<Optional<RpcRequestSender>> senders = new ArrayList<>();
 		for (InetSocketAddress address : addresses) {
 			RpcClientConnection connection = pool.get(address);
 			if (connection != null) {
 				senders.add(
-						Optional.<RequestSender>of(new StrategySingleServer.RequestSenderToSingleServer(connection))
+						Optional.<RpcRequestSender>of(new RpcStrategySingleServer.RequestSenderToSingleServer(connection))
 				);
 			} else {
-				senders.add(Optional.<RequestSender>absent());
+				senders.add(Optional.<RpcRequestSender>absent());
 			}
 		}
 		return senders;
 	}
 
 	@Override
-	public Optional<RequestSender> create(RpcClientConnectionPool pool) {
+	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
 		throw new UnsupportedOperationException();
 	}
 }

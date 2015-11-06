@@ -29,49 +29,49 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
-public final class StrategyTypeDispatching implements RequestSendingStrategy, SingleSenderStrategy {
+public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
 
 	public enum Importance {
 		MANDATORY, OPTIONAL
 	}
 
 	private Map<Class<? extends RpcMessage.RpcMessageData>, DataTypeSpecifications> dataTypeToSpecification;
-	private SingleSenderStrategy defaultSendingStrategy;
+	private RpcSingleSenderStrategy defaultSendingStrategy;
 
-	StrategyTypeDispatching() {
+	RpcStrategyTypeDispatching() {
 		dataTypeToSpecification = new HashMap<>();
 		defaultSendingStrategy = null;
 	}
 
 	@Override
-	public List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public Optional<RequestSender> create(RpcClientConnectionPool pool) {
-		Map<Class<? extends RpcMessage.RpcMessageData>, RequestSender> dataTypeToSender = new HashMap<>();
+	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
+		Map<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender = new HashMap<>();
 		for (Class<? extends RpcMessage.RpcMessageData> dataType : dataTypeToSpecification.keySet()) {
 			DataTypeSpecifications specs = dataTypeToSpecification.get(dataType);
-			Optional<RequestSender> sender = specs.getStrategy().create(pool);
+			Optional<RpcRequestSender> sender = specs.getStrategy().create(pool);
 			if (sender.isPresent()) {
 				dataTypeToSender.put(dataType, sender.get());
 			} else if (specs.getImportance() == Importance.MANDATORY) {
 				return Optional.absent();
 			}
 		}
-		Optional<RequestSender> defaultSender =
-				defaultSendingStrategy != null ? defaultSendingStrategy.create(pool) : Optional.<RequestSender>absent();
-		return Optional.<RequestSender>of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender.orNull()));
+		Optional<RpcRequestSender> defaultSender =
+				defaultSendingStrategy != null ? defaultSendingStrategy.create(pool) : Optional.<RpcRequestSender>absent();
+		return Optional.<RpcRequestSender>of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender.orNull()));
 	}
 
-	public StrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                  SingleSenderStrategy strategy) {
+	public RpcStrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                  RpcSingleSenderStrategy strategy) {
 		return on(dataType, strategy, Importance.MANDATORY);
 	}
 
-	private StrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                   SingleSenderStrategy strategy, Importance importance) {
+	private RpcStrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                   RpcSingleSenderStrategy strategy, Importance importance) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
 		checkNotNull(importance);
@@ -79,22 +79,22 @@ public final class StrategyTypeDispatching implements RequestSendingStrategy, Si
 		return this;
 	}
 
-	public StrategyTypeDispatching onDefault(SingleSenderStrategy strategy) {
+	public RpcStrategyTypeDispatching onDefault(RpcSingleSenderStrategy strategy) {
 		checkState(defaultSendingStrategy == null, "Default Strategy is already set");
 		defaultSendingStrategy = strategy;
 		return this;
 	}
 
 	private static final class DataTypeSpecifications {
-		private final SingleSenderStrategy strategy;
+		private final RpcSingleSenderStrategy strategy;
 		private final Importance importance;
 
-		public DataTypeSpecifications(SingleSenderStrategy strategy, Importance importance) {
+		public DataTypeSpecifications(RpcSingleSenderStrategy strategy, Importance importance) {
 			this.strategy = checkNotNull(strategy);
 			this.importance = checkNotNull(importance);
 		}
 
-		public SingleSenderStrategy getStrategy() {
+		public RpcSingleSenderStrategy getStrategy() {
 			return strategy;
 		}
 
@@ -103,15 +103,15 @@ public final class StrategyTypeDispatching implements RequestSendingStrategy, Si
 		}
 	}
 
-	final static class RequestSenderTypeDispatcher implements RequestSender {
+	final static class RequestSenderTypeDispatcher implements RpcRequestSender {
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No active senders available");
 
-		private Map<Class<? extends RpcMessage.RpcMessageData>, RequestSender> dataTypeToSender;
-		private RequestSender defaultSender;
+		private Map<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender;
+		private RpcRequestSender defaultSender;
 
-		public RequestSenderTypeDispatcher(Map<Class<? extends RpcMessage.RpcMessageData>, RequestSender> dataTypeToSender,
-		                                   RequestSender defaultSender) {
+		public RequestSenderTypeDispatcher(Map<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender,
+		                                   RpcRequestSender defaultSender) {
 			checkNotNull(dataTypeToSender);
 
 			this.dataTypeToSender = dataTypeToSender;
@@ -123,8 +123,8 @@ public final class StrategyTypeDispatching implements RequestSendingStrategy, Si
 		                                                              ResultCallback<T> callback) {
 			checkNotNull(callback);
 
-			RequestSender specifiedSender = dataTypeToSender.get(request.getClass());
-			RequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;
+			RpcRequestSender specifiedSender = dataTypeToSender.get(request.getClass());
+			RpcRequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;
 			if (sender != null) {
 				sender.sendRequest(request, timeout, callback);
 			} else {

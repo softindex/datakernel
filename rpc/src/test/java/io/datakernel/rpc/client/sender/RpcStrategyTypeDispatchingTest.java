@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class StrategyTypeDispatcherTest {
+public class RpcStrategyTypeDispatchingTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -52,10 +52,10 @@ public class StrategyTypeDispatcherTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
-		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
-		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy typeDispatchingStrategy = new StrategyTypeDispatching()
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
 				.on(RpcMessageDataTypeTwo.class, strategySingleServer2)
 				.on(RpcMessageDataTypeThree.class, strategySingleServer3);
@@ -65,7 +65,7 @@ public class StrategyTypeDispatcherTest {
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 
-		RequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
+		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
 		for (int i = 0; i < dataTypeOneRequests; i++) {
 			senderDispatcher.sendRequest(new RpcMessageDataTypeOne(), timeout, callback);
 		}
@@ -93,11 +93,11 @@ public class StrategyTypeDispatcherTest {
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
 		pool.add(ADDRESS_4, connection4);
-		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
-		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
-		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
-		StrategySingleServer strategySingleServer4 = new StrategySingleServer(ADDRESS_4);
-		RequestSendingStrategy typeDispatchingStrategy = new StrategyTypeDispatching()
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcStrategySingleServer strategySingleServer4 = new RpcStrategySingleServer(ADDRESS_4);
+		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
 				.on(RpcMessageDataTypeTwo.class, strategySingleServer2)
 				.on(RpcMessageDataTypeThree.class, strategySingleServer3)
@@ -105,7 +105,7 @@ public class StrategyTypeDispatcherTest {
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 
-		RequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
+		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
 		senderDispatcher.sendRequest(new RpcMessageDataStub(), timeout, callback);
 
 		assertEquals(0, connection1.getCallsAmount());
@@ -125,10 +125,10 @@ public class StrategyTypeDispatcherTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
-		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
-		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy typeDispatchingStrategy = new StrategyTypeDispatching()
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
 				.on(RpcMessageDataTypeTwo.class, strategySingleServer2)
 				.on(RpcMessageDataTypeThree.class, strategySingleServer3);
@@ -145,7 +145,7 @@ public class StrategyTypeDispatcherTest {
 			}
 		};
 
-		RequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
+		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
 		// sender is not specified for RpcMessageDataStub, default sender is null
 		senderDispatcher.sendRequest(new RpcMessageDataStub(), timeout, callback);
 
@@ -153,48 +153,6 @@ public class StrategyTypeDispatcherTest {
 	}
 
 //	TODO (vmykhalko): add tests to check whether sender is created when there is at least one absent mandatory server
-//	@Test
-//	public void itShouldBeActiveWhenThereIsAtLeastOneActiveSubSender() {
-//		Map<Class<? extends RpcMessage.RpcMessageData>, RequestSender> typeToSender = new HashMap<>();
-//		Map<Class<? extends RpcMessage.RpcMessageData>, RequestSender> emptyMap = new HashMap<>();
-//
-//		typeToSender.put(RpcMessageDataTypeOne.class, new RequestSenderStub(1, NON_ACTIVE));
-//		typeToSender.put(RpcMessageDataTypeTwo.class, new RequestSenderStub(2, ACTIVE));
-//		typeToSender.put(RpcMessageDataTypeThree.class, new RequestSenderStub(3, NON_ACTIVE));
-//
-//		RequestSenderTypeDispatcher senderDispatcherOne = new RequestSenderTypeDispatcher(typeToSender, null);
-//
-//		RequestSenderTypeDispatcher senderDispatcherTwo
-//				= new RequestSenderTypeDispatcher(emptyMap, new RequestSenderStub(4, ACTIVE));
-//
-//		assertTrue(senderDispatcherOne.isActive());
-//		assertTrue(senderDispatcherTwo.isActive());
-//	}
-//
-//	@Test
-//	public void itShouldNotBeActiveWhenThereIsNoActiveSubSenders() {
-//		Map<Class<? extends RpcMessage.RpcMessageData>, RequestSender> typeToSender = new HashMap<>();
-//		Map<Class<? extends RpcMessage.RpcMessageData>, RequestSender> emptyMap = new HashMap<>();
-//		typeToSender.put(RpcMessageDataTypeOne.class, new RequestSenderStub(1, NON_ACTIVE));
-//		typeToSender.put(RpcMessageDataTypeTwo.class, new RequestSenderStub(2, NON_ACTIVE));
-//		typeToSender.put(RpcMessageDataTypeThree.class, new RequestSenderStub(3, NON_ACTIVE));
-//
-//		RequestSenderTypeDispatcher senderDispatcherOne = new RequestSenderTypeDispatcher(typeToSender, null);
-//
-//		RequestSenderTypeDispatcher senderDispatcherTwo
-//				= new RequestSenderTypeDispatcher(typeToSender, new RequestSenderStub(4, NON_ACTIVE));
-//
-//		RequestSenderTypeDispatcher senderDispatcherThree
-//				= new RequestSenderTypeDispatcher(emptyMap, new RequestSenderStub(5, NON_ACTIVE));
-//
-//		RequestSenderTypeDispatcher senderDispatcherFour
-//				= new RequestSenderTypeDispatcher(emptyMap, null);
-//
-//		assertFalse(senderDispatcherOne.isActive());
-//		assertFalse(senderDispatcherTwo.isActive());
-//		assertFalse(senderDispatcherThree.isActive());
-//		assertFalse(senderDispatcherFour.isActive());
-//	}
 
 	static class RpcMessageDataTypeOne implements RpcMessage.RpcMessageData {
 

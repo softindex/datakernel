@@ -31,48 +31,48 @@ import static io.datakernel.rpc.client.sender.RpcSendersUtils.replaceAbsentToNul
 import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import static java.util.Arrays.asList;
 
-public final class StrategySharding implements RequestSendingStrategy, SingleSenderStrategy {
-	private final List<RequestSendingStrategy> subStrategies;
+public final class RpcStrategySharding implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
+	private final List<RpcRequestSendingStrategy> subStrategies;
 	private final HashFunction<RpcMessageData> hashFunction;
 
-	public StrategySharding(HashFunction<RpcMessageData> hashFunction, List<RequestSendingStrategy> subStrategies) {
+	public RpcStrategySharding(HashFunction<RpcMessageData> hashFunction, List<RpcRequestSendingStrategy> subStrategies) {
 		this.hashFunction = checkNotNull(hashFunction);
 		this.subStrategies = checkNotNull(subStrategies);
 	}
 
 	@Override
-	public final List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public final List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public final Optional<RequestSender> create(RpcClientConnectionPool pool) {
-		List<Optional<RequestSender>> subSenders = createSubSenders(pool);
-		return Optional.<RequestSender>of(new RequestSenderSharding(hashFunction, replaceAbsentToNull(subSenders)));
+	public final Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
+		List<Optional<RpcRequestSender>> subSenders = createSubSenders(pool);
+		return Optional.<RpcRequestSender>of(new RequestSenderSharding(hashFunction, replaceAbsentToNull(subSenders)));
 	}
 
-	private final List<Optional<RequestSender>> createSubSenders(RpcClientConnectionPool pool) {
+	private final List<Optional<RpcRequestSender>> createSubSenders(RpcClientConnectionPool pool) {
 
 		assert subStrategies != null;
 
-		List<List<Optional<RequestSender>>> listOfListOfSenders = new ArrayList<>();
-		for (RequestSendingStrategy subStrategy : subStrategies) {
+		List<List<Optional<RpcRequestSender>>> listOfListOfSenders = new ArrayList<>();
+		for (RpcRequestSendingStrategy subStrategy : subStrategies) {
 			listOfListOfSenders.add(subStrategy.createAsList(pool));
 		}
 		return flatten(listOfListOfSenders);
 	}
 
-	final static class RequestSenderSharding implements RequestSender {
+	final static class RequestSenderSharding implements RpcRequestSender {
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No senders available");
 		private final HashFunction<RpcMessageData> hashFunction;
-		private final RequestSender[] subSenders;
+		private final RpcRequestSender[] subSenders;
 
-		public RequestSenderSharding(HashFunction<RpcMessageData> hashFunction, List<RequestSender> senders) {
+		public RequestSenderSharding(HashFunction<RpcMessageData> hashFunction, List<RpcRequestSender> senders) {
 			// null values are allowed in senders list
 			checkArgument(senders != null && senders.size() > 0);
 			this.hashFunction = checkNotNull(hashFunction);
-			this.subSenders = senders.toArray(new RequestSender[senders.size()]);
+			this.subSenders = senders.toArray(new RpcRequestSender[senders.size()]);
 		}
 
 		@Override
@@ -80,7 +80,7 @@ public final class StrategySharding implements RequestSendingStrategy, SingleSen
 		                                                   final ResultCallback<T> callback) {
 			checkNotNull(callback);
 
-			RequestSender sender = chooseSender(request);
+			RpcRequestSender sender = chooseSender(request);
 			if (sender != null) {
 				sender.sendRequest(request, timeout, callback);
 				return;
@@ -88,7 +88,7 @@ public final class StrategySharding implements RequestSendingStrategy, SingleSen
 			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 
-		private RequestSender chooseSender(RpcMessageData request) {
+		private RpcRequestSender chooseSender(RpcMessageData request) {
 			int index = Math.abs(hashFunction.hashCode(request)) % subSenders.length;
 			return subSenders[index];
 		}

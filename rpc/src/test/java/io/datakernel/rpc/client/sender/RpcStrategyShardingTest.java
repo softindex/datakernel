@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class StrategyShardingTest {
+public class RpcStrategyShardingTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -50,13 +50,13 @@ public class StrategyShardingTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy shardingStrategy =
-				new StrategySharding(hashFunction,
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy shardingStrategy =
+				new RpcStrategySharding(hashFunction,
 						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
-		RequestSender senderSharding;
+		RpcRequestSender senderSharding;
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 
@@ -85,13 +85,13 @@ public class StrategyShardingTest {
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy shardingStrategy =
-				new StrategySharding(hashFunction,
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy shardingStrategy =
+				new RpcStrategySharding(hashFunction,
 						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
-		RequestSender senderSharding;
+		RpcRequestSender senderSharding;
 		int timeout = 50;
 		ResultCallback<RpcMessageDataStubWithKey> callback = new ResultCallback<RpcMessageDataStubWithKey>() {
 			@Override
@@ -118,11 +118,11 @@ public class StrategyShardingTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		StrategySharding strategy = new StrategySharding(new RpcMessageDataStubWithKeyHashFunction(), null);
+		RpcStrategySharding strategy = new RpcStrategySharding(new RpcMessageDataStubWithKeyHashFunction(), null);
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
-		StrategySharding strategy = new StrategySharding(null, new ArrayList<RequestSendingStrategy>());
+		RpcStrategySharding strategy = new RpcStrategySharding(null, new ArrayList<RpcRequestSendingStrategy>());
 	}
 }

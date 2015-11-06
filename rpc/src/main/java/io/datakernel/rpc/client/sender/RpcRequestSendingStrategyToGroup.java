@@ -27,30 +27,30 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
 import static java.util.Arrays.asList;
 
-public abstract class RequestSendingStrategyToGroup implements RequestSendingStrategy {
+public abstract class RpcRequestSendingStrategyToGroup implements RpcRequestSendingStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
 
 	private final int minSubStrategiesForCreation;
-	private final List<RequestSendingStrategy> subStrategies;
+	private final List<RpcRequestSendingStrategy> subStrategies;
 
-	RequestSendingStrategyToGroup(List<RequestSendingStrategy> subStrategies) {
+	RpcRequestSendingStrategyToGroup(List<RpcRequestSendingStrategy> subStrategies) {
 		this(subStrategies, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT);
 	}
 
-	RequestSendingStrategyToGroup(List<RequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
+	RpcRequestSendingStrategyToGroup(List<RpcRequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
 		checkArgument(minSubStrategiesForCreation > 0, "minSubStrategiesForCreation must be greater than 0");
 		this.subStrategies = checkNotNull(subStrategies);
 		this.minSubStrategiesForCreation = minSubStrategiesForCreation;
 	}
 
 	@Override
-	public final List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public final List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public final Optional<RequestSender> create(RpcClientConnectionPool pool) {
-		List<Optional<RequestSender>> subSenders = createSubSenders(pool);
+	public final Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
+		List<Optional<RpcRequestSender>> subSenders = createSubSenders(pool);
 		if (countPresentValues(subSenders) >= minSubStrategiesForCreation) {
 			return Optional.of(createSenderInstance(filterAbsent(subSenders)));
 		} else {
@@ -58,14 +58,14 @@ public abstract class RequestSendingStrategyToGroup implements RequestSendingStr
 		}
 	}
 
-	protected abstract RequestSender createSenderInstance(List<RequestSender> subSenders);
+	protected abstract RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders);
 
-	private final List<Optional<RequestSender>> createSubSenders(RpcClientConnectionPool pool) {
+	private final List<Optional<RpcRequestSender>> createSubSenders(RpcClientConnectionPool pool) {
 
 		assert subStrategies != null;
 
-		List<List<Optional<RequestSender>>> listOfListOfSenders = new ArrayList<>();
-		for (RequestSendingStrategy subStrategy : subStrategies) {
+		List<List<Optional<RpcRequestSender>>> listOfListOfSenders = new ArrayList<>();
+		for (RpcRequestSendingStrategy subStrategy : subStrategies) {
 			listOfListOfSenders.add(subStrategy.createAsList(pool));
 		}
 		return flatten(listOfListOfSenders);

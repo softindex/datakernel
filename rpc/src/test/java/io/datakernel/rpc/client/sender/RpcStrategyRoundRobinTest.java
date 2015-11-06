@@ -28,7 +28,7 @@ import java.net.InetSocketAddress;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
-public class StrategyRoundRobinTest {
+public class RpcStrategyRoundRobinTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -48,12 +48,12 @@ public class StrategyRoundRobinTest {
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy roundRobinStrategy =
-				new StrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
-		RequestSender senderRoundRobin;
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy roundRobinStrategy =
+				new RpcStrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+		RpcRequestSender senderRoundRobin;
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -79,15 +79,15 @@ public class StrategyRoundRobinTest {
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
-		RequestSendingStrategy singleServerStrategy1 = new StrategySingleServer(ADDRESS_1);
-		RequestSendingStrategy singleServerStrategy2 = new StrategySingleServer(ADDRESS_2);
-		RequestSendingStrategy singleServerStrategy3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy singleServerStrategy4 = new StrategySingleServer(ADDRESS_4);
-		RequestSendingStrategy singleServerStrategy5 = new StrategySingleServer(ADDRESS_5);
-		RequestSendingStrategy roundRobinStrategy =
-				new StrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3,
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy singleServerStrategy4 = new RpcStrategySingleServer(ADDRESS_4);
+		RpcRequestSendingStrategy singleServerStrategy5 = new RpcStrategySingleServer(ADDRESS_5);
+		RpcRequestSendingStrategy roundRobinStrategy =
+				new RpcStrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3,
 						singleServerStrategy4, singleServerStrategy5));
-		RequestSender senderRoundRobin;
+		RpcRequestSender senderRoundRobin;
 		int timeout = 50;
 		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -109,6 +109,6 @@ public class StrategyRoundRobinTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
-		RequestSendingStrategy strategy = new StrategyRoundRobin(null);
+		RpcRequestSendingStrategy strategy = new RpcStrategyRoundRobin(null);
 	}
 }

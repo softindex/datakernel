@@ -27,12 +27,12 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.rpc.client.sender.StrategyRendezvousHashing.DefaultBucketHashFunction;
-import static io.datakernel.rpc.client.sender.StrategyRendezvousHashing.RendezvousHashBucket;
+import static io.datakernel.rpc.client.sender.RpcStrategyRendezvousHashing.DefaultBucketHashFunction;
+import static io.datakernel.rpc.client.sender.RpcStrategyRendezvousHashing.RendezvousHashBucket;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
-public class StrategyRendezvousHashingTest {
+public class RpcStrategyRendezvousHashingTest {
 
 	private static final String HOST = "localhost";
 	private static final int PORT_1 = 10001;
@@ -52,15 +52,15 @@ public class StrategyRendezvousHashingTest {
 		int key2 = 2;
 		int key3 = 3;
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
-		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
-		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy rendezvousHashingStrategy =
-				new StrategyRendezvousHashing(hashFunction)
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy rendezvousHashingStrategy =
+				new RpcStrategyRendezvousHashing(hashFunction)
 						.put(key1, strategySingleServer1)
 						.put(key2, strategySingleServer2)
 						.put(key3, strategySingleServer3);
-		RequestSender rendezvousSender;
+		RpcRequestSender rendezvousSender;
 		int callsPerLoop = 10000;
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -101,11 +101,11 @@ public class StrategyRendezvousHashingTest {
 		int key2 = 2;
 		int key3 = 3;
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
-		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
-		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy rendezvousHashingStrategy =
-				new StrategyRendezvousHashing(hashFunction)
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy rendezvousHashingStrategy =
+				new RpcStrategyRendezvousHashing(hashFunction)
 						.put(key1, strategySingleServer1)
 						.put(key2, strategySingleServer2)
 						.put(key3, strategySingleServer3);
@@ -123,11 +123,11 @@ public class StrategyRendezvousHashingTest {
 		int key2 = 2;
 		int key3 = 3;
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		StrategySingleServer strategySingleServer1 = new StrategySingleServer(ADDRESS_1);
-		StrategySingleServer strategySingleServer2 = new StrategySingleServer(ADDRESS_2);
-		StrategySingleServer strategySingleServer3 = new StrategySingleServer(ADDRESS_3);
-		RequestSendingStrategy rendezvousHashingStrategy =
-				new StrategyRendezvousHashing(hashFunction)
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy rendezvousHashingStrategy =
+				new RpcStrategyRendezvousHashing(hashFunction)
 						.put(key1, strategySingleServer1)
 						.put(key2, strategySingleServer2)
 						.put(key3, strategySingleServer3);
@@ -141,35 +141,35 @@ public class StrategyRendezvousHashingTest {
 	public void itShouldNotBeCreatedWhenThereNoSendersWereAdded() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RequestSendingStrategy rendezvousHashingStrategy = new StrategyRendezvousHashing(hashFunction);
+		RpcRequestSendingStrategy rendezvousHashingStrategy = new RpcStrategyRendezvousHashing(hashFunction);
 
 		assertFalse(rendezvousHashingStrategy.create(pool).isPresent());
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
-		RequestSendingStrategy rendezvousHashingStrategy = new StrategyRendezvousHashing(null);
+		RpcRequestSendingStrategy rendezvousHashingStrategy = new RpcStrategyRendezvousHashing(null);
 	}
 
 	@Test
 	public void testRendezvousHashBucket() {
 		final int SENDERS_AMOUNT = 4;
 		final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
-		final Map<Object, Optional<RequestSender>> keyToSender = new HashMap<>(SENDERS_AMOUNT);
+		final Map<Object, Optional<RpcRequestSender>> keyToSender = new HashMap<>(SENDERS_AMOUNT);
 		for (int i = 0; i < SENDERS_AMOUNT; i++) {
-			keyToSender.put(i, Optional.<RequestSender>of(new RequestSenderStub(i)));
+			keyToSender.put(i, Optional.<RpcRequestSender>of(new RequestSenderStub(i)));
 		}
 		RendezvousHashBucket hashBucket;
 
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
-		RequestSender[] baseBucket = new RequestSender[DEFAULT_BUCKET_CAPACITY];
+		RpcRequestSender[] baseBucket = new RpcRequestSender[DEFAULT_BUCKET_CAPACITY];
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			baseBucket[i] = hashBucket.chooseSender(i);
 		}
 
 		int key1 = 1;
-		RequestSender sender1 = keyToSender.get(key1).get();
-		keyToSender.put(key1, Optional.<RequestSender>absent());
+		RpcRequestSender sender1 = keyToSender.get(key1).get();
+		keyToSender.put(key1, Optional.<RpcRequestSender>absent());
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			if (!baseBucket[i].equals(sender1))
@@ -179,8 +179,8 @@ public class StrategyRendezvousHashingTest {
 		}
 
 		int key2 = 2;
-		RequestSender sender2 = keyToSender.get(key2).get();
-		keyToSender.put(key2, Optional.<RequestSender>absent());
+		RpcRequestSender sender2 = keyToSender.get(key2).get();
+		keyToSender.put(key2, Optional.<RpcRequestSender>absent());
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			if (!baseBucket[i].equals(sender1) && !baseBucket[i].equals(sender2))
@@ -190,7 +190,7 @@ public class StrategyRendezvousHashingTest {
 			assertFalse(hashBucket.chooseSender(i).equals(sender2));
 		}
 
-		keyToSender.put(key1, Optional.<RequestSender>of(new RequestSenderStub(key1)));
+		keyToSender.put(key1, Optional.<RpcRequestSender>of(new RequestSenderStub(key1)));
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			if (!baseBucket[i].equals(sender2))
@@ -199,7 +199,7 @@ public class StrategyRendezvousHashingTest {
 				assertFalse(hashBucket.chooseSender(i).equals(sender2));
 		}
 
-		keyToSender.put(key2, Optional.<RequestSender>of(new RequestSenderStub(key2)));
+		keyToSender.put(key2, Optional.<RpcRequestSender>of(new RequestSenderStub(key2)));
 		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			assertEquals(baseBucket[i], hashBucket.chooseSender(i));
