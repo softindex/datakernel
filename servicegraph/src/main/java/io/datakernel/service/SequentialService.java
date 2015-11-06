@@ -79,7 +79,7 @@ public class SequentialService implements ConcurrentService {
 			ConcurrentServiceCallback applyCallback = new ConcurrentServiceCallback() {
 				@Override
 				public void doOnComplete() {
-					logger.info("{} {} complete", action, service);
+					logger.info("{} sequential service {} complete", action, service);
 					next(it, action, callback);
 				}
 

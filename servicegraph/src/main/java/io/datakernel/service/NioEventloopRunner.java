@@ -137,7 +137,7 @@ public class NioEventloopRunner implements ConcurrentService {
 	synchronized private void doStartAsync(final ConcurrentServiceCallback callback) {
 		assert startFuture == null || stopFuture == null;
 		if (startFuture != null) {
-			callback.onComplete();
+//			callback.onComplete();
 			return;
 		}
 		if (thread != null) {
@@ -194,14 +194,14 @@ public class NioEventloopRunner implements ConcurrentService {
 					}
 				});
 
-				synchronized (NioEventloopRunner.this) {
-					assert startFuture == null || stopFuture == null;
-					NioEventloopRunner.this.thread = null;
-					if (stopFuture != null) {
-						callback.onComplete();
-						stopFuture = null;
-					}
-				}
+//				synchronized (NioEventloopRunner.this) {
+//					assert startFuture == null || stopFuture == null;
+//					NioEventloopRunner.this.thread = null;
+//					if (stopFuture != null) {
+//						callback.onComplete();
+//						stopFuture = null;
+//					}
+//				}
 			}
 		});
 		thread.start();

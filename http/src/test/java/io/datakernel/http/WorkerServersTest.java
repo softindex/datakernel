@@ -148,12 +148,8 @@ public class WorkerServersTest {
 				.addNioServers(primaryNioServer)
 				.addConcurrentServices(workerServices);
 
-		ServiceGraph graph = new ServiceGraph();
-		graph.add(new ServiceGraph.Node("s1", primaryService));
-
 		ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-//		primaryService.startFuture(callback);
-		graph.startFuture(callback);
+		primaryService.startFuture(callback);
 		callback.await();
 
 		Socket socket1 = new Socket();
@@ -176,8 +172,58 @@ public class WorkerServersTest {
 		socket2.close();
 
 		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStop = ConcurrentServiceCallbacks.withCountDownLatch();
-		graph.stopFuture(callback);
-//		primaryService.stopFuture(callbackStop);
+		primaryService.stopFuture(callbackStop);
+		callbackStop.await();
+
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test
+	public void serviceGraphRunner() throws Exception {
+		final ArrayList<AsyncHttpServer> workerServers = new ArrayList<>();
+		ServiceGraph.Node[] nodes = new ServiceGraph.Node[WORKERS];
+		ServiceGraph graph = new ServiceGraph();
+
+		for (int i = 0; i < WORKERS; i++) {
+			NioEventloop workerEventloop = new NioEventloop();
+			AsyncHttpServer workerServer = echoServer(workerEventloop, i);
+			workerServers.add(workerServer);
+
+			nodes[i] = ServiceGraph.Node.ofNioServer("workerEventloop" + String.valueOf(i), workerServer);
+		}
+
+		NioEventloop primaryEventloop = new NioEventloop();
+		final PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop)
+				.workerNioServers(workerServers)
+				.setListenPort(PORT);
+
+		graph.add(ServiceGraph.Node.ofNioServer("primaryNioServer", primaryNioServer), nodes);
+
+		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStart = ConcurrentServiceCallbacks.withCountDownLatch();
+		graph.startFuture(callbackStart);
+		callbackStart.await();
+
+		Socket socket1 = new Socket();
+		Socket socket2 = new Socket();
+		socket1.connect(new InetSocketAddress(PORT));
+		socket2.connect(new InetSocketAddress(PORT));
+
+		socket1.getOutputStream().write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: keep-alive\n\r\n"));
+		readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 22\r\n\r\nHello world: worker #0");
+		socket1.getOutputStream().write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: close\n\r\n"));
+		readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 22\r\n\r\nHello world: worker #0");
+		assertTrue(toByteArray(socket1.getInputStream()).length == 0);
+		socket1.close();
+
+		socket2.getOutputStream().write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: keep-alive\n\r\n"));
+		readAndAssert(socket2.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 22\r\n\r\nHello world: worker #1");
+		socket2.getOutputStream().write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: close\n\r\n"));
+		readAndAssert(socket2.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 22\r\n\r\nHello world: worker #1");
+		assertTrue(toByteArray(socket2.getInputStream()).length == 0);
+		socket2.close();
+
+		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStop = ConcurrentServiceCallbacks.withCountDownLatch();
+		graph.stopFuture(callbackStop);
 		callbackStop.await();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

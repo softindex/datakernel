@@ -21,6 +21,7 @@ import com.google.common.collect.SetMultimap;
 import com.google.inject.*;
 import com.google.inject.spi.Dependency;
 import com.google.inject.spi.HasDependencies;
+import io.datakernel.guice.workers.NioWorkerScope;
 import io.datakernel.service.ConcurrentService;
 import io.datakernel.service.ServiceGraph;
 import org.slf4j.Logger;
@@ -170,7 +171,8 @@ public final class ServiceGraphModule extends AbstractModule {
 		throw new IllegalArgumentException("Could not find factory for service " + key);
 	}
 
-	private void createGuiceGraph(Injector injector, ServiceGraph graph) {
+	private void createGuiceGraph(Injector injector, NioWorkerScope nioWorkerScope, ServiceGraph graph) {
+		// TODO (vsavchuk) the same for workerScope
 		if (!difference(keys.keySet(), injector.getAllBindings().keySet()).isEmpty()) {
 			logger.warn("Unused keys : {}", keys.keySet());
 		}
@@ -249,11 +251,11 @@ public final class ServiceGraphModule extends AbstractModule {
 	 */
 	@Provides
 	@Singleton
-	ServiceGraph serviceGraph(final Injector injector) {
+	ServiceGraph serviceGraph(final Injector injector, final NioWorkerScope nioWorkerScope) {
 		return new ServiceGraph() {
 			@Override
 			protected void onStart() {
-				createGuiceGraph(injector, this);
+				createGuiceGraph(injector, nioWorkerScope, this);
 				logger.debug("Dependencies graph: \n" + this);
 				removeIntermediateNodes();
 				breakCircularDependencies();

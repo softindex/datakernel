@@ -18,8 +18,14 @@ package io.datakernel.service;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.PrimaryNioServer;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 
 public class ServiceGraphTest {
 
@@ -50,9 +56,14 @@ public class ServiceGraphTest {
 	}
 
 	@Test
-	public void testNioService() throws InterruptedException {
+	public void test2() throws InterruptedException {
 		final NioEventloop eventloop = new NioEventloop();
-		NioService nioService = new NioService() {
+		ServiceGraph graph = new ServiceGraph();
+
+
+
+		graph.add(ServiceGraph.Node.ofNioService("nioService1" , new NioService() {
+			private NioEventloop eventloop = new NioEventloop();
 
 			@Override
 			public NioEventloop getNioEventloop() {
@@ -68,19 +79,73 @@ public class ServiceGraphTest {
 			public void stop(CompletionCallback callback) {
 				callback.onComplete();
 			}
-		};
-
-		NioEventloopRunner nioEventloopRunner = new NioEventloopRunner(eventloop);
-		nioEventloopRunner.addNioServices(nioService);
-
-		ServiceGraph graph = new ServiceGraph();
-//		graph.add(new ServiceGraph.Node("nioRunner", nioEventloopRunner), stringNode("a"), stringNode("b"), stringNode("c"));
-		graph.add(new ServiceGraph.Node("nioRunner", nioEventloopRunner));
+		}), stringNode("a"), stringNode("b"), stringNode("c"));
 
 		try {
 			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			graph.startFuture(callback);
 			callback.await();
+			System.out.println("\n\n\n");
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			graph.stopFuture(callback);
+			callback.await();
+		}
+	}
+
+	@Test
+	public void testNioService() throws InterruptedException {
+		final ArrayList<NioEventloopRunner> workerServices = new ArrayList<>();
+		final ArrayList<NioServer> workerServers = new ArrayList<>();
+		ServiceGraph.Node[] nodes = new ServiceGraph.Node[4];
+
+		for (int i = 0; i < 4; i++) {
+			final NioEventloop workerEventloop = new NioEventloop();
+			NioServer workerServer = new NioServer() {
+				@Override
+				public NioEventloop getNioEventloop() {
+					return workerEventloop;
+				}
+
+				@Override
+				public void listen() throws IOException {
+
+				}
+
+				@Override
+				public void close() {
+
+				}
+
+				@Override
+				public void onAccept(SocketChannel socketChannel) {
+
+				}
+			};
+			workerServers.add(workerServer);
+
+			workerServices.add(new NioEventloopRunner(workerEventloop)
+					.addNioServers(workerServer));
+			nodes[i] = ServiceGraph.Node.ofNioServer("workerEventloop" + String.valueOf(i), workerServer);
+		}
+
+		int PORT = 9444;
+		NioEventloop primaryEventloop = new NioEventloop();
+		PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop)
+				.workerNioServers(workerServers)
+				.setListenPort(PORT);
+
+		ServiceGraph graph = new ServiceGraph();
+//		graph.add(new ServiceGraph.Node("primaryNioServer", ConcurrentServices.concurrentServiceOfNioServer(primaryNioServer)), nodes);
+		graph.add(ServiceGraph.Node.ofNioServer("primaryNioServer", primaryNioServer), nodes);
+
+		try {
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			graph.startFuture(callback);
+			callback.await();
+			System.out.println("\n\n\n");
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
