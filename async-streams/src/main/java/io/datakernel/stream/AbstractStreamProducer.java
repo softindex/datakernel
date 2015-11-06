@@ -60,7 +60,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	 * @param downstreamConsumer consumer for streaming
 	 */
 	@Override
-	public final void streamTo(StreamConsumer<T> downstreamConsumer) {
+	public final void streamTo(final StreamConsumer<T> downstreamConsumer) {
 		checkNotNull(downstreamConsumer);
 		if (rewiring || this.downstreamConsumer == downstreamConsumer)
 			return;
@@ -79,7 +79,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 		bindDataReceiver();
 
-		if (firstTime) {
+		if (firstTime && bufferedList.size() != 0) {
+			logger.trace("{} Send buffered items", this);
 			for (T item : bufferedList) {
 				downstreamConsumer.getDataReceiver().onData(item);
 			}
@@ -100,7 +101,6 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					// TODO (vsavchuk) post can be done in status == READY, and in Runnable status can be other, check this
 					if (status.isOpen()) {
 						onStarted();
 					}
@@ -212,7 +212,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		setStatus(CLOSED_WITH_ERROR);
 		error = e;
 		downstreamDataReceiver = new DataReceiverAfterClose<>();
-		logger.info("StreamProducer {} closed with error {}", this, error.toString());
+		logger.trace("StreamProducer {} closed with error {}", this, error.toString());
 		if (sendToConsumer && downstreamConsumer != null) {
 			downstreamConsumer.onProducerError(e);
 		}
@@ -239,6 +239,11 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	@Override
 	public final StreamStatus getProducerStatus() {
 		return status;
+	}
+
+	@Override
+	public final Exception getProducerException() {
+		return error;
 	}
 
 	private void setStatus(StreamStatus status) {
@@ -274,6 +279,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 
 		@Override
 		public void onData(T item) {
+			logger.trace("{} add item to buffer", self);
 			self.onConsumerSuspended();
 			list.add(item);
 		}

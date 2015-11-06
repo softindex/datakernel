@@ -21,8 +21,7 @@ import java.util.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
-public final class RendezvousHashing {
-
+final class RendezvousHashing implements HashingStrategy {
 	private static final Comparator<Entry> ENTRY_COMPARATOR = new Comparator<Entry>() {
 		@Override
 		public int compare(Entry o1, Entry o2) {
@@ -33,23 +32,31 @@ public final class RendezvousHashing {
 		}
 	};
 
-	private static int rehash(int k) {
-		k ^= k >>> 16;
-		k *= 0x85ebca6b;
-		k ^= k >>> 13;
-		k *= 0xc2b2ae35;
-		k ^= k >>> 16;
-		return k;
+	@Override
+	public List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers) {
+		Map<Integer, ServerInfo> map = new HashMap<>(servers.size());
+
+		int[] serverIds = new int[servers.size()];
+		double[] serverWeights = new double[servers.size()];
+		int aliveServersCount = 0;
+		for (ServerInfo server : servers) {
+			map.put(server.getServerId(), server);
+			serverIds[aliveServersCount] = server.getServerId();
+			serverWeights[aliveServersCount] = server.getWeight();
+			aliveServersCount++;
+		}
+		serverIds = Arrays.copyOf(serverIds, aliveServersCount);
+		serverWeights = Arrays.copyOf(serverWeights, aliveServersCount);
+		int[] replicas = replicas(fileName.hashCode(), serverIds, serverWeights);
+		List<ServerInfo> orderedServers = new ArrayList<>();
+		for (int serverId : replicas) {
+			orderedServers.add(map.get(serverId));
+		}
+
+		return orderedServers;
 	}
 
-	private static double replicaPriority(int itemId, int serverId, double weight) {
-		int replicaHash = rehash(~itemId) ^ rehash(serverId);
-		double serverHashValue = (double) ((long) replicaHash + (long) Integer.MIN_VALUE) / (double) (1L << 32);
-		serverHashValue = pow(serverHashValue, 1.0 / weight);
-		return serverHashValue;
-	}
-
-	public static int[] replicas(int itemId, int[] serverIds, double[] weights, int replicas) {
+	public int[] replicas(int itemId, int[] serverIds, double[] weights, int replicas) {
 		checkArgument(serverIds.length == weights.length);
 		checkArgument(replicas >= 0 && replicas <= serverIds.length);
 		List<Entry> list = new ArrayList<>(serverIds.length);
@@ -67,35 +74,27 @@ public final class RendezvousHashing {
 		return result;
 	}
 
-	public static int[] replicas(int itemId, int[] serverIds, double[] weights) {
+	public int[] replicas(int itemId, int[] serverIds, double[] weights) {
 		return replicas(itemId, serverIds, weights, serverIds.length);
 	}
 
-	public static List<ServerInfo> sortServers(List<ServerInfo> servers, String filename) {
-		Map<Integer, ServerInfo> map = new HashMap<>(servers.size());
-
-		int[] serverIds = new int[servers.size()];
-		double[] serverWeights = new double[servers.size()];
-		int aliveServersCount = 0;
-		for (ServerInfo server : servers) {
-			map.put(server.serverId, server);
-			serverIds[aliveServersCount] = server.serverId;
-			serverWeights[aliveServersCount] = server.weight;
-			aliveServersCount++;
-		}
-		serverIds = Arrays.copyOf(serverIds, aliveServersCount);
-		serverWeights = Arrays.copyOf(serverWeights, aliveServersCount);
-		int[] replicas = RendezvousHashing.replicas(filename.hashCode(), serverIds, serverWeights);
-
-		List<ServerInfo> orderedServers = new ArrayList<>();
-		for (int serverId : replicas) {
-			orderedServers.add(map.get(serverId));
-		}
-
-		return orderedServers;
+	private int rehash(int k) {
+		k ^= k >>> 16;
+		k *= 0x85ebca6b;
+		k ^= k >>> 13;
+		k *= 0xc2b2ae35;
+		k ^= k >>> 16;
+		return k;
 	}
 
-	private static final class Entry {
+	private double replicaPriority(int itemId, int serverId, double weight) {
+		int replicaHash = rehash(~itemId) ^ rehash(serverId);
+		double serverHashValue = (double) ((long) replicaHash + (long) Integer.MIN_VALUE) / (double) (1L << 32);
+		serverHashValue = pow(serverHashValue, 1.0 / weight);
+		return serverHashValue;
+	}
+
+	private final class Entry {
 		final double priority;
 		final int serverId;
 
@@ -104,5 +103,4 @@ public final class RendezvousHashing {
 			this.serverId = serverId;
 		}
 	}
-
 }

@@ -41,9 +41,9 @@ import org.junit.Test;
 public class StringDimensionTest {
 	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationChunkStorage storage,
 	                           AggregationStructure structure) {
-		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		Cube cube = new Cube(eventloop, classLoader, new LogToCubeMetadataStorageStub(), aggregationMetadataStorage,
-				storage, structure);
+		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		Cube cube = new Cube(eventloop, classLoader, new LogToCubeMetadataStorageStub(aggregationMetadataStorage), aggregationMetadataStorage,
+				storage, structure, 100_000, 1_000_000);
 		cube.addAggregation(
 				new AggregationMetadata("detailedAggregation", asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
 		return cube;
@@ -75,8 +75,8 @@ public class StringDimensionTest {
 				.streamTo(cube.consumer(DataItemString2.class, DataItemString2.DIMENSIONS, DataItemString2.METRICS, new CubeTest.MyCommitCallback(cube)));
 		eventloop.run();
 
-		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toListRandomlySuspending(eventloop);
-		cube.query(0, DataItemResultString.class,
+		StreamConsumers.ToList<DataItemResultString> consumerToList = StreamConsumers.toList(eventloop);
+		cube.query(DataItemResultString.class,
 				new AggregationQuery()
 						.keys("key1", "key2")
 						.fields("metric1", "metric2", "metric3")

@@ -16,8 +16,6 @@
 
 package io.datakernel.stream;
 
-import io.datakernel.async.CompletionCallback;
-
 /**
  * It represents an object which can asynchronous receive streams of data.
  * Implementors of this interface are strongly encouraged to extend one of the abstract classes
@@ -28,7 +26,7 @@ import io.datakernel.async.CompletionCallback;
  */
 public interface StreamConsumer<T> {
 	/**
-	 * Returns StreamDataCallback that will process receiving data.
+	 * Returns StreamDataReceiver that will process receiving data.
 	 * <p>Stream consumer is free to use any appropriate instance implementing the receiver interface, including itself.
 	 * <p>Moreover, it is possible (and encouraged) to forward data receiver from 'downstream' consumers.
 	 * This design principle makes it possible to implement zero-overhead stream transformers:
@@ -60,4 +58,6 @@ public interface StreamConsumer<T> {
 	void onProducerError(Exception e);
 
 	StreamStatus getConsumerStatus();
+
+	Exception getConsumerException();
 }

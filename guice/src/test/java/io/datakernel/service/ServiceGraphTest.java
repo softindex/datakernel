@@ -54,13 +54,8 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		SimpleCompletionFuture startCallback = new SimpleCompletionFuture();
-		serviceGraph.startFuture(startCallback);
-		startCallback.await();
-
-		SimpleCompletionFuture stopCallback = new SimpleCompletionFuture();
-		serviceGraph.stopFuture(stopCallback);
-		stopCallback.await();
+		serviceGraph.startFuture().get();
+		serviceGraph.stopFuture().get();
 	}
 
 	@Test
@@ -83,13 +78,8 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		SimpleCompletionFuture startCallback = new SimpleCompletionFuture();
-		serviceGraph.startFuture(startCallback);
-		startCallback.await();
-
-		SimpleCompletionFuture stopCallback = new SimpleCompletionFuture();
-		serviceGraph.stopFuture(stopCallback);
-		stopCallback.await();
+		serviceGraph.startFuture().get();
+		serviceGraph.stopFuture().get();
 	}
 
 }

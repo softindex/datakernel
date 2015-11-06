@@ -47,13 +47,13 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		ExpressionSequence onFirstItemDef = sequence(accumulator);
 		for (String key : keys) {
 			onFirstItemDef.add(set(
-					field(accumulator, key),
-					field(cast(arg(2), inputClass), key)));
+					getter(accumulator, key),
+					getter(cast(arg(2), inputClass), key)));
 		}
 		for (String field : inputFields) {
 			onFirstItemDef.add(set(
-					field(accumulator, field),
-					field(cast(arg(2), inputClass), field)));
+					getter(accumulator, field),
+					getter(cast(arg(2), inputClass), field)));
 		}
 		onFirstItemDef.add(accumulator);
 		builder.method("onFirstItem", onFirstItemDef);
@@ -66,9 +66,9 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		ExpressionSequence onNextItemDef = sequence();
 		for (String field : inputFields) {
 			onNextItemDef.add(ifTrue(cmp(PredicateDefCmp.Operation.LT,
-					field(cast(arg(3), outputClass), "timestamp"),
-					field(cast(arg(2), inputClass), "timestamp")),
-					set(field(cast(arg(3), outputClass), field), field(cast(arg(2), inputClass), field))));
+					getter(cast(arg(3), outputClass), "timestamp"),
+					getter(cast(arg(2), inputClass), "timestamp")),
+					setter(cast(arg(3), outputClass), field, getter(cast(arg(2), inputClass), field))));
 		}
 		onNextItemDef.add(arg(3));
 		builder.method("onNextItem", onNextItemDef);
@@ -92,13 +92,13 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		ExpressionSequence createAccumulatorDef = sequence(result);
 		for (String key : keys) {
 			createAccumulatorDef.add(set(
-					field(result, key),
-					field(cast(arg(0), inputClass), key)));
+					getter(result, key),
+					getter(cast(arg(0), inputClass), key)));
 		}
 		for (String field : inputFields) {
 			createAccumulatorDef.add(set(
-					field(result, field),
-					field(cast(arg(0), inputClass), field)));
+					getter(result, field),
+					getter(cast(arg(0), inputClass), field)));
 		}
 		createAccumulatorDef.add(result);
 		builder.method("createAccumulator", createAccumulatorDef);
@@ -113,9 +113,9 @@ public class KeyValueProcessorFactory implements ProcessorFactory {
 		for (String field : inputFields) {
 			accumulateDef.add(
 					ifTrue(cmp(PredicateDefCmp.Operation.LT,
-							field(cast(arg(0), outputClass), "timestamp"),
-							field(cast(arg(1), inputClass), "timestamp")),
-							set(field(cast(arg(0), outputClass), field), field(cast(arg(1), inputClass), field))));
+							getter(cast(arg(0), outputClass), "timestamp"),
+							getter(cast(arg(1), inputClass), "timestamp")),
+							setter(cast(arg(0), outputClass), field, getter(cast(arg(1), inputClass), field))));
 		}
 		builder.method("accumulate", accumulateDef);
 

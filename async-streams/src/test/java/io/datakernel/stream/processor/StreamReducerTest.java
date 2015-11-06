@@ -20,6 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
@@ -51,13 +52,13 @@ public class StreamReducerTest {
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
 		source.streamTo(streamReducer.newInput(keyFunction, reducer));
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(EMPTY_LIST, consumer.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
+		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
 	}
 
 	@Test
@@ -87,7 +88,7 @@ public class StreamReducerTest {
 		source5.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -100,8 +101,8 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source6.getProducerStatus());
 		assertEquals(END_OF_STREAM, source7.getProducerStatus());
 
-		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
+		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
 	}
 
 	@Test
@@ -120,7 +121,7 @@ public class StreamReducerTest {
 			public void onData(KeyValueResult item) {
 				list.add(item);
 				if (list.size() == 1) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -142,7 +143,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER);
 		source3.streamTo(streamConsumer3);
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -152,9 +153,9 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source2.getProducerStatus());
 		assertEquals(END_OF_STREAM, source3.getProducerStatus());
 
-		assertEquals(CLOSED_WITH_ERROR, streamReducer.getDownstreamProducer().getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamReducer.getOutput().getProducerStatus());
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM, END_OF_STREAM},
-				consumerStatuses(streamReducer.getUpstreamConsumers()));
+				consumerStatuses(streamReducer.getInputs()));
 	}
 
 
@@ -165,7 +166,7 @@ public class StreamReducerTest {
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 
-		StreamProducer<KeyValue2> source2 = StreamProducers.closingWithError(eventloop, new Exception());
+		StreamProducer<KeyValue2> source2 = StreamProducers.closingWithError(eventloop, new Exception("Test Exception"));
 
 		StreamProducer<KeyValue3> source3 = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValue3(2, 10.0, 20.0), new KeyValue3(3, 10.0, 20.0)));
@@ -184,7 +185,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER);
 		source3.streamTo(streamConsumer3);
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 0);
@@ -399,7 +400,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER_TO_ACCUMULATOR.inputToOutput());
 		source3.streamTo(streamConsumer3);
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(asList(
@@ -433,7 +434,7 @@ public class StreamReducerTest {
 		StreamConsumer<KeyValue3> streamConsumer3 = streamReducer.newInput(KeyValue3.keyFunction, KeyValue3.REDUCER);
 		source3.streamTo(streamConsumer3);
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertEquals(asList(
@@ -475,7 +476,7 @@ public class StreamReducerTest {
 		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
 		eventloop.run();
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer.getList());
@@ -488,7 +489,49 @@ public class StreamReducerTest {
 		assertEquals(END_OF_STREAM, source6.getProducerStatus());
 		assertEquals(END_OF_STREAM, source7.getProducerStatus());
 
-		assertEquals(END_OF_STREAM, streamReducer.getDownstreamProducer().getProducerStatus());
-		assertConsumerStatuses(END_OF_STREAM, streamReducer.getUpstreamConsumers());
+		assertEquals(END_OF_STREAM, streamReducer.getOutput().getProducerStatus());
+		assertConsumerStatuses(END_OF_STREAM, streamReducer.getInputs());
+	}
+
+	@Test
+	public void testWithoutProducer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamReducer<Integer, Integer, Void> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
+		CheckCallCallback checkCallCallback = new CheckCallCallback();
+		StreamConsumers.ToList<Integer> toList = StreamConsumers.toList(eventloop);
+		toList.setCompletionCallback(checkCallCallback);
+
+		streamReducer.getOutput().streamTo(toList);
+		eventloop.run();
+
+		assertTrue(checkCallCallback.isCall());
+	}
+
+	class CheckCallCallback implements CompletionCallback {
+		private int onComplete;
+		private int onException;
+
+		@Override
+		public void onComplete() {
+			onComplete++;
+		}
+
+		@Override
+		public void onException(Exception exception) {
+			onException++;
+		}
+
+		public int getOnComplete() {
+			return onComplete;
+		}
+
+		public int getOnException() {
+			return onException;
+		}
+
+		public boolean isCall() {
+			return (onComplete == 1 && onException == 0) || (onComplete == 0 && onException == 1);
+		}
 	}
 }

@@ -56,7 +56,6 @@ public class ScheduledProducer extends AbstractStreamProducer<Integer> {
 	}
 
 	public void scheduleNext() {
-		// statuses are ordered: READY, SUSPENDED, END_OF_STREAM, CLOSED, CLOSED_WITH_ERROR
 		if (scheduledRunnable != null && getProducerStatus().isClosed())
 			return;
 		scheduledRunnable = eventloop.schedule(eventloop.currentTimeMillis() + 1000L, new Runnable() {

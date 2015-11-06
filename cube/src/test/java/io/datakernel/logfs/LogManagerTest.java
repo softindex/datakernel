@@ -16,19 +16,6 @@
 
 package io.datakernel.logfs;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static org.junit.Assert.*;
-
-import java.io.File;
-import java.nio.file.Path;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.serializer.asm.BufferSerializers;
@@ -45,6 +32,20 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+
+import java.io.File;
+import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class LogManagerTest {
 	private static final long ONE_SECOND = 1000L;
@@ -175,15 +176,10 @@ public class LogManagerTest {
 		System.out.println(list00);
 		System.out.println(list01);
 		System.out.println(list02);
-		assertEquals(5, list00.size());
-		assertEquals(4, list01.size());
+
 		assertTrue(list02.isEmpty());
-
-		assertEquals("1", list00.get(0));
-		assertEquals("5", list00.get(4));
-
-		assertEquals("2", list01.get(0));
-		assertEquals("5", list01.get(3));
+		assertEquals(Arrays.asList("1", "2", "3", "4", "5"), list00);
+		assertEquals(Arrays.asList("3", "4", "5"), list01);
 	}
 
 	private static void clearTestDir(Path testDir) {

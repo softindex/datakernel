@@ -78,7 +78,7 @@ public final class DatagraphServer extends AbstractNioServer<DatagraphServer> {
 			forwarder = new StreamForwarder<>(eventloop);
 			pendingStreams.put(streamId, forwarder);
 		}
-		messaging.write(forwarder, ignoreCompletionCallback());
+		messaging.write(forwarder.getOutput(), ignoreCompletionCallback());
 	}
 
 	private void onExecute(DatagraphCommandExecute item, Messaging<DatagraphResponse> messaging) {
@@ -104,8 +104,8 @@ public final class DatagraphServer extends AbstractNioServer<DatagraphServer> {
 			forwarder = new StreamForwarder<>(eventloop);
 			pendingStreams.put(streamId, forwarder);
 		}
-		streamSerializer.streamTo(forwarder);
-		return streamSerializer;
+		streamSerializer.getOutput().streamTo(forwarder.getInput());
+		return streamSerializer.getInput();
 	}
 
 	@Override

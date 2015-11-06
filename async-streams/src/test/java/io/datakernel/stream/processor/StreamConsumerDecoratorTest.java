@@ -23,10 +23,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class StreamConsumerDecoratorTest {
 	@Test
@@ -34,18 +34,19 @@ public class StreamConsumerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
-		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
-		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<Integer>(eventloop, consumer) {};
+		final TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
+		StreamConsumerDecorator<Integer> consumerDecorator = new StreamConsumerDecorator<>(consumer);
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
 
 		producer.streamTo(consumerDecorator);
 		eventloop.run();
 
 		assertEquals(list, asList(1, 2, 3));
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, consumerDecorator.getConsumerStatus());
 	}
 
 	@Test
@@ -53,8 +54,8 @@ public class StreamConsumerDecoratorTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		List<Integer> list = new ArrayList<>();
-		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
-		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<Integer>(eventloop, consumer) {};
+		final StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
+		StreamConsumerDecorator<Integer> decorator = new StreamConsumerDecorator<>(consumer);
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5));
 
 		producer.streamTo(decorator);
@@ -63,6 +64,7 @@ public class StreamConsumerDecoratorTest {
 
 		assertEquals(list, asList(1, 2, 3, 4, 5));
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, decorator.getConsumerStatus());
 	}
 
 }

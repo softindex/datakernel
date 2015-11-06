@@ -31,33 +31,40 @@ import io.datakernel.stream.StreamDataReceiver;
 public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
 	public StreamUnion(Eventloop eventloop) {
 		super(eventloop);
-		this.downstreamProducer = new DownstreamProducer();
+		this.outputProducer = new OutputProducer();
 	}
 
-	protected final class UpstreamConsumer extends AbstractUpstreamConsumer<T> implements StreamDataReceiver<T> {
-		private final DownstreamProducer downstreamProducer = (DownstreamProducer) StreamUnion.this.downstreamProducer;
+	protected final class InputConsumer extends AbstractInputConsumer<T> implements StreamDataReceiver<T> {
+		private final OutputProducer outputProducer = (OutputProducer) StreamUnion.this.outputProducer;
 
 		@Override
 		public StreamDataReceiver<T> getDataReceiver() {
-			return downstreamProducer.getDownstreamDataReceiver() != null
-					? downstreamProducer.getDownstreamDataReceiver()
+			return outputProducer.getDownstreamDataReceiver() != null
+					? outputProducer.getDownstreamDataReceiver()
 					: this;
 		}
 
 		@Override
 		public void onData(T item) {
-			downstreamProducer.send(item);
+			outputProducer.send(item);
 		}
 
 		@Override
 		protected void onUpstreamEndOfStream() {
 			if (allUpstreamsEndOfStream()) {
-				downstreamProducer.sendEndOfStream();
+				outputProducer.sendEndOfStream();
 			}
 		}
 	}
 
-	public final class DownstreamProducer extends AbstractDownstreamProducer {
+	public final class OutputProducer extends AbstractOutputProducer {
+
+		@Override
+		protected void onDownstreamStarted() {
+			if (inputConsumers.isEmpty()) {
+				sendEndOfStream();
+			}
+		}
 
 		@Override
 		protected void onDownstreamSuspended() {
@@ -72,6 +79,6 @@ public final class StreamUnion<T> extends AbstractStreamTransformer_N_1<T> {
 	}
 
 	public StreamConsumer<T> newInput() {
-		return addInput(new UpstreamConsumer());
+		return addInput(new InputConsumer());
 	}
 }

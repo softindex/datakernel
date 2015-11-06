@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -131,9 +130,7 @@ public class HttpServerTest {
 //		assertTrue(socket.isClosed());
 		socket.close();
 
-		SimpleCompletionFuture callback = new SimpleCompletionFuture();
-		server.closeFuture(callback);
-		callback.await();
+		server.closeFuture().await();
 		thread.join();
 	}
 
@@ -165,9 +162,7 @@ public class HttpServerTest {
 		writeByRandomParts(socket, "GET /abc HTTP1.1\r\nHost: localhost\r\n");
 		socket.close();
 
-		SimpleCompletionFuture callback = new SimpleCompletionFuture();
-		server.closeFuture(callback);
-		callback.await();
+		server.closeFuture().await();
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -192,9 +187,7 @@ public class HttpServerTest {
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();
 
-		SimpleCompletionFuture callback = new SimpleCompletionFuture();
-		server.closeFuture(callback);
-		callback.await();
+		server.closeFuture().await();
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -231,9 +224,7 @@ public class HttpServerTest {
 			readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 7\r\n\r\n/123456");
 		}
 
-		SimpleCompletionFuture callback = new SimpleCompletionFuture();
-		server.closeFuture(callback);
-		callback.await();
+		server.closeFuture().await();
 		thread.join();
 	}
 

@@ -27,7 +27,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.aggregation_db.keytype.KeyTypeEnum;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.async.CompletionCallbackObserver;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeMetadataStorage;
@@ -121,7 +121,7 @@ public class CubeExampleWithFilteredAggregations {
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
 		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage,
-				aggregationChunkStorage, cubeStructure);
+				aggregationChunkStorage, cubeStructure, 100_000, 1_000_000);
 
 		cube.addAggregation(new AggregationMetadata("date", asList("date"), MEASURES));
 
@@ -228,10 +228,8 @@ public class CubeExampleWithFilteredAggregations {
 				LogItemSplitterWithFilteredAggregations.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
 		/* Save the specified aggregations to metadata storage. */
-		CompletionCallbackObserver cb = new CompletionCallbackObserver();
-		cube.saveAggregations(cb);
+		cube.saveAggregations(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
-		cb.check();
 
 		/* Stream data to logs. */
 		StreamProducers.OfIterator<LogItemWithFilteredAggregations> producerOfRandomLogItemWithFilteredAggregationss = getProducerOfRandomLogItemWithFilteredAggregationss(eventloop);
@@ -239,7 +237,7 @@ public class CubeExampleWithFilteredAggregations {
 		eventloop.run();
 
 		/* Read logs, aggregate data and save to cube. */
-		logToCubeRunner.processLog(cb);
+		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
 		/* Launch HTTP server, that accepts JSON queries to cube. */

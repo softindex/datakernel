@@ -37,7 +37,6 @@ public interface StreamProducer<T> {
 	 * This method is called if consumer was changed for changing consumer status of this producer
 	 * and its dependencies
 	 */
-	// TODO (vsavchuk) delete method, replace bind logic to streamTo
 	void bindDataReceiver();
 
 	/**
@@ -58,5 +57,7 @@ public interface StreamProducer<T> {
 	void onConsumerError(Exception e);
 
 	StreamStatus getProducerStatus();
+
+	Exception getProducerException();
 
 }

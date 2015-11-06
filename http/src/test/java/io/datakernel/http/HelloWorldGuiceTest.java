@@ -25,7 +25,6 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.guice.workers.*;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.service.NioEventloopRunner;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
@@ -133,9 +132,7 @@ public class HelloWorldGuiceTest {
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			primaryNioEventloopRunner.startFuture(callback);
-			callback.await();
+			primaryNioEventloopRunner.startFuture().get();
 
 			socket0.connect(new InetSocketAddress(PORT));
 			socket1.connect(new InetSocketAddress(PORT));
@@ -154,9 +151,7 @@ public class HelloWorldGuiceTest {
 				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 29\r\n\r\nHello world: worker server #1");
 			}
 		} finally {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			primaryNioEventloopRunner.stopFuture(callback);
-			callback.await();
+			primaryNioEventloopRunner.stopFuture().get();
 			Closeables.close(socket0, true);
 			Closeables.close(socket1, true);
 		}
@@ -168,17 +163,13 @@ public class HelloWorldGuiceTest {
 		Injector injector = Guice.createInjector(new TestModule());
 		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
 		try {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			primaryNioEventloopRunner.startFuture(callback);
-			callback.await();
+			primaryNioEventloopRunner.startFuture().get();
 
 			System.out.println("Server started, press enter to stop it.");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			primaryNioEventloopRunner.stopFuture(callback);
-			callback.await();
+			primaryNioEventloopRunner.stopFuture().get();
 		}
 	}
 

@@ -82,7 +82,15 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	public void setFlushCallback(CompletionCallback flushCallback) {
-		this.flushCallback = flushCallback;
+		if (getConsumerStatus().isOpen()) {
+			this.flushCallback = flushCallback;
+		} else {
+			if (getConsumerStatus() == END_OF_STREAM) {
+				flushCallback.onComplete();
+			} else {
+				flushCallback.onException(getConsumerException());
+			}
+		}
 	}
 
 	/**
@@ -122,10 +130,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	private void doFlush() {
 		final ByteBuf buf = queue.poll();
 		final int len = buf.remaining();
-
-		if (buf.position() == buf.limit()) {
-			logger.warn("Flushing empty buf {}");
-		}
 
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
@@ -254,6 +258,11 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			asyncFile.close(callback);
 			asyncFile = null;
 		}
+
+		for (ByteBuf buf : queue) {
+			buf.recycle();
+		}
+		queue.clear();
 	}
 
 	@Override
@@ -264,7 +273,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onError(final Exception e) {
-		error = e;
+		logger.error("{}: onError", this, e);
 		postFlush();
 		if (flushCallback != null) {
 			flushCallback.onException(e);

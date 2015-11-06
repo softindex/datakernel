@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.SimpleCompletionFuture;
 import io.datakernel.service.NioEventloopRunner;
 import org.junit.Assert;
 import org.junit.Before;
@@ -108,17 +107,12 @@ public class WorkerServersTest {
 		assertTrue(toByteArray(socket2.getInputStream()).length == 0);
 		socket2.close();
 
-
-		SimpleCompletionFuture callbackPrimaty = new SimpleCompletionFuture();
-		primaryNioServer.closeFuture(callbackPrimaty);
-		callbackPrimaty.await();
+		primaryNioServer.closeFuture().await();
 
 		primaryThread.join();
 		for (AsyncHttpServer server : workerServers) {
 			server.getNioEventloop().keepAlive(false);
-			SimpleCompletionFuture callbackServer = new SimpleCompletionFuture();
-			server.closeFuture(callbackServer);
-			callbackServer.await();
+			server.closeFuture().await();
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -147,9 +141,7 @@ public class WorkerServersTest {
 				.addNioServers(primaryNioServer)
 				.addConcurrentServices(workerServices);
 
-		SimpleCompletionFuture callback = new SimpleCompletionFuture();
-		primaryService.startFuture(callback);
-		callback.await();
+		primaryService.startFuture().get();
 
 		Socket socket1 = new Socket();
 		Socket socket2 = new Socket();
@@ -170,9 +162,7 @@ public class WorkerServersTest {
 		assertTrue(toByteArray(socket2.getInputStream()).length == 0);
 		socket2.close();
 
-		SimpleCompletionFuture callbackStop = new SimpleCompletionFuture();
-		primaryService.stopFuture(callbackStop);
-		callbackStop.await();
+		primaryService.stopFuture().get();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}

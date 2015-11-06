@@ -292,7 +292,7 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (fieldGen.field != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods);
-				list.add(fieldGen.serializer.serialize(cast(field(arg(1), fieldName), type), version, staticMethods));
+				list.add(fieldGen.serializer.serialize(cast(getter(arg(1), fieldName), type), version, staticMethods));
 			} else if (fieldGen.method != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods);
 				list.add(fieldGen.serializer.serialize(cast(call(arg(1), fieldGen.method.getName()), type), version, staticMethods));
@@ -339,7 +339,7 @@ public class SerializerGenClass implements SerializerGen {
 
 		Expression constructor;
 		if (factory == null) {
-			constructor = _insertCallConstructor(this.getRawType(), map);
+			constructor = _insertCallConstructor(this.getRawType(), map, version);
 		} else {
 			constructor = _insertCallFactory(map);
 		}
@@ -379,7 +379,7 @@ public class SerializerGenClass implements SerializerGen {
 				continue;
 			if (fieldGen.field == null || isFinal(fieldGen.field.getModifiers()))
 				continue;
-			VarField field = field(local, fieldName);
+			VarField field = getter(local, fieldName);
 			list.add(set(field, map.get(fieldName)));
 		}
 
@@ -401,7 +401,7 @@ public class SerializerGenClass implements SerializerGen {
 		return callStatic(factory.getDeclaringClass(), factory.getName(), param);
 	}
 
-	private Expression _insertCallConstructor(Class<?> targetType, final Map<String, Expression> map) {
+	private Expression _insertCallConstructor(Class<?> targetType, final Map<String, Expression> map, int version) {
 		Expression[] param;
 		if (constructorParams == null) {
 			param = new Expression[0];
@@ -411,7 +411,14 @@ public class SerializerGenClass implements SerializerGen {
 
 		int i = 0;
 		for (String fieldName : constructorParams) {
-			param[i++] = map.get(fieldName);
+			FieldGen fieldGen = fields.get(fieldName);
+			checkNotNull(fieldGen, "Field '%s' is not found in '%s'", fieldName, constructor);
+			if (fieldGen.hasVersion(version)) {
+				param[i++] = map.get(fieldName);
+			} else {
+				param[i++] = pushDefaultValue(fieldGen.getAsmType());
+			}
+
 		}
 		return constructor(targetType, param);
 	}
@@ -424,7 +431,7 @@ public class SerializerGenClass implements SerializerGen {
 			Method method = checkNotNull(fieldGen.method);
 
 			asmFactory.field(fieldName, method.getReturnType());
-			asmFactory.method(method.getName(), field(self(), fieldName));
+			asmFactory.method(method.getName(), getter(self(), fieldName));
 		}
 
 		Class<?> newClass = asmFactory.defineClass();
@@ -437,7 +444,7 @@ public class SerializerGenClass implements SerializerGen {
 			FieldGen fieldGen = fields.get(fieldName);
 			if (!fieldGen.hasVersion(version))
 				continue;
-			VarField field = field(local, fieldName);
+			VarField field = getter(local, fieldName);
 
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
 			Expression expression = fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods);
@@ -458,7 +465,7 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (!fieldGen.hasVersion(version)) continue;
 
-			VarField field = field(local, fieldName);
+			VarField field = getter(local, fieldName);
 			fieldGen.serializer.prepareDeserializeStaticMethods(version, staticMethods);
 			list.add(set(field, fieldGen.serializer.deserialize(fieldGen.getRawType(), version, staticMethods)));
 		}
@@ -469,9 +476,13 @@ public class SerializerGenClass implements SerializerGen {
 	private Expression pushDefaultValue(Type type) {
 		switch (type.getSort()) {
 			case BOOLEAN:
+				return value(false);
 			case CHAR:
+				return value((char)0);
 			case BYTE:
+				return value((byte)0);
 			case SHORT:
+				return value((short)0);
 			case INT:
 				return value(0);
 			case Type.LONG:

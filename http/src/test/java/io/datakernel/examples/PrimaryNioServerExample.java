@@ -23,7 +23,6 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.SimpleCompletionFuture;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -85,16 +84,12 @@ public class PrimaryNioServerExample {
 			waitForExit();
 
 			// Close PrimaryNioServer
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			primaryNioServer.closeFuture(callback);
-			callback.await();
+			primaryNioServer.closeFuture().await();
 			primaryThread.join();
 		} finally {
 			// Close all servers
 			for (AsyncHttpServer worker : workerServers) {
-				SimpleCompletionFuture callback = new SimpleCompletionFuture();
-				worker.closeFuture(callback); // close worker
-				callback.await();
+				worker.closeFuture().await();
 				worker.getNioEventloop().keepAlive(false); // end of eventloop
 			}
 		}

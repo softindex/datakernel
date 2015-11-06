@@ -36,24 +36,24 @@ import static java.lang.Math.min;
  * @param <T> original type of data
  */
 public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamBinaryDeserializerMBean {
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	private final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.produce();
+			outputProducer.produce();
 		}
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return downstreamProducer;
+			return outputProducer;
 		}
 
 	}
 
-	private final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<ByteBuf> {
+	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
 		private final ArrayDeque<ByteBuf> byteBufs;
 		private int bufferPos;
 		public static final int MAX_HEADER_BYTES = 3;
@@ -75,7 +75,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		private int jmxBufs;
 		private long jmxBytes;
 
-		private DownstreamProducer(ArrayDeque<ByteBuf> byteBufs, int maxMessageSize, BufferSerializer<T> valueSerializer, int buffersPoolSize, ByteBuf buf, byte[] buffer) {
+		private OutputProducer(ArrayDeque<ByteBuf> byteBufs, int maxMessageSize, BufferSerializer<T> valueSerializer, int buffersPoolSize, ByteBuf buf, byte[] buffer) {
 			this.byteBufs = byteBufs;
 			this.maxMessageSize = maxMessageSize;
 			this.valueSerializer = valueSerializer;
@@ -89,20 +89,20 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			jmxBufs++;
 			jmxBytes += buf.remaining();
 			this.byteBufs.offer(buf);
-			downstreamProducer.produce();
+			outputProducer.produce();
 			if (this.byteBufs.size() == this.buffersPoolSize) {
-				upstreamConsumer.suspend();
+				inputConsumer.suspend();
 			}
 		}
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 			resumeProduce();
 		}
 
@@ -194,8 +194,8 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			}
 
 			if (byteBufs.isEmpty()) {
-				if (upstreamConsumer.getConsumerStatus().isClosed()) {
-					downstreamProducer.sendEndOfStream();
+				if (inputConsumer.getConsumerStatus().isClosed()) {
+					outputProducer.sendEndOfStream();
 				} else {
 					if (!isStatusReady()) {
 						resumeProduce();
@@ -283,13 +283,13 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 	 */
 	public StreamBinaryDeserializer(Eventloop eventloop, BufferSerializer<T> valueSerializer, int maxMessageSize, int buffersPoolSize) {
 		super(eventloop);
-		checkArgument(maxMessageSize < (1 << (DownstreamProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
+		checkArgument(maxMessageSize < (1 << (OutputProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
 		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
 
-		ByteBuf buf = ByteBufPool.allocate(DownstreamProducer.INITIAL_BUFFER_SIZE);
+		ByteBuf buf = ByteBufPool.allocate(OutputProducer.INITIAL_BUFFER_SIZE);
 
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer(new ArrayDeque<ByteBuf>(buffersPoolSize),
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize),
 				maxMessageSize,
 				valueSerializer,
 				buffersPoolSize,
@@ -299,26 +299,26 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 	@Override
 	public void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver) {
-		for (ByteBuf byteBuf : downstreamProducer.byteBufs) {
+		for (ByteBuf byteBuf : outputProducer.byteBufs) {
 			dataReceiver.onData(byteBuf);
 		}
-		downstreamProducer.byteBufs.clear();
-		downstreamProducer.sendEndOfStream();
+		outputProducer.byteBufs.clear();
+		outputProducer.sendEndOfStream();
 	}
 
 	@Override
 	public int getItems() {
-		return downstreamProducer.jmxItems;
+		return outputProducer.jmxItems;
 	}
 
 	@Override
 	public int getBufs() {
-		return downstreamProducer.jmxBufs;
+		return outputProducer.jmxBufs;
 	}
 
 	@Override
 	public long getBytes() {
-		return downstreamProducer.jmxBytes;
+		return outputProducer.jmxBytes;
 	}
 
 	@SuppressWarnings({"AssertWithSideEffects", "ConstantConditions"})
@@ -328,8 +328,8 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		assert assertOn = true;
 
 		return '{' + super.toString()
-				+ " items:" + (assertOn ? "" + downstreamProducer.jmxItems : "?")
-				+ " bufs:" + downstreamProducer.jmxBufs
-				+ " bytes:" + downstreamProducer.jmxBytes + '}';
+				+ " items:" + (assertOn ? "" + outputProducer.jmxItems : "?")
+				+ " bufs:" + outputProducer.jmxBufs
+				+ " bytes:" + outputProducer.jmxBytes + '}';
 	}
 }

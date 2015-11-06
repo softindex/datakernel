@@ -134,7 +134,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 		status = CLOSED_WITH_ERROR;
 		error = e;
-		logger.info("StreamConsumer {} closed with error {}", this, e.toString());
+		logger.trace("StreamConsumer {} closed with error {}", this, e.toString());
 		if (sendToProducer) {
 			if (upstreamProducer != null) {
 				upstreamProducer.onConsumerError(e);
@@ -170,6 +170,11 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 
 	protected void onError(Exception e) {
 
+	}
+
+	@Override
+	public final Exception getConsumerException() {
+		return error;
 	}
 
 	public Object getTag() {

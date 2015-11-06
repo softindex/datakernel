@@ -17,16 +17,21 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.TestStreamConsumers;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.stream.StreamStatus.*;
-import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.processor.Utils.assertProducerStatuses;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class StreamSplitterTest {
 	@Test
@@ -38,15 +43,15 @@ public class StreamSplitterTest {
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList1 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 		TestStreamConsumers.TestConsumerToList<Integer> consumerToList2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(streamConcat);
+		source.streamTo(streamConcat.getInput());
 		streamConcat.newOutput().streamTo(consumerToList1);
 		streamConcat.newOutput().streamTo(consumerToList2);
 		eventloop.run();
 		assertEquals(asList(1, 2, 3), consumerToList1.getList());
 		assertEquals(asList(1, 2, 3), consumerToList2.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(END_OF_STREAM, streamConcat.getUpstreamConsumer().getConsumerStatus());
-		assertProducerStatuses(END_OF_STREAM, streamConcat.getDownstreamProducers());
+		assertEquals(END_OF_STREAM, streamConcat.getInput().getConsumerStatus());
+		assertProducerStatuses(END_OF_STREAM, streamConcat.getOutputs());
 	}
 
 	@Test
@@ -67,7 +72,7 @@ public class StreamSplitterTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (item == 3) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				suspend();
@@ -80,7 +85,7 @@ public class StreamSplitterTest {
 			}
 		};
 
-		source.streamTo(streamConcat);
+		source.streamTo(streamConcat.getInput());
 
 		streamConcat.newOutput().streamTo(consumerToList1);
 		streamConcat.newOutput().streamTo(badConsumer);
@@ -93,8 +98,8 @@ public class StreamSplitterTest {
 		assertTrue(toBadList.size() == 3);
 
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamConcat.getUpstreamConsumer().getConsumerStatus());
-		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getDownstreamProducers());
+		assertEquals(CLOSED_WITH_ERROR, streamConcat.getInput().getConsumerStatus());
+		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getOutputs());
 	}
 
 	@Test
@@ -105,7 +110,7 @@ public class StreamSplitterTest {
 				StreamProducers.ofValue(eventloop, 1),
 				StreamProducers.ofValue(eventloop, 2),
 				StreamProducers.ofValue(eventloop, 3),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception())
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 
 		StreamSplitter<Integer> streamConcat = new StreamSplitter<>(eventloop);
@@ -117,7 +122,7 @@ public class StreamSplitterTest {
 		List<Integer> list3 = new ArrayList<>();
 		StreamConsumer<Integer> consumer3 = TestStreamConsumers.toListOneByOne(eventloop, list3);
 
-		source.streamTo(streamConcat);
+		source.streamTo(streamConcat.getInput());
 		streamConcat.newOutput().streamTo(consumer1);
 		streamConcat.newOutput().streamTo(consumer2);
 		streamConcat.newOutput().streamTo(consumer3);
@@ -128,7 +133,7 @@ public class StreamSplitterTest {
 		assertTrue(list2.size() == 3);
 		assertTrue(list3.size() == 3);
 
-		assertEquals(CLOSED_WITH_ERROR, streamConcat.getUpstreamConsumer().getConsumerStatus());
-		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getDownstreamProducers());
+		assertEquals(CLOSED_WITH_ERROR, streamConcat.getInput().getConsumerStatus());
+		assertProducerStatuses(CLOSED_WITH_ERROR, streamConcat.getOutputs());
 	}
 }

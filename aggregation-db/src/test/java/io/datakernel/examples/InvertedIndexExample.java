@@ -104,7 +104,7 @@ public class InvertedIndexExample {
 				.keys(InvertedIndexRecord.KEYS)
 				.fields(InvertedIndexQueryResult.OUTPUT_FIELDS);
 		StreamConsumers.ToList<InvertedIndexQueryResult> consumerToList = StreamConsumers.toList(eventloop);
-		aggregation.query(0, query, InvertedIndexQueryResult.class).streamTo(consumerToList);
+		aggregation.query(query, InvertedIndexQueryResult.class).streamTo(consumerToList);
 		eventloop.run();
 
 		System.out.println("Query result:");

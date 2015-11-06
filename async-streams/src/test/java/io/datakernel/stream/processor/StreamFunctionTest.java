@@ -49,15 +49,15 @@ public class StreamFunctionTest {
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source1.streamTo(streamFunction);
-		streamFunction.streamTo(consumer);
+		source1.streamTo(streamFunction.getInput());
+		streamFunction.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
-		assertEquals(END_OF_STREAM, streamFunction.getConsumerStatus());
-		assertEquals(END_OF_STREAM, streamFunction.getProducerStatus());
+		assertEquals(END_OF_STREAM, streamFunction.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, streamFunction.getOutput().getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 	}
 
@@ -79,7 +79,7 @@ public class StreamFunctionTest {
 			public void onData(Integer item) {
 				list.add(item);
 				if (list.size() == 2) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				suspend();
@@ -92,16 +92,16 @@ public class StreamFunctionTest {
 			}
 		};
 
-		source1.streamTo(streamFunction);
-		streamFunction.streamTo(consumer);
+		source1.streamTo(streamFunction.getInput());
+		streamFunction.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4), list);
 
 		assertEquals(CLOSED_WITH_ERROR, source1.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFunction.getInput().getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFunction.getOutput().getProducerStatus());
 	}
 
 	@Test
@@ -119,19 +119,19 @@ public class StreamFunctionTest {
 		StreamProducer<Integer> source1 = concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
 				StreamProducers.ofIterable(eventloop, asList(4, 5, 6)),
-				StreamProducers.<Integer>closingWithError(eventloop, new Exception()));
+				StreamProducers.<Integer>closingWithError(eventloop, new Exception("Test Exception")));
 
 		StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);
 
-		source1.streamTo(streamFunction);
-		streamFunction.streamTo(consumer);
+		source1.streamTo(streamFunction.getInput());
+		streamFunction.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9, 16, 25, 36), list);
 
 		assertEquals(CLOSED_WITH_ERROR, consumer.getUpstream().getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, streamFunction.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFunction.getInput().getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, streamFunction.getOutput().getProducerStatus());
 	}
 
 	@Test
@@ -148,17 +148,17 @@ public class StreamFunctionTest {
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source1.streamTo(streamFunction);
+		source1.streamTo(streamFunction.getInput());
 		eventloop.run();
 
-		streamFunction.streamTo(consumer);
+		streamFunction.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 4, 9), consumer.getList());
 
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
-		assertEquals(END_OF_STREAM, streamFunction.getConsumerStatus());
-		assertEquals(END_OF_STREAM, streamFunction.getProducerStatus());
+		assertEquals(END_OF_STREAM, streamFunction.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, streamFunction.getOutput().getProducerStatus());
 		assertEquals(END_OF_STREAM, consumer.getConsumerStatus());
 	}
 }

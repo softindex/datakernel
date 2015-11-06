@@ -19,22 +19,24 @@ package io.datakernel.cube;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
+import io.datakernel.aggregation_db.AggregationMetadataStorageStub;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.logfs.LogPosition;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Maps.filterKeys;
 
 public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStorage {
-	private int revisionId;
-	private static long chunkId;
 	private Map<String, Map<String, LogPosition>> positions = new LinkedHashMap<>();
+	private final AggregationMetadataStorageStub aggregationStorage;
+
+	public LogToCubeMetadataStorageStub(AggregationMetadataStorageStub aggregationStorage) {
+		this.aggregationStorage = aggregationStorage;
+	}
 
 	private Map<String, LogPosition> ensureLogPositions(String log) {
 		Map<String, LogPosition> logPositionMap = positions.get(log);
@@ -56,17 +58,18 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	}
 
 	@Override
-	public void commit(Cube cube, String log, Map<String, LogPosition> oldPositions,
-	                   Map<String, LogPosition> newPositions, Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
-	                   CompletionCallback callback) {
+	public void saveCommit(String log, Map<String, LogPosition> oldPositions,
+	                       Map<String, LogPosition> newPositions, Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
+	                       CompletionCallback callback) {
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
 		callback.onComplete();
-		cube.incrementLastRevisionId();
 		for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
 			AggregationMetadata aggregation = entry.getKey();
 			AggregationChunk.NewChunk newChunk = entry.getValue();
-			aggregation.addToIndex(AggregationChunk.createCommitChunk(cube.getLastRevisionId(), newChunk));
+//			TODO (dtkachenko)
+//			aggregation.addToIndex(AggregationChunk.createCommitChunk(cube.getLastRevisionId(), newChunk));
+			aggregationStorage.saveChunks(aggregation, Arrays.asList(newChunk), callback);
 		}
 	}
 

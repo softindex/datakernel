@@ -28,33 +28,140 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 
 /**
- * Represent {@link AbstractStreamTransformer_1_1} which receives data and saves it in collection, when it
+ * Represent {@link StreamTransformer} which receives data and saves it in collection, when it
  * receive end of stream it sorts it and streams to destination.
  *
  * @param <K> type of keys
  * @param <T> type of objects
  */
-public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>, StreamSorterMBean {
-
-	private final StreamMergeSorterStorage<T> storage;
-	private final Function<T, K> keyFunction;
-	private final Comparator<K> keyComparator;
-	private final boolean deduplicate;
-	protected final int itemsInMemorySize;
-
-	private final Comparator<T> itemComparator;
-
-	protected ArrayList<T> list;
-	private List<Integer> listOfPartitions;
-
-	private boolean writing;
-
-	private StreamForwarder<T> downstream;
-
+public final class StreamSorter<K, T> implements StreamTransformer<T, T>, StreamSorterMBean {
 	protected long jmxItems;
+
+	private InputConsumer inputConsumer;
+
+	private final class InputConsumer extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+		private final StreamMergeSorterStorage<T> storage;
+		private final Comparator<T> itemComparator;
+		private final StreamMerger<K, T> merger;
+		private List<Integer> listOfPartitions;
+		private final int itemsInMemorySize;
+		private ArrayList<T> list;
+		private StreamForwarder<T> forwarder;
+
+		private boolean writing;
+
+		protected InputConsumer(Eventloop eventloop, int itemsInMemorySize, Comparator<T> itemComparator, StreamMergeSorterStorage<T> storage, StreamMerger<K, T> merger) {
+			super(eventloop);
+			this.itemsInMemorySize = itemsInMemorySize;
+			this.itemComparator = itemComparator;
+			this.storage = storage;
+			this.merger = merger;
+			this.list = new ArrayList<>(this.itemsInMemorySize + (this.itemsInMemorySize >> 4));
+			this.listOfPartitions = new ArrayList<>();
+			this.forwarder = new StreamForwarder<>(eventloop);
+		}
+
+		@Override
+		protected void onError(Exception e) {
+			StreamProducers.<T>closingWithError(eventloop, e).streamTo(merger.newInput());
+			merger.getOutput().streamTo(forwarder.getInput());
+		}
+
+		@Override
+		public StreamDataReceiver<T> getDataReceiver() {
+			return this;
+		}
+
+		@Override
+		public void onData(T item) {
+			assert jmxItems != ++jmxItems;
+			list.add(item);
+			if (list.size() >= itemsInMemorySize) {
+				nextState();
+			}
+		}
+
+		private void nextState() {
+			if (list == null) {
+				return;
+			}
+
+			boolean bufferFull = list.size() >= itemsInMemorySize;
+
+			if (writing) {
+				if (bufferFull) {
+					suspend();
+				}
+				return;
+			}
+
+			if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+				Collections.sort(list, itemComparator);
+				StreamProducer<T> queueProducer = StreamProducers.ofIterable(eventloop, list);
+				list = null;
+
+				queueProducer.streamTo(merger.newInput());
+
+				for (int partition : listOfPartitions) {
+					storage.read(partition).streamTo(merger.newInput());
+				}
+				merger.getOutput().streamTo(forwarder.getInput());
+
+				return;
+			}
+
+			if (bufferFull) {
+				Collections.sort(list, itemComparator);
+				writing = true;
+				listOfPartitions.add(storage.nextPartition());
+				storage.write(StreamProducers.ofIterable(eventloop, list), new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						eventloop.post(new Runnable() {
+							@Override
+							public void run() {
+								writing = false;
+								nextState();
+							}
+						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						new StreamProducers.ClosingWithError<T>(eventloop, e).streamTo(merger.newInput());
+						closeWithError(e);
+
+					}
+				});
+				list = new ArrayList<>(list.size() + (list.size() >> 8));
+				return;
+			}
+
+			resume();
+		}
+
+		@Override
+		protected void onEndOfStream() {
+			nextState();
+		}
+
+		@Override
+		public void suspend() {
+			super.suspend();
+		}
+
+		@Override
+		public void resume() {
+			super.resume();
+		}
+
+		@Override
+		public void closeWithError(Exception e) {
+			super.closeWithError(e);
+		}
+	}
 
 	/**
 	 * Creates a new instance of StreamSorter
@@ -69,15 +176,12 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 	public StreamSorter(Eventloop eventloop, StreamMergeSorterStorage<T> storage,
 	                    final Function<T, K> keyFunction, final Comparator<K> keyComparator, boolean deduplicate,
 	                    int itemsInMemorySize) {
-		super(eventloop);
-		this.storage = checkNotNull(storage);
-		this.keyComparator = checkNotNull(keyComparator);
-		this.keyFunction = checkNotNull(keyFunction);
-		this.deduplicate = deduplicate;
 		checkArgument(itemsInMemorySize > 0, "itemsInMemorySize must be positive value, got %s", itemsInMemorySize);
-		this.itemsInMemorySize = itemsInMemorySize;
+		checkNotNull(keyComparator);
+		checkNotNull(keyFunction);
+		checkNotNull(storage);
 
-		this.itemComparator = new Comparator<T>() {
+		Comparator<T> itemComparator = new Comparator<T>() {
 			private final Function<T, K> _keyFunction = keyFunction;
 			private final Comparator<K> _keyComparator = keyComparator;
 
@@ -88,111 +192,19 @@ public class StreamSorter<K, T> extends AbstractStreamConsumer<T> implements Str
 				return _keyComparator.compare(key1, key2);
 			}
 		};
-		this.list = new ArrayList<>(itemsInMemorySize + (itemsInMemorySize >> 4));
-		this.listOfPartitions = new ArrayList<>();
-		this.downstream = new StreamForwarder<>(eventloop);
-	}
 
-	public StreamProducer<T> getSortedStream() {
-		return downstream;
+		this.inputConsumer = new InputConsumer(eventloop, itemsInMemorySize, itemComparator, storage,
+				StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate));
 	}
 
 	@Override
-	public StreamDataReceiver<T> getDataReceiver() {
-		return this;
-	}
-
-	/**
-	 * Adds received data to storage, checks if its count bigger than itemsInMemorySize, if it is
-	 * streams it to storage
-	 *
-	 * @param value received value
-	 */
-	@SuppressWarnings("AssertWithSideEffects")
-	@Override
-	public void onData(T value) {
-		assert jmxItems != ++jmxItems;
-		list.add(value);
-		if (list.size() >= itemsInMemorySize) {
-			nextState();
-		}
-	}
-
-	protected void nextState() {
-		// TODO (vsavchuk) Fix this
-//		if (result.getUpstream() != null) {
-//			return;
-//		}
-
-		boolean bufferFull = list.size() >= itemsInMemorySize;
-
-		if (writing) {
-			if (bufferFull) {
-				suspend();
-			}
-			return;
-		}
-
-		if (getConsumerStatus() == END_OF_STREAM) {
-			final StreamMerger<K, T> merger = StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate);
-
-			Collections.sort(list, itemComparator);
-			StreamProducer<T> queueProducer = StreamProducers.ofIterable(eventloop, list);
-			list = null;
-
-			queueProducer.streamTo(merger.newInput());
-
-			for (int partition : listOfPartitions) {
-				storage.read(partition).streamTo(merger.newInput());
-			}
-
-			merger.streamTo(downstream);
-			return;
-		}
-
-		if (bufferFull) {
-			Collections.sort(list, itemComparator);
-			writing = true;
-			listOfPartitions.add(storage.nextPartition());
-			storage.write(StreamProducers.ofIterable(eventloop, list), new CompletionCallback() {
-				@Override
-				public void onComplete() {
-					eventloop.post(new Runnable() {
-						@Override
-						public void run() {
-							writing = false;
-							nextState();
-						}
-					});
-				}
-
-				@Override
-				public void onException(Exception e) {
-					new StreamProducers.ClosingWithError<T>(eventloop, e).streamTo(downstream);
-					closeWithError(e);
-
-				}
-			});
-			this.list = new ArrayList<>(list.size() + (list.size() >> 8));
-			return;
-		}
-
-		resume();
+	public StreamConsumer<T> getInput() {
+		return inputConsumer;
 	}
 
 	@Override
-	protected void onStarted() {
-	}
-
-	@Override
-	protected void onEndOfStream() {
-		nextState();
-	}
-
-	@Override
-	protected void onError(Exception e) {
-		StreamProducers.<T>closingWithError(eventloop, e).streamTo(downstream);
-		closeWithError(e);
+	public StreamProducer<T> getOutput() {
+		return inputConsumer.forwarder.getOutput();
 	}
 
 	@Override

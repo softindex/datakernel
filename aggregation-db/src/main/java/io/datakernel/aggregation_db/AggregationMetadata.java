@@ -32,9 +32,7 @@ import java.util.*;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.base.Predicates.not;
-import static com.google.common.collect.Iterables.all;
-import static com.google.common.collect.Iterables.concat;
-import static com.google.common.collect.Iterables.filter;
+import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Lists.newArrayList;
 
 /**
@@ -223,6 +221,10 @@ public class AggregationMetadata {
 		return outputFields;
 	}
 
+	public QueryPredicates getAggregationPredicates() {
+		return this.predicates;
+	}
+
 	public boolean allKeysIn(List<String> requestedKeys) {
 		return all(keys, in(requestedKeys));
 	}
@@ -273,65 +275,28 @@ public class AggregationMetadata {
 		return Math.pow(Math.pow(unfilteredKeyCost, keys.size() - filteredKeys), 1 + remainingFields.size());
 	}
 
-	public List<AggregationChunk> findChunksToConsolidate(final List<Long> consolidationCandidateChunksIds) {
+	public List<AggregationChunk> findChunksToConsolidate() {
 		int maxOverlaps = 2;
-		Set<AggregationChunk> set = Collections.emptySet();
+		Set<AggregationChunk> result = new HashSet<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
 		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
 			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
-			int overlaps = segment.getSet().size();
+			int overlaps = segment.getSet().size() + segment.getClosingSet().size();
 			if (overlaps >= maxOverlaps) {
 				maxOverlaps = overlaps;
-				set = segment.getSet();
+				result.clear();
+				result.addAll(segment.getSet());
+				result.addAll(segment.getClosingSet());
 			}
 		}
-		List<AggregationChunk> result = new ArrayList<>();
-		result.addAll(set);
-		return newArrayList(filter(result, new Predicate<AggregationChunk>() {
-			@Override
-			public boolean apply(AggregationChunk chunk) {
-				return consolidationCandidateChunksIds.contains(chunk.getChunkId());
-			}
-		}));
+		return new ArrayList<>(result);
 	}
 
-	private List<AggregationChunk> rangeQuery(Map<Long, AggregationChunk> chunks,
-	                                          long revisionId, PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey) {
-		checkArgument(minPrimaryKey.size() == maxPrimaryKey.size());
-		int size = minPrimaryKey.size();
-		RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
-		Collection<AggregationChunk> currentChunks = index.getRange(minPrimaryKey, maxPrimaryKey);
-
-		List<AggregationChunk> resultChunks = new ArrayList<>();
-		while (!currentChunks.isEmpty()) {
-			List<AggregationChunk> newChunks = new ArrayList<>();
-			for (AggregationChunk currentChunk : currentChunks) {
-				if (currentChunk.getMaxRevisionId() <= revisionId)
-					continue;
-				if (currentChunk.getMinRevisionId() > revisionId) {
-					resultChunks.add(currentChunk);
-					continue;
-				}
-				for (Long sourceChunkId : currentChunk.getSourceChunkIds()) {
-					AggregationChunk sourceChunk = chunks.get(sourceChunkId);
-					if (sourceChunk.getMinPrimaryKey().prefix(size).compareTo(maxPrimaryKey) <= 0 &&
-							sourceChunk.getMaxPrimaryKey().prefix(size).compareTo(minPrimaryKey) >= 0) {
-						newChunks.add(sourceChunk);
-					}
-				}
-			}
-			currentChunks = newChunks;
-		}
-		return resultChunks;
-	}
-
-	private Predicate<QueryPredicate> isBetweenPredicate() {
-		return new Predicate<QueryPredicate>() {
-			@Override
-			public boolean apply(QueryPredicate predicate) {
-				return predicate instanceof QueryPredicateBetween;
-			}
-		};
+	@VisibleForTesting
+	public static boolean chunkMightContainQueryValues(PrimaryKey minQueryKey, PrimaryKey maxQueryKey,
+	                                                   PrimaryKey minChunkKey, PrimaryKey maxChunkKey) {
+		return chunkMightContainQueryValues(minQueryKey.values(), maxQueryKey.values(),
+				minChunkKey.values(), maxChunkKey.values());
 	}
 
 	private Predicate<AggregationChunk> chunkMightContainQueryValuesPredicate(final PrimaryKey minQueryKey,
@@ -347,13 +312,6 @@ public class AggregationMetadata {
 				return chunkMightContainQueryValues(queryMinValues, queryMaxValues, chunkMinValues, chunkMaxValues);
 			}
 		};
-	}
-
-	@VisibleForTesting
-	public static boolean chunkMightContainQueryValues(PrimaryKey minQueryKey, PrimaryKey maxQueryKey,
-	                                                   PrimaryKey minChunkKey, PrimaryKey maxChunkKey) {
-		return chunkMightContainQueryValues(minQueryKey.values(), maxQueryKey.values(),
-				minChunkKey.values(), maxChunkKey.values());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -380,82 +338,27 @@ public class AggregationMetadata {
 		return true;
 	}
 
-	private long countNumberOfEqualsQueries(List<QueryPredicate> betweenPredicates, AggregationStructure structure) {
-		long queries = 0;
+	/* BETWEEN predicate optimization is currently disabled */
 
-		for (QueryPredicate predicate : betweenPredicates) {
-			QueryPredicateBetween predicateBetween = (QueryPredicateBetween) predicate;
-			KeyType keyType = structure.getKeyType(predicate.key);
-			long difference = ((KeyTypeEnumerable) keyType).difference(predicateBetween.to, predicateBetween.from) + 1;
-
-			if (queries == 0)
-				queries += difference;
-			else
-				queries *= difference;
-		}
-
-		return queries;
-	}
-
-	private boolean isEnumerable(String key, AggregationStructure structure) {
-		return structure.getKeyType(key) instanceof KeyTypeEnumerable;
-	}
-
-	private boolean areAllKeyTypesEnumerable(List<QueryPredicate> predicates, AggregationStructure structure) {
-		for (QueryPredicate predicate : predicates) {
-			if (!isEnumerable(predicate.key, structure)) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	private boolean shouldConvertBetweenPredicatesToEqualsQueries(List<QueryPredicate> betweenPredicates,
-	                                                              AggregationStructure structure) {
-		if (!areAllKeyTypesEnumerable(betweenPredicates, structure))
-			return false;
-
-		long numberOfEqualsQueries = countNumberOfEqualsQueries(betweenPredicates, structure);
-
-		return numberOfEqualsQueries <= EQUALS_QUERIES_THRESHOLD;
-	}
-
-	private List<QueryPredicate> getPrefixPredicates(QueryPredicates predicates) {
-		List<QueryPredicate> prefixPredicates = newArrayList();
-
-		for (String key : keys) {
-			QueryPredicate predicateForKey = predicates.asUnmodifiableMap().get(key);
-			if (predicateForKey != null)
-				prefixPredicates.add(predicateForKey);
-			else
-				break;
-		}
-
-		return prefixPredicates;
-	}
+//	public List<AggregationChunk> queryByPredicates(AggregationStructure structure, final Map<Long, AggregationChunk> chunks,
+//	                                                QueryPredicates predicates) {
+//		List<QueryPredicate> prefixPredicates = getPrefixPredicates(predicates);
+//		List<QueryPredicate> betweenPredicates = newArrayList(filter(prefixPredicates,
+//				isBetweenPredicate()));
+//		boolean containsBetweenPredicates = betweenPredicates.size() > 0;
+//
+//		if (!containsBetweenPredicates) {
+//			return queryByEqualsPredicates(chunks, predicates);
+//		} else if (shouldConvertBetweenPredicatesToEqualsQueries(betweenPredicates, structure)) {
+//			return queryByConvertingBetweenPredicatesToEqualsQueries(structure, prefixPredicates, chunks);
+//		} else {
+//			return queryByFilteringListOfChunks(predicates);
+//		}
+//	}
 
 	public List<AggregationChunk> queryByPredicates(AggregationStructure structure, final Map<Long, AggregationChunk> chunks,
-	                                                long revisionId, QueryPredicates predicates) {
-		List<QueryPredicate> prefixPredicates = getPrefixPredicates(predicates);
-		List<QueryPredicate> betweenPredicates = newArrayList(filter(prefixPredicates,
-				isBetweenPredicate()));
-		boolean containsBetweenPredicates = betweenPredicates.size() > 0;
-
-		if (!containsBetweenPredicates) {
-			return queryByEqualsPredicates(chunks, revisionId, predicates);
-		} else if (shouldConvertBetweenPredicatesToEqualsQueries(betweenPredicates, structure)) {
-			return queryByConvertingBetweenPredicatesToEqualsQueries(structure, prefixPredicates, chunks, revisionId);
-		} else {
-			return queryByFilteringListOfChunks(predicates);
-		}
-	}
-
-	private List<AggregationChunk> queryByEqualsPredicates(Map<Long, AggregationChunk> chunks, long revisionId,
-	                                                       QueryPredicates predicates) {
-		final PrimaryKey minQueryKey = rangeScanMinPrimaryKeyPrefix(predicates);
-		final PrimaryKey maxQueryKey = rangeScanMaxPrimaryKeyPrefix(predicates);
-		return rangeQuery(chunks, revisionId, minQueryKey, maxQueryKey);
+	                                                QueryPredicates predicates) {
+		return queryByFilteringListOfChunks(predicates);
 	}
 
 	private List<AggregationChunk> queryByFilteringListOfChunks(QueryPredicates predicates) {
@@ -469,98 +372,6 @@ public class AggregationMetadata {
 				chunkMightContainQueryValuesPredicate(minQueryKey, maxQueryKey));
 
 		return newArrayList(filteredChunks);
-	}
-
-	private List<AggregationChunk> queryByConvertingBetweenPredicatesToEqualsQueries(AggregationStructure structure,
-	                                                                                 List<QueryPredicate> predicates,
-	                                                                                 Map<Long, AggregationChunk> chunks,
-	                                                                                 long revisionId) {
-		List<PrimaryKey> equalsKeys = primaryKeysForEqualsQueries(structure, predicates);
-		Set<AggregationChunk> resultChunks = Sets.newHashSet();
-
-		for (PrimaryKey queryKey : equalsKeys) {
-			resultChunks.addAll(rangeQuery(chunks, revisionId, queryKey, queryKey));
-		}
-
-		return new ArrayList<>(resultChunks);
-	}
-
-	private void transformPredicates(List<QueryPredicate> predicates, AggregationStructure structure, List<Set<Object>> betweenSets,
-	                                 List<Object> equalsList, boolean[] betweenPredicatePositions) {
-		for (int j = 0; j < predicates.size(); ++j) {
-			String field = keys.get(j);
-			QueryPredicate predicate = predicates.get(j);
-			KeyType keyType = structure.getKeyType(field);
-
-			if (predicate instanceof QueryPredicateEq) {
-				equalsList.add(((QueryPredicateEq) predicate).value);
-			} else if (predicate instanceof QueryPredicateBetween) {
-				Object from = ((QueryPredicateBetween) predicate).from;
-				Object to = ((QueryPredicateBetween) predicate).to;
-
-				Set<Object> set = new LinkedHashSet<>();
-
-				for (Object i = from; keyType.compare(i, to) <= 0;
-				     i = ((KeyTypeEnumerable) keyType).increment(i)) {
-					set.add(i);
-				}
-
-				betweenSets.add(set);
-				betweenPredicatePositions[j] = true;
-			} else
-				break;
-		}
-	}
-
-	private List<List<Object>> createKeyPrefixes(List<Set<Object>> betweenSets, List<Object> equalsList,
-	                                             boolean[] betweenPredicatePositions, int numberOfPredicateKeys) {
-		List<List<Object>> keyPrefixes = new ArrayList<>();
-
-		Set<List<Object>> cartesianProduct = Sets.cartesianProduct(betweenSets);
-
-		for (List<Object> list : cartesianProduct) {
-			List<Object> keyPrefix = newArrayList();
-			int betweenListPosition = 0;
-			int equalsListPosition = 0;
-
-			for (int k = 0; k < numberOfPredicateKeys; ++k) {
-				boolean betweenPosition = betweenPredicatePositions[k];
-				if (betweenPosition)
-					keyPrefix.add(list.get(betweenListPosition++));
-				else
-					keyPrefix.add(equalsList.get(equalsListPosition++));
-			}
-
-			keyPrefixes.add(keyPrefix);
-		}
-
-		return keyPrefixes;
-	}
-
-	public List<PrimaryKey> createPrimaryKeysFromKeyPrefixes(List<List<Object>> keyPrefixList) {
-		List<PrimaryKey> keys = new ArrayList<>();
-
-		for (List<Object> keyPrefix : keyPrefixList) {
-			keys.add(PrimaryKey.ofList(keyPrefix));
-		}
-
-		return keys;
-	}
-
-	private List<PrimaryKey> primaryKeysForEqualsQueries(AggregationStructure structure, List<QueryPredicate> predicates) {
-		int numberOfPredicateKeys = predicates.size();
-
-		List<Set<Object>> betweenSets = new ArrayList<>(numberOfPredicateKeys);
-		List<Object> equalsList = new ArrayList<>(numberOfPredicateKeys);
-
-		boolean[] betweenPredicatePositions = new boolean[numberOfPredicateKeys];
-
-		transformPredicates(predicates, structure, betweenSets, equalsList, betweenPredicatePositions);
-
-		List<List<Object>> keyPrefixes = createKeyPrefixes(betweenSets, equalsList, betweenPredicatePositions,
-				numberOfPredicateKeys);
-
-		return createPrimaryKeysFromKeyPrefixes(keyPrefixes);
 	}
 
 	private PrimaryKey rangeScanMaxPrimaryKeyPrefix(QueryPredicates predicates) {
@@ -600,12 +411,179 @@ public class AggregationMetadata {
 		return PrimaryKey.ofList(keyPrefixList);
 	}
 
+	/* BETWEEN predicate optimization */
+	private List<AggregationChunk> queryByEqualsPredicates(Map<Long, AggregationChunk> chunks,
+	                                                       QueryPredicates predicates) {
+		final PrimaryKey minQueryKey = rangeScanMinPrimaryKeyPrefix(predicates);
+		final PrimaryKey maxQueryKey = rangeScanMaxPrimaryKeyPrefix(predicates);
+		return rangeQuery(chunks, minQueryKey, maxQueryKey);
+	}
+
+	private List<AggregationChunk> queryByConvertingBetweenPredicatesToEqualsQueries(AggregationStructure structure,
+	                                                                                 List<QueryPredicate> predicates,
+	                                                                                 Map<Long, AggregationChunk> chunks) {
+		List<PrimaryKey> equalsKeys = primaryKeysForEqualsQueries(structure, predicates);
+		Set<AggregationChunk> resultChunks = Sets.newHashSet();
+
+		for (PrimaryKey queryKey : equalsKeys) {
+			resultChunks.addAll(rangeQuery(chunks, queryKey, queryKey));
+		}
+
+		return new ArrayList<>(resultChunks);
+	}
+
+	private List<PrimaryKey> primaryKeysForEqualsQueries(AggregationStructure structure, List<QueryPredicate> predicates) {
+		int numberOfPredicateKeys = predicates.size();
+
+		List<Set<Object>> betweenSets = new ArrayList<>(numberOfPredicateKeys);
+		List<Object> equalsList = new ArrayList<>(numberOfPredicateKeys);
+
+		boolean[] betweenPredicatePositions = new boolean[numberOfPredicateKeys];
+
+		transformPredicates(predicates, structure, betweenSets, equalsList, betweenPredicatePositions);
+
+		List<List<Object>> keyPrefixes = createKeyPrefixes(betweenSets, equalsList, betweenPredicatePositions,
+				numberOfPredicateKeys);
+
+		return createPrimaryKeysFromKeyPrefixes(keyPrefixes);
+	}
+
+	public List<PrimaryKey> createPrimaryKeysFromKeyPrefixes(List<List<Object>> keyPrefixList) {
+		List<PrimaryKey> keys = new ArrayList<>();
+
+		for (List<Object> keyPrefix : keyPrefixList) {
+			keys.add(PrimaryKey.ofList(keyPrefix));
+		}
+
+		return keys;
+	}
+
+	private List<List<Object>> createKeyPrefixes(List<Set<Object>> betweenSets, List<Object> equalsList,
+	                                             boolean[] betweenPredicatePositions, int numberOfPredicateKeys) {
+		List<List<Object>> keyPrefixes = new ArrayList<>();
+
+		Set<List<Object>> cartesianProduct = Sets.cartesianProduct(betweenSets);
+
+		for (List<Object> list : cartesianProduct) {
+			List<Object> keyPrefix = newArrayList();
+			int betweenListPosition = 0;
+			int equalsListPosition = 0;
+
+			for (int k = 0; k < numberOfPredicateKeys; ++k) {
+				boolean betweenPosition = betweenPredicatePositions[k];
+				if (betweenPosition)
+					keyPrefix.add(list.get(betweenListPosition++));
+				else
+					keyPrefix.add(equalsList.get(equalsListPosition++));
+			}
+
+			keyPrefixes.add(keyPrefix);
+		}
+
+		return keyPrefixes;
+	}
+
+	private void transformPredicates(List<QueryPredicate> predicates, AggregationStructure structure, List<Set<Object>> betweenSets,
+	                                 List<Object> equalsList, boolean[] betweenPredicatePositions) {
+		for (int j = 0; j < predicates.size(); ++j) {
+			String field = keys.get(j);
+			QueryPredicate predicate = predicates.get(j);
+			KeyType keyType = structure.getKeyType(field);
+
+			if (predicate instanceof QueryPredicateEq) {
+				equalsList.add(((QueryPredicateEq) predicate).value);
+			} else if (predicate instanceof QueryPredicateBetween) {
+				Object from = ((QueryPredicateBetween) predicate).from;
+				Object to = ((QueryPredicateBetween) predicate).to;
+
+				Set<Object> set = new LinkedHashSet<>();
+
+				for (Object i = from; keyType.compare(i, to) <= 0;
+				     i = ((KeyTypeEnumerable) keyType).increment(i)) {
+					set.add(i);
+				}
+
+				betweenSets.add(set);
+				betweenPredicatePositions[j] = true;
+			} else
+				break;
+		}
+	}
+
+	private boolean shouldConvertBetweenPredicatesToEqualsQueries(List<QueryPredicate> betweenPredicates,
+	                                                              AggregationStructure structure) {
+		if (!areAllKeyTypesEnumerable(betweenPredicates, structure))
+			return false;
+
+		long numberOfEqualsQueries = countNumberOfEqualsQueries(betweenPredicates, structure);
+
+		return numberOfEqualsQueries <= EQUALS_QUERIES_THRESHOLD;
+	}
+
+	private List<QueryPredicate> getPrefixPredicates(QueryPredicates predicates) {
+		List<QueryPredicate> prefixPredicates = newArrayList();
+
+		for (String key : keys) {
+			QueryPredicate predicateForKey = predicates.asUnmodifiableMap().get(key);
+			if (predicateForKey != null)
+				prefixPredicates.add(predicateForKey);
+			else
+				break;
+		}
+
+		return prefixPredicates;
+	}
+
+	private long countNumberOfEqualsQueries(List<QueryPredicate> betweenPredicates, AggregationStructure structure) {
+		long queries = 0;
+
+		for (QueryPredicate predicate : betweenPredicates) {
+			QueryPredicateBetween predicateBetween = (QueryPredicateBetween) predicate;
+			KeyType keyType = structure.getKeyType(predicate.key);
+			long difference = ((KeyTypeEnumerable) keyType).difference(predicateBetween.to, predicateBetween.from) + 1;
+
+			if (queries == 0)
+				queries += difference;
+			else
+				queries *= difference;
+		}
+
+		return queries;
+	}
+
+	private boolean areAllKeyTypesEnumerable(List<QueryPredicate> predicates, AggregationStructure structure) {
+		for (QueryPredicate predicate : predicates) {
+			if (!isEnumerable(predicate.key, structure)) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private List<AggregationChunk> rangeQuery(Map<Long, AggregationChunk> chunks,
+	                                          PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey) {
+		checkArgument(minPrimaryKey.size() == maxPrimaryKey.size());
+		int size = minPrimaryKey.size();
+		RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
+		return new ArrayList<>(index.getRange(minPrimaryKey, maxPrimaryKey));
+	}
+
+	private Predicate<QueryPredicate> isBetweenPredicate() {
+		return new Predicate<QueryPredicate>() {
+			@Override
+			public boolean apply(QueryPredicate predicate) {
+				return predicate instanceof QueryPredicateBetween;
+			}
+		};
+	}
+
+	private boolean isEnumerable(String key, AggregationStructure structure) {
+		return structure.getKeyType(key) instanceof KeyTypeEnumerable;
+	}
+
 	@Override
 	public String toString() {
 		return "Aggregation{id='" + id + '\'' + ", keys=" + keys + ", fields=" + inputFields + '}';
-	}
-
-	public QueryPredicates getAggregationPredicates() {
-		return this.predicates;
 	}
 }

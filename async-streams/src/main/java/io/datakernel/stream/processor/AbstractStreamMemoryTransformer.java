@@ -31,7 +31,14 @@ import io.datakernel.stream.StreamDataReceiver;
 public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractStreamTransformer_N_1<O> implements StreamDataReceiver<I> {
 	protected S state;
 
-	private final class DownstreamProducer extends AbstractDownstreamProducer {
+	private final class OutputProducer extends AbstractOutputProducer {
+
+		@Override
+		protected void onDownstreamStarted() {
+			if (inputConsumers.isEmpty()) {
+				outputProducer.sendEndOfStream();
+			}
+		}
 
 		@Override
 		protected void onDownstreamSuspended() {
@@ -53,7 +60,7 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 
 	protected abstract void downstreamProducerDoProduce();
 
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer<I> {
+	private final class InputConsumer extends AbstractInputConsumer<I> {
 
 		@Override
 		public StreamDataReceiver<I> getDataReceiver() {
@@ -62,8 +69,8 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 
 		@Override
 		protected void onUpstreamStarted() {
-			if (upstreamConsumers.isEmpty()) {
-				downstreamProducer.sendEndOfStream();
+			if (inputConsumers.isEmpty()) {
+				outputProducer.sendEndOfStream();
 			}
 		}
 
@@ -75,14 +82,14 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 			afterEndOfStream(state);
 			state = null;
 
-			downstreamProducer.produce();
+			outputProducer.produce();
 		}
 	}
 
 	protected AbstractStreamMemoryTransformer(Eventloop eventloop) {
 		super(eventloop);
 		this.state = newState();
-		this.downstreamProducer = new DownstreamProducer();
+		this.outputProducer = new OutputProducer();
 	}
 
 	protected abstract S newState();
@@ -108,7 +115,7 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 	 * @return new consumer
 	 */
 	public final StreamConsumer<I> newInput() {
-		return addInput(new UpstreamConsumer());
+		return addInput(new InputConsumer());
 	}
 
 	/**

@@ -87,8 +87,8 @@ public class StreamByteChunkerTest {
 		StreamByteChunker resizer = new StreamByteChunker(eventloop, bufSize / 2, bufSize);
 		StreamFixedSizeConsumer streamFixedSizeConsumer = new StreamFixedSizeConsumer();
 
-		source.streamTo(resizer);
-		resizer.streamTo(streamFixedSizeConsumer);
+		source.streamTo(resizer.getInput());
+		resizer.getOutput().streamTo(streamFixedSizeConsumer);
 
 		eventloop.run();
 
@@ -140,6 +140,11 @@ public class StreamByteChunkerTest {
 
 		@Override
 		public StreamStatus getConsumerStatus() {
+			return null;
+		}
+
+		@Override
+		public Exception getConsumerException() {
 			return null;
 		}
 

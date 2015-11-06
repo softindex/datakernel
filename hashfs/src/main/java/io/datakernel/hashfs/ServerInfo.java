@@ -19,26 +19,35 @@ package io.datakernel.hashfs;
 import java.net.InetSocketAddress;
 
 public final class ServerInfo {
+	private final InetSocketAddress address;
+	private final double weight;
+	private final int serverId;
+	private long lastHeartBeatReceived;
 
-	public final InetSocketAddress commandListenAddress;
-	public final int serverId;
-	public final double weight;
-
-	public ServerInfo(InetSocketAddress commandListenAddress, int serverId, double weight) {
+	public ServerInfo(int serverId, InetSocketAddress address, double weight) {
 		this.serverId = serverId;
-		this.commandListenAddress = commandListenAddress;
+		this.address = address;
 		this.weight = weight;
 	}
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
+	public InetSocketAddress getAddress() {
+		return address;
+	}
 
-		ServerInfo that = (ServerInfo) o;
+	public double getWeight() {
+		return weight;
+	}
 
-		return serverId == that.serverId;
+	public int getServerId() {
+		return serverId;
+	}
 
+	public void updateState(long heartBeat) {
+		lastHeartBeatReceived = heartBeat;
+	}
+
+	public boolean isAlive(long expectedDieTime) {
+		return lastHeartBeatReceived > expectedDieTime;
 	}
 
 	@Override
@@ -47,7 +56,15 @@ public final class ServerInfo {
 	}
 
 	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		ServerInfo that = (ServerInfo) o;
+		return serverId == that.serverId;
+	}
+
+	@Override
 	public String toString() {
-		return "FileServer id\t" + serverId;
+		return "FileServer id: " + serverId;
 	}
 }

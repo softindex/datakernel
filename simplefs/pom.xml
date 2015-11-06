@@ -6,12 +6,11 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>1.1.2</version>
+        <version>1.2.2-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>simplefs</artifactId>
-    <version>${version-snapshot}</version>
 
     <name>DataKernel: SimpleFS</name>
     <description>
@@ -20,6 +19,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>async-streams</artifactId>
+            <version>${version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <scope>test</scope>
@@ -27,11 +32,6 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>async-streams</artifactId>
-            <version>1.1.2</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>

@@ -48,7 +48,7 @@ public class LogItemSplitter extends AggregatorSplitter<LogItem> {
 	}
 
 	@Override
-	public void onData(LogItem item) {
+	protected void processItem(LogItem item) {
 		logItemAggregator.onData(item);
 	}
 }

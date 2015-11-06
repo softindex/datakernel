@@ -46,24 +46,24 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 	private static final int MIN_BLOCK_SIZE = 64;
 
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	private final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	private final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.send(createEndOfStreamBlock());
-			downstreamProducer.sendEndOfStream();
+			outputProducer.send(createEndOfStreamBlock());
+			outputProducer.sendEndOfStream();
 		}
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return downstreamProducer;
+			return outputProducer;
 		}
 	}
 
-	private final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<ByteBuf> {
+	private final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
 		private final LZ4Compressor compressor;
 		private final StreamingXXHash32 checksum = XXHashFactory.fastestInstance().newStreamingHash32(DEFAULT_SEED);
 
@@ -71,16 +71,16 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		private long jmxBytesOutput;
 		private int jmxBufs;
 
-		private DownstreamProducer(LZ4Compressor compressor) {this.compressor = compressor;}
+		private OutputProducer(LZ4Compressor compressor) {this.compressor = compressor;}
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 
 		@Override
@@ -151,8 +151,8 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	 */
 	private StreamLZ4Compressor(Eventloop eventloop, LZ4Compressor compressor) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer(compressor);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(compressor);
 
 	}
 
@@ -229,26 +229,26 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 	@Override
 	public long getBytesInput() {
-		return downstreamProducer.jmxBytesInput;
+		return outputProducer.jmxBytesInput;
 	}
 
 	@Override
 	public long getBytesOutput() {
-		return downstreamProducer.jmxBytesOutput;
+		return outputProducer.jmxBytesOutput;
 	}
 
 	@Override
 	public int getBufs() {
-		return downstreamProducer.jmxBufs;
+		return outputProducer.jmxBufs;
 	}
 
 	@SuppressWarnings("AssertWithSideEffects")
 	@Override
 	public String toString() {
 		return '{' + super.toString() +
-				" inBytes:" + downstreamProducer.jmxBytesInput +
-				" outBytes:" + downstreamProducer.jmxBytesOutput +
-				" bufs:" + downstreamProducer.jmxBufs +
+				" inBytes:" + outputProducer.jmxBytesInput +
+				" outBytes:" + outputProducer.jmxBytesOutput +
+				" bufs:" + outputProducer.jmxBufs +
 				'}';
 	}
 

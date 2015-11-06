@@ -18,7 +18,7 @@ package io.datakernel.simplefs;
 
 import java.util.List;
 
-public class SimpleFsResponseFileList extends SimpleFsResponse {
+final class SimpleFsResponseFileList extends SimpleFsResponse {
 	public final List<String> fileList;
 
 	public SimpleFsResponseFileList(List<String> fileList) {

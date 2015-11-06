@@ -34,198 +34,251 @@ import static org.junit.Assert.assertEquals;
 public class StreamRewiringWithStatus {
 	private NioEventloop eventloop;
 	private List<Integer> list;
-
-	private StreamConsumer<Integer> readyConsumer;
-	private StreamConsumer<Integer> suspendConsumer;
-	private StreamConsumer<Integer> endConsumer;
-	private StreamConsumer<Integer> closedWithErrorConsumer;
-
-	private StreamProducer<Integer> readyProducer;
-	private StreamProducer<Integer> suspendProducer;
-	private StreamProducer<Integer> endProducer;
-	private StreamProducer<Integer> closedWithErrorProducer;
+	private Iterator<Integer> it;
 
 	@Before
 	public void before() {
-		Iterator<Integer> it = asList(1, 2, 3, 4, 5).iterator();
+		it = asList(1, 2, 3, 4, 5).iterator();
 		eventloop = new NioEventloop();
 		list = new ArrayList<>();
-
-		readyConsumer = new TestConsumerOneByOne(eventloop);
-		suspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
-		endConsumer = new TestConsumerOneByOne(eventloop) {{onProducerEndOfStream();}};
-		closedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{closeWithError(new Exception());}};
-
-		readyProducer = new TestProducerOfIterator(eventloop, it);
-		suspendProducer = new TestProducerOfIterator(eventloop, it) {{onConsumerSuspended();}};
-		endProducer = new TestProducerOfIterator(eventloop, it) {{sendEndOfStream();}};
-		closedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{closeWithError(new Exception());}};
 	}
 
 	@Test
 	public void testStartProducerReadyConsumerReady() {
-		readyProducer.streamTo(readyConsumer);
+		StreamConsumer<Integer> startStatusReadyConsumer = new TestConsumerOneByOne(eventloop);
+		StreamProducer<Integer> startStatusReadyProducer = new TestProducerOfIterator(eventloop, it);
+		startStatusReadyProducer.streamTo(startStatusReadyConsumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5), list);
-		assertEquals(END_OF_STREAM, readyProducer.getProducerStatus());
-		assertEquals(END_OF_STREAM, readyConsumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, startStatusReadyProducer.getProducerStatus());
+		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerReadyConsumerSuspend() {
-		readyProducer.streamTo(suspendConsumer);
+		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
+		StreamProducer<Integer> startStatusReadyProducer = new TestProducerOfIterator(eventloop, it);
+		startStatusReadyProducer.streamTo(startStatusSuspendConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(SUSPENDED, readyProducer.getProducerStatus());
-		assertEquals(SUSPENDED, suspendConsumer.getConsumerStatus());
+		assertEquals(SUSPENDED, startStatusReadyProducer.getProducerStatus());
+		assertEquals(SUSPENDED, startStatusSuspendConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerReadyConsumerEndOfStream() {
-		readyProducer.streamTo(endConsumer);
+		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{
+			onProducerEndOfStream();
+		}};
+		StreamProducer<Integer> startStatusReadyProducer = new TestProducerOfIterator(eventloop, it);
+		startStatusReadyProducer.streamTo(startStatusEndConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(CLOSED_WITH_ERROR, readyProducer.getProducerStatus());
-		assertEquals(END_OF_STREAM, endConsumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusReadyProducer.getProducerStatus());
+		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerReadyConsumerClosedWithError() {
-		readyProducer.streamTo(closedWithErrorConsumer);
+		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{
+			closeWithError(new Exception());
+		}};
+		StreamProducer<Integer> startStatusReadyProducer = new TestProducerOfIterator(eventloop, it);
+		startStatusReadyProducer.streamTo(startStatusClosedWithErrorConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(CLOSED_WITH_ERROR, readyProducer.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, closedWithErrorConsumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusReadyProducer.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
 
 	@Test
 	public void testStartProducerSuspendConsumerReady() {
-		suspendProducer.streamTo(readyConsumer);
+		StreamConsumer<Integer> startStatusReadyConsumer = new TestConsumerOneByOne(eventloop);
+		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
+			onConsumerSuspended();
+		}};
+		startStatusSuspendProducer.streamTo(startStatusReadyConsumer);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5), list);
-		assertEquals(END_OF_STREAM, suspendProducer.getProducerStatus());
-		assertEquals(END_OF_STREAM, readyConsumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, startStatusSuspendProducer.getProducerStatus());
+		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerSuspendConsumerSuspend() {
-		suspendProducer.streamTo(suspendConsumer);
+		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
+		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
+			onConsumerSuspended();
+		}};
+		startStatusSuspendProducer.streamTo(startStatusSuspendConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(SUSPENDED, suspendProducer.getProducerStatus());
-		assertEquals(SUSPENDED, suspendConsumer.getConsumerStatus());
+		assertEquals(SUSPENDED, startStatusSuspendProducer.getProducerStatus());
+		assertEquals(SUSPENDED, startStatusSuspendConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerSuspendConsumerEndOfStream() {
-		suspendProducer.streamTo(endConsumer);
+		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{
+			onProducerEndOfStream();
+		}};
+		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
+			onConsumerSuspended();
+		}};
+		startStatusSuspendProducer.streamTo(startStatusEndConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(CLOSED_WITH_ERROR, suspendProducer.getProducerStatus());
-		assertEquals(END_OF_STREAM, endConsumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendProducer.getProducerStatus());
+		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerSuspendConsumerClosedWithError() {
-		suspendProducer.streamTo(closedWithErrorConsumer);
+		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{
+			closeWithError(new Exception());
+		}};
+		StreamProducer<Integer> startStatusSuspendProducer = new TestProducerOfIterator(eventloop, it) {{
+			onConsumerSuspended();
+		}};
+		startStatusSuspendProducer.streamTo(startStatusClosedWithErrorConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(CLOSED_WITH_ERROR, suspendProducer.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, closedWithErrorConsumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendProducer.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
 
 	@Test
 	public void testStartProducerEndOfStreamConsumerReady() {
-		endProducer.streamTo(readyConsumer);
+		StreamConsumer<Integer> startStatusReadyConsumer = new TestConsumerOneByOne(eventloop);
+		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
+			sendEndOfStream();
+		}};
+		startStatusEndProducer.streamTo(startStatusReadyConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(END_OF_STREAM, endProducer.getProducerStatus());
-		assertEquals(END_OF_STREAM, readyConsumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
+		assertEquals(END_OF_STREAM, startStatusReadyConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerEndOfStreamConsumerSuspend() {
-		endProducer.streamTo(suspendConsumer);
+		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
+		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
+			sendEndOfStream();
+		}};
+		startStatusEndProducer.streamTo(startStatusSuspendConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(END_OF_STREAM, endProducer.getProducerStatus());
-		assertEquals(END_OF_STREAM, suspendConsumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
+		assertEquals(END_OF_STREAM, startStatusSuspendConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerEndOfStreamConsumerEndOfStream() {
-		endProducer.streamTo(endConsumer);
+		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{
+			onProducerEndOfStream();
+		}};
+		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
+			sendEndOfStream();
+		}};
+		startStatusEndProducer.streamTo(startStatusEndConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(END_OF_STREAM, endProducer.getProducerStatus());
-		assertEquals(END_OF_STREAM, endConsumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
+		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartProducerEndOfStreamConsumerClosedWithError() {
-		endProducer.streamTo(closedWithErrorConsumer);
+		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{
+			closeWithError(new Exception());
+		}};
+		StreamProducer<Integer> startStatusEndProducer = new TestProducerOfIterator(eventloop, it) {{
+			sendEndOfStream();
+		}};
+		startStatusEndProducer.streamTo(startStatusClosedWithErrorConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(END_OF_STREAM, endProducer.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, closedWithErrorConsumer.getConsumerStatus());
+		assertEquals(END_OF_STREAM, startStatusEndProducer.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------
 
 	@Test
 	public void testStartCloseWithErrorConsumerReady() {
-		closedWithErrorProducer.streamTo(readyConsumer);
+		StreamConsumer<Integer> startStatusReadyConsumer = new TestConsumerOneByOne(eventloop);
+		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
+			closeWithError(new Exception());
+		}};
+		startStatusClosedWithErrorProducer.streamTo(startStatusReadyConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(CLOSED_WITH_ERROR, closedWithErrorProducer.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, readyConsumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusReadyConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartCloseWithErrorConsumerSuspend() {
-		closedWithErrorProducer.streamTo(suspendConsumer);
+		StreamConsumer<Integer> startStatusSuspendConsumer = new TestConsumerOneByOne(eventloop) {{suspend();}};
+		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
+			closeWithError(new Exception());
+		}};
+		startStatusClosedWithErrorProducer.streamTo(startStatusSuspendConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(CLOSED_WITH_ERROR, closedWithErrorProducer.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, suspendConsumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusSuspendConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartCloseWithErrorConsumerEndOfStream() {
-		closedWithErrorProducer.streamTo(endConsumer);
+		StreamConsumer<Integer> startStatusEndConsumer = new TestConsumerOneByOne(eventloop) {{
+			onProducerEndOfStream();
+		}};
+		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
+			closeWithError(new Exception());
+		}};
+		startStatusClosedWithErrorProducer.streamTo(startStatusEndConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(CLOSED_WITH_ERROR, closedWithErrorProducer.getProducerStatus());
-		assertEquals(END_OF_STREAM, endConsumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
+		assertEquals(END_OF_STREAM, startStatusEndConsumer.getConsumerStatus());
 	}
 
 	@Test
 	public void testStartCloseWithErrorConsumerClosedWithError() {
-		closedWithErrorProducer.streamTo(closedWithErrorConsumer);
+		StreamConsumer<Integer> startStatusClosedWithErrorConsumer = new TestConsumerOneByOne(eventloop) {{
+			closeWithError(new Exception());
+		}};
+		StreamProducer<Integer> startStatusClosedWithErrorProducer = new TestProducerOfIterator(eventloop, it) {{
+			closeWithError(new Exception());
+		}};
+		startStatusClosedWithErrorProducer.streamTo(startStatusClosedWithErrorConsumer);
 		eventloop.run();
 
 		assertEquals(Collections.emptyList(), list);
-		assertEquals(CLOSED_WITH_ERROR, closedWithErrorProducer.getProducerStatus());
-		assertEquals(CLOSED_WITH_ERROR, closedWithErrorConsumer.getConsumerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorProducer.getProducerStatus());
+		assertEquals(CLOSED_WITH_ERROR, startStatusClosedWithErrorConsumer.getConsumerStatus());
 	}
 
 	//------------------------------------------------------------------------------------------------------------------

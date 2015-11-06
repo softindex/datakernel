@@ -22,6 +22,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
+import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
+
 public class AggregationCommitCallback implements ResultCallback<List<AggregationChunk.NewChunk>> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationCommitCallback.class);
 
@@ -35,7 +37,7 @@ public class AggregationCommitCallback implements ResultCallback<List<Aggregatio
 	public void onResult(List<AggregationChunk.NewChunk> result) {
 		aggregation.incrementLastRevisionId();
 		for (AggregationChunk.NewChunk newChunk : result) {
-			aggregation.addToIndex(AggregationChunk.createCommitChunk(aggregation.getLastRevisionId(), newChunk));
+			aggregation.addToIndex(createChunk(aggregation.getLastRevisionId(), newChunk));
 		}
 	}
 

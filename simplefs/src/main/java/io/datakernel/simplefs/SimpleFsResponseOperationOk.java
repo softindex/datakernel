@@ -16,7 +16,7 @@
 
 package io.datakernel.simplefs;
 
-public class SimpleFsResponseOperationOk extends SimpleFsResponse {
+final class SimpleFsResponseOperationOk extends SimpleFsResponse {
 
 	@Override
 	public String toString() {

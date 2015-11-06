@@ -17,13 +17,13 @@
 package io.datakernel.http;
 
 import com.google.common.net.InetAddresses;
+import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -118,17 +118,11 @@ public class SimpleProxyServerTest {
 		stream.write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: close\n\r\n"));
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 17\r\n\r\nFORWARDED: /hello");
 
-		SimpleCompletionFuture callbackEcho = new SimpleCompletionFuture();
-		echoServer.closeFuture(callbackEcho);
-		callbackEcho.await();
+		echoServer.closeFuture().await();
 
-		SimpleCompletionFuture callbackProxy = new SimpleCompletionFuture();
-		proxyServer.closeFuture(callbackProxy);
-		callbackProxy.await();
+		proxyServer.closeFuture().await();
 
-		SimpleCompletionFuture callbackHttp = new SimpleCompletionFuture();
-		httpClient.closeFuture(callbackHttp);
-		callbackHttp.await();
+		httpClient.closeFuture().await();
 
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();

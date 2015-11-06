@@ -60,8 +60,7 @@ public final class CubeMetadataStorageSql implements CubeMetadataStorage {
 		this.jooqConfiguration = jooqConfiguration;
 	}
 
-	public void loadAggregations(DSLContext jooq,
-	                             Cube cube) {
+	private void loadAggregations(DSLContext jooq, Cube cube) {
 		Result<AggregationDbStructureRecord> records = jooq
 				.selectFrom(AGGREGATION_DB_STRUCTURE)
 				.where(AGGREGATION_DB_STRUCTURE.ID.notIn(cube.getAggregations().keySet()))
@@ -82,6 +81,7 @@ public final class CubeMetadataStorageSql implements CubeMetadataStorage {
 		}
 	}
 
+	// TODO (dtkachenko): return loaded aggregations metadatas
 	@Override
 	public void loadAggregations(final Cube cube, CompletionCallback callback) {
 		runConcurrently(eventloop, executor, false, new Runnable() {
@@ -110,6 +110,7 @@ public final class CubeMetadataStorageSql implements CubeMetadataStorage {
 		}
 	}
 
+	// TODO (dtkachenko): save list of exlicitely provided list of aggregations metadatas
 	@Override
 	public void saveAggregations(final Cube cube, CompletionCallback callback) {
 		runConcurrently(eventloop, executor, false, new Runnable() {

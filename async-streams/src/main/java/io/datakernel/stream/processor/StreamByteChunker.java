@@ -23,28 +23,28 @@ import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
 public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
-	private final UpstreamConsumer upstreamConsumer;
-	private final DownstreamProducer downstreamProducer;
+	private final InputConsumer inputConsumer;
+	private final OutputProducer outputProducer;
 
-	protected final class UpstreamConsumer extends AbstractUpstreamConsumer {
+	protected final class InputConsumer extends AbstractInputConsumer {
 
 		@Override
 		protected void onUpstreamEndOfStream() {
-			downstreamProducer.flushAndClose();
+			outputProducer.flushAndClose();
 		}
 
 		@Override
 		public StreamDataReceiver<ByteBuf> getDataReceiver() {
-			return downstreamProducer;
+			return outputProducer;
 		}
 	}
 
-	protected final class DownstreamProducer extends AbstractDownstreamProducer implements StreamDataReceiver<ByteBuf> {
+	protected final class OutputProducer extends AbstractOutputProducer implements StreamDataReceiver<ByteBuf> {
 		private final int minChunkSize;
 		private final int maxChunkSize;
 		private ByteBuf internalBuf;
 
-		public DownstreamProducer(int minChunkSize, int maxChunkSize) {
+		public OutputProducer(int minChunkSize, int maxChunkSize) {
 			this.minChunkSize = minChunkSize;
 			this.maxChunkSize = maxChunkSize;
 			this.internalBuf = ByteBufPool.allocate(maxChunkSize);
@@ -52,12 +52,12 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		protected void onDownstreamSuspended() {
-			upstreamConsumer.suspend();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
-			upstreamConsumer.resume();
+			inputConsumer.resume();
 		}
 
 		@Override
@@ -88,19 +88,27 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		private void flushAndClose() {
 			internalBuf.flip();
 			if (internalBuf.hasRemaining()) {
-				downstreamProducer.send(internalBuf);
+				outputProducer.send(internalBuf);
 			} else {
 				internalBuf.recycle();
 			}
 			internalBuf = null;
-			downstreamProducer.sendEndOfStream();
+			outputProducer.sendEndOfStream();
+		}
+
+		@Override
+		protected void doCleanup() {
+			if (internalBuf != null) {
+				internalBuf.recycle();
+				internalBuf = null;
+			}
 		}
 	}
 
 	public StreamByteChunker(Eventloop eventloop, int minChunkSize, int maxChunkSize) {
 		super(eventloop);
-		this.upstreamConsumer = new UpstreamConsumer();
-		this.downstreamProducer = new DownstreamProducer(minChunkSize, maxChunkSize);
+		this.inputConsumer = new InputConsumer();
+		this.outputProducer = new OutputProducer(minChunkSize, maxChunkSize);
 	}
 
 }

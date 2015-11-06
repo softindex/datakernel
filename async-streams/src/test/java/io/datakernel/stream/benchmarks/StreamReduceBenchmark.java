@@ -84,7 +84,7 @@ public class StreamReduceBenchmark implements Runnable {
 		source6.streamTo(streamReducer.newInput(keyFunction, reducer));
 		source7.streamTo(streamReducer.newInput(keyFunction, reducer));
 
-		streamReducer.streamTo(consumer);
+		streamReducer.getOutput().streamTo(consumer);
 	}
 
 	@Override

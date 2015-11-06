@@ -16,7 +16,9 @@
 
 package io.datakernel.cube;
 
-import com.google.common.base.*;
+import com.google.common.base.Function;
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Predicate;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
@@ -25,10 +27,10 @@ import io.datakernel.aggregation_db.*;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
@@ -59,8 +61,6 @@ public final class Cube {
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final int aggregationChunkSize;
 	private final int sorterItemsInMemory;
-	private final int consolidationTimeoutMillis;
-	private final int removeChunksAfterConsolidationMillis;
 
 	private final AggregationStructure structure;
 
@@ -72,7 +72,6 @@ public final class Cube {
 	 * Instantiates a cube with the specified structure, that runs in a given event loop,
 	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
 	 * and uses the specified parameters.
-	 *
 	 * @param eventloop                            event loop, in which the cube is to run
 	 * @param classLoader                          class loader for defining dynamic classes
 	 * @param cubeMetadataStorage                  storage for persisting cube metadata
@@ -81,13 +80,10 @@ public final class Cube {
 	 * @param structure                            structure of a cube
 	 * @param aggregationChunkSize                 maximum size of aggregation chunk
 	 * @param sorterItemsInMemory                  maximum number of records that can stay in memory while sorting
-	 * @param consolidationTimeoutMillis           maximum duration of consolidation attempt (in milliseconds)
-	 * @param removeChunksAfterConsolidationMillis period of time (in milliseconds) after consolidation after which consolidated chunks can be removed
 	 */
 	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
 	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory, int consolidationTimeoutMillis,
-	            int removeChunksAfterConsolidationMillis) {
+	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory) {
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
 		this.cubeMetadataStorage = cubeMetadataStorage;
@@ -96,30 +92,6 @@ public final class Cube {
 		this.structure = structure;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
-		this.consolidationTimeoutMillis = consolidationTimeoutMillis;
-		this.removeChunksAfterConsolidationMillis = removeChunksAfterConsolidationMillis;
-	}
-
-	/**
-	 * Instantiates a cube with the specified structure, that runs in a given event loop,
-	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages.
-	 * Maximum size of chunk is 1,000,000 bytes.
-	 * No more than 1,000,000 records stay in memory while sorting.
-	 * Maximum duration of consolidation attempt is 30 minutes.
-	 * Consolidated chunks become available for removal in 10 minutes from consolidation.
-	 *
-	 * @param eventloop                  event loop, in which the cube is to run
-	 * @param classLoader                class loader for defining dynamic classes
-	 * @param cubeMetadataStorage        storage for persisting cube metadata
-	 * @param aggregationMetadataStorage storage for aggregations metadata
-	 * @param aggregationChunkStorage    storage for data chunks
-	 * @param structure                  structure of a cube
-	 */
-	public Cube(Eventloop eventloop, DefiningClassLoader classLoader,
-	            CubeMetadataStorage cubeMetadataStorage, AggregationMetadataStorage aggregationMetadataStorage,
-	            AggregationChunkStorage aggregationChunkStorage, AggregationStructure structure) {
-		this(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, structure,
-				1_000_000, 1_000_000, 30 * 60 * 1000, 10 * 60 * 1000);
 	}
 
 	public Map<String, Aggregation> getAggregations() {
@@ -146,8 +118,8 @@ public final class Cube {
 	 */
 	public void addAggregation(AggregationMetadata aggregationMetadata) {
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage, aggregationChunkStorage, aggregationMetadata, structure,
-				new SummationProcessorFactory(classLoader), sorterItemsInMemory, aggregationChunkSize,
-				consolidationTimeoutMillis, removeChunksAfterConsolidationMillis);
+				new SummationProcessorFactory(classLoader), sorterItemsInMemory, aggregationChunkSize);
+		checkArgument(!aggregations.containsKey(aggregation.getId()), "Aggregation '%s' is already defined", aggregation.getId());
 		aggregations.put(aggregation.getId(), aggregation);
 	}
 
@@ -208,6 +180,7 @@ public final class Cube {
 		final StreamSplitter<T> streamSplitter = new StreamSplitter<>(eventloop);
 		final Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks = LinkedHashMultimap.create();
 		final int[] aggregationsDone = {0};
+		final int[] streamSplitterOutputs = {0};
 
 		Collection<Aggregation> preparedAggregations = findAggregationsForWriting(predicates);
 
@@ -225,28 +198,17 @@ public final class Cube {
 						public void onResult(List<AggregationChunk.NewChunk> chunks) {
 							resultChunks.putAll(aggregation.getAggregationMetadata(), chunks);
 							++aggregationsDone[0];
-							if (aggregationsDone[0] == streamSplitter.getOutputsCount()) {
+							if (aggregationsDone[0] == streamSplitterOutputs[0]) {
 								callback.onCommit(resultChunks);
 							}
 						}
 					});
 
 			streamSplitter.newOutput().streamTo(groupReducer);
+			++streamSplitterOutputs[0];
 		}
 
-		streamSplitter.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.trace("Populating cube {} completed.", Cube.this);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("Populating cube {} failed.", Cube.this, e);
-			}
-		});
-
-		return streamSplitter;
+		return streamSplitter.getInput();
 	}
 
 	private Comparator<Aggregation> aggregationCostComparator(final AggregationQuery query) {
@@ -314,13 +276,12 @@ public final class Cube {
 	/**
 	 * Returns a {@link StreamProducer} of the records retrieved from cube for the specified query.
 	 *
-	 * @param revisionId  minimum revision of records
+	 * @param <T>         type of output objects
 	 * @param resultClass class of output records
 	 * @param query       query
-	 * @param <T>         type of output objects
 	 * @return producer that streams query results
 	 */
-	public <T> StreamProducer<T> query(int revisionId, Class<T> resultClass, AggregationQuery query) {
+	public <T> StreamProducer<T> query(Class<T> resultClass, AggregationQuery query) {
 		logger.trace("Started building StreamProducer for query.");
 
 		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
@@ -345,7 +306,7 @@ public final class Cube {
 
 			Class aggregationClass = structure.createRecordClass(aggregation.getKeys(), aggregationMeasures);
 
-			StreamProducer<T> queryResultProducer = aggregation.query(revisionId, filteredQuery, aggregationClass);
+			StreamProducer<T> queryResultProducer = aggregation.query(filteredQuery, aggregationClass);
 
 			Function keyFunction = structure.createKeyFunction(aggregationClass, resultKeyClass, resultDimensions);
 
@@ -356,7 +317,7 @@ public final class Cube {
 
 			queryResultProducer.streamTo(streamReducerInput);
 
-			logger.trace("Streaming query {} result from aggregation {}.", filteredQuery, aggregation);
+			logger.info("Streaming query {} result from aggregation '{}'", filteredQuery, aggregation.getId());
 
 			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getInputFields()))));
 		}
@@ -367,18 +328,6 @@ public final class Cube {
 				query.getResultKeys(), query.getResultFields());
 
 		logger.trace("Finished building StreamProducer for query.");
-
-		orderedResultStream.addCompletionCallback(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.trace("Streaming query result from stream {} completed.", orderedResultStream);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("Streaming query result from stream {} failed.", orderedResultStream, e);
-			}
-		});
 
 		return orderedResultStream;
 	}
@@ -396,107 +345,35 @@ public final class Cube {
 		cubeMetadataStorage.loadAggregations(this, callback);
 	}
 
-	public void reloadAllChunksConsolidations(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
+	public void loadChunks(CompletionCallback callback) {
 		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
 		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.reloadAllChunksConsolidations(waitAllCallback);
+			aggregation.loadChunks(waitAllCallback);
 		}
 	}
 
-	public void refreshChunkConsolidations(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.refreshChunkConsolidations(waitAllCallback);
-		}
+	public void consolidate(ResultCallback<Boolean> callback) {
+		consolidate(false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	public void refreshAllChunks(CompletionCallback callback) {
-		refreshAllChunks(Integer.MAX_VALUE, callback);
-	}
-
-	public void refreshAllChunks(int maxRevisionId, CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.loadChunks(maxRevisionId, waitAllCallback);
-		}
-	}
-
-	public void consolidateAllIndexes(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.consolidate(waitAllCallback);
-		}
-	}
-
-	public void consolidateGreedily(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		TreeMap<Integer, Aggregation> indexNumberOfChunks = new TreeMap<>(Collections.reverseOrder());
-
-		for (Aggregation aggregation : aggregations.values()) {
-			int numberOfChunksAvailableForConsolidation = aggregation.getNumberOfChunksAvailableForConsolidation();
-			if (numberOfChunksAvailableForConsolidation != 0) {
-				indexNumberOfChunks.put(numberOfChunksAvailableForConsolidation, aggregation);
+	public void consolidate(final boolean found, final Iterator<Aggregation> iterator,
+	                        final ResultCallback<Boolean> callback) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				if (iterator.hasNext()) {
+					Aggregation aggregation = iterator.next();
+					aggregation.consolidate(new ForwardingResultCallback<Boolean>(callback) {
+						@Override
+						public void onResult(Boolean result) {
+							consolidate(result || found, iterator, callback);
+						}
+					});
+				} else {
+					callback.onResult(found);
+				}
 			}
-		}
-		if (indexNumberOfChunks.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-		indexNumberOfChunks.firstEntry().getValue().consolidate(callback);
-	}
-
-	public void consolidateGreedily(ConsolidateCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onNothingToConsolidate();
-			return;
-		}
-
-		TreeMap<Integer, Aggregation> indexNumberOfChunks = new TreeMap<>(Collections.reverseOrder());
-
-		for (Aggregation aggregation : aggregations.values()) {
-			int numberOfChunksAvailableForConsolidation = aggregation.getNumberOfChunksAvailableForConsolidation();
-			indexNumberOfChunks.put(numberOfChunksAvailableForConsolidation, aggregation);
-		}
-		if (indexNumberOfChunks.isEmpty()) {
-			callback.onNothingToConsolidate();
-			return;
-		}
-		indexNumberOfChunks.firstEntry().getValue().consolidate(callback);
-	}
-
-	public void removeOldChunksFromAllIndexes(CompletionCallback callback) {
-		if (aggregations.isEmpty()) {
-			callback.onComplete();
-			return;
-		}
-
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.removeOldChunks(waitAllCallback);
-		}
+		});
 	}
 
 	public AvailableDrillDowns getAvailableDrillDowns(Set<String> dimensions, AggregationQuery.QueryPredicates predicates,
@@ -546,10 +423,6 @@ public final class Cube {
 		return structure.getChildParentRelationships().buildDrillDownChain(usedDimensions, dimension);
 	}
 
-	public Set<List<String>> buildDrillDownChains(Set<String> usedDimensions, Set<String> availableDimensions) {
-		return structure.getChildParentRelationships().buildDrillDownChains(usedDimensions, availableDimensions);
-	}
-
 	public Set<String> getAvailableMeasures(List<String> dimensions, List<String> allMeasures) {
 		Set<String> availableMeasures = newHashSet();
 		Set<String> allMeasuresSet = newHashSet();
@@ -557,13 +430,13 @@ public final class Cube {
 
 		for (Aggregation aggregation : aggregations.values()) {
 			Set<String> aggregationMeasures = newHashSet();
-			aggregationMeasures.addAll(aggregation.getInputFields());
+			aggregationMeasures.addAll(aggregation.getOutputFields());
 
 			if (!all(dimensions, in(aggregation.getKeys()))) {
 				continue;
 			}
 
-			if (!any(allMeasures, in(aggregation.getInputFields()))) {
+			if (!any(allMeasures, in(aggregation.getOutputFields()))) {
 				continue;
 			}
 
@@ -585,13 +458,10 @@ public final class Cube {
 			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure, resultClass, dimensions, measures);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, sortingMeasureFunction,
 					fieldComparator, false, sorterItemsInMemory);
-			rawResultStream.streamTo(sorter);
-			StreamForwarder<T> sortedStream = (StreamForwarder<T>) sorter.getSortedStream();
-			sortedStream.setTag(query);
-			return sortedStream;
+			rawResultStream.getOutput().streamTo(sorter.getInput());
+			return sorter.getOutput();
 		} else {
-			rawResultStream.setTag(query);
-			return rawResultStream;
+			return rawResultStream.getOutput();
 		}
 	}
 

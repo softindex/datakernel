@@ -16,11 +16,21 @@
 
 package io.datakernel.http;
 
-import static com.google.common.base.Preconditions.*;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
-import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
-import static io.datakernel.net.SocketSettings.defaultSocketSettings;
+import com.google.common.base.Joiner;
+import com.google.common.base.Stopwatch;
+import io.datakernel.async.*;
+import io.datakernel.dns.DnsClient;
+import io.datakernel.dns.DnsException;
+import io.datakernel.eventloop.ConnectCallback;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioService;
+import io.datakernel.http.ExposedLinkedList.Node;
+import io.datakernel.jmx.DynamicStatsCounter;
+import io.datakernel.jmx.MBeanFormat;
+import io.datakernel.jmx.StatsCounter;
+import io.datakernel.net.SocketSettings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.BindException;
@@ -35,25 +45,10 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Stopwatch;
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.dns.DnsClient;
-import io.datakernel.dns.DnsException;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
-import io.datakernel.http.ExposedLinkedList.Node;
-import io.datakernel.jmx.DynamicStatsCounter;
-import io.datakernel.jmx.MBeanFormat;
-import io.datakernel.jmx.StatsCounter;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.service.SimpleCompletionFuture;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
+import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 
 public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientImplMXBean {
 	private static final Logger logger = LoggerFactory.getLogger(HttpClientImpl.class);
@@ -438,8 +433,8 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		callback.onComplete();
 	}
 
-	public void closeFuture(SimpleCompletionFuture callback) {
-		AsyncCallbacks.stopFuture(this, callback);
+	public CompletionCallbackFuture closeFuture() {
+		return AsyncCallbacks.stopFuture(this);
 	}
 
 	// JMX

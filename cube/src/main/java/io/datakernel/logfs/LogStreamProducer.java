@@ -19,7 +19,6 @@ package io.datakernel.logfs;
 import io.datakernel.async.AsyncIterator;
 import io.datakernel.async.IteratorCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
@@ -43,26 +42,27 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	private BufferSerializer<T> serializer;
 	private final ResultCallback<LogPosition> positionCallback;
 	private final StreamForwarder<T> forwarder;
+	private final Eventloop eventloop;
 
 	public LogStreamProducer(final Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
 	                         String logPartition, LogPosition startPosition, ResultCallback<LogPosition> positionCallback) {
-		super(eventloop);
+		this.eventloop = eventloop;
 		this.logPartition = logPartition;
 		this.startPosition = startPosition;
 		this.fileSystem = fileSystem;
 		this.serializer = serializer;
 		this.positionCallback = positionCallback;
 		this.forwarder = new StreamForwarder<>(eventloop);
-		setActualProducer(forwarder);
+		setActualProducer(forwarder.getOutput());
 		fileSystem.list(logPartition, new ResultCallback<List<LogFile>>() {
 			@Override
 			public void onResult(List<LogFile> entries) {
-				producerForList(entries).streamTo(forwarder);
+				producerForList(entries).streamTo(forwarder.getInput());
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				new StreamProducers.ClosingWithError<T>(eventloop, exception).streamTo(forwarder);
+				new StreamProducers.ClosingWithError<T>(eventloop, exception).streamTo(forwarder.getInput());
 			}
 		});
 	}
@@ -100,11 +100,11 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				StreamBinaryDeserializer<T> currentDeserializer = new StreamBinaryDeserializer<>(eventloop, serializer, StreamBinarySerializer.MAX_SIZE);
 				ErrorIgnoringTransformer<T> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
 
-				currentReader.streamTo(currentDecompressor);
-				currentDecompressor.streamTo(currentDeserializer);
-				currentDeserializer.streamTo(errorIgnoringTransformer);
+				currentReader.streamTo(currentDecompressor.getInput());
+				currentDecompressor.getOutput().streamTo(currentDeserializer.getInput());
+				currentDeserializer.getOutput().streamTo(errorIgnoringTransformer.getInput());
 
-				callback.onNext(errorIgnoringTransformer);
+				callback.onNext(errorIgnoringTransformer.getOutput());
 			}
 		});
 	}
@@ -116,5 +116,4 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	public LogPosition getLogPosition() {
 		return currentLogFile == null ? startPosition : new LogPosition(currentLogFile, currentReader.getPosition());
 	}
-
 }

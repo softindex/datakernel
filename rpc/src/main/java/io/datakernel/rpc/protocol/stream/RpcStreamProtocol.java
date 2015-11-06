@@ -154,17 +154,17 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 			@Override
 			protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
 				if (compression) {
-					socketReader.streamTo(decompressor);
-					decompressor.streamTo(deserializer);
+					socketReader.streamTo(decompressor.getInput());
+					decompressor.getOutput().streamTo(deserializer.getInput());
 
-					serializer.streamTo(compressor);
-					compressor.streamTo(socketWriter);
+					serializer.getOutput().streamTo(compressor.getInput());
+					compressor.getOutput().streamTo(socketWriter);
 				} else {
-					socketReader.streamTo(deserializer);
-					serializer.streamTo(socketWriter);
+					socketReader.streamTo(deserializer.getInput());
+					serializer.getOutput().streamTo(socketWriter);
 				}
-				deserializer.streamTo(receiver);
-				sender.streamTo(serializer);
+				deserializer.getOutput().streamTo(receiver);
+				sender.streamTo(serializer.getInput());
 
 				onWired();
 			}
@@ -201,9 +201,9 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	public void close() {
 		sender.close();
 		if (compression) {
-			decompressor.onProducerEndOfStream();
+			decompressor.getInput().onProducerEndOfStream();
 		} else {
-			deserializer.onProducerEndOfStream();
+			deserializer.getInput().onProducerEndOfStream();
 		}
 		connection.close();
 	}

@@ -26,7 +26,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.Aggregation;
 import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.aggregation_db.AggregationMetadataStorageSql;
@@ -121,10 +120,24 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 		}, callback);
 	}
 
-	private void processLog_commit(DSLContext jooq,
-	                               final Cube cube, final String log, Map<String, LogPosition> oldPositions,
-	                               final Map<String, LogPosition> newPositions,
-	                               final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
+	@Override
+	public void saveCommit(final String log,
+	                       final Map<String, LogPosition> oldPositions,
+	                       final Map<String, LogPosition> newPositions,
+	                       final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
+	                       CompletionCallback callback) {
+		runConcurrently(eventloop, executor, false, new Runnable() {
+			@Override
+			public void run() {
+				saveCommit(DSL.using(jooqConfiguration), log, oldPositions, newPositions, newChunks);
+			}
+		}, callback);
+	}
+
+	private void saveCommit(DSLContext jooq, final String log,
+	                        Map<String, LogPosition> oldPositions,
+	                        final Map<String, LogPosition> newPositions,
+	                        final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
 		jooq.transaction(new TransactionalRunnable() {
 			@Override
 			public void run(Configuration configuration) throws Exception {
@@ -151,29 +164,9 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 							.execute();
 				}
 
-				aggregationMetadataStorage.saveChunks(jooq, newChunks);
+				aggregationMetadataStorage.saveNewChunks(jooq, newChunks);
 			}
 		});
-
-		cubeMetadataStorage.loadAggregations(jooq, cube);
-
-		for (Aggregation aggregation : cube.getAggregations().values()) {
-			aggregation.loadChunksBlocking(Integer.MAX_VALUE);
-		}
-	}
-
-	@Override
-	public void commit(final Cube cube, final String log,
-	                   final Map<String, LogPosition> oldPositions,
-	                   final Map<String, LogPosition> newPositions,
-	                   final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
-	                   CompletionCallback callback) {
-		runConcurrently(eventloop, executor, false, new Runnable() {
-			@Override
-			public void run() {
-				processLog_commit(DSL.using(jooqConfiguration), cube, log, oldPositions, newPositions, newChunks);
-			}
-		}, callback);
 	}
 
 	@Override

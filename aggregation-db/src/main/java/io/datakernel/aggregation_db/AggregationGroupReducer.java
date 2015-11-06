@@ -87,18 +87,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	private void doNext() {
-		if (getUpstreamStatus() == AbstractStreamProducer.CLOSED) {
-			return;
-		}
-
 		if (saving) {
-			suspendUpstream();
+			suspend();
 			return;
 		}
 
-		if (getUpstreamStatus() == AbstractStreamProducer.END_OF_STREAM && map.isEmpty()) {
+		if (getConsumerStatus() == StreamStatus.END_OF_STREAM && map.isEmpty()) {
 			chunksCallback.onResult(chunks);
-			closeUpstream();
 			logger.trace("{}: completed saving chunks {} for aggregation {}. Closing itself.", this, chunks, aggregationMetadata);
 			return;
 		}
@@ -128,7 +123,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			public void onResult(Long newId) {
 				AggregationChunk.NewChunk newChunk = new AggregationChunk.NewChunk(
 						newId,
-						aggregationMetadata.getId(), outputFields,
+						outputFields,
 						PrimaryKey.ofObject(entryList.get(0).getValue(), keys),
 						PrimaryKey.ofObject(entryList.get(entryList.size() - 1).getValue(), keys),
 						entryList.size());
@@ -143,25 +138,10 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 				final StreamProducer<Object> producer = StreamProducers.ofIterable(eventloop, list);
 
-				StreamConsumer consumer = storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId);
-
-				producer.streamTo(consumer);
-
-				producer.addCompletionCallback(new CompletionCallback() {
+				StreamConsumer consumer = storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						saving = false;
-						metadataStorage.saveChunks(aggregationMetadata, chunks, new CompletionCallback() {
-							@Override
-							public void onComplete() {
-								logger.trace("Saving chunks {} to metadata storage {} completed.", chunks, metadataStorage);
-							}
-
-							@Override
-							public void onException(Exception exception) {
-								logger.error("Saving chunks {} to metadata storage {} failed.", chunks, metadataStorage, exception);
-							}
-						});
 						eventloop.post(new Runnable() {
 							@Override
 							public void run() {
@@ -173,26 +153,32 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 					@Override
 					public void onException(Exception e) {
 						logger.error("Saving chunks {} to aggregation storage {} failed.", chunks, storage, e);
+						closeWithError(e);
 					}
 				});
-				AggregationGroupReducer.this.resumeUpstream();
+
+				producer.streamTo(consumer);
+
+				AggregationGroupReducer.this.resume();
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				logger.error("Failed to retrieve new chunk id from the metadata storage {}.", metadataStorage);
+				closeWithError(exception);
 			}
 		});
 	}
 
 	@Override
-	public void onProducerEndOfStream() {
-		logger.trace("{}: upstream producer {} closed.", this, upstreamProducer);
+	public void onEndOfStream() {
+		logger.trace("{}: upstream producer {} closed", this, upstreamProducer);
 		doNext();
 	}
 
 	@Override
-	public void onProducerError(Exception e) {
-		logger.trace("{}: upstream producer {} exception.", this, upstreamProducer, e);
+	protected void onError(Exception e) {
+		logger.error("{}: upstream producer {} exception", this, upstreamProducer, e);
+		chunksCallback.onException(e);
 	}
 }

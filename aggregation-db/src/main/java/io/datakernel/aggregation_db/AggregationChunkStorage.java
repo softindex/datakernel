@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
@@ -36,7 +37,8 @@ public interface AggregationChunkStorage {
 	 * @param id            id of chunk
 	 * @return StreamProducer, which will stream read records to its wired consumer.
 	 */
-	<T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id);
+	<T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+	                                  long id);
 
 	/**
 	 * Creates a {@code StreamConsumer} that persists streamed records.
@@ -49,13 +51,15 @@ public interface AggregationChunkStorage {
 	 * @param id            id of chunk
 	 * @return StreamConsumer, which will write records, streamed from wired producer.
 	 */
-	<T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id);
+	<T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+	                                  long id, CompletionCallback callback);
 
 	/**
 	 * Removes the chunk determined by {@code aggregationId} and {@code id}.
 	 *
 	 * @param aggregationId id of aggregation that contains the chunk
 	 * @param id            id of chunk
+	 * @param callback      callback
 	 */
-	void removeChunk(String aggregationId, long id);
+	void removeChunk(String aggregationId, long id, CompletionCallback callback);
 }

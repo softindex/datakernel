@@ -65,6 +65,6 @@ public final class NodeReduceSimple<K, I, O, A> implements Node {
 		for (StreamId input : inputs) {
 			taskContext.bindChannel(input, streamReducerSimple.newInput());
 		}
-		taskContext.export(output, streamReducerSimple);
+		taskContext.export(output, streamReducerSimple.getOutput());
 	}
 }

@@ -81,7 +81,7 @@ public class LogItemSplitterWithFilteredAggregations extends AggregatorSplitter<
 	}
 
 	@Override
-	public void onData(LogItemWithFilteredAggregations item) {
+	protected void processItem(LogItemWithFilteredAggregations item) {
 		logItemAggregator.onData(item);
 
 		switch (item.impressionType) {

@@ -89,11 +89,11 @@ public class StreamLZ4Test {
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(preBuf);
-		preBuf.streamTo(compressor);
-		compressor.streamTo(postBuf);
-		postBuf.streamTo(decompressor);
-		decompressor.streamTo(consumer);
+		source.streamTo(preBuf.getInput());
+		preBuf.getOutput().streamTo(compressor.getInput());
+		compressor.getOutput().streamTo(postBuf.getInput());
+		postBuf.getOutput().streamTo(decompressor.getInput());
+		decompressor.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -106,17 +106,17 @@ public class StreamLZ4Test {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 
-		assertEquals(END_OF_STREAM, preBuf.getProducerStatus());
-		assertEquals(END_OF_STREAM, preBuf.getProducerStatus());
+		assertEquals(END_OF_STREAM, preBuf.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, preBuf.getOutput().getProducerStatus());
 
-		assertEquals(END_OF_STREAM, compressor.getConsumerStatus());
-		assertEquals(END_OF_STREAM, compressor.getProducerStatus());
+		assertEquals(END_OF_STREAM, compressor.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, compressor.getOutput().getProducerStatus());
 
-		assertEquals(END_OF_STREAM, postBuf.getConsumerStatus());
-		assertEquals(END_OF_STREAM, postBuf.getProducerStatus());
+		assertEquals(END_OF_STREAM, postBuf.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, postBuf.getOutput().getProducerStatus());
 
-		assertEquals(END_OF_STREAM, decompressor.getConsumerStatus());
-		assertEquals(END_OF_STREAM, decompressor.getProducerStatus());
+		assertEquals(END_OF_STREAM, decompressor.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, decompressor.getOutput().getProducerStatus());
 
 	}
 
@@ -141,19 +141,19 @@ public class StreamLZ4Test {
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		TestStreamConsumers.TestConsumerToList<ByteBuf> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(preBuf);
+		source.streamTo(preBuf.getInput());
 		eventloop.run();
 
-		preBuf.streamTo(compressor);
+		preBuf.getOutput().streamTo(compressor.getInput());
 		eventloop.run();
 
-		compressor.streamTo(postBuf);
+		compressor.getOutput().streamTo(postBuf.getInput());
 		eventloop.run();
 
-		postBuf.streamTo(decompressor);
+		postBuf.getOutput().streamTo(decompressor.getInput());
 		eventloop.run();
 
-		decompressor.streamTo(consumer);
+		decompressor.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		byte[] actual = byteBufsToByteArray(consumer.getList());
@@ -165,17 +165,17 @@ public class StreamLZ4Test {
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 
-		assertEquals(END_OF_STREAM, preBuf.getProducerStatus());
-		assertEquals(END_OF_STREAM, preBuf.getProducerStatus());
+		assertEquals(END_OF_STREAM, preBuf.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, preBuf.getOutput().getProducerStatus());
 
-		assertEquals(END_OF_STREAM, compressor.getConsumerStatus());
-		assertEquals(END_OF_STREAM, compressor.getProducerStatus());
+		assertEquals(END_OF_STREAM, compressor.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, compressor.getOutput().getProducerStatus());
 
-		assertEquals(END_OF_STREAM, postBuf.getConsumerStatus());
-		assertEquals(END_OF_STREAM, postBuf.getProducerStatus());
+		assertEquals(END_OF_STREAM, postBuf.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, postBuf.getOutput().getProducerStatus());
 
-		assertEquals(END_OF_STREAM, decompressor.getConsumerStatus());
-		assertEquals(END_OF_STREAM, decompressor.getProducerStatus());
+		assertEquals(END_OF_STREAM, decompressor.getInput().getConsumerStatus());
+		assertEquals(END_OF_STREAM, decompressor.getOutput().getProducerStatus());
 	}
 
 	@Test
@@ -222,9 +222,9 @@ public class StreamLZ4Test {
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		StreamConsumers.ToList<ByteBuf> consumer = StreamConsumers.toList(eventloop);
 
-		source.streamTo(compressor);
-		compressor.streamTo(decompressor);
-		decompressor.streamTo(consumer);
+		source.streamTo(compressor.getInput());
+		compressor.getOutput().streamTo(decompressor.getInput());
+		decompressor.getOutput().streamTo(consumer);
 
 		eventloop.run();
 

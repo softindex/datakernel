@@ -25,7 +25,7 @@ public interface Messaging<O> {
 
 	void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback);
 
-	StreamProducer<ByteBuf> binarySocketReader();
+	StreamProducer<ByteBuf> read();
 
 	void shutdown();
 

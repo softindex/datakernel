@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
@@ -26,12 +27,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static io.datakernel.stream.StreamStatus.*;
-import static io.datakernel.stream.processor.Utils.*;
+import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.processor.Utils.consumerStatuses;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class StreamMemoryReducerTest {
 
@@ -78,7 +78,7 @@ public class StreamMemoryReducerTest {
 
 		source1.streamTo(sorter.newInput());
 		source2.streamTo(sorter.newInput());
-		sorter.streamTo(consumer);
+		sorter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -145,7 +145,7 @@ public class StreamMemoryReducerTest {
 			public void onData(DataItemResult item) {
 				list.add(item);
 				if (item.equals(new DataItemResult(1, 2, 60, 90, 0))) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -160,7 +160,7 @@ public class StreamMemoryReducerTest {
 
 		source1.streamTo(sorter.newInput());
 		source2.streamTo(sorter.newInput());
-		sorter.streamTo(consumer);
+		sorter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -179,7 +179,7 @@ public class StreamMemoryReducerTest {
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 2, 20, 30)),
-				StreamProducers.<DataItem1>closingWithError(eventloop, new Exception())
+				StreamProducers.<DataItem1>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 		StreamProducer<DataItem1> source2 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
@@ -216,14 +216,14 @@ public class StreamMemoryReducerTest {
 
 		source1.streamTo(sorter.newInput());
 		source2.streamTo(sorter.newInput());
-		sorter.streamTo(consumer);
+		sorter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
 		assertTrue(list.size() == 0);
 		assertArrayEquals(new StreamStatus[]{CLOSED_WITH_ERROR, END_OF_STREAM},
-				consumerStatuses(sorter.getUpstreamConsumers()));
-		assertEquals(CLOSED_WITH_ERROR, sorter.getDownstreamProducer().getProducerStatus());
+				consumerStatuses(sorter.getInputs()));
+		assertEquals(CLOSED_WITH_ERROR, sorter.getOutput().getProducerStatus());
 	}
 
 	@Test
@@ -270,7 +270,7 @@ public class StreamMemoryReducerTest {
 		source2.streamTo(sorter.newInput());
 		eventloop.run();
 
-		sorter.streamTo(consumer);
+		sorter.getOutput().streamTo(consumer);
 		eventloop.run();
 
 		assertEquals(END_OF_STREAM, source1.getProducerStatus());
@@ -289,5 +289,68 @@ public class StreamMemoryReducerTest {
 
 		assertArrayEquals(new DataItemResult[]{new DataItemResult(1, 1, 30, 60, 0), new DataItemResult(1, 2, 60, 90, 0)},
 				result.toArray(new DataItemResult[0]));
+	}
+
+	@Test
+	public void testWithoutProducer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult> reducer = new StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult>() {
+			@Override
+			public DataItemResult createAccumulator(DataItemKey key) {
+				return new DataItemResult(key.key1, key.key2, 0, 0, 0);
+			}
+
+			@Override
+			public DataItemResult accumulate(DataItemResult accumulator, DataItem1 value) {
+				accumulator.metric1 += value.metric1;
+				accumulator.metric2 += value.metric2;
+				return accumulator;
+			}
+		};
+		StreamMemoryReducer<DataItemKey, DataItem1, DataItemResult, DataItemResult> sorter = new StreamMemoryReducer<>(eventloop,
+				reducer,
+				new Function<DataItem1, DataItemKey>() {
+					@Override
+					public DataItemKey apply(DataItem1 input) {
+						return new DataItemKey(input.key1, input.key2);
+					}
+				}
+		);
+		CheckCallCallback checkCallCallback = new CheckCallCallback();
+		StreamConsumers.ToList<DataItemResult> toList = StreamConsumers.toList(eventloop);
+		toList.setCompletionCallback(checkCallCallback);
+
+		sorter.getOutput().streamTo(toList);
+		eventloop.run();
+
+		assertTrue(checkCallCallback.isCall());
+	}
+
+	class CheckCallCallback implements CompletionCallback {
+		private int onComplete;
+		private int onException;
+
+		@Override
+		public void onComplete() {
+			onComplete++;
+		}
+
+		@Override
+		public void onException(Exception exception) {
+			onException++;
+		}
+
+		public int getOnComplete() {
+			return onComplete;
+		}
+
+		public int getOnException() {
+			return onException;
+		}
+
+		public boolean isCall() {
+			return (onComplete == 1 && onException == 0) || (onComplete == 0 && onException == 1);
+		}
 	}
 }

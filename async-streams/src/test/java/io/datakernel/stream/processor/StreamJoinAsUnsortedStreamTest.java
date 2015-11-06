@@ -155,7 +155,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.streamTo(consumer);
+		streamJoin.getOutput().streamTo(consumer);
 
 		eventloop.run();
 
@@ -219,7 +219,7 @@ public class StreamJoinAsUnsortedStreamTest {
 			public void onData(DataItemMasterDetail item) {
 				list.add(item);
 				if (list.size() == 1) {
-					closeWithError(new Exception());
+					closeWithError(new Exception("Test Exception"));
 					return;
 				}
 				upstreamProducer.onConsumerSuspended();
@@ -235,7 +235,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.streamTo(consumer);
+		streamJoin.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 1);
@@ -248,7 +248,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		NioEventloop eventloop = new NioEventloop();
 		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
-				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception()),
+				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception("Test Exception")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(20, 10, "masterB")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(25, 15, "masterB+")),
 				StreamProducers.ofValue(eventloop, new DataItemMaster(30, 20, "masterC")),
@@ -258,7 +258,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		StreamProducer<DataItemDetail> source2 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemDetail(10, "detailX")),
 				StreamProducers.ofValue(eventloop, new DataItemDetail(20, "detailY")),
-				StreamProducers.<DataItemDetail>closingWithError(eventloop, new Exception())
+				StreamProducers.<DataItemDetail>closingWithError(eventloop, new Exception("Test Exception"))
 		);
 
 		StreamJoin<Integer, DataItemMaster, DataItemDetail, DataItemMasterDetail> streamJoin =
@@ -294,7 +294,7 @@ public class StreamJoinAsUnsortedStreamTest {
 		source1.streamTo(streamJoin.getLeft());
 		source2.streamTo(streamJoin.getRight());
 
-		streamJoin.streamTo(consumer);
+		streamJoin.getOutput().streamTo(consumer);
 
 		eventloop.run();
 		assertTrue(list.size() == 0);

@@ -20,7 +20,10 @@ import com.google.common.collect.ImmutableSet;
 import io.datakernel.aggregation_db.RangeTree;
 import org.junit.Test;
 
+import java.util.Set;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class RangeTreeTest {
 
@@ -73,12 +76,20 @@ public class RangeTreeTest {
 	}
 
 	@Test
-	public void testGet() throws Exception {
+	public void testRemove() throws Exception {
+		RangeTree<Integer, String> rangeTree = new RangeTree<>();
 
-	}
+		rangeTree.put(1, 20, "a");
+		rangeTree.put(5, 15, "b");
+		rangeTree.put(5, 10, "c");
+		rangeTree.put(10, 15, "d");
+		assertEquals(ImmutableSet.of("a", "b", "c", "d"), rangeTree.getRange(0, 20));
 
-	@Test
-	public void testQuery() throws Exception {
-
+		rangeTree.remove(5, 10, "c");
+		rangeTree.remove(10, 15, "d");
+		rangeTree.remove(1, 20, "a");
+		rangeTree.remove(5, 15, "b");
+		assertEquals(ImmutableSet.of(), rangeTree.getRange(0, 20));
+		assertTrue(rangeTree.getSegments().isEmpty());
 	}
 }

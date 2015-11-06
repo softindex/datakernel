@@ -18,9 +18,9 @@ package io.datakernel.rpc.client.sender;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.BlockingCompletionCallback;
-import io.datakernel.async.BlockingResultObserver;
+import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
@@ -36,7 +36,6 @@ import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
-import io.datakernel.service.SimpleCompletionFuture;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,6 +43,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.async.AsyncCallbacks.closeFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -191,7 +191,7 @@ public class CombinedStrategiesIntegrationTest {
 					)
 					.build();
 
-			final BlockingCompletionCallback connectCompletion = new BlockingCompletionCallback();
+			final CompletionCallbackFuture connectCompletion = new CompletionCallbackFuture();
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {
@@ -203,9 +203,13 @@ public class CombinedStrategiesIntegrationTest {
 
 		@Override
 		public String hello(String name) throws Exception {
-			BlockingResultObserver<HelloResponse> result = new BlockingResultObserver<>();
+			ResultCallbackFuture<HelloResponse> result = new ResultCallbackFuture<>();
 			helloAsync(name, result);
-			return result.getResult().message;
+			try {
+				return result.get().message;
+			} catch (ExecutionException e) {
+				throw (Exception)e.getCause();
+			}
 		}
 
 		public void helloAsync(final String name, final ResultCallback<HelloResponse> callback) {
@@ -219,7 +223,7 @@ public class CombinedStrategiesIntegrationTest {
 
 		@Override
 		public void close() throws IOException {
-			final BlockingCompletionCallback callback = new BlockingCompletionCallback();
+			final CompletionCallbackFuture callback = new CompletionCallbackFuture();
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {
@@ -294,11 +298,9 @@ public class CombinedStrategiesIntegrationTest {
 			assertEquals("Hello Hello Hello, " + currentName + "!", currentResponse);
 
 		} finally {
-			SimpleCompletionFuture completionCallback = new SimpleCompletionFuture();
-			closeFuture(serverOne, completionCallback);
-			closeFuture(serverTwo, completionCallback);
-			closeFuture(serverThree, completionCallback);
-			completionCallback.await();
+			serverOne.closeFuture().await();
+			serverTwo.closeFuture().await();
+			serverThree.closeFuture().await();
 
 		}
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

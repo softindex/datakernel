@@ -16,7 +16,7 @@
 
 package io.datakernel.simplefs;
 
-public class SimpleFsResponseError extends SimpleFsResponse {
+final class SimpleFsResponseError extends SimpleFsResponse {
 	public final String exceptionMsg;
 
 	public SimpleFsResponseError(String exceptionMsg) {

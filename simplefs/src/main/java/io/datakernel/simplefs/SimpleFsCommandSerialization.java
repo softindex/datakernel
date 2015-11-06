@@ -20,7 +20,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
-public final class SimpleFsCommandSerialization {
+final class SimpleFsCommandSerialization {
 
 	public static final Gson GSON = new GsonBuilder()
 			.registerTypeAdapter(SimpleFsCommand.class, GsonSubclassesAdapter.builder()

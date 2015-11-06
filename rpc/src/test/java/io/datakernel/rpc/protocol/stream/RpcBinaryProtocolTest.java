@@ -234,17 +234,17 @@ public class RpcBinaryProtocolTest {
 
 		StreamConsumers.ToList<RpcMessage> results = new StreamConsumers.ToList<>(eventloop);
 
-		client.streamTo(serializerClient);
-		serializerClient.streamTo(compressorClient);
-		compressorClient.streamTo(decompressorServer);
-		decompressorServer.streamTo(deserializerServer);
+		client.streamTo(serializerClient.getInput());
+		serializerClient.getOutput().streamTo(compressorClient.getInput());
+		compressorClient.getOutput().streamTo(decompressorServer.getInput());
+		decompressorServer.getOutput().streamTo(deserializerServer.getInput());
 
-		deserializerServer.streamTo(serializerServer);
+		deserializerServer.getOutput().streamTo(serializerServer.getInput());
 
-		serializerServer.streamTo(compressorServer);
-		compressorServer.streamTo(decompressorClient);
-		decompressorClient.streamTo(deserializerClient);
-		deserializerClient.streamTo(results);
+		serializerServer.getOutput().streamTo(compressorServer.getInput());
+		compressorServer.getOutput().streamTo(decompressorClient.getInput());
+		decompressorClient.getOutput().streamTo(deserializerClient.getInput());
+		deserializerClient.getOutput().streamTo(results);
 
 		eventloop.run();
 

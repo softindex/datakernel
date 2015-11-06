@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -23,7 +24,10 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.processor.*;
+import io.datakernel.stream.processor.StreamBinaryDeserializer;
+import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.stream.processor.StreamLZ4Compressor;
+import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -69,54 +73,57 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		this.bufferSize = bufferSize;
 	}
 
-	private Path path(String aggregationId, long id) {
-		Path tableDir = dir.resolve(aggregationId);
-		Path path = tableDir.resolve(id + ".log");
+	private Path path(long id) {
 		try {
-			Files.createDirectories(tableDir);
+			Files.createDirectories(dir);
 		} catch (IOException e) {
 			logger.error("createDirectories error", e);
 		}
-		return path;
+		return dir.resolve(id + ".log");
 	}
 
 	@Override
-	public void removeChunk(String aggregationId, long id) {
-		Path path = path(aggregationId, id);
+	public void removeChunk(String aggregationId, long id, CompletionCallback callback) {
+		Path path = path(id);
 		try {
 			Files.delete(path);
+			callback.onComplete();
 		} catch (IOException e) {
 			logger.error("delete error", e);
+			callback.onException(e);
 		}
 	}
 
 	@Override
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
-
+		logger.info("Reading chunk #" + id);
 		StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
-				path(aggregationId, id), 0L);
+				path(id), 0L);
 
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE);
 
-		streamFileReader.streamTo(decompressor);
-		decompressor.streamTo(deserializer);
+		streamFileReader.streamTo(decompressor.getInput());
+		decompressor.getOutput().streamTo(deserializer.getInput());
 
-		return deserializer;
+		return deserializer.getOutput();
 	}
 
 	@Override
-	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id,
+	                                         CompletionCallback callback) {
+		logger.info("Writing chunk #" + id);
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(aggregationId, id));
+		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id));
 
-		serializer.streamTo(compressor);
-		compressor.streamTo(writer);
+		serializer.getOutput().streamTo(compressor.getInput());
+		compressor.getOutput().streamTo(writer);
 
-		return serializer;
+		writer.setFlushCallback(callback);
+
+		return serializer.getInput();
 	}
-
 }

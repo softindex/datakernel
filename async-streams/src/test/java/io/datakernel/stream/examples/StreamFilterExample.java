@@ -45,10 +45,10 @@ public class StreamFilterExample {
 		};
 		StreamFilter<Integer> filter = new StreamFilter<>(eventloop, predicate);
 
-		TestConsumerToList consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
+		TestConsumerToList<Integer> consumer = TestStreamConsumers.toListRandomlySuspending(eventloop);
 
-		source.streamTo(filter);
-		filter.streamTo(consumer);
+		source.streamTo(filter.getInput());
+		filter.getOutput().streamTo(consumer);
 
 		eventloop.run();
 

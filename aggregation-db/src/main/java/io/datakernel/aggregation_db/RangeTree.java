@@ -18,6 +18,7 @@ package io.datakernel.aggregation_db;
 
 import java.util.*;
 
+import static java.util.Collections.emptySet;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.Collections.unmodifiableSortedMap;
 
@@ -71,26 +72,21 @@ public final class RangeTree<K, V> {
 		return result;
 	}
 
-	public void put(K lower, K upper, V value) {
-		if (!segments.containsKey(lower)) {
-			Map.Entry<K, Segment<V>> floorEntry = segments.floorEntry(lower);
-			Segment<V> newEntry = new Segment<>();
-			if (floorEntry != null)
-				newEntry.set.addAll(floorEntry.getValue().set);
-			segments.put(lower, newEntry);
+	private Segment<V> ensureSegment(K key) {
+		Segment<V> segment = segments.get(key);
+		if (segment == null) {
+			Map.Entry<K, Segment<V>> prevEntry = segments.lowerEntry(key);
+			segment = new Segment<>();
+			if (prevEntry != null)
+				segment.set.addAll(prevEntry.getValue().set);
+			segments.put(key, segment);
 		}
+		return segment;
+	}
 
-		if (!segments.containsKey(upper)) {
-			Map.Entry<K, Segment<V>> floorEntry = segments.floorEntry(upper);
-			Segment<V> newSegment = new Segment<>();
-			if (floorEntry != null)
-				newSegment.set.addAll(floorEntry.getValue().set);
-			segments.put(upper, newSegment);
-			newSegment.closing.add(value);
-		} else {
-			Segment<V> segment = segments.get(upper);
-			segment.closing.add(value);
-		}
+	public void put(K lower, K upper, V value) {
+		ensureSegment(lower);
+		ensureSegment(upper).closing.add(value);
 
 		SortedMap<K, Segment<V>> subMap = segments.subMap(lower, upper);
 		for (Map.Entry<K, Segment<V>> entry : subMap.entrySet()) {
@@ -98,22 +94,26 @@ public final class RangeTree<K, V> {
 		}
 	}
 
+	@SuppressWarnings({"ConstantConditions", "EqualsBetweenInconvertibleTypes"})
 	public boolean remove(K lower, K upper, V value) {
 		boolean removed = false;
-		Segment<V> upperSegment = segments.get(upper);
-		upperSegment.closing.remove(value);
-		if (upperSegment.set.isEmpty() && upperSegment.closing.isEmpty()) {
-			removed |= segments.remove(upper) != null;
-		}
 
-		Iterator<Segment<V>> it = segments.subMap(lower, upper).values().iterator();
+		ensureSegment(lower);
+		removed |= ensureSegment(upper).closing.remove(value);
+
+		Map.Entry<K, Segment<V>> prevEntry = segments.lowerEntry(lower);
+		Segment<V> prev = prevEntry != null ? prevEntry.getValue() : null;
+		Iterator<Segment<V>> it = segments.subMap(lower, true, upper, true).values().iterator();
 		while (it.hasNext()) {
 			Segment<V> segment = it.next();
 			removed |= segment.set.remove(value);
-			if (segment.set.isEmpty() && segment.closing.isEmpty()) {
+			if (segment.closing.isEmpty() && segment.set.equals(prev != null ? prev.set : emptySet())) {
 				it.remove();
+			} else {
+				prev = segment;
 			}
 		}
+
 		return removed;
 	}
 
@@ -137,16 +137,10 @@ public final class RangeTree<K, V> {
 			result.addAll(floorEntry.getValue().set);
 		}
 
-		SortedMap<K, Segment<V>> subMap = segments.subMap(lower, upper);
+		SortedMap<K, Segment<V>> subMap = segments.subMap(lower, true, upper, true);
 		for (Map.Entry<K, Segment<V>> entry : subMap.entrySet()) {
 			result.addAll(entry.getValue().set);
 			result.addAll(entry.getValue().closing);
-		}
-
-		Segment<V> upperEntry = segments.get(upper);
-		if (upperEntry != null) {
-			result.addAll(upperEntry.set);
-			result.addAll(upperEntry.closing);
 		}
 
 		return result;
