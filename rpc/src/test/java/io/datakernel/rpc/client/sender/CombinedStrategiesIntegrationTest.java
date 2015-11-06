@@ -45,7 +45,6 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.async.AsyncCallbacks.closeFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
 import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.*;
@@ -208,7 +207,7 @@ public class CombinedStrategiesIntegrationTest {
 			try {
 				return result.get().message;
 			} catch (ExecutionException e) {
-				throw (Exception)e.getCause();
+				throw (Exception) e.getCause();
 			}
 		}
 

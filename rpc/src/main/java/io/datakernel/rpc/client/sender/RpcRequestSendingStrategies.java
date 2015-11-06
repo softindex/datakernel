@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.hash.BucketHashFunction;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
@@ -79,12 +78,12 @@ public final class RpcRequestSendingStrategies {
 	}
 
 	public static RpcStrategySharding sharding(final HashFunction<RpcMessageData> hashFunction,
-	                                        RpcRequestSendingStrategy... senders) {
+	                                           RpcRequestSendingStrategy... senders) {
 		return sharding(hashFunction, asList(senders));
 	}
 
 	public static RpcStrategySharding sharding(final HashFunction<RpcMessageData> hashFunction,
-	                                        final List<RpcRequestSendingStrategy> senders) {
+	                                           final List<RpcRequestSendingStrategy> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
@@ -95,14 +94,6 @@ public final class RpcRequestSendingStrategies {
 		checkNotNull(hashFunction);
 		return new RpcStrategyRendezvousHashing(hashFunction);
 	}
-
-	public static RpcStrategyRendezvousHashing rendezvousHashing(final HashFunction<RpcMessageData> hashFunction,
-	                                                             BucketHashFunction bucketHashFunction,
-	                                                             int bucketCapacity) {
-		checkNotNull(hashFunction);
-		return new RpcStrategyRendezvousHashing(hashFunction, bucketHashFunction, bucketCapacity);
-	}
-
 
 	public static RpcStrategyTypeDispatching typeDispatching() {
 		return new RpcStrategyTypeDispatching();

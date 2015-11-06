@@ -66,12 +66,12 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 	}
 
 	public RpcStrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                  RpcSingleSenderStrategy strategy) {
+	                                     RpcSingleSenderStrategy strategy) {
 		return on(dataType, strategy, Importance.MANDATORY);
 	}
 
 	private RpcStrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                   RpcSingleSenderStrategy strategy, Importance importance) {
+	                                      RpcSingleSenderStrategy strategy, Importance importance) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
 		checkNotNull(importance);
