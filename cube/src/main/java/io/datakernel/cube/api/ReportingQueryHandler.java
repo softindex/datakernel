@@ -114,20 +114,15 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		String limitString = request.getParameter("limit");
 		String offsetString = request.getParameter("offset");
 
-		AggregationQuery.QueryPredicates queryPredicates = null;
-		if (predicatesJson != null) {
-			queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
-		}
-
 		final AggregationQuery finalQuery = new AggregationQuery()
 				.keys(newArrayList(dimensions))
 				.fields(newArrayList(storedMeasures));
 
+		// parse ordering information
 		List<String> ordering = getListOfStrings(gson, orderingsJson);
 		boolean orderingByComputedMeasure = false;
 		String orderingField = null;
 		boolean ascendingOrdering = false;
-
 		if (ordering != null) {
 			if (ordering.size() != 2) {
 				throw new QueryException("Incorrect 'sort' parameter format");
@@ -149,25 +144,19 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 				throw new QueryException("Incorrect ordering specified in 'sort' parameter");
 			}
 
-			addOrdering(finalQuery, orderingField, ascendingOrdering, computedMeasures);
+			addOrderingToQuery(finalQuery, orderingField, ascendingOrdering, computedMeasures);
 		}
 
-		if (queryPredicates != null) {
-			finalQuery.predicates(queryPredicates);
-		}
+		addPredicatesToQuery(finalQuery, predicatesJson);
 
 		final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, structure);
 		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
-		final Integer limit = limitString == null ? null : Integer.valueOf(limitString);
-		final Integer offset = offsetString == null ? null : Integer.valueOf(offsetString);
+		final Integer limit = valueOrNull(limitString);
+		final Integer offset = valueOrNull(offsetString);
 
 		final boolean sortingRequired = orderingByComputedMeasure;
-		Comparator<QueryResultPlaceholder> comparator = null;
-		if (sortingRequired) {
-			comparator = generateComparator(classLoader, orderingField, ascendingOrdering, resultClass);
-		}
-		final Comparator<QueryResultPlaceholder> finalComparator = comparator;
+		final Comparator<QueryResultPlaceholder> comparator = sortingRequired ? generateComparator(classLoader, orderingField, ascendingOrdering, resultClass) : null;
 
 		consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 			@Override
@@ -194,7 +183,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 				// sort
 				if (sortingRequired) {
-					Collections.sort(results, finalComparator);
+					Collections.sort(results, comparator);
 				}
 
 				String jsonResult = constructQueryResultJson(resultClass, structure, queryMeasures,
@@ -211,16 +200,30 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		});
 	}
 
-	private static AggregationQuery addOrdering(AggregationQuery query, String fieldName, boolean ascendingOrdering, Set<String> computedMeasures) {
+	private static Integer valueOrNull(String str) {
+		return str == null ? null : Integer.valueOf(str);
+	}
+
+	private void addPredicatesToQuery(AggregationQuery query, String predicatesJson) {
+		AggregationQuery.QueryPredicates queryPredicates = null;
+
+		if (predicatesJson != null) {
+			queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
+		}
+
+		if (queryPredicates != null) {
+			query.predicates(queryPredicates);
+		}
+	}
+
+	private static void addOrderingToQuery(AggregationQuery query, String fieldName, boolean ascendingOrdering, Set<String> computedMeasures) {
 		if (computedMeasures.contains(fieldName))
-			return query;
+			return;
 
 		if (ascendingOrdering)
 			query.orderAsc(fieldName);
 		else
 			query.orderDesc(fieldName);
-
-		return query;
 	}
 
 	@SuppressWarnings("unchecked")

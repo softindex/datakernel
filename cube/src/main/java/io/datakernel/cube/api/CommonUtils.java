@@ -33,16 +33,21 @@ import java.lang.reflect.Type;
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.codegen.Expressions.arg;
-import static io.datakernel.codegen.Expressions.cast;
-import static io.datakernel.codegen.Expressions.getter;
+import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.ByteBufStrings.wrapUTF8;
 
 class CommonUtils {
 	public static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
-		AsmBuilder<FieldGetter> builder = new AsmBuilder<>(classLoader, FieldGetter.class);
-		builder.method("get", getter(cast(arg(0), objClass), propertyName));
-		return builder.newInstance();
+		return new AsmBuilder<>(classLoader, FieldGetter.class)
+				.method("get", getter(cast(arg(0), objClass), propertyName))
+				.newInstance();
+	}
+
+	public static FieldSetter generateSetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName,
+	                                         Class<?> propertyClass) {
+		return new AsmBuilder<>(classLoader, FieldSetter.class)
+				.method("set", setter(cast(arg(0), objClass), propertyName, cast(arg(1), propertyClass)))
+				.newInstance();
 	}
 
 	@SuppressWarnings("unchecked")
