@@ -178,26 +178,26 @@ public class ExpressionTest {
 				.method("equals",
 						asEquals("x"))
 				.method("setXY", sequence(
-						set(field(self(), "x"), arg(0)),
-						set(field(self(), "y"), arg(1))))
+						setter(self(), "x", arg(0)),
+						setter(self(), "y", arg(1))))
 				.method("test",
 						add(arg(0), value(1L)))
 				.method("hash",
-						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
+						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
 				.method("field1",
-						field(arg(0), "field1"))
+						getter(arg(0), "field1"))
 				.method("setter", sequence(
-						set(field(arg(0), "field1"), value(10)),
-						set(field(arg(0), "field2"), value(20)),
+						setter(arg(0), "field1", value(10)),
+						setter(arg(0), "field2", value(20)),
 						arg(0)))
 				.method("ctor", sequence(
 						local,
-						set(field(local, "field2"), value(2)),
+						setter(local, "field2", value(2)),
 						local))
 				.method("getX",
-						field(self(), "x"))
+						getter(self(), "x"))
 				.method("getY",
-						field(self(), "y"))
+						getter(self(), "y"))
 				.method("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.method("anyEqual",
@@ -209,8 +209,8 @@ public class ExpressionTest {
 				.method("toString",
 						asString()
 								.quotes("{", "}", ", ")
-								.add(field(self(), "x"))
-								.add("labelY: ", field(self(), "y")))
+								.add(getter(self(), "x"))
+								.add("labelY: ", getter(self(), "y")))
 				.defineClass();
 		Test test = testClass.newInstance();
 
@@ -261,9 +261,9 @@ public class ExpressionTest {
 	public void test2() throws IllegalAccessException, InstantiationException {
 		Class<Test2> testClass = new AsmBuilder<>(new DefiningClassLoader(), Test2.class)
 				.method("hash",
-						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2"), field(arg(0), "field3"),
-								field(arg(0), "field4"), field(arg(0), "field5"), field(arg(0), "field6"),
-								field(arg(0), "field7"))).defineClass();
+						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2"), getter(arg(0), "field3"),
+								getter(arg(0), "field4"), getter(arg(0), "field5"), getter(arg(0), "field6"),
+								getter(arg(0), "field7"))).defineClass();
 
 		Test2 test = testClass.newInstance();
 		TestPojo2 testPojo2 = new TestPojo2("randomString", 42, 666666, 43258.42342f, 54359878, 43252353278423.423468, "fhsduighrwqruqsd");
@@ -590,13 +590,13 @@ public class ExpressionTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Initializable intHolder = new AsmBuilder<>(classLoader, Initializable.class)
 				.field("x", int.class)
-				.method("init", set(field(self(), "x"), value(42)))
+				.method("init", set(getter(self(), "x"), value(42)))
 				.newInstance();
 
 		intHolder.init();
 
 		Getter getter = new AsmBuilder<>(classLoader, Getter.class)
-				.method("get", field(cast(arg(0), intHolder.getClass()), "x"))
+				.method("get", getter(cast(arg(0), intHolder.getClass()), "x"))
 				.newInstance();
 
 		assertEquals(42, getter.get(intHolder));
@@ -616,26 +616,26 @@ public class ExpressionTest {
 				.method("equals",
 						asEquals("x"))
 				.method("setXY", sequence(
-						set(field(self(), "x"), arg(0)),
-						set(field(self(), "y"), arg(1))))
+						set(getter(self(), "x"), arg(0)),
+						set(getter(self(), "y"), arg(1))))
 				.method("test",
 						add(arg(0), value(1L)))
 				.method("hash",
-						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
+						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
 				.method("field1",
-						field(arg(0), "field1"))
+						getter(arg(0), "field1"))
 				.method("setter", sequence(
-						set(field(arg(0), "field1"), value(10)),
-						set(field(arg(0), "field2"), value(20)),
+						set(getter(arg(0), "field1"), value(10)),
+						set(getter(arg(0), "field2"), value(20)),
 						arg(0)))
 				.method("ctor", sequence(
 						local,
-						set(field(local, "field2"), value(2)),
+						set(getter(local, "field2"), value(2)),
 						local))
 				.method("getX",
-						field(self(), "x"))
+						getter(self(), "x"))
 				.method("getY",
-						field(self(), "y"))
+						getter(self(), "y"))
 				.method("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.method("anyEqual",
@@ -647,8 +647,8 @@ public class ExpressionTest {
 				.method("toString",
 						asString()
 								.quotes("{", "}", ", ")
-								.add(field(self(), "x"))
-								.add("labelY: ", field(self(), "y")))
+								.add(getter(self(), "x"))
+								.add("labelY: ", getter(self(), "y")))
 				.defineClass();
 
 		Class<Test> testClass2 = new AsmBuilder<>(definingClassLoader, Test.class)
@@ -661,26 +661,26 @@ public class ExpressionTest {
 				.method("equals",
 						asEquals("x"))
 				.method("setXY", sequence(
-						set(field(self(), "x"), arg(0)),
-						set(field(self(), "y"), arg(1))))
+						set(getter(self(), "x"), arg(0)),
+						set(getter(self(), "y"), arg(1))))
 				.method("test",
 						add(arg(0), value(1L)))
 				.method("hash",
-						hashCodeOfArgs(field(arg(0), "field1"), field(arg(0), "field2")))
+						hashCodeOfArgs(getter(arg(0), "field1"), getter(arg(0), "field2")))
 				.method("field1",
-						field(arg(0), "field1"))
+						getter(arg(0), "field1"))
 				.method("setter", sequence(
-						set(field(arg(0), "field1"), value(10)),
-						set(field(arg(0), "field2"), value(20)),
+						set(getter(arg(0), "field1"), value(10)),
+						set(getter(arg(0), "field2"), value(20)),
 						arg(0)))
 				.method("ctor", sequence(
 						local,
-						set(field(local, "field2"), value(2)),
+						set(getter(local, "field2"), value(2)),
 						local))
 				.method("getX",
-						field(self(), "x"))
+						getter(self(), "x"))
 				.method("getY",
-						field(self(), "y"))
+						getter(self(), "y"))
 				.method("allEqual",
 						and(cmpEq(arg(0), arg(1)), cmpEq(arg(0), arg(2))))
 				.method("anyEqual",
@@ -692,10 +692,35 @@ public class ExpressionTest {
 				.method("toString",
 						asString()
 								.quotes("{", "}", ", ")
-								.add(field(self(), "x"))
-								.add("labelY: ", field(self(), "y")))
+								.add(getter(self(), "x"))
+								.add("labelY: ", getter(self(), "y")))
 				.defineClass();
 
 		assertEquals(testClass1, testClass2);
+	}
+
+	public interface TestCompare {
+		boolean compareObjectLE(Integer i1, Integer i2);
+		boolean comparePrimitiveLE(int i1, int i2);
+		boolean compareObjectEQ(Integer i1, Integer i2);
+		boolean compareObjectNE(Integer i1, Integer i2);
+
+	}
+
+	@org.junit.Test
+	public void testCompare() throws IllegalAccessException, InstantiationException {
+		DefiningClassLoader definingClassLoader = new DefiningClassLoader();
+		Class<TestCompare> test1 = new AsmBuilder<>(definingClassLoader, TestCompare.class)
+				.method("compareObjectLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
+				.method("comparePrimitiveLE", cmp(PredicateDefCmp.Operation.LE, arg(0), arg(1)))
+				.method("compareObjectEQ", cmp(PredicateDefCmp.Operation.EQ, arg(0), arg(1)))
+				.method("compareObjectNE", cmp(PredicateDefCmp.Operation.NE, arg(0), arg(1)))
+				.defineClass();
+
+		TestCompare testCompare = test1.newInstance();
+		assertTrue(testCompare.compareObjectLE(5, 5));
+		assertTrue(testCompare.comparePrimitiveLE(5, 6));
+		assertTrue(testCompare.compareObjectEQ(5, 5));
+		assertTrue(testCompare.compareObjectNE(5, -5));
 	}
 }

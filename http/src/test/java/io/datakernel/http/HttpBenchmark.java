@@ -20,7 +20,6 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.service.ConcurrentServiceCallbacks;
 import io.datakernel.service.NioEventloopRunner;
 
 import java.util.concurrent.CountDownLatch;
@@ -50,9 +49,7 @@ public class HttpBenchmark extends Benchmark {
 		eventloopRunner.addNioServers(server);
 		httpClient = new HttpClientImpl(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, InetAddresses.forString("127.0.0.1")));
-		ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-		eventloopRunner.startFuture(callback);
-		callback.await();
+		eventloopRunner.startFuture().get();
 	}
 
 	@Override
@@ -103,9 +100,7 @@ public class HttpBenchmark extends Benchmark {
 
 	@Override
 	protected void tearDown() throws Exception {
-		ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-		eventloopRunner.stopFuture(callback);
-		callback.await();
+		eventloopRunner.stopFuture().get();
 
 	}
 

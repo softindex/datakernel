@@ -143,8 +143,8 @@ public class AggregationStructure {
 
 		for (String fieldString : fields) {
 			applyDef.add(set(
-					field(field, fieldString),
-					field(cast(arg(0), recordClass), fieldString)));
+					getter(field, fieldString),
+					getter(cast(arg(0), recordClass), fieldString)));
 		}
 
 		applyDef.add(field);
@@ -192,12 +192,12 @@ public class AggregationStructure {
 			String field = ordering.getPropertyName();
 			if (isAsc)
 				comparator.add(
-						field(cast(arg(0), fieldClass), field),
-						field(cast(arg(1), fieldClass), field));
+						getter(cast(arg(0), fieldClass), field),
+						getter(cast(arg(1), fieldClass), field));
 			else
 				comparator.add(
-						field(cast(arg(1), fieldClass), field),
-						field(cast(arg(0), fieldClass), field));
+						getter(cast(arg(1), fieldClass), field),
+						getter(cast(arg(0), fieldClass), field));
 		}
 
 		builder.method("compare", comparator);
@@ -212,8 +212,8 @@ public class AggregationStructure {
 		ExpressionSequence applyDef = sequence(key);
 		for (String keyString : keys) {
 			applyDef.add(set(
-					field(key, keyString),
-					field(cast(arg(0), recordClass), keyString)));
+					getter(key, keyString),
+					getter(cast(arg(0), recordClass), keyString)));
 		}
 		applyDef.add(key);
 		factory.method("apply", applyDef);
@@ -267,13 +267,13 @@ public class AggregationStructure {
 		ExpressionSequence onFirstItemDef = sequence(accumulator1);
 		for (String key : keys) {
 			onFirstItemDef.add(set(
-					field(accumulator1, key),
-					field(cast(arg(2), inputClass), key)));
+					getter(accumulator1, key),
+					getter(cast(arg(2), inputClass), key)));
 		}
 		for (String field : recordFields) {
 			onFirstItemDef.add(set(
-					field(accumulator1, field),
-					field(cast(arg(2), inputClass), field)));
+					getter(accumulator1, field),
+					getter(cast(arg(2), inputClass), field)));
 		}
 		onFirstItemDef.add(accumulator1);
 		builder.method("onFirstItem", onFirstItemDef);
@@ -282,10 +282,10 @@ public class AggregationStructure {
 		ExpressionSequence onNextItemDef = sequence(accumulator2);
 		for (String field : recordFields) {
 			onNextItemDef.add(set(
-					field(accumulator2, field),
+					getter(accumulator2, field),
 					add(
-							field(cast(arg(2), inputClass), field),
-							field(cast(arg(3), outputClass), field)
+							getter(cast(arg(2), inputClass), field),
+							getter(cast(arg(3), outputClass), field)
 					)));
 		}
 		onNextItemDef.add(accumulator2);

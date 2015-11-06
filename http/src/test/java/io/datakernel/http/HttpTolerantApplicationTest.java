@@ -19,7 +19,6 @@ package io.datakernel.http;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
@@ -96,9 +95,7 @@ public class HttpTolerantApplicationTest {
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();
 
-		SimpleCompletionFuture callback = new SimpleCompletionFuture();
-		server.closeFuture(callback);
-		callback.await();
+		server.closeFuture().await();
 		thread.join();
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

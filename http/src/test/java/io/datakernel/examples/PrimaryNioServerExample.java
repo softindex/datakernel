@@ -17,7 +17,6 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.http.AsyncHttpServer;
@@ -85,16 +84,12 @@ public class PrimaryNioServerExample {
 			waitForExit();
 
 			// Close PrimaryNioServer
-			SimpleCompletionFuture callback = new SimpleCompletionFuture();
-			primaryNioServer.closeFuture(callback);
-			callback.await();
+			primaryNioServer.closeFuture().await();
 			primaryThread.join();
 		} finally {
 			// Close all servers
 			for (AsyncHttpServer worker : workerServers) {
-				SimpleCompletionFuture callback = new SimpleCompletionFuture();
-				worker.closeFuture(callback); // close worker
-				callback.await();
+				worker.closeFuture().await();
 				worker.getNioEventloop().keepAlive(false); // end of eventloop
 			}
 		}

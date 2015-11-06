@@ -288,7 +288,7 @@ public final class HttpJsonApiServer {
 		AsmBuilder<FieldGetter> builder = new AsmBuilder<>(classLoader, FieldGetter.class);
 		// TODO (dtkachenko): use getter expression instead of field expression
 		// TODO (vsavchuk): implement getter and setter expressions
-		builder.method("get", field(cast(arg(0), objClass), propertyName));
+		builder.method("get", getter(cast(arg(0), objClass), propertyName));
 		return builder.newInstance();
 	}
 

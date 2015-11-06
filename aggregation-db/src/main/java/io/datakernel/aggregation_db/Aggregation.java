@@ -447,18 +447,18 @@ public class Aggregation {
 				Object value = ((AggregationQuery.QueryPredicateEq) predicate).value;
 
 				predicateDefAnd.add(cmpEq(
-						field(cast(arg(0), chunkRecordClass), predicate.key),
+						getter(cast(arg(0), chunkRecordClass), predicate.key),
 						value(value)));
 			} else if (predicate instanceof AggregationQuery.QueryPredicateBetween) {
 				Object from = ((AggregationQuery.QueryPredicateBetween) predicate).from;
 				Object to = ((AggregationQuery.QueryPredicateBetween) predicate).to;
 
 				predicateDefAnd.add(cmpGe(
-						field(cast(arg(0), chunkRecordClass), predicate.key),
+						getter(cast(arg(0), chunkRecordClass), predicate.key),
 						value(from)));
 
 				predicateDefAnd.add(cmpLe(
-						field(cast(arg(0), chunkRecordClass), predicate.key),
+						getter(cast(arg(0), chunkRecordClass), predicate.key),
 						value(to)));
 			} else {
 				throw new IllegalArgumentException("Unsupported predicate " + predicate);

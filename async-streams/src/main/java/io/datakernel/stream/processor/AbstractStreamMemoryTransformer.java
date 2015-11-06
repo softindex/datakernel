@@ -34,6 +34,13 @@ public abstract class AbstractStreamMemoryTransformer<I, S, O> extends AbstractS
 	private final class OutputProducer extends AbstractOutputProducer {
 
 		@Override
+		protected void onDownstreamStarted() {
+			if (inputConsumers.isEmpty()) {
+				outputProducer.sendEndOfStream();
+			}
+		}
+
+		@Override
 		protected void onDownstreamSuspended() {
 
 		}

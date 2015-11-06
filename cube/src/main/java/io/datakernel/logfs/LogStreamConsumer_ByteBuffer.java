@@ -87,7 +87,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 					outputProducer.sendEndOfStream();
 				}
 
-				if (activeWriters == 0) {
+				if (activeWriters == 0 && !createFile) {
 					zeroActiveWriters();
 				}
 			}

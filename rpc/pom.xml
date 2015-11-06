@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>1.1.2</version>
+        <version>1.2.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -19,15 +19,6 @@
 
     <dependencies>
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-        </dependency>
-        <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>eventloop</artifactId>
             <version>${version}</version>
@@ -35,17 +26,27 @@
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>serializer</artifactId>
-            <version>1.1.2</version>
+            <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>async-streams</artifactId>
-            <version>1.1.2</version>
+            <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>service</artifactId>
-            <version>1.1.2</version>
+            <artifactId>servicegraph</artifactId>
+            <version>${version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
             <groupId>net.jpountz.lz4</groupId>

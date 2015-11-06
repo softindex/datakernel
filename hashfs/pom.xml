@@ -6,12 +6,11 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>1.1.2</version>
+        <version>1.2.1</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
     <artifactId>hashfs</artifactId>
-    <version>${version-snapshot}</version>
 
     <name>DataKernel: HashFS</name>
     <description>
@@ -19,6 +18,22 @@
     </description>
 
     <dependencies>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>async-streams</artifactId>
+            <version>${version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>codegen</artifactId>
+            <version>${version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>serializer</artifactId>
+            <version>${version}</version>
+        </dependency>
+
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
@@ -29,21 +44,6 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>async-streams</artifactId>
-            <version>1.1.2</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>codegen</artifactId>
-            <version>1.1.2</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>serializer</artifactId>
-            <version>1.1.2</version>
-        </dependency>
-        <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
@@ -52,4 +52,17 @@
             <artifactId>lz4</artifactId>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <skipTests>true</skipTests>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
 </project>

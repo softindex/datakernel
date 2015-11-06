@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
@@ -194,5 +195,47 @@ public class StreamUnionTest {
 
 		assertEquals(END_OF_STREAM, streamUnion.getOutput().getProducerStatus());
 		assertConsumerStatuses(END_OF_STREAM, streamUnion.getInputs());
+	}
+
+	@Test
+	public void testWithoutProducer() {
+		NioEventloop eventloop = new NioEventloop();
+
+		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
+		CheckCallCallback checkCallCallback = new CheckCallCallback();
+		StreamConsumers.ToList<Integer> toList = StreamConsumers.toList(eventloop);
+		toList.setCompletionCallback(checkCallCallback);
+
+		streamUnion.getOutput().streamTo(toList);
+		eventloop.run();
+
+		assertTrue(checkCallCallback.isCall());
+	}
+
+	class CheckCallCallback implements CompletionCallback{
+		private int onComplete;
+		private int onException;
+
+		@Override
+		public void onComplete() {
+			onComplete++;
+		}
+
+		@Override
+		public void onException(Exception exception) {
+			onException++;
+		}
+
+		public int getOnComplete() {
+			return onComplete;
+		}
+
+		public int getOnException() {
+			return onException;
+		}
+
+		public boolean isCall() {
+			return (onComplete == 1 && onException == 0) || (onComplete == 0 && onException == 1);
+		}
 	}
 }

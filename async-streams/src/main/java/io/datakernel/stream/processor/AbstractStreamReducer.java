@@ -105,13 +105,6 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 		}
 
 		@Override
-		protected void onUpstreamStarted() {
-			if (inputConsumers.isEmpty()) {
-				outputProducer.sendEndOfStream();
-			}
-		}
-
-		@Override
 		protected void onUpstreamEndOfStream() {
 			if (headItem == null) {
 				streamsAwaiting--;
@@ -131,6 +124,13 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 		protected void onDownstreamResumed() {
 			resumeAllUpstreams();
 			resumeProduce();
+		}
+
+		@Override
+		protected void onDownstreamStarted() {
+			if (inputConsumers.isEmpty()) {
+				sendEndOfStream();
+			}
 		}
 
 		@Override
