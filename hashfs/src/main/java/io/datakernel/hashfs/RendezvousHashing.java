@@ -32,44 +32,6 @@ final class RendezvousHashing implements HashingStrategy {
 		}
 	};
 
-	private int rehash(int k) {
-		k ^= k >>> 16;
-		k *= 0x85ebca6b;
-		k ^= k >>> 13;
-		k *= 0xc2b2ae35;
-		k ^= k >>> 16;
-		return k;
-	}
-
-	private double replicaPriority(int itemId, int serverId, double weight) {
-		int replicaHash = rehash(~itemId) ^ rehash(serverId);
-		double serverHashValue = (double) ((long) replicaHash + (long) Integer.MIN_VALUE) / (double) (1L << 32);
-		serverHashValue = pow(serverHashValue, 1.0 / weight);
-		return serverHashValue;
-	}
-
-	public int[] replicas(int itemId, int[] serverIds, double[] weights, int replicas) {
-		checkArgument(serverIds.length == weights.length);
-		checkArgument(replicas >= 0 && replicas <= serverIds.length);
-		List<Entry> list = new ArrayList<>(serverIds.length);
-		for (int i = 0; i < serverIds.length; i++) {
-			int serverId = serverIds[i];
-			double weight = weights[i];
-			double priority = replicaPriority(itemId, serverId, weight);
-			list.add(new Entry(priority, serverId));
-		}
-		Collections.sort(list, ENTRY_COMPARATOR);
-		int[] result = new int[replicas];
-		for (int i = 0; i < replicas; i++) {
-			result[i] = list.get(i).serverId;
-		}
-		return result;
-	}
-
-	public int[] replicas(int itemId, int[] serverIds, double[] weights) {
-		return replicas(itemId, serverIds, weights, serverIds.length);
-	}
-
 	@Override
 	public List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers) {
 		Map<Integer, ServerInfo> map = new HashMap<>(servers.size());
@@ -94,6 +56,44 @@ final class RendezvousHashing implements HashingStrategy {
 		return orderedServers;
 	}
 
+	public int[] replicas(int itemId, int[] serverIds, double[] weights, int replicas) {
+		checkArgument(serverIds.length == weights.length);
+		checkArgument(replicas >= 0 && replicas <= serverIds.length);
+		List<Entry> list = new ArrayList<>(serverIds.length);
+		for (int i = 0; i < serverIds.length; i++) {
+			int serverId = serverIds[i];
+			double weight = weights[i];
+			double priority = replicaPriority(itemId, serverId, weight);
+			list.add(new Entry(priority, serverId));
+		}
+		Collections.sort(list, ENTRY_COMPARATOR);
+		int[] result = new int[replicas];
+		for (int i = 0; i < replicas; i++) {
+			result[i] = list.get(i).serverId;
+		}
+		return result;
+	}
+
+	public int[] replicas(int itemId, int[] serverIds, double[] weights) {
+		return replicas(itemId, serverIds, weights, serverIds.length);
+	}
+
+	private int rehash(int k) {
+		k ^= k >>> 16;
+		k *= 0x85ebca6b;
+		k ^= k >>> 13;
+		k *= 0xc2b2ae35;
+		k ^= k >>> 16;
+		return k;
+	}
+
+	private double replicaPriority(int itemId, int serverId, double weight) {
+		int replicaHash = rehash(~itemId) ^ rehash(serverId);
+		double serverHashValue = (double) ((long) replicaHash + (long) Integer.MIN_VALUE) / (double) (1L << 32);
+		serverHashValue = pow(serverHashValue, 1.0 / weight);
+		return serverHashValue;
+	}
+
 	private final class Entry {
 		final double priority;
 		final int serverId;
@@ -103,5 +103,4 @@ final class RendezvousHashing implements HashingStrategy {
 			this.serverId = serverId;
 		}
 	}
-
 }

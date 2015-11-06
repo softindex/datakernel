@@ -45,9 +45,9 @@ public class ServerSetupExample {
 
 		NioEventloop eventloop = new NioEventloop();
 
-		Path serverStorage = Paths.get("./test/server_storage_" + server0.hashCode());
-		ServerFactory.getServer(eventloop, newCachedThreadPool(), serverStorage,
+		Path serverStorage0 = Paths.get("./test/server_storage_" + server0.hashCode());
+		ServerFactory.getServer(eventloop, newCachedThreadPool(), serverStorage0,
 				Config.getDefaultConfig(), server0, bootstrap).start(ignoreCompletionCallback());
-		eventloop.run();
+
 	}
 }

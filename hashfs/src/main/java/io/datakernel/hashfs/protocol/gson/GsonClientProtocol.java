@@ -27,7 +27,6 @@ import io.datakernel.hashfs.protocol.ClientProtocol;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.MessagingStarter;
@@ -97,7 +96,7 @@ public class GsonClientProtocol implements ClientProtocol {
 		connect(server.getAddress(), defineOffer(forUpload, forDeletion, callback));
 	}
 
-	private ConnectCallback defineUpload(final ServerInfo server, final String filePath,
+	private ConnectCallback defineUpload(final ServerInfo server, final String fileName,
 	                                     final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		return new ConnectCallback() {
 			@Override
@@ -106,7 +105,7 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addStarter(new MessagingStarter<HashFsCommand>() {
 							@Override
 							public void onStart(Messaging<HashFsCommand> messaging) {
-								HashFsCommand uploadCommand = new HashFsCommandUpload(filePath);
+								HashFsCommand uploadCommand = new HashFsCommandUpload(fileName);
 								messaging.sendMessage(uploadCommand);
 							}
 						})
@@ -123,18 +122,7 @@ public class GsonClientProtocol implements ClientProtocol {
 
 									@Override
 									public void onException(final Exception e) {
-										CompletionCallback transit = new CompletionCallback() {
-											@Override
-											public void onComplete() {
-												callback.onException(e);
-											}
-
-											@Override
-											public void onException(Exception e1) {
-												callback.onException(e);
-											}
-										};
-										commit(server, filePath, transit, false);
+										commit(server, fileName, false, callback);
 									}
 								});
 							}
@@ -143,14 +131,14 @@ public class GsonClientProtocol implements ClientProtocol {
 							@Override
 							public void onMessage(HashFsResponseAcknowledge item, Messaging<HashFsCommand> messaging) {
 								messaging.shutdown();
-								commit(server, filePath, callback, true);
+								commit(server, fileName, true, callback);
 							}
 						})
 						.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {
 							@Override
 							public void onMessage(HashFsResponseError item, Messaging<HashFsCommand> messaging) {
-								Exception e = new Exception(item.msg);
 								messaging.shutdown();
+								Exception e = new Exception(item.msg);
 								callback.onException(e);
 							}
 						});
@@ -164,7 +152,8 @@ public class GsonClientProtocol implements ClientProtocol {
 		};
 	}
 
-	private ConnectCallback defineDownload(final String filePath, final StreamConsumer<ByteBuf> consumer, final CompletionCallback callback) {
+	private ConnectCallback defineDownload(final String fileName, final StreamConsumer<ByteBuf> consumer,
+	                                       final CompletionCallback callback) {
 		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -172,7 +161,7 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addStarter(new MessagingStarter<HashFsCommand>() {
 							@Override
 							public void onStart(Messaging<HashFsCommand> messaging) {
-								HashFsCommandDownload commandDownload = new HashFsCommandDownload(filePath);
+								HashFsCommandDownload commandDownload = new HashFsCommandDownload(fileName);
 								messaging.sendMessage(commandDownload);
 							}
 						})
@@ -188,9 +177,9 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {
 							@Override
 							public void onMessage(HashFsResponseError item, Messaging<HashFsCommand> messaging) {
+								messaging.shutdown();
 								Exception e = new Exception(item.msg);
 								callback.onException(e);
-								messaging.shutdown();
 							}
 						});
 				connection.register();
@@ -198,13 +187,12 @@ public class GsonClientProtocol implements ClientProtocol {
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.<ByteBuf>closingWithError(eventloop, e)
-						.streamTo(consumer);
+				callback.onException(e);
 			}
 		};
 	}
 
-	private ConnectCallback defineDelete(final String filePath, final CompletionCallback callback) {
+	private ConnectCallback defineDelete(final String fileName, final CompletionCallback callback) {
 		return new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -212,7 +200,7 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addStarter(new MessagingStarter<HashFsCommand>() {
 							@Override
 							public void onStart(Messaging<HashFsCommand> messaging) {
-								HashFsCommand commandDelete = new HashFsCommandDelete(filePath);
+								HashFsCommand commandDelete = new HashFsCommandDelete(fileName);
 								messaging.sendMessage(commandDelete);
 							}
 						})
@@ -226,8 +214,8 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {
 							@Override
 							public void onMessage(HashFsResponseError item, Messaging<HashFsCommand> messaging) {
-								Exception e = new Exception(item.msg);
 								messaging.shutdown();
+								Exception e = new Exception(item.msg);
 								callback.onException(e);
 							}
 						});
@@ -263,8 +251,8 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {
 							@Override
 							public void onMessage(HashFsResponseError item, Messaging<HashFsCommand> messaging) {
-								Exception e = new Exception(item.msg);
 								messaging.shutdown();
+								Exception e = new Exception(item.msg);
 								callback.onException(e);
 							}
 						});
@@ -353,8 +341,8 @@ public class GsonClientProtocol implements ClientProtocol {
 		};
 	}
 
-	private void commit(ServerInfo server, final String filePath,
-	                    final CompletionCallback callback, final boolean success) {
+	private void commit(ServerInfo server, final String fileName, final boolean success,
+	                    final CompletionCallback callback) {
 		connect(server.getAddress(), new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
@@ -362,7 +350,7 @@ public class GsonClientProtocol implements ClientProtocol {
 						.addStarter(new MessagingStarter<HashFsCommand>() {
 							@Override
 							public void onStart(Messaging<HashFsCommand> messaging) {
-								HashFsCommandCommit commandCommit = new HashFsCommandCommit(filePath, success);
+								HashFsCommandCommit commandCommit = new HashFsCommandCommit(fileName, success);
 								messaging.sendMessage(commandCommit);
 							}
 						})
@@ -370,7 +358,11 @@ public class GsonClientProtocol implements ClientProtocol {
 							@Override
 							public void onMessage(HashFsResponseOk item, Messaging<HashFsCommand> messaging) {
 								messaging.shutdown();
-								callback.onComplete();
+								if (success) {
+									callback.onComplete();
+								} else {
+									callback.onException(new Exception("Can't send file"));
+								}
 							}
 						})
 						.addHandler(HashFsResponseError.class, new MessagingHandler<HashFsResponseError, HashFsCommand>() {

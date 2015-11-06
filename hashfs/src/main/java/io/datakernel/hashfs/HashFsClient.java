@@ -51,9 +51,9 @@ class HashFsClient implements FsClient {
 		this.maxRetryAttempts = maxRetryAttempts;
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
-	public void upload(final String destinationFileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public void upload(final String destinationFileName, final StreamProducer<ByteBuf> producer,
+	                   final CompletionCallback callback) {
 		getAliveServers(new ResultCallback<List<ServerInfo>>() {
 			@Override
 			public void onResult(List<ServerInfo> result) {
@@ -79,7 +79,7 @@ class HashFsClient implements FsClient {
 
 			@Override
 			public void onException(Exception e) {
-				StreamProducers.closingWithError(eventloop, e);
+				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
 			}
 		});
 	}
@@ -90,7 +90,7 @@ class HashFsClient implements FsClient {
 			@Override
 			public void onResult(List<ServerInfo> result) {
 				List<ServerInfo> candidates = hashing.sortServers(fileName, result);
-				deleteFile(fileName, 0, candidates, callback);
+				delete(fileName, 0, candidates, callback);
 			}
 
 			@Override
@@ -102,27 +102,23 @@ class HashFsClient implements FsClient {
 
 	@Override
 	public void list(final ResultCallback<List<String>> callback) {
-		ResultCallback<Set<ServerInfo>> waiter = Util.waitAllResults(bootstrap.size(), new Util.Resolver<Set<ServerInfo>>() {
+		getAliveServers(new ResultCallback<List<ServerInfo>>() {
 			@Override
-			public void resolve(List<Set<ServerInfo>> results, List<Exception> exceptions) {
-				final Set<ServerInfo> servers = new HashSet<>();
-				for (Set<ServerInfo> serverSet : results) {
-					servers.addAll(serverSet);
-				}
-				list(servers, callback);
+			public void onResult(List<ServerInfo> result) {
+				list(result, callback);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				callback.onException(e);
 			}
 		});
-		for (ServerInfo server : bootstrap) {
-			protocol.alive(server, waiter);
-		}
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	private void upload(final String filePath, final int currentAttempt, final List<ServerInfo> candidates,
+	private void upload(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
 	                    final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
-
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.upload(server, filePath, producer, new CompletionCallback() {
+		protocol.upload(server, fileName, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.onComplete();
@@ -130,8 +126,14 @@ class HashFsClient implements FsClient {
 
 			@Override
 			public void onException(Exception e) {
-				if (currentAttempt < maxRetryAttempts) {
-					upload(filePath, currentAttempt + 1, candidates, producer, callback);
+				final int attempt = currentAttempt + 1;
+				if (attempt < maxRetryAttempts) {
+					schedule(attempt, new Runnable() {
+						@Override
+						public void run() {
+							upload(fileName, attempt, candidates, producer, callback);
+						}
+					});
 				} else {
 					callback.onException(e);
 				}
@@ -139,10 +141,11 @@ class HashFsClient implements FsClient {
 		});
 	}
 
-	private void download(final String filePath, final int currentAttempt, final List<ServerInfo> candidates, final StreamConsumer<ByteBuf> consumer) {
+	private void download(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
+	                      final StreamConsumer<ByteBuf> consumer) {
 		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.download(server, filePath, forwarder.getInput(), new CompletionCallback() {
+		protocol.download(server, fileName, forwarder.getInput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				forwarder.getOutput().streamTo(consumer);
@@ -150,8 +153,14 @@ class HashFsClient implements FsClient {
 
 			@Override
 			public void onException(Exception e) {
-				if (currentAttempt < maxRetryAttempts) {
-					download(filePath, currentAttempt + 1, candidates, consumer);
+				final int attempt = currentAttempt + 1;
+				if (attempt < maxRetryAttempts) {
+					schedule(attempt, new Runnable() {
+						@Override
+						public void run() {
+							download(fileName, attempt, candidates, consumer);
+						}
+					});
 				} else {
 					StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
 				}
@@ -159,9 +168,10 @@ class HashFsClient implements FsClient {
 		});
 	}
 
-	private void deleteFile(final String filePath, final int currentAttempt, final List<ServerInfo> candidates, final CompletionCallback callback) {
+	private void delete(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
+	                    final CompletionCallback callback) {
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.delete(server, filePath, new CompletionCallback() {
+		protocol.delete(server, fileName, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.onComplete();
@@ -169,8 +179,14 @@ class HashFsClient implements FsClient {
 
 			@Override
 			public void onException(Exception e) {
-				if (currentAttempt < maxRetryAttempts) {
-					deleteFile(filePath, currentAttempt + 1, candidates, callback);
+				final int attempt = currentAttempt + 1;
+				if (attempt < maxRetryAttempts) {
+					schedule(attempt, new Runnable() {
+						@Override
+						public void run() {
+							delete(fileName, attempt, candidates, callback);
+						}
+					});
 				} else {
 					callback.onException(e);
 				}
@@ -178,8 +194,8 @@ class HashFsClient implements FsClient {
 		});
 	}
 
-	private void list(Set<ServerInfo> servers, final ResultCallback<List<String>> callback) {
-		ResultCallback<Set<String>> waiter = Util.waitAllResults(servers.size(), new Util.Resolver<Set<String>>() {
+	private void list(List<ServerInfo> servers, final ResultCallback<List<String>> callback) {
+		ResultCallback<Set<String>> waiter = Util.waitAnyResults(servers.size(), new Util.Resolver<Set<String>>() {
 			@Override
 			public void resolve(List<Set<String>> results, List<Exception> exceptions) {
 				Set<String> files = new HashSet<>();
@@ -199,7 +215,7 @@ class HashFsClient implements FsClient {
 	}
 
 	private void getAliveServers(final int currentAttempt, final ResultCallback<List<ServerInfo>> callback) {
-		ResultCallback<Set<ServerInfo>> waiter = Util.waitAllResults(bootstrap.size(), new Util.Resolver<Set<ServerInfo>>() {
+		ResultCallback<Set<ServerInfo>> waiter = Util.waitAnyResults(bootstrap.size(), new Util.Resolver<Set<ServerInfo>>() {
 			@Override
 			public void resolve(List<Set<ServerInfo>> results, List<Exception> exceptions) {
 				Set<ServerInfo> servers = new HashSet<>();
@@ -226,7 +242,14 @@ class HashFsClient implements FsClient {
 	}
 
 	private long defineRetryTime(int attempt) {
-		// TODO temporary
-		return (long) (baseRetryTimeout * Math.pow(2.0, attempt));
+		long multiplier = 2;
+		for (int i = 0; i < attempt; i++) {
+			multiplier *= multiplier;
+		}
+		return baseRetryTimeout * multiplier;
+	}
+
+	private void schedule(int attempt, Runnable runnable) {
+		eventloop.schedule(eventloop.currentTimeMillis() + defineRetryTime(attempt), runnable);
 	}
 }

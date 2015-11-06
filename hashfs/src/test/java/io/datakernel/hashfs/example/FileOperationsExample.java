@@ -17,6 +17,7 @@
 package io.datakernel.hashfs.example;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.hashfs.Config;
@@ -24,6 +25,7 @@ import io.datakernel.hashfs.FsClient;
 import io.datakernel.hashfs.ServerFactory;
 import io.datakernel.hashfs.ServerInfo;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,6 +33,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
@@ -50,9 +53,11 @@ public class FileOperationsExample {
 		final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(server3, server4));
 
 		FsClient client = ServerFactory.getClient(eventloop, bootstrap, Config.getDefaultConfig());
-		StreamProducer<ByteBuf> producer = readFileFully(eventloop, newCachedThreadPool(), 10 * 1024, Paths.get("./test/client_storage/ptt.txt"));
+		StreamProducer<ByteBuf> producer = readFileFully(eventloop, newCachedThreadPool(), 10 * 1024,
+				Paths.get("./test/client_storage/ptt.txt"));
 
-		client.upload("ptt.txt", producer, new CompletionCallback() {
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////UPLOAD
+		client.upload("java.txt", producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Successfully uploaded: c++.txt");
@@ -64,43 +69,47 @@ public class FileOperationsExample {
 			}
 		});
 
-//		client.list(new ResultCallback<List<String>>() {
-//			@Override
-//			public void onResult(List<String> result) {
-//				logger.info("Received list of files on server: {}", result);
-//			}
-//
-//			@Override
-//			public void onException(Exception e) {
-//				logger.info("Can't get list of files on server");
-//			}
-//		});
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////LIST
+		client.list(new ResultCallback<List<String>>() {
+			@Override
+			public void onResult(List<String> result) {
+				logger.info("Received list of files on server: {}", result);
+			}
 
-//		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, Paths.get("./test/client_storage/lang.txt"));
-//		consumer.setFlushCallback(new CompletionCallback() {
-//			@Override
-//			public void onComplete() {
-//				logger.info("Downloaded");
-//			}
-//
-//			@Override
-//			public void onException(Exception e) {
-//				logger.error("Failed to download", e);
-//			}
-//		});
-//		client.download("c++.txt", consumer);
+			@Override
+			public void onException(Exception e) {
+				logger.info("Can't get list of files on server");
+			}
+		});
 
-//		client.delete("java.txt", new CompletionCallback() {
-//			@Override
-//			public void onComplete() {
-//				logger.info("Deleted: ptt.txt");
-//			}
-//
-//			@Override
-//			public void onException(Exception e) {
-//				logger.error("Can't delete: ptt.txt", e);
-//			}
-//		});
+		////////////////////////////////////////////////////////////////////////////////////////////////////////DOWNLOAD
+		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor,
+				Paths.get("./test/client_storage/lang.txt"));
+		consumer.setFlushCallback(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Downloaded");
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Failed to download", e);
+			}
+		});
+		client.download("java.txt", consumer);
+
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////DELETE
+		client.delete("java.txt", new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.info("Deleted: ptt.txt");
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Can't delete: ptt.txt", e);
+			}
+		});
 
 		eventloop.run();
 		executor.shutdown();

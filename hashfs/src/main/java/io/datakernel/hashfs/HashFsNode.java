@@ -43,21 +43,20 @@ class HashFsNode implements Commands, Server {
 	private Logic logic;
 	private State state;
 
-	private final long updateTimeout;
+	private final long systemUpdateTimeout;
 	private final long mapUpdateTimeout;
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	public HashFsNode(NioEventloop eventloop, FileSystem fileSystem, ClientProtocol clientProtocol,
-	                  long updateTimeout, long mapUpdateTimeout) {
+	                  long systemUpdateTimeout, long mapUpdateTimeout) {
 		this.eventloop = eventloop;
 		this.fileSystem = fileSystem;
 		this.clientProtocol = clientProtocol;
-		this.updateTimeout = updateTimeout;
+		this.systemUpdateTimeout = systemUpdateTimeout;
 		this.mapUpdateTimeout = mapUpdateTimeout;
 	}
 
 	public void wire(Logic logic, ServerProtocol transport) {
-		logger.info("Wired logic and transport");
+		logger.trace("Wired logic and transport");
 		this.logic = logic;
 		this.transport = transport;
 	}
@@ -69,10 +68,10 @@ class HashFsNode implements Commands, Server {
 
 	@Override
 	public void start(final CompletionCallback callback) {
-		state = State.RUNNING;
 		CompletionCallback waiter = AsyncCallbacks.waitAll(3, new CompletionCallback() {
 			@Override
 			public void onComplete() {
+				state = State.RUNNING;
 				logger.info("Started HashFsServer");
 				callback.onComplete();
 			}
@@ -80,7 +79,6 @@ class HashFsNode implements Commands, Server {
 			@Override
 			public void onException(Exception e) {
 				logger.error("Can't start HashFsServer", e);
-				state = null;
 				callback.onException(e);
 			}
 		});
@@ -107,7 +105,6 @@ class HashFsNode implements Commands, Server {
 		logic.stop(waiter);
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public void upload(final String fileName, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		logger.info("Server received request for upload {}", fileName);
@@ -174,13 +171,14 @@ class HashFsNode implements Commands, Server {
 				logic.onApproveCancel(fileName);
 			}
 		} else {
-			logger.warn("Refused commit {}", fileName);
+			logger.warn("Refused commit: {}, {}", fileName, success);
 			callback.onException(new Exception("Can't approve file for commit"));
 		}
 	}
 
 	@Override
-	public void download(final String fileName, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
+	public void download(final String fileName, StreamConsumer<ByteBuf> consumer,
+	                     ResultCallback<CompletionCallback> callback) {
 		logger.info("Received request for file download {}", fileName);
 
 		if (state != State.RUNNING) {
@@ -240,7 +238,7 @@ class HashFsNode implements Commands, Server {
 				}
 			});
 		} else {
-			logger.warn("Refused fileDeletion {}", fileName);
+			logger.warn("Refused file deletion {}", fileName);
 			callback.onException(new Exception("Can't delete file"));
 		}
 	}
@@ -260,7 +258,7 @@ class HashFsNode implements Commands, Server {
 
 	@Override
 	public void showAlive(ResultCallback<Set<ServerInfo>> callback) {
-		logger.info("Received request to show alive servers");
+		logger.trace("Received request to show alive servers");
 
 		if (state != State.RUNNING) {
 			logger.trace("Refused listing alive servers. Server is down.");
@@ -284,23 +282,22 @@ class HashFsNode implements Commands, Server {
 		logic.onOfferRequest(forUpload, forDeletion, callback);
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
-	public void replicate(final ServerInfo server, final String filePath) {
-		logger.info("Received command to replicate file {} to server {}", filePath, server);
-		StreamProducer<ByteBuf> producer = fileSystem.get(filePath);
-		logic.onReplicationStart(filePath);
-		clientProtocol.upload(server, filePath, producer, new CompletionCallback() {
+	public void replicate(final ServerInfo server, final String fileName) {
+		logger.info("Received command to replicate file {} to server {}", fileName, server);
+		StreamProducer<ByteBuf> producer = fileSystem.get(fileName);
+		logic.onReplicationStart(fileName);
+		clientProtocol.upload(server, fileName, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.info("Successfully replicated file {} to server {}", filePath, server);
-				logic.onReplicationComplete(server, filePath);
+				logger.info("Successfully replicated file {} to server {}", fileName, server);
+				logic.onReplicationComplete(server, fileName);
 			}
 
 			@Override
 			public void onException(Exception e) {
-				logger.error("Failed to replicate file {} to server {}", filePath, server, e);
-				logic.onReplicationFailed(server, filePath);
+				logger.error("Failed to replicate file {} to server {}", fileName, server, e);
+				logic.onReplicationFailed(server, fileName);
 			}
 		});
 	}
@@ -322,13 +319,15 @@ class HashFsNode implements Commands, Server {
 	}
 
 	@Override
-	public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
+	public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion,
+	                  ResultCallback<Set<String>> callback) {
 		logger.info("Received command to offer {} files (forUpload: {}, forDeletion: {})", server, forUpload.size(), forDeletion.size());
 		clientProtocol.offer(server, forUpload, forDeletion, callback);
 	}
 
 	@Override
 	public void updateServerMap(final Set<ServerInfo> bootstrap) {
+		// TODO (arashev) rework
 		logger.trace("Updating alive servers map");
 
 		final Set<ServerInfo> possiblyDown = new HashSet<>();
@@ -396,7 +395,7 @@ class HashFsNode implements Commands, Server {
 
 	@Override
 	public void scheduleUpdate() {
-		final long timestamp = eventloop.currentTimeMillis() + updateTimeout;
+		final long timestamp = eventloop.currentTimeMillis() + systemUpdateTimeout;
 		eventloop.scheduleBackground(timestamp, new Runnable() {
 			@Override
 			public void run() {
@@ -406,7 +405,6 @@ class HashFsNode implements Commands, Server {
 		});
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	private enum State {
 		RUNNING, SHUTDOWN
 	}

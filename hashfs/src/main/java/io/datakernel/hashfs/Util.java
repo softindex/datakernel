@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 class Util {
-	public static <T> ResultCallback<T> waitAllResults(final int count, final Resolver<T> resolver) {
+	public static <T> ResultCallback<T> waitAnyResults(final int count, final Resolver<T> resolver) {
 		return new ResultCallback<T>() {
 			List<T> results = new ArrayList<>();
 			List<Exception> exceptions = new ArrayList<>();

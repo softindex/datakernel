@@ -97,7 +97,6 @@ final class LogicImpl implements Logic {
 		}
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canUpload(String fileName) {
 		FileInfo info = files.get(fileName);
@@ -122,7 +121,6 @@ final class LogicImpl implements Logic {
 		onApproveCancel(fileName);
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canApprove(String fileName) {
 		// assuming commit message won't be send unless upload finished
@@ -144,7 +142,6 @@ final class LogicImpl implements Logic {
 		onOperationFinished();
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canDownload(String fileName) {
 		FileInfo info = files.get(fileName);
@@ -169,7 +166,6 @@ final class LogicImpl implements Logic {
 		onDownloadComplete(fileName);
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public boolean canDelete(String fileName) {
 		FileInfo info = files.get(fileName);
@@ -193,7 +189,6 @@ final class LogicImpl implements Logic {
 		// ignored
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public void onReplicationStart(String fileName) {
 		FileInfo info = files.get(fileName);
@@ -213,7 +208,6 @@ final class LogicImpl implements Logic {
 		info.pendingOperationsCounter--;
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public void onShowAliveRequest(long timestamp, ResultCallback<Set<ServerInfo>> callback) {
 		Set<ServerInfo> aliveServers = new HashSet<>();
@@ -268,7 +262,6 @@ final class LogicImpl implements Logic {
 		callback.onResult(required);
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Override
 	public void update(long timestamp) {
 		Map<ServerInfo, Set<String>> server2Offer = new HashMap<>();
@@ -369,7 +362,6 @@ final class LogicImpl implements Logic {
 		commands.scheduleUpdate();
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	private final class FileInfo {
 		final Set<ServerInfo> replicas = new HashSet<>();
 		FileState state;
