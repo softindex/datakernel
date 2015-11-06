@@ -33,7 +33,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-public final class StrategyRendezvousHashing extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
+public final class StrategyRendezvousHashing implements RequestSendingStrategy, SingleSenderStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
 	private static final BucketHashFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultBucketHashFunction();
 
@@ -72,7 +72,7 @@ public final class StrategyRendezvousHashing extends AbstractRequestSendingStrat
 	}
 
 	@Override
-	protected List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 

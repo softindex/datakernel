@@ -31,7 +31,7 @@ import static io.datakernel.rpc.client.sender.RpcSendersUtils.replaceAbsentToNul
 import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import static java.util.Arrays.asList;
 
-public final class StrategySharding extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
+public final class StrategySharding implements RequestSendingStrategy, SingleSenderStrategy {
 	private final List<RequestSendingStrategy> subStrategies;
 	private final HashFunction<RpcMessageData> hashFunction;
 
@@ -41,7 +41,7 @@ public final class StrategySharding extends AbstractRequestSendingStrategy imple
 	}
 
 	@Override
-	protected final List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public final List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
@@ -57,8 +57,7 @@ public final class StrategySharding extends AbstractRequestSendingStrategy imple
 
 		List<List<Optional<RequestSender>>> listOfListOfSenders = new ArrayList<>();
 		for (RequestSendingStrategy subStrategy : subStrategies) {
-			AbstractRequestSendingStrategy abstractSubSendingStrategy = (AbstractRequestSendingStrategy) subStrategy;
-			listOfListOfSenders.add(abstractSubSendingStrategy.createAsList(pool));
+			listOfListOfSenders.add(subStrategy.createAsList(pool));
 		}
 		return flatten(listOfListOfSenders);
 	}

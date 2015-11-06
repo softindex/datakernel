@@ -27,7 +27,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
 import static java.util.Arrays.asList;
 
-public abstract class RequestSendingStrategyToGroup extends AbstractRequestSendingStrategy {
+public abstract class RequestSendingStrategyToGroup implements RequestSendingStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
 
 	private final int minSubStrategiesForCreation;
@@ -44,7 +44,7 @@ public abstract class RequestSendingStrategyToGroup extends AbstractRequestSendi
 	}
 
 	@Override
-	protected final List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public final List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
@@ -66,8 +66,7 @@ public abstract class RequestSendingStrategyToGroup extends AbstractRequestSendi
 
 		List<List<Optional<RequestSender>>> listOfListOfSenders = new ArrayList<>();
 		for (RequestSendingStrategy subStrategy : subStrategies) {
-			AbstractRequestSendingStrategy abstractSubSendingStrategy = (AbstractRequestSendingStrategy) subStrategy;
-			listOfListOfSenders.add(abstractSubSendingStrategy.createAsList(pool));
+			listOfListOfSenders.add(subStrategy.createAsList(pool));
 		}
 		return flatten(listOfListOfSenders);
 	}

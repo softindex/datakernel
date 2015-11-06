@@ -28,7 +28,7 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-public final class StrategySingleServer extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
+public final class StrategySingleServer implements RequestSendingStrategy, SingleSenderStrategy {
 
 	private final InetSocketAddress address;
 
@@ -38,7 +38,7 @@ public final class StrategySingleServer extends AbstractRequestSendingStrategy i
 	}
 
 	@Override
-	protected List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 

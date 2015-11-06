@@ -29,7 +29,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
-public final class StrategyTypeDispatching extends AbstractRequestSendingStrategy implements SingleSenderStrategy {
+public final class StrategyTypeDispatching implements RequestSendingStrategy, SingleSenderStrategy {
 
 	public enum Importance {
 		MANDATORY, OPTIONAL
@@ -44,7 +44,7 @@ public final class StrategyTypeDispatching extends AbstractRequestSendingStrateg
 	}
 
 	@Override
-	protected List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 

@@ -24,7 +24,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class StrategyServersGroup extends AbstractRequestSendingStrategy {
+public final class StrategyServersGroup implements RequestSendingStrategy {
 
 	private List<InetSocketAddress> addresses;
 
@@ -33,7 +33,7 @@ public final class StrategyServersGroup extends AbstractRequestSendingStrategy {
 	}
 
 	@Override
-	protected List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<Optional<RequestSender>> createAsList(RpcClientConnectionPool pool) {
 		List<Optional<RequestSender>> senders = new ArrayList<>();
 		for (InetSocketAddress address : addresses) {
 			RpcClientConnection connection = pool.get(address);
