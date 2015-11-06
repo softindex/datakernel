@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.rpc.hash.BucketHashFunction;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
@@ -94,6 +95,14 @@ public final class RpcRequestSendingStrategies {
 		checkNotNull(hashFunction);
 		return new RpcStrategyRendezvousHashing(hashFunction);
 	}
+
+	public static RpcStrategyRendezvousHashing rendezvousHashing(final HashFunction<RpcMessageData> hashFunction,
+	                                                             BucketHashFunction bucketHashFunction,
+	                                                             int bucketCapacity) {
+		checkNotNull(hashFunction);
+		return new RpcStrategyRendezvousHashing(hashFunction, bucketHashFunction, bucketCapacity);
+	}
+
 
 	public static RpcStrategyTypeDispatching typeDispatching() {
 		return new RpcStrategyTypeDispatching();

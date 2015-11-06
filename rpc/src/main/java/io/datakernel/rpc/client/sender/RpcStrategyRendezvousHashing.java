@@ -35,34 +35,45 @@ import static java.util.Arrays.asList;
 
 public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
+	private static final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
 	private static final BucketHashFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultBucketHashFunction();
+
 
 	private final int minSubStrategiesForCreation;
 	private final Map<Object, RpcSingleSenderStrategy> keyToStrategy;
 	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
 	private final BucketHashFunction bucketHashFunction;
+	private final int bucketCapacity;
 
-	RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+	public RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction) {
 		this(hashFunction, DEFAULT_BUCKET_HASH_FUNCTION);
 	}
 
-	RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	public RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
 	                             BucketHashFunction bucketHashFunction) {
-		this(hashFunction, bucketHashFunction, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT);
+		this(hashFunction, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT, bucketHashFunction, DEFAULT_BUCKET_CAPACITY);
 	}
 
-	RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	public RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
 	                             int minSubStrategiesForCreation) {
-		this(hashFunction, DEFAULT_BUCKET_HASH_FUNCTION, minSubStrategiesForCreation);
+		this(hashFunction, minSubStrategiesForCreation, DEFAULT_BUCKET_HASH_FUNCTION, DEFAULT_BUCKET_CAPACITY);
 	}
 
-	RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
-	                             BucketHashFunction bucketHashFunction,
-	                             int minSubStrategiesForCreation) {
+	public RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	                                    BucketHashFunction bucketHashFunction,
+	                                    int bucketCapacity) {
+		this(hashFunction, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT, bucketHashFunction, bucketCapacity);
+	}
+
+	public RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction,
+	                                    int minSubStrategiesForCreation,
+	                                    BucketHashFunction bucketHashFunction,
+	                                    int bucketCapacity) {
 		this.keyToStrategy = new HashMap<>();
 		this.hashFunction = checkNotNull(hashFunction);
 		this.bucketHashFunction = checkNotNull(bucketHashFunction);
 		this.minSubStrategiesForCreation = minSubStrategiesForCreation;
+		this.bucketCapacity = bucketCapacity;
 	}
 
 	public RpcStrategyRendezvousHashing put(Object key, RpcSingleSenderStrategy strategy) {
@@ -81,7 +92,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		Map<Object, Optional<RpcRequestSender>> keyToSender = createKeyToSender(pool, keyToStrategy);
 		if (countPresentValues(keyToSender) >= minSubStrategiesForCreation) {
 			return Optional.<RpcRequestSender>of(
-					new RequestSenderRendezvousHashing(keyToSender, hashFunction, bucketHashFunction));
+					new RequestSenderRendezvousHashing(keyToSender, hashFunction, bucketHashFunction, bucketCapacity));
 		} else {
 			return Optional.absent();
 		}
@@ -122,10 +133,10 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 
 		public RequestSenderRendezvousHashing(Map<Object, Optional<RpcRequestSender>> keyToSender,
 		                                      HashFunction<RpcMessage.RpcMessageData> hashFunction,
-		                                      BucketHashFunction bucketHashFunction) {
+		                                      BucketHashFunction bucketHashFunction, int bucketCapacity) {
 			checkNotNull(keyToSender);
 			this.hashFunction = checkNotNull(hashFunction);
-			this.hashBucket = new RendezvousHashBucket(keyToSender, bucketHashFunction);
+			this.hashBucket = new RendezvousHashBucket(keyToSender, bucketHashFunction, bucketCapacity);
 		}
 
 		@Override
@@ -149,14 +160,13 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 
 	@VisibleForTesting
 	static final class RendezvousHashBucket<T> {
-		private static final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
 
 		private final RpcRequestSender[] sendersBucket;
 
-		public RendezvousHashBucket(Map<Object, Optional<RpcRequestSender>> keyToSender,
-		                            BucketHashFunction bucketHashFunction) {
-			this(keyToSender, bucketHashFunction, DEFAULT_BUCKET_CAPACITY);
-		}
+//		public RendezvousHashBucket(Map<Object, Optional<RpcRequestSender>> keyToSender,
+//		                            BucketHashFunction bucketHashFunction) {
+//			this(keyToSender, bucketHashFunction, DEFAULT_BUCKET_CAPACITY);
+//		}
 
 		public RendezvousHashBucket(Map<Object, Optional<RpcRequestSender>> keyToSender,
 		                            BucketHashFunction bucketHashFunction, int capacity) {
