@@ -1,8 +1,0 @@
-dependencies {
-    compile project(':datakernel/aggregation-db')
-    compile project(':datakernel/http')
-
-    testCompile project(':datakernel/aggregation-db').sourceSets.test.output
-}
-
-compileTestJava.dependsOn tasks.getByPath(':datakernel/aggregation-db:testClasses')

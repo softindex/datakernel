@@ -12,6 +12,12 @@
 
     <artifactId>servicegraph</artifactId>
 
+    <name>DataKernel: ServiceGraph</name>
+    <description>
+        Services manager to efficiently start/stop services, with respect to their dependencies.
+        ServiceGraph works by parallel multithreaded traversal of services DAG.
+    </description>
+
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
