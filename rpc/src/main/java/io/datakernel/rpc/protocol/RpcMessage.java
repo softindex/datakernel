@@ -23,7 +23,7 @@ import io.datakernel.serializer.annotations.SerializeSubclasses;
 
 public final class RpcMessage {
 	@SerializeSubclasses(extraSubclassesId = "extraRpcMessages", value = {RpcRemoteException.class})
-	public interface RpcMessageData {
+	public interface RpcMessageData { // TODO (vmykhalko): remove this interface, change to Object
 		boolean isMandatory();
 	}
 

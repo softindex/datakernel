@@ -32,7 +32,7 @@ public final class RpcRequestSendingStrategies {
 
 	}
 
-	public static RpcStrategySingleServer server(final InetSocketAddress address) {
+	public static RpcStrategySingleServer server(InetSocketAddress address) {
 		checkNotNull(address);
 		return new RpcStrategySingleServer(address);
 	}
@@ -41,9 +41,7 @@ public final class RpcRequestSendingStrategies {
 		return servers(asList(addresses));
 	}
 
-	public static RpcStrategyServersGroup servers(final List<InetSocketAddress> addresses) {
-		checkNotNull(addresses);
-		checkArgument(addresses.size() > 0, "at least one address must be present");
+	public static RpcStrategyServersGroup servers(List<InetSocketAddress> addresses) {
 		return new RpcStrategyServersGroup(addresses);
 	}
 
@@ -51,20 +49,16 @@ public final class RpcRequestSendingStrategies {
 		return firstAvailable(asList(senders));
 	}
 
-	public static RpcStrategyFirstAvailable firstAvailable(final List<RpcRequestSendingStrategy> senders) {
-		checkNotNull(senders);
-		checkArgument(senders.size() > 0, "at least one sender must be present");
+	public static RpcStrategyFirstAvailable firstAvailable(List<RpcRequestSendingStrategy> senders) {
 		return new RpcStrategyFirstAvailable(senders);
 	}
 
-	public static RpcStrategyAllAvailable allAvailable(RpcRequestSendingStrategy... senders) {
-		return allAvailable(asList(senders));
+	public static RpcStrategyFirstValidResult firstValidResult(RpcRequestSendingStrategy... senders) {
+		return firstValidResult(asList(senders));
 	}
 
-	public static RpcStrategyAllAvailable allAvailable(final List<RpcRequestSendingStrategy> senders) {
-		checkNotNull(senders);
-		checkArgument(senders.size() > 0, "at least one sender must be present");
-		return new RpcStrategyAllAvailable(senders);
+	public static RpcStrategyFirstValidResult firstValidResult(List<RpcRequestSendingStrategy> senders) {
+		return new RpcStrategyFirstValidResult(senders);
 	}
 
 	public static RpcStrategyRoundRobin roundRobin(RpcRequestSendingStrategy... senders) {
@@ -72,8 +66,6 @@ public final class RpcRequestSendingStrategies {
 	}
 
 	public static RpcStrategyRoundRobin roundRobin(final List<RpcRequestSendingStrategy> senders) {
-		checkNotNull(senders);
-		checkArgument(senders.size() > 0, "at least one sender must be present");
 		return new RpcStrategyRoundRobin(senders);
 	}
 

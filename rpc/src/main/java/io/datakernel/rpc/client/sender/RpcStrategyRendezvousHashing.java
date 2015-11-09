@@ -121,21 +121,19 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 				= new RpcNoSenderAvailableException("No active senders available");
 
 		private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
-		final RendezvousHashBucket<RpcRequestSender> hashBucket;
+		final RendezvousHashBucket hashBucket;
 
 		public RequestSenderRendezvousHashing(Map<Object, Optional<RpcRequestSender>> keyToSender,
 		                                      HashFunction<RpcMessage.RpcMessageData> hashFunction,
 		                                      BucketHashFunction bucketHashFunction, int bucketCapacity) {
 			checkNotNull(keyToSender);
 			this.hashFunction = checkNotNull(hashFunction);
-			this.hashBucket = new RendezvousHashBucket(keyToSender, bucketHashFunction, bucketCapacity);
+			this.hashBucket = RendezvousHashBucket.create(keyToSender, bucketHashFunction, bucketCapacity);
 		}
 
 		@Override
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
 		                                                              final ResultCallback<T> callback) {
-			checkNotNull(callback);
-
 			RpcRequestSender sender = getRequestSender(request);
 			if (sender == null) {
 				callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
@@ -151,26 +149,20 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 	}
 
 	@VisibleForTesting
-	static final class RendezvousHashBucket<T> {
+	static final class RendezvousHashBucket {
 
 		private final RpcRequestSender[] sendersBucket;
 
-//		public RendezvousHashBucket(Map<Object, Optional<RpcRequestSender>> keyToSender,
-//		                            BucketHashFunction bucketHashFunction) {
-//			this(keyToSender, bucketHashFunction, DEFAULT_BUCKET_CAPACITY);
-//		}
-
-		public RendezvousHashBucket(Map<Object, Optional<RpcRequestSender>> keyToSender,
-		                            BucketHashFunction bucketHashFunction, int capacity) {
-			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
-			checkNotNull(bucketHashFunction);
-			this.sendersBucket = new RpcRequestSender[capacity];
-			computeBaseHashes(keyToSender, bucketHashFunction);
+		private RendezvousHashBucket(RpcRequestSender[] sendersBucket) {
+			this.sendersBucket = sendersBucket;
 		}
 
 		// if activeAddresses is empty fill bucket with null
-		private void computeBaseHashes(Map<Object, Optional<RpcRequestSender>> keyToSender,
-		                               BucketHashFunction bucketHashFunction) {
+		public static RendezvousHashBucket create(Map<Object, Optional<RpcRequestSender>> keyToSender,
+		                                          BucketHashFunction bucketHashFunction, int capacity) {
+			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
+			checkNotNull(bucketHashFunction);
+			RpcRequestSender[] sendersBucket = new RpcRequestSender[capacity];
 			for (int n = 0; n < sendersBucket.length; n++) {
 				RpcRequestSender chosenSender = null;
 				int max = Integer.MIN_VALUE;
@@ -186,6 +178,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 				}
 				sendersBucket[n] = chosenSender;
 			}
+			return new RendezvousHashBucket(sendersBucket);
 		}
 
 		public RpcRequestSender chooseSender(int hash) {

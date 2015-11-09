@@ -44,7 +44,7 @@ public class RpcStrategyTypeDispatchingTest {
 	private static final InetSocketAddress ADDRESS_4 = new InetSocketAddress(HOST, PORT_4);
 
 	@Test
-	public void itShouldChooseSubSenderDependingOnRpcMessageDataType() {
+	public void itShouldChooseSubStrategyDependingOnRpcMessageDataType() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
@@ -83,7 +83,7 @@ public class RpcStrategyTypeDispatchingTest {
 	}
 
 	@Test
-	public void itShouldChooseDefaultSubSenderWhenThereIsNoSpecifiedSubSenderForCurrentDataType() {
+	public void itShouldChooseDefaultSubStrategyWhenThereIsNoSpecifiedSubSenderForCurrentDataType() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4));
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
@@ -116,7 +116,7 @@ public class RpcStrategyTypeDispatchingTest {
 	}
 
 	@Test
-	public void itShouldRaiseExceptionWhenSenderForDataIsNotSpecifiedAndDefaultSenderIsNull() {
+	public void itShouldRaiseExceptionWhenStrategyForDataIsNotSpecifiedAndDefaultSenderIsNull() {
 		final AtomicReference<Exception> raisedException = new AtomicReference<>(null);
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();

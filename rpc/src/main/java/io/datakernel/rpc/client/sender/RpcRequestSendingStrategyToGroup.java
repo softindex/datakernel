@@ -30,16 +30,16 @@ import static java.util.Arrays.asList;
 public abstract class RpcRequestSendingStrategyToGroup implements RpcRequestSendingStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
 
-	private final int minSubStrategiesForCreation;
 	private final List<RpcRequestSendingStrategy> subStrategies;
+	private int minSubStrategiesForCreation;
 
 	RpcRequestSendingStrategyToGroup(List<RpcRequestSendingStrategy> subStrategies) {
-		this(subStrategies, MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT);
+		this.subStrategies = checkNotNull(subStrategies);
+		this.minSubStrategiesForCreation = MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT;
 	}
 
-	RpcRequestSendingStrategyToGroup(List<RpcRequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
+	protected final void setMinSubStrategiesForCreation(int minSubStrategiesForCreation) {
 		checkArgument(minSubStrategiesForCreation > 0, "minSubStrategiesForCreation must be greater than 0");
-		this.subStrategies = checkNotNull(subStrategies);
 		this.minSubStrategiesForCreation = minSubStrategiesForCreation;
 	}
 

@@ -22,7 +22,6 @@ import io.datakernel.rpc.protocol.RpcMessage;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 
 public final class RpcStrategyRoundRobin extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
@@ -31,13 +30,19 @@ public final class RpcStrategyRoundRobin extends RpcRequestSendingStrategyToGrou
 		super(subStrategies);
 	}
 
-	public RpcStrategyRoundRobin(List<RpcRequestSendingStrategy> subStrategies, int minSubStrategiesForCreation) {
-		super(subStrategies, minSubStrategiesForCreation);
+	public RpcStrategyRoundRobin withMinActiveSubStrategies(int minActiveSubStrategies) {
+		setMinSubStrategiesForCreation(minActiveSubStrategies);
+		return this;
 	}
 
 	@Override
 	protected RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders) {
-		return new RequestSenderRoundRobin(subSenders);
+		if (subSenders.size() > 1) {
+			return new RequestSenderRoundRobin(subSenders);
+		} else {
+			assert subSenders.size() == 1;
+			return subSenders.get(0);
+		}
 	}
 
 	final static class RequestSenderRoundRobin implements RpcRequestSender {
@@ -51,9 +56,8 @@ public final class RpcStrategyRoundRobin extends RpcRequestSendingStrategyToGrou
 		}
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
-			checkNotNull(callback);
-
+		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+		                                                              ResultCallback<T> callback) {
 			RpcRequestSender sender = getCurrentSubSender();
 			sender.sendRequest(request, timeout, callback);
 		}

@@ -161,7 +161,7 @@ public class RpcStrategyRendezvousHashingTest {
 		}
 		RendezvousHashBucket hashBucket;
 
-		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
+		hashBucket = RendezvousHashBucket.create(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		RpcRequestSender[] baseBucket = new RpcRequestSender[DEFAULT_BUCKET_CAPACITY];
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			baseBucket[i] = hashBucket.chooseSender(i);
@@ -170,7 +170,7 @@ public class RpcStrategyRendezvousHashingTest {
 		int key1 = 1;
 		RpcRequestSender sender1 = keyToSender.get(key1).get();
 		keyToSender.put(key1, Optional.<RpcRequestSender>absent());
-		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
+		hashBucket = RendezvousHashBucket.create(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			if (!baseBucket[i].equals(sender1))
 				assertEquals(baseBucket[i], hashBucket.chooseSender(i));
@@ -181,7 +181,7 @@ public class RpcStrategyRendezvousHashingTest {
 		int key2 = 2;
 		RpcRequestSender sender2 = keyToSender.get(key2).get();
 		keyToSender.put(key2, Optional.<RpcRequestSender>absent());
-		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
+		hashBucket = RendezvousHashBucket.create(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			if (!baseBucket[i].equals(sender1) && !baseBucket[i].equals(sender2))
 				assertEquals(baseBucket[i], hashBucket.chooseSender(i));
@@ -191,7 +191,7 @@ public class RpcStrategyRendezvousHashingTest {
 		}
 
 		keyToSender.put(key1, Optional.<RpcRequestSender>of(new RequestSenderStub(key1)));
-		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
+		hashBucket = RendezvousHashBucket.create(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			if (!baseBucket[i].equals(sender2))
 				assertEquals(baseBucket[i], hashBucket.chooseSender(i));
@@ -200,7 +200,7 @@ public class RpcStrategyRendezvousHashingTest {
 		}
 
 		keyToSender.put(key2, Optional.<RpcRequestSender>of(new RequestSenderStub(key2)));
-		hashBucket = new RendezvousHashBucket(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
+		hashBucket = RendezvousHashBucket.create(keyToSender, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
 		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
 			assertEquals(baseBucket[i], hashBucket.chooseSender(i));
 		}

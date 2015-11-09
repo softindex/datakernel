@@ -50,7 +50,7 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 
 	@Override
 	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
-		Map<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender = new HashMap<>();
+		HashMap<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender = new HashMap<>();
 		for (Class<? extends RpcMessage.RpcMessageData> dataType : dataTypeToSpecification.keySet()) {
 			DataTypeSpecifications specs = dataTypeToSpecification.get(dataType);
 			Optional<RpcRequestSender> sender = specs.getStrategy().create(pool);
@@ -107,10 +107,10 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No active senders available");
 
-		private Map<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender;
-		private RpcRequestSender defaultSender;
+		private final HashMap<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender;
+		private final RpcRequestSender defaultSender;
 
-		public RequestSenderTypeDispatcher(Map<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender,
+		public RequestSenderTypeDispatcher(HashMap<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender,
 		                                   RpcRequestSender defaultSender) {
 			checkNotNull(dataTypeToSender);
 
@@ -121,8 +121,6 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 		@Override
 		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
 		                                                              ResultCallback<T> callback) {
-			checkNotNull(callback);
-
 			RpcRequestSender specifiedSender = dataTypeToSender.get(request.getClass());
 			RpcRequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;
 			if (sender != null) {

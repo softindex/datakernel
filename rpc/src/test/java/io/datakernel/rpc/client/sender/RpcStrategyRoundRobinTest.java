@@ -108,7 +108,7 @@ public class RpcStrategyRoundRobinTest {
 	}
 
 	@Test(expected = Exception.class)
-	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
+	public void itShouldThrowExceptionWhenSubStrategiesListIsNull() {
 		RpcRequestSendingStrategy strategy = new RpcStrategyRoundRobin(null);
 	}
 }

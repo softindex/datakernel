@@ -138,10 +138,10 @@ public class RpcRequestSendingStrategiesTest {
 		RpcRequestSendingStrategy strategy =
 				sharding(
 						hashFunction,
-						allAvailable(
+						firstValidResult(
 								servers(ADDRESS_1, ADDRESS_2)
 						),
-						allAvailable(
+						firstValidResult(
 								servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)
 						)
 				);
@@ -229,7 +229,7 @@ public class RpcRequestSendingStrategiesTest {
 		RpcRequestSendingStrategy strategy =
 				typeDispatching()
 						.on(RpcMessageDataStubWithKey.class,
-								allAvailable(
+								firstValidResult(
 										servers(ADDRESS_1, ADDRESS_2)
 								)
 						)

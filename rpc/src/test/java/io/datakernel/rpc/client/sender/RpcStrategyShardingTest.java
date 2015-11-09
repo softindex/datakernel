@@ -117,7 +117,7 @@ public class RpcStrategyShardingTest {
 	}
 
 	@Test(expected = Exception.class)
-	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
+	public void itShouldThrowExceptionWhenSubStrategiesListIsNull() {
 		RpcStrategySharding strategy = new RpcStrategySharding(new RpcMessageDataStubWithKeyHashFunction(), null);
 	}
 

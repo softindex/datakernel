@@ -126,7 +126,7 @@ public class RpcStrategyFirstAvailableTest {
 	}
 
 	@Test(expected = Exception.class)
-	public void itShouldThrowExceptionWhenSubSendersListIsNull() {
+	public void itShouldThrowExceptionWhenSubStrategiesListIsNull() {
 		RpcRequestSendingStrategy strategy = new RpcStrategyFirstAvailable(null);
 	}
 }

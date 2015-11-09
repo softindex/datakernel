@@ -24,11 +24,16 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
 public final class RpcStrategyServersGroup implements RpcRequestSendingStrategy {
 
 	private List<InetSocketAddress> addresses;
 
 	RpcStrategyServersGroup(List<InetSocketAddress> addresses) {
+		checkNotNull(addresses);
+		checkArgument(addresses.size() > 0, "at least one address must be present");
 		this.addresses = addresses;
 	}
 
