@@ -6,5 +6,5 @@ import java.util.List;
 import java.util.Map;
 
 public interface AttributeResolver {
-	Map<PrimaryKey, Object> resolve(List<PrimaryKey> keys);
+	Map<PrimaryKey, Object[]> resolve(List<PrimaryKey> keys, List<String> attributes);
 }

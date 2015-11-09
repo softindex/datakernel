@@ -1,5 +1,7 @@
 package io.datakernel.cube.api;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.ListMultimap;
 import io.datakernel.aggregation_db.PrimaryKey;
 import io.datakernel.aggregation_db.api.AttributeResolver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -8,6 +10,7 @@ import io.datakernel.util.Preconditions;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.cube.api.CommonUtils.generateGetter;
 import static io.datakernel.cube.api.CommonUtils.generateSetter;
@@ -22,44 +25,54 @@ public final class Resolver {
 	}
 
 	public List<Object> resolve(List<Object> records, Class<?> resultClass,
-	                            Map<String, List<String>> attributeKeys,
-	                            Map<String, Class<?>> attributeTypes) {
-		return resolve(records, resultClass, attributeKeys, attributeTypes, null);
+	                            Map<String, Class<?>> attributeTypes,
+	                            Map<AttributeResolver, List<String>> resolverKeys) {
+		return resolve(records, resultClass, attributeTypes, resolverKeys, null);
 	}
 
 	public List<Object> resolve(List<Object> records, Class<?> resultClass,
-	                            Map<String, List<String>> attributeKeys,
 	                            Map<String, Class<?>> attributeTypes,
+	                            Map<AttributeResolver, List<String>> resolverKeys,
 	                            Map<String, Object> keyConstants) {
-		if (attributeKeys.isEmpty())
+		if (attributeTypes.isEmpty())
 			return records;
 
-		for (Map.Entry<String, List<String>> mapping : attributeKeys.entrySet()) {
-			String attributeName = mapping.getKey();
-			List<String> keyNames = mapping.getValue();
+		ListMultimap<AttributeResolver, String> resolverAttributes = groupAttributesByResolvers(attributeTypes.keySet());
 
-			FieldGetter[] keyGetters = createKeyGetters(keyNames, keyConstants, resultClass);
+		for (AttributeResolver resolver : resolverAttributes.keySet()) {
+			List<String> attributes = resolverAttributes.get(resolver);
+			List<String> key = resolverKeys.get(resolver);
 
+			FieldGetter[] keyGetters = createKeyGetters(key, keyConstants, resultClass);
 			List<PrimaryKey> keys = retrieveKeyTuples(records, keyGetters);
 
-			AttributeResolver attributeResolver = attributeResolvers.get(attributeName);
-			Preconditions.checkNotNull(attributeResolver, "Resolver is not defined for " + attributeName);
-
-			Map<PrimaryKey, Object> resolvedAttributes = attributeResolver.resolve(keys);
-			copyResolvedNamesToRecords(resolvedAttributes, keys, records, resultClass, attributeName, attributeTypes);
+			Map<PrimaryKey, Object[]> resolvedAttributes = resolver.resolve(keys, attributes);
+			copyResolvedNamesToRecords(resolvedAttributes, keys, records, resultClass, attributes, attributeTypes);
 		}
 
 		return records;
 	}
 
-	private void copyResolvedNamesToRecords(Map<PrimaryKey, Object> resolvedAttributes, List<PrimaryKey> keys,
+	private ListMultimap<AttributeResolver, String> groupAttributesByResolvers(Set<String> attributes) {
+		ListMultimap<AttributeResolver, String> resolverAttributes = ArrayListMultimap.create();
+		for (String attribute : attributes) {
+			resolverAttributes.put(attributeResolvers.get(attribute), attribute);
+		}
+		return resolverAttributes;
+	}
+
+	private void copyResolvedNamesToRecords(Map<PrimaryKey, Object[]> resolvedAttributes, List<PrimaryKey> keys,
 	                                        List<Object> records, Class<?> resultClass,
-	                                        String attributeName, Map<String, Class<?>> attributeTypes) {
+	                                        List<String> attributes, Map<String, Class<?>> attributeTypes) {
 		Preconditions.check(resolvedAttributes.size() == records.size(),
 				String.format("Name resolver returned incorrect number (%d) of resolved names (required: %d)", resolvedAttributes.size(), records.size()));
-		FieldSetter fieldSetter = generateSetter(classLoader, resultClass, attributeName, attributeTypes.get(attributeName));
+		FieldSetter[] fieldSetters = createFieldSetters(attributes, resultClass, attributeTypes);
 		for (int i = 0; i < records.size(); i++) {
-			fieldSetter.set(records.get(i), resolvedAttributes.get(keys.get(i)));
+			Object record = records.get(i);
+			Object[] resolvedValues = resolvedAttributes.get(keys.get(i));
+			for (int j = 0; j < fieldSetters.length; ++j) {
+				fieldSetters[j].set(record, resolvedValues[j]);
+			}
 		}
 	}
 
@@ -75,9 +88,18 @@ public final class Resolver {
 		return keys;
 	}
 
+	private FieldSetter[] createFieldSetters(List<String> attributes, Class<?> resultClass, Map<String, Class<?>> attributeTypes) {
+		FieldSetter[] fieldSetters = new FieldSetter[attributes.size()];
+		for (int i = 0; i < attributes.size(); ++i) {
+			String attributeName = attributes.get(i);
+			fieldSetters[i] = generateSetter(classLoader, resultClass, attributeName, attributeTypes.get(attributeName));
+		}
+		return fieldSetters;
+	}
+
 	private FieldGetter[] createKeyGetters(List<String> keyNames, final Map<String, Object> keyConstants, Class<?> resultClass) {
 		FieldGetter[] keyGetters = new FieldGetter[keyNames.size()];
-		for (int i = 0; i < keyNames.size(); i++) {
+		for (int i = 0; i < keyNames.size(); ++i) {
 			final String key = keyNames.get(i);
 			if (keyConstants != null && keyConstants.containsKey(key)) {
 				final Object keyConstant = keyConstants.get(key);

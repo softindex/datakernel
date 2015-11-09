@@ -19,10 +19,7 @@ package io.datakernel.cube.api;
 import com.google.gson.*;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
-import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.aggregation_db.api.QueryResultPlaceholder;
-import io.datakernel.aggregation_db.api.ReportingDSLExpression;
-import io.datakernel.aggregation_db.api.TotalsPlaceholder;
+import io.datakernel.aggregation_db.api.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.ResultCallback;
@@ -43,7 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Maps.newHashMap;
+import static com.google.common.collect.Maps.newLinkedHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.cube.api.CommonUtils.*;
@@ -85,8 +82,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		logger.info("Got query {}", request);
 		final AggregationStructure structure = cube.getStructure();
 		final ReportingConfiguration reportingConfiguration = cube.getReportingConfiguration();
-		final Map<String, List<String>> attributeKeys = newHashMap();
-		final Map<String, Class<?>> attributeTypes = newHashMap();
+		final Map<AttributeResolver, List<String>> resolverKeys = newLinkedHashMap();
+		final Map<String, Class<?>> attributeTypes = newLinkedHashMap();
 
 		Set<String> requestDimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
 		Set<String> dimensions = newHashSet();
@@ -95,9 +92,13 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			if (structure.containsKey(dimension))
 				dimensions.add(dimension);
 			else if (reportingConfiguration.containsAttribute(dimension)) {
-				List<String> keys = reportingConfiguration.getAttributeKey(dimension);
-				dimensions.addAll(keys);
-				attributeKeys.put(dimension, keys);
+				AttributeResolver resolver = reportingConfiguration.getAttributeResolver(dimension);
+				if (resolver == null)
+					throw new QueryException("Cube does not contain resolver for '" + dimension + "'");
+
+				List<String> key = reportingConfiguration.getKeyForResolver(resolver);
+				dimensions.addAll(key);
+				resolverKeys.put(resolver, key);
 				attributeTypes.put(dimension, reportingConfiguration.getAttributeType(dimension));
 			} else
 				throw new QueryException("Cube does not contain dimension with name '" + dimension + "'");
@@ -191,7 +192,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 					queryResult.computeMeasures();
 				}
 
-				resolver.resolve((List) results, resultClass, attributeKeys, attributeTypes);
+				resolver.resolve((List) results, resultClass, attributeTypes, resolverKeys);
 
 				// sort
 				if (sortingRequired) {

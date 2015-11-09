@@ -9,12 +9,13 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.collect.Maps.newHashMap;
+import static com.google.common.collect.Maps.newLinkedHashMap;
 
 public final class ReportingConfiguration {
 	private Map<String, ReportingDSLExpression> computedMeasures = newHashMap();
-	private Map<String, List<String>> attributeKeys = newHashMap();
-	private Map<String, Class<?>> attributeTypes = newHashMap();
-	private Map<String, AttributeResolver> attributeResolvers = newHashMap();
+	private Map<String, Class<?>> attributeTypes = newLinkedHashMap();
+	private Map<String, AttributeResolver> attributeResolvers = newLinkedHashMap();
+	private Map<AttributeResolver, List<String>> resolverKeys = newHashMap();
 
 	public ReportingConfiguration addComputedMeasure(String name, ReportingDSLExpression expression) {
 		this.computedMeasures.put(name, expression);
@@ -27,18 +28,22 @@ public final class ReportingConfiguration {
 	}
 
 	public ReportingConfiguration addResolvedAttribute(String name, List<String> key, Class<?> type, AttributeResolver resolver) {
-		this.attributeKeys.put(name, key);
 		this.attributeTypes.put(name, type);
 		this.attributeResolvers.put(name, resolver);
+		this.resolverKeys.put(resolver, key);
 		return this;
 	}
 
 	public boolean containsAttribute(String key) {
-		return attributeKeys.containsKey(key);
+		return attributeTypes.containsKey(key);
 	}
 
-	public List<String> getAttributeKey(String name) {
-		return attributeKeys.get(name);
+	public AttributeResolver getAttributeResolver(String name) {
+		return attributeResolvers.get(name);
+	}
+
+	public List<String> getKeyForResolver(AttributeResolver resolver) {
+		return resolverKeys.get(resolver);
 	}
 
 	public Class<?> getAttributeType(String name) {
