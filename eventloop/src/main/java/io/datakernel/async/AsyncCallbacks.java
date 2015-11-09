@@ -90,6 +90,87 @@ public final class AsyncCallbacks {
 	}
 
 	/**
+	 * Posts onResult()
+	 *
+	 * @param eventloop event loop in which it will call callback
+	 * @param callback  the callback for calling
+	 * @param result    the result with which ResultCallback will be called.
+	 * @param <T>       type of result
+	 */
+	public static <T> void postResult(Eventloop eventloop, final ResultCallback<T> callback, final T result) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				callback.onResult(result);
+			}
+		});
+	}
+
+	/**
+	 * Posts onException()
+	 *
+	 * @param eventloop event loop in which it will call callback
+	 * @param callback  the callback for calling
+	 * @param e         the exception with which ResultCallback will be called.
+	 */
+	public static void postException(Eventloop eventloop, final ExceptionCallback callback, final Exception e) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				callback.onException(e);
+			}
+		});
+	}
+
+	/**
+	 * Posts onComplete()
+	 *
+	 * @param eventloop event loop in which it will call callback
+	 * @param callback  the callback for calling
+	 */
+	public static void postCompletion(Eventloop eventloop, final CompletionCallback callback) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				callback.onComplete();
+			}
+		});
+	}
+
+	/**
+	 * Posts onNext() from IteratorCallback from arguments in event loop
+	 *
+	 * @param eventloop event loop in which it will call callback
+	 * @param callback  the callback for calling
+	 * @param next      the element with which IteratorCallback will be called.
+	 * @param <T>       type of elements in iterator
+	 */
+	public static <T> void postNext(Eventloop eventloop, final IteratorCallback<T> callback, final T next) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				callback.onNext(next);
+			}
+		});
+	}
+
+	/**
+	 * Calls onEnd() from IteratorCallback from arguments in event loop from other thread
+	 *
+	 * @param eventloop event loop in which it will call callback
+	 * @param callback  the callback for calling
+	 * @param <T>       type of elements in iterator
+	 */
+	public static <T> void postEnd(Eventloop eventloop, final IteratorCallback<T> callback) {
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				callback.onEnd();
+			}
+		});
+	}
+
+	/**
 	 * Calls onResult() from ResultCallback from arguments in event loop from other thread.
 	 *
 	 * @param eventloop event loop in which it will call callback
@@ -107,13 +188,13 @@ public final class AsyncCallbacks {
 	}
 
 	/**
-	 * Calls onException() from ResultCallback from arguments in event loop from other thread.
+	 * Calls onException() from other thread.
 	 *
 	 * @param eventloop event loop in which it will call callback
 	 * @param callback  the callback for calling
 	 * @param e         the exception with which ResultCallback will be called.
 	 */
-	public static void postExceptionConcurrently(Eventloop eventloop, final ResultCallback<?> callback, final Exception e) {
+	public static void postExceptionConcurrently(Eventloop eventloop, final ExceptionCallback callback, final Exception e) {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
@@ -133,22 +214,6 @@ public final class AsyncCallbacks {
 			@Override
 			public void run() {
 				callback.onComplete();
-			}
-		});
-	}
-
-	/**
-	 * Calls onException() from CompletionCallback from arguments in event loop from other thread.
-	 *
-	 * @param eventloop event loop in which it will call callback
-	 * @param callback  the callback for calling
-	 * @param e         the exception with which CompletionCallback will be called.
-	 */
-	public static void postExceptionConcurrently(Eventloop eventloop, final CompletionCallback callback, final Exception e) {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				callback.onException(e);
 			}
 		});
 	}
@@ -182,23 +247,6 @@ public final class AsyncCallbacks {
 			@Override
 			public void run() {
 				callback.onEnd();
-			}
-		});
-	}
-
-	/**
-	 * Calls onException() from IteratorCallback from arguments in event loop from other thread
-	 *
-	 * @param eventloop event loop in which it will call callback
-	 * @param callback  the callback for calling
-	 * @param e         the exception with which IteratorCallback will be called.
-	 * @param <T>       type of elements in iterator
-	 */
-	public static <T> void postExceptionConcurrently(Eventloop eventloop, final IteratorCallback<T> callback, final Exception e) {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				callback.onException(e);
 			}
 		});
 	}
@@ -980,8 +1028,9 @@ public final class AsyncCallbacks {
 	/**
 	 * Returns {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
 	 * to specified eventloop
+	 *
 	 * @param eventloop {@link Eventloop} to which calls will be forwarded
-	 * @param callback {@link ResultCallback}
+	 * @param callback  {@link ResultCallback}
 	 * @param <T>
 	 * @return {@link ResultCallback} which forwards {@code onResult()} or {@code onException()} calls
 	 * to specified eventloop
@@ -1014,8 +1063,9 @@ public final class AsyncCallbacks {
 	/**
 	 * Returns {@link CompletionCallback} which forwards {@code onComplete()} or {@code onException()} calls
 	 * to specified eventloop
+	 *
 	 * @param eventloop {@link Eventloop} to which calls will be forwarded
-	 * @param callback {@link CompletionCallback}
+	 * @param callback  {@link CompletionCallback}
 	 * @return {@link CompletionCallback} which forwards {@code onComplete()} or {@code onException()} calls
 	 * to specified eventloop
 	 */

@@ -51,7 +51,7 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public final class HttpClientImpl implements HttpClientAsync, NioService, HttpClientImplMXBean {
+public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientImplMXBean {
 	private static final Logger logger = LoggerFactory.getLogger(HttpClientImpl.class);
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
