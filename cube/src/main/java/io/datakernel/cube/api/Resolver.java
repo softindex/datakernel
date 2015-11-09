@@ -1,81 +1,90 @@
 package io.datakernel.cube.api;
 
-import io.datakernel.aggregation_db.api.NameResolver;
+import io.datakernel.aggregation_db.PrimaryKey;
+import io.datakernel.aggregation_db.api.AttributeResolver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.util.Preconditions;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.cube.api.CommonUtils.generateGetter;
 import static io.datakernel.cube.api.CommonUtils.generateSetter;
 
 public final class Resolver {
 	private final DefiningClassLoader classLoader;
-	private final Map<String, NameResolver> nameResolvers;
+	private final Map<String, AttributeResolver> attributeResolvers;
 
-	public Resolver(DefiningClassLoader classLoader, Map<String, NameResolver> nameResolvers) {
+	public Resolver(DefiningClassLoader classLoader, Map<String, AttributeResolver> attributeResolvers) {
 		this.classLoader = classLoader;
-		this.nameResolvers = nameResolvers;
+		this.attributeResolvers = attributeResolvers;
 	}
 
 	public List<Object> resolve(List<Object> records, Class<?> resultClass,
-	                            Map<String, List<String>> nameKeys,
-	                            Map<String, Class<?>> nameTypes,
-	                            final Map<String, Object> keyConstants) {
-		if (nameKeys.isEmpty())
+	                            Map<String, List<String>> attributeKeys,
+	                            Map<String, Class<?>> attributeTypes) {
+		return resolve(records, resultClass, attributeKeys, attributeTypes, null);
+	}
+
+	public List<Object> resolve(List<Object> records, Class<?> resultClass,
+	                            Map<String, List<String>> attributeKeys,
+	                            Map<String, Class<?>> attributeTypes,
+	                            Map<String, Object> keyConstants) {
+		if (attributeKeys.isEmpty())
 			return records;
 
-		for (Map.Entry<String, List<String>> mapping : nameKeys.entrySet()) {
-			String resultDimensionName = mapping.getKey();
-			List<String> keyDimensionNames = mapping.getValue();
+		for (Map.Entry<String, List<String>> mapping : attributeKeys.entrySet()) {
+			String attributeName = mapping.getKey();
+			List<String> keyNames = mapping.getValue();
 
-			FieldGetter[] keyGetters = createKeyGetters(keyDimensionNames, keyConstants, resultClass);
+			FieldGetter[] keyGetters = createKeyGetters(keyNames, keyConstants, resultClass);
 
-			List<List<Object>> keys = retrieveKeyTuples(records, keyGetters);
+			List<PrimaryKey> keys = retrieveKeyTuples(records, keyGetters);
 
-			NameResolver nameResolver = nameResolvers.get(resultDimensionName);
-			Preconditions.checkNotNull(nameResolver, "Resolver is not defined for " + resultDimensionName);
+			AttributeResolver attributeResolver = attributeResolvers.get(attributeName);
+			Preconditions.checkNotNull(attributeResolver, "Resolver is not defined for " + attributeName);
 
-			List<Object> resolvedNames = nameResolver.resolveByKey(keyDimensionNames, keys);
-			copyResolvedNamesToRecords(resolvedNames, records, resultClass, resultDimensionName, nameTypes);
+			Map<PrimaryKey, Object> resolvedAttributes = attributeResolver.resolve(keys);
+			copyResolvedNamesToRecords(resolvedAttributes, keys, records, resultClass, attributeName, attributeTypes);
 		}
 
 		return records;
 	}
 
-	private void copyResolvedNamesToRecords(List<Object> resolvedNames, List<Object> records, Class<?> resultClass,
-	                                        String resultDimensionName, Map<String, Class<?>> nameTypes) {
-		Preconditions.check(resolvedNames.size() == records.size(),
-				String.format("Name resolver returned incorrect number (%d) of resolved names (required: %d)", resolvedNames.size(), records.size()));
-		FieldSetter fieldSetter = generateSetter(classLoader, resultClass, resultDimensionName, nameTypes.get(resultDimensionName));
-		for (int i = 0; i < resolvedNames.size(); i++) {
-			fieldSetter.set(records.get(i), resolvedNames.get(i));
+	private void copyResolvedNamesToRecords(Map<PrimaryKey, Object> resolvedAttributes, List<PrimaryKey> keys,
+	                                        List<Object> records, Class<?> resultClass,
+	                                        String attributeName, Map<String, Class<?>> attributeTypes) {
+		Preconditions.check(resolvedAttributes.size() == records.size(),
+				String.format("Name resolver returned incorrect number (%d) of resolved names (required: %d)", resolvedAttributes.size(), records.size()));
+		FieldSetter fieldSetter = generateSetter(classLoader, resultClass, attributeName, attributeTypes.get(attributeName));
+		for (int i = 0; i < records.size(); i++) {
+			fieldSetter.set(records.get(i), resolvedAttributes.get(keys.get(i)));
 		}
 	}
 
-	private List<List<Object>> retrieveKeyTuples(List<Object> records, FieldGetter[] keyGetters) {
-		List<List<Object>> keys = newArrayList();
+	private List<PrimaryKey> retrieveKeyTuples(List<Object> records, FieldGetter[] keyGetters) {
+		List<PrimaryKey> keys = new ArrayList<>(records.size());
 		for (Object record : records) {
-			List<Object> key = newArrayList();
+			Object[] key = new Object[keyGetters.length];
 			for (int i = 0; i < keyGetters.length; i++) {
-				key.add(keyGetters[i].get(record));
+				key[i] = keyGetters[i].get(record);
 			}
-			keys.add(key);
+			keys.add(PrimaryKey.ofArray(key));
 		}
 		return keys;
 	}
 
-	private FieldGetter[] createKeyGetters(List<String> keyDimensionNames, final Map<String, Object> keyConstants, Class<?> resultClass) {
-		FieldGetter[] keyGetters = new FieldGetter[keyDimensionNames.size()];
-		for (int i = 0; i < keyDimensionNames.size(); i++) {
-			final String key = keyDimensionNames.get(i);
-			if (keyConstants.containsKey(key)) {
+	private FieldGetter[] createKeyGetters(List<String> keyNames, final Map<String, Object> keyConstants, Class<?> resultClass) {
+		FieldGetter[] keyGetters = new FieldGetter[keyNames.size()];
+		for (int i = 0; i < keyNames.size(); i++) {
+			final String key = keyNames.get(i);
+			if (keyConstants != null && keyConstants.containsKey(key)) {
+				final Object keyConstant = keyConstants.get(key);
 				keyGetters[i] = new FieldGetter() {
 					@Override
 					public Object get(Object obj) {
-						return keyConstants.get(key);
+						return keyConstant;
 					}
 				};
 			} else {

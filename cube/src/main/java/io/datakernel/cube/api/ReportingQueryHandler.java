@@ -57,13 +57,12 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 	private final DefiningClassLoader classLoader;
 	private final Resolver resolver;
 
-	public ReportingQueryHandler(Gson gson, Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader,
-	                             Resolver resolver) {
+	public ReportingQueryHandler(Gson gson, Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
 		this.gson = gson;
 		this.cube = cube;
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
-		this.resolver = resolver;
+		this.resolver = new Resolver(classLoader, cube.getResolvers());
 	}
 
 	@Override
@@ -86,8 +85,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		logger.info("Got query {}", request);
 		final AggregationStructure structure = cube.getStructure();
 		final ReportingConfiguration reportingConfiguration = cube.getReportingConfiguration();
-		final Map<String, List<String>> nameKeys = newHashMap();
-		final Map<String, Class<?>> nameTypes = newHashMap();
+		final Map<String, List<String>> attributeKeys = newHashMap();
+		final Map<String, Class<?>> attributeTypes = newHashMap();
 
 		Set<String> requestDimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
 		Set<String> dimensions = newHashSet();
@@ -95,11 +94,11 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		for (String dimension : requestDimensions) {
 			if (structure.containsKey(dimension))
 				dimensions.add(dimension);
-			else if (reportingConfiguration.containsName(dimension)) {
-				List<String> keys = reportingConfiguration.getNameKey(dimension);
+			else if (reportingConfiguration.containsAttribute(dimension)) {
+				List<String> keys = reportingConfiguration.getAttributeKey(dimension);
 				dimensions.addAll(keys);
-				nameKeys.put(dimension, keys);
-				nameTypes.put(dimension, reportingConfiguration.getNameType(dimension));
+				attributeKeys.put(dimension, keys);
+				attributeTypes.put(dimension, reportingConfiguration.getAttributeType(dimension));
 			} else
 				throw new QueryException("Cube does not contain dimension with name '" + dimension + "'");
 		}
@@ -160,7 +159,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 		addPredicatesToQuery(finalQuery, predicatesJson);
 
-		final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, nameTypes, structure, reportingConfiguration);
+		final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, attributeTypes, structure, reportingConfiguration);
 		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
 
 		final Integer limit = valueOrNull(limitString);
@@ -192,7 +191,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 					queryResult.computeMeasures();
 				}
 
-				resolver.resolve((List) results, resultClass, nameKeys, nameTypes, new HashMap<String, Object>());
+				resolver.resolve((List) results, resultClass, attributeKeys, attributeTypes);
 
 				// sort
 				if (sortingRequired) {

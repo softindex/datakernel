@@ -16,11 +16,9 @@
 
 package io.datakernel.cube.api;
 
-import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.AggregationQuery;
-import io.datakernel.aggregation_db.api.NameResolver;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
@@ -28,16 +26,13 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.MiddlewareServlet;
 
-import java.util.Map;
-
 public final class CubeHttpServer {
 	private static final String DIMENSIONS_REQUEST_PATH = "/dimensions/";
 	private static final String QUERY_REQUEST_PATH = "/";
 	private static final String INFO_REQUEST_PATH = "/info/";
 	private static final String REPORTING_QUERY_REQUEST_PATH = "/reporting/";
 
-	public static MiddlewareServlet createServlet(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader,
-	                                              Map<String, NameResolver> nameResolvers) {
+	public static MiddlewareServlet createServlet(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
 		final Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
 				.create();
@@ -50,18 +45,13 @@ public final class CubeHttpServer {
 
 		servlet.get(DIMENSIONS_REQUEST_PATH, new DimensionsRequestHandler(gson, cube, eventloop, classLoader));
 
-		servlet.get(REPORTING_QUERY_REQUEST_PATH, new ReportingQueryHandler(gson, cube, eventloop, classLoader, new Resolver(classLoader, nameResolvers)));
+		servlet.get(REPORTING_QUERY_REQUEST_PATH, new ReportingQueryHandler(gson, cube, eventloop, classLoader));
 
 		return servlet;
 	}
 
 	public static AsyncHttpServer createServer(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
-		return new AsyncHttpServer(eventloop, createServlet(cube, eventloop, classLoader, Maps.<String, NameResolver>newHashMap()));
-	}
-
-	public static AsyncHttpServer createServer(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader,
-	                                           Map<String, NameResolver> nameResolvers) {
-		return new AsyncHttpServer(eventloop, createServlet(cube, eventloop, classLoader, nameResolvers));
+		return new AsyncHttpServer(eventloop, createServlet(cube, eventloop, classLoader));
 	}
 
 	public static AsyncHttpServer createServer(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader, int port) {
