@@ -65,7 +65,7 @@ public final class Cube {
 	private final int sorterItemsInMemory;
 
 	private final AggregationStructure structure;
-	private final ReportingConfiguration reportingConfiguration;
+	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
 
 	private Map<String, Aggregation> aggregations = new LinkedHashMap<>();
 
@@ -86,23 +86,15 @@ public final class Cube {
 	 */
 	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
 	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, ReportingConfiguration reportingConfiguration,
-	            int aggregationChunkSize, int sorterItemsInMemory) {
+	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory) {
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
 		this.cubeMetadataStorage = cubeMetadataStorage;
 		this.aggregationMetadataStorage = aggregationMetadataStorage;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.structure = structure;
-		this.reportingConfiguration = reportingConfiguration;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
-	}
-
-	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
-	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory) {
-		this(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, structure, null, aggregationChunkSize, sorterItemsInMemory);
 	}
 
 	public Map<String, Aggregation> getAggregations() {
@@ -115,6 +107,18 @@ public final class Cube {
 
 	public ReportingConfiguration getReportingConfiguration() {
 		return reportingConfiguration;
+	}
+
+	public void setReportingConfiguration(ReportingConfiguration reportingConfiguration) {
+		this.reportingConfiguration = reportingConfiguration;
+		initResolverKeys();
+	}
+
+	public void initResolverKeys() {
+		for (Map.Entry<String, String> attributeDimension : reportingConfiguration.getAttributeDimensions().entrySet()) {
+			List<String> key = buildDrillDownChain(attributeDimension.getValue());
+			reportingConfiguration.setKeyForAttribute(attributeDimension.getKey(), key);
+		}
 	}
 
 	public Map<String, AttributeResolver> getResolvers() {
@@ -440,6 +444,10 @@ public final class Cube {
 
 	public List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
 		return structure.getChildParentRelationships().buildDrillDownChain(usedDimensions, dimension);
+	}
+
+	public List<String> buildDrillDownChain(String dimension) {
+		return buildDrillDownChain(Sets.<String>newHashSet(), dimension);
 	}
 
 	public Set<String> getAvailableMeasures(List<String> dimensions, List<String> allMeasures) {

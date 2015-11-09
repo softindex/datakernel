@@ -17,6 +17,8 @@ public final class ReportingConfiguration {
 	private Map<String, AttributeResolver> attributeResolvers = newLinkedHashMap();
 	private Map<AttributeResolver, List<String>> resolverKeys = newHashMap();
 
+	private Map<String, String> attributeDimensions = newHashMap();
+
 	public ReportingConfiguration addComputedMeasure(String name, ReportingDSLExpression expression) {
 		this.computedMeasures.put(name, expression);
 		return this;
@@ -31,6 +33,13 @@ public final class ReportingConfiguration {
 		this.attributeTypes.put(name, type);
 		this.attributeResolvers.put(name, resolver);
 		this.resolverKeys.put(resolver, key);
+		return this;
+	}
+
+	public ReportingConfiguration addResolvedAttribute(String name, String dimension, Class<?> type, AttributeResolver resolver) {
+		this.attributeTypes.put(name, type);
+		this.attributeResolvers.put(name, resolver);
+		this.attributeDimensions.put(name, dimension);
 		return this;
 	}
 
@@ -52,6 +61,14 @@ public final class ReportingConfiguration {
 
 	public Map<String, AttributeResolver> getResolvers() {
 		return ImmutableMap.copyOf(attributeResolvers);
+	}
+
+	public Map<String, String> getAttributeDimensions() {
+		return attributeDimensions;
+	}
+
+	public void setKeyForAttribute(String name, List<String> key) {
+		resolverKeys.put(attributeResolvers.get(name), key);
 	}
 
 	public boolean containsComputedMeasure(String computedMeasure) {

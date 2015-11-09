@@ -85,19 +85,19 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		final Map<AttributeResolver, List<String>> resolverKeys = newLinkedHashMap();
 		final Map<String, Class<?>> attributeTypes = newLinkedHashMap();
 
-		Set<String> requestDimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
-		Set<String> dimensions = newHashSet();
+		final List<String> requestDimensions = getListOfStrings(gson, request.getParameter("dimensions"));
+		Set<String> storedDimensions = newHashSet();
 
 		for (String dimension : requestDimensions) {
 			if (structure.containsKey(dimension))
-				dimensions.add(dimension);
+				storedDimensions.add(dimension);
 			else if (reportingConfiguration.containsAttribute(dimension)) {
 				AttributeResolver resolver = reportingConfiguration.getAttributeResolver(dimension);
 				if (resolver == null)
 					throw new QueryException("Cube does not contain resolver for '" + dimension + "'");
 
 				List<String> key = reportingConfiguration.getKeyForResolver(resolver);
-				dimensions.addAll(key);
+				storedDimensions.addAll(key);
 				resolverKeys.put(resolver, key);
 				attributeTypes.put(dimension, reportingConfiguration.getAttributeType(dimension));
 			} else
@@ -126,7 +126,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		String offsetString = request.getParameter("offset");
 
 		final AggregationQuery finalQuery = new AggregationQuery()
-				.keys(newArrayList(dimensions))
+				.keys(newArrayList(storedDimensions))
 				.fields(newArrayList(storedMeasures));
 
 		// parse ordering information
@@ -141,7 +141,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			orderingField = ordering.get(0);
 			orderingByComputedMeasure = computedMeasures.contains(orderingField);
 
-			if (!dimensions.contains(orderingField) && !storedMeasures.contains(orderingField) && !orderingByComputedMeasure) {
+			if (!storedDimensions.contains(orderingField) && !storedMeasures.contains(orderingField) && !orderingByComputedMeasure) {
 				throw new QueryException("Ordering is specified by not requested field");
 			}
 
@@ -160,14 +160,14 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 		addPredicatesToQuery(finalQuery, predicatesJson);
 
-		final Class<QueryResultPlaceholder> resultClass = createResultClass(classLoader, finalQuery, computedMeasures, attributeTypes, structure, reportingConfiguration);
-		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery, cube, eventloop);
+		final Class<QueryResultPlaceholder> resultClass = createResultClass(finalQuery, computedMeasures, attributeTypes, structure, reportingConfiguration);
+		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery);
 
 		final Integer limit = valueOrNull(limitString);
 		final Integer offset = valueOrNull(offsetString);
 
 		final boolean sortingRequired = orderingByComputedMeasure;
-		final Comparator<QueryResultPlaceholder> comparator = sortingRequired ? generateComparator(classLoader, orderingField, ascendingOrdering, resultClass) : null;
+		final Comparator<QueryResultPlaceholder> comparator = sortingRequired ? generateComparator(orderingField, ascendingOrdering, resultClass) : null;
 
 		consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 			@Override
@@ -178,7 +178,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 				}
 
 				// compute totals
-				TotalsPlaceholder totalsPlaceholder = createTotalsPlaceholder(classLoader, structure, resultClass, reportingConfiguration, storedMeasures, computedMeasures);
+				TotalsPlaceholder totalsPlaceholder = createTotalsPlaceholder(structure, resultClass, reportingConfiguration, storedMeasures, computedMeasures);
 				totalsPlaceholder.initAccumulator(results.get(0));
 				if (results.size() > 1) {
 					for (int i = 1; i < results.size(); ++i) {
@@ -199,8 +199,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 					Collections.sort(results, comparator);
 				}
 
-				String jsonResult = constructQueryResultJson(resultClass, structure, queryMeasures,
-						consumerStream.getList(), totalsPlaceholder, finalQuery, classLoader, limit, offset);
+				String jsonResult = constructQueryResultJson(consumerStream.getList(), resultClass,
+						requestDimensions, queryMeasures, totalsPlaceholder, structure, limit, offset);
 				callback.onResult(createResponse(jsonResult));
 				logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
 			}
@@ -240,19 +240,17 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static StreamConsumers.ToList<QueryResultPlaceholder> queryCube(Class<QueryResultPlaceholder> resultClass,
-	                                                                        AggregationQuery query,
-	                                                                        Cube cube,
-	                                                                        NioEventloop eventloop) {
+	private StreamConsumers.ToList<QueryResultPlaceholder> queryCube(Class<QueryResultPlaceholder> resultClass,
+	                                                                        AggregationQuery query) {
 		StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = StreamConsumers.toList(eventloop);
 		StreamProducer<QueryResultPlaceholder> queryResultProducer = cube.query(resultClass, query);
 		queryResultProducer.streamTo(consumerStream);
 		return consumerStream;
 	}
 
-	private static Class<QueryResultPlaceholder> createResultClass(DefiningClassLoader classLoader, AggregationQuery query,
-	                                                               Set<String> computedMeasureNames, Map<String, Class<?>> nameTypes,
-	                                                               AggregationStructure structure, ReportingConfiguration reportingConfiguration) {
+	private Class<QueryResultPlaceholder> createResultClass(AggregationQuery query,
+	                                                        Set<String> computedMeasureNames, Map<String, Class<?>> nameTypes,
+	                                                        AggregationStructure structure, ReportingConfiguration reportingConfiguration) {
 		AsmBuilder<QueryResultPlaceholder> builder = new AsmBuilder<>(classLoader, QueryResultPlaceholder.class);
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
@@ -276,10 +274,10 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		return builder.defineClass();
 	}
 
-	private static <T> String constructQueryResultJson(Class<?> resultClass, AggregationStructure structure, List<String> resultFields,
-	                                                   List<T> results, TotalsPlaceholder totalsPlaceholder, AggregationQuery query,
-	                                                   DefiningClassLoader classLoader, Integer limit, Integer offset) {
-		List<String> resultKeys = query.getResultKeys();
+	private <T> String constructQueryResultJson(List<T> results, Class<?> resultClass,
+	                                            List<String> resultKeys, List<String> resultFields,
+	                                            TotalsPlaceholder totalsPlaceholder, AggregationStructure structure,
+	                                            Integer limit, Integer offset) {
 		JsonObject jsonResult = new JsonObject();
 		JsonArray jsonRecords = new JsonArray();
 		JsonObject jsonTotals = new JsonObject();
@@ -313,7 +311,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			JsonObject resultJsonObject = new JsonObject();
 
 			for (int j = 0; j < resultKeys.size(); j++) {
-				resultJsonObject.add(resultKeys.get(j), keyTypes[j].toJson(keyGetters[j].get(result)));
+				Object value = keyGetters[j].get(result);
+				resultJsonObject.add(resultKeys.get(j), keyTypes[j] == null ? new JsonPrimitive(value == null ? "" : value.toString()) : keyTypes[j].toJson(value));
 			}
 
 			for (int j = 0; j < resultFields.size(); j++) {
@@ -335,9 +334,9 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		return jsonResult.toString();
 	}
 
-	private static TotalsPlaceholder createTotalsPlaceholder(DefiningClassLoader classLoader, AggregationStructure structure,
-	                                                         Class<?> inputClass, ReportingConfiguration reportingConfiguration,
-	                                                         Set<String> requestedStoredFields, Set<String> computedMeasureNames) {
+	private TotalsPlaceholder createTotalsPlaceholder(AggregationStructure structure,
+	                                                  Class<?> inputClass, ReportingConfiguration reportingConfiguration,
+	                                                  Set<String> requestedStoredFields, Set<String> computedMeasureNames) {
 		AsmBuilder<TotalsPlaceholder> builder = new AsmBuilder<>(classLoader, TotalsPlaceholder.class);
 
 		ExpressionSequence initAccumulatorSequence = sequence();
@@ -376,8 +375,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		return builder.newInstance();
 	}
 
-	private static Comparator<QueryResultPlaceholder> generateComparator(DefiningClassLoader classLoader, String fieldName, boolean ascending,
-	                                                                     Class<QueryResultPlaceholder> fieldClass) {
+	private Comparator<QueryResultPlaceholder> generateComparator(String fieldName, boolean ascending,
+	                                                              Class<QueryResultPlaceholder> fieldClass) {
 		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();
 		if (ascending)
