@@ -52,7 +52,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		this.bucketCapacity = DEFAULT_BUCKET_CAPACITY;
 	}
 
-	public RpcStrategyRendezvousHashing withMinSubStrategiesForCreation(int minSubStrategiesForCreation) {
+	public RpcStrategyRendezvousHashing withMinActiveSubStrategies(int minSubStrategiesForCreation) {
 		checkArgument(minSubStrategiesForCreation > 0, "minSubStrategiesForCreation must be greater than 0");
 		this.minSubStrategiesForCreation = minSubStrategiesForCreation;
 		return this;

@@ -94,7 +94,7 @@ public class RpcStrategyRendezvousHashingTest {
 	}
 
 	@Test
-	public void itShouldBeCreatedWhenThereIsAtLeastOneActiveSubSender() {
+	public void itShouldBeCreatedWhenThereAreAtLeastOneActiveSubSender() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		int key1 = 1;
@@ -117,7 +117,7 @@ public class RpcStrategyRendezvousHashingTest {
 	}
 
 	@Test
-	public void itShouldNotBeCreatedWhenThereIsNoActiveSubSenders() {
+	public void itShouldNotBeCreatedWhenThereAreNoActiveSubSenders() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		int key1 = 1;
 		int key2 = 2;
@@ -138,12 +138,71 @@ public class RpcStrategyRendezvousHashingTest {
 	}
 
 	@Test
-	public void itShouldNotBeCreatedWhenThereNoSendersWereAdded() {
+	public void itShouldNotBeCreatedWhenNoSendersWereAdded() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcRequestSendingStrategy rendezvousHashingStrategy = new RpcStrategyRendezvousHashing(hashFunction);
 
 		assertFalse(rendezvousHashingStrategy.create(pool).isPresent());
+	}
+
+	@Test
+	public void itShouldNotBeCreatedWhenThereAreNotEnoughSubSenders() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		int key1 = 1;
+		int key2 = 2;
+		int key3 = 3;
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy firstAvailableStrategy =
+				new RpcStrategyRendezvousHashing(hashFunction)
+						.withMinActiveSubStrategies(4)
+						.put(key1, strategySingleServer1)
+						.put(key2, strategySingleServer2)
+						.put(key3, strategySingleServer3);
+
+		pool.add(ADDRESS_1, connection1);
+		pool.add(ADDRESS_2, connection2);
+		pool.add(ADDRESS_3, connection3);
+
+		assertTrue(strategySingleServer1.create(pool).isPresent());
+		assertTrue(strategySingleServer2.create(pool).isPresent());
+		assertTrue(strategySingleServer3.create(pool).isPresent());
+		assertFalse(firstAvailableStrategy.create(pool).isPresent());
+	}
+
+	@Test
+	public void itShouldNotBeCreatedWhenThereAreNotEnoughActiveSubSenders() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
+		int key1 = 1;
+		int key2 = 2;
+		int key3 = 3;
+		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy firstAvailableStrategy =
+				new RpcStrategyRendezvousHashing(hashFunction)
+						.withMinActiveSubStrategies(4)
+						.put(key1, strategySingleServer1)
+						.put(key2, strategySingleServer2)
+						.put(key3, strategySingleServer3);
+
+		pool.add(ADDRESS_1, connection1);
+		pool.add(ADDRESS_2, connection2);
+		// we don't add connection3
+
+		assertTrue(strategySingleServer1.create(pool).isPresent());
+		assertTrue(strategySingleServer2.create(pool).isPresent());
+		assertFalse(strategySingleServer3.create(pool).isPresent());
+		assertFalse(firstAvailableStrategy.create(pool).isPresent());
 	}
 
 	@Test(expected = Exception.class)

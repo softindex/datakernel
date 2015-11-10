@@ -35,6 +35,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class RpcStrategyFirstValidResultTest {
 
@@ -238,6 +240,85 @@ public class RpcStrategyFirstValidResultTest {
 		sender.sendRequest(data, timeout, callback);
 
 		assertEquals(exceptionMessage, passedException.get().getMessage());
+	}
+
+	@Test
+	public void itShouldBeCreatedWhenThereIsAtLeastOneActiveSubSender() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionStub connection = new RpcClientConnectionStub();
+		// one connection is added
+		pool.add(ADDRESS_2, connection);
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy firstValideResult =
+				new RpcStrategyFirstValidResult(asList(singleServerStrategy1, singleServerStrategy2));
+
+		assertFalse(singleServerStrategy1.create(pool).isPresent());
+		assertTrue(singleServerStrategy2.create(pool).isPresent());
+		assertTrue(firstValideResult.create(pool).isPresent());
+	}
+
+	@Test
+	public void itShouldNotBeCreatedWhenThereAreNoActiveSubSenders() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		// no connections were added to pool
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy firstValidResult =
+				new RpcStrategyFirstValidResult(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
+
+		assertFalse(singleServerStrategy1.create(pool).isPresent());
+		assertFalse(singleServerStrategy2.create(pool).isPresent());
+		assertFalse(singleServerStrategy3.create(pool).isPresent());
+		assertFalse(firstValidResult.create(pool).isPresent());
+	}
+
+	@Test
+	public void itShouldNotBeCreatedWhenThereAreNotEnoughSubSenders() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy firstValidResult =
+				new RpcStrategyFirstValidResult(
+						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3)
+				).withMinActiveSubStrategies(4);
+
+		pool.add(ADDRESS_1, connection1);
+		pool.add(ADDRESS_2, connection2);
+		pool.add(ADDRESS_3, connection3);
+
+		assertTrue(singleServerStrategy1.create(pool).isPresent());
+		assertTrue(singleServerStrategy2.create(pool).isPresent());
+		assertTrue(singleServerStrategy3.create(pool).isPresent());
+		assertFalse(firstValidResult.create(pool).isPresent());
+	}
+
+	@Test
+	public void itShouldNotBeCreatedWhenThereAreNotEnoughActiveSubSenders() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
+		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy firstAvailableStrategy =
+				new RpcStrategyFirstValidResult(
+						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3)
+				).withMinActiveSubStrategies(3);
+
+		pool.add(ADDRESS_1, connection1);
+		pool.add(ADDRESS_2, connection2);
+		// we don't add connection3
+
+		assertTrue(singleServerStrategy1.create(pool).isPresent());
+		assertTrue(singleServerStrategy2.create(pool).isPresent());
+		assertFalse(singleServerStrategy3.create(pool).isPresent());
+		assertFalse(firstAvailableStrategy.create(pool).isPresent());
 	}
 
 	@Test(expected = Exception.class)
