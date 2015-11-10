@@ -16,6 +16,9 @@
 
 package io.datakernel.service;
 
+import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.SetMultimap;
+import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.util.Preconditions;
@@ -82,16 +85,24 @@ public class ServiceGraph implements ConcurrentService {
 			return service;
 		}
 
+		// TODO (vsavchuk) delete
 		public static Node ofNioService(Object key, NioService nioService) {
-			return new Node(key, ConcurrentServices.concurrentServiceOfNioService(nioService));
+			return new Node(key, ConcurrentServices.ofNioService(nioService));
 		}
 
+		// TODO (vsavchuk) delete
 		public static Node ofNioServer(Object key, NioServer nioServer) {
-			return new Node(key, ConcurrentServices.concurrentServiceOfNioServer(nioServer));
+			return new Node(key, ConcurrentServices.ofNioServer(nioServer));
 		}
 
+		// TODO (vsavchuk) delete
 		public static Node ofConcurrentService(Object key, ConcurrentService concurrentService) {
 			return new Node(key, concurrentService);
+		}
+
+		// TODO (vsavchuk) delete
+		public static Node ofNioEventloop(Object key, NioEventloop eventloop) {
+			return new Node(key, ConcurrentServices.ofNioEventloop(eventloop));
 		}
 	}
 
@@ -111,23 +122,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
 
-	private final Map<Node, Set<Node>> forwards = new LinkedHashMap<Node, Set<Node>>() {
-		@Override
-		public Set<Node> get(final Object key) {
-			if (!this.containsKey(key)) {
-				return new LinkedHashSet<Node>() {
-					@Override
-					public boolean add(Node o) {
-						if (!forwards.containsKey(key)) {
-							forwards.put((Node) key, this);
-						}
-						return super.add(o);
-					}
-				};
-			} ;
-			return super.get(key);
-		}
-	};
+	private final SetMultimap<Node, Node> forwards = LinkedHashMultimap.create();
 
 	/**
 	 * This set used to represent edges between vertices. If N1 and N2 - nodes and between them
@@ -135,24 +130,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
 
-	private final Map<Node, Set<Node>> backwards = new LinkedHashMap<Node, Set<Node>>() {
-		@Override
-		public Set<Node> get(final Object key) {
-			if (!this.containsKey(key)) {
-				return new LinkedHashSet<Node>() {
-					@Override
-					public boolean add(Node o) {
-						if (!backwards.containsKey(key)) {
-							backwards.put((Node) key, this);
-						}
-						return super.add(o);
-					}
-				};
-			} ;
-			return super.get(key);
-
-		}
-	};
+	private final SetMultimap<Node, Node> backwards = LinkedHashMultimap.create();
 
 	/**
 	 * Services which have been started
@@ -207,7 +185,7 @@ public class ServiceGraph implements ConcurrentService {
 	}
 
 	private static List<Node> nextNodes(Set<Node> processedNodes,
-	                                    Set<Node> vertices, Map<Node, Set<Node>> directNodes, Map<Node, Set<Node>> backwardNodes) {
+	                                    Set<Node> vertices, SetMultimap<Node, Node> directNodes, SetMultimap<Node, Node> backwardNodes) {
 		List<Node> result = new ArrayList<>();
 		for (Node node : vertices) {
 			if (processedNodes.contains(node))
@@ -237,7 +215,7 @@ public class ServiceGraph implements ConcurrentService {
 	}
 
 	private void longestPath(Map<Node, Long> timings,
-	                         Set<Node> vertices, Map<Node, Set<Node>> forwardNodes, Map<Node, Set<Node>> backwardNodes) {
+	                         Set<Node> vertices, SetMultimap<Node, Node> forwardNodes, SetMultimap<Node, Node> backwardNodes) {
 		List<Node> stack = new ArrayList<>();
 		List<Iterator<Node>> path = new ArrayList<>();
 		path.add(difference(vertices, (backwardNodes.keySet())).iterator());
@@ -289,7 +267,7 @@ public class ServiceGraph implements ConcurrentService {
 
 	synchronized private void next(final ServiceGraphAction action, final ExecutorService executorService,
 	                               final Set<Node> activeNodes, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes,
-	                               final Set<Node> vertices, final Map<Node, Set<Node>> forwardNodes, final Map<Node, Set<Node>> backwardNodes,
+	                               final Set<Node> vertices, final SetMultimap<Node, Node> forwardNodes, final SetMultimap<Node, Node> backwardNodes,
 	                               final Map<Node, Long> processingTimes, final ConcurrentServiceCallback callback, final String done, final String fail) {
 		List<Node> newNodes = Collections.emptyList();
 		if (failedNodes.isEmpty()) {
@@ -371,8 +349,8 @@ public class ServiceGraph implements ConcurrentService {
 			}
 		}
 
-		forwards.remove(vertex);
-		backwards.remove(vertex);
+		forwards.removeAll(vertex);
+		backwards.removeAll(vertex);
 		vertices.remove(vertex);
 	}
 

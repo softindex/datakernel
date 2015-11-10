@@ -135,7 +135,7 @@ public class HttpServerTest {
 		thread.join();
 	}
 
-	/*// TODO (vsavhuk) delete @Ignore*/
+	// TODO (vsavhuk) delete @Ignore
 	@Ignore
 	public void testKeepAlive() throws Exception {
 		NioEventloop eventloop = new NioEventloop();

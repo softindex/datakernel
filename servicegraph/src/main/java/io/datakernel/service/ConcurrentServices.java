@@ -16,8 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
@@ -26,7 +24,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 
 public class ConcurrentServices {
 	private ConcurrentServices() {
@@ -76,27 +73,18 @@ public class ConcurrentServices {
 		return new SequentialService(callbacks);
 	}
 
-	public static ConcurrentService concurrentServiceOfNioService(final NioService nioService) {
-		return concurrentServiceOfNioService(nioService, Executors.defaultThreadFactory());
-	}
-
-	public static ConcurrentService concurrentServiceOfNioService(final NioService nioService, final ThreadFactory threadFactory) {
+	// TODO (vsavchuk) delete
+	public static ConcurrentService ofNioService(final NioService nioService) {
 		return new ConcurrentService() {
 			@Override
 			public void startFuture(final ConcurrentServiceCallback callback) {
-				threadFactory.newThread(new Runnable() {
+				nioService.getNioEventloop().postConcurrently(new Runnable() {
 					@Override
 					public void run() {
-						nioService.getNioEventloop().post(new Runnable() {
-							@Override
-							public void run() {
-								startupNioServiceAsync(nioService, callback);
-							}
-						});
-						nioService.getNioEventloop().run();
-
+						nioService.start(callback);
+						callback.onComplete();
 					}
-				}).start();
+				});
 			}
 
 			@Override
@@ -104,70 +92,71 @@ public class ConcurrentServices {
 				nioService.getNioEventloop().postConcurrently(new Runnable() {
 					@Override
 					public void run() {
-						shutdownNioServiceAsync(nioService, callback);
+						nioService.stop(callback);
+						callback.onComplete();
 					}
 				});
 			}
 		};
 	}
 
-	public static ConcurrentService concurrentServiceOfNioServer(final NioServer nioServer) {
-		return concurrentServiceOfNioServer(nioServer, Executors.defaultThreadFactory());
+	// TODO (vsavchuk) delete
+	public static ConcurrentService ofNioServer(final NioServer nioServer) {
+		return new ConcurrentService() {
+			@Override
+			public void startFuture(final ConcurrentServiceCallback callback) {
+				nioServer.getNioEventloop().postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							nioServer.listen();
+							callback.onComplete();
+						} catch (IOException e) {
+							callback.onException(e);
+						}
+					}
+				});
+			}
+
+			@Override
+			public void stopFuture(final ConcurrentServiceCallback callback) {
+				nioServer.getNioEventloop().postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						nioServer.close();
+						callback.onComplete();
+					}
+				});
+			}
+		};
 	}
 
-	public static ConcurrentService concurrentServiceOfNioServer(final NioServer nioServer, final ThreadFactory threadFactory) {
-		return concurrentServiceOfNioService(new NioService() {
+	// TODO (vsavchuk) delete
+	public static ConcurrentService ofNioEventloop(final NioEventloop nioEventloop) {
+		return new ConcurrentService() {
 			@Override
-			public NioEventloop getNioEventloop() {
-				return nioServer.getNioEventloop();
+			public void startFuture(final ConcurrentServiceCallback callback) {
+				// TODO (vsavchuk) see ServiceGraphFactory
+				Executors.defaultThreadFactory().newThread(new Runnable() {
+					@Override
+					public void run() {
+						nioEventloop.keepAlive(true);
+						callback.onComplete();
+						nioEventloop.run();
+					}
+				}).start();
 			}
 
 			@Override
-			public void start(CompletionCallback callback) {
-				try {
-					nioServer.listen();
-					callback.onComplete();
-				} catch (IOException e) {
-					callback.onException(e);
-				}
+			public void stopFuture(final ConcurrentServiceCallback callback) {
+				nioEventloop.postConcurrently(new Runnable() {
+					@Override
+					public void run() {
+						callback.onComplete();
+						nioEventloop.keepAlive(false);
+					}
+				});
 			}
-
-			@Override
-			public void stop(CompletionCallback callback) {
-				nioServer.close();
-				callback.onComplete();
-			}
-		}, threadFactory);
-	}
-
-	private static void startupNioServiceAsync(final NioService nioService, final CompletionCallback startupCallback) {
-		nioService.getNioEventloop().keepAlive(true);
-		nioService.start(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				startupCallback.onComplete();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				startupCallback.onException(exception);
-			}
-		});
-	}
-
-	public static void shutdownNioServiceAsync(final NioService nioService, final CompletionCallback shutdownCallback) {
-		final CompletionCallback callbackWaitAll = AsyncCallbacks.waitAll(1, shutdownCallback);
-		nioService.stop(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				callbackWaitAll.onComplete();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				callbackWaitAll.onException(exception);
-			}
-		});
-		nioService.getNioEventloop().keepAlive(false);
+		};
 	}
 }

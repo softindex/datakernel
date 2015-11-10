@@ -45,6 +45,7 @@ import static org.junit.Assert.assertTrue;
 public class WorkerServersTest {
 	final static int PORT = 9444;
 	final static int WORKERS = 4;
+	// TODO (vsavchuk) delete NIOEventLoopRuuner, delete or guice or manually
 
 	@Before
 	public void before() {
@@ -143,7 +144,9 @@ public class WorkerServersTest {
 				.addNioServers(primaryNioServer)
 				.addConcurrentServices(workerServices);
 
-		primaryService.startFuture().get();
+		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStart = ConcurrentServiceCallbacks.withCountDownLatch();
+		primaryService.startFuture(callbackStart);
+		callbackStart.await();
 
 		Socket socket1 = new Socket();
 		Socket socket2 = new Socket();
@@ -164,7 +167,6 @@ public class WorkerServersTest {
 		assertTrue(toByteArray(socket2.getInputStream()).length == 0);
 		socket2.close();
 
-		primaryService.stopFuture().get();
 		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStop = ConcurrentServiceCallbacks.withCountDownLatch();
 		primaryService.stopFuture(callbackStop);
 		callbackStop.await();
@@ -183,7 +185,8 @@ public class WorkerServersTest {
 			AsyncHttpServer workerServer = echoServer(workerEventloop, i);
 			workerServers.add(workerServer);
 
-			nodes[i] = ServiceGraph.Node.ofNioServer("workerEventloop" + String.valueOf(i), workerServer);
+			nodes[i] = ServiceGraph.Node.ofNioServer("workerServer" + i, workerServer);
+			graph.add(nodes[i], ServiceGraph.Node.ofNioEventloop("workerEventloop" + i, workerEventloop));
 		}
 
 		NioEventloop primaryEventloop = new NioEventloop();
@@ -191,7 +194,9 @@ public class WorkerServersTest {
 				.workerNioServers(workerServers)
 				.setListenPort(PORT);
 
-		graph.add(ServiceGraph.Node.ofNioServer("primaryNioServer", primaryNioServer), nodes);
+		ServiceGraph.Node primaryNioServerNode = ServiceGraph.Node.ofNioServer("primaryNioServer", primaryNioServer);
+		graph.add(primaryNioServerNode, ServiceGraph.Node.ofNioEventloop("primaryEventloop", primaryEventloop));
+		graph.add(primaryNioServerNode, nodes);
 
 		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStart = ConcurrentServiceCallbacks.withCountDownLatch();
 		graph.startFuture(callbackStart);

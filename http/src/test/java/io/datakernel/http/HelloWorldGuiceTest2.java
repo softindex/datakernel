@@ -38,8 +38,11 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.PrimaryNioServer;
+import io.datakernel.guice.servicegraph.ServiceGraphFactories;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
+import io.datakernel.guice.servicegraph.SingletonService;
 import io.datakernel.guice.workers.*;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.service.ConcurrentServiceCallbacks;
@@ -73,20 +76,21 @@ public class HelloWorldGuiceTest2 {
 		@Override
 		protected void configure() {
 			install(new NioWorkerModule());
-			install(new ServiceGraphModule());
+			install(new ServiceGraphModule()
+					.factory(NioServer.class, ServiceGraphFactories.factoryForNioServer())
+					.factory(NioEventloop.class, ServiceGraphFactories.factoryForNioEventloop())
+			);
 		}
 
 		@Provides
-//		@SingletonService
-		@Singleton
+		@SingletonService
 		@PrimaryThread
 		NioEventloop primaryEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-//		@SingletonService
-		@Singleton
+		@SingletonService
 		PrimaryNioServer primaryNioServer(@PrimaryThread NioEventloop primaryEventloop,
 		                                  List<AsyncHttpServer> workerHttpServers) {
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
@@ -122,11 +126,9 @@ public class HelloWorldGuiceTest2 {
 	}
 
 	@Test
-//	@Ignore
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-		PrimaryNioServer primaryNioServer = injector.getInstance(Key.get(PrimaryNioServer.class));
-		ServiceGraph serviceGraph = injector.getInstance(Key.get(ServiceGraph.class));
+		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
 			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
@@ -162,9 +164,7 @@ public class HelloWorldGuiceTest2 {
 
 	public static void main(String[] args) throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-//		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
-		PrimaryNioServer primaryNioServer = injector.getInstance(Key.get(PrimaryNioServer.class));
-		ServiceGraph serviceGraph = injector.getInstance(Key.get(ServiceGraph.class));
+		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		try {
 			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
 			serviceGraph.startFuture(callback);

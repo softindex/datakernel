@@ -28,6 +28,7 @@ import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.example.CumulativeServiceHelper;
 import io.datakernel.rpc.protocol.RpcException;
 import io.datakernel.rpc.server.RpcServer;
+import io.datakernel.service.ConcurrentServiceCallbacks;
 import io.datakernel.service.NioEventloopRunner;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +82,9 @@ public final class CumulativeBenchmark {
 	private void run() throws Exception {
 		printBenchmarkInfo();
 
-		serverRunner.startFuture().get();
+		ConcurrentServiceCallbacks.CountDownServiceCallback callbackStart = ConcurrentServiceCallbacks.withCountDownLatch();
+		serverRunner.startFuture(callbackStart);
+		callbackStart.await();
 
 		try {
 			final CompletionCallback finishCallback = new CompletionCallback() {
@@ -114,7 +117,9 @@ public final class CumulativeBenchmark {
 			eventloop.run();
 
 		} finally {
-			serverRunner.stopFuture().get();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callbackStop = ConcurrentServiceCallbacks.withCountDownLatch();
+			serverRunner.stopFuture(callbackStart);
+			callbackStart.await();
 		}
 	}
 

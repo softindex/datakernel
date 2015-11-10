@@ -20,6 +20,7 @@ package io.datakernel.service;
  * Service which starts and stops asynchronously and does not block thread while startFuture/stopFuture methods are running.
  */
 public interface ConcurrentService {
+	// TODO (vsavchuk) rename start...
 	void startFuture(ConcurrentServiceCallback callback);
 
 	void stopFuture(ConcurrentServiceCallback callback);

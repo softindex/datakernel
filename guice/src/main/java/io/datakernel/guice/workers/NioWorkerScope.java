@@ -20,15 +20,14 @@ import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 public final class NioWorkerScope implements Scope {
 	private List<Map<Key<?>, Object>> pool;
+	private Map<Key<?>, List<Object>> poolKeyIndex = new HashMap<>();
+	private Set<Object> poolObjectKey = new HashSet<>(); // TODO (vsavchuk) rename
 	private int currentPool = -1;
 
 	private final Provider<Integer> numberProvider = new Provider<Integer>() {
@@ -76,11 +75,30 @@ public final class NioWorkerScope implements Scope {
 					current = unscoped.get();
 					checkNioSingleton(key, current);
 					scopedObjects.put(key, current);
+					if (!poolKeyIndex.containsKey(key)) poolKeyIndex.put(key, new ArrayList<>());
+					poolKeyIndex.get(key).add(current);
+					poolObjectKey.add(current);
 				}
 				return current;
 			}
 		};
 	}
+
+	public Set<Object> getPoolObjectKey() {
+		return poolObjectKey;
+	}
+
+	public List<Map<Key<?>, Object>> getPool() {
+		// TODO (vsavchuk) immutable List and Map
+		// TODO (vsavchuk) copy?
+		return Collections.unmodifiableList(pool);
+	}
+
+	public Map<Key<?>, List<Object>> getPoolKeyIndex() {
+		// TODO (vsavchuk) immutable
+		return Collections.unmodifiableMap(poolKeyIndex);
+	}
+
 
 	private <T> void checkScope(Key<T> key) {
 		if (currentPool < 0 || currentPool > pool.size())

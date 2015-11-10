@@ -16,6 +16,9 @@
 
 package io.datakernel.guice.servicegraph;
 
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioServer;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.service.ConcurrentService;
 import io.datakernel.service.ConcurrentServiceCallback;
 import io.datakernel.service.Service;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -46,6 +50,106 @@ public final class ServiceGraphFactories {
 			@Override
 			public ConcurrentService getService(ConcurrentService service, Executor executor) {
 				return service;
+			}
+		};
+	}
+
+	public static ServiceGraphFactory<NioService> factoryForNioService() {
+		return new ServiceGraphFactory<NioService>() {
+
+			@Override
+			public ConcurrentService getService(final NioService node, Executor executor) {
+				return new ConcurrentService() {
+					@Override
+					public void startFuture(final ConcurrentServiceCallback callback) {
+						node.getNioEventloop().postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								node.start(callback);
+								callback.onComplete();
+							}
+						});
+					}
+
+					@Override
+					public void stopFuture(final ConcurrentServiceCallback callback) {
+						node.getNioEventloop().postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								node.stop(callback);
+								callback.onComplete();
+							}
+						});
+					}
+				};
+			}
+		};
+	}
+
+	public static ServiceGraphFactory<NioServer> factoryForNioServer() {
+		return new ServiceGraphFactory<NioServer>() {
+			@Override
+			public ConcurrentService getService(final NioServer node, Executor executor) {
+				return new ConcurrentService() {
+					@Override
+					public void startFuture(final ConcurrentServiceCallback callback) {
+						node.getNioEventloop().postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								try {
+									node.listen();
+									callback.onComplete();
+								} catch (IOException e) {
+									callback.onException(e);
+								}
+							}
+						});
+					}
+
+					@Override
+					public void stopFuture(final ConcurrentServiceCallback callback) {
+						node.getNioEventloop().postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								node.close();
+								callback.onComplete();
+							}
+						});
+					}
+				};
+			}
+		};
+	}
+
+	public static ServiceGraphFactory<NioEventloop> factoryForNioEventloop() {
+		return new ServiceGraphFactory<NioEventloop>() {
+			@Override
+			public ConcurrentService getService(final NioEventloop node, Executor executor) {
+				return new ConcurrentService() {
+					@Override
+					public void startFuture(final ConcurrentServiceCallback callback) {
+						// TODO (vsavchuk) see ServiceGraphFactory
+						Executors.defaultThreadFactory().newThread(new Runnable() {
+							@Override
+							public void run() {
+								node.keepAlive(true);
+								callback.onComplete();
+								node.run();
+							}
+						}).start();
+					}
+
+					@Override
+					public void stopFuture(final ConcurrentServiceCallback callback) {
+						node.postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								callback.onComplete();
+								node.keepAlive(false);
+							}
+						});
+					}
+				};
 			}
 		};
 	}
