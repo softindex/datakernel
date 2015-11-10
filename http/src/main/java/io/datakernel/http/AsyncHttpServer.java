@@ -50,6 +50,7 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 
 	private AsyncCancellable scheduleExpiredConnectionCheck;
 	private final char[] headerChars;
+	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	//JMX
 	private final StatsCounter timeCheckExpired = new StatsCounter();
@@ -72,6 +73,11 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
+	}
+
+	public AsyncHttpServer setMaxHttpMessageSize(int size) {
+		this.maxHttpMessageSize = size;
+		return this;
 	}
 
 	private Runnable createExpiredConnectionsTask() {
@@ -126,7 +132,7 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 	protected SocketConnection createConnection(SocketChannel socketChannel) {
 		assert eventloop.inEventloopThread();
 
-		HttpServerConnection connection = new HttpServerConnection(eventloop, socketChannel, servlet, connectionsList, headerChars);
+		HttpServerConnection connection = new HttpServerConnection(eventloop, socketChannel, servlet, connectionsList, headerChars, maxHttpMessageSize);
 		if (connectionsList.isEmpty())
 			scheduleExpiredConnectionCheck();
 		return connection;

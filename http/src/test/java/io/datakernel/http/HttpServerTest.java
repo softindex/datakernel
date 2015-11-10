@@ -20,7 +20,9 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.jmx.LastExceptionCounter;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -34,11 +36,11 @@ import java.util.Random;
 import static com.google.common.io.ByteStreams.readFully;
 import static com.google.common.io.ByteStreams.toByteArray;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class HttpServerTest {
 
@@ -226,6 +228,45 @@ public class HttpServerTest {
 
 		server.closeFuture().await();
 		thread.join();
+	}
+
+	@Test
+	public void testBigHttpMessage() throws Exception {
+		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
+		final NioEventloop eventloop = new NioEventloop();
+		final ByteBuf buf = HttpRequest.post("http://127.0.0.1:" + port)
+				.body(ByteBuf.wrap(encodeAscii("Test big HTTP message body"))).write();
+
+		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
+				eventloop.post(new Runnable() {
+					@Override
+					public void run() {
+						callback.onResult(content);
+					}
+				});
+			}
+		});
+		server.setMaxHttpMessageSize(25);
+		server.setListenPort(port);
+		server.listen();
+		Thread thread = new Thread(eventloop);
+		thread.start();
+
+		try (Socket socket = new Socket()) {
+			socket.connect(new InetSocketAddress(port));
+			socket.getOutputStream().write(buf.array(), buf.position(), buf.remaining());
+			Thread.sleep(100);
+		}
+		server.closeFuture().await();
+		thread.join();
+		LastExceptionCounter exceptionCounter = eventloop.getExceptionCounter(exceptionMarker(SocketConnection.class, "InternalException"));
+		assertNotNull(exceptionCounter);
+		String[] exception = exceptionCounter.getException();
+		assertTrue(exception != null && exception.length > 0);
+		assertTrue(exception[0], exception[0].contains("Too big HttpMessage"));
 	}
 
 	public static void main(String[] args) throws Exception {

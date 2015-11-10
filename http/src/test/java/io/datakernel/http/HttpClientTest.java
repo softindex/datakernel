@@ -160,4 +160,42 @@ public class HttpClientTest {
 		}
 	}
 
+	@Test(expected = RuntimeException.class)
+	public void testBigHttpMessage() throws Throwable {
+		final int TIMEOUT = 1000;
+		final NioEventloop eventloop = new NioEventloop();
+
+		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
+		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
+				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
+		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+
+		httpServer.listen();
+
+		httpClient.setMaxHttpMessageSize(12);
+		httpClient.getHttpResultAsync(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(HttpResponse result) {
+				resultObserver.onResult(decodeUTF8(result.getBody()));
+				httpClient.close();
+				httpServer.close();
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				resultObserver.onException(exception);
+				httpClient.close();
+				httpServer.close();
+			}
+		});
+
+		eventloop.run();
+
+		try {
+			System.err.println("Result: " + resultObserver.get());
+		} catch (ExecutionException e) {
+			throw e.getCause();
+		}
+	}
+
 }

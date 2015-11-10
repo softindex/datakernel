@@ -50,6 +50,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 
+@SuppressWarnings("ThrowableInstanceNeverThrown")
 public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientImplMXBean {
 	private static final Logger logger = LoggerFactory.getLogger(HttpClientImpl.class);
 	private static final long CHECK_PERIOD = 1000L;
@@ -71,6 +72,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	private AsyncCancellable scheduleExpiredConnectionCheck;
 	private boolean blockLocalAddresses = false;
 	private long bindExceptionBlockTimeout = 24 * 60 * 60 * 1000L;
+	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	private int countPendingSocketConnect;
 
 	//JMX
@@ -110,12 +112,19 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		this.headerChars = chars;
 	}
 
-	public void setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
+	public HttpClientImpl setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
 		this.bindExceptionBlockTimeout = bindExceptionBlockTimeout;
+		return this;
 	}
 
-	public void setBlockLocalAddresses(boolean blockLocalAddresses) {
+	public HttpClientImpl setBlockLocalAddresses(boolean blockLocalAddresses) {
 		this.blockLocalAddresses = blockLocalAddresses;
+		return this;
+	}
+
+	public HttpClientImpl setMaxHttpMessageSize(int size) {
+		this.maxHttpMessageSize = size;
+		return this;
 	}
 
 	private Runnable createExpiredConnectionsTask() {
@@ -161,7 +170,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	}
 
 	private HttpClientConnection createConnection(SocketChannel socketChannel) {
-		HttpClientConnection connection = new HttpClientConnection(eventloop, socketChannel, this, headerChars);
+		HttpClientConnection connection = new HttpClientConnection(eventloop, socketChannel, this, headerChars, maxHttpMessageSize);
 		if (connectionsList.isEmpty())
 			scheduleCheck();
 		return connection;

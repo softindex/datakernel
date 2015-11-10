@@ -1,8 +1,0 @@
-dependencies {
-    compile project(':datakernel/eventloop')
-    compile project(':datakernel/servicegraph')
-    compile project(':datakernel/serializer')
-    compile project(':datakernel/async-streams')
-
-    testCompile('ch.qos.logback:logback-classic:1.1.3')
-}
