@@ -30,17 +30,12 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
-
-	public enum Importance {
-		MANDATORY, OPTIONAL
-	}
-
-	private Map<Class<? extends RpcMessage.RpcMessageData>, DataTypeSpecifications> dataTypeToSpecification;
-	private RpcSingleSenderStrategy defaultSendingStrategy;
+	private Map<Class<? extends RpcMessage.RpcMessageData>, StrategySpecifications> dataTypeToSpecification;
+	private StrategySpecifications defaultStrategySpecification;
 
 	RpcStrategyTypeDispatching() {
 		dataTypeToSpecification = new HashMap<>();
-		defaultSendingStrategy = null;
+		defaultStrategySpecification = null;
 	}
 
 	@Override
@@ -52,54 +47,112 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
 		HashMap<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender = new HashMap<>();
 		for (Class<? extends RpcMessage.RpcMessageData> dataType : dataTypeToSpecification.keySet()) {
-			DataTypeSpecifications specs = dataTypeToSpecification.get(dataType);
+			StrategySpecifications specs = dataTypeToSpecification.get(dataType);
 			Optional<RpcRequestSender> sender = specs.getStrategy().create(pool);
 			if (sender.isPresent()) {
 				dataTypeToSender.put(dataType, sender.get());
-			} else if (specs.getImportance() == Importance.MANDATORY) {
+			} else if (specs.isCrucialForActivation()) {
 				return Optional.absent();
 			}
 		}
-		Optional<RpcRequestSender> defaultSender =
-				defaultSendingStrategy != null ? defaultSendingStrategy.create(pool) : Optional.<RpcRequestSender>absent();
-		return Optional.<RpcRequestSender>of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender.orNull()));
+		RpcRequestSender defaultSender = null;
+		if (defaultStrategySpecification != null) {
+			defaultSender = defaultStrategySpecification.getStrategy().create(pool).orNull();
+			if (defaultSender == null && defaultStrategySpecification.isCrucialForActivation()) {
+				return Optional.absent();
+			}
+		}
+		return Optional.<RpcRequestSender>of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender));
 	}
 
-	public RpcStrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                     RpcSingleSenderStrategy strategy) {
-		return on(dataType, strategy, Importance.MANDATORY);
-	}
-
-	private RpcStrategyTypeDispatching on(Class<? extends RpcMessage.RpcMessageData> dataType,
-	                                      RpcSingleSenderStrategy strategy, Importance importance) {
+	public RpcStrategySpecsSetting on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	                                  RpcSingleSenderStrategy strategy) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
-		checkNotNull(importance);
-		dataTypeToSpecification.put(dataType, new DataTypeSpecifications(strategy, importance));
-		return this;
+		checkState(!dataTypeToSpecification.containsKey(dataType),
+				"Strategy for type " + dataType.toString() + " is already set");  // TODO (vmykhalko): maybe it shouldn't throw exception in this case?
+		dataTypeToSpecification.put(dataType, new StrategySpecifications(strategy, false));
+		return new RpcTypeStrategySpecsHelper(dataType);
 	}
 
-	public RpcStrategyTypeDispatching onDefault(RpcSingleSenderStrategy strategy) {
-		checkState(defaultSendingStrategy == null, "Default Strategy is already set");
-		defaultSendingStrategy = strategy;
-		return this;
+	public RpcStrategySpecsSetting onDefault(RpcSingleSenderStrategy strategy) {
+		checkState(defaultStrategySpecification == null, "Default Strategy is already set");
+		defaultStrategySpecification = new StrategySpecifications(strategy, false);
+		return new RpcDefaultStrategySpecsHelper();
 	}
 
-	private static final class DataTypeSpecifications {
+	public abstract class RpcStrategySpecsSetting implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
+		private RpcStrategySpecsSetting() {
+
+		}
+
+		@Override
+		public List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
+			return RpcStrategyTypeDispatching.this.createAsList(pool);
+		}
+
+		@Override
+		public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
+			return RpcStrategyTypeDispatching.this.create(pool);
+		}
+
+		public RpcStrategySpecsSetting on(Class<? extends RpcMessage.RpcMessageData> dataType,
+		                                  RpcSingleSenderStrategy strategy) {
+			return RpcStrategyTypeDispatching.this.on(dataType, strategy);
+		}
+
+		public RpcStrategySpecsSetting onDefault(RpcSingleSenderStrategy strategy) {
+			return RpcStrategyTypeDispatching.this.onDefault(strategy);
+		}
+
+		public abstract RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial);
+	}
+
+	private final class RpcTypeStrategySpecsHelper extends RpcStrategySpecsSetting {
+		private final Class<? extends RpcMessage.RpcMessageData> dataType;
+
+		private RpcTypeStrategySpecsHelper(Class<? extends RpcMessage.RpcMessageData> dataType) {
+			this.dataType = dataType;
+		}
+
+		@Override
+		public RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial) {
+			StrategySpecifications specs = checkNotNull(dataTypeToSpecification.get(dataType));
+			dataTypeToSpecification.put(dataType, new StrategySpecifications(specs.getStrategy(), isCrucial));
+			return RpcStrategyTypeDispatching.this;
+		}
+	}
+
+	private final class RpcDefaultStrategySpecsHelper extends RpcStrategySpecsSetting {
+
+		private RpcDefaultStrategySpecsHelper() {
+
+		}
+
+		@Override
+		public RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial) {
+			checkNotNull(defaultStrategySpecification);
+			defaultStrategySpecification
+					= new StrategySpecifications(defaultStrategySpecification.getStrategy(), isCrucial);
+			return RpcStrategyTypeDispatching.this;
+		}
+	}
+
+	private static final class StrategySpecifications {
 		private final RpcSingleSenderStrategy strategy;
-		private final Importance importance;
+		private final boolean crucialForActivation;
 
-		public DataTypeSpecifications(RpcSingleSenderStrategy strategy, Importance importance) {
-			this.strategy = checkNotNull(strategy);
-			this.importance = checkNotNull(importance);
+		public StrategySpecifications(RpcSingleSenderStrategy strategy, boolean crucialForActivation) {
+			this.strategy = strategy;
+			this.crucialForActivation = crucialForActivation;
 		}
 
 		public RpcSingleSenderStrategy getStrategy() {
 			return strategy;
 		}
 
-		public Importance getImportance() {
-			return importance;
+		public boolean isCrucialForActivation() {
+			return crucialForActivation;
 		}
 	}
 

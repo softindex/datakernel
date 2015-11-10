@@ -29,7 +29,7 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 public class RpcStrategyTypeDispatchingTest {
 
@@ -96,12 +96,12 @@ public class RpcStrategyTypeDispatchingTest {
 		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
-		RpcStrategySingleServer strategySingleServer4 = new RpcStrategySingleServer(ADDRESS_4);
+		RpcStrategySingleServer defaultServer = new RpcStrategySingleServer(ADDRESS_4);
 		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
 				.on(RpcMessageDataTypeTwo.class, strategySingleServer2)
 				.on(RpcMessageDataTypeThree.class, strategySingleServer3)
-				.onDefault(strategySingleServer4);
+				.onDefault(defaultServer);
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 
@@ -152,7 +152,79 @@ public class RpcStrategyTypeDispatchingTest {
 		assertEquals(RpcNoSenderAvailableException.class, raisedException.get().getClass());
 	}
 
-//	TODO (vmykhalko): add tests to check whether sender is created when there is at least one absent mandatory server
+	@Test
+	public void itShouldNotBeCreatedWhenAtLeastOneOfCrucialSubStrategyIsNotActive() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
+				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
+				.on(RpcMessageDataTypeTwo.class, strategySingleServer2).crucialForActivation(true)
+				.on(RpcMessageDataTypeThree.class, strategySingleServer3);
+
+		pool.add(ADDRESS_1, connection1);
+		// we don't add connection 2
+		pool.add(ADDRESS_3, connection3);
+
+		assertTrue(strategySingleServer1.create(pool).isPresent());
+		assertFalse(strategySingleServer2.create(pool).isPresent());
+		assertTrue(strategySingleServer3.create(pool).isPresent());
+		assertFalse(typeDispatchingStrategy.create(pool).isPresent());
+	}
+
+	@Test
+	public void itShouldBeCreatedWhenAtLeastOneOfSubStrategyIsActiveAndNoneOfStrategiesAreCrucial() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
+				.on(RpcMessageDataTypeOne.class, strategySingleServer1).crucialForActivation(false)
+				.on(RpcMessageDataTypeTwo.class, strategySingleServer2).crucialForActivation(false)
+				.on(RpcMessageDataTypeThree.class, strategySingleServer3); // actually is not crucial by default
+
+		pool.add(ADDRESS_1, connection1);
+		// we don't add connection 2
+		pool.add(ADDRESS_3, connection3);
+
+		assertTrue(strategySingleServer1.create(pool).isPresent());
+		assertFalse(strategySingleServer2.create(pool).isPresent());
+		assertTrue(strategySingleServer3.create(pool).isPresent());
+		assertTrue(typeDispatchingStrategy.create(pool).isPresent());
+	}
+
+	@Test
+	public void itShouldNotBeCreatedWhenDefaultStrategyIsNotActiveAndCrucial() {
+		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4));
+		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
+		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
+		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
+		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
+		RpcStrategySingleServer defaultServer = new RpcStrategySingleServer(ADDRESS_4);
+		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
+				.on(RpcMessageDataTypeOne.class, strategySingleServer1)
+				.on(RpcMessageDataTypeTwo.class, strategySingleServer2)
+				.on(RpcMessageDataTypeThree.class, strategySingleServer3)
+				.onDefault(defaultServer).crucialForActivation(true);
+
+		pool.add(ADDRESS_1, connection1);
+		pool.add(ADDRESS_2, connection2);
+		pool.add(ADDRESS_3, connection3);
+		// we don't add connection for default server
+
+		assertTrue(strategySingleServer1.create(pool).isPresent());
+		assertTrue(strategySingleServer2.create(pool).isPresent());
+		assertTrue(strategySingleServer3.create(pool).isPresent());
+		assertFalse(defaultServer.create(pool).isPresent());
+		assertFalse(typeDispatchingStrategy.create(pool).isPresent());
+	}
 
 	static class RpcMessageDataTypeOne implements RpcMessage.RpcMessageData {
 
