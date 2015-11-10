@@ -93,7 +93,7 @@ public final class CumulativeServiceHelper {
 				.connectSettings(connectSettings)
 				.waitForAllConnected()
 				.serializer(CumulativeServiceHelper.MESSAGE_SERIALIZER)
-				.requestSenderFactory(RpcRequestSendingStrategies.firstAvailable(servers(addresses)))
+				.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(servers(addresses)))
 				.protocolFactory(PROTOCOL_FACTORY)
 				.build();
 	}

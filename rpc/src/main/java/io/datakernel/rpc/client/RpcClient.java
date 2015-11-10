@@ -86,7 +86,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 			return this;
 		}
 
-		public Builder requestSenderFactory(RpcRequestSendingStrategy requestSendingStrategy) {
+		public Builder requestSendingStrategy(RpcRequestSendingStrategy requestSendingStrategy) {
 			this.requestSendingStrategy = requestSendingStrategy;
 			return this;
 		}

@@ -18,7 +18,6 @@ package io.datakernel.rpc.client.sender;
 
 import com.google.common.base.Predicate;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.protocol.RpcMessage;
 
 import java.util.List;
 
@@ -75,7 +74,7 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 		}
 
 		@Override
-		public <T extends RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+		public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout,
 		                                                   final ResultCallback<T> callback) {
 			// TODO (vmykhalko): is there all right with generics ?
 			FirstResultCallback<T> resultCallback

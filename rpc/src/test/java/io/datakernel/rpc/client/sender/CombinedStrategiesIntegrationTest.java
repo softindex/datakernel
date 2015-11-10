@@ -52,6 +52,74 @@ import static org.junit.Assert.assertEquals;
 
 public class CombinedStrategiesIntegrationTest {
 
+	private static final int PORT_1 = 10001;
+	private static final int PORT_2 = 10002;
+	private static final int PORT_3 = 10003;
+	private static final int TIMEOUT = 1500;
+	private NioEventloop eventloop;
+	private RpcServer serverOne;
+	private RpcServer serverTwo;
+	private RpcServer serverThree;
+	private final RpcProtocolFactory protocolFactory = new RpcStreamProtocolFactory(new RpcStreamProtocolSettings());
+
+	@Before
+	public void setUp() throws Exception {
+		ByteBufPool.clear();
+		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
+
+		eventloop = new NioEventloop();
+		serverOne = createServerOne(eventloop, protocolFactory);
+		serverOne.listen();
+		serverTwo = createServerTwo(eventloop, protocolFactory);
+		serverTwo.listen();
+		serverThree = createServerThree(eventloop, protocolFactory);
+		serverThree.listen();
+		defaultNioThreadFactory().newThread(eventloop).start();
+	}
+
+	@Test
+	public void testBlockingCall() throws Exception {
+		try (HelloClient client = new HelloClient(eventloop, protocolFactory)) {
+
+			String currentName = "John";
+			String currentResponse = client.hello(currentName);
+			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+			assertEquals("Hello, " + currentName + "!", currentResponse);
+
+			currentName = "Winston";
+			currentResponse = client.hello(currentName);
+			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+			assertEquals("Hello Hello, " + currentName + "!", currentResponse);
+
+			currentName = "Ann";
+			currentResponse = client.hello(currentName);
+			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+			assertEquals("Hello, " + currentName + "!", currentResponse);
+
+			currentName = "Emma";
+			currentResponse = client.hello(currentName);
+			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+			assertEquals("Hello Hello, " + currentName + "!", currentResponse);
+
+			currentName = "Lukas";
+			currentResponse = client.hello(currentName);
+			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+			assertEquals("Hello, " + currentName + "!", currentResponse);
+
+			currentName = "Sophia"; // name starts with "s", so hash code is different from previous examples
+			currentResponse = client.hello(currentName);
+			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+			assertEquals("Hello Hello Hello, " + currentName + "!", currentResponse);
+
+		} finally {
+			serverOne.closeFuture().await();
+			serverTwo.closeFuture().await();
+			serverThree.closeFuture().await();
+
+		}
+		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
 	private interface HelloService {
 		String hello(String name) throws Exception;
 	}
@@ -180,7 +248,7 @@ public class CombinedStrategiesIntegrationTest {
 					.addresses(addresses)
 					.serializer(serializer())
 					.protocolFactory(protocolFactory)
-					.requestSenderFactory(
+					.requestSendingStrategy(
 							roundRobin(
 									server(address1),
 									sharding(hashFunction,
@@ -235,74 +303,6 @@ public class CombinedStrategiesIntegrationTest {
 				throw new RuntimeException(e);
 			}
 		}
-	}
-
-	private static final int PORT_1 = 10001;
-	private static final int PORT_2 = 10002;
-	private static final int PORT_3 = 10003;
-	private static final int TIMEOUT = 1500;
-	private NioEventloop eventloop;
-	private RpcServer serverOne;
-	private RpcServer serverTwo;
-	private RpcServer serverThree;
-	private final RpcProtocolFactory protocolFactory = new RpcStreamProtocolFactory(new RpcStreamProtocolSettings());
-
-	@Before
-	public void setUp() throws Exception {
-		ByteBufPool.clear();
-		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
-
-		eventloop = new NioEventloop();
-		serverOne = createServerOne(eventloop, protocolFactory);
-		serverOne.listen();
-		serverTwo = createServerTwo(eventloop, protocolFactory);
-		serverTwo.listen();
-		serverThree = createServerThree(eventloop, protocolFactory);
-		serverThree.listen();
-		defaultNioThreadFactory().newThread(eventloop).start();
-	}
-
-	@Test
-	public void testBlockingCall() throws Exception {
-		try (HelloClient client = new HelloClient(eventloop, protocolFactory)) {
-
-			String currentName = "John";
-			String currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello, " + currentName + "!", currentResponse);
-
-			currentName = "Winston";
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello Hello, " + currentName + "!", currentResponse);
-
-			currentName = "Ann";
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello, " + currentName + "!", currentResponse);
-
-			currentName = "Emma";
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello Hello, " + currentName + "!", currentResponse);
-
-			currentName = "Lukas";
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello, " + currentName + "!", currentResponse);
-
-			currentName = "Sophia"; // name starts with "s", so hash code is different from previous examples
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello Hello Hello, " + currentName + "!", currentResponse);
-
-		} finally {
-			serverOne.closeFuture().await();
-			serverTwo.closeFuture().await();
-			serverThree.closeFuture().await();
-
-		}
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }
 

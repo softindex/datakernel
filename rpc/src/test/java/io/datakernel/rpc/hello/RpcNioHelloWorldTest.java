@@ -129,7 +129,7 @@ public class RpcNioHelloWorldTest {
 					.addresses(addresses)
 					.serializer(serializer())
 					.protocolFactory(protocolFactory)
-					.requestSenderFactory(RpcRequestSendingStrategies.firstAvailable(servers(addresses)))
+					.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(servers(addresses)))
 					.build();
 
 			final CompletionCallbackFuture connectCompletion = new CompletionCallbackFuture();

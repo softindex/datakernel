@@ -134,7 +134,7 @@ public class RpcBinaryProtocolTest {
 				.packetSize(1 << 10, 1 << 16).compression(true);
 		final RpcClient client = new RpcClient.Builder(eventloop, clientSettings)
 				.serializer(serializer)
-				.requestSenderFactory(RpcRequestSendingStrategies.firstAvailable(server(address)))
+				.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(server(address)))
 				.connectSettings(new ConnectSettings(100))
 				.protocolFactory(new RpcStreamProtocolFactory(protocolSettings))
 				.build();
