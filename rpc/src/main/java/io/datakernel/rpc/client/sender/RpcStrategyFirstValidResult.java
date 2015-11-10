@@ -136,15 +136,18 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 			if (hasResult) {
 				resultCallback.onResult(result);
 			} else {
-				if (exception == null) {   // TODO (vmykhalko): try to assign noValidResultException to exception, maybe it will simplify this code
-					if (noValidResultException != null) {
-						resultCallback.onException(noValidResultException);
-					} else {
-						resultCallback.onResult(null);
-					}
+				resolveException();
+				if (exception == null) {
+					resultCallback.onResult(null);
 				} else {
 					resultCallback.onException(exception);
 				}
+			}
+		}
+
+		private void resolveException() {
+			if (exception == null && noValidResultException != null) {
+				exception = noValidResultException;
 			}
 		}
 	}
