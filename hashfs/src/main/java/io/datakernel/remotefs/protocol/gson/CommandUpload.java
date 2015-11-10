@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs.protocol.gson;
 
-import io.datakernel.remotefs.ServerInfo;
+class CommandUpload extends Command {
+	public final String filePath;
 
-import java.util.Collection;
-import java.util.List;
+	public CommandUpload(String filePath) {
+		this.filePath = filePath;
+	}
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+	@Override
+	public String toString() {
+		return "Upload{filepath=\'" + filePath + "\'}";
+	}
 }

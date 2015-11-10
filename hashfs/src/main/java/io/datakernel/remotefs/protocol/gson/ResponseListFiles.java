@@ -14,13 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs.protocol.gson;
 
-import io.datakernel.remotefs.ServerInfo;
+import java.util.Collections;
+import java.util.Set;
 
-import java.util.Collection;
-import java.util.List;
+class ResponseListFiles extends Response {
+	public final Set<String> files;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+	public ResponseListFiles(Set<String> files) {
+		this.files = Collections.unmodifiableSet(files);
+	}
+
+	@Override
+	public String toString() {
+		return "Listed{" + files.size() + "}";
+	}
 }

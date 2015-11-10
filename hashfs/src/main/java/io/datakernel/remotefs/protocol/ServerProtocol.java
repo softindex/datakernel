@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs.protocol;
 
-import io.datakernel.remotefs.ServerInfo;
+import io.datakernel.eventloop.NioService;
+import io.datakernel.remotefs.FsServer;
 
-import java.util.Collection;
-import java.util.List;
-
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+public interface ServerProtocol extends NioService {
+	void wireServer(FsServer server);
 }

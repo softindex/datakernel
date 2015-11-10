@@ -31,6 +31,7 @@ import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.remotefs.FsServer;
 import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -151,15 +152,10 @@ public class CubeTest {
 
 	private static final int LISTEN_PORT = 45578;
 
-	private SimpleFsServer prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
+	private FsServer prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, serverStorage, executor);
-		fileServer.setListenPort(LISTEN_PORT);
-		try {
-			fileServer.listen();
-		} catch (IOException e) {
-			logger.error("Can't start listen", e);
-		}
+		FsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage, LISTEN_PORT);
+
 		fileServer.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -174,7 +170,7 @@ public class CubeTest {
 		return fileServer;
 	}
 
-	private void stop(SimpleFsServer server) {
+	private void stop(FsServer server) {
 		server.stop(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -196,7 +192,7 @@ public class CubeTest {
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 
 		Path serverStorage = temporaryFolder.newFolder().toPath();
-		final SimpleFsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
+		final FsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
 		AggregationChunkStorage storage = new SimpleFsAggregationStorage(eventloop, aggregationStructure, new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
@@ -226,7 +222,7 @@ public class CubeTest {
 
 		eventloop.run();
 
-		final SimpleFsServer simpleFsServer2 = prepareServer(eventloop, serverStorage);
+		final FsServer simpleFsServer2 = prepareServer(eventloop, serverStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		final AggregationQuery query = new AggregationQuery()
 				.keys("key1", "key2")

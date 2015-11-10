@@ -18,11 +18,14 @@ package io.datakernel.hashfs;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioService;
+import io.datakernel.remotefs.ServerInfo;
 
 import java.util.Set;
 
-public interface Logic extends NioService {
+interface Logic extends NioService {
 	void update(long timestamp);
+
+	void wire(Commands commands);
 
 	boolean canUpload(String fileName);
 

@@ -14,13 +14,23 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs.protocol.gson;
 
-import io.datakernel.remotefs.ServerInfo;
+import java.util.Set;
 
-import java.util.Collection;
-import java.util.List;
+import static java.util.Collections.unmodifiableSet;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+class CommandOffer extends Command {
+	public final Set<String> forDeletion;
+	public final Set<String> forUpload;
+
+	public CommandOffer(Set<String> forDeletion, Set<String> forUpload) {
+		this.forDeletion = unmodifiableSet(forDeletion);
+		this.forUpload = unmodifiableSet(forUpload);
+	}
+
+	@Override
+	public String toString() {
+		return "Offer{forDeletion:" + forDeletion.size() + ",forUpload:" + forUpload.size() + "}";
+	}
 }

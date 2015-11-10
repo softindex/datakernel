@@ -14,25 +14,26 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.remotefs.ServerInfo;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.NioService;
+import io.datakernel.stream.StreamProducer;
 
 import java.util.Set;
 
-interface Commands {
-	void scan(ResultCallback<Set<String>> callback);
+public interface FileSystem extends NioService {
+	void saveToTmp(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void updateServerMap(Set<ServerInfo> bootstrap);
+	void deleteTmp(String fileName, CompletionCallback callback);
 
-	void delete(String fileName);
+	void commitTmp(String fileName, CompletionCallback callback);
 
-	void replicate(ServerInfo server, String fileName);
+	StreamProducer<ByteBuf> get(String fileName);
 
-	void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback);
+	void delete(String fileName, CompletionCallback callback);
 
-	void scheduleUpdate();
-
-	void scheduleCommitCancel(String fileName, long waitTime);
+	void list(ResultCallback<Set<String>> callback);
 }

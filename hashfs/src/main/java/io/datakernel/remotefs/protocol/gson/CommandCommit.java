@@ -14,13 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs.protocol.gson;
 
-import io.datakernel.remotefs.ServerInfo;
+class CommandCommit extends Command {
+	public final String filePath;
+	public final boolean isOk;
 
-import java.util.Collection;
-import java.util.List;
+	public CommandCommit(String filePath, boolean isOk) {
+		this.filePath = filePath;
+		this.isOk = isOk;
+	}
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+	@Override
+	public String toString() {
+		return "Commit{filepath=\'" + filePath + "\',isOk=" + isOk + "}";
+	}
 }

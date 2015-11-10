@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.remotefs.protocol.gson;
 
-import io.datakernel.remotefs.ServerInfo;
+class ResponseError extends Response {
+	public final String msg;
 
-import java.util.Collection;
-import java.util.List;
+	public ResponseError(String msg) {
+		this.msg = msg;
+	}
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+	@Override
+	public String toString() {
+		return "Error{" + msg + "}";
+	}
 }
