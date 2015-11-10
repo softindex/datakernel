@@ -26,12 +26,6 @@ public final class Resolver {
 
 	public List<Object> resolve(List<Object> records, Class<?> resultClass,
 	                            Map<String, Class<?>> attributeTypes,
-	                            Map<AttributeResolver, List<String>> resolverKeys) {
-		return resolve(records, resultClass, attributeTypes, resolverKeys, null);
-	}
-
-	public List<Object> resolve(List<Object> records, Class<?> resultClass,
-	                            Map<String, Class<?>> attributeTypes,
 	                            Map<AttributeResolver, List<String>> resolverKeys,
 	                            Map<String, Object> keyConstants) {
 		if (attributeTypes.isEmpty())
@@ -64,8 +58,6 @@ public final class Resolver {
 	private void copyResolvedNamesToRecords(Map<PrimaryKey, Object[]> resolvedAttributes, List<PrimaryKey> keys,
 	                                        List<Object> records, Class<?> resultClass,
 	                                        List<String> attributes, Map<String, Class<?>> attributeTypes) {
-		Preconditions.check(resolvedAttributes.size() == records.size(),
-				String.format("Name resolver returned incorrect number (%d) of resolved names (required: %d)", resolvedAttributes.size(), records.size()));
 		FieldSetter[] fieldSetters = createFieldSetters(attributes, resultClass, attributeTypes);
 		for (int i = 0; i < records.size(); i++) {
 			Object record = records.get(i);

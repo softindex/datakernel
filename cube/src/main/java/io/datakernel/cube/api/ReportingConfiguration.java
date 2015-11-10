@@ -9,12 +9,11 @@ import java.util.List;
 import java.util.Map;
 
 import static com.google.common.collect.Maps.newHashMap;
-import static com.google.common.collect.Maps.newLinkedHashMap;
 
 public final class ReportingConfiguration {
 	private Map<String, ReportingDSLExpression> computedMeasures = newHashMap();
-	private Map<String, Class<?>> attributeTypes = newLinkedHashMap();
-	private Map<String, AttributeResolver> attributeResolvers = newLinkedHashMap();
+	private Map<String, Class<?>> attributeTypes = newHashMap();
+	private Map<String, AttributeResolver> attributeResolvers = newHashMap();
 	private Map<AttributeResolver, List<String>> resolverKeys = newHashMap();
 
 	private Map<String, String> attributeDimensions = newHashMap();
@@ -29,14 +28,14 @@ public final class ReportingConfiguration {
 		return this;
 	}
 
-	public ReportingConfiguration addResolvedAttribute(String name, List<String> key, Class<?> type, AttributeResolver resolver) {
+	public ReportingConfiguration addResolvedAttributeForKey(String name, List<String> key, Class<?> type, AttributeResolver resolver) {
 		this.attributeTypes.put(name, type);
 		this.attributeResolvers.put(name, resolver);
 		this.resolverKeys.put(resolver, key);
 		return this;
 	}
 
-	public ReportingConfiguration addResolvedAttribute(String name, String dimension, Class<?> type, AttributeResolver resolver) {
+	public ReportingConfiguration addResolvedAttributeForDimension(String name, String dimension, Class<?> type, AttributeResolver resolver) {
 		this.attributeTypes.put(name, type);
 		this.attributeResolvers.put(name, resolver);
 		this.attributeDimensions.put(name, dimension);

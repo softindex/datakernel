@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Maps.newLinkedHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
@@ -84,6 +85,12 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		final ReportingConfiguration reportingConfiguration = cube.getReportingConfiguration();
 		final Map<AttributeResolver, List<String>> resolverKeys = newLinkedHashMap();
 		final Map<String, Class<?>> attributeTypes = newLinkedHashMap();
+		final Map<String, Object> keyConstants = newHashMap();
+
+		String predicatesJson = request.getParameter("filters");
+		final AggregationQuery query = new AggregationQuery();
+		AggregationQuery.QueryPredicates queryPredicates = addPredicatesToQuery(query, predicatesJson);
+		Map<String, AggregationQuery.QueryPredicate> predicates = queryPredicates == null ? null : queryPredicates.asMap();
 
 		final List<String> requestDimensions = getListOfStrings(gson, request.getParameter("dimensions"));
 		Set<String> storedDimensions = newHashSet();
@@ -97,7 +104,20 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 					throw new QueryException("Cube does not contain resolver for '" + dimension + "'");
 
 				List<String> key = reportingConfiguration.getKeyForResolver(resolver);
-				storedDimensions.addAll(key);
+
+				boolean usingStoredDimension = false;
+				for (String keyComponent : key) {
+					if (predicates != null && predicates.get(keyComponent) instanceof AggregationQuery.QueryPredicateEq) {
+						if (usingStoredDimension)
+							throw new QueryException("Incorrect filter: using 'equals' predicate when prefix of this compound key is not fully defined");
+						else
+							keyConstants.put(keyComponent, ((AggregationQuery.QueryPredicateEq) predicates.get(keyComponent)).value);
+					} else {
+						storedDimensions.add(keyComponent);
+						usingStoredDimension = true;
+					}
+				}
+
 				resolverKeys.put(resolver, key);
 				attributeTypes.put(dimension, reportingConfiguration.getAttributeType(dimension));
 			} else
@@ -120,18 +140,17 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			}
 		}
 
-		String predicatesJson = request.getParameter("filters");
 		String orderingsJson = request.getParameter("sort");
 		String limitString = request.getParameter("limit");
 		String offsetString = request.getParameter("offset");
 
-		final AggregationQuery finalQuery = new AggregationQuery()
+		query
 				.keys(newArrayList(storedDimensions))
 				.fields(newArrayList(storedMeasures));
 
 		// parse ordering information
 		List<String> ordering = getListOfStrings(gson, orderingsJson);
-		boolean orderingByComputedMeasure = false;
+		boolean additionalSortingRequired = false;
 		String orderingField = null;
 		boolean ascendingOrdering = false;
 		if (ordering != null) {
@@ -139,9 +158,9 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 				throw new QueryException("Incorrect 'sort' parameter format");
 			}
 			orderingField = ordering.get(0);
-			orderingByComputedMeasure = computedMeasures.contains(orderingField);
+			additionalSortingRequired = computedMeasures.contains(orderingField) || attributeTypes.containsKey(orderingField);
 
-			if (!storedDimensions.contains(orderingField) && !storedMeasures.contains(orderingField) && !orderingByComputedMeasure) {
+			if (!storedDimensions.contains(orderingField) && !storedMeasures.contains(orderingField) && !additionalSortingRequired) {
 				throw new QueryException("Ordering is specified by not requested field");
 			}
 
@@ -155,19 +174,17 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 				throw new QueryException("Incorrect ordering specified in 'sort' parameter");
 			}
 
-			addOrderingToQuery(finalQuery, orderingField, ascendingOrdering, computedMeasures);
+			if (!additionalSortingRequired)
+				addOrderingToQuery(query, orderingField, ascendingOrdering);
 		}
 
-		addPredicatesToQuery(finalQuery, predicatesJson);
-
-		final Class<QueryResultPlaceholder> resultClass = createResultClass(finalQuery, computedMeasures, attributeTypes, structure, reportingConfiguration);
-		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, finalQuery);
+		final Class<QueryResultPlaceholder> resultClass = createResultClass(query, computedMeasures, attributeTypes, structure, reportingConfiguration);
+		final StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube(resultClass, query);
 
 		final Integer limit = valueOrNull(limitString);
 		final Integer offset = valueOrNull(offsetString);
 
-		final boolean sortingRequired = orderingByComputedMeasure;
-		final Comparator<QueryResultPlaceholder> comparator = sortingRequired ? generateComparator(orderingField, ascendingOrdering, resultClass) : null;
+		final Comparator<QueryResultPlaceholder> comparator = additionalSortingRequired ? generateComparator(orderingField, ascendingOrdering, resultClass) : null;
 
 		consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 			@Override
@@ -192,23 +209,23 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 					queryResult.computeMeasures();
 				}
 
-				resolver.resolve((List) results, resultClass, attributeTypes, resolverKeys);
+				resolver.resolve((List) results, resultClass, attributeTypes, resolverKeys, keyConstants);
 
 				// sort
-				if (sortingRequired) {
+				if (comparator != null) {
 					Collections.sort(results, comparator);
 				}
 
 				String jsonResult = constructQueryResultJson(consumerStream.getList(), resultClass,
 						requestDimensions, queryMeasures, totalsPlaceholder, structure, limit, offset);
 				callback.onResult(createResponse(jsonResult));
-				logger.trace("Sending response {} to query {}.", jsonResult, finalQuery);
+				logger.trace("Sending response {} to query {}.", jsonResult, query);
 			}
 
 			@Override
 			public void onException(Exception e) {
 				callback.onResult(response500(e));
-				logger.error("Sending response to query {} failed.", finalQuery, e);
+				logger.error("Sending response to query {} failed.", query, e);
 			}
 		});
 	}
@@ -217,7 +234,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		return str == null ? null : Integer.valueOf(str);
 	}
 
-	private void addPredicatesToQuery(AggregationQuery query, String predicatesJson) {
+	private AggregationQuery.QueryPredicates addPredicatesToQuery(AggregationQuery query, String predicatesJson) {
 		AggregationQuery.QueryPredicates queryPredicates = null;
 
 		if (predicatesJson != null) {
@@ -227,12 +244,11 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		if (queryPredicates != null) {
 			query.predicates(queryPredicates);
 		}
+
+		return queryPredicates;
 	}
 
-	private static void addOrderingToQuery(AggregationQuery query, String fieldName, boolean ascendingOrdering, Set<String> computedMeasures) {
-		if (computedMeasures.contains(fieldName))
-			return;
-
+	private static void addOrderingToQuery(AggregationQuery query, String fieldName, boolean ascendingOrdering) {
 		if (ascendingOrdering)
 			query.orderAsc(fieldName);
 		else
@@ -241,7 +257,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 	@SuppressWarnings("unchecked")
 	private StreamConsumers.ToList<QueryResultPlaceholder> queryCube(Class<QueryResultPlaceholder> resultClass,
-	                                                                        AggregationQuery query) {
+	                                                                 AggregationQuery query) {
 		StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = StreamConsumers.toList(eventloop);
 		StreamProducer<QueryResultPlaceholder> queryResultProducer = cube.query(resultClass, query);
 		queryResultProducer.streamTo(consumerStream);
@@ -312,7 +328,12 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 			for (int j = 0; j < resultKeys.size(); j++) {
 				Object value = keyGetters[j].get(result);
-				resultJsonObject.add(resultKeys.get(j), keyTypes[j] == null ? new JsonPrimitive(value == null ? "" : value.toString()) : keyTypes[j].toJson(value));
+				JsonElement json;
+				if (keyTypes[j] == null)
+					json = new JsonPrimitive(value == null ? "" : value.toString());
+				else
+					json = keyTypes[j].toJson(value);
+				resultJsonObject.add(resultKeys.get(j), json);
 			}
 
 			for (int j = 0; j < resultFields.size(); j++) {
