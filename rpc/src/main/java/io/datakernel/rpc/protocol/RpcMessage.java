@@ -37,7 +37,7 @@ public final class RpcMessage {
 	}
 
 	@Serialize(order = 2)
-	@SerializeSubclasses(extraSubclassesId = "extraRpcMessages", value = {RpcRemoteException.class})
+	@SerializeSubclasses(extraSubclassesId = "extraRpcMessageData", value = {RpcRemoteException.class})
 	@SerializeNullable
 	public Object getData() {
 		return data;

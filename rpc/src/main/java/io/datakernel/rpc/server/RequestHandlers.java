@@ -28,7 +28,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 public final class RequestHandlers implements AsyncFunction<Object, Object> {
 
-	public interface RequestHandler<R extends Object> {
+	public interface RequestHandler<R> {
 		void run(R request, ResultCallback<Object> callback);
 	}
 
