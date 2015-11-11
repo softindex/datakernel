@@ -35,14 +35,23 @@ import static io.datakernel.util.ByteBufStrings.*;
 /**
  * Realization of the {@link TcpSocketConnection} which handles the HTTP messages. It is used by server and client.
  */
+@SuppressWarnings("ThrowableInstanceNeverThrown")
 public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	private static final Logger logger = LoggerFactory.getLogger(AbstractHttpConnection.class);
 
 	public static final int DEFAULT_HTTP_BUFFER_SIZE = 16 * 1024;
 	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
+	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 
 	private static final byte[] CONNECTION_KEEP_ALIVE = encodeAscii("keep-alive");
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
+	protected static final int UNKNOWN_LENGTH = -1;
+
+	public static final RuntimeException HEADER_NAME_ABSENT = new RuntimeException("Header name is absent");
+	public static final RuntimeException TOO_BIG_HTTP_MESSAGE = new RuntimeException("Too big HttpMessage");
+	public static final RuntimeException MALFORMED_CHUNK = new RuntimeException("Malformed chunk");
+	public static final RuntimeException TOO_LONG_HEADER = new RuntimeException("Header line exceeds max header size");
+	public static final RuntimeException TOO_MANY_HEADERS = new RuntimeException("Too many headers");
 
 	protected boolean keepAlive = true;
 
@@ -61,6 +70,10 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	private int chunkSize = 0;
 
 	protected int contentLength;
+	private final int maxHttpMessageSize;
+	private int maxHeaders;
+	private static final int MAX_CHUNK_HEADER_CHARS = 16;
+	private int maxChunkHeaderChars;
 	protected final char[] headerChars;
 
 	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
@@ -70,16 +83,18 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	/**
 	 * Creates a new instance of AbstractHttpConnection
 	 *
-	 * @param eventloop       eventloop which will handle its I/O operations
-	 * @param socketChannel   socket for this connection
-	 * @param connectionsList pool in which will stored this connection
+	 * @param eventloop          eventloop which will handle its I/O operations
+	 * @param socketChannel      socket for this connection
+	 * @param connectionsList    pool in which will stored this connection
+	 * @param maxHttpMessageSize
 	 */
-	public AbstractHttpConnection(NioEventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars) {
+	public AbstractHttpConnection(NioEventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, socketChannel);
 		this.receiveBufferSize = DEFAULT_HTTP_BUFFER_SIZE;
 		this.connectionsList = connectionsList;
 		this.headerChars = headerChars;
 		assert headerChars.length >= MAX_HEADER_LINE_SIZE;
+		this.maxHttpMessageSize = maxHttpMessageSize;
 		reset();
 	}
 
@@ -97,7 +112,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 
 	protected void reset() {
 		assert eventloop.inEventloopThread();
-		contentLength = -1;
+		contentLength = UNKNOWN_LENGTH;
 		isChunked = false;
 		bodyQueue.clear();
 	}
@@ -141,8 +156,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			hashCode = 31 * hashCode + b;
 			pos++;
 		}
-		if (pos == line.limit())
-			throw new IllegalArgumentException("Header name is absent");
+		check(pos != line.limit(), HEADER_NAME_ABSENT);
 		HttpHeader httpHeader = parseHeader(line.array(), line.position(), pos - line.position(), hashCode);
 		pos++;
 
@@ -167,6 +181,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 
 		if (header == CONTENT_LENGTH) {
 			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.position(), value.remaining());
+			check(contentLength <= maxHttpMessageSize, TOO_BIG_HTTP_MESSAGE);
 		} else if (header == CONNECTION) {
 			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.position(), value.remaining());
 		} else if (header == TRANSFER_ENCODING) {
@@ -179,7 +194,8 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		assert eventloop.inEventloopThread();
 
 		if (reading == BODY) {
-			if (contentLength == -1) {
+			if (contentLength == UNKNOWN_LENGTH) {
+				check(bodyQueue.remainingBytes() + readQueue.remainingBytes() <= maxHttpMessageSize, TOO_BIG_HTTP_MESSAGE);
 				readQueue.drainTo(bodyQueue);
 				return;
 			}
@@ -215,15 +231,15 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 				} else if (c >= 'A' && c <= 'F') {
 					chunkSize = (chunkSize << 4) + (c - 'A' + 10);
 					readQueue.getByte();
-				} else if (c == 13) {
+				} else {
 					if (chunkSize != 0) {
 						if (!readQueue.hasRemainingBytes(2)) {
 							break;
 						}
 						byte c1 = readQueue.getByte();
 						byte c2 = readQueue.getByte();
-						if (c1 != CR || c2 != LF)
-							throw new IllegalArgumentException("Could not found chunk size");
+						check(c1 == CR && c2 == LF, MALFORMED_CHUNK);
+						check(bodyQueue.remainingBytes() + contentLength <= maxHttpMessageSize, TOO_BIG_HTTP_MESSAGE);
 						reading = CHUNK;
 					} else {
 						if (!readQueue.hasRemainingBytes(4)) {
@@ -233,15 +249,14 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 						byte c2 = readQueue.getByte();
 						byte c3 = readQueue.getByte();
 						byte c4 = readQueue.getByte();
-						if (c1 != CR || c2 != LF || c3 != CR || c4 != LF)
-							throw new IllegalArgumentException("Could not found end of chunks");
+						check(c1 == CR && c2 == LF && c3 == CR && c4 == LF, MALFORMED_CHUNK);
 //						if (!readQueue.isEmpty())
 //							throw new IllegalStateException("Extra bytes outside of chunk");
 						onHttpMessage(bodyQueue.takeRemaining());
 						return;
 					}
-				} else
-					throw new IllegalArgumentException("Unrecognized chunk");
+				}
+				check(--maxChunkHeaderChars >= 0, MALFORMED_CHUNK);
 			}
 			if (reading == CHUNK) {
 				int read = readQueue.drainTo(bodyQueue, chunkSize);
@@ -252,9 +267,9 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 					}
 					byte c1 = readQueue.getByte();
 					byte c2 = readQueue.getByte();
-					if (c1 != CR || c2 != LF)
-						throw new IllegalArgumentException("Could not read chunk");
+					check(c1 == CR && c2 == LF, MALFORMED_CHUNK);
 					reading = CHUNK_LENGTH;
+					maxChunkHeaderChars = MAX_CHUNK_HEADER_CHARS;
 				}
 			}
 		}
@@ -288,13 +303,16 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 				assert reading == FIRSTLINE || reading == HEADERS;
 				ByteBuf line = takeLine();
 				if (line == null) {
-					if (readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE))
-						throw new IllegalArgumentException("Header line exceeds max header size");
+					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE), TOO_LONG_HEADER);
 					return;
 				}
 
 				if (!line.hasRemaining()) {
-					reading = isChunked ? CHUNK_LENGTH : BODY;
+					if (isChunked) {
+						reading = CHUNK_LENGTH;
+						maxChunkHeaderChars = MAX_CHUNK_HEADER_CHARS;
+					} else
+						reading = BODY;
 					line.recycle();
 					break;
 				}
@@ -303,7 +321,9 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 					onFirstLine(line);
 					line.recycle();
 					reading = HEADERS;
+					maxHeaders = MAX_HEADERS;
 				} else {
+					check(--maxHeaders >= 0, TOO_MANY_HEADERS);
 					onHeader(line);
 				}
 			}
@@ -312,6 +332,12 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		assert isRegistered();
 		assert reading >= BODY;
 		readBody();
+	}
+
+	private static void check(boolean expression, RuntimeException e) {
+		if (!expression) {
+			throw e;
+		}
 	}
 
 	@Override

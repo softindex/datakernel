@@ -18,7 +18,7 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.SimpleCompletionFuture;
+import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -162,12 +162,12 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 		onClose();
 	}
 
-	public void listenFuture(SimpleCompletionFuture callback) {
-		AsyncCallbacks.listenFuture(this, callback);
+	public CompletionCallbackFuture listenFuture() {
+		return AsyncCallbacks.listenFuture(this);
 	}
 
-	public void closeFuture(SimpleCompletionFuture callback) {
-		AsyncCallbacks.closeFuture(this, callback);
+	public CompletionCallbackFuture closeFuture() {
+		return AsyncCallbacks.closeFuture(this);
 	}
 
 	protected void onClose() {

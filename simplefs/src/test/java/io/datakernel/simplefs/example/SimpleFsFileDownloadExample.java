@@ -18,6 +18,11 @@ package io.datakernel.simplefs.example;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.remotefs.FsClient;
+import io.datakernel.remotefs.RfsConfig;
+import io.datakernel.remotefs.ServerInfo;
+import io.datakernel.remotefs.protocol.ClientProtocol;
+import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
@@ -40,16 +45,17 @@ public class SimpleFsFileDownloadExample {
 	private static final Path DOWNLOAD_PATH = Paths.get("./test/client_storage");
 
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsFileDownloadExample.class);
+	private static RfsConfig config = RfsConfig.getDefaultConfig();
 
 	// Specify the name of file to download in the first argument
 	public static void main(String[] args) {
 		final String downloadFileName = args[0];
-		final InetSocketAddress serverAddress = new InetSocketAddress("127.0.0.1", SERVER_PORT);
+		ServerInfo serverInfo = new ServerInfo(0, new InetSocketAddress("127.0.0.1", SERVER_PORT), 1.0);
 		final ExecutorService executor = Executors.newCachedThreadPool();
-
 		final NioEventloop eventloop = new NioEventloop();
 
-		SimpleFsClient client = new SimpleFsClient(eventloop, serverAddress);
+		ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, config);
+		FsClient client = SimpleFsClient.createInstance(serverInfo, protocol);
 
 		StreamFileWriter consumer =
 				StreamFileWriter.createFile(eventloop, executor, DOWNLOAD_PATH.resolve("downloaded_" + downloadFileName));

@@ -58,7 +58,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 			this.itemComparator = itemComparator;
 			this.storage = storage;
 			this.merger = merger;
-			this.list = new ArrayList<>(this.itemsInMemorySize + (this.itemsInMemorySize >> 4));
+			this.list = new ArrayList<>();
 			this.listOfPartitions = new ArrayList<>();
 			this.forwarder = new StreamForwarder<>(eventloop);
 		}

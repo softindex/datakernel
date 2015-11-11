@@ -77,8 +77,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 * @param pool          pool in which will be stored this connection
 	 */
-	public HttpServerConnection(NioEventloop eventloop, SocketChannel socketChannel, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars) {
-		super(eventloop, socketChannel, pool, headerChars);
+	public HttpServerConnection(NioEventloop eventloop, SocketChannel socketChannel, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, socketChannel, pool, headerChars, maxHttpMessageSize);
 		this.servlet = servlet;
 		this.remoteAddress = getRemoteSocketAddress().getAddress();
 	}

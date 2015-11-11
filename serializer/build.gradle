@@ -1,4 +1,0 @@
-dependencies {
-    compile project(':datakernel/codegen')
-    compile('com.carrotsearch:hppc:0.6.0')
-}

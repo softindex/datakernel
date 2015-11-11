@@ -16,52 +16,40 @@
 
 package io.datakernel.simplefs.stress;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.remotefs.FileSystem;
+import io.datakernel.remotefs.FileSystemImpl;
+import io.datakernel.remotefs.FsServer;
+import io.datakernel.remotefs.RfsConfig;
+import io.datakernel.remotefs.protocol.ServerProtocol;
+import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
 import io.datakernel.simplefs.SimpleFsServer;
-import io.datakernel.simplefs.StopAndHugeFileUploadTest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
-	private static final Logger logger = LoggerFactory.getLogger(StopAndHugeFileUploadTest.class);
+	private static final Path SERVER_STORAGE_PATH = Paths.get("./test/server_storage");
+	public static final int PORT = 5560;
 
-	private static final int SERVER_PORT = 6732;
-
-	// Specify path. Should be manually deleted after server stop
-	private static final String tmpPath = "./test/server_storage";
-
-	private static final Path SERVER_STORAGE_PATH = Paths.get(tmpPath);
-
-	private static final ExecutorService executor = Executors.newCachedThreadPool();
+	private static final ExecutorService executor = newCachedThreadPool();
 	private static final NioEventloop eventloop = new NioEventloop();
 
-	public static SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, SERVER_STORAGE_PATH, executor);
+	public static RfsConfig config = RfsConfig.getDefaultConfig();
+	public static FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, SERVER_STORAGE_PATH, config);
+	public static ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, config, PORT);
+
+	public static FsServer server = SimpleFsServer.createInstance(eventloop, fileSystem, protocol, config);
 
 	public static void main(String[] args) throws IOException {
 		Files.createDirectories(SERVER_STORAGE_PATH);
-
-		fileServer.setListenPort(SERVER_PORT);
-		fileServer.listen();
-		fileServer.start(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.info("Started");
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error(e.getMessage());
-			}
-		});
-
+		server.start(ignoreCompletionCallback());
 		eventloop.run();
 	}
 }

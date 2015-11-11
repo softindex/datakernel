@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleCompletionFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
@@ -108,17 +107,12 @@ public class WorkerServersTest {
 		assertTrue(toByteArray(socket2.getInputStream()).length == 0);
 		socket2.close();
 
-
-		SimpleCompletionFuture callbackPrimaty = new SimpleCompletionFuture();
-		primaryNioServer.closeFuture(callbackPrimaty);
-		callbackPrimaty.await();
+		primaryNioServer.closeFuture().await();
 
 		primaryThread.join();
 		for (AsyncHttpServer server : workerServers) {
 			server.getNioEventloop().keepAlive(false);
-			SimpleCompletionFuture callbackServer = new SimpleCompletionFuture();
-			server.closeFuture(callbackServer);
-			callbackServer.await();
+			server.closeFuture().await();
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

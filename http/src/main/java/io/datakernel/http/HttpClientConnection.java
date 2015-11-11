@@ -33,6 +33,7 @@ import static io.datakernel.util.ByteBufStrings.decodeDecimal;
  * Realization of {@link AbstractHttpConnection},  which represents a client side and used for sending requests and
  * receiving responses.
  */
+@SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final Exception CLOSED_CONNECTION = new IOException("Connection is closed");
@@ -51,8 +52,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param socketChannel channel for this connection
 	 * @param httpClient    client which will handle this connection
 	 */
-	public HttpClientConnection(NioEventloop eventloop, SocketChannel socketChannel, HttpClientImpl httpClient, char[] headerChars) {
-		super(eventloop, socketChannel, httpClient.connectionsList, headerChars);
+	public HttpClientConnection(NioEventloop eventloop, SocketChannel socketChannel, HttpClientImpl httpClient, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, socketChannel, httpClient.connectionsList, headerChars, maxHttpMessageSize);
 		this.httpClient = httpClient;
 	}
 
@@ -128,8 +129,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 */
 	@Override
 	protected void onHeader(HttpHeader header, ByteBuf value) {
-		response.addHeader(header, value);
 		super.onHeader(header, value);
+		response.addHeader(header, value);
 	}
 
 	/**
@@ -162,7 +163,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public void onReadEndOfStream() {
 		assert eventloop.inEventloopThread();
 		if (callback != null) {
-			if (reading == BODY && contentLength == -1) {
+			if (reading == BODY && contentLength == UNKNOWN_LENGTH) {
 				onHttpMessage(bodyQueue.takeRemaining());
 			} else {
 				onException(CLOSED_CONNECTION);

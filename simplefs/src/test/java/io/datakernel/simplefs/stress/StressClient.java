@@ -21,11 +21,15 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.remotefs.FsClient;
+import io.datakernel.remotefs.RfsConfig;
+import io.datakernel.remotefs.ServerInfo;
+import io.datakernel.remotefs.protocol.ClientProtocol;
+import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.simplefs.SimpleFsClient;
-import io.datakernel.simplefs.StopAndHugeFileUploadTest;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
@@ -49,14 +53,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class StressClient {
-	private static final Logger logger = LoggerFactory.getLogger(StopAndHugeFileUploadTest.class);
+	private static final Logger logger = LoggerFactory.getLogger(StressClient.class);
 
-	private static final int SERVER_PORT = 6732;
-	private static final InetSocketAddress serverAddress = new InetSocketAddress("127.0.0.1", SERVER_PORT);
+	private ServerInfo serverInfo = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 5560), 1.0);
 
 	private NioEventloop eventloop = new NioEventloop();
 	private ExecutorService executor = Executors.newCachedThreadPool();
-	private SimpleFsClient client = new SimpleFsClient(eventloop, serverAddress);
+	private ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, RfsConfig.getDefaultConfig());
+	private FsClient client = SimpleFsClient.createInstance(serverInfo, protocol);
 
 	private static Random rand = new Random();
 
@@ -137,7 +141,7 @@ public class StressClient {
 				int index = rand.nextInt(existingClientFiles.size());
 				final String fileName = existingClientFiles.get(index);
 
-				client.deleteFile(fileName, new CompletionCallback() {
+				client.delete(fileName, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						existingClientFiles.remove(fileName);
@@ -156,7 +160,7 @@ public class StressClient {
 		operations.add(new Operation() {
 			@Override
 			public void go() {
-				client.listFiles(new ResultCallback<List<String>>() {
+				client.list(new ResultCallback<List<String>>() {
 					@Override
 					public void onResult(List<String> result) {
 						logger.info("Listed: " + result.size());
