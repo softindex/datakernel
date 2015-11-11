@@ -28,9 +28,9 @@ import io.datakernel.http.MiddlewareServlet;
 
 public final class CubeHttpServer {
 	private static final String DIMENSIONS_REQUEST_PATH = "/dimensions/";
-	private static final String QUERY_REQUEST_PATH = "/";
+	private static final String QUERY_REQUEST_PATH = "/query/";
 	private static final String INFO_REQUEST_PATH = "/info/";
-	private static final String REPORTING_QUERY_REQUEST_PATH = "/reporting/";
+	private static final String REPORTING_QUERY_REQUEST_PATH = "/";
 
 	public static MiddlewareServlet createServlet(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
 		final Gson gson = new GsonBuilder()
