@@ -79,7 +79,7 @@ public class RpcStrategySingleServerTest {
 		RpcRequestSender sender = strategySingleServer.create(pool).get();
 		final int calls = 100;
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		RpcMessageDataStub data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
 
 		for (int i = 0; i < calls; i++) {

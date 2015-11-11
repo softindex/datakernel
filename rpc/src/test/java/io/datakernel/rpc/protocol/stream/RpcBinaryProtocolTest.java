@@ -52,7 +52,7 @@ public class RpcBinaryProtocolTest {
 	private static final int LISTEN_PORT = 12345;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
 
-	public static class TestRpcRequestMessage extends RpcMessage.AbstractRpcMessage {
+	public static class TestRpcRequestMessage {
 		private final String request;
 
 		public TestRpcRequestMessage(@Deserialize("request") String request) {
@@ -65,7 +65,7 @@ public class RpcBinaryProtocolTest {
 		}
 	}
 
-	public static class TestRpcResponseMessage extends RpcMessage.AbstractMandatoryRpcMessage {
+	public static class TestRpcResponseMessage {
 		private final String response;
 
 		public TestRpcResponseMessage(@Deserialize("response") String response) {
@@ -81,7 +81,7 @@ public class RpcBinaryProtocolTest {
 	private static RequestHandlers createAsyncFunc(final TestService service) {
 		return new RequestHandlers.Builder().put(TestRpcRequestMessage.class, new RequestHandler<TestRpcRequestMessage>() {
 			@Override
-			public void run(final TestRpcRequestMessage request, final ResultCallback<RpcMessage.RpcMessageData> callback) {
+			public void run(final TestRpcRequestMessage request, final ResultCallback<Object> callback) {
 				service.call(request.getRequest(), new ResultCallback<String>() {
 					@Override
 					public void onResult(String result) {

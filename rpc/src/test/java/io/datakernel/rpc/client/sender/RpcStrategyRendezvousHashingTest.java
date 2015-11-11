@@ -51,7 +51,7 @@ public class RpcStrategyRendezvousHashingTest {
 		int key1 = 1;
 		int key2 = 2;
 		int key3 = 3;
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
@@ -100,7 +100,7 @@ public class RpcStrategyRendezvousHashingTest {
 		int key1 = 1;
 		int key2 = 2;
 		int key3 = 3;
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
@@ -122,7 +122,7 @@ public class RpcStrategyRendezvousHashingTest {
 		int key1 = 1;
 		int key2 = 2;
 		int key3 = 3;
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
@@ -140,7 +140,7 @@ public class RpcStrategyRendezvousHashingTest {
 	@Test
 	public void itShouldNotBeCreatedWhenNoSendersWereAdded() {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcRequestSendingStrategy rendezvousHashingStrategy = new RpcStrategyRendezvousHashing(hashFunction);
 
 		assertFalse(rendezvousHashingStrategy.create(pool).isPresent());
@@ -155,7 +155,7 @@ public class RpcStrategyRendezvousHashingTest {
 		int key1 = 1;
 		int key2 = 2;
 		int key3 = 3;
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
@@ -184,7 +184,7 @@ public class RpcStrategyRendezvousHashingTest {
 		int key1 = 1;
 		int key2 = 2;
 		int key3 = 3;
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);

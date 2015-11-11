@@ -28,14 +28,13 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.flatten;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.replaceAbsentToNull;
-import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import static java.util.Arrays.asList;
 
 public final class RpcStrategySharding implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
 	private final List<RpcRequestSendingStrategy> subStrategies;
-	private final HashFunction<RpcMessageData> hashFunction;
+	private final HashFunction<Object> hashFunction;
 
-	public RpcStrategySharding(HashFunction<RpcMessageData> hashFunction, List<RpcRequestSendingStrategy> subStrategies) {
+	public RpcStrategySharding(HashFunction<Object> hashFunction, List<RpcRequestSendingStrategy> subStrategies) {
 		this.hashFunction = checkNotNull(hashFunction);
 		this.subStrategies = checkNotNull(subStrategies);
 	}
@@ -65,10 +64,10 @@ public final class RpcStrategySharding implements RpcRequestSendingStrategy, Rpc
 	final static class RequestSenderSharding implements RpcRequestSender {
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No senders available");
-		private final HashFunction<RpcMessageData> hashFunction;
+		private final HashFunction<Object> hashFunction;
 		private final RpcRequestSender[] subSenders;
 
-		public RequestSenderSharding(HashFunction<RpcMessageData> hashFunction, List<RpcRequestSender> senders) {
+		public RequestSenderSharding(HashFunction<Object> hashFunction, List<RpcRequestSender> senders) {
 			// null values are allowed in senders list
 			checkArgument(senders != null && senders.size() > 0);
 			this.hashFunction = checkNotNull(hashFunction);
@@ -76,7 +75,7 @@ public final class RpcStrategySharding implements RpcRequestSendingStrategy, Rpc
 		}
 
 		@Override
-		public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout,
+		public <T> void sendRequest(Object request, int timeout,
 		                                                   final ResultCallback<T> callback) {
 			checkNotNull(callback);
 
@@ -88,7 +87,7 @@ public final class RpcStrategySharding implements RpcRequestSendingStrategy, Rpc
 			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 
-		private RpcRequestSender chooseSender(RpcMessageData request) {
+		private RpcRequestSender chooseSender(Object request) {
 			int index = Math.abs(hashFunction.hashCode(request)) % subSenders.length;
 			return subSenders[index];
 		}

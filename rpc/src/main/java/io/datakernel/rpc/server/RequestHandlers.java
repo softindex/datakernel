@@ -27,19 +27,19 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
-public final class RequestHandlers implements AsyncFunction<RpcMessage.RpcMessageData, RpcMessage.RpcMessageData> {
+public final class RequestHandlers implements AsyncFunction<Object, Object> {
 
-	public interface RequestHandler<R extends RpcMessage.RpcMessageData> {
-		void run(R request, ResultCallback<RpcMessage.RpcMessageData> callback);
+	public interface RequestHandler<R extends Object> {
+		void run(R request, ResultCallback<Object> callback);
 	}
 
 	public static final class Builder {
-		private final Map<Class<? extends RpcMessage.RpcMessageData>, RequestHandler<RpcMessage.RpcMessageData>> handlers = new HashMap<>();
+		private final Map<Class<? extends Object>, RequestHandler<Object>> handlers = new HashMap<>();
 		private Logger logger;
 
 		@SuppressWarnings("unchecked")
-		public <T extends RpcMessage.RpcMessageData> Builder put(Class<T> requestClass, RequestHandler<T> handler) {
-			handlers.put(requestClass, (RequestHandler<RpcMessage.RpcMessageData>) handler);
+		public <T extends Object> Builder put(Class<T> requestClass, RequestHandler<T> handler) {
+			handlers.put(requestClass, (RequestHandler<Object>) handler);
 			return this;
 		}
 
@@ -53,17 +53,17 @@ public final class RequestHandlers implements AsyncFunction<RpcMessage.RpcMessag
 		}
 	}
 
-	private final ImmutableMap<Class<? extends RpcMessage.RpcMessageData>, RequestHandler<RpcMessage.RpcMessageData>> handlers;
+	private final ImmutableMap<Class<? extends Object>, RequestHandler<Object>> handlers;
 	private final Logger logger;
 
-	private RequestHandlers(ImmutableMap<Class<? extends RpcMessage.RpcMessageData>, RequestHandler<RpcMessage.RpcMessageData>> handlers, Logger logger) {
+	private RequestHandlers(ImmutableMap<Class<? extends Object>, RequestHandler<Object>> handlers, Logger logger) {
 		this.handlers = handlers;
 		this.logger = logger;
 	}
 
 	@Override
-	public void apply(RpcMessage.RpcMessageData request, ResultCallback<RpcMessage.RpcMessageData> callback) {
-		RequestHandler<RpcMessage.RpcMessageData> requestHandler;
+	public void apply(Object request, ResultCallback<Object> callback) {
+		RequestHandler<Object> requestHandler;
 		try {
 			checkNotNull(request);
 			checkNotNull(callback);

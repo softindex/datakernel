@@ -14,15 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.sender.helper;
+package io.datakernel.rpc.protocol;
 
-import io.datakernel.rpc.hash.HashFunction;
-import io.datakernel.rpc.protocol.RpcMessage;
-
-public class RpcMessageDataStubWithKeyHashFunction implements HashFunction<Object> {
-
-	@Override
-	public int hashCode(Object item) {
-		return ((RpcMessageDataStubWithKey) item).getKey();
-	}
+/**
+ * Marker interface to indicate that request is mandatory
+ */
+public interface RpcMandatoryData {
 }

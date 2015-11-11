@@ -20,7 +20,6 @@ import com.google.common.primitives.Doubles;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.protocol.RpcMessage;
-import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.server.RequestHandlers;
 import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
@@ -31,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class SumService implements RequestHandler<SumService.Request> {
 
-	public static final class Request extends RpcMessage.AbstractRpcMessage {
+	public static final class Request {
 		private int a, b;
 
 		@Serialize(order = 0)
@@ -58,7 +57,7 @@ public class SumService implements RequestHandler<SumService.Request> {
 		}
 	}
 
-	public static final class Response extends RpcMessage.AbstractRpcMessage {
+	public static final class Response {
 		private final String result;
 
 		public Response(@Deserialize("result") String result) {
@@ -74,7 +73,7 @@ public class SumService implements RequestHandler<SumService.Request> {
 	private final AtomicInteger totalRequests = new AtomicInteger(0);
 
 	@Override
-	public void run(Request request, ResultCallback<RpcMessageData> callback) {
+	public void run(Request request, ResultCallback<Object> callback) {
 		totalRequests.incrementAndGet();
 		String result = Integer.toString(request.a + request.b);
 		callback.onResult(new Response(result));
@@ -92,20 +91,20 @@ public class SumService implements RequestHandler<SumService.Request> {
 		return RpcMessageSerializer.builder().addExtraRpcMessageType(Request.class, Response.class).build();
 	}
 
-	public static HashFunction<RpcMessageData> consistentHashFunction() {
-		return new HashFunction<RpcMessageData>() {
+	public static HashFunction<Object> consistentHashFunction() {
+		return new HashFunction<Object>() {
 			@Override
-			public int hashCode(RpcMessageData item) {
+			public int hashCode(Object item) {
 				int a = ((Request) item).getA();
 				return Doubles.hashCode((a + 1) * 1234567.8);
 			}
 		};
 	}
 
-	public static HashFunction<RpcMessageData> simpleHashFunction() {
-		return new HashFunction<RpcMessageData>() {
+	public static HashFunction<Object> simpleHashFunction() {
+		return new HashFunction<Object>() {
 			@Override
-			public int hashCode(RpcMessageData item) {
+			public int hashCode(Object item) {
 				return ((Request) item).getA();
 			}
 		};

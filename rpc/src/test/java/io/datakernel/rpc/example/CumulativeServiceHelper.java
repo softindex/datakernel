@@ -43,7 +43,7 @@ import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server
  * This class contains static factory methods to setup RPC client and server.
  */
 public final class CumulativeServiceHelper {
-	public static final class ValueMessage extends RpcMessage.AbstractRpcMessage {
+	public static final class ValueMessage {
 		@Serialize(order = 0)
 		public int value;
 
@@ -67,7 +67,7 @@ public final class CumulativeServiceHelper {
 					private final ValueMessage currentSum = new ValueMessage(0);
 
 					@Override
-					public void run(ValueMessage request, ResultCallback<RpcMessage.RpcMessageData> callback) {
+					public void run(ValueMessage request, ResultCallback<Object> callback) {
 						if (request.value != 0) {
 							currentSum.value += request.value;
 						} else {

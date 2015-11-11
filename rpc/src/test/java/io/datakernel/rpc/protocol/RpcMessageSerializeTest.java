@@ -35,7 +35,7 @@ import static org.junit.Assert.assertEquals;
 
 public class RpcMessageSerializeTest {
 
-	public static class TestRpcMessageData extends RpcMessage.AbstractRpcMessage {
+	public static class TestRpcMessageData {
 		private final String s;
 
 		public TestRpcMessageData(@Deserialize("s") String s) {
@@ -49,7 +49,7 @@ public class RpcMessageSerializeTest {
 
 	}
 
-	public static class TestRpcMessageData2 extends RpcMessage.AbstractRpcMessage {
+	public static class TestRpcMessageData2 {
 		private final int i;
 
 		public TestRpcMessageData2(@Deserialize("i") int i) {
@@ -89,7 +89,7 @@ public class RpcMessageSerializeTest {
 	public void testRpcMessageData() throws UnknownHostException {
 		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");
 
-		RpcMessage.RpcMessageData messageData2 = doTest(TypeToken.of(RpcMessage.RpcMessageData.class), messageData1);
+		Object messageData2 = doTest(TypeToken.of(Object.class), messageData1);
 		Assert.assertTrue(messageData2 instanceof TestRpcMessageData);
 
 		TestRpcMessageData testMessage2 = (TestRpcMessageData) messageData2;

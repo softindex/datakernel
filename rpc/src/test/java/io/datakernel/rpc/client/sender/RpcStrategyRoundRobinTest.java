@@ -55,7 +55,7 @@ public class RpcStrategyRoundRobinTest {
 				new RpcStrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 		RpcRequestSender senderRoundRobin;
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		Object data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int callsAmount = 5;
 
@@ -89,7 +89,7 @@ public class RpcStrategyRoundRobinTest {
 						singleServerStrategy4, singleServerStrategy5));
 		RpcRequestSender senderRoundRobin;
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		Object data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int callsAmount = 10;
 

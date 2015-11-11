@@ -17,10 +17,9 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 public interface RpcRequestSender {
 
-	<T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback);
+	<T> void sendRequest(Object request, int timeout, ResultCallback<T> callback);
 
 }

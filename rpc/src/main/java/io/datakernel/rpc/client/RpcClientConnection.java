@@ -23,7 +23,7 @@ import io.datakernel.rpc.protocol.RpcMessage;
 
 public interface RpcClientConnection extends RpcConnection, RpcClientConnectionMBean {
 
-	<I extends RpcMessage.RpcMessageData, O extends RpcMessage.RpcMessageData> void callMethod(
+	<I, O> void callMethod(
 			I request, int timeout, ResultCallback<O> callback);
 
 	void close();

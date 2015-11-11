@@ -60,7 +60,7 @@ public final class RpcStrategySingleServer implements RpcRequestSendingStrategy,
 		}
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+		public <T> void sendRequest(Object request, int timeout,
 		                                                              ResultCallback<T> callback) {
 
 			connection.callMethod(request, timeout, callback);

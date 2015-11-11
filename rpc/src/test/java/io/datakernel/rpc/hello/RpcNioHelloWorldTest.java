@@ -26,8 +26,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
-import io.datakernel.rpc.protocol.RpcMessage.AbstractRpcMessage;
-import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.RpcRemoteException;
@@ -71,7 +69,7 @@ public class RpcNioHelloWorldTest {
 		}
 	}
 
-	protected static class HelloRequest extends AbstractRpcMessage {
+	protected static class HelloRequest {
 		@Serialize(order = 0)
 		public String name;
 
@@ -80,7 +78,7 @@ public class RpcNioHelloWorldTest {
 		}
 	}
 
-	protected static class HelloResponse extends AbstractRpcMessage {
+	protected static class HelloResponse {
 		@Serialize(order = 0)
 		public String message;
 
@@ -92,7 +90,7 @@ public class RpcNioHelloWorldTest {
 	private static RequestHandlers helloServiceRequestHandler(final HelloService helloService) {
 		return new RequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
 			@Override
-			public void run(HelloRequest request, ResultCallback<RpcMessageData> callback) {
+			public void run(HelloRequest request, ResultCallback<Object> callback) {
 				String result;
 				try {
 					result = helloService.hello(request.name);

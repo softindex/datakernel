@@ -25,8 +25,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.hash.HashFunction;
-import io.datakernel.rpc.protocol.RpcMessage.AbstractRpcMessage;
-import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
@@ -154,7 +152,7 @@ public class CombinedStrategiesIntegrationTest {
 		}
 	}
 
-	protected static class HelloRequest extends AbstractRpcMessage {
+	protected static class HelloRequest {
 		@Serialize(order = 0)
 		public String name;
 
@@ -163,7 +161,7 @@ public class CombinedStrategiesIntegrationTest {
 		}
 	}
 
-	protected static class HelloResponse extends AbstractRpcMessage {
+	protected static class HelloResponse {
 		@Serialize(order = 0)
 		public String message;
 
@@ -175,7 +173,7 @@ public class CombinedStrategiesIntegrationTest {
 	private static RequestHandlers helloServiceRequestHandler(final HelloService helloService) {
 		return new RequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
 			@Override
-			public void run(HelloRequest request, ResultCallback<RpcMessageData> callback) {
+			public void run(HelloRequest request, ResultCallback<Object> callback) {
 				String result;
 				try {
 					result = helloService.hello(request.name);
@@ -229,9 +227,9 @@ public class CombinedStrategiesIntegrationTest {
 			InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_2);
 			InetSocketAddress address3 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_3);
 
-			HashFunction<RpcMessageData> hashFunction = new HashFunction<RpcMessageData>() {
+			HashFunction<Object> hashFunction = new HashFunction<Object>() {
 				@Override
-				public int hashCode(RpcMessageData item) {
+				public int hashCode(Object item) {
 					HelloRequest helloRequest = (HelloRequest) item;
 					int hash = 0;
 					if (helloRequest.name.startsWith("S")) {

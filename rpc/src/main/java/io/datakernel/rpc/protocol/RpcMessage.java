@@ -22,29 +22,29 @@ import io.datakernel.serializer.annotations.SerializeNullable;
 import io.datakernel.serializer.annotations.SerializeSubclasses;
 
 public final class RpcMessage {
-	@SerializeSubclasses(extraSubclassesId = "extraRpcMessages", value = {RpcRemoteException.class})
-	public interface RpcMessageData { // TODO (vmykhalko): remove this interface, change to Object
-		boolean isMandatory();
-	}
+//	@SerializeSubclasses(extraSubclassesId = "extraRpcMessages", value = {RpcRemoteException.class})
+//	public interface RpcMessageData { // TODO (vmykhalko): remove this interface, change to Object
+//		boolean isMandatory();
+//	}
 
-	public static abstract class AbstractMandatoryRpcMessage implements RpcMessageData {
-		@Override
-		public boolean isMandatory() {
-			return true;
-		}
-	}
-
-	public static abstract class AbstractRpcMessage implements RpcMessageData {
-		@Override
-		public boolean isMandatory() {
-			return false;
-		}
-	}
+//	public static abstract class AbstractMandatoryRpcMessage implements RpcMessageData {
+//		@Override
+//		public boolean isMandatory() {
+//			return true;
+//		}
+//	}
+//
+//	public static abstract class AbstractRpcMessage implements RpcMessageData {
+//		@Override
+//		public boolean isMandatory() {
+//			return false;
+//		}
+//	}
 
 	private final int cookie;
-	private final RpcMessageData data;
+	private final Object data;
 
-	public RpcMessage(@Deserialize("cookie") int cookie, @Deserialize("data") RpcMessageData data) {
+	public RpcMessage(@Deserialize("cookie") int cookie, @Deserialize("data") Object data) {
 		this.cookie = cookie;
 		this.data = data;
 	}
@@ -56,7 +56,7 @@ public final class RpcMessage {
 
 	@Serialize(order = 2)
 	@SerializeNullable
-	public RpcMessageData getData() {
+	public Object getData() {
 		return data;
 	}
 }

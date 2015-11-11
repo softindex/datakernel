@@ -58,7 +58,7 @@ public class RpcRequestSendingStrategiesTest {
 		pool.add(ADDRESS_4, connection4);
 		pool.add(ADDRESS_5, connection5);
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		RpcMessageDataStub data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int iterations = 100;
 		RpcRequestSendingStrategy strategy =
@@ -92,7 +92,7 @@ public class RpcRequestSendingStrategiesTest {
 		// we don't add connection3
 		pool.add(ADDRESS_4, connection4);
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		RpcMessageDataStub data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int iterations = 20;
 		RpcRequestSendingStrategy strategy =
@@ -130,10 +130,10 @@ public class RpcRequestSendingStrategiesTest {
 		pool.add(ADDRESS_3, connection3);
 		pool.add(ADDRESS_4, connection4);
 		pool.add(ADDRESS_5, connection5);
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		int timeout = 50;
-		RpcMessage.RpcMessageData data0 = new RpcMessageDataStubWithKey(0);
-		RpcMessage.RpcMessageData data1 = new RpcMessageDataStubWithKey(1);
+		RpcMessageDataStubWithKey data0 = new RpcMessageDataStubWithKey(0);
+		RpcMessageDataStubWithKey data1 = new RpcMessageDataStubWithKey(1);
 		ResultCallbackStub callback = new ResultCallbackStub();
 		RpcRequestSendingStrategy strategy =
 				sharding(
@@ -169,7 +169,7 @@ public class RpcRequestSendingStrategiesTest {
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
-		HashFunction<RpcMessage.RpcMessageData> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
 		RpcRequestSendingStrategy strategy =
 				rendezvousHashing(hashFunction)
 						.put(1, firstAvailable(servers(ADDRESS_1, ADDRESS_2)))
@@ -188,14 +188,14 @@ public class RpcRequestSendingStrategiesTest {
 		pool.add(ADDRESS_5, connection5);
 		sender = strategy.create(pool).get();
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			RpcMessage.RpcMessageData data = new RpcMessageDataStubWithKey(i);
+			RpcMessageDataStubWithKey data = new RpcMessageDataStubWithKey(i);
 			sender.sendRequest(data, timeout, callback);
 		}
 		pool.remove(ADDRESS_3);
 		pool.remove(ADDRESS_4);
 		sender = strategy.create(pool).get();
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			RpcMessage.RpcMessageData data = new RpcMessageDataStubWithKey(i);
+			RpcMessageDataStubWithKey data = new RpcMessageDataStubWithKey(i);
 			sender.sendRequest(data, timeout, callback);
 		}
 
@@ -241,11 +241,11 @@ public class RpcRequestSendingStrategiesTest {
 
 		sender = strategy.create(pool).get();
 		for (int i = 0; i < iterationsPerDataStub; i++) {
-			RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+			RpcMessageDataStub data = new RpcMessageDataStub();
 			sender.sendRequest(data, timeout, callback);
 		}
 		for (int i = 0; i < iterationsPerDataStubWithKey; i++) {
-			RpcMessage.RpcMessageData data = new RpcMessageDataStubWithKey(i);
+			RpcMessageDataStubWithKey data = new RpcMessageDataStubWithKey(i);
 			sender.sendRequest(data, timeout, callback);
 		}
 

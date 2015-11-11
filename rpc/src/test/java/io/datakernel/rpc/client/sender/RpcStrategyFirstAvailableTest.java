@@ -52,7 +52,7 @@ public class RpcStrategyFirstAvailableTest {
 				new RpcStrategyFirstAvailable(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 		RpcRequestSender senderToFirst;
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		RpcMessageDataStub data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int callsToSender1 = 10;
 		int callsToSender2 = 25;

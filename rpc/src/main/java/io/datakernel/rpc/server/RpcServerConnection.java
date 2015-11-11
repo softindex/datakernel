@@ -67,9 +67,9 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 		final int cookie = message.getCookie();
 		final long startTime = monitoring ? statsTimeProvider.currentTimeMillis() : 0;
 
-		handlers.apply(message.getData(), new ResultCallback<RpcMessage.RpcMessageData>() {
+		handlers.apply(message.getData(), new ResultCallback<Object>() {
 			@Override
-			public void onResult(RpcMessage.RpcMessageData result) {
+			public void onResult(Object result) {
 				updateProcessTime();
 				try {
 					protocol.sendMessage(new RpcMessage(cookie, result));

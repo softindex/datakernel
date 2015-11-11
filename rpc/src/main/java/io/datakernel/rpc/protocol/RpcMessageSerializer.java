@@ -52,7 +52,7 @@ public final class RpcMessageSerializer {
 		}
 
 		@SafeVarargs
-		public final Builder addExtraRpcMessageType(Class<? extends RpcMessage.RpcMessageData>... subclasses) {
+		public final Builder addExtraRpcMessageType(Class<? extends Object>... subclasses) {
 			extraSubClasses.addAll(Arrays.asList(subclasses));
 			return this;
 		}

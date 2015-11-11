@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.rpc.hash.HashFunction;
-import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -69,12 +68,12 @@ public final class RpcRequestSendingStrategies {
 		return new RpcStrategyRoundRobin(senders);
 	}
 
-	public static RpcStrategySharding sharding(final HashFunction<RpcMessageData> hashFunction,
+	public static RpcStrategySharding sharding(final HashFunction<Object> hashFunction,
 	                                           RpcRequestSendingStrategy... senders) {
 		return sharding(hashFunction, asList(senders));
 	}
 
-	public static RpcStrategySharding sharding(final HashFunction<RpcMessageData> hashFunction,
+	public static RpcStrategySharding sharding(final HashFunction<Object> hashFunction,
 	                                           final List<RpcRequestSendingStrategy> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
@@ -82,7 +81,7 @@ public final class RpcRequestSendingStrategies {
 		return new RpcStrategySharding(hashFunction, senders);
 	}
 
-	public static RpcStrategyRendezvousHashing rendezvousHashing(final HashFunction<RpcMessageData> hashFunction) {
+	public static RpcStrategyRendezvousHashing rendezvousHashing(final HashFunction<Object> hashFunction) {
 		checkNotNull(hashFunction);
 		return new RpcStrategyRendezvousHashing(hashFunction);
 	}

@@ -58,7 +58,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcRequestSendingStrategy allAvailableStrategy =
 				new RpcStrategyFirstValidResult(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		Object data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int callsAmountIterationOne = 10;
 		int callsAmountIterationTwo = 25;
@@ -95,7 +95,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcRequestSender sender = allAvailableStrategy.create(
 				new RpcClientConnectionPool(Arrays.<InetSocketAddress>asList())).get();
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		Object data = new RpcMessageDataStub();
 		ResultCallback<RpcMessageDataStub> callback = new ResultCallback<RpcMessageDataStub>() {
 			@Override
 			public void onException(Exception exception) {
@@ -129,7 +129,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcRequestSender sender = allAvailableStrategy.create(
 				new RpcClientConnectionPool(Arrays.<InetSocketAddress>asList())).get();
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		Object data = new RpcMessageDataStub();
 		ResultCallback<RpcMessageDataStub> callback = new ResultCallback<RpcMessageDataStub>() {
 			@Override
 			public void onException(Exception exception) {
@@ -175,7 +175,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcRequestSender sender = allAvailableStrategy.create(
 				new RpcClientConnectionPool(Arrays.<InetSocketAddress>asList())).get();
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		Object data = new RpcMessageDataStub();
 		ResultCallback<RpcMessageDataStubWithKey> callback = new ResultCallback<RpcMessageDataStubWithKey>() {
 			@Override
 			public void onException(Exception exception) {
@@ -221,7 +221,7 @@ public class RpcStrategyFirstValidResultTest {
 		RpcRequestSender sender = allAvailableStrategy.create(
 				new RpcClientConnectionPool(Arrays.<InetSocketAddress>asList())).get();
 		int timeout = 50;
-		RpcMessage.RpcMessageData data = new RpcMessageDataStub();
+		Object data = new RpcMessageDataStub();
 		ResultCallback<RpcMessageDataStubWithKey> callback = new ResultCallback<RpcMessageDataStubWithKey>() {
 			@Override
 			public void onException(Exception exception) {
@@ -327,21 +327,21 @@ public class RpcStrategyFirstValidResultTest {
 	static final class RequestSenderOnResultWithNullCaller implements RpcRequestSender {
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
+		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 			callback.onResult(null);
 		}
 	}
 
-	static final class RequestSenderOnResultWithValueCaller<T extends RpcMessage.RpcMessageData> implements RpcRequestSender {
+	static final class RequestSenderOnResultWithValueCaller implements RpcRequestSender {
 
-		private final RpcMessage.RpcMessageData data;
+		private final Object data;
 
-		public RequestSenderOnResultWithValueCaller(RpcMessage.RpcMessageData data) {
+		public RequestSenderOnResultWithValueCaller(Object data) {
 			this.data = data;
 		}
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
+		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 			callback.onResult((T) data);
 		}
 	}
@@ -361,9 +361,9 @@ public class RpcStrategyFirstValidResultTest {
 
 	static final class RequestSenderOnResultWithValueStrategy implements RpcRequestSendingStrategy {
 
-		private final RpcMessage.RpcMessageData data;
+		private final Object data;
 
-		public RequestSenderOnResultWithValueStrategy(RpcMessage.RpcMessageData data) {
+		public RequestSenderOnResultWithValueStrategy(Object data) {
 			this.data = data;
 		}
 

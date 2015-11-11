@@ -226,27 +226,15 @@ public class RpcStrategyTypeDispatchingTest {
 		assertFalse(typeDispatchingStrategy.create(pool).isPresent());
 	}
 
-	static class RpcMessageDataTypeOne implements RpcMessage.RpcMessageData {
+	static class RpcMessageDataTypeOne {
 
-		@Override
-		public boolean isMandatory() {
-			return false;
-		}
 	}
 
-	static class RpcMessageDataTypeTwo implements RpcMessage.RpcMessageData {
+	static class RpcMessageDataTypeTwo {
 
-		@Override
-		public boolean isMandatory() {
-			return false;
-		}
 	}
 
-	static class RpcMessageDataTypeThree implements RpcMessage.RpcMessageData {
+	static class RpcMessageDataTypeThree {
 
-		@Override
-		public boolean isMandatory() {
-			return false;
-		}
 	}
 }

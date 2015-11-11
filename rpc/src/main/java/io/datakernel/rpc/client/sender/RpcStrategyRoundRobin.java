@@ -56,7 +56,7 @@ public final class RpcStrategyRoundRobin extends RpcRequestSendingStrategyToGrou
 		}
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+		public <T> void sendRequest(Object request, int timeout,
 		                                                              ResultCallback<T> callback) {
 			RpcRequestSender sender = getCurrentSubSender();
 			sender.sendRequest(request, timeout, callback);

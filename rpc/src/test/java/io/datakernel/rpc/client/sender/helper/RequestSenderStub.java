@@ -31,8 +31,7 @@ public class RequestSenderStub implements RpcRequestSender {
 	}
 
 	@Override
-	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
-	                                                              ResultCallback<T> callback) {
+	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 		++sendRequestCalls;
 	}
 

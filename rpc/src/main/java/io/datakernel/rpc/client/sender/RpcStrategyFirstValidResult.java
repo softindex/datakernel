@@ -24,12 +24,11 @@ import java.util.List;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
-import static io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
 
 public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
-	private static final Predicate<? extends RpcMessageData> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
+	private static final Predicate<? extends Object> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
 
-	private Predicate<? extends RpcMessageData> resultValidator;
+	private Predicate<? extends Object> resultValidator;
 	private Exception noValidResultException;
 
 	public RpcStrategyFirstValidResult(List<RpcRequestSendingStrategy> subStrategies) {
@@ -43,12 +42,12 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 		return this;
 	}
 
-	public RpcStrategyFirstValidResult withResultValidator(Predicate<? extends RpcMessageData> resultValidator) {
+	public RpcStrategyFirstValidResult withResultValidator(Predicate<? extends Object> resultValidator) {
 		this.resultValidator = resultValidator;
 		return this;
 	}
 
-	public <T extends RpcMessageData> RpcStrategyFirstValidResult withNoValidResultException(Exception exception) {
+	public <T extends Object> RpcStrategyFirstValidResult withNoValidResultException(Exception exception) {
 		this.noValidResultException = exception;
 		return this;
 	}
@@ -61,10 +60,10 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 	final static class RequestSenderToAll implements RpcRequestSender {
 
 		private final RpcRequestSender[] subSenders;
-		private final Predicate<? extends RpcMessageData> resultValidator;
+		private final Predicate<? extends Object> resultValidator;
 		private final Exception noValidResultException;
 
-		public RequestSenderToAll(List<RpcRequestSender> senders, Predicate<? extends RpcMessageData> resultValidator,
+		public RequestSenderToAll(List<RpcRequestSender> senders, Predicate<? extends Object> resultValidator,
 		                          Exception noValidResultException) {
 			checkArgument(senders != null && senders.size() > 0 && !containsNullValues(senders));
 			;
@@ -74,7 +73,7 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 		}
 
 		@Override
-		public <T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout,
+		public <T> void sendRequest(Object request, int timeout,
 		                                                   final ResultCallback<T> callback) {
 			// TODO (vmykhalko): is there all right with generics ?
 			FirstResultCallback<T> resultCallback

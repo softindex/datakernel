@@ -30,7 +30,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
-	private Map<Class<? extends RpcMessage.RpcMessageData>, StrategySpecifications> dataTypeToSpecification;
+	private Map<Class<? extends Object>, StrategySpecifications> dataTypeToSpecification;
 	private StrategySpecifications defaultStrategySpecification;
 
 	RpcStrategyTypeDispatching() {
@@ -45,8 +45,8 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 
 	@Override
 	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
-		HashMap<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender = new HashMap<>();
-		for (Class<? extends RpcMessage.RpcMessageData> dataType : dataTypeToSpecification.keySet()) {
+		HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender = new HashMap<>();
+		for (Class<? extends Object> dataType : dataTypeToSpecification.keySet()) {
 			StrategySpecifications specs = dataTypeToSpecification.get(dataType);
 			Optional<RpcRequestSender> sender = specs.getStrategy().create(pool);
 			if (sender.isPresent()) {
@@ -65,7 +65,7 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 		return Optional.<RpcRequestSender>of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender));
 	}
 
-	public RpcStrategySpecsSetting on(Class<? extends RpcMessage.RpcMessageData> dataType,
+	public RpcStrategySpecsSetting on(Class<? extends Object> dataType,
 	                                  RpcSingleSenderStrategy strategy) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
@@ -96,7 +96,7 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 			return RpcStrategyTypeDispatching.this.create(pool);
 		}
 
-		public RpcStrategySpecsSetting on(Class<? extends RpcMessage.RpcMessageData> dataType,
+		public RpcStrategySpecsSetting on(Class<? extends Object> dataType,
 		                                  RpcSingleSenderStrategy strategy) {
 			return RpcStrategyTypeDispatching.this.on(dataType, strategy);
 		}
@@ -109,9 +109,9 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 	}
 
 	private final class RpcTypeStrategySpecsHelper extends RpcStrategySpecsSetting {
-		private final Class<? extends RpcMessage.RpcMessageData> dataType;
+		private final Class<? extends Object> dataType;
 
-		private RpcTypeStrategySpecsHelper(Class<? extends RpcMessage.RpcMessageData> dataType) {
+		private RpcTypeStrategySpecsHelper(Class<? extends Object> dataType) {
 			this.dataType = dataType;
 		}
 
@@ -160,10 +160,10 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No active senders available");
 
-		private final HashMap<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender;
+		private final HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender;
 		private final RpcRequestSender defaultSender;
 
-		public RequestSenderTypeDispatcher(HashMap<Class<? extends RpcMessage.RpcMessageData>, RpcRequestSender> dataTypeToSender,
+		public RequestSenderTypeDispatcher(HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender,
 		                                   RpcRequestSender defaultSender) {
 			checkNotNull(dataTypeToSender);
 
@@ -172,7 +172,7 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 		}
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+		public <T> void sendRequest(Object request, int timeout,
 		                                                              ResultCallback<T> callback) {
 			RpcRequestSender specifiedSender = dataTypeToSender.get(request.getClass());
 			RpcRequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;

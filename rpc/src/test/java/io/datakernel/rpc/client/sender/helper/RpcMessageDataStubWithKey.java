@@ -18,7 +18,7 @@ package io.datakernel.rpc.client.sender.helper;
 
 import io.datakernel.rpc.protocol.RpcMessage;
 
-public class RpcMessageDataStubWithKey implements RpcMessage.RpcMessageData {
+public class RpcMessageDataStubWithKey {
 
 	private final int key;
 
@@ -30,8 +30,4 @@ public class RpcMessageDataStubWithKey implements RpcMessage.RpcMessageData {
 		return key;
 	}
 
-	@Override
-	public boolean isMandatory() {
-		return false;
-	}
 }

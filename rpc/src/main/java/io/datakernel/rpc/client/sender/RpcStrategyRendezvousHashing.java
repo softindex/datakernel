@@ -39,12 +39,12 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 	private static final BucketHashFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultBucketHashFunction();
 
 	private final Map<Object, RpcSingleSenderStrategy> keyToStrategy;
-	private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
+	private final HashFunction<Object> hashFunction;
 	private int minSubStrategiesForCreation;
 	private BucketHashFunction bucketHashFunction;
 	private int bucketCapacity;
 
-	public RpcStrategyRendezvousHashing(HashFunction<RpcMessage.RpcMessageData> hashFunction) {
+	public RpcStrategyRendezvousHashing(HashFunction<Object> hashFunction) {
 		this.hashFunction = checkNotNull(hashFunction);
 		this.keyToStrategy = new HashMap<>();
 		this.bucketHashFunction = DEFAULT_BUCKET_HASH_FUNCTION;
@@ -120,11 +120,11 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No active senders available");
 
-		private final HashFunction<RpcMessage.RpcMessageData> hashFunction;
+		private final HashFunction<Object> hashFunction;
 		final RendezvousHashBucket hashBucket;
 
 		public RequestSenderRendezvousHashing(Map<Object, Optional<RpcRequestSender>> keyToSender,
-		                                      HashFunction<RpcMessage.RpcMessageData> hashFunction,
+		                                      HashFunction<Object> hashFunction,
 		                                      BucketHashFunction bucketHashFunction, int bucketCapacity) {
 			checkNotNull(keyToSender);
 			this.hashFunction = checkNotNull(hashFunction);
@@ -132,7 +132,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		}
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout,
+		public <T> void sendRequest(Object request, int timeout,
 		                                                              final ResultCallback<T> callback) {
 			RpcRequestSender sender = getRequestSender(request);
 			if (sender == null) {
@@ -142,7 +142,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 			sender.sendRequest(request, timeout, callback);
 		}
 
-		private RpcRequestSender getRequestSender(RpcMessage.RpcMessageData request) {
+		private RpcRequestSender getRequestSender(Object request) {
 			int hash = hashFunction.hashCode(request);
 			return hashBucket.chooseSender(hash);
 		}

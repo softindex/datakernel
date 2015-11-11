@@ -78,7 +78,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	private final NioEventloop eventloop;
 	private final RpcProtocol protocol;
 	private final StatusListener statusListener;
-	private final Map<Integer, ResultCallback<? extends RpcMessage.RpcMessageData>> requests = new HashMap<>();
+	private final Map<Integer, ResultCallback<? extends Object>> requests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
 	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
 	private final int timeoutPrecision;
@@ -107,10 +107,10 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	}
 
 	@Override
-	public <I extends RpcMessage.RpcMessageData, O extends RpcMessage.RpcMessageData> void callMethod(I request, int timeout, ResultCallback<O> callback) {
+	public <I, O> void callMethod(I request, int timeout, ResultCallback<O> callback) {
 		assert eventloop.inEventloopThread();
 
-		if (!request.isMandatory() && protocol.isOverloaded()) {
+		if (!(request instanceof RpcMandatoryData) && protocol.isOverloaded()) {
 			rejectedRequests++;
 			if (logger.isWarnEnabled())
 				logger.warn(OVERLOAD_EXCEPTION.getMessage());
@@ -120,7 +120,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 		sendMessageData(request, timeout, callback);
 	}
 
-	private void sendMessageData(RpcMessage.RpcMessageData request, int timeout, ResultCallback<? extends RpcMessage.RpcMessageData> callback) {
+	private void sendMessageData(Object request, int timeout, ResultCallback<? extends Object> callback) {
 		cookieCounter++;
 		if (requests.containsKey(cookieCounter)) {
 			String msg = "Request ID " + cookieCounter + " is already in use";
@@ -187,7 +187,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	}
 
 	private void doTimeout(TimeoutCookie timeoutCookie) {
-		ResultCallback<? extends RpcMessage.RpcMessageData> callback = requests.remove(timeoutCookie.getCookie());
+		ResultCallback<? extends Object> callback = requests.remove(timeoutCookie.getCookie());
 		if (callback == null)
 			return;
 		expiredRequests++;
@@ -199,17 +199,17 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 		timeoutCookies.remove(timeoutCookie);
 	}
 
-	private void returnTimeout(ResultCallback<? extends RpcMessage.RpcMessageData> callback, Exception exception) {
+	private void returnTimeout(ResultCallback<? extends Object> callback, Exception exception) {
 		lastTimeoutException.update(exception, null, eventloop.currentTimeMillis());
 		returnError(callback, exception);
 	}
 
-	private void returnProtocolError(ResultCallback<? extends RpcMessage.RpcMessageData> callback, Exception exception) {
+	private void returnProtocolError(ResultCallback<? extends Object> callback, Exception exception) {
 		lastInternalException.update(exception, null, eventloop.currentTimeMillis());
 		returnError(callback, exception);
 	}
 
-	private void returnError(ResultCallback<? extends RpcMessage.RpcMessageData> callback, Exception exception) {
+	private void returnError(ResultCallback<? extends Object> callback, Exception exception) {
 		failedRequests++;
 		if (callback != null) {
 			Stopwatch stopwatch = (monitoring) ? Stopwatch.createStarted() : null;
@@ -231,14 +231,14 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 
 	private void processError(RpcMessage message, RpcRemoteException exception) {
 		lastRemoteException.update(exception, message, eventloop.currentTimeMillis());
-		ResultCallback<? extends RpcMessage.RpcMessageData> callback = getResultCallback(message);
+		ResultCallback<? extends Object> callback = getResultCallback(message);
 		if (callback == null)
 			return;
 		returnError(callback, exception);
 	}
 
 	private void processResponse(RpcMessage message) {
-		ResultCallback<RpcMessage.RpcMessageData> callback = getResultCallback(message);
+		ResultCallback<Object> callback = getResultCallback(message);
 		if (callback == null)
 			return;
 		successfulRequests++;
@@ -249,7 +249,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T extends RpcMessage.RpcMessageData> ResultCallback<T> getResultCallback(RpcMessage message) {
+	private <T> ResultCallback<T> getResultCallback(RpcMessage message) {
 		return (ResultCallback<T>) requests.remove(message.getCookie());
 	}
 

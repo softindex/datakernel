@@ -63,7 +63,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		private RpcMessageSerializer serializer;
 		private RpcProtocolFactory protocolFactory;
 		private RpcRequestSendingStrategy requestSendingStrategy;
-		private RpcMessage.RpcMessageData pingMessage;
+		private Object pingMessage;
 		private Integer countAwaitsConnects;
 		private Logger parentLogger;
 
@@ -91,7 +91,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 			return this;
 		}
 
-		public Builder pingMessage(RpcMessage.RpcMessageData pingMessage) {
+		public Builder pingMessage(Object pingMessage) {
 			checkArgument(settings.getPingAmountFailed() >= 0);
 			this.pingMessage = checkNotNull(pingMessage);
 			return this;
@@ -165,7 +165,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	private final int countAwaitsConnects;
 	private final int timeoutPrecision;
 	private final Map<InetSocketAddress, Long> pingTimestamps = new HashMap<>();
-	private final RpcMessage.RpcMessageData pingMessage;
+	private final Object pingMessage;
 	private final long pingIntervalMillis;
 	private final long pingAmountFailed;
 
@@ -384,9 +384,9 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		if (pingTimestamp == null || eventloop.currentTimeMillis() - pingTimestamp < pingIntervalMillis)
 			return;
 
-		connection.callMethod(pingMessage, (int) pingIntervalMillis, new ResultCallback<RpcMessage.RpcMessageData>() {
+		connection.callMethod(pingMessage, (int) pingIntervalMillis, new ResultCallback<Object>() {
 			@Override
-			public void onResult(RpcMessage.RpcMessageData result) {
+			public void onResult(Object result) {
 				pingTimestamps.put(address, eventloop.currentTimeMillis());
 			}
 
@@ -406,7 +406,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		});
 	}
 
-	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
+	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 		requestSender.sendRequest(request, timeout, callback);
 	}
 
@@ -420,7 +420,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 				= new RpcNoSenderAvailableException("No senders available");
 
 		@Override
-		public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request,
+		public <T> void sendRequest(Object request,
 		                                                              int timeout, ResultCallback<T> callback) {
 			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
