@@ -16,6 +16,7 @@
 
 package io.datakernel.cube.api;
 
+import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.gson.Gson;
@@ -76,7 +77,13 @@ public final class DimensionsRequestHandler implements AsyncHttpServlet {
 				return !childrenDimensions.contains(predicate.key) && !predicate.key.equals(dimension);
 			}
 		}));
-		Set<String> availableMeasures = cube.getAvailableMeasures(chain, measures);
+		List<String> predicateKeys = newArrayList(Iterables.transform(filteredPredicates, new Function<AggregationQuery.QueryPredicate, String>() {
+			@Override
+			public String apply(AggregationQuery.QueryPredicate queryPredicate) {
+				return queryPredicate.key;
+			}
+		}));
+		Set<String> availableMeasures = cube.getAvailableMeasures(newArrayList(Iterables.concat(chain, predicateKeys)), measures);
 
 		final AggregationQuery query = new AggregationQuery()
 				.keys(chain)
