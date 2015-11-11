@@ -19,7 +19,6 @@ package io.datakernel.rpc;
 import com.google.common.primitives.Doubles;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.hash.HashFunction;
-import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.server.RequestHandlers;
 import io.datakernel.rpc.server.RequestHandlers.RequestHandler;

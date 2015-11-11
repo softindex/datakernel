@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.protocol.RpcMessage;
 
 import java.util.List;
 
@@ -56,8 +55,7 @@ public final class RpcStrategyRoundRobin extends RpcRequestSendingStrategyToGrou
 		}
 
 		@Override
-		public <T> void sendRequest(Object request, int timeout,
-		                                                              ResultCallback<T> callback) {
+		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 			RpcRequestSender sender = getCurrentSubSender();
 			sender.sendRequest(request, timeout, callback);
 		}

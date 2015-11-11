@@ -19,7 +19,6 @@ package io.datakernel.rpc.client.sender;
 import com.google.common.base.Optional;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.protocol.RpcMessage;
 
 import java.util.HashMap;
 import java.util.List;
@@ -173,7 +172,7 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 
 		@Override
 		public <T> void sendRequest(Object request, int timeout,
-		                                                              ResultCallback<T> callback) {
+		                            ResultCallback<T> callback) {
 			RpcRequestSender specifiedSender = dataTypeToSender.get(request.getClass());
 			RpcRequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;
 			if (sender != null) {

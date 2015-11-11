@@ -19,7 +19,6 @@ package io.datakernel.rpc.server;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.async.AsyncFunction;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.protocol.RpcMessage;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
@@ -38,7 +37,7 @@ public final class RequestHandlers implements AsyncFunction<Object, Object> {
 		private Logger logger;
 
 		@SuppressWarnings("unchecked")
-		public <T extends Object> Builder put(Class<T> requestClass, RequestHandler<T> handler) {
+		public <T> Builder put(Class<T> requestClass, RequestHandler<T> handler) {
 			handlers.put(requestClass, (RequestHandler<Object>) handler);
 			return this;
 		}

@@ -47,7 +47,7 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 		return this;
 	}
 
-	public <T extends Object> RpcStrategyFirstValidResult withNoValidResultException(Exception exception) {
+	public RpcStrategyFirstValidResult withNoValidResultException(Exception exception) {
 		this.noValidResultException = exception;
 		return this;
 	}
@@ -73,8 +73,7 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 		}
 
 		@Override
-		public <T> void sendRequest(Object request, int timeout,
-		                                                   final ResultCallback<T> callback) {
+		public <T> void sendRequest(Object request, int timeout, final ResultCallback<T> callback) {
 			// TODO (vmykhalko): is there all right with generics ?
 			FirstResultCallback<T> resultCallback
 					= new FirstResultCallback<>(callback, (Predicate<T>) resultValidator, subSenders.length, noValidResultException);

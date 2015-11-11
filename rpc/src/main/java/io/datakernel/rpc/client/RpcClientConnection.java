@@ -19,7 +19,6 @@ package io.datakernel.rpc.client;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.rpc.protocol.RpcConnection;
-import io.datakernel.rpc.protocol.RpcMessage;
 
 public interface RpcClientConnection extends RpcConnection, RpcClientConnectionMBean {
 

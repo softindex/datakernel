@@ -19,7 +19,6 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.*;
 import io.datakernel.rpc.hash.HashFunction;
-import io.datakernel.rpc.protocol.RpcMessage;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;

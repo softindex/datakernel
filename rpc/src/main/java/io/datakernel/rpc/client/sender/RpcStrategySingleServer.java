@@ -20,7 +20,6 @@ import com.google.common.base.Optional;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.protocol.RpcMessage;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -60,8 +59,7 @@ public final class RpcStrategySingleServer implements RpcRequestSendingStrategy,
 		}
 
 		@Override
-		public <T> void sendRequest(Object request, int timeout,
-		                                                              ResultCallback<T> callback) {
+		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 
 			connection.callMethod(request, timeout, callback);
 		}

@@ -26,7 +26,6 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-
 public class RpcClientConnectionStub implements RpcClientConnection {
 
 	private AtomicInteger calls;
@@ -40,9 +39,7 @@ public class RpcClientConnectionStub implements RpcClientConnection {
 	}
 
 	@Override
-	public <I, O> void callMethod(I request,
-	                                                                            int timeout,
-	                                                                            ResultCallback<O> callback) {
+	public <I, O> void callMethod(I request, int timeout, ResultCallback<O> callback) {
 		calls.incrementAndGet();
 	}
 

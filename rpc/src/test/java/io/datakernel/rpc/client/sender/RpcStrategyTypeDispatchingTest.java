@@ -22,7 +22,6 @@ import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKey;
-import io.datakernel.rpc.protocol.RpcMessage;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;

@@ -23,7 +23,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.BucketHashFunction;
 import io.datakernel.rpc.hash.HashFunction;
-import io.datakernel.rpc.protocol.RpcMessage;
 
 import java.util.HashMap;
 import java.util.List;
@@ -132,8 +131,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		}
 
 		@Override
-		public <T> void sendRequest(Object request, int timeout,
-		                                                              final ResultCallback<T> callback) {
+		public <T> void sendRequest(Object request, int timeout,final ResultCallback<T> callback) {
 			RpcRequestSender sender = getRequestSender(request);
 			if (sender == null) {
 				callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);

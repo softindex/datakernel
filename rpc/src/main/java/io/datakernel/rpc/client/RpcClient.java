@@ -35,7 +35,6 @@ import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.sender.RpcNoSenderAvailableException;
 import io.datakernel.rpc.client.sender.RpcRequestSender;
 import io.datakernel.rpc.client.sender.RpcRequestSendingStrategy;
-import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import org.slf4j.Logger;
@@ -421,7 +420,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 
 		@Override
 		public <T> void sendRequest(Object request,
-		                                                              int timeout, ResultCallback<T> callback) {
+		                            int timeout, ResultCallback<T> callback) {
 			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 	}

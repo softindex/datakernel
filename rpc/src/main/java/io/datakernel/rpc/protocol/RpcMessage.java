@@ -22,24 +22,6 @@ import io.datakernel.serializer.annotations.SerializeNullable;
 import io.datakernel.serializer.annotations.SerializeSubclasses;
 
 public final class RpcMessage {
-//	@SerializeSubclasses(extraSubclassesId = "extraRpcMessages", value = {RpcRemoteException.class})
-//	public interface RpcMessageData { // TODO (vmykhalko): remove this interface, change to Object
-//		boolean isMandatory();
-//	}
-
-//	public static abstract class AbstractMandatoryRpcMessage implements RpcMessageData {
-//		@Override
-//		public boolean isMandatory() {
-//			return true;
-//		}
-//	}
-//
-//	public static abstract class AbstractRpcMessage implements RpcMessageData {
-//		@Override
-//		public boolean isMandatory() {
-//			return false;
-//		}
-//	}
 
 	private final int cookie;
 	private final Object data;
@@ -55,6 +37,7 @@ public final class RpcMessage {
 	}
 
 	@Serialize(order = 2)
+	@SerializeSubclasses(extraSubclassesId = "extraRpcMessages", value = {RpcRemoteException.class})
 	@SerializeNullable
 	public Object getData() {
 		return data;
