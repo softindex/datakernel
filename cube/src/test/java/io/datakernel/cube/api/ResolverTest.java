@@ -1,13 +1,13 @@
 package io.datakernel.cube.api;
 
 import io.datakernel.aggregation_db.PrimaryKey;
-import io.datakernel.aggregation_db.api.AttributeResolver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Maps.newLinkedHashMap;
@@ -26,7 +26,7 @@ public class ResolverTest {
 
 	public static class TestConstantResolver implements AttributeResolver {
 		@Override
-		public Map<PrimaryKey, Object[]> resolve(List<PrimaryKey> keys, List<String> attributes) {
+		public Map<PrimaryKey, Object[]> resolve(Set<PrimaryKey> keys, List<String> attributes) {
 			Map<PrimaryKey, Object[]> result = newHashMap();
 			for (PrimaryKey key : keys) {
 				String name1 = key.get(0).toString() + key.get(1).toString();

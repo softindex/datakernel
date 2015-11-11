@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation_db.api;
+package io.datakernel.cube.api;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;

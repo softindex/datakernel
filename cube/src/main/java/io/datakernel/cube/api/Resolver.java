@@ -3,15 +3,14 @@ package io.datakernel.cube.api;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 import io.datakernel.aggregation_db.PrimaryKey;
-import io.datakernel.aggregation_db.api.AttributeResolver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
-import io.datakernel.util.Preconditions;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.cube.api.CommonUtils.generateGetter;
 import static io.datakernel.cube.api.CommonUtils.generateSetter;
 
@@ -39,8 +38,9 @@ public final class Resolver {
 
 			FieldGetter[] keyGetters = createKeyGetters(key, keyConstants, resultClass);
 			List<PrimaryKey> keys = retrieveKeyTuples(records, keyGetters);
+			Set<PrimaryKey> uniqueKeys = newHashSet(keys);
 
-			Map<PrimaryKey, Object[]> resolvedAttributes = resolver.resolve(keys, attributes);
+			Map<PrimaryKey, Object[]> resolvedAttributes = resolver.resolve(uniqueKeys, attributes);
 			copyResolvedNamesToRecords(resolvedAttributes, keys, records, resultClass, attributes, attributeTypes);
 		}
 

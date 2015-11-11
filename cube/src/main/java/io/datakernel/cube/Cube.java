@@ -24,7 +24,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import io.datakernel.aggregation_db.*;
-import io.datakernel.aggregation_db.api.AttributeResolver;
+import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;

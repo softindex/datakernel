@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation_db.api;
+package io.datakernel.cube.api;
 
 public interface TotalsPlaceholder extends QueryResultPlaceholder {
 	void initAccumulator(QueryResultPlaceholder record);
