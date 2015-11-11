@@ -324,6 +324,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			return consumerStream;
 		}
 
+		@SuppressWarnings("unchecked")
 		private void processResults(List<QueryResultPlaceholder> results, ResultCallback<HttpResponse> callback) {
 			if (results.isEmpty()) {
 				callback.onResult(createResponse(""));
@@ -404,7 +405,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 					Object value = keyGetters[j].get(result);
 					JsonElement json;
 					if (keyTypes[j] == null)
-						json = new JsonPrimitive(value == null ? "" : value.toString());
+						json = value == null ? null : new JsonPrimitive(value.toString());
 					else
 						json = keyTypes[j].toJson(value);
 					resultJsonObject.add(resultKeys.get(j), json);

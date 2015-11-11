@@ -23,7 +23,7 @@ public final class Resolver {
 		this.attributeResolvers = attributeResolvers;
 	}
 
-	public List<Object> resolve(List<Object> records, Class<?> resultClass,
+	public List<Object> resolve(List<Object> records, Class<?> recordClass,
 	                            Map<String, Class<?>> attributeTypes,
 	                            Map<AttributeResolver, List<String>> resolverKeys,
 	                            Map<String, Object> keyConstants) {
@@ -36,12 +36,12 @@ public final class Resolver {
 			List<String> attributes = resolverAttributes.get(resolver);
 			List<String> key = resolverKeys.get(resolver);
 
-			FieldGetter[] keyGetters = createKeyGetters(key, keyConstants, resultClass);
+			FieldGetter[] keyGetters = createKeyGetters(key, keyConstants, recordClass);
 			List<PrimaryKey> keys = retrieveKeyTuples(records, keyGetters);
 			Set<PrimaryKey> uniqueKeys = newHashSet(keys);
 
 			Map<PrimaryKey, Object[]> resolvedAttributes = resolver.resolve(uniqueKeys, attributes);
-			copyResolvedNamesToRecords(resolvedAttributes, keys, records, resultClass, attributes, attributeTypes);
+			copyResolvedNamesToRecords(resolvedAttributes, keys, records, recordClass, attributes, attributeTypes);
 		}
 
 		return records;

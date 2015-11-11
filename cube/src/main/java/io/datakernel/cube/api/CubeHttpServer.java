@@ -39,7 +39,7 @@ public final class CubeHttpServer {
 
 		MiddlewareServlet servlet = new MiddlewareServlet();
 
-		servlet.get(INFO_REQUEST_PATH, new InfoRequestHandler(cube, gson));
+		servlet.get(INFO_REQUEST_PATH, new InfoRequestHandler(cube, gson, classLoader));
 
 		servlet.get(QUERY_REQUEST_PATH, new QueryHandler(gson, cube, eventloop, classLoader));
 
