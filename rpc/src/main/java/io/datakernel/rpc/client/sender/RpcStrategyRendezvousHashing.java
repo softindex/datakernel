@@ -67,9 +67,9 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		return this;
 	}
 
-	public RpcStrategyRendezvousHashing put(Object key, RpcSingleSenderStrategy strategy) {
+	public RpcStrategyRendezvousHashing put(Object shardId, RpcSingleSenderStrategy strategy) {
 		checkNotNull(strategy);
-		keyToStrategy.put(key, strategy);
+		keyToStrategy.put(shardId, strategy);
 		return this;
 	}
 
@@ -189,9 +189,9 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
 
 		@Override
-		public int hash(Object key, int bucket) {
+		public int hash(Object shardId, int bucket) {
 			return murmurHashAddressFunction.newHasher()
-					.putInt(key.hashCode())
+					.putInt(shardId.hashCode())
 					.putInt(bucket)
 					.hash().asInt();
 		}

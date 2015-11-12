@@ -17,5 +17,5 @@
 package io.datakernel.rpc.hash;
 
 public interface BucketHashFunction {
-	int hash(Object key, int bucket);
+	int hash(Object shardId, int bucket);
 }
