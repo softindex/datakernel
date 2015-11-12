@@ -55,11 +55,11 @@ public class ServiceGraphTest {
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
 		ConcurrentServiceCallbacks.CountDownServiceCallback startCallback = ConcurrentServiceCallbacks.withCountDownLatch();
-		serviceGraph.startFuture(startCallback);
+		serviceGraph.start(startCallback);
 		startCallback.await();
 
 		ConcurrentServiceCallbacks.CountDownServiceCallback stopCallback = ConcurrentServiceCallbacks.withCountDownLatch();
-		serviceGraph.stopFuture(stopCallback);
+		serviceGraph.stop(stopCallback);
 		stopCallback.await();
 	}
 
@@ -84,11 +84,11 @@ public class ServiceGraphTest {
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
 		ConcurrentServiceCallbacks.CountDownServiceCallback startCallback = ConcurrentServiceCallbacks.withCountDownLatch();
-		serviceGraph.startFuture(startCallback);
+		serviceGraph.start(startCallback);
 		startCallback.await();
 
 		ConcurrentServiceCallbacks.CountDownServiceCallback stopCallback = ConcurrentServiceCallbacks.withCountDownLatch();
-		serviceGraph.stopFuture(stopCallback);
+		serviceGraph.stop(stopCallback);
 		stopCallback.await();
 	}
 

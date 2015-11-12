@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -61,7 +60,7 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final NioService node, Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(final ConcurrentServiceCallback callback) {
+					public void start(final ConcurrentServiceCallback callback) {
 						node.getNioEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
@@ -72,7 +71,7 @@ public final class ServiceGraphFactories {
 					}
 
 					@Override
-					public void stopFuture(final ConcurrentServiceCallback callback) {
+					public void stop(final ConcurrentServiceCallback callback) {
 						node.getNioEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
@@ -92,7 +91,7 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final NioServer node, Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(final ConcurrentServiceCallback callback) {
+					public void start(final ConcurrentServiceCallback callback) {
 						node.getNioEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
@@ -107,7 +106,7 @@ public final class ServiceGraphFactories {
 					}
 
 					@Override
-					public void stopFuture(final ConcurrentServiceCallback callback) {
+					public void stop(final ConcurrentServiceCallback callback) {
 						node.getNioEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
@@ -124,23 +123,24 @@ public final class ServiceGraphFactories {
 	public static ServiceGraphFactory<NioEventloop> factoryForNioEventloop() {
 		return new ServiceGraphFactory<NioEventloop>() {
 			@Override
-			public ConcurrentService getService(final NioEventloop node, Executor executor) {
+			public ConcurrentService getService(final NioEventloop node, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(final ConcurrentServiceCallback callback) {
-						// TODO (vsavchuk) see ServiceGraphFactory
-						Executors.defaultThreadFactory().newThread(new Runnable() {
+					public void start(final ConcurrentServiceCallback callback) {
+						// TODO (vsavchuk) executor or threadFactory?
+						executor.execute(new Runnable() {
 							@Override
 							public void run() {
+
 								node.keepAlive(true);
 								callback.onComplete();
 								node.run();
 							}
-						}).start();
+						});
 					}
 
 					@Override
-					public void stopFuture(final ConcurrentServiceCallback callback) {
+					public void stop(final ConcurrentServiceCallback callback) {
 						node.postConcurrently(new Runnable() {
 							@Override
 							public void run() {
@@ -163,7 +163,7 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Service service, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(final ConcurrentServiceCallback callback) {
+					public void start(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -178,7 +178,7 @@ public final class ServiceGraphFactories {
 					}
 
 					@Override
-					public void stopFuture(final ConcurrentServiceCallback callback) {
+					public void stop(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -205,12 +205,12 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Timer timer, Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(ConcurrentServiceCallback callback) {
+					public void start(ConcurrentServiceCallback callback) {
 						callback.onComplete();
 					}
 
 					@Override
-					public void stopFuture(ConcurrentServiceCallback callback) {
+					public void stop(ConcurrentServiceCallback callback) {
 						timer.cancel();
 						callback.onComplete();
 					}
@@ -228,12 +228,12 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final ExecutorService executorService, Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(ConcurrentServiceCallback callback) {
+					public void start(ConcurrentServiceCallback callback) {
 						callback.onComplete();
 					}
 
 					@Override
-					public void stopFuture(ConcurrentServiceCallback callback) {
+					public void stop(ConcurrentServiceCallback callback) {
 						List<Runnable> runnables = executorService.shutdownNow();
 						for (Runnable runnable : runnables) {
 							logger.warn("Remaining tasks {}", runnable);
@@ -254,12 +254,12 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Closeable closeable, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(ConcurrentServiceCallback callback) {
+					public void start(ConcurrentServiceCallback callback) {
 						callback.onComplete();
 					}
 
 					@Override
-					public void stopFuture(final ConcurrentServiceCallback callback) {
+					public void stop(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -286,7 +286,7 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final DataSource dataSource, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public void startFuture(final ConcurrentServiceCallback callback) {
+					public void start(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -302,7 +302,7 @@ public final class ServiceGraphFactories {
 					}
 
 					@Override
-					public void stopFuture(final ConcurrentServiceCallback callback) {
+					public void stop(final ConcurrentServiceCallback callback) {
 						if (dataSource instanceof Closeable) {
 							executor.execute(new Runnable() {
 								@Override

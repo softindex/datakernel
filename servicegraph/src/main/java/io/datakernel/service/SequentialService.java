@@ -37,11 +37,11 @@ public class SequentialService implements ConcurrentService {
 	}
 
 	@Override
-	public void startFuture(ConcurrentServiceCallback callback) {
+	public void start(ConcurrentServiceCallback callback) {
 		doAction(services, new FunctionCallback<ConcurrentService>() {
 			@Override
 			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
-				input.startFuture(callback);
+				input.start(callback);
 			}
 
 			@Override
@@ -52,11 +52,11 @@ public class SequentialService implements ConcurrentService {
 	}
 
 	@Override
-	public void stopFuture(ConcurrentServiceCallback callback) {
+	public void stop(ConcurrentServiceCallback callback) {
 		doAction(reverse(services), new FunctionCallback<ConcurrentService>() {
 			@Override
 			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
-				input.stopFuture(callback);
+				input.stop(callback);
 			}
 
 			@Override

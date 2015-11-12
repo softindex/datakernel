@@ -16,16 +16,7 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioServer;
-import io.datakernel.eventloop.NioService;
-import io.datakernel.eventloop.PrimaryNioServer;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
 
 public class ServiceGraphTest {
 
@@ -44,119 +35,14 @@ public class ServiceGraphTest {
 
 		try {
 			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-			graph.startFuture(callback);
+			graph.start(callback);
 			callback.await();
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
 			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-			graph.stopFuture(callback);
+			graph.stop(callback);
 			callback.await();
 		}
-	}
-
-	@Test
-	public void testNioService() throws InterruptedException {
-		final NioEventloop eventloop = new NioEventloop();
-		ServiceGraph graph = new ServiceGraph();
-
-		ServiceGraph.Node nioServiceNode = ServiceGraph.Node.ofNioService("nioService", newSimpleNioService(eventloop));
-		ServiceGraph.Node nioEventloopNode = ServiceGraph.Node.ofNioEventloop("nioEventloop", eventloop);
-
-		graph.add(nioServiceNode, nioEventloopNode, stringNode("a"));
-		graph.add(nioEventloopNode, stringNode("d"), stringNode("b"), stringNode("c"));
-
-		try {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-			graph.startFuture(callback);
-			callback.await();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-			graph.stopFuture(callback);
-			callback.await();
-		}
-	}
-
-	@Test
-	public void testNioServer() throws InterruptedException {
-		final ArrayList<NioServer> workerServers = new ArrayList<>();
-		ServiceGraph.Node[] nodes = new ServiceGraph.Node[4];
-		ServiceGraph graph = new ServiceGraph();
-
-		for (int i = 0; i < 4; i++) {
-			final NioEventloop workerEventloop = new NioEventloop();
-			NioServer workerServer = newSimpleNioServer(workerEventloop);
-			workerServers.add(workerServer);
-			nodes[i] = ServiceGraph.Node.ofNioServer("workerServer" + i, workerServer);
-			graph.add(nodes[i], ServiceGraph.Node.ofNioEventloop("workerEventloop" + i, workerEventloop));
-		}
-
-		int PORT = 9444;
-		NioEventloop primaryEventloop = new NioEventloop();
-		PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop)
-				.workerNioServers(workerServers)
-				.setListenPort(PORT);
-
-		graph.add(ServiceGraph.Node.ofNioServer("primaryNioServer", primaryNioServer),
-				ServiceGraph.Node.ofNioEventloop("primaryEventloop", primaryEventloop));
-
-		graph.add(ServiceGraph.Node.ofNioServer("primaryNioServer", primaryNioServer), nodes);
-
-		try {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-			graph.startFuture(callback);
-			callback.await();
-		} catch (Exception e) {
-			e.printStackTrace();
-		} finally {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
-			graph.stopFuture(callback);
-			callback.await();
-		}
-	}
-
-	private static NioServer newSimpleNioServer(final NioEventloop eventloop) {
-		return new NioServer() {
-			@Override
-			public NioEventloop getNioEventloop() {
-				return eventloop;
-			}
-
-			@Override
-			public void listen() throws IOException {
-
-			}
-
-			@Override
-			public void close() {
-
-			}
-
-			@Override
-			public void onAccept(SocketChannel socketChannel) {
-
-			}
-		};
-	}
-
-	private static NioService newSimpleNioService(final NioEventloop eventloop) {
-		return new NioService() {
-			@Override
-			public NioEventloop getNioEventloop() {
-				return eventloop;
-			}
-
-			@Override
-			public void start(CompletionCallback callback) {
-				callback.onComplete();
-			}
-
-			@Override
-			public void stop(CompletionCallback callback) {
-				callback.onComplete();
-			}
-		};
 	}
 }
