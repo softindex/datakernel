@@ -22,10 +22,15 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.PrimaryNioServer;
+import io.datakernel.guice.servicegraph.ServiceGraphFactories;
+import io.datakernel.guice.servicegraph.ServiceGraphModule;
+import io.datakernel.guice.servicegraph.SingletonService;
 import io.datakernel.guice.workers.*;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.NioEventloopRunner;
+import io.datakernel.service.ConcurrentServiceCallbacks;
+import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,29 +60,21 @@ public class HelloWorldGuiceTest {
 		@Override
 		protected void configure() {
 			install(new NioWorkerModule());
+			install(new ServiceGraphModule()
+					.factory(NioServer.class, ServiceGraphFactories.factoryForNioServer())
+					.factory(NioEventloop.class, ServiceGraphFactories.factoryForNioEventloop())
+			);
 		}
 
 		@Provides
-		@Singleton
+		@SingletonService
 		@PrimaryThread
 		NioEventloop primaryEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-		@Singleton
-		@PrimaryThread
-		NioEventloopRunner primaryEventloopRunner(@PrimaryThread NioEventloop primaryEventloop,
-		                                          PrimaryNioServer primaryNioServer,
-		                                          List<NioEventloopRunner> workerNioEventloopRunners) {
-			NioEventloopRunner eventloopRunner = new NioEventloopRunner(primaryEventloop);
-			eventloopRunner.addNioServers(primaryNioServer);
-			eventloopRunner.addConcurrentServices(workerNioEventloopRunners);
-			return eventloopRunner;
-		}
-
-		@Provides
-		@Singleton
+		@SingletonService
 		PrimaryNioServer primaryNioServer(@PrimaryThread NioEventloop primaryEventloop,
 		                                  List<AsyncHttpServer> workerHttpServers) {
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
@@ -90,20 +87,6 @@ public class HelloWorldGuiceTest {
 		@WorkerThread
 		NioEventloop workerEventloop() {
 			return new NioEventloop();
-		}
-
-		@Provides
-		@WorkerThread
-		NioEventloopRunner workerEventloopRunner(NioEventloop eventloop, AsyncHttpServer httpServer) {
-			NioEventloopRunner eventloopRunner = new NioEventloopRunner(eventloop);
-			eventloopRunner.addNioServers(httpServer);
-			return eventloopRunner;
-		}
-
-		@Provides
-		@Singleton
-		List<NioEventloopRunner> workerEventloopRunners(NioWorkerScope nioWorkerScope, Provider<NioEventloopRunner> itemProvider) {
-			return nioWorkerScope.getList(WORKERS, itemProvider);
 		}
 
 		@Provides
@@ -121,7 +104,7 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
-		List<AsyncHttpServer> workerHttpServers(NioWorkerScope nioWorkerScope, Provider<AsyncHttpServer> itemProvider) {
+		List<AsyncHttpServer> workerHttpServers(NioWorkerScopeFactory nioWorkerScope, Provider<AsyncHttpServer> itemProvider) {
 			return nioWorkerScope.getList(WORKERS, itemProvider);
 		}
 	}
@@ -129,10 +112,12 @@ public class HelloWorldGuiceTest {
 	@Test
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
+		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
-			primaryNioEventloopRunner.startFuture().get();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			serviceGraph.start(callback);
+			callback.await();
 
 			socket0.connect(new InetSocketAddress(PORT));
 			socket1.connect(new InetSocketAddress(PORT));
@@ -151,7 +136,9 @@ public class HelloWorldGuiceTest {
 				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 29\r\n\r\nHello world: worker server #1");
 			}
 		} finally {
-			primaryNioEventloopRunner.stopFuture().get();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			serviceGraph.stop(callback);
+			callback.await();
 			Closeables.close(socket0, true);
 			Closeables.close(socket1, true);
 		}
@@ -161,16 +148,21 @@ public class HelloWorldGuiceTest {
 
 	public static void main(String[] args) throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-		NioEventloopRunner primaryNioEventloopRunner = injector.getInstance(Key.get(NioEventloopRunner.class, PrimaryThread.class));
+		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		try {
-			primaryNioEventloopRunner.startFuture().get();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			serviceGraph.start(callback);
+			callback.await();
 
 			System.out.println("Server started, press enter to stop it.");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			primaryNioEventloopRunner.stopFuture().get();
+			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			serviceGraph.stop(callback);
+			callback.await();
 		}
 	}
 
 }
+

@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;

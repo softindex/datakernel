@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.guice.workers;
 
-/**
- * Service which starts and stops asynchronously and does not block thread while start/stop methods are running.
- */
-public interface ConcurrentService {
-	void start(ConcurrentServiceCallback callback);
+import com.google.inject.Provider;
 
-	void stop(ConcurrentServiceCallback callback);
+import java.util.List;
 
+public interface NioWorkerScopeFactory {
+	<T> List<T> getList(int size, Provider<T> itemProvider);
 }
-

@@ -20,14 +20,11 @@ import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public final class NioWorkerScope implements Scope {
+public final class NioWorkerScope implements Scope, NioWorkerScopeFactory {
 	private List<Map<Key<?>, Object>> pool;
 	private int currentPool = -1;
 
@@ -42,6 +39,7 @@ public final class NioWorkerScope implements Scope {
 		return currentPool;
 	}
 
+	@Override
 	public <T> List<T> getList(int size, Provider<T> itemProvider) {
 		if (pool == null) {
 			pool = initPool(size);
@@ -80,6 +78,13 @@ public final class NioWorkerScope implements Scope {
 				return current;
 			}
 		};
+	}
+
+	public List<Map<Key<?>, Object>> getPool() {
+		if (pool == null)
+			return Collections.emptyList();
+		else
+			return new ArrayList<>(pool);
 	}
 
 	private <T> void checkScope(Key<T> key) {

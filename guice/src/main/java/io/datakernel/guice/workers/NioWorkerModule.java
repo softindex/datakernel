@@ -24,6 +24,7 @@ public class NioWorkerModule extends AbstractModule {
 		NioWorkerScope nioWorkerScope = new NioWorkerScope();
 		bindScope(WorkerThread.class, nioWorkerScope);
 		bind(NioWorkerScope.class).toInstance(nioWorkerScope);
+		bind(NioWorkerScopeFactory.class).toInstance(nioWorkerScope);
 		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(nioWorkerScope.getNumberScopeProvider());
 	}
 }
