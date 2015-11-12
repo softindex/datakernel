@@ -9,8 +9,7 @@ import org.objectweb.asm.commons.Method;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.codegen.Utils.isPrimitiveType;
-import static io.datakernel.codegen.Utils.wrap;
+import static io.datakernel.codegen.Utils.*;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.commons.GeneratorAdapter.NE;
 
@@ -43,8 +42,6 @@ public final class ExpressionComparatorNullable implements Expression {
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 
 		Label labelReturn = new Label();
-		Label labelLess = new Label();
-		Label labelGreater = new Label();
 
 		for (int i = 0; i < left.size(); i++) {
 			Type leftFieldType = left.get(i).load(ctx); // [left]
@@ -57,57 +54,46 @@ public final class ExpressionComparatorNullable implements Expression {
 				g.ifZCmp(NE, labelReturn);
 				g.pop();
 			} else {
+				VarLocal varRight = newLocal(ctx, rightFieldType);
+				varRight.store(ctx);
+
+				VarLocal varLeft = newLocal(ctx, leftFieldType);
+				varLeft.store(ctx);
+
 				Label continueLabel = new Label();
-				Label pop2Label = new Label();
-				Label rightNull = new Label();
-				Label rightNonNull = new Label();
+				Label nonNulls = new Label();
+				Label leftNonNull = new Label();
 
-				g.dup(); // [left, right, right]
-				g.ifNull(rightNull); // [left, right]
-				g.goTo(rightNonNull);
+				varLeft.load(ctx);
+				g.ifNonNull(leftNonNull);
 
-				g.mark(rightNull);
-				g.swap(); // [right, left]
-				g.dup(); // [right, left, left]
-				g.ifNull(pop2Label); // [right, left]
-				g.pop2();
-				g.goTo(labelGreater);
+				varRight.load(ctx);
+				g.ifNull(continueLabel);
+				g.push(-1);
+				g.returnValue();
 
-				g.mark(rightNonNull); // [left, right]
-				g.swap(); // [right, left]
-				g.dup(); // [right, left, left]
+				g.mark(leftNonNull);
 
-				Label leftNull = new Label();
-				g.ifNull(leftNull); // [right, left]
+				varRight.load(ctx);
+				g.ifNonNull(nonNulls);
+				g.push(1);
+				g.returnValue();
 
-				g.swap(); // [left, right]
+				g.mark(nonNulls);
+
+				varLeft.load(ctx);
+				varRight.load(ctx);
+
 				g.invokeVirtual(leftFieldType, new Method("compareTo", INT_TYPE, new Type[]{Type.getType(Object.class)}));
 				g.dup();
 				g.ifZCmp(NE, labelReturn);
 				g.pop();
-				g.goTo(continueLabel); // []
-
-				g.mark(pop2Label);
-				g.pop2();
-				g.goTo(continueLabel);
-
-				g.mark(leftNull);
-				g.pop2();
-				g.goTo(labelLess); // []
 
 				g.mark(continueLabel);
 			}
 		}
 
 		g.push(0);
-		g.goTo(labelReturn);
-
-		g.mark(labelLess);
-		g.push(-1);
-		g.goTo(labelReturn);
-
-		g.mark(labelGreater);
-		g.push(1);
 
 		g.mark(labelReturn);
 

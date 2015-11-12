@@ -18,7 +18,6 @@ package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
-import java.nio.file.Paths;
 import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -757,6 +756,48 @@ public class ExpressionTest {
 		}
 	}
 
+	public class StringHolderComparator implements Comparator<StringHolder> {
+		public int compare(StringHolder var1, StringHolder var2) {
+			String var1String1 = var1.string1;
+			String var2String1 = var2.string1;
+			int compare;
+			if (var1String1 == null) {
+				if (var2String1 != null) {
+					return -1;
+				}
+			} else {
+				if (var2String1 == null) {
+					return 1;
+				}
+
+				compare = var1String1.compareTo(var2String1);
+				if (compare != 0) {
+					return compare;
+				}
+			}
+
+			String var1String2 = var1.string2;
+			String var2String2 = var2.string2;
+			if (var1String2 == null) {
+				if (var2String2 != null) {
+					return -1;
+				}
+			} else {
+				if (var2String2 == null) {
+					return 1;
+				}
+
+				compare = var1String2.compareTo(var2String2);
+				if (compare != 0) {
+					return compare;
+				}
+			}
+
+			compare = 0;
+			return compare;
+		}
+	}
+
 	@org.junit.Test
 	public void testComparatorNullable() {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
@@ -765,16 +806,18 @@ public class ExpressionTest {
 				getter(cast(arg(1), StringHolder.class), "string1"));
 		comparator.add(getter(cast(arg(0), StringHolder.class), "string2"),
 				getter(cast(arg(1), StringHolder.class), "string2"));
-		Comparator generatedComparator = new AsmBuilder<>(classLoader, Comparator.class).setBytecodeSaveDir(Paths.get("./codegenOutput"))
+		Comparator generatedComparator = new AsmBuilder<>(classLoader, Comparator.class)
 				.method("compare", comparator)
 				.newInstance();
 
 		List<StringHolder> strings = Arrays.asList(new StringHolder(null, "b"), new StringHolder(null, "a"),
 				new StringHolder("b", null), new StringHolder("c", "e"),
-				new StringHolder("c", "d"), new StringHolder(null, null), new StringHolder("d", "z"));
+				new StringHolder("c", "d"), new StringHolder(null, null), new StringHolder("d", "z"),
+				new StringHolder(null, null));
+		List<StringHolder> strings2 = new ArrayList<>(strings);
 		Collections.sort(strings, generatedComparator);
+		Collections.sort(strings2, new StringHolderComparator());
 
-		assertEquals(asList(new StringHolder(null, null), new StringHolder(null, "a"), new StringHolder(null, "b"),
-				new StringHolder("b", null), new StringHolder("c", "d"), new StringHolder("c", "e"), new StringHolder("d", "z")), strings);
+		assertEquals(strings, strings2);
 	}
 }
