@@ -16,7 +16,7 @@
 
 package io.datakernel.util;
 
-public class Preconditions {
+public final class Preconditions {
 	private Preconditions() {}
 
 	public static void check(boolean expression) {
@@ -33,7 +33,7 @@ public class Preconditions {
 
 	public static void check(boolean expression, String template, Object... args) {
 		if (!expression) {
-			throw new RuntimeException(format(template, args));
+			throw new RuntimeException(String.format(template, args));
 		}
 	}
 
@@ -53,36 +53,44 @@ public class Preconditions {
 
 	public static <T> T checkNotNull(T reference, String template, Object... args) {
 		if (reference == null) {
-			throw new NullPointerException(format(template, args));
+			throw new NullPointerException(String.format(template, args));
 		}
 		return reference;
 	}
 
-	static String format(String template, Object... args) {
-		template = String.valueOf(template);
+	public static void checkState(boolean expression) {
+		if (!expression) {
+			throw new IllegalStateException();
+		}
+	}
 
-		StringBuilder sb = new StringBuilder(template.length() + 16 * args.length);
-		int templateStart = 0;
-		int i = 0;
-		while (i < args.length) {
-			int holderStart = template.indexOf("%s", templateStart);
-			if (holderStart == -1) {
-				break;
-			}
-			sb.append(template.substring(templateStart, holderStart));
-			sb.append(args[(i++)]);
-			templateStart = holderStart + 2;
+	public static void checkState(boolean expression, Object message) {
+		if (!expression) {
+			throw new IllegalStateException(String.valueOf(message));
 		}
-		sb.append(template.substring(templateStart));
-		if (i < args.length) {
-			sb.append(" {");
-			sb.append(args[(i++)]);
-			while (i < args.length) {
-				sb.append(", ");
-				sb.append(args[(i++)]);
-			}
-			sb.append('}');
+	}
+
+	public static void checkState(boolean expression, String template, Object... args) {
+		if (!expression) {
+			throw new IllegalStateException(String.format(template, args));
 		}
-		return sb.toString();
+	}
+
+	public static void checkArgument(boolean expression) {
+		if (!expression) {
+			throw new IllegalArgumentException();
+		}
+	}
+
+	public static void checkArgument(boolean expression, Object message) {
+		if (!expression) {
+			throw new IllegalArgumentException(String.valueOf(message));
+		}
+	}
+
+	public static void checkArgument(boolean expression, String template, Object... args) {
+		if (!expression) {
+			throw new IllegalArgumentException(String.format(template, args));
+		}
 	}
 }
