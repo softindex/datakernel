@@ -23,6 +23,7 @@ import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKey;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKeyHashFunction;
 import io.datakernel.rpc.hash.HashFunction;
+import io.datakernel.rpc.hash.Sharder;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -48,12 +49,19 @@ public class RpcStrategyShardingTest {
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		final int shardsAmount = 3;
+		Sharder<Object> sharder = new Sharder<Object>() {
+			@Override
+			public int getShard(Object item) {
+				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey)item;
+				return data.getKey() % shardsAmount;
+			}
+		};
 		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
 		RpcRequestSendingStrategy shardingStrategy =
-				new RpcStrategySharding(hashFunction,
+				new RpcStrategySharding(sharder,
 						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 		RpcRequestSender senderSharding;
 		int timeout = 50;
@@ -83,12 +91,19 @@ public class RpcStrategyShardingTest {
 		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		final int shardsAmount = 3;
+		Sharder<Object> sharder = new Sharder<Object>() {
+			@Override
+			public int getShard(Object item) {
+				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey)item;
+				return data.getKey() % shardsAmount;
+			}
+		};
 		RpcRequestSendingStrategy singleServerStrategy1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcRequestSendingStrategy singleServerStrategy2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcRequestSendingStrategy singleServerStrategy3 = new RpcStrategySingleServer(ADDRESS_3);
 		RpcRequestSendingStrategy shardingStrategy =
-				new RpcStrategySharding(hashFunction,
+				new RpcStrategySharding(sharder,
 						asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 		RpcRequestSender senderSharding;
 		int timeout = 50;
@@ -117,7 +132,13 @@ public class RpcStrategyShardingTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenSubStrategiesListIsNull() {
-		RpcStrategySharding strategy = new RpcStrategySharding(new RpcMessageDataStubWithKeyHashFunction(), null);
+		Sharder<Object> sharder = new Sharder<Object>() {
+			@Override
+			public int getShard(Object item) {
+				return 0;
+			}
+		};
+		RpcStrategySharding strategy = new RpcStrategySharding(sharder, null);
 	}
 
 	@Test(expected = Exception.class)

@@ -25,6 +25,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.hash.HashFunction;
+import io.datakernel.rpc.hash.Sharder;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
@@ -227,15 +228,15 @@ public class CombinedStrategiesIntegrationTest {
 			InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_2);
 			InetSocketAddress address3 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_3);
 
-			HashFunction<Object> hashFunction = new HashFunction<Object>() {
+			Sharder<Object> sharder = new Sharder<Object>() {
 				@Override
-				public int hashCode(Object item) {
+				public int getShard(Object item) {
 					HelloRequest helloRequest = (HelloRequest) item;
-					int hash = 0;
+					int shard = 0;
 					if (helloRequest.name.startsWith("S")) {
-						hash = 1;
+						shard = 1;
 					}
-					return hash;
+					return shard;
 				}
 			};
 
@@ -249,7 +250,7 @@ public class CombinedStrategiesIntegrationTest {
 					.requestSendingStrategy(
 							roundRobin(
 									server(address1),
-									sharding(hashFunction,
+									sharding(sharder,
 											server(address2),
 											server(address3))
 							)

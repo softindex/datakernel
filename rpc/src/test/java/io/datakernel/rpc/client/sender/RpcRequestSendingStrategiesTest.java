@@ -19,6 +19,7 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.*;
 import io.datakernel.rpc.hash.HashFunction;
+import io.datakernel.rpc.hash.Sharder;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -129,14 +130,21 @@ public class RpcRequestSendingStrategiesTest {
 		pool.add(ADDRESS_3, connection3);
 		pool.add(ADDRESS_4, connection4);
 		pool.add(ADDRESS_5, connection5);
-		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
+		final int shardsAmount = 2;
+		Sharder<Object> sharder = new Sharder<Object>() {
+			@Override
+			public int getShard(Object item) {
+				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey)item;
+				return data.getKey() % shardsAmount;
+			}
+		};
 		int timeout = 50;
 		RpcMessageDataStubWithKey data0 = new RpcMessageDataStubWithKey(0);
 		RpcMessageDataStubWithKey data1 = new RpcMessageDataStubWithKey(1);
 		ResultCallbackStub callback = new ResultCallbackStub();
 		RpcRequestSendingStrategy strategy =
 				sharding(
-						hashFunction,
+						sharder,
 						firstValidResult(
 								servers(ADDRESS_1, ADDRESS_2)
 						),
