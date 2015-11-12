@@ -16,27 +16,23 @@
 
 package io.datakernel.rpc.protocol;
 
-import com.google.common.collect.Sets;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
-import java.util.Arrays;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
 
-import static com.google.common.collect.Maps.newLinkedHashMap;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class RpcMessageSerializer {
 
 	public static class Builder {
-		private final Set<Class<?>> extraSubClasses = Sets.newLinkedHashSet();
-		private final Map<Class<?>, SerializerGenBuilder> extraSerializers = newLinkedHashMap();
+		private final Set<Class<?>> extraSubClasses = new LinkedHashSet<>();
+		private final Map<Class<?>, SerializerGenBuilder> extraSerializers = new LinkedHashMap<>();
 		private int serializeVersion;
 
 		private Builder() {

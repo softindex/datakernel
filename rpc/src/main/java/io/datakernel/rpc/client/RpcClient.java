@@ -16,8 +16,6 @@
 
 package io.datakernel.rpc.client;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -51,6 +49,7 @@ import java.util.Map;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAny;
+import static io.datakernel.rpc.util.ImmutableCollections.immutableArrayListOf;
 import static io.datakernel.util.Preconditions.*;
 
 public final class RpcClient implements NioService, RpcClientMBean {
@@ -97,7 +96,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		}
 
 		public Builder addresses(List<InetSocketAddress> addresses) {
-			this.settings.addresses(ImmutableList.copyOf(addresses));
+			this.settings.addresses(immutableArrayListOf(addresses));
 			return this;
 		}
 
@@ -409,7 +408,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		requestSender.sendRequest(request, timeout, callback);
 	}
 
-	@VisibleForTesting
+	// visible for testing
 	public RpcRequestSender getRequestSender() {
 		return requestSender;
 	}

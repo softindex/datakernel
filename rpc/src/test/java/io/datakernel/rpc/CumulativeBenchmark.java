@@ -18,7 +18,6 @@ package io.datakernel.rpc;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -29,6 +28,7 @@ import io.datakernel.rpc.example.CumulativeServiceHelper;
 import io.datakernel.rpc.protocol.RpcException;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.service.NioEventloopRunner;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;

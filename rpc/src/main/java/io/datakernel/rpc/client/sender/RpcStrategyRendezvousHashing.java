@@ -16,8 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.hash.Hashing;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.BucketHashFunction;
@@ -112,7 +110,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		return counter;
 	}
 
-	@VisibleForTesting
+	// visible for testing
 	final static class RequestSenderRendezvousHashing implements RpcRequestSender {
 
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
@@ -145,7 +143,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		}
 	}
 
-	@VisibleForTesting
+	// visible for testing
 	static final class RendezvousHashBucket {
 
 		private final RpcRequestSender[] sendersBucket;
@@ -183,16 +181,19 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		}
 	}
 
-	@VisibleForTesting
+	// visible for testing
 	static final class DefaultBucketHashFunction implements BucketHashFunction {
-		private static final com.google.common.hash.HashFunction murmurHashAddressFunction = Hashing.murmur3_32();
 
 		@Override
 		public int hash(Object shardId, int bucket) {
-			return murmurHashAddressFunction.newHasher()
-					.putInt(shardId.hashCode())
-					.putInt(bucket)
-					.hash().asInt();
+			int shardIdHash = shardId.hashCode();
+			long k = (((long) shardIdHash) << 32) | (bucket & 0xFFFFFFFFL);
+			k ^= k >>> 33;
+			k *= 0xff51afd7ed558ccdL;
+			k ^= k >>> 33;
+			k *= 0xc4ceb9fe1a85ec53L;
+			k ^= k >>> 33;
+			return (int) k;
 		}
 	}
 }

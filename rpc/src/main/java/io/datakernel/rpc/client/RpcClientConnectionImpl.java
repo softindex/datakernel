@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client;
 
-import com.google.common.base.Stopwatch;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
@@ -25,6 +24,7 @@ import io.datakernel.jmx.DynamicStatsCounter;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.jmx.StatsCounter;
 import io.datakernel.rpc.protocol.*;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 
 import javax.management.openmbean.CompositeData;

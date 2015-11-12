@@ -16,13 +16,13 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Predicate;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKey;
+import io.datakernel.rpc.util.Predicate;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -160,7 +160,7 @@ public class RpcStrategyFirstValidResultTest {
 				= new RequestSenderOnResultWithValueStrategy(new RpcMessageDataStubWithKey(invalidKey));
 		Predicate<RpcMessageDataStubWithKey> validator = new Predicate<RpcMessageDataStubWithKey>() {
 			@Override
-			public boolean apply(RpcMessageDataStubWithKey input) {
+			public boolean check(RpcMessageDataStubWithKey input) {
 				return input.getKey() == validKey;
 			}
 		};
@@ -206,7 +206,7 @@ public class RpcStrategyFirstValidResultTest {
 				= new RequestSenderOnResultWithValueStrategy(new RpcMessageDataStubWithKey(invalidKey));
 		Predicate<RpcMessageDataStubWithKey> validator = new Predicate<RpcMessageDataStubWithKey>() {
 			@Override
-			public boolean apply(RpcMessageDataStubWithKey input) {
+			public boolean check(RpcMessageDataStubWithKey input) {
 				return input.getKey() == validKey;
 			}
 		};

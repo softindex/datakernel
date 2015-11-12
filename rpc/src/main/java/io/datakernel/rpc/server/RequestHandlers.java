@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.server;
 
-import com.google.common.collect.ImmutableMap;
 import io.datakernel.async.AsyncFunction;
 import io.datakernel.async.ResultCallback;
 import org.slf4j.Logger;
@@ -24,6 +23,7 @@ import org.slf4j.Logger;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.datakernel.rpc.util.ImmutableCollections.immutableHashMapOf;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RequestHandlers implements AsyncFunction<Object, Object> {
@@ -48,14 +48,14 @@ public final class RequestHandlers implements AsyncFunction<Object, Object> {
 		}
 
 		public RequestHandlers build() {
-			return new RequestHandlers(ImmutableMap.copyOf(handlers), logger);
+			return new RequestHandlers(immutableHashMapOf(handlers), logger);
 		}
 	}
 
-	private final ImmutableMap<Class<? extends Object>, RequestHandler<Object>> handlers;
+	private final Map<Class<? extends Object>, RequestHandler<Object>> handlers;
 	private final Logger logger;
 
-	private RequestHandlers(ImmutableMap<Class<? extends Object>, RequestHandler<Object>> handlers, Logger logger) {
+	private RequestHandlers(Map<Class<? extends Object>, RequestHandler<Object>> handlers, Logger logger) {
 		this.handlers = handlers;
 		this.logger = logger;
 	}

@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Predicate;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.util.Predicate;
 
 import java.util.List;
 
@@ -105,7 +105,7 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 		@Override
 		public final void onResult(T result) {
 			--expectedCalls;
-			if (!hasResult && resultValidator.apply(result)) {
+			if (!hasResult && resultValidator.check(result)) {
 				this.result = result;  // first valid result
 				this.hasResult = true;
 			}
@@ -151,7 +151,7 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 
 	private static final class DefaultResultValidator<T> implements Predicate<T> {
 		@Override
-		public boolean apply(T input) {
+		public boolean check(T input) {
 			return input != null;
 		}
 	}

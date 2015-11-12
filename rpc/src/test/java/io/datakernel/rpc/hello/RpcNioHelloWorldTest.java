@@ -16,8 +16,6 @@
 
 package io.datakernel.rpc.hello;
 
-import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
@@ -36,6 +34,7 @@ import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.util.Stopwatch;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -50,6 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
 import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.servers;
+import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 
@@ -121,7 +121,7 @@ public class RpcNioHelloWorldTest {
 		private final RpcClient client;
 
 		public HelloClient(NioEventloop eventloop, RpcProtocolFactory protocolFactory) throws Exception {
-			List<InetSocketAddress> addresses = ImmutableList.of(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT));
+			List<InetSocketAddress> addresses = asList(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT));
 			this.eventloop = eventloop;
 			this.client = new RpcClient.Builder(eventloop)
 					.addresses(addresses)
