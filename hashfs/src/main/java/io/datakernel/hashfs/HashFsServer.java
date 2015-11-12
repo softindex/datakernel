@@ -16,24 +16,26 @@
 
 package io.datakernel.hashfs;
 
+import com.google.common.collect.Lists;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.FileSystem;
-import io.datakernel.remotefs.FsServer;
-import io.datakernel.remotefs.RfsConfig;
-import io.datakernel.remotefs.ServerInfo;
+import io.datakernel.remotefs.*;
 import io.datakernel.remotefs.protocol.ClientProtocol;
 import io.datakernel.remotefs.protocol.ServerProtocol;
+import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
+import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
@@ -62,8 +64,22 @@ public class HashFsServer implements Commands, FsServer {
 		this.mapUpdateTimeout = mapUpdateTimeout;
 	}
 
-	public static FsServer createInstance(NioEventloop eventloop, FileSystem fileSystem, Logic logic,
-	                                      ClientProtocol clientProtocol, ServerProtocol serverProtocol, RfsConfig config) {
+	public static HashFsServer createInstance(NioEventloop eventloop, FileSystem fileSystem, Logic logic,
+	                                          ClientProtocol clientProtocol, ServerProtocol serverProtocol, RfsConfig config) {
+		HashFsServer server = new HashFsServer(eventloop, fileSystem, logic, clientProtocol, serverProtocol,
+				config.getSystemUpdateTimeout(), config.getMapUpdateTimeout());
+		serverProtocol.wireServer(server);
+		logic.wire(server);
+		return server;
+	}
+
+	public static HashFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path serverStorage,
+	                                          ServerInfo myId, Set<ServerInfo> bootstrap, RfsConfig config) {
+		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, serverStorage, config);
+		HashingStrategy hashing = new RendezvousHashing();
+		Logic logic = LogicImpl.createInstance(hashing, myId, bootstrap, config);
+		ClientProtocol clientProtocol = GsonClientProtocol.createInstance(eventloop, config);
+		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, Lists.newArrayList(myId.getAddress()), config);
 		HashFsServer server = new HashFsServer(eventloop, fileSystem, logic, clientProtocol, serverProtocol,
 				config.getSystemUpdateTimeout(), config.getMapUpdateTimeout());
 		serverProtocol.wireServer(server);

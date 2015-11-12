@@ -19,6 +19,7 @@ package io.datakernel.cube;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
@@ -32,6 +33,8 @@ import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.remotefs.FsServer;
+import io.datakernel.remotefs.RfsConfig;
+import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -154,7 +157,8 @@ public class CubeTest {
 
 	private FsServer prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		FsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage, LISTEN_PORT);
+		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage,
+				Lists.newArrayList(new InetSocketAddress(LISTEN_PORT)), RfsConfig.getDefaultConfig());
 
 		fileServer.start(new CompletionCallback() {
 			@Override

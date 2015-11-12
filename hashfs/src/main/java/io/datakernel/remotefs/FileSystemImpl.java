@@ -57,7 +57,7 @@ public final class FileSystemImpl implements FileSystem {
 		this.inProgressExtension = inProgressExtension;
 	}
 
-	public static FileSystem createInstance(NioEventloop eventloop, ExecutorService executor, Path storage, RfsConfig config) {
+	public static FileSystemImpl createInstance(NioEventloop eventloop, ExecutorService executor, Path storage, RfsConfig config) {
 		Path tmpStorage = storage.resolve(config.getTmpDirectoryName());
 		return new FileSystemImpl(eventloop, executor, storage, tmpStorage,
 				config.getFsReaderBufferSize(), config.getInProgressExtension());

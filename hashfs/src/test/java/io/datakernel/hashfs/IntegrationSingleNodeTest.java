@@ -496,7 +496,7 @@ public class IntegrationSingleNodeTest {
 		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, serverStorage, config);
 		Logic logic = LogicImpl.createInstance(new RendezvousHashing(), local, Sets.newHashSet(local), config);
 		ClientProtocol clientProtocol1 = GsonClientProtocol.createInstance(eventloop, config);
-		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, config, local.getAddress().getPort());
+		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, Lists.newArrayList(local.getAddress()), config);
 		return HashFsServer.createInstance(eventloop, fileSystem, logic, clientProtocol1, serverProtocol, config);
 	}
 }

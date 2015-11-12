@@ -45,11 +45,11 @@ public final class SimpleFsClient implements FsClient {
 		this.protocol = protocol;
 	}
 
-	public static FsClient createInstance(ServerInfo serverInfo, ClientProtocol protocol) {
+	public static SimpleFsClient createInstance(ServerInfo serverInfo, ClientProtocol protocol) {
 		return new SimpleFsClient(serverInfo, protocol);
 	}
 
-	public static FsClient createInstance(NioEventloop eventloop, InetSocketAddress address) {
+	public static SimpleFsClient createInstance(NioEventloop eventloop, InetSocketAddress address) {
 		ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, RfsConfig.getDefaultConfig());
 		ServerInfo info = new ServerInfo(-1, address, 1.0);
 		return new SimpleFsClient(info, protocol);

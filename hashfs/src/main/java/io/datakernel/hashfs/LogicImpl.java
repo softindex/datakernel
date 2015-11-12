@@ -53,7 +53,7 @@ final class LogicImpl implements Logic {
 		this.servers.addAll(bootstrap);
 	}
 
-	public static Logic createInstance(HashingStrategy hashing, ServerInfo myId, Set<ServerInfo> bootstrap, RfsConfig config) {
+	public static LogicImpl createInstance(HashingStrategy hashing, ServerInfo myId, Set<ServerInfo> bootstrap, RfsConfig config) {
 		return new LogicImpl(hashing, myId, bootstrap,
 				config.getServerDeathTimeout(),
 				config.getMaxReplicaQuantity(),

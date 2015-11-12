@@ -16,14 +16,17 @@
 
 package io.datakernel.simplefs.example;
 
+import com.google.common.collect.Lists;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.remotefs.FsServer;
+import io.datakernel.remotefs.RfsConfig;
 import io.datakernel.simplefs.SimpleFsServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
@@ -44,7 +47,8 @@ public class SimpleFsServerSetupExample {
 		final ExecutorService executor = newCachedThreadPool();
 		final NioEventloop eventloop = new NioEventloop();
 
-		FsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, SERVER_STORAGE_PATH, SERVER_PORT);
+		FsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, SERVER_STORAGE_PATH,
+				Lists.newArrayList(new InetSocketAddress(SERVER_PORT)), RfsConfig.getDefaultConfig());
 		fileServer.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {

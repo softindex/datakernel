@@ -16,6 +16,7 @@
 
 package io.datakernel.simplefs.stress;
 
+import com.google.common.collect.Lists;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.remotefs.FileSystem;
 import io.datakernel.remotefs.FileSystemImpl;
@@ -26,6 +27,7 @@ import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
 import io.datakernel.simplefs.SimpleFsServer;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,7 +45,7 @@ public class StressServer {
 
 	public static RfsConfig config = RfsConfig.getDefaultConfig();
 	public static FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, SERVER_STORAGE_PATH, config);
-	public static ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, config, PORT);
+	public static ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, Lists.newArrayList(new InetSocketAddress(PORT)), config);
 
 	public static FsServer server = SimpleFsServer.createInstance(eventloop, fileSystem, protocol, config);
 

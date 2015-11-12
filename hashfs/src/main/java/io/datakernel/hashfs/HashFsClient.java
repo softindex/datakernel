@@ -24,6 +24,7 @@ import io.datakernel.remotefs.FsClient;
 import io.datakernel.remotefs.RfsConfig;
 import io.datakernel.remotefs.ServerInfo;
 import io.datakernel.remotefs.protocol.ClientProtocol;
+import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
@@ -54,8 +55,16 @@ public class HashFsClient implements FsClient {
 		this.maxRetryAttempts = maxRetryAttempts;
 	}
 
-	public static FsClient createInstance(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
-	                                      List<ServerInfo> bootstrap, RfsConfig config) {
+	public static HashFsClient createInstance(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
+	                                          List<ServerInfo> bootstrap, RfsConfig config) {
+		return new HashFsClient(eventloop, protocol, hashing, bootstrap,
+				config.getBaseRetryTimeout(),
+				config.getMaxRetryAttempts());
+	}
+
+	public static HashFsClient createInstance(NioEventloop eventloop, List<ServerInfo> bootstrap, RfsConfig config) {
+		ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, config);
+		HashingStrategy hashing = new RendezvousHashing();
 		return new HashFsClient(eventloop, protocol, hashing, bootstrap,
 				config.getBaseRetryTimeout(),
 				config.getMaxRetryAttempts());

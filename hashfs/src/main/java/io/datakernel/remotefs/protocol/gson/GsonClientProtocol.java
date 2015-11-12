@@ -62,7 +62,7 @@ public class GsonClientProtocol implements ClientProtocol {
 		this.socketSettings = socketSettings;
 	}
 
-	public static ClientProtocol createInstance(NioEventloop eventloop, RfsConfig config) {
+	public static GsonClientProtocol createInstance(NioEventloop eventloop, RfsConfig config) {
 		return new GsonClientProtocol(eventloop,
 				config.getMinChunkSize(),
 				config.getMaxChunkSize(),
