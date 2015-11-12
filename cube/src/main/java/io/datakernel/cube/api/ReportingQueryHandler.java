@@ -19,12 +19,12 @@ package io.datakernel.cube.api;
 import com.google.gson.*;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
-import io.datakernel.aggregation_db.api.*;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
-import io.datakernel.codegen.ExpressionComparator;
+import io.datakernel.codegen.ExpressionComparatorNullable;
 import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
@@ -478,7 +478,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		private Comparator<QueryResultPlaceholder> generateComparator(String fieldName, boolean ascending,
 		                                                              Class<QueryResultPlaceholder> fieldClass) {
 			AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
-			ExpressionComparator comparator = comparator();
+			ExpressionComparatorNullable comparator = comparatorNullable();
 			if (ascending)
 				comparator.add(
 						getter(cast(arg(0), fieldClass), fieldName),

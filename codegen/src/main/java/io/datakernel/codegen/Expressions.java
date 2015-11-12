@@ -264,6 +264,10 @@ public final class Expressions {
 		return new ExpressionComparator();
 	}
 
+	public static ExpressionComparatorNullable comparatorNullable() {
+		return new ExpressionComparatorNullable();
+	}
+
 	/**
 	 * Compares the fields
 	 *

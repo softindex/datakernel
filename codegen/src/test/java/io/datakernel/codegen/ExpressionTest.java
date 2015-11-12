@@ -18,6 +18,7 @@ package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
+import java.nio.file.Paths;
 import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -722,5 +723,58 @@ public class ExpressionTest {
 		assertTrue(testCompare.comparePrimitiveLE(5, 6));
 		assertTrue(testCompare.compareObjectEQ(5, 5));
 		assertTrue(testCompare.compareObjectNE(5, -5));
+	}
+
+	public static class StringHolder {
+		public String string1;
+		public String string2;
+
+		public StringHolder(String string1, String string2) {
+			this.string1 = string1;
+			this.string2 = string2;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			StringHolder that = (StringHolder) o;
+			return Objects.equals(string1, that.string1) &&
+					Objects.equals(string2, that.string2);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(string1, string2);
+		}
+
+		@Override
+		public String toString() {
+			return "StringHolder{" +
+					"string1='" + string1 + '\'' +
+					", string2='" + string2 + '\'' +
+					'}';
+		}
+	}
+
+	@org.junit.Test
+	public void testComparatorNullable() {
+		DefiningClassLoader classLoader = new DefiningClassLoader();
+		ExpressionComparatorNullable comparator = new ExpressionComparatorNullable();
+		comparator.add(getter(cast(arg(0), StringHolder.class), "string1"),
+				getter(cast(arg(1), StringHolder.class), "string1"));
+		comparator.add(getter(cast(arg(0), StringHolder.class), "string2"),
+				getter(cast(arg(1), StringHolder.class), "string2"));
+		Comparator generatedComparator = new AsmBuilder<>(classLoader, Comparator.class).setBytecodeSaveDir(Paths.get("./codegenOutput"))
+				.method("compare", comparator)
+				.newInstance();
+
+		List<StringHolder> strings = Arrays.asList(new StringHolder(null, "b"), new StringHolder(null, "a"),
+				new StringHolder("b", null), new StringHolder("c", "e"),
+				new StringHolder("c", "d"), new StringHolder(null, null), new StringHolder("d", "z"));
+		Collections.sort(strings, generatedComparator);
+
+		assertEquals(asList(new StringHolder(null, null), new StringHolder(null, "a"), new StringHolder(null, "b"),
+				new StringHolder("b", null), new StringHolder("c", "d"), new StringHolder("c", "e"), new StringHolder("d", "z")), strings);
 	}
 }
