@@ -60,19 +60,19 @@ public class RpcStrategyFirstAvailableTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderToFirst = firstAvailableStrategy.create(pool).get();
+		senderToFirst = firstAvailableStrategy.create(pool).getSender();
 		for (int i = 0; i < callsToSender1; i++) {
 			senderToFirst.sendRequest(data, timeout, callback);
 		}
 		pool.remove(ADDRESS_1);
 		// we should recreate sender after changing in pool
-		senderToFirst = firstAvailableStrategy.create(pool).get();
+		senderToFirst = firstAvailableStrategy.create(pool).getSender();
 		for (int i = 0; i < callsToSender2; i++) {
 			senderToFirst.sendRequest(data, timeout, callback);
 		}
 		pool.remove(ADDRESS_2);
 		// we should recreate sender after changing in pool
-		senderToFirst = firstAvailableStrategy.create(pool).get();
+		senderToFirst = firstAvailableStrategy.create(pool).getSender();
 		for (int i = 0; i < callsToSender3; i++) {
 			senderToFirst.sendRequest(data, timeout, callback);
 		}
@@ -93,9 +93,9 @@ public class RpcStrategyFirstAvailableTest {
 		RpcRequestSendingStrategy firstAvailableStrategy =
 				new RpcStrategyFirstAvailable(asList(singleServerStrategy1, singleServerStrategy2));
 
-		assertFalse(singleServerStrategy1.create(pool).isPresent());
-		assertTrue(singleServerStrategy2.create(pool).isPresent());
-		assertTrue(firstAvailableStrategy.create(pool).isPresent());
+		assertFalse(singleServerStrategy1.create(pool).isSenderPresent());
+		assertTrue(singleServerStrategy2.create(pool).isSenderPresent());
+		assertTrue(firstAvailableStrategy.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -108,10 +108,10 @@ public class RpcStrategyFirstAvailableTest {
 		RpcRequestSendingStrategy firstAvailableStrategy =
 				new RpcStrategyFirstAvailable(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
-		assertFalse(singleServerStrategy1.create(pool).isPresent());
-		assertFalse(singleServerStrategy2.create(pool).isPresent());
-		assertFalse(singleServerStrategy3.create(pool).isPresent());
-		assertFalse(firstAvailableStrategy.create(pool).isPresent());
+		assertFalse(singleServerStrategy1.create(pool).isSenderPresent());
+		assertFalse(singleServerStrategy2.create(pool).isSenderPresent());
+		assertFalse(singleServerStrategy3.create(pool).isSenderPresent());
+		assertFalse(firstAvailableStrategy.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -132,10 +132,10 @@ public class RpcStrategyFirstAvailableTest {
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
 
-		assertTrue(singleServerStrategy1.create(pool).isPresent());
-		assertTrue(singleServerStrategy2.create(pool).isPresent());
-		assertTrue(singleServerStrategy3.create(pool).isPresent());
-		assertFalse(firstAvailableStrategy.create(pool).isPresent());
+		assertTrue(singleServerStrategy1.create(pool).isSenderPresent());
+		assertTrue(singleServerStrategy2.create(pool).isSenderPresent());
+		assertTrue(singleServerStrategy3.create(pool).isSenderPresent());
+		assertFalse(firstAvailableStrategy.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -155,10 +155,10 @@ public class RpcStrategyFirstAvailableTest {
 		pool.add(ADDRESS_2, connection2);
 		// we don't add connection3
 
-		assertTrue(singleServerStrategy1.create(pool).isPresent());
-		assertTrue(singleServerStrategy2.create(pool).isPresent());
-		assertFalse(singleServerStrategy3.create(pool).isPresent());
-		assertFalse(firstAvailableStrategy.create(pool).isPresent());
+		assertTrue(singleServerStrategy1.create(pool).isSenderPresent());
+		assertTrue(singleServerStrategy2.create(pool).isSenderPresent());
+		assertFalse(singleServerStrategy3.create(pool).isSenderPresent());
+		assertFalse(firstAvailableStrategy.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -168,7 +168,7 @@ public class RpcStrategyFirstAvailableTest {
 		RpcRequestSendingStrategy firstAvailableStrategy =
 				new RpcStrategyFirstAvailable(new ArrayList<RpcRequestSendingStrategy>());
 
-		assertFalse(firstAvailableStrategy.create(pool).isPresent());
+		assertFalse(firstAvailableStrategy.create(pool).isSenderPresent());
 	}
 
 	@Test(expected = Exception.class)

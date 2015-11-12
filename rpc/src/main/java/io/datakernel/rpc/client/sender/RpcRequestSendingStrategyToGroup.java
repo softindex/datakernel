@@ -16,15 +16,14 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Optional;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.rpc.client.sender.RpcSendersUtils.*;
 import static java.util.Arrays.asList;
 
 public abstract class RpcRequestSendingStrategyToGroup implements RpcRequestSendingStrategy {
@@ -44,27 +43,27 @@ public abstract class RpcRequestSendingStrategyToGroup implements RpcRequestSend
 	}
 
 	@Override
-	public final List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public final List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public final Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
-		List<Optional<RpcRequestSender>> subSenders = createSubSenders(pool);
-		if (countPresentValues(subSenders) >= minSubStrategiesForCreation) {
-			return Optional.of(createSenderInstance(filterAbsent(subSenders)));
+	public final RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
+		List<RpcRequestSenderHolder> subSenders = createSubSenders(pool);
+		if (countPresentSenders(subSenders) >= minSubStrategiesForCreation) {
+			return RpcRequestSenderHolder.of(createSenderInstance(filterAbsent(subSenders)));
 		} else {
-			return Optional.absent();
+			return RpcRequestSenderHolder.absent();
 		}
 	}
 
 	protected abstract RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders);
 
-	private final List<Optional<RpcRequestSender>> createSubSenders(RpcClientConnectionPool pool) {
+	private final List<RpcRequestSenderHolder> createSubSenders(RpcClientConnectionPool pool) {
 
 		assert subStrategies != null;
 
-		List<List<Optional<RpcRequestSender>>> listOfListOfSenders = new ArrayList<>();
+		List<List<RpcRequestSenderHolder>> listOfListOfSenders = new ArrayList<>();
 		for (RpcRequestSendingStrategy subStrategy : subStrategies) {
 			listOfListOfSenders.add(subStrategy.createAsList(pool));
 		}

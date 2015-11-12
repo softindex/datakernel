@@ -21,9 +21,9 @@ import io.datakernel.async.ResultCallback;
 
 import java.util.List;
 
+import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 
 public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
 	private static final Predicate<? extends Object> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();

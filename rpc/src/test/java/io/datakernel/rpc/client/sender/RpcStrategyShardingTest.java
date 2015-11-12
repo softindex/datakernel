@@ -62,7 +62,7 @@ public class RpcStrategyShardingTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderSharding = shardingStrategy.create(pool).get();
+		senderSharding = shardingStrategy.create(pool).getSender();
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(1), timeout, callback);
@@ -107,7 +107,7 @@ public class RpcStrategyShardingTest {
 		// we don't add connection for ADDRESS_1
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderSharding = shardingStrategy.create(pool).get();
+		senderSharding = shardingStrategy.create(pool).getSender();
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(0), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(1), timeout, callback);
 		senderSharding.sendRequest(new RpcMessageDataStubWithKey(2), timeout, callback);

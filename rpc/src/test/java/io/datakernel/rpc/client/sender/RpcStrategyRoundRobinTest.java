@@ -61,7 +61,7 @@ public class RpcStrategyRoundRobinTest {
 		pool.add(ADDRESS_1, connection1);
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
-		senderRoundRobin = roundRobinStrategy.create(pool).get();
+		senderRoundRobin = roundRobinStrategy.create(pool).getSender();
 		for (int i = 0; i < callsAmount; i++) {
 			senderRoundRobin.sendRequest(data, timeout, callback);
 		}
@@ -96,7 +96,7 @@ public class RpcStrategyRoundRobinTest {
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_4, connection4);
 		// we don't add connections for ADDRESS_3 and ADDRESS_5
-		senderRoundRobin = roundRobinStrategy.create(pool).get();
+		senderRoundRobin = roundRobinStrategy.create(pool).getSender();
 		for (int i = 0; i < callsAmount; i++) {
 			senderRoundRobin.sendRequest(data, timeout, callback);
 		}
@@ -117,9 +117,9 @@ public class RpcStrategyRoundRobinTest {
 		RpcRequestSendingStrategy roundRobin =
 				new RpcStrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2));
 
-		assertFalse(singleServerStrategy1.create(pool).isPresent());
-		assertTrue(singleServerStrategy2.create(pool).isPresent());
-		assertTrue(roundRobin.create(pool).isPresent());
+		assertFalse(singleServerStrategy1.create(pool).isSenderPresent());
+		assertTrue(singleServerStrategy2.create(pool).isSenderPresent());
+		assertTrue(roundRobin.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -132,10 +132,10 @@ public class RpcStrategyRoundRobinTest {
 		RpcRequestSendingStrategy roundRobin =
 				new RpcStrategyRoundRobin(asList(singleServerStrategy1, singleServerStrategy2, singleServerStrategy3));
 
-		assertFalse(singleServerStrategy1.create(pool).isPresent());
-		assertFalse(singleServerStrategy2.create(pool).isPresent());
-		assertFalse(singleServerStrategy3.create(pool).isPresent());
-		assertFalse(roundRobin.create(pool).isPresent());
+		assertFalse(singleServerStrategy1.create(pool).isSenderPresent());
+		assertFalse(singleServerStrategy2.create(pool).isSenderPresent());
+		assertFalse(singleServerStrategy3.create(pool).isSenderPresent());
+		assertFalse(roundRobin.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -156,10 +156,10 @@ public class RpcStrategyRoundRobinTest {
 		pool.add(ADDRESS_2, connection2);
 		pool.add(ADDRESS_3, connection3);
 
-		assertTrue(singleServerStrategy1.create(pool).isPresent());
-		assertTrue(singleServerStrategy2.create(pool).isPresent());
-		assertTrue(singleServerStrategy3.create(pool).isPresent());
-		assertFalse(roundRobin.create(pool).isPresent());
+		assertTrue(singleServerStrategy1.create(pool).isSenderPresent());
+		assertTrue(singleServerStrategy2.create(pool).isSenderPresent());
+		assertTrue(singleServerStrategy3.create(pool).isSenderPresent());
+		assertFalse(roundRobin.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -179,10 +179,10 @@ public class RpcStrategyRoundRobinTest {
 		pool.add(ADDRESS_2, connection2);
 		// we don't add connection3
 
-		assertTrue(singleServerStrategy1.create(pool).isPresent());
-		assertTrue(singleServerStrategy2.create(pool).isPresent());
-		assertFalse(singleServerStrategy3.create(pool).isPresent());
-		assertFalse(roundRobin.create(pool).isPresent());
+		assertTrue(singleServerStrategy1.create(pool).isSenderPresent());
+		assertTrue(singleServerStrategy2.create(pool).isSenderPresent());
+		assertFalse(singleServerStrategy3.create(pool).isSenderPresent());
+		assertFalse(roundRobin.create(pool).isSenderPresent());
 	}
 
 	@Test(expected = Exception.class)

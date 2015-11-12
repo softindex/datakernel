@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Optional;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
@@ -41,9 +40,9 @@ public class RpcStrategySingleServerTest {
 		pool.add(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
 
-		Optional<RpcRequestSender> singleServer = strategySingleServer.create(pool);
+		RpcRequestSenderHolder singleServer = strategySingleServer.create(pool);
 
-		assertTrue(singleServer.isPresent());
+		assertTrue(singleServer.isSenderPresent());
 	}
 
 	@Test
@@ -52,9 +51,9 @@ public class RpcStrategySingleServerTest {
 		// no connections were added to pool
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
 
-		Optional<RpcRequestSender> singleServer = strategySingleServer.create(pool);
+		RpcRequestSenderHolder singleServer = strategySingleServer.create(pool);
 
-		assertFalse(singleServer.isPresent());
+		assertFalse(singleServer.isSenderPresent());
 	}
 
 	@Test(expected = Exception.class)
@@ -75,7 +74,7 @@ public class RpcStrategySingleServerTest {
 		RpcClientConnectionStub connection = new RpcClientConnectionStub();
 		pool.add(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
-		RpcRequestSender sender = strategySingleServer.create(pool).get();
+		RpcRequestSender sender = strategySingleServer.create(pool).getSender();
 		final int calls = 100;
 		int timeout = 50;
 		RpcMessageDataStub data = new RpcMessageDataStub();

@@ -64,7 +64,7 @@ public class RpcStrategyTypeDispatchingTest {
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 
-		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
+		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).getSender();
 		for (int i = 0; i < dataTypeOneRequests; i++) {
 			senderDispatcher.sendRequest(new RpcMessageDataTypeOne(), timeout, callback);
 		}
@@ -104,7 +104,7 @@ public class RpcStrategyTypeDispatchingTest {
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 
-		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
+		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).getSender();
 		senderDispatcher.sendRequest(new RpcMessageDataStub(), timeout, callback);
 
 		assertEquals(0, connection1.getCallsAmount());
@@ -144,7 +144,7 @@ public class RpcStrategyTypeDispatchingTest {
 			}
 		};
 
-		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).get();
+		RpcRequestSender senderDispatcher = typeDispatchingStrategy.create(pool).getSender();
 		// sender is not specified for RpcMessageDataStub, default sender is null
 		senderDispatcher.sendRequest(new RpcMessageDataStub(), timeout, callback);
 
@@ -168,10 +168,10 @@ public class RpcStrategyTypeDispatchingTest {
 		// we don't add connection 2
 		pool.add(ADDRESS_3, connection3);
 
-		assertTrue(strategySingleServer1.create(pool).isPresent());
-		assertFalse(strategySingleServer2.create(pool).isPresent());
-		assertTrue(strategySingleServer3.create(pool).isPresent());
-		assertFalse(typeDispatchingStrategy.create(pool).isPresent());
+		assertTrue(strategySingleServer1.create(pool).isSenderPresent());
+		assertFalse(strategySingleServer2.create(pool).isSenderPresent());
+		assertTrue(strategySingleServer3.create(pool).isSenderPresent());
+		assertFalse(typeDispatchingStrategy.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -191,10 +191,10 @@ public class RpcStrategyTypeDispatchingTest {
 		// we don't add connection 2
 		pool.add(ADDRESS_3, connection3);
 
-		assertTrue(strategySingleServer1.create(pool).isPresent());
-		assertFalse(strategySingleServer2.create(pool).isPresent());
-		assertTrue(strategySingleServer3.create(pool).isPresent());
-		assertTrue(typeDispatchingStrategy.create(pool).isPresent());
+		assertTrue(strategySingleServer1.create(pool).isSenderPresent());
+		assertFalse(strategySingleServer2.create(pool).isSenderPresent());
+		assertTrue(strategySingleServer3.create(pool).isSenderPresent());
+		assertTrue(typeDispatchingStrategy.create(pool).isSenderPresent());
 	}
 
 	@Test
@@ -218,11 +218,11 @@ public class RpcStrategyTypeDispatchingTest {
 		pool.add(ADDRESS_3, connection3);
 		// we don't add connection for default server
 
-		assertTrue(strategySingleServer1.create(pool).isPresent());
-		assertTrue(strategySingleServer2.create(pool).isPresent());
-		assertTrue(strategySingleServer3.create(pool).isPresent());
-		assertFalse(defaultServer.create(pool).isPresent());
-		assertFalse(typeDispatchingStrategy.create(pool).isPresent());
+		assertTrue(strategySingleServer1.create(pool).isSenderPresent());
+		assertTrue(strategySingleServer2.create(pool).isSenderPresent());
+		assertTrue(strategySingleServer3.create(pool).isSenderPresent());
+		assertFalse(defaultServer.create(pool).isSenderPresent());
+		assertFalse(typeDispatchingStrategy.create(pool).isSenderPresent());
 	}
 
 	static class RpcMessageDataTypeOne {

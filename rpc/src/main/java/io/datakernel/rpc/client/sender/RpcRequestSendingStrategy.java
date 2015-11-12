@@ -16,15 +16,14 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Optional;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.util.List;
 
 public interface RpcRequestSendingStrategy {
 
-	Optional<RpcRequestSender> create(RpcClientConnectionPool pool);
+	RpcRequestSenderHolder create(RpcClientConnectionPool pool);
 
-	List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool);
+	List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool);
 
 }

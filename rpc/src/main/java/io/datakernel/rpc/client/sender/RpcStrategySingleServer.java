@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Optional;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
@@ -37,17 +36,17 @@ public final class RpcStrategySingleServer implements RpcRequestSendingStrategy,
 	}
 
 	@Override
-	public List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
+	public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
 		RpcClientConnection connection = pool.get(address);
 		if (connection != null) {
-			return Optional.<RpcRequestSender>of(new RequestSenderToSingleServer(connection));
+			return RpcRequestSenderHolder.of(new RequestSenderToSingleServer(connection));
 		} else {
-			return Optional.absent();
+			return RpcRequestSenderHolder.absent();
 		}
 	}
 

@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Optional;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.hash.HashFunction;
@@ -24,10 +23,10 @@ import io.datakernel.rpc.hash.HashFunction;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.flatten;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.replaceAbsentToNull;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 public final class RpcStrategySharding implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
@@ -40,21 +39,21 @@ public final class RpcStrategySharding implements RpcRequestSendingStrategy, Rpc
 	}
 
 	@Override
-	public final List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public final List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public final Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
-		List<Optional<RpcRequestSender>> subSenders = createSubSenders(pool);
-		return Optional.<RpcRequestSender>of(new RequestSenderSharding(hashFunction, replaceAbsentToNull(subSenders)));
+	public final RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
+		List<RpcRequestSenderHolder> subSenders = createSubSenders(pool);
+		return RpcRequestSenderHolder.of(new RequestSenderSharding(hashFunction, replaceAbsentToNull(subSenders)));
 	}
 
-	private final List<Optional<RpcRequestSender>> createSubSenders(RpcClientConnectionPool pool) {
+	private final List<RpcRequestSenderHolder> createSubSenders(RpcClientConnectionPool pool) {
 
 		assert subStrategies != null;
 
-		List<List<Optional<RpcRequestSender>>> listOfListOfSenders = new ArrayList<>();
+		List<List<RpcRequestSenderHolder>> listOfListOfSenders = new ArrayList<>();
 		for (RpcRequestSendingStrategy subStrategy : subStrategies) {
 			listOfListOfSenders.add(subStrategy.createAsList(pool));
 		}

@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client.sender;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Optional;
 import com.google.common.hash.Hashing;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
@@ -74,39 +73,39 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 	}
 
 	@Override
-	public List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
-		Map<Object, Optional<RpcRequestSender>> keyToSender = createKeyToSender(pool, keyToStrategy);
-		if (countPresentValues(keyToSender) >= minSubStrategiesForCreation) {
-			return Optional.<RpcRequestSender>of(
-					new RequestSenderRendezvousHashing(keyToSender, hashFunction, bucketHashFunction, bucketCapacity));
+	public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
+		Map<Object, RpcRequestSenderHolder> keyToSenderHolder = createKeyToSenderHolder(pool, keyToStrategy);
+		if (countPresentSenders(keyToSenderHolder) >= minSubStrategiesForCreation) {
+			return RpcRequestSenderHolder.of(
+					new RequestSenderRendezvousHashing(keyToSenderHolder, hashFunction, bucketHashFunction, bucketCapacity));
 		} else {
-			return Optional.absent();
+			return RpcRequestSenderHolder.absent();
 		}
 	}
 
-	private static Map<Object, Optional<RpcRequestSender>> createKeyToSender(RpcClientConnectionPool pool,
-	                                                                         Map<Object, RpcSingleSenderStrategy> keyToStrategy) {
+	private static Map<Object, RpcRequestSenderHolder> createKeyToSenderHolder(RpcClientConnectionPool pool,
+	                                                                           Map<Object, RpcSingleSenderStrategy> keyToStrategy) {
 
 		assert keyToStrategy != null;
 
-		Map<Object, Optional<RpcRequestSender>> keyToSender = new HashMap<>();
+		Map<Object, RpcRequestSenderHolder> keyToSenderHolder = new HashMap<>();
 		for (Object key : keyToStrategy.keySet()) {
 			RpcSingleSenderStrategy strategy = keyToStrategy.get(key);
-			Optional<RpcRequestSender> sender = strategy.create(pool);
-			keyToSender.put(key, sender);
+			RpcRequestSenderHolder holder = strategy.create(pool);
+			keyToSenderHolder.put(key, holder);
 		}
-		return keyToSender;
+		return keyToSenderHolder;
 	}
 
-	private static <T> int countPresentValues(Map<Object, Optional<T>> keyToSender) {
+	private static <T> int countPresentSenders(Map<Object, RpcRequestSenderHolder> keyToHolder) {
 		int counter = 0;
-		for (Optional<T> value : keyToSender.values()) {
-			if (value.isPresent()) {
+		for (RpcRequestSenderHolder holder : keyToHolder.values()) {
+			if (holder.isSenderPresent()) {
 				++counter;
 			}
 		}
@@ -122,16 +121,16 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		private final HashFunction<Object> hashFunction;
 		final RendezvousHashBucket hashBucket;
 
-		public RequestSenderRendezvousHashing(Map<Object, Optional<RpcRequestSender>> keyToSender,
+		public RequestSenderRendezvousHashing(Map<Object, RpcRequestSenderHolder> keyToSenderHolder,
 		                                      HashFunction<Object> hashFunction,
 		                                      BucketHashFunction bucketHashFunction, int bucketCapacity) {
-			checkNotNull(keyToSender);
+			checkNotNull(keyToSenderHolder);
 			this.hashFunction = checkNotNull(hashFunction);
-			this.hashBucket = RendezvousHashBucket.create(keyToSender, bucketHashFunction, bucketCapacity);
+			this.hashBucket = RendezvousHashBucket.create(keyToSenderHolder, bucketHashFunction, bucketCapacity);
 		}
 
 		@Override
-		public <T> void sendRequest(Object request, int timeout,final ResultCallback<T> callback) {
+		public <T> void sendRequest(Object request, int timeout, final ResultCallback<T> callback) {
 			RpcRequestSender sender = getRequestSender(request);
 			if (sender == null) {
 				callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
@@ -156,7 +155,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		}
 
 		// if activeAddresses is empty fill bucket with null
-		public static RendezvousHashBucket create(Map<Object, Optional<RpcRequestSender>> keyToSender,
+		public static RendezvousHashBucket create(Map<Object, RpcRequestSenderHolder> keyToSenderHolder,
 		                                          BucketHashFunction bucketHashFunction, int capacity) {
 			checkArgument((capacity & (capacity - 1)) == 0, "capacity must be a power-of-two, got %d", capacity);
 			checkNotNull(bucketHashFunction);
@@ -164,12 +163,12 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 			for (int n = 0; n < sendersBucket.length; n++) {
 				RpcRequestSender chosenSender = null;
 				int max = Integer.MIN_VALUE;
-				for (Object key : keyToSender.keySet()) {
-					Optional<RpcRequestSender> sender = keyToSender.get(key);
-					if (sender.isPresent()) {
+				for (Object key : keyToSenderHolder.keySet()) {
+					RpcRequestSenderHolder holder = keyToSenderHolder.get(key);
+					if (holder.isSenderPresent()) {
 						int hash = bucketHashFunction.hash(key, n);
 						if (hash >= max) {
-							chosenSender = sender.get();
+							chosenSender = holder.getSender();
 							max = hash;
 						}
 					}

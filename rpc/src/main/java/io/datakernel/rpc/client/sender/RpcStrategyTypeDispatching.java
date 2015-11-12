@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Optional;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
@@ -38,30 +37,30 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 	}
 
 	@Override
-	public List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
+	public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
 		return asList(create(pool));
 	}
 
 	@Override
-	public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
+	public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
 		HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender = new HashMap<>();
 		for (Class<? extends Object> dataType : dataTypeToSpecification.keySet()) {
 			StrategySpecifications specs = dataTypeToSpecification.get(dataType);
-			Optional<RpcRequestSender> sender = specs.getStrategy().create(pool);
-			if (sender.isPresent()) {
-				dataTypeToSender.put(dataType, sender.get());
+			RpcRequestSenderHolder holder = specs.getStrategy().create(pool);
+			if (holder.isSenderPresent()) {
+				dataTypeToSender.put(dataType, holder.getSender());
 			} else if (specs.isCrucialForActivation()) {
-				return Optional.absent();
+				return RpcRequestSenderHolder.absent();
 			}
 		}
 		RpcRequestSender defaultSender = null;
 		if (defaultStrategySpecification != null) {
-			defaultSender = defaultStrategySpecification.getStrategy().create(pool).orNull();
+			defaultSender = defaultStrategySpecification.getStrategy().create(pool).getSenderOrNull();
 			if (defaultSender == null && defaultStrategySpecification.isCrucialForActivation()) {
-				return Optional.absent();
+				return RpcRequestSenderHolder.absent();
 			}
 		}
-		return Optional.<RpcRequestSender>of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender));
+		return RpcRequestSenderHolder.of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender));
 	}
 
 	public RpcStrategySpecsSetting on(Class<? extends Object> dataType,
@@ -86,12 +85,12 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 		}
 
 		@Override
-		public List<Optional<RpcRequestSender>> createAsList(RpcClientConnectionPool pool) {
+		public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
 			return RpcStrategyTypeDispatching.this.createAsList(pool);
 		}
 
 		@Override
-		public Optional<RpcRequestSender> create(RpcClientConnectionPool pool) {
+		public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
 			return RpcStrategyTypeDispatching.this.create(pool);
 		}
 

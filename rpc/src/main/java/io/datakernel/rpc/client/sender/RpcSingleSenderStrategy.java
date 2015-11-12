@@ -16,9 +16,8 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.base.Optional;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 public interface RpcSingleSenderStrategy {
-	Optional<RpcRequestSender> create(RpcClientConnectionPool pool);
+	RpcRequestSenderHolder create(RpcClientConnectionPool pool);
 }

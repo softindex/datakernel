@@ -67,7 +67,7 @@ public class RpcRequestSendingStrategiesTest {
 						servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)
 				);
 
-		RpcRequestSender sender = strategy.create(pool).get();
+		RpcRequestSender sender = strategy.create(pool).getSender();
 		for (int i = 0; i < iterations; i++) {
 			sender.sendRequest(data, timeout, callback);
 		}
@@ -104,7 +104,7 @@ public class RpcRequestSendingStrategiesTest {
 						)
 				);
 
-		RpcRequestSender sender = strategy.create(pool).get();
+		RpcRequestSender sender = strategy.create(pool).getSender();
 		for (int i = 0; i < iterations; i++) {
 			sender.sendRequest(data, timeout, callback);
 		}
@@ -145,7 +145,7 @@ public class RpcRequestSendingStrategiesTest {
 						)
 				);
 
-		RpcRequestSender sender = strategy.create(pool).get();
+		RpcRequestSender sender = strategy.create(pool).getSender();
 		sender.sendRequest(data0, timeout, callback);
 		sender.sendRequest(data0, timeout, callback);
 		sender.sendRequest(data1, timeout, callback);
@@ -185,14 +185,14 @@ public class RpcRequestSendingStrategiesTest {
 		pool.add(ADDRESS_3, connection3);
 		pool.add(ADDRESS_4, connection4);
 		pool.add(ADDRESS_5, connection5);
-		sender = strategy.create(pool).get();
+		sender = strategy.create(pool).getSender();
 		for (int i = 0; i < iterationsPerLoop; i++) {
 			RpcMessageDataStubWithKey data = new RpcMessageDataStubWithKey(i);
 			sender.sendRequest(data, timeout, callback);
 		}
 		pool.remove(ADDRESS_3);
 		pool.remove(ADDRESS_4);
-		sender = strategy.create(pool).get();
+		sender = strategy.create(pool).getSender();
 		for (int i = 0; i < iterationsPerLoop; i++) {
 			RpcMessageDataStubWithKey data = new RpcMessageDataStubWithKey(i);
 			sender.sendRequest(data, timeout, callback);
@@ -238,7 +238,7 @@ public class RpcRequestSendingStrategiesTest {
 								)
 						);
 
-		sender = strategy.create(pool).get();
+		sender = strategy.create(pool).getSender();
 		for (int i = 0; i < iterationsPerDataStub; i++) {
 			RpcMessageDataStub data = new RpcMessageDataStub();
 			sender.sendRequest(data, timeout, callback);
