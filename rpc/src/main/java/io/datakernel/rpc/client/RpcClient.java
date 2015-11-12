@@ -49,7 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.*;
+import static io.datakernel.util.Preconditions.*;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAny;
 

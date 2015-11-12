@@ -21,8 +21,8 @@ import io.datakernel.async.ResultCallback;
 
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 
 public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {

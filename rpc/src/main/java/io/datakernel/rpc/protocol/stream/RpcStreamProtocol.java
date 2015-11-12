@@ -34,7 +34,7 @@ import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
 import java.nio.channels.SocketChannel;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 abstract class RpcStreamProtocol implements RpcProtocol {
 

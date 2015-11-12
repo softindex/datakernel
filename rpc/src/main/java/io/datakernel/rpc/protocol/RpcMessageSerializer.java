@@ -28,8 +28,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 import static com.google.common.collect.Maps.newLinkedHashMap;
 
 public final class RpcMessageSerializer {

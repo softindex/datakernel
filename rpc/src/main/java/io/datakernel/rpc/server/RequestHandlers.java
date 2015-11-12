@@ -24,7 +24,7 @@ import org.slf4j.Logger;
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RequestHandlers implements AsyncFunction<Object, Object> {
 

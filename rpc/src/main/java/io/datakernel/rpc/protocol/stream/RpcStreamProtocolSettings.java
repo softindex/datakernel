@@ -18,7 +18,7 @@ package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.stream.processor.StreamBinarySerializer;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public class RpcStreamProtocolSettings {
 	public static final int DEFAULT_PACKET_SIZE = 16;

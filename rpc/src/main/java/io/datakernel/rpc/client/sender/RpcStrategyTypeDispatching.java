@@ -24,8 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {

@@ -28,8 +28,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {

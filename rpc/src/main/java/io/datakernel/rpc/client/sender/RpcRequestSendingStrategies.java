@@ -21,8 +21,8 @@ import io.datakernel.rpc.hash.HashFunction;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 public final class RpcRequestSendingStrategies {

@@ -24,7 +24,7 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 public final class RpcStrategySingleServer implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {

@@ -27,7 +27,7 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.nio.channels.SocketChannel;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcServer extends AbstractNioServer<RpcServer> implements RpcServerMBean {
 

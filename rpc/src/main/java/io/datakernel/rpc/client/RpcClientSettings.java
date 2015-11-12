@@ -25,7 +25,7 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.*;
+import static io.datakernel.util.Preconditions.*;
 
 public final class RpcClientSettings {
 	private static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
