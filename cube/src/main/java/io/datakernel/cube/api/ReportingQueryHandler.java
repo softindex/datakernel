@@ -347,11 +347,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 		private TotalsPlaceholder computeTotals(List<QueryResultPlaceholder> results) {
 			TotalsPlaceholder totalsPlaceholder = createTotalsPlaceholder(resultClass, storedMeasures, computedMeasures);
-			totalsPlaceholder.initAccumulator(results.get(0));
-			if (results.size() > 1) {
-				for (int i = 1; i < results.size(); ++i) {
-					totalsPlaceholder.accumulate(results.get(i));
-				}
+			for (QueryResultPlaceholder record : results) {
+				totalsPlaceholder.accumulate(record);
 			}
 			totalsPlaceholder.computeMeasures();
 			return totalsPlaceholder;
@@ -441,8 +438,6 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		                                                  Set<String> computedMeasureNames) {
 			AsmBuilder<TotalsPlaceholder> builder = new AsmBuilder<>(classLoader, TotalsPlaceholder.class);
 
-			ExpressionSequence initAccumulatorSequence = sequence();
-
 			for (String field : requestedStoredFields) {
 				FieldType fieldType = structure.getOutputFieldType(field);
 				builder.field(field, fieldType.getDataType());
@@ -450,13 +445,6 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			for (String computedMeasure : computedMeasureNames) {
 				builder.field(computedMeasure, double.class);
 			}
-
-			for (String field : requestedStoredFields) {
-				initAccumulatorSequence.add(set(
-						getter(self(), field),
-						getter(cast(arg(0), inputClass), field)));
-			}
-			builder.method("initAccumulator", initAccumulatorSequence);
 
 			ExpressionSequence accumulateSequence = sequence();
 			for (String field : requestedStoredFields) {

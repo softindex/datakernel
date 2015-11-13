@@ -17,6 +17,5 @@
 package io.datakernel.cube.api;
 
 public interface TotalsPlaceholder extends QueryResultPlaceholder {
-	void initAccumulator(QueryResultPlaceholder record);
 	void accumulate(QueryResultPlaceholder record);
 }
