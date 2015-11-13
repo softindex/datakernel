@@ -22,8 +22,10 @@ import com.google.common.collect.Iterables;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -58,9 +60,24 @@ public final class DimensionsRequestHandler implements AsyncHttpServlet {
 		this.classLoader = classLoader;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+	public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+		try {
+			processRequest(request, callback);
+		} catch (QueryException e) {
+			logger.info("Request {} could not be processed because of error: {}", request, e.getMessage());
+			callback.onResult(response500(e.getMessage()));
+		} catch (JsonParseException e) {
+			logger.info("Failed to parse JSON in request {}", request);
+			callback.onResult(response500("Failed to parse JSON request"));
+		} catch (RuntimeException e) {
+			logger.error("Unknown exception occurred while processing request {}", request, e);
+			callback.onResult(response500("Unknown server error"));
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private void processRequest(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		logger.info("Got request {} for dimensions.", request);
 		final Stopwatch sw = Stopwatch.createStarted();
 		String predicatesJson = request.getParameter("filters");
@@ -95,10 +112,13 @@ public final class DimensionsRequestHandler implements AsyncHttpServlet {
 
 		consumerStream.setResultCallback(new ResultCallback<List>() {
 			@Override
-			public void onResult(List result) {
-				String jsonResult = constructDimensionsJson(cube, resultClass, result, query, classLoader);
-				callback.onResult(createResponse(jsonResult));
-				logger.info("Sent response to /dimensions request {} (query: {}) in {}", request, query, sw);
+			public void onResult(List results) {
+				try {
+					processResults(resultClass, results, query, request, sw, callback);
+				} catch (Exception e) {
+					logger.error("Unknown exception occurred while processing results {}", e);
+					callback.onResult(response500("Unknown server error"));
+				}
 			}
 
 			@Override
@@ -109,8 +129,14 @@ public final class DimensionsRequestHandler implements AsyncHttpServlet {
 		});
 	}
 
-	public static <T> String constructDimensionsJson(Cube cube, Class<?> resultClass, List<T> results, AggregationQuery query,
-	                                                 DefiningClassLoader classLoader) {
+	private void processResults(Class<?> resultClass, List results, AggregationQuery query, HttpRequest request,
+	                            Stopwatch sw,  ResultCallback<HttpResponse> callback) {
+		String jsonResult = constructDimensionsJson(resultClass, results, query);
+		callback.onResult(createResponse(jsonResult));
+		logger.info("Sent response to /dimensions request {} (query: {}) in {}", request, query, sw);
+	}
+
+	private <T> String constructDimensionsJson(Class<?> resultClass, List<T> results, AggregationQuery query) {
 		List<String> resultKeys = query.getResultKeys();
 		JsonArray jsonResults = new JsonArray();
 		AggregationStructure structure = cube.getStructure();

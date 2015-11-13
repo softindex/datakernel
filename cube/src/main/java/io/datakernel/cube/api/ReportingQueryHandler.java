@@ -34,6 +34,7 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,7 +114,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		private Integer limit;
 		private Integer offset;
 
-		public void processRequest(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+		private void processRequest(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			final Stopwatch sw = Stopwatch.createStarted();
 			processPredicates(request.getParameter("filters"));
 
 			parseAttributes(request.getParameter("attributes"));
@@ -146,7 +148,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 				@Override
 				public void onResult(List<QueryResultPlaceholder> results) {
 					try {
-						processResults(results, callback);
+						processResults(results, request, sw, callback);
 					} catch (Exception e) {
 						logger.error("Unknown exception occurred while processing results {}", e);
 						callback.onResult(response500("Unknown server error"));
@@ -325,7 +327,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		}
 
 		@SuppressWarnings("unchecked")
-		private void processResults(List<QueryResultPlaceholder> results, ResultCallback<HttpResponse> callback) {
+		private void processResults(List<QueryResultPlaceholder> results, HttpRequest request, Stopwatch sw,
+		                            ResultCallback<HttpResponse> callback) {
 			if (results.isEmpty()) {
 				callback.onResult(createResponse(""));
 				return;
@@ -339,7 +342,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			String jsonResult = constructQueryResultJson(results, resultClass,
 					newArrayList(concat(requestDimensions, attributes)), queryMeasures, totalsPlaceholder);
 			callback.onResult(createResponse(jsonResult));
-			logger.trace("Sending response {} to query {}.", jsonResult, query);
+			logger.info("Sent response to reporting request {} (query {}) in {}", request, query, sw);
 		}
 
 		private TotalsPlaceholder computeTotals(List<QueryResultPlaceholder> results) {
