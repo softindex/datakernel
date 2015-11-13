@@ -17,6 +17,7 @@
 package io.datakernel.cube;
 
 import com.google.common.base.Function;
+import com.google.common.base.Functions;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.LinkedHashMultimap;
@@ -477,13 +478,9 @@ public final class Cube {
 	                                                     StreamReducer<Comparable, T, Object> rawResultStream,
 	                                                     List<String> dimensions, List<String> measures) {
 		if (queryRequiresSorting(query)) {
-			ArrayList<String> orderingFields = new ArrayList<>(query.getOrderingFields());
-			Class<?> fieldClass = structure.createFieldClass(orderingFields);
-			Function sortingMeasureFunction = structure.createFieldFunction(resultClass, fieldClass, orderingFields);
-			Comparator fieldComparator = structure.createFieldComparator(query, fieldClass);
-
+			Comparator fieldComparator = structure.createFieldComparator(query, resultClass);
 			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure, resultClass, dimensions, measures);
-			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, sortingMeasureFunction,
+			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
 					fieldComparator, false, sorterItemsInMemory);
 			rawResultStream.getOutput().streamTo(sorter.getInput());
 			return sorter.getOutput();

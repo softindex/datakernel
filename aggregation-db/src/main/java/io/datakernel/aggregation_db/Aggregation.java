@@ -17,6 +17,7 @@
 package io.datakernel.aggregation_db;
 
 import com.google.common.base.Function;
+import com.google.common.base.Functions;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
@@ -277,13 +278,9 @@ public class Aggregation {
 	public <T> StreamProducer<T> query(AggregationQuery query, Class<T> outputClass) {
 		List<String> resultKeys = query.getResultKeys();
 
-		Class resultKeyClass = structure.createKeyClass(resultKeys);
-
 		List<String> aggregationFields = getAggregationFieldsForQuery(query.getResultFields());
 
 		List<AggregationChunk> allChunks = aggregationMetadata.queryByPredicates(structure, chunks, query.getPredicates());
-
-		Function keyFunction = structure.createKeyFunction(outputClass, resultKeyClass, resultKeys);
 
 		StreamProducer streamProducer = consolidatedProducer(query.getAllKeys(), aggregationFields,
 				outputClass, query.getPredicates(), allChunks);
@@ -299,9 +296,10 @@ public class Aggregation {
 		}
 
 		if (sortingRequired(resultKeys, aggregationMetadata.getKeys())) {
+			Comparator keyComparator = structure.createKeyComparator(outputClass, resultKeys);
 			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure,
 					outputClass, aggregationMetadata.getKeys(), aggregationFields);
-			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, keyFunction, Ordering.natural(), false,
+			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
 					sorterItemsInMemory);
 			queryResultProducer.streamTo(sorter.getInput());
 			queryResultProducer = sorter.getOutput();

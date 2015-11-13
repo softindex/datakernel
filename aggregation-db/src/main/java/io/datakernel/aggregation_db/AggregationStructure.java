@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
+import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -203,6 +204,19 @@ public class AggregationStructure {
 				comparator.add(
 						getter(cast(arg(1), fieldClass), field),
 						getter(cast(arg(0), fieldClass), field));
+		}
+
+		builder.method("compare", comparator);
+
+		return builder.newInstance();
+	}
+
+	public Comparator createKeyComparator(Class<?> recordClass, List<String> keys) {
+		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
+		ExpressionComparator comparator = comparator();
+
+		for (String key : keys) {
+			comparator.add(getter(cast(arg(0), recordClass), key), getter(cast(arg(1), recordClass), key));
 		}
 
 		builder.method("compare", comparator);
