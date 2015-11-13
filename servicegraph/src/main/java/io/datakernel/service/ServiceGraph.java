@@ -34,7 +34,7 @@ import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-public class ServiceGraph implements ConcurrentService {
+public class ServiceGraph implements AsyncService {
 
 	/**
 	 * Inner class which represents service with its identification key - object. This object can
@@ -42,9 +42,9 @@ public class ServiceGraph implements ConcurrentService {
 	 */
 	public static final class Node {
 		private final Object key;
-		private final ConcurrentService service;
+		private final AsyncService service;
 
-		public Node(Object key, ConcurrentService service) {
+		public Node(Object key, AsyncService service) {
 			this.key = key;
 			this.service = service;
 		}
@@ -78,7 +78,7 @@ public class ServiceGraph implements ConcurrentService {
 			return key;
 		}
 
-		public ConcurrentService getService() {
+		public AsyncService getService() {
 			return service;
 		}
 	}
@@ -107,6 +107,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
 
+	// TODO (vsavchuk) without guava
 	private final SetMultimap<Node, Node> backwards = LinkedHashMultimap.create();
 
 	/**
@@ -188,7 +189,7 @@ public class ServiceGraph implements ConcurrentService {
 		/**
 		 * Executes the action for service from argument. Used under traversing the graph.
 		 */
-		void asyncAction(Node service, ConcurrentServiceCallback serviceCallback);
+		void asyncAction(Node service, AsyncServiceCallback serviceCallback);
 	}
 
 	private void longestPath(Map<Node, Long> timings,
@@ -245,7 +246,7 @@ public class ServiceGraph implements ConcurrentService {
 	synchronized private void next(final ServiceGraphAction action, final ExecutorService executorService,
 	                               final Set<Node> activeNodes, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes,
 	                               final Set<Node> vertices, final SetMultimap<Node, Node> forwardNodes, final SetMultimap<Node, Node> backwardNodes,
-	                               final Map<Node, Long> processingTimes, final ConcurrentServiceCallback callback, final String done, final String fail) {
+	                               final Map<Node, Long> processingTimes, final AsyncServiceCallback callback, final String done, final String fail) {
 		List<Node> newNodes = Collections.emptyList();
 		if (failedNodes.isEmpty()) {
 			newNodes = nextNodes(processedNodes, vertices, forwardNodes, backwardNodes);
@@ -277,7 +278,7 @@ public class ServiceGraph implements ConcurrentService {
 			Stopwatch asyncActionTime = Stopwatch.createStarted();
 			final Stopwatch sw = Stopwatch.createStarted();
 
-			ConcurrentServiceCallback callbackAction = new ConcurrentServiceCallback() {
+			AsyncServiceCallback callbackAction = new AsyncServiceCallback() {
 				@Override
 				public void doOnComplete() {
 					synchronized (ServiceGraph.this) {
@@ -340,7 +341,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * Started services from the service graph
 	 */
 	@Override
-	synchronized public void start(ConcurrentServiceCallback callback) {
+	synchronized public void start(AsyncServiceCallback callback) {
 		if (!started) {
 			onStart();
 			started = true;
@@ -348,8 +349,8 @@ public class ServiceGraph implements ConcurrentService {
 		logger.info("Starting services...");
 		visitBackwardAsync(new ServiceGraphAction() {
 			@Override
-			public void asyncAction(final Node service, final ConcurrentServiceCallback callback) {
-				ConcurrentService serviceOrNull = service.getService();
+			public void asyncAction(final Node service, final AsyncServiceCallback callback) {
+				AsyncService serviceOrNull = service.getService();
 				if (serviceOrNull == null) {
 					callback.onComplete();
 					return;
@@ -364,12 +365,12 @@ public class ServiceGraph implements ConcurrentService {
 	 * Stops services from  the service graph
 	 */
 	@Override
-	synchronized public void stop(final ConcurrentServiceCallback callback) {
+	synchronized public void stop(final AsyncServiceCallback callback) {
 		logger.info("Stopping running services: " + nodesToString(startedServices));
 		visitForwardAsync(new ServiceGraphAction() {
 			@Override
-			public void asyncAction(final Node service, final ConcurrentServiceCallback callback) {
-				ConcurrentService serviceOrNull = service.getService();
+			public void asyncAction(final Node service, final AsyncServiceCallback callback) {
+				AsyncService serviceOrNull = service.getService();
 				if (serviceOrNull == null) {
 					callback.onComplete();
 					return;
@@ -400,7 +401,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * @return SettableFuture  with result of action
 	 */
 	public void visitForwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes,
-	                              final Map<Node, Throwable> failedNodes, final ConcurrentServiceCallback callback,
+	                              final Map<Node, Throwable> failedNodes, final AsyncServiceCallback callback,
 	                              final String done, final String fail) {
 		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
 		executor.execute(new Runnable() {
@@ -422,7 +423,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * @return SettableFuture  with result of action
 	 */
 	public void visitBackwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes,
-	                               final Map<Node, Throwable> failedNodes, final ConcurrentServiceCallback callback,
+	                               final Map<Node, Throwable> failedNodes, final AsyncServiceCallback callback,
 	                               final String done, final String fail) {
 		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
 		executor.execute(new Runnable() {

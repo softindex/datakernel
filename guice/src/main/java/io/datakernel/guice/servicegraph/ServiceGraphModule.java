@@ -19,12 +19,13 @@ package io.datakernel.guice.servicegraph;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import com.google.inject.*;
+import com.google.inject.internal.MoreTypes;
 import com.google.inject.spi.Dependency;
 import com.google.inject.spi.HasDependencies;
 import io.datakernel.guice.workers.NioWorkerScope;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
-import io.datakernel.service.ConcurrentService;
-import io.datakernel.service.ConcurrentServiceCallback;
+import io.datakernel.service.AsyncService;
+import io.datakernel.service.AsyncServiceCallback;
 import io.datakernel.service.ServiceGraph;
 import org.slf4j.Logger;
 
@@ -48,8 +49,6 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
-
-	private final Map<Key<?>, Object> services = new LinkedHashMap<>();
 
 	private final Executor executor;
 
@@ -79,7 +78,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @param factory value to be associated with the specified type
 	 * @return ServiceGraphModule with change
 	 */
-	public <T> ServiceGraphModule factory(Class<T> type, ServiceGraphFactory<T> factory) {
+	public <T> ServiceGraphModule serviceForAssignableClasses(Class<T> type, ServiceGraphFactory<T> factory) {
 		factoryMap.put(type, factory);
 		return this;
 	}
@@ -92,37 +91,10 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @param <T>     type of service
 	 * @return ServiceGraphModule with change
 	 */
-	public <T> ServiceGraphModule factoryForKey(Key<T> key, ServiceGraphFactory<T> factory) {
+
+	public <T> ServiceGraphModule serviceForSpecificKey(Key<T> key, ServiceGraphFactory<T> factory) {
 		keys.put(key, factory);
 		return this;
-	}
-
-	/**
-	 * Puts the key and factory for service from argument to the keys
-	 *
-	 * @param key     key with which the specified service is to be associated
-	 * @param service value to be associated with the specified key
-	 * @param <T>     type of service
-	 * @return ServiceGraphModule with change
-	 */
-	public <T> ServiceGraphModule serviceForKey(Key<T> key, final ConcurrentService service) {
-		return factoryForKey(key, new ServiceGraphFactory<T>() {
-			@Override
-			public ConcurrentService getService(T node, Executor executor) {
-				return service;
-			}
-		});
-	}
-
-	/**
-	 * Puts the key and the null-factory to keys
-	 *
-	 * @param <T> type of service
-	 * @param key key with which null is to be associated
-	 * @return ServiceGraphModule with change
-	 */
-	public <T> ServiceGraphModule noServiceForKey(Key<T> key) {
-		return serviceForKey(key, null);
 	}
 
 	/**
@@ -149,7 +121,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		return this;
 	}
 
-	private static class KeyInPool {
+	public static class KeyInPool {
 		private final Key<?> key;
 		private final int index;
 
@@ -184,7 +156,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	}
 
 	@SuppressWarnings("unchecked")
-	private ConcurrentService getServiceFromNioScopeInstanceOrNull(Key<?> key, Object instance) {
+	private AsyncService getServiceFromNioScopeInstanceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
 		ServiceGraphFactory<?> factoryForKey = keys.get(key);
 		if (factoryForKey != null) {
@@ -193,7 +165,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		for (Class<?> type : factoryMap.keySet()) {
 			if (type.isAssignableFrom(instance.getClass())) {
 				ServiceGraphFactory<?> serviceGraphFactory = factoryMap.get(type);
-				ConcurrentService service = ((ServiceGraphFactory<Object>) serviceGraphFactory).getService(instance, executor);
+				AsyncService service = ((ServiceGraphFactory<Object>) serviceGraphFactory).getService(instance, executor);
 				return checkNotNull(service);
 			}
 		}
@@ -205,39 +177,43 @@ public final class ServiceGraphModule extends AbstractModule {
 	}
 
 	@SuppressWarnings("unchecked")
-	private ConcurrentService getServiceOrNull(Key<?> key, Binding<?> binding) {
-		Object object = services.get(key);
+	private AsyncService getServiceOrNull(Key<?> key, Injector injector) {
+		Binding<?> binding = injector.getBinding(key);
+		if (!Scopes.isSingleton(binding)) return null;
+		Object object = injector.getInstance(key);
+
 		ServiceGraphFactory<?> factoryForKey = keys.get(key);
 		if (factoryForKey != null) {
 			checkNotNull(object, "SingletonService object is not instantiated for " + key);
-			ConcurrentService service = ((ServiceGraphFactory<Object>) factoryForKey).getService(object, executor);
+			AsyncService service = ((ServiceGraphFactory<Object>) factoryForKey).getService(object, executor);
 			return checkNotNull(service);
-		}
-		if (key.getTypeLiteral().getRawType().equals(List.class) && binding instanceof HasDependencies) {
-			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
-			for (Dependency<?> dependency : dependencies) {
-				if (dependency.getKey().equals(Key.get(NioWorkerScopeFactory.class))) {
-					return containerOfServices();
-				}
-			}
 		}
 		if (object == null)
 			return null;
 		for (Class<?> type : factoryMap.keySet()) {
 			if (type.isAssignableFrom(object.getClass())) {
 				ServiceGraphFactory<?> serviceGraphFactory = factoryMap.get(type);
-				ConcurrentService service = ((ServiceGraphFactory<Object>) serviceGraphFactory).getService(object, executor);
+				AsyncService service = ((ServiceGraphFactory<Object>) serviceGraphFactory).getService(object, executor);
 				return checkNotNull(service);
 			}
 		}
-		throw new IllegalArgumentException("Could not find factory for service " + key);
+		if (binding instanceof HasDependencies) {
+			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
+			for (Dependency<?> dependency : dependencies) {
+				// TODO (vsavchuk) improve
+				if (dependency.getKey().equals(Key.get(NioWorkerScopeFactory.class))) {
+					return containerOfServices();
+				}
+			}
+		}
+		return null;
 	}
 
-	private ServiceGraph.Node nodeFromService(Key<?> key, Binding<?> binding) {
-		return new ServiceGraph.Node(key, getServiceOrNull(key, binding));
+	private ServiceGraph.Node nodeFromService(Key<?> key, Injector injector) {
+		return new ServiceGraph.Node(key, getServiceOrNull(key, injector));
 	}
 
-	private Key<?> sameKey(List list) {
+	private Key<?> sameKey(Injector injector, List list) {
 		Key<?> listKey = null;
 		for (Object object : list) {
 			Key<?> keyFromObject = Key.get(object.getClass());
@@ -255,44 +231,31 @@ public final class ServiceGraphModule extends AbstractModule {
 			logger.warn("Unused keys : {}", keys.keySet());
 		}
 
-		final List<Map<Key<?>, Object>> nioScopePool = nioWorkerScope.getPool();
+		final List<Map<Key<?>, Object>> pool = nioWorkerScope.getPool();
+		final Map<Class<?>, List<ServiceGraphModule.KeyInPool>> poolObjectKey = nioWorkerScope.getPoolMapClassKey();
 
 		for (final Key<?> key : injector.getAllBindings().keySet()) {
-			final Binding<?> binding = injector.getBinding(key);
-			final ServiceGraph.Node serviceNode = nodeFromService(key, binding);
+			final ServiceGraph.Node serviceNode = nodeFromService(key, injector);
 
 			graph.add(serviceNode);
 			Set<Key<?>> dependenciesForKey = new HashSet<>();
 			processDependencies(serviceNode, key, injector, graph, dependenciesForKey, new AddDependence() {
 				@Override
 				public void add(Key<?> dependencyKey) {
+					// TODO (vsavchuk) improve
 					if (dependencyKey.equals(Key.get(NioWorkerScopeFactory.class))) {
-
-						Object instance = injector.getInstance(key);
-						Key<?> nioScopeKey;
-						if (instance instanceof List) {
-
-							List list = ((List) instance);
-							if (list.isEmpty()) {
-								logger.warn("Empty list : {}", instance);
-								return;
-							}
-
-							nioScopeKey = sameKey(list);
-							if (nioScopeKey == null) {
-								throw new IllegalArgumentException("List has different keys : " + list);
-							}
-						} else {
-							nioScopeKey = Key.get(instance.getClass());
-						}
-
-						for (int poolIndex = 0; poolIndex < nioScopePool.size(); poolIndex++) {
-							Map<Key<?>, Object> nioScopeMap = nioScopePool.get(poolIndex);
-
-							if (nioScopeMap.containsKey(nioScopeKey)) {
-								ServiceGraph.Node dependencyNode =
-										nodeFromNioScope(nioScopeKey, nioScopeMap.get(nioScopeKey), poolIndex);
-								graph.add(serviceNode, dependencyNode);
+						// TODO (vsavchuk) improve
+						Set<Dependency<?>> dependencies = ((HasDependencies) injector.getBinding(key)).getDependencies();
+						for (Dependency<?> dependency : dependencies) {
+							Key<?> depKey = dependency.getKey();
+							if (depKey.getTypeLiteral().getRawType().equals(Provider.class)) {
+								Class<?> actualTypeArguments = (Class<?>)((MoreTypes.ParameterizedTypeImpl)
+										depKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
+								for (KeyInPool actualKeyInPool : poolObjectKey.get(actualTypeArguments)) {
+									ServiceGraph.Node dependencyNode = nodeFromNioScope(actualKeyInPool.key,
+											pool.get(actualKeyInPool.index).get(actualKeyInPool.key), actualKeyInPool.index);
+									graph.add(serviceNode, dependencyNode);
+								}
 							}
 						}
 					}
@@ -300,8 +263,8 @@ public final class ServiceGraphModule extends AbstractModule {
 			});
 		}
 
-		for (int poolIndex = 0; poolIndex < nioScopePool.size(); poolIndex++) {
-			Map<Key<?>, Object> nioScopeMap = nioScopePool.get(poolIndex);
+		for (int poolIndex = 0; poolIndex < pool.size(); poolIndex++) {
+			Map<Key<?>, Object> nioScopeMap = pool.get(poolIndex);
 			createNioScopeGraph(nioScopeMap, injector, graph, poolIndex);
 		}
 	}
@@ -326,7 +289,7 @@ public final class ServiceGraphModule extends AbstractModule {
 
 				addDependence.add(dependencyKey);
 
-				ServiceGraph.Node dependencyNode = nodeFromService(dependencyKey, injector.getBinding(dependencyKey));
+				ServiceGraph.Node dependencyNode = nodeFromService(dependencyKey, injector);
 				graph.add(serviceNode, dependencyNode);
 
 				if (!removedDependenciesForKey.isEmpty()) {
@@ -338,7 +301,7 @@ public final class ServiceGraphModule extends AbstractModule {
 			}
 
 			for (Key<?> dependencyKey : difference(addedDependencies.get(key), dependenciesForKey)) {
-				ServiceGraph.Node dependencyNode = nodeFromService(dependencyKey, injector.getBinding(dependencyKey));
+				ServiceGraph.Node dependencyNode = nodeFromService(dependencyKey, injector);
 				graph.add(serviceNode, dependencyNode);
 			}
 		}
@@ -365,31 +328,8 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 	}
 
-	private final class SingletonServiceScope implements Scope {
-		@SuppressWarnings("unchecked")
-		@Override
-		public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
-			return new Provider<T>() {
-				@Override
-				public T get() {
-					synchronized (SingletonServiceScope.this) {
-						T instance = (T) services.get(key);
-						if (instance == null) {
-							instance = unscoped.get();
-							services.put(key, instance);
-						}
-						return instance;
-					}
-				}
-			};
-		}
-
-	}
-
 	@Override
 	protected void configure() {
-		SingletonServiceScope serviceScope = new SingletonServiceScope();
-		bindScope(SingletonService.class, serviceScope);
 	}
 
 	public static ServiceGraph getServiceGraph(Injector injector, Key<?>... rootKeys) {
@@ -439,15 +379,15 @@ public final class ServiceGraphModule extends AbstractModule {
 		};
 	}
 
-	private ConcurrentService containerOfServices() {
-		return new ConcurrentService() {
+	private AsyncService containerOfServices() {
+		return new AsyncService() {
 			@Override
-			public void start(ConcurrentServiceCallback callback) {
+			public void start(AsyncServiceCallback callback) {
 				callback.onComplete();
 			}
 
 			@Override
-			public void stop(ConcurrentServiceCallback callback) {
+			public void stop(AsyncServiceCallback callback) {
 				callback.onComplete();
 			}
 		};

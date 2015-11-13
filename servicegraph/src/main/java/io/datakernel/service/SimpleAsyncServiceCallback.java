@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.workers;
+package io.datakernel.service;
 
-import com.google.inject.BindingAnnotation;
+public abstract class SimpleAsyncServiceCallback extends AsyncServiceCallback {
+	protected abstract void doOnSuccessOrOnError();
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+	@Override
+	protected void doOnComplete() {
+		doOnSuccessOrOnError();
+	}
 
-import static java.lang.annotation.ElementType.*;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-@BindingAnnotation
-@Target({FIELD, PARAMETER, METHOD})
-@Retention(RUNTIME)
-public @interface PrimaryThread {
+	@Override
+	protected void doOnExeption(Exception exception) {
+		doOnSuccessOrOnError();
+	}
 }

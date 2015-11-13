@@ -14,19 +14,23 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.servicegraph;
+package io.datakernel.service;
 
-import com.google.inject.ScopeAnnotation;
+import io.datakernel.async.CompletionCallback;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+public abstract class AsyncServiceCallback implements CompletionCallback {
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+	@Override
+	public void onComplete() {
+		doOnComplete();
+	}
 
-@ScopeAnnotation
-@Target({TYPE, METHOD})
-@Retention(RUNTIME)
-public @interface SingletonService {
+	protected abstract void doOnComplete();
+
+	@Override
+	public void onException(Exception exception) {
+		doOnExeption(exception);
+	}
+
+	protected abstract void doOnExeption(Exception exception);
 }

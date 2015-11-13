@@ -26,8 +26,10 @@ import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.guice.servicegraph.ServiceGraphFactories;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
-import io.datakernel.guice.servicegraph.SingletonService;
-import io.datakernel.guice.workers.*;
+import io.datakernel.guice.workers.NioWorkerModule;
+import io.datakernel.guice.workers.NioWorkerScopeFactory;
+import io.datakernel.guice.workers.WorkerId;
+import io.datakernel.guice.workers.WorkerThread;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.service.ConcurrentServiceCallbacks;
 import io.datakernel.service.ServiceGraph;
@@ -61,27 +63,38 @@ public class HelloWorldGuiceTest {
 		protected void configure() {
 			install(new NioWorkerModule());
 			install(new ServiceGraphModule()
-					.factory(NioServer.class, ServiceGraphFactories.factoryForNioServer())
-					.factory(NioEventloop.class, ServiceGraphFactories.factoryForNioEventloop())
+							.serviceForAssignableClasses(NioServer.class, ServiceGraphFactories.factoryForNioServer())
+							.serviceForAssignableClasses(NioEventloop.class, ServiceGraphFactories.factoryForNioEventloop())
 			);
 		}
 
 		@Provides
-		@SingletonService
-		@PrimaryThread
+		@Singleton
 		NioEventloop primaryEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-		@SingletonService
-		PrimaryNioServer primaryNioServer(@PrimaryThread NioEventloop primaryEventloop,
-		                                  List<AsyncHttpServer> workerHttpServers) {
+		@Singleton
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,
+		                                  NioWorkerScopeFactory nioWorkerScope,
+		                                  @WorkerThread Provider<AsyncHttpServer> itemProvider) {
+			List<AsyncHttpServer> workerHttpServers = nioWorkerScope.getList(WORKERS, itemProvider);
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
 			primaryNioServer.workerNioServers(workerHttpServers);
 			primaryNioServer.setListenPort(PORT);
 			return primaryNioServer;
 		}
+
+//		@Provides
+//		@Singleton
+//		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,
+//		                                  List<AsyncHttpServer> workerHttpServers) {
+//			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
+//			primaryNioServer.workerNioServers(workerHttpServers);
+//			primaryNioServer.setListenPort(PORT);
+//			return primaryNioServer;
+//		}
 
 		@Provides
 		@WorkerThread
@@ -91,10 +104,11 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@WorkerThread
-		AsyncHttpServer workerHttpServer(NioEventloop eventloop, @WorkerId final int workerId) {
+		AsyncHttpServer workerHttpServer(@WorkerThread NioEventloop eventloop, @WorkerId final int workerId) {
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
-				public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				public void serveAsync(HttpRequest request,
+				                       ResultCallback<HttpResponse> callback) {
 					HttpResponse httpResponse = HttpResponse.create(200);
 					httpResponse.body(ByteBuf.wrap(ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId)));
 					callback.onResult(httpResponse);
@@ -102,11 +116,11 @@ public class HelloWorldGuiceTest {
 			});
 		}
 
-		@Provides
-		@Singleton
-		List<AsyncHttpServer> workerHttpServers(NioWorkerScopeFactory nioWorkerScope, Provider<AsyncHttpServer> itemProvider) {
-			return nioWorkerScope.getList(WORKERS, itemProvider);
-		}
+//		@Provides
+//		@Singleton
+//		List<AsyncHttpServer> workerHttpServers(NioWorkerScopeFactory nioWorkerScope, @WorkerThread Provider<AsyncHttpServer> itemProvider) {
+//			return nioWorkerScope.getList(WORKERS, itemProvider);
+//		}
 	}
 
 	@Test

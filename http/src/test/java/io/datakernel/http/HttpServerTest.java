@@ -21,9 +21,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
-import jdk.nashorn.internal.ir.annotations.Ignore;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;

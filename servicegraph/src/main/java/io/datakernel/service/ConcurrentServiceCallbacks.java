@@ -26,7 +26,7 @@ public class ConcurrentServiceCallbacks {
 		return new CountDownServiceCallback();
 	}
 
-	public static class CountDownServiceCallback extends ConcurrentServiceCallback {
+	public static class CountDownServiceCallback extends AsyncServiceCallback {
 		CountDownLatch countDownLatch = new CountDownLatch(1);
 
 		@Override
