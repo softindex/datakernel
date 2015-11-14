@@ -24,6 +24,7 @@ import com.google.inject.spi.Dependency;
 import com.google.inject.spi.HasDependencies;
 import io.datakernel.guice.workers.NioWorkerScope;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
+import io.datakernel.guice.workers.WorkerThread;
 import io.datakernel.service.AsyncService;
 import io.datakernel.service.AsyncServiceCallback;
 import io.datakernel.service.ServiceGraph;
@@ -248,7 +249,8 @@ public final class ServiceGraphModule extends AbstractModule {
 						Set<Dependency<?>> dependencies = ((HasDependencies) injector.getBinding(key)).getDependencies();
 						for (Dependency<?> dependency : dependencies) {
 							Key<?> depKey = dependency.getKey();
-							if (depKey.getTypeLiteral().getRawType().equals(Provider.class)) {
+							if (depKey.getTypeLiteral().getRawType().equals(Provider.class)
+									&& depKey.getAnnotationType().equals(WorkerThread.class)) {
 								Class<?> actualTypeArguments = (Class<?>)((MoreTypes.ParameterizedTypeImpl)
 										depKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
 								for (KeyInPool actualKeyInPool : poolObjectKey.get(actualTypeArguments)) {
