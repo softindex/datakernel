@@ -227,7 +227,7 @@ public class CubeIntegrationTest {
 
 		// Consolidate
 		ResultCallbackFuture<Boolean> callback = new ResultCallbackFuture<>();
-		cube.consolidate(callback);
+		cube.consolidate(100, callback);
 		eventloop.run();
 		boolean consolidated = callback.isDone() ? callback.get() : false;
 		assertEquals(true, consolidated);

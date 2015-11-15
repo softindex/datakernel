@@ -352,21 +352,21 @@ public final class Cube {
 		}
 	}
 
-	public void consolidate(ResultCallback<Boolean> callback) {
-		consolidate(false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
+	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
+		consolidate(maxChunksToConsolidate, false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	public void consolidate(final boolean found, final Iterator<Aggregation> iterator,
-	                        final ResultCallback<Boolean> callback) {
+	private void consolidate(final int maxChunksToConsolidate, final boolean found, final Iterator<Aggregation> iterator,
+	                         final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				if (iterator.hasNext()) {
 					Aggregation aggregation = iterator.next();
-					aggregation.consolidate(new ForwardingResultCallback<Boolean>(callback) {
+					aggregation.consolidate(maxChunksToConsolidate, new ForwardingResultCallback<Boolean>(callback) {
 						@Override
 						public void onResult(Boolean result) {
-							consolidate(result || found, iterator, callback);
+							consolidate(maxChunksToConsolidate, result || found, iterator, callback);
 						}
 					});
 				} else {

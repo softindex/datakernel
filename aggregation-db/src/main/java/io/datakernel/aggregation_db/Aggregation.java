@@ -468,10 +468,23 @@ public class Aggregation {
 		return (Predicate) builder.newInstance();
 	}
 
-	public void consolidate(final ResultCallback<Boolean> callback) {
+	public void consolidate(int maxChunksToConsolidate, final ResultCallback<Boolean> callback) {
 		logger.trace("Aggregation {} consolidation started", this);
 
-		final List<AggregationChunk> chunksToConsolidate = aggregationMetadata.findChunksToConsolidate();
+		final List<AggregationChunk> chunksToConsolidate;
+		List<AggregationChunk> foundChunksToConsolidate = aggregationMetadata.findChunksToConsolidate();
+		if (foundChunksToConsolidate.size() <= maxChunksToConsolidate) {
+			chunksToConsolidate = foundChunksToConsolidate;
+		} else {
+			List<AggregationChunk> chunks = new ArrayList(foundChunksToConsolidate);
+			Collections.sort(chunks, new Comparator<AggregationChunk>() {
+				@Override
+				public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
+					return Integer.compare(chunk1.getCount(), chunk2.getCount());
+				}
+			});
+			chunksToConsolidate = chunks.subList(0, maxChunksToConsolidate);
+		}
 		if (chunksToConsolidate.isEmpty()) {
 			callback.onResult(false);
 			return;
