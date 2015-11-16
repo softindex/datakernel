@@ -21,7 +21,7 @@ import org.junit.Test;
 public class ServiceGraphTest {
 
 	private static ServiceGraph.Node stringNode(String s) {
-		return new ServiceGraph.Node(s, ConcurrentServices.immediateService());
+		return new ServiceGraph.Node(s, AsyncServices.immediateService());
 	}
 
 	@Test
@@ -30,17 +30,17 @@ public class ServiceGraphTest {
 		graph.add(stringNode("x"), stringNode("a"), stringNode("b"), stringNode("c"));
 		graph.add(stringNode("y"), stringNode("c"));
 		graph.add(stringNode("z"), stringNode("y"), stringNode("x"));
-		graph.add(new ServiceGraph.Node("t1", null), new ServiceGraph.Node("t2", ConcurrentServices.immediateService()));
-		graph.add(new ServiceGraph.Node("t2", ConcurrentServices.immediateService()), new ServiceGraph.Node("t1", null));
+		graph.add(new ServiceGraph.Node("t1", null), new ServiceGraph.Node("t2", AsyncServices.immediateService()));
+		graph.add(new ServiceGraph.Node("t2", AsyncServices.immediateService()), new ServiceGraph.Node("t1", null));
 
 		try {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.start(callback);
 			callback.await();
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.stop(callback);
 			callback.await();
 		}

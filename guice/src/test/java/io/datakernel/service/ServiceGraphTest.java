@@ -34,7 +34,7 @@ public class ServiceGraphTest {
 						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
 							public AsyncService toService(TestGraph.S service, Executor executor) {
-								return ConcurrentServices.immediateService();
+								return AsyncServices.immediateService();
 							}
 						})
 						.addDependency(Key.get(TestGraph.S6.class), Key.get(TestGraph.S4.class))
@@ -53,11 +53,11 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		ConcurrentServiceCallbacks.CountDownServiceCallback startCallback = ConcurrentServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.CountDownServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.start(startCallback);
 		startCallback.await();
 
-		ConcurrentServiceCallbacks.CountDownServiceCallback stopCallback = ConcurrentServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.CountDownServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.stop(stopCallback);
 		stopCallback.await();
 	}
@@ -69,7 +69,7 @@ public class ServiceGraphTest {
 						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
 							public AsyncService toService(TestGraph.S service, Executor executor) {
-								return ConcurrentServices.immediateService();
+								return AsyncServices.immediateService();
 							}
 						})
 				, new TestGraph.Module());
@@ -82,11 +82,11 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		ConcurrentServiceCallbacks.CountDownServiceCallback startCallback = ConcurrentServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.CountDownServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.start(startCallback);
 		startCallback.await();
 
-		ConcurrentServiceCallbacks.CountDownServiceCallback stopCallback = ConcurrentServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.CountDownServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.stop(stopCallback);
 		stopCallback.await();
 	}

@@ -19,8 +19,8 @@ package io.datakernel.service;
 import java.util.Arrays;
 import java.util.List;
 
-public class ConcurrentServices {
-	private ConcurrentServices() {
+public class AsyncServices {
+	private AsyncServices() {
 	}
 
 	public static AsyncService immediateService() {

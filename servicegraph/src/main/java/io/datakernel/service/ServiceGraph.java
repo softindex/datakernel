@@ -295,7 +295,6 @@ public class ServiceGraph implements AsyncService {
 						activeNodes.remove(node);
 						failedNodes.put(node, e);
 						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes, backwardNodes, processingTimes, callback, done, fail);
-						throw new RuntimeException(e);
 					}
 				}
 			};

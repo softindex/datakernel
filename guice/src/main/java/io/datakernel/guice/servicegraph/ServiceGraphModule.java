@@ -92,7 +92,6 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @param <T>     type of service
 	 * @return ServiceGraphModule with change
 	 */
-
 	public <T> ServiceGraphModule registerForSpecificKey(Key<T> key, AsyncServiceAdapter<T> factory) {
 		keys.put(key, factory);
 		return this;

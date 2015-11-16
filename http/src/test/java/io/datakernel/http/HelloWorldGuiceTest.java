@@ -31,7 +31,7 @@ import io.datakernel.guice.workers.NioWorkerScopeFactory;
 import io.datakernel.guice.workers.WorkerId;
 import io.datakernel.guice.workers.WorkerThread;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.ConcurrentServiceCallbacks;
+import io.datakernel.service.AsyncServiceCallbacks;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
@@ -114,7 +114,7 @@ public class HelloWorldGuiceTest {
 		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.start(callback);
 			callback.await();
 
@@ -135,7 +135,7 @@ public class HelloWorldGuiceTest {
 				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 29\r\n\r\nHello world: worker server #1");
 			}
 		} finally {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.stop(callback);
 			callback.await();
 			Closeables.close(socket0, true);
@@ -149,7 +149,7 @@ public class HelloWorldGuiceTest {
 		Injector injector = Guice.createInjector(new TestModule());
 		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		try {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.start(callback);
 			callback.await();
 
@@ -157,7 +157,7 @@ public class HelloWorldGuiceTest {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.stop(callback);
 			callback.await();
 		}

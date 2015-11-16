@@ -32,7 +32,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.ConcurrentServiceCallbacks;
+import io.datakernel.service.AsyncServiceCallbacks;
 import io.datakernel.service.ServiceGraph;
 
 import java.io.BufferedReader;
@@ -106,7 +106,7 @@ public class HttpServerGuiceExample {
 		Injector injector = Guice.createInjector(new TestModule());
 		ServiceGraph graph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		try {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.start(callback);
 			callback.await();
 
@@ -114,7 +114,7 @@ public class HttpServerGuiceExample {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.stop(callback);
 			callback.await();
 		}

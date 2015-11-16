@@ -18,8 +18,8 @@ package io.datakernel.service;
 
 import java.util.concurrent.CountDownLatch;
 
-public class ConcurrentServiceCallbacks {
-	private ConcurrentServiceCallbacks() {
+public class AsyncServiceCallbacks {
+	private AsyncServiceCallbacks() {
 	}
 
 	public static CountDownServiceCallback withCountDownLatch() {
