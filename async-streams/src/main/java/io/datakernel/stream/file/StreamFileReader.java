@@ -180,6 +180,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		if (asyncFile != null || pendingAsyncOperation)
 			return;
 		pendingAsyncOperation = true;
+		logger.info("Opening file at path {}", path);
 		AsyncFile.open(eventloop, executor, path, new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override
 			public void onResult(AsyncFile file) {
@@ -207,6 +208,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	protected void doCleanup() {
 		if (asyncFile != null) {
+			logger.info("Closing file at path {}", path);
 			asyncFile.close(ignoreCompletionCallback());
 			asyncFile = null;
 		}

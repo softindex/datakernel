@@ -368,6 +368,7 @@ public class Aggregation {
 				producersFields.add(chunks.get(0).getFields());
 				producersClasses.add(chunksClass);
 
+				logger.info("Reading following chunks sequentially: {}", chunks);
 				StreamProducer producer = sequentialProducer(aggregationMetadata, predicates, chunks, chunksClass);
 				producers.add(producer);
 

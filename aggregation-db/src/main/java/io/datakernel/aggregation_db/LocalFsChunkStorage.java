@@ -96,7 +96,6 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 	@Override
 	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
-		logger.info("Reading chunk #" + id);
 		StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
 				path(id), 0L);
 
