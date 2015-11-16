@@ -16,5 +16,5 @@
 
 package io.datakernel.rpc.client.sender.helper;
 
-public class RpcMessageDataStub {
+public final class RpcMessageDataStub {
 }

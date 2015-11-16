@@ -22,6 +22,7 @@ package io.datakernel.rpc.hash;
 public interface Sharder<T> {
 	/**
 	 * Determines to which shard {@code item} will be sent
+	 *
 	 * @param item data to be sent
 	 * @return shard number
 	 */

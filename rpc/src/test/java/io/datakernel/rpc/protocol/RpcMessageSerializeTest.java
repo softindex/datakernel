@@ -85,19 +85,6 @@ public class RpcMessageSerializeTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	// TODO (vmykhalko): check whether this test is needed or not
-//	@Test
-//	public void testRpcMessageData() throws UnknownHostException {
-//		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");
-//
-//		Object messageData2 = doTest(TypeToken.of(Object.class), messageData1);
-//		Assert.assertTrue(messageData2 instanceof TestRpcMessageData);
-//
-//		TestRpcMessageData testMessage2 = (TestRpcMessageData) messageData2;
-//		Assert.assertEquals(messageData1.s, testMessage2.s);
-//		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-//	}
-
 	@Test
 	public void testRpcMessage() throws UnknownHostException {
 		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");

@@ -26,7 +26,7 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class RpcClientConnectionStub implements RpcClientConnection {
+public final class RpcClientConnectionStub implements RpcClientConnection {
 
 	private AtomicInteger calls;
 

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.sender.helper;
 
-public class RpcMessageDataStubWithKey {
+public final class RpcMessageDataStubWithKey {
 
 	private final int key;
 

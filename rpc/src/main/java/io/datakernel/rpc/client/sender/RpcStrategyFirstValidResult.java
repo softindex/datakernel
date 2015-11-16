@@ -74,7 +74,6 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 
 		@Override
 		public <T> void sendRequest(Object request, int timeout, final ResultCallback<T> callback) {
-			// TODO (vmykhalko): is there all right with generics ?
 			FirstResultCallback<T> resultCallback
 					= new FirstResultCallback<>(callback, (Predicate<T>) resultValidator, subSenders.length, noValidResultException);
 			for (RpcRequestSender sender : subSenders) {

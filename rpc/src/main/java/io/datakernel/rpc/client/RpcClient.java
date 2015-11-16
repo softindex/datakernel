@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.management.MBeanServer;
 import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
@@ -477,12 +476,5 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	@Override
 	public int getPingReconnects() {
 		return pingReconnects;
-	}
-
-	@Override
-	public CompositeData getRequestSenderInfo() throws OpenDataException {
-//		return requestSender.getRequestSenderInfo();
-		// TODO (vmykhalko): reimplement jmx support
-		return null;
 	}
 }

@@ -21,8 +21,6 @@ import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKey;
-import io.datakernel.rpc.client.sender.helper.RpcMessageDataStubWithKeyHashFunction;
-import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.hash.Sharder;
 import org.junit.Test;
 
@@ -53,7 +51,7 @@ public class RpcStrategyShardingTest {
 		Sharder<Object> sharder = new Sharder<Object>() {
 			@Override
 			public int getShard(Object item) {
-				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey)item;
+				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey) item;
 				return data.getKey() % shardsAmount;
 			}
 		};
@@ -95,7 +93,7 @@ public class RpcStrategyShardingTest {
 		Sharder<Object> sharder = new Sharder<Object>() {
 			@Override
 			public int getShard(Object item) {
-				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey)item;
+				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey) item;
 				return data.getKey() % shardsAmount;
 			}
 		};

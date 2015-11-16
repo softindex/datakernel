@@ -18,7 +18,7 @@ package io.datakernel.rpc.client.sender.helper;
 
 import io.datakernel.rpc.hash.HashFunction;
 
-public class RpcMessageDataStubWithKeyHashFunction implements HashFunction<Object> {
+public final class RpcMessageDataStubWithKeyHashFunction implements HashFunction<Object> {
 
 	@Override
 	public int hashCode(Object item) {

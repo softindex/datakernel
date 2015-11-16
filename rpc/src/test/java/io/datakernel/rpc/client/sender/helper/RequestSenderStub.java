@@ -19,7 +19,7 @@ package io.datakernel.rpc.client.sender.helper;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.sender.RpcRequestSender;
 
-public class RequestSenderStub implements RpcRequestSender {
+public final class RequestSenderStub implements RpcRequestSender {
 
 	private final int id;
 	private int sendRequestCalls;

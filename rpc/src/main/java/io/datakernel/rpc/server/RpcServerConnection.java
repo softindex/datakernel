@@ -42,7 +42,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 	private final NioEventloop eventloop;
 	private final RpcProtocol protocol;
-	private final RequestHandlers handlers;
+	private final RpcRequestHandlers handlers;
 	private final StatusListener statusListener;
 
 	// JMX
@@ -54,7 +54,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	private int errorResponses = 0;
 	private boolean monitoring;
 
-	public RpcServerConnection(NioEventloop eventloop, SocketChannel socketChannel, RpcMessageSerializer serializer, RequestHandlers handlers,
+	public RpcServerConnection(NioEventloop eventloop, SocketChannel socketChannel, RpcMessageSerializer serializer, RpcRequestHandlers handlers,
 	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;
 		this.protocol = protocolFactory.create(this, socketChannel, serializer, true);

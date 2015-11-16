@@ -68,7 +68,7 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 		checkNotNull(dataType);
 		checkNotNull(strategy);
 		checkState(!dataTypeToSpecification.containsKey(dataType),
-				"Strategy for type " + dataType.toString() + " is already set");  // TODO (vmykhalko): maybe it shouldn't throw exception in this case?
+				"Strategy for type " + dataType.toString() + " is already set");
 		dataTypeToSpecification.put(dataType, new StrategySpecifications(strategy, false));
 		return new RpcTypeStrategySpecsHelper(dataType);
 	}

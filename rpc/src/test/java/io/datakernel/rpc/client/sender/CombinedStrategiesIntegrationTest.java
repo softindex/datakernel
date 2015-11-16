@@ -24,14 +24,13 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.hash.Sharder;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolSettings;
-import io.datakernel.rpc.server.RequestHandlers;
-import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
+import io.datakernel.rpc.server.RpcRequestHandlers;
+import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -171,8 +170,8 @@ public class CombinedStrategiesIntegrationTest {
 		}
 	}
 
-	private static RequestHandlers helloServiceRequestHandler(final HelloService helloService) {
-		return new RequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
+	private static RpcRequestHandlers helloServiceRequestHandler(final HelloService helloService) {
+		return new RpcRequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
 			@Override
 			public void run(HelloRequest request, ResultCallback<Object> callback) {
 				String result;

@@ -29,8 +29,8 @@ import io.datakernel.rpc.client.RpcClientSettings;
 import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
-import io.datakernel.rpc.server.RequestHandlers;
-import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
+import io.datakernel.rpc.server.RpcRequestHandlers;
+import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -78,8 +78,8 @@ public class RpcBinaryProtocolTest {
 		}
 	}
 
-	private static RequestHandlers createAsyncFunc(final TestService service) {
-		return new RequestHandlers.Builder().put(TestRpcRequestMessage.class, new RequestHandler<TestRpcRequestMessage>() {
+	private static RpcRequestHandlers createAsyncFunc(final TestService service) {
+		return new RpcRequestHandlers.Builder().put(TestRpcRequestMessage.class, new RequestHandler<TestRpcRequestMessage>() {
 			@Override
 			public void run(final TestRpcRequestMessage request, final ResultCallback<Object> callback) {
 				service.call(request.getRequest(), new ResultCallback<String>() {
@@ -115,7 +115,7 @@ public class RpcBinaryProtocolTest {
 
 	@Test
 	public void test() throws Exception {
-		RequestHandlers handlers = createAsyncFunc(new TestService() {
+		RpcRequestHandlers handlers = createAsyncFunc(new TestService() {
 			@Override
 			public void call(String request, ResultCallback<String> resultCallback) {
 				resultCallback.onResult("Hello, " + request + "!");

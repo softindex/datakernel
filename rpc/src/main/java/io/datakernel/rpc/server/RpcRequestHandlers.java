@@ -26,7 +26,7 @@ import java.util.Map;
 import static io.datakernel.rpc.util.ImmutableCollections.immutableHashMapOf;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RequestHandlers implements AsyncFunction<Object, Object> {
+public final class RpcRequestHandlers implements AsyncFunction<Object, Object> {
 
 	public interface RequestHandler<R> {
 		void run(R request, ResultCallback<Object> callback);
@@ -47,15 +47,15 @@ public final class RequestHandlers implements AsyncFunction<Object, Object> {
 			return this;
 		}
 
-		public RequestHandlers build() {
-			return new RequestHandlers(immutableHashMapOf(handlers), logger);
+		public RpcRequestHandlers build() {
+			return new RpcRequestHandlers(immutableHashMapOf(handlers), logger);
 		}
 	}
 
 	private final Map<Class<? extends Object>, RequestHandler<Object>> handlers;
 	private final Logger logger;
 
-	private RequestHandlers(Map<Class<? extends Object>, RequestHandler<Object>> handlers, Logger logger) {
+	private RpcRequestHandlers(Map<Class<? extends Object>, RequestHandler<Object>> handlers, Logger logger) {
 		this.handlers = handlers;
 		this.logger = logger;
 	}

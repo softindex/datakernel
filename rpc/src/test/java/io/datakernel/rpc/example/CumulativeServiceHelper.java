@@ -26,8 +26,8 @@ import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolSettings;
-import io.datakernel.rpc.server.RequestHandlers;
-import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
+import io.datakernel.rpc.server.RpcRequestHandlers;
+import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationOutputBuffer;
@@ -60,8 +60,8 @@ public final class CumulativeServiceHelper {
 		return RpcMessageSerializer.builder().addExtraRpcMessageType(ValueMessage.class).build();
 	}
 
-	public static RequestHandlers cumulativeService() {
-		return new RequestHandlers.Builder()
+	public static RpcRequestHandlers cumulativeService() {
+		return new RpcRequestHandlers.Builder()
 				.put(ValueMessage.class, new RequestHandler<ValueMessage>() {
 
 					private final ValueMessage currentSum = new ValueMessage(0);

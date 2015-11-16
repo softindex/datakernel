@@ -134,7 +134,7 @@ public class RpcRequestSendingStrategiesTest {
 		Sharder<Object> sharder = new Sharder<Object>() {
 			@Override
 			public int getShard(Object item) {
-				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey)item;
+				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey) item;
 				return data.getKey() % shardsAmount;
 			}
 		};

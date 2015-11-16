@@ -29,8 +29,8 @@ import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolSettings;
-import io.datakernel.rpc.server.RequestHandlers;
-import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
+import io.datakernel.rpc.server.RpcRequestHandlers;
+import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -87,8 +87,8 @@ public class RpcNioHelloWorldTest {
 		}
 	}
 
-	private static RequestHandlers helloServiceRequestHandler(final HelloService helloService) {
-		return new RequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
+	private static RpcRequestHandlers helloServiceRequestHandler(final HelloService helloService) {
+		return new RpcRequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
 			@Override
 			public void run(HelloRequest request, ResultCallback<Object> callback) {
 				String result;

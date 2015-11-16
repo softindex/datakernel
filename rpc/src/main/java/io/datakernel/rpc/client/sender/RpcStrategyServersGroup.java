@@ -28,7 +28,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcStrategyServersGroup implements RpcRequestSendingStrategy {
 
-	private List<InetSocketAddress> addresses;
+	private final List<InetSocketAddress> addresses;
 
 	RpcStrategyServersGroup(List<InetSocketAddress> addresses) {
 		checkNotNull(addresses);
