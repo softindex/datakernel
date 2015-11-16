@@ -16,11 +16,12 @@
 
 package io.datakernel.guice.servicegraph;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.service.ConcurrentService;
-import io.datakernel.service.ConcurrentServiceCallback;
+import io.datakernel.service.AsyncService;
+import io.datakernel.service.AsyncServiceCallback;
 import io.datakernel.service.Service;
 import org.slf4j.Logger;
 
@@ -32,50 +33,66 @@ import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * Static utility methods pertaining to ConcurrentService. Creates ConcurrentService from some other type of instances.
  */
-public final class ServiceGraphFactories {
-	private static final Logger logger = getLogger(ServiceGraphFactories.class);
+public final class AsyncServiceAdapters {
+	private static final Logger logger = getLogger(AsyncServiceAdapters.class);
 
-	private ServiceGraphFactories() {
+	private AsyncServiceAdapters() {
 	}
 
-	public static ServiceGraphFactory<ConcurrentService> factoryForConcurrentService() {
-		return new ServiceGraphFactory<ConcurrentService>() {
+	public static AsyncServiceAdapter<AsyncService> forConcurrentService() {
+		return new AsyncServiceAdapter<AsyncService>() {
 			@Override
-			public ConcurrentService getService(ConcurrentService service, Executor executor) {
+			public AsyncService toService(AsyncService service, Executor executor) {
 				return service;
 			}
 		};
 	}
 
-	public static ServiceGraphFactory<NioService> factoryForNioService() {
-		return new ServiceGraphFactory<NioService>() {
+	private static CompletionCallback toCompletionCallback(final AsyncServiceCallback callback) {
+		return new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				callback.onComplete();
+			}
 
 			@Override
-			public ConcurrentService getService(final NioService node, Executor executor) {
-				return new ConcurrentService() {
+			public void onException(Exception exception) {
+				callback.onExeption(exception);
+			}
+		};
+	}
+
+	public static AsyncServiceAdapter<NioService> forNioService() {
+		return new AsyncServiceAdapter<NioService>() {
+
+			@Override
+			public AsyncService toService(final NioService node, Executor executor) {
+				return new AsyncService() {
 					@Override
-					public void start(final ConcurrentServiceCallback callback) {
+					public void start(final AsyncServiceCallback callback) {
 						node.getNioEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
-								node.start(callback);
+								node.start(toCompletionCallback(callback));
 								callback.onComplete();
 							}
 						});
 					}
 
 					@Override
-					public void stop(final ConcurrentServiceCallback callback) {
+					public void stop(final AsyncServiceCallback callback) {
 						node.getNioEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
-								node.stop(callback);
+								node.stop(toCompletionCallback(callback));
 								callback.onComplete();
 							}
 						});
@@ -85,13 +102,13 @@ public final class ServiceGraphFactories {
 		};
 	}
 
-	public static ServiceGraphFactory<NioServer> factoryForNioServer() {
-		return new ServiceGraphFactory<NioServer>() {
+	public static AsyncServiceAdapter<NioServer> forNioServer() {
+		return new AsyncServiceAdapter<NioServer>() {
 			@Override
-			public ConcurrentService getService(final NioServer node, Executor executor) {
-				return new ConcurrentService() {
+			public AsyncService toService(final NioServer node, Executor executor) {
+				return new AsyncService() {
 					@Override
-					public void start(final ConcurrentServiceCallback callback) {
+					public void start(final AsyncServiceCallback callback) {
 						node.getNioEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
@@ -99,14 +116,14 @@ public final class ServiceGraphFactories {
 									node.listen();
 									callback.onComplete();
 								} catch (IOException e) {
-									callback.onException(e);
+									callback.onExeption(e);
 								}
 							}
 						});
 					}
 
 					@Override
-					public void stop(final ConcurrentServiceCallback callback) {
+					public void stop(final AsyncServiceCallback callback) {
 						node.getNioEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
@@ -120,27 +137,25 @@ public final class ServiceGraphFactories {
 		};
 	}
 
-	public static ServiceGraphFactory<NioEventloop> factoryForNioEventloop() {
-		return new ServiceGraphFactory<NioEventloop>() {
+	public static AsyncServiceAdapter<NioEventloop> forNioEventloop(final ThreadFactory threadFactory) {
+		return new AsyncServiceAdapter<NioEventloop>() {
 			@Override
-			public ConcurrentService getService(final NioEventloop node, final Executor executor) {
-				return new ConcurrentService() {
+			public AsyncService toService(final NioEventloop node, final Executor executor) {
+				return new AsyncService() {
 					@Override
-					public void start(final ConcurrentServiceCallback callback) {
-						// TODO (vsavchuk) executor or threadFactory?
-						executor.execute(new Runnable() {
+					public void start(final AsyncServiceCallback callback) {
+						threadFactory.newThread(new Runnable() {
 							@Override
 							public void run() {
-
 								node.keepAlive(true);
 								callback.onComplete();
 								node.run();
 							}
-						});
+						}).start();
 					}
 
 					@Override
-					public void stop(final ConcurrentServiceCallback callback) {
+					public void stop(final AsyncServiceCallback callback) {
 						node.postConcurrently(new Runnable() {
 							@Override
 							public void run() {
@@ -154,16 +169,27 @@ public final class ServiceGraphFactories {
 		};
 	}
 
+	public static AsyncServiceAdapter<NioEventloop> forNioEventloop() {
+		return forNioEventloop(new ThreadFactory() {
+			@Override
+			public Thread newThread(Runnable r) {
+				Thread thread = Executors.defaultThreadFactory().newThread(r);
+				thread.setName("eventloop: " + thread.getName());
+				return thread;
+			}
+		});
+	}
+
 	/**
 	 * Returns factory which transforms blocking Service to asynchronous non-blocking ConcurrentService. It runs blocking operations from other thread from executor.
 	 */
-	public static ServiceGraphFactory<Service> factoryForBlockingService() {
-		return new ServiceGraphFactory<Service>() {
+	public static AsyncServiceAdapter<Service> forBlockingService() {
+		return new AsyncServiceAdapter<Service>() {
 			@Override
-			public ConcurrentService getService(final Service service, final Executor executor) {
-				return new ConcurrentService() {
+			public AsyncService toService(final Service service, final Executor executor) {
+				return new AsyncService() {
 					@Override
-					public void start(final ConcurrentServiceCallback callback) {
+					public void start(final AsyncServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -171,14 +197,14 @@ public final class ServiceGraphFactories {
 									service.start();
 									callback.onComplete();
 								} catch (Exception e) {
-									callback.onException(e);
+									callback.onExeption(e);
 								}
 							}
 						});
 					}
 
 					@Override
-					public void stop(final ConcurrentServiceCallback callback) {
+					public void stop(final AsyncServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -186,7 +212,7 @@ public final class ServiceGraphFactories {
 									service.stop();
 									callback.onComplete();
 								} catch (Exception e) {
-									callback.onException(e);
+									callback.onExeption(e);
 								}
 							}
 						});
@@ -199,18 +225,18 @@ public final class ServiceGraphFactories {
 	/**
 	 * Returns factory which transforms Timer to ConcurrentService. On starting it doing nothing, on stop it cancel timer.
 	 */
-	public static ServiceGraphFactory<Timer> factoryForTimer() {
-		return new ServiceGraphFactory<Timer>() {
+	public static AsyncServiceAdapter<Timer> forTimer() {
+		return new AsyncServiceAdapter<Timer>() {
 			@Override
-			public ConcurrentService getService(final Timer timer, Executor executor) {
-				return new ConcurrentService() {
+			public AsyncService toService(final Timer timer, Executor executor) {
+				return new AsyncService() {
 					@Override
-					public void start(ConcurrentServiceCallback callback) {
+					public void start(AsyncServiceCallback callback) {
 						callback.onComplete();
 					}
 
 					@Override
-					public void stop(ConcurrentServiceCallback callback) {
+					public void stop(AsyncServiceCallback callback) {
 						timer.cancel();
 						callback.onComplete();
 					}
@@ -222,18 +248,18 @@ public final class ServiceGraphFactories {
 	/**
 	 * Returns factory which transforms ExecutorService to ConcurrentService. On starting it doing nothing, on stopping it shuts down ExecutorService.
 	 */
-	public static ServiceGraphFactory<ExecutorService> factoryForExecutorService() {
-		return new ServiceGraphFactory<ExecutorService>() {
+	public static AsyncServiceAdapter<ExecutorService> forExecutorService() {
+		return new AsyncServiceAdapter<ExecutorService>() {
 			@Override
-			public ConcurrentService getService(final ExecutorService executorService, Executor executor) {
-				return new ConcurrentService() {
+			public AsyncService toService(final ExecutorService executorService, Executor executor) {
+				return new AsyncService() {
 					@Override
-					public void start(ConcurrentServiceCallback callback) {
+					public void start(AsyncServiceCallback callback) {
 						callback.onComplete();
 					}
 
 					@Override
-					public void stop(ConcurrentServiceCallback callback) {
+					public void stop(AsyncServiceCallback callback) {
 						List<Runnable> runnables = executorService.shutdownNow();
 						for (Runnable runnable : runnables) {
 							logger.warn("Remaining tasks {}", runnable);
@@ -248,18 +274,18 @@ public final class ServiceGraphFactories {
 	/**
 	 * Returns factory which transforms Closeable object to ConcurrentService. On starting it doing nothing, on stopping it close Closeable.
 	 */
-	public static ServiceGraphFactory<Closeable> factoryForCloseable() {
-		return new ServiceGraphFactory<Closeable>() {
+	public static AsyncServiceAdapter<Closeable> forCloseable() {
+		return new AsyncServiceAdapter<Closeable>() {
 			@Override
-			public ConcurrentService getService(final Closeable closeable, final Executor executor) {
-				return new ConcurrentService() {
+			public AsyncService toService(final Closeable closeable, final Executor executor) {
+				return new AsyncService() {
 					@Override
-					public void start(ConcurrentServiceCallback callback) {
+					public void start(AsyncServiceCallback callback) {
 						callback.onComplete();
 					}
 
 					@Override
-					public void stop(final ConcurrentServiceCallback callback) {
+					public void stop(final AsyncServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -267,7 +293,7 @@ public final class ServiceGraphFactories {
 									closeable.close();
 									callback.onComplete();
 								} catch (IOException e) {
-									callback.onException(e);
+									callback.onExeption(e);
 								}
 							}
 						});
@@ -280,13 +306,13 @@ public final class ServiceGraphFactories {
 	/**
 	 * Returns factory which transforms DataSource object to ConcurrentService. On starting it checks connecting , on stopping it close DataSource.
 	 */
-	public static ServiceGraphFactory<DataSource> factoryForDataSource() {
-		return new ServiceGraphFactory<DataSource>() {
+	public static AsyncServiceAdapter<DataSource> forDataSource() {
+		return new AsyncServiceAdapter<DataSource>() {
 			@Override
-			public ConcurrentService getService(final DataSource dataSource, final Executor executor) {
-				return new ConcurrentService() {
+			public AsyncService toService(final DataSource dataSource, final Executor executor) {
+				return new AsyncService() {
 					@Override
-					public void start(final ConcurrentServiceCallback callback) {
+					public void start(final AsyncServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -295,14 +321,14 @@ public final class ServiceGraphFactories {
 									connection.close();
 									callback.onComplete();
 								} catch (Exception e) {
-									callback.onException(e);
+									callback.onExeption(e);
 								}
 							}
 						});
 					}
 
 					@Override
-					public void stop(final ConcurrentServiceCallback callback) {
+					public void stop(final AsyncServiceCallback callback) {
 						if (dataSource instanceof Closeable) {
 							executor.execute(new Runnable() {
 								@Override
@@ -311,7 +337,7 @@ public final class ServiceGraphFactories {
 										((Closeable) dataSource).close();
 										callback.onComplete();
 									} catch (IOException e) {
-										callback.onException(e);
+										callback.onExeption(e);
 									}
 								}
 							});

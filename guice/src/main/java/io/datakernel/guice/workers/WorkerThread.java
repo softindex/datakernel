@@ -16,17 +16,18 @@
 
 package io.datakernel.guice.workers;
 
+import com.google.inject.BindingAnnotation;
 import com.google.inject.ScopeAnnotation;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.TYPE;
+import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @ScopeAnnotation
-@Target({TYPE, METHOD})
+@BindingAnnotation
+@Target({TYPE, METHOD, PARAMETER})
 @Retention(RUNTIME)
 public @interface WorkerThread {
 }

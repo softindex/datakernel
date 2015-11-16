@@ -16,21 +16,31 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.CompletionCallback;
+import java.util.concurrent.CountDownLatch;
 
-public abstract class ConcurrentServiceCallback implements CompletionCallback {
-
-	@Override
-	public void onComplete() {
-		doOnComplete();
+public class AsyncServiceCallbacks {
+	private AsyncServiceCallbacks() {
 	}
 
-	protected abstract void doOnComplete();
-
-	@Override
-	public void onException(Exception exception) {
-		doOnExeption(exception);
+	public static CountDownServiceCallback withCountDownLatch() {
+		return new CountDownServiceCallback();
 	}
 
-	protected abstract void doOnExeption(Exception exception);
+	public static class CountDownServiceCallback implements AsyncServiceCallback {
+		CountDownLatch countDownLatch = new CountDownLatch(1);
+
+		@Override
+		public void onComplete() {
+			countDownLatch.countDown();
+		}
+
+		@Override
+		public void onExeption(Exception exception) {
+			countDownLatch.countDown();
+		}
+
+		public void await() throws InterruptedException {
+			countDownLatch.await();
+		}
+	}
 }

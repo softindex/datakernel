@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.workers;
+package io.datakernel.service;
 
-import com.google.inject.BindingAnnotation;
+/**
+ * Service which starts and stops asynchronously and does not block thread while start/stop methods are running.
+ */
+public interface AsyncService {
+	void start(AsyncServiceCallback callback);
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+	void stop(AsyncServiceCallback callback);
 
-import static java.lang.annotation.ElementType.*;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-@BindingAnnotation
-@Target({FIELD, PARAMETER, METHOD})
-@Retention(RUNTIME)
-public @interface PrimaryThread {
 }
+

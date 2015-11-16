@@ -23,24 +23,24 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class SequentialService implements ConcurrentService {
+public class SequentialService implements AsyncService {
 	private static final Logger logger = LoggerFactory.getLogger(SequentialService.class);
-	private final List<ConcurrentService> services;
+	private final List<AsyncService> services;
 
 	/**
 	 * Initialize a new sequential service which is consisting services from argument
 	 *
 	 * @param services services for new sequential service
 	 */
-	public SequentialService(List<? extends ConcurrentService> services) {
+	public SequentialService(List<? extends AsyncService> services) {
 		this.services = new ArrayList<>(services);
 	}
 
 	@Override
-	public void start(ConcurrentServiceCallback callback) {
-		doAction(services, new FunctionCallback<ConcurrentService>() {
+	public void start(AsyncServiceCallback callback) {
+		doAction(services, new FunctionCallback<AsyncService>() {
 			@Override
-			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
+			public void apply(AsyncService input, AsyncServiceCallback callback) {
 				input.start(callback);
 			}
 
@@ -52,10 +52,10 @@ public class SequentialService implements ConcurrentService {
 	}
 
 	@Override
-	public void stop(ConcurrentServiceCallback callback) {
-		doAction(reverse(services), new FunctionCallback<ConcurrentService>() {
+	public void stop(AsyncServiceCallback callback) {
+		doAction(reverse(services), new FunctionCallback<AsyncService>() {
 			@Override
-			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
+			public void apply(AsyncService input, AsyncServiceCallback callback) {
 				input.stop(callback);
 			}
 
@@ -66,27 +66,27 @@ public class SequentialService implements ConcurrentService {
 		}, callback);
 	}
 
-	private void doAction(Iterable<ConcurrentService> iterable, FunctionCallback<ConcurrentService> action, ConcurrentServiceCallback callback) {
+	private void doAction(Iterable<AsyncService> iterable, FunctionCallback<AsyncService> action, AsyncServiceCallback callback) {
 		next(iterable.iterator(), action, callback);
 	}
 
-	private void next(final Iterator<ConcurrentService> it,
-	                  final FunctionCallback<ConcurrentService> action,
-	                  final ConcurrentServiceCallback callback) {
+	private void next(final Iterator<AsyncService> it,
+	                  final FunctionCallback<AsyncService> action,
+	                  final AsyncServiceCallback callback) {
 		while (it.hasNext()) {
-			final ConcurrentService service = it.next();
+			final AsyncService service = it.next();
 			logger.info("{} {}", action, service);
-			ConcurrentServiceCallback applyCallback = new ConcurrentServiceCallback() {
+			AsyncServiceCallback applyCallback = new AsyncServiceCallback() {
 				@Override
-				public void doOnComplete() {
+				public void onComplete() {
 					logger.info("{} sequential service {} complete", action, service);
 					next(it, action, callback);
 				}
 
 				@Override
-				public void doOnExeption(Exception e) {
+				public void onExeption(Exception e) {
 					logger.error("Exception while {} {}", action, service);
-					callback.onException(e);
+					callback.onExeption(e);
 					throw new RuntimeException(e);
 				}
 			};
@@ -96,12 +96,12 @@ public class SequentialService implements ConcurrentService {
 		callback.onComplete();
 	}
 
-	private List<ConcurrentService> reverse(List<ConcurrentService> list) {
-		ArrayList<ConcurrentService> concurrentServices = new ArrayList<>(list.size());
+	private List<AsyncService> reverse(List<AsyncService> list) {
+		ArrayList<AsyncService> asyncServices = new ArrayList<>(list.size());
 		for (int i = list.size() - 1; i >= 0; i--) {
-			concurrentServices.add(list.get(i));
+			asyncServices.add(list.get(i));
 		}
 
-		return concurrentServices;
+		return asyncServices;
 	}
 }

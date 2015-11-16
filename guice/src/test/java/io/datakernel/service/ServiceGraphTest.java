@@ -19,7 +19,7 @@ package io.datakernel.service;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.guice.servicegraph.ServiceGraphFactory;
+import io.datakernel.guice.servicegraph.AsyncServiceAdapter;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
 import org.junit.Test;
 
@@ -31,16 +31,15 @@ public class ServiceGraphTest {
 	public void testStartStop() throws Exception {
 		Injector injector = Guice.createInjector(
 				new ServiceGraphModule()
-						.factory(TestGraph.S.class, new ServiceGraphFactory<TestGraph.S>() {
+						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
-							public ConcurrentService getService(TestGraph.S service, Executor executor) {
-								return ConcurrentServices.immediateService();
+							public AsyncService toService(TestGraph.S service, Executor executor) {
+								return AsyncServices.immediateService();
 							}
 						})
 						.addDependency(Key.get(TestGraph.S6.class), Key.get(TestGraph.S4.class))
 						.removeDependency(Key.get(TestGraph.S4.class), Key.get(TestGraph.S2.class))
 						// Some meaningless settings, to display WARN-s in log:
-						.serviceForKey(Key.get(Object.class), null) // Unused key
 						.addDependency(Key.get(TestGraph.S6.class), Key.get(TestGraph.S3.class)) // Duplicate existing dependency
 						.removeDependency(Key.get(TestGraph.S4.class), Key.get(TestGraph.S6.class)) // Removing non-existing dependency
 				, new TestGraph.Module());
@@ -54,23 +53,23 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		ConcurrentServiceCallbacks.CountDownServiceCallback startCallback = ConcurrentServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.CountDownServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.start(startCallback);
 		startCallback.await();
 
-		ConcurrentServiceCallbacks.CountDownServiceCallback stopCallback = ConcurrentServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.CountDownServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.stop(stopCallback);
 		stopCallback.await();
 	}
 
 	@Test
-	public void testStartStopWithoutOverwrite() throws Exception {
+	public void testStartStopWithoutOverride() throws Exception {
 		Injector injector = Guice.createInjector(
 				new ServiceGraphModule()
-						.factory(TestGraph.S.class, new ServiceGraphFactory<TestGraph.S>() {
+						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
-							public ConcurrentService getService(TestGraph.S service, Executor executor) {
-								return ConcurrentServices.immediateService();
+							public AsyncService toService(TestGraph.S service, Executor executor) {
+								return AsyncServices.immediateService();
 							}
 						})
 				, new TestGraph.Module());
@@ -83,11 +82,11 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		ConcurrentServiceCallbacks.CountDownServiceCallback startCallback = ConcurrentServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.CountDownServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.start(startCallback);
 		startCallback.await();
 
-		ConcurrentServiceCallbacks.CountDownServiceCallback stopCallback = ConcurrentServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.CountDownServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.stop(stopCallback);
 		stopCallback.await();
 	}

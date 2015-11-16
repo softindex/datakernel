@@ -23,25 +23,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class ParallelService implements ConcurrentService {
+public class ParallelService implements AsyncService {
 	private static final Logger logger = LoggerFactory.getLogger(ParallelService.class);
-	private final List<ConcurrentService> services;
+	private final List<AsyncService> services;
 
 	/**
 	 * Initialize a new parallel service, which is consisting services from argument
 	 *
 	 * @param services services for new parallel service
 	 */
-	public ParallelService(List<? extends ConcurrentService> services) {
+	public ParallelService(List<? extends AsyncService> services) {
 		this.services = new ArrayList<>(services);
 	}
 
 	@Override
-	public void start(ConcurrentServiceCallback callback) {
-		doAction(new FunctionCallback<ConcurrentService>() {
+	public void start(AsyncServiceCallback callback) {
+		doAction(new FunctionCallback<AsyncService>() {
 
 			@Override
-			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
+			public void apply(AsyncService input, AsyncServiceCallback callback) {
 				input.start(callback);
 			}
 
@@ -53,10 +53,10 @@ public class ParallelService implements ConcurrentService {
 	}
 
 	@Override
-	public void stop(final ConcurrentServiceCallback callback) {
-		doAction(new FunctionCallback<ConcurrentService>() {
+	public void stop(final AsyncServiceCallback callback) {
+		doAction(new FunctionCallback<AsyncService>() {
 			@Override
-			public void apply(ConcurrentService input, ConcurrentServiceCallback callback) {
+			public void apply(AsyncService input, AsyncServiceCallback callback) {
 				input.stop(callback);
 			}
 
@@ -68,16 +68,16 @@ public class ParallelService implements ConcurrentService {
 	}
 
 	@SuppressWarnings("ConstantConditions")
-	private void doAction(final FunctionCallback<ConcurrentService> action, final ConcurrentServiceCallback callback) {
+	private void doAction(final FunctionCallback<AsyncService> action, final AsyncServiceCallback callback) {
 		if (services.isEmpty()) {
 			callback.onComplete();
 			return;
 		}
 		final AtomicInteger counter = new AtomicInteger(services.size());
-		for (final ConcurrentService service : services) {
-			ConcurrentServiceCallback applyCallback = new ConcurrentServiceCallback() {
+		for (final AsyncService service : services) {
+			AsyncServiceCallback applyCallback = new AsyncServiceCallback() {
 				@Override
-				public void doOnComplete() {
+				public void onComplete() {
 					logger.info("{} {} complete", action, service);
 					if (counter.decrementAndGet() == 0) {
 						callback.onComplete();
@@ -85,9 +85,9 @@ public class ParallelService implements ConcurrentService {
 				}
 
 				@Override
-				public void doOnExeption(Exception e) {
+				public void onExeption(Exception e) {
 					logger.error("Exception while {} {}", action, service);
-					callback.onException(e);
+					callback.onExeption(e);
 				}
 			};
 			action.apply(service, applyCallback);

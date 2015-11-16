@@ -19,51 +19,51 @@ package io.datakernel.service;
 import java.util.Arrays;
 import java.util.List;
 
-public class ConcurrentServices {
-	private ConcurrentServices() {
+public class AsyncServices {
+	private AsyncServices() {
 	}
 
-	public static ConcurrentService immediateService() {
-		return new ConcurrentService() {
+	public static AsyncService immediateService() {
+		return new AsyncService() {
 			@Override
-			public void start(ConcurrentServiceCallback callback) {
+			public void start(AsyncServiceCallback callback) {
 				callback.onComplete();
 			}
 
 			@Override
-			public void stop(ConcurrentServiceCallback callback) {
-				callback.onComplete();
-			}
-		};
-	}
-
-	public static ConcurrentService immediateFailedService(final Exception e) {
-		return new ConcurrentService() {
-			@Override
-			public void start(ConcurrentServiceCallback callback) {
-				callback.onException(e);
-			}
-
-			@Override
-			public void stop(ConcurrentServiceCallback callback) {
+			public void stop(AsyncServiceCallback callback) {
 				callback.onComplete();
 			}
 		};
 	}
 
-	public static ConcurrentService parallelService(ConcurrentService... callbacks) {
+	public static AsyncService immediateFailedService(final Exception e) {
+		return new AsyncService() {
+			@Override
+			public void start(AsyncServiceCallback callback) {
+				callback.onExeption(e);
+			}
+
+			@Override
+			public void stop(AsyncServiceCallback callback) {
+				callback.onComplete();
+			}
+		};
+	}
+
+	public static AsyncService parallelService(AsyncService... callbacks) {
 		return new ParallelService(Arrays.asList(callbacks));
 	}
 
-	public static ConcurrentService parallelService(List<? extends ConcurrentService> callbacks) {
+	public static AsyncService parallelService(List<? extends AsyncService> callbacks) {
 		return new ParallelService(callbacks);
 	}
 
-	public static ConcurrentService sequentialService(ConcurrentService... callbacks) {
+	public static AsyncService sequentialService(AsyncService... callbacks) {
 		return new SequentialService(Arrays.asList(callbacks));
 	}
 
-	public static ConcurrentService sequentialService(List<? extends ConcurrentService> callbacks) {
+	public static AsyncService sequentialService(List<? extends AsyncService> callbacks) {
 		return new SequentialService(callbacks);
 	}
 }

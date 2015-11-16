@@ -22,15 +22,17 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.PrimaryNioServer;
-import io.datakernel.guice.servicegraph.ServiceGraphFactories;
+import io.datakernel.guice.servicegraph.AsyncServiceAdapters;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
-import io.datakernel.guice.servicegraph.SingletonService;
-import io.datakernel.guice.workers.*;
+import io.datakernel.guice.workers.NioWorkerModule;
+import io.datakernel.guice.workers.NioWorkerScopeFactory;
+import io.datakernel.guice.workers.WorkerId;
+import io.datakernel.guice.workers.WorkerThread;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.ConcurrentServiceCallbacks;
+import io.datakernel.service.AsyncServiceCallbacks;
 import io.datakernel.service.ServiceGraph;
 
 import java.io.BufferedReader;
@@ -52,21 +54,20 @@ public class HttpServerGuiceExample {
 		protected void configure() {
 			install(new NioWorkerModule());
 			install(new ServiceGraphModule()
-							.factory(NioServer.class, ServiceGraphFactories.factoryForNioServer())
-							.factory(NioEventloop.class, ServiceGraphFactories.factoryForNioEventloop())
+							.register(NioServer.class, AsyncServiceAdapters.forNioServer())
+							.register(NioEventloop.class, AsyncServiceAdapters.forNioEventloop())
 			);
 		}
 
 		@Provides
-		@SingletonService
-		@PrimaryThread
+		@Singleton
 		NioEventloop primaryEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-		@SingletonService
-		PrimaryNioServer primaryNioServer(@PrimaryThread NioEventloop primaryEventloop,
+		@Singleton
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,
 		                                  List<AsyncHttpServer> workerHttpServers) {
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
 			primaryNioServer.workerNioServers(workerHttpServers);
@@ -82,7 +83,7 @@ public class HttpServerGuiceExample {
 
 		@Provides
 		@WorkerThread
-		AsyncHttpServer workerHttpServer(NioEventloop eventloop, @WorkerId final int workerId) {
+		AsyncHttpServer workerHttpServer(@WorkerThread NioEventloop eventloop, @WorkerId final int workerId) {
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request,
@@ -96,7 +97,7 @@ public class HttpServerGuiceExample {
 
 		@Provides
 		@Singleton
-		List<AsyncHttpServer> workerHttpServers(NioWorkerScopeFactory nioWorkerScope, Provider<AsyncHttpServer> itemProvider) {
+		List<AsyncHttpServer> workerHttpServers(NioWorkerScopeFactory nioWorkerScope, @WorkerThread Provider<AsyncHttpServer> itemProvider) {
 			return nioWorkerScope.getList(WORKERS, itemProvider);
 		}
 	}
@@ -105,7 +106,7 @@ public class HttpServerGuiceExample {
 		Injector injector = Guice.createInjector(new TestModule());
 		ServiceGraph graph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		try {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.start(callback);
 			callback.await();
 
@@ -113,7 +114,7 @@ public class HttpServerGuiceExample {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			ConcurrentServiceCallbacks.CountDownServiceCallback callback = ConcurrentServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.stop(callback);
 			callback.await();
 		}

@@ -14,19 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.servicegraph;
+package io.datakernel.service;
 
-import com.google.inject.ScopeAnnotation;
+public interface AsyncServiceCallback {
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+	void onComplete();
 
-import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-@ScopeAnnotation
-@Target({TYPE, METHOD})
-@Retention(RUNTIME)
-public @interface SingletonService {
+	void onExeption(Exception exception);
 }
