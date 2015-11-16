@@ -114,7 +114,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 
 				outputProducer.send(item);
 
-				if (count++ == chunkSize) {
+				if (count++ == chunkSize - 1) {
 					rotateChunk();
 				}
 			}
