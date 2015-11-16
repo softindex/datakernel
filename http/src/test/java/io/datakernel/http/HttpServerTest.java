@@ -23,7 +23,6 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -135,8 +134,7 @@ public class HttpServerTest {
 		thread.join();
 	}
 
-	// TODO (vsavhuk) delete @Ignore
-	@Ignore
+	@Test
 	public void testKeepAlive() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
 

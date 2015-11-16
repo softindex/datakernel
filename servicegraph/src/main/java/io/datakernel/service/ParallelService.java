@@ -77,7 +77,7 @@ public class ParallelService implements AsyncService {
 		for (final AsyncService service : services) {
 			AsyncServiceCallback applyCallback = new AsyncServiceCallback() {
 				@Override
-				public void doOnComplete() {
+				public void onComplete() {
 					logger.info("{} {} complete", action, service);
 					if (counter.decrementAndGet() == 0) {
 						callback.onComplete();
@@ -85,9 +85,9 @@ public class ParallelService implements AsyncService {
 				}
 
 				@Override
-				public void doOnExeption(Exception e) {
+				public void onExeption(Exception e) {
 					logger.error("Exception while {} {}", action, service);
-					callback.onException(e);
+					callback.onExeption(e);
 				}
 			};
 			action.apply(service, applyCallback);

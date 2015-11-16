@@ -16,21 +16,9 @@
 
 package io.datakernel.service;
 
-import io.datakernel.async.CompletionCallback;
+public interface AsyncServiceCallback {
 
-public abstract class AsyncServiceCallback implements CompletionCallback {
+	void onComplete();
 
-	@Override
-	public void onComplete() {
-		doOnComplete();
-	}
-
-	protected abstract void doOnComplete();
-
-	@Override
-	public void onException(Exception exception) {
-		doOnExeption(exception);
-	}
-
-	protected abstract void doOnExeption(Exception exception);
+	void onExeption(Exception exception);
 }

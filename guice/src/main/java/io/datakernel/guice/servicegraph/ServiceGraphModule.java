@@ -44,9 +44,9 @@ import static org.slf4j.LoggerFactory.getLogger;
 public final class ServiceGraphModule extends AbstractModule {
 	private static final Logger logger = getLogger(ServiceGraphModule.class);
 
-	private final Map<Class<?>, ServiceGraphFactory<?>> factoryMap = new LinkedHashMap<>();
+	private final Map<Class<?>, AsyncServiceAdapter<?>> factoryMap = new LinkedHashMap<>();
 
-	private final Map<Key<?>, ServiceGraphFactory<?>> keys = new LinkedHashMap<>();
+	private final Map<Key<?>, AsyncServiceAdapter<?>> keys = new LinkedHashMap<>();
 
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
@@ -79,7 +79,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @param factory value to be associated with the specified type
 	 * @return ServiceGraphModule with change
 	 */
-	public <T> ServiceGraphModule serviceForAssignableClasses(Class<T> type, ServiceGraphFactory<T> factory) {
+	public <T> ServiceGraphModule register(Class<T> type, AsyncServiceAdapter<T> factory) {
 		factoryMap.put(type, factory);
 		return this;
 	}
@@ -93,7 +93,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * @return ServiceGraphModule with change
 	 */
 
-	public <T> ServiceGraphModule serviceForSpecificKey(Key<T> key, ServiceGraphFactory<T> factory) {
+	public <T> ServiceGraphModule registerForSpecificKey(Key<T> key, AsyncServiceAdapter<T> factory) {
 		keys.put(key, factory);
 		return this;
 	}
@@ -152,122 +152,9 @@ public final class ServiceGraphModule extends AbstractModule {
 
 		@Override
 		public String toString() {
-			return key.getTypeLiteral().toString();
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private AsyncService getServiceFromNioScopeInstanceOrNull(Key<?> key, Object instance) {
-		checkNotNull(instance);
-		ServiceGraphFactory<?> factoryForKey = keys.get(key);
-		if (factoryForKey != null) {
-			return ((ServiceGraphFactory<Object>) factoryForKey).getService(instance, executor);
-		}
-		for (Class<?> type : factoryMap.keySet()) {
-			if (type.isAssignableFrom(instance.getClass())) {
-				ServiceGraphFactory<?> serviceGraphFactory = factoryMap.get(type);
-				AsyncService service = ((ServiceGraphFactory<Object>) serviceGraphFactory).getService(instance, executor);
-				return checkNotNull(service);
-			}
-		}
-		return null;
-	}
-
-	private ServiceGraph.Node nodeFromNioScope(Key<?> key, Object instance, int poolIndex) {
-		return new ServiceGraph.Node(new KeyInPool(key, poolIndex), getServiceFromNioScopeInstanceOrNull(key, instance));
-	}
-
-	@SuppressWarnings("unchecked")
-	private AsyncService getServiceOrNull(Key<?> key, Injector injector) {
-		Binding<?> binding = injector.getBinding(key);
-		if (!Scopes.isSingleton(binding)) return null;
-		Object object = injector.getInstance(key);
-
-		ServiceGraphFactory<?> factoryForKey = keys.get(key);
-		if (factoryForKey != null) {
-			checkNotNull(object, "SingletonService object is not instantiated for " + key);
-			AsyncService service = ((ServiceGraphFactory<Object>) factoryForKey).getService(object, executor);
-			return checkNotNull(service);
-		}
-		if (object == null)
-			return null;
-		for (Class<?> type : factoryMap.keySet()) {
-			if (type.isAssignableFrom(object.getClass())) {
-				ServiceGraphFactory<?> serviceGraphFactory = factoryMap.get(type);
-				AsyncService service = ((ServiceGraphFactory<Object>) serviceGraphFactory).getService(object, executor);
-				return checkNotNull(service);
-			}
-		}
-		if (binding instanceof HasDependencies) {
-			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
-			for (Dependency<?> dependency : dependencies) {
-				// TODO (vsavchuk) improve
-				if (dependency.getKey().equals(Key.get(NioWorkerScopeFactory.class))) {
-					return containerOfServices();
-				}
-			}
-		}
-		return null;
-	}
-
-	private ServiceGraph.Node nodeFromService(Key<?> key, Injector injector) {
-		return new ServiceGraph.Node(key, getServiceOrNull(key, injector));
-	}
-
-	private Key<?> sameKey(Injector injector, List list) {
-		Key<?> listKey = null;
-		for (Object object : list) {
-			Key<?> keyFromObject = Key.get(object.getClass());
-			if (listKey == null) {
-				listKey = keyFromObject;
-			} else {
-				if (!listKey.equals(keyFromObject)) return null;
-			}
-		}
-		return listKey;
-	}
-
-	private void createGuiceGraph(final Injector injector, final NioWorkerScope nioWorkerScope, final ServiceGraph graph) {
-		if (!difference(keys.keySet(), injector.getAllBindings().keySet()).isEmpty()) {
-			logger.warn("Unused keys : {}", keys.keySet());
-		}
-
-		final List<Map<Key<?>, Object>> pool = nioWorkerScope.getPool();
-		final Map<Class<?>, List<ServiceGraphModule.KeyInPool>> poolObjectKey = nioWorkerScope.getPoolMapClassKey();
-
-		for (final Key<?> key : injector.getAllBindings().keySet()) {
-			final ServiceGraph.Node serviceNode = nodeFromService(key, injector);
-
-			graph.add(serviceNode);
-			Set<Key<?>> dependenciesForKey = new HashSet<>();
-			processDependencies(serviceNode, key, injector, graph, dependenciesForKey, new AddDependence() {
-				@Override
-				public void add(Key<?> dependencyKey) {
-					// TODO (vsavchuk) improve
-					if (dependencyKey.equals(Key.get(NioWorkerScopeFactory.class))) {
-						// TODO (vsavchuk) improve
-						Set<Dependency<?>> dependencies = ((HasDependencies) injector.getBinding(key)).getDependencies();
-						for (Dependency<?> dependency : dependencies) {
-							Key<?> depKey = dependency.getKey();
-							if (depKey.getTypeLiteral().getRawType().equals(Provider.class)
-									&& depKey.getAnnotationType().equals(WorkerThread.class)) {
-								Class<?> actualTypeArguments = (Class<?>)((MoreTypes.ParameterizedTypeImpl)
-										depKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
-								for (KeyInPool actualKeyInPool : poolObjectKey.get(actualTypeArguments)) {
-									ServiceGraph.Node dependencyNode = nodeFromNioScope(actualKeyInPool.key,
-											pool.get(actualKeyInPool.index).get(actualKeyInPool.key), actualKeyInPool.index);
-									graph.add(serviceNode, dependencyNode);
-								}
-							}
-						}
-					}
-				}
-			});
-		}
-
-		for (int poolIndex = 0; poolIndex < pool.size(); poolIndex++) {
-			Map<Key<?>, Object> nioScopeMap = pool.get(poolIndex);
-			createNioScopeGraph(nioScopeMap, injector, graph, poolIndex);
+			Annotation annotation = key.getAnnotation();
+			return key.getTypeLiteral() +
+					(annotation != null ? " " + annotation : "");
 		}
 	}
 
@@ -276,9 +163,10 @@ public final class ServiceGraphModule extends AbstractModule {
 	}
 
 	private void processDependencies(ServiceGraph.Node serviceNode, Key<?> key, Injector injector, ServiceGraph graph,
-	                                 Set<Key<?>> dependenciesForKey, AddDependence addDependence) {
+	                                 AddDependence addDependence) {
 		Binding<?> binding = injector.getBinding(key);
 		if (binding instanceof HasDependencies) {
+			Set<Key<?>> dependenciesForKey = new HashSet<>();
 			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
 			Set<Key<?>> removedDependenciesForKey = newHashSet(removedDependencies.get(key));
 			for (Dependency<?> dependency : dependencies) {
@@ -309,21 +197,123 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	private AsyncService getServiceFromNioScopeInstanceOrNull(Key<?> key, Object instance) {
+		checkNotNull(instance);
+		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
+		if (factoryForKey != null) {
+			return ((AsyncServiceAdapter<Object>) factoryForKey).toService(instance, executor);
+		}
+		for (Class<?> type : factoryMap.keySet()) {
+			if (type.isAssignableFrom(instance.getClass())) {
+				AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(type);
+				AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
+				return checkNotNull(service);
+			}
+		}
+		return null;
+	}
+
+	private ServiceGraph.Node nodeFromNioScope(KeyInPool keyInPool, Object instance) {
+		return new ServiceGraph.Node(keyInPool, getServiceFromNioScopeInstanceOrNull(keyInPool.key, instance));
+	}
+
+	private ServiceGraph.Node nodeFromNioScope(Key<?> key, int poolIndex, Object instance) {
+		return nodeFromNioScope(new KeyInPool(key, poolIndex), instance);
+	}
+
+	@SuppressWarnings("unchecked")
+	private AsyncService getServiceOrNull(Key<?> key, Injector injector) {
+		Binding<?> binding = injector.getBinding(key);
+		if (!Scopes.isSingleton(binding)) return null;
+		Object object = injector.getInstance(key);
+
+		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
+		if (factoryForKey != null) {
+			checkNotNull(object, "SingletonService object is not instantiated for " + key);
+			AsyncService service = ((AsyncServiceAdapter<Object>) factoryForKey).toService(object, executor);
+			return checkNotNull(service);
+		}
+		if (object == null)
+			return null;
+		for (Class<?> type : factoryMap.keySet()) {
+			if (type.isAssignableFrom(object.getClass())) {
+				AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(type);
+				AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(object, executor);
+				return checkNotNull(service);
+			}
+		}
+		if (binding instanceof HasDependencies) {
+			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
+			for (Dependency<?> dependency : dependencies) {
+				if (dependency.getKey().equals(Key.get(NioWorkerScopeFactory.class))) {
+					return containerOfServices();
+				}
+			}
+		}
+		return null;
+	}
+
+	private ServiceGraph.Node nodeFromService(Key<?> key, Injector injector) {
+		return new ServiceGraph.Node(key, getServiceOrNull(key, injector));
+	}
+
+	private void createGuiceGraph(final Injector injector, final NioWorkerScope nioWorkerScope, final ServiceGraph graph) {
+		if (!difference(keys.keySet(), injector.getAllBindings().keySet()).isEmpty()) {
+			logger.warn("Unused keys : {}", keys.keySet());
+		}
+
+		final List<Map<Key<?>, Object>> pool = nioWorkerScope.getPool();
+		final Map<Class<?>, List<ServiceGraphModule.KeyInPool>> mapClassKey = nioWorkerScope.getMapClassKey();
+
+		for (final Key<?> key : injector.getAllBindings().keySet()) {
+			final ServiceGraph.Node serviceNode = nodeFromService(key, injector);
+
+			graph.add(serviceNode);
+			processDependencies(serviceNode, key, injector, graph, new AddDependence() {
+				@Override
+				public void add(Key<?> dependencyKey) {
+					if (dependencyKey.equals(Key.get(NioWorkerScopeFactory.class))) {
+						Set<Dependency<?>> dependencies = ((HasDependencies) injector.getBinding(key)).getDependencies();
+						for (Dependency<?> dependency : dependencies) {
+							Key<?> dependencyForKey = dependency.getKey();
+							if (dependencyForKey.getTypeLiteral().getRawType().equals(Provider.class)
+									&& dependencyForKey.getAnnotationType().equals(WorkerThread.class)) {
+
+								Class<?> actualTypeArguments = (Class<?>) ((MoreTypes.ParameterizedTypeImpl)
+										dependencyForKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
+								for (KeyInPool actualKeyInPool : mapClassKey.get(actualTypeArguments)) {
+									ServiceGraph.Node dependencyNode = nodeFromNioScope(actualKeyInPool,
+											pool.get(actualKeyInPool.index).get(actualKeyInPool.key));
+									graph.add(serviceNode, dependencyNode);
+								}
+							}
+						}
+					}
+				}
+			});
+		}
+
+		for (int poolIndex = 0; poolIndex < pool.size(); poolIndex++) {
+			Map<Key<?>, Object> nioScopeMap = pool.get(poolIndex);
+			createNioScopeGraph(nioScopeMap, injector, graph, poolIndex);
+		}
+	}
+
 	private void createNioScopeGraph(final Map<Key<?>, Object> map, Injector injector, final ServiceGraph graph, final int poolIndex) {
 		for (Key<?> key : map.keySet()) {
 			Object nioScopeObject = map.get(key);
-			final ServiceGraph.Node serviceNode = nodeFromNioScope(key, nioScopeObject, poolIndex);
+			final ServiceGraph.Node serviceNode = nodeFromNioScope(key, poolIndex, nioScopeObject);
 
 			graph.add(serviceNode);
-			Set<Key<?>> dependenciesForKey = new HashSet<>();
-			processDependencies(serviceNode, key, injector, graph, dependenciesForKey, new AddDependence() {
+			processDependencies(serviceNode, key, injector, graph, new AddDependence() {
 
 				@Override
 				public void add(Key<?> dependencyKey) {
 					if (map.containsKey(dependencyKey)) {
 						Object nioScopeDependencyObject = map.get(dependencyKey);
-						ServiceGraph.Node node = nodeFromNioScope(dependencyKey, nioScopeDependencyObject, poolIndex);
-						graph.add(serviceNode, node);
+						ServiceGraph.Node dependencyNode = nodeFromNioScope(dependencyKey, poolIndex, nioScopeDependencyObject);
+						graph.add(serviceNode, dependencyNode);
 					}
 				}
 			});

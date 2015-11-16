@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.PrimaryNioServer;
-import io.datakernel.guice.servicegraph.ServiceGraphFactories;
+import io.datakernel.guice.servicegraph.AsyncServiceAdapters;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
 import io.datakernel.guice.workers.NioWorkerModule;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
@@ -54,8 +54,8 @@ public class HttpServerGuiceExample {
 		protected void configure() {
 			install(new NioWorkerModule());
 			install(new ServiceGraphModule()
-							.serviceForAssignableClasses(NioServer.class, ServiceGraphFactories.factoryForNioServer())
-							.serviceForAssignableClasses(NioEventloop.class, ServiceGraphFactories.factoryForNioEventloop())
+							.register(NioServer.class, AsyncServiceAdapters.forNioServer())
+							.register(NioEventloop.class, AsyncServiceAdapters.forNioEventloop())
 			);
 		}
 

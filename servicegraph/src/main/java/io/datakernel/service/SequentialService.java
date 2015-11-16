@@ -78,15 +78,15 @@ public class SequentialService implements AsyncService {
 			logger.info("{} {}", action, service);
 			AsyncServiceCallback applyCallback = new AsyncServiceCallback() {
 				@Override
-				public void doOnComplete() {
+				public void onComplete() {
 					logger.info("{} sequential service {} complete", action, service);
 					next(it, action, callback);
 				}
 
 				@Override
-				public void doOnExeption(Exception e) {
+				public void onExeption(Exception e) {
 					logger.error("Exception while {} {}", action, service);
-					callback.onException(e);
+					callback.onExeption(e);
 					throw new RuntimeException(e);
 				}
 			};

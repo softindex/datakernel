@@ -41,7 +41,7 @@ public class ConcurrentServices {
 		return new AsyncService() {
 			@Override
 			public void start(AsyncServiceCallback callback) {
-				callback.onException(e);
+				callback.onExeption(e);
 			}
 
 			@Override

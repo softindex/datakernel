@@ -16,16 +16,16 @@
 
 package io.datakernel.service;
 
-public abstract class SimpleAsyncServiceCallback extends AsyncServiceCallback {
+public abstract class SimpleAsyncServiceCallback implements AsyncServiceCallback {
 	protected abstract void doOnSuccessOrOnError();
 
 	@Override
-	protected void doOnComplete() {
+	public void onComplete() {
 		doOnSuccessOrOnError();
 	}
 
 	@Override
-	protected void doOnExeption(Exception exception) {
+	public void onExeption(Exception exception) {
 		doOnSuccessOrOnError();
 	}
 }

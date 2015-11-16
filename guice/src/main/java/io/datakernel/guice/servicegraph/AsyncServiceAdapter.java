@@ -21,11 +21,11 @@ import io.datakernel.service.AsyncService;
 import java.util.concurrent.Executor;
 
 /**
- * Factory which Creates a new ConcurrentServices from other instances for working with ServiceGraph
+ * Adapter which Creates a new ConcurrentServices from other instances for working with ServiceGraph
  *
  * @param <V> type of service from which you need create ConcurrentService
  */
-public interface ServiceGraphFactory<V> {
+public interface AsyncServiceAdapter<V> {
 	/**
 	 * Wraps instances so that it will be ConcurrentService.
 	 *
@@ -33,5 +33,5 @@ public interface ServiceGraphFactory<V> {
 	 * @param executor object that executes submitted Runnable tasks
 	 * @return new instance of  ConcurrentService
 	 */
-	AsyncService getService(V node, Executor executor);
+	AsyncService toService(V node, Executor executor);
 }

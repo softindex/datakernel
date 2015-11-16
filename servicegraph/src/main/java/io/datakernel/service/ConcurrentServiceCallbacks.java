@@ -26,16 +26,16 @@ public class ConcurrentServiceCallbacks {
 		return new CountDownServiceCallback();
 	}
 
-	public static class CountDownServiceCallback extends AsyncServiceCallback {
+	public static class CountDownServiceCallback implements AsyncServiceCallback {
 		CountDownLatch countDownLatch = new CountDownLatch(1);
 
 		@Override
-		protected void doOnComplete() {
+		public void onComplete() {
 			countDownLatch.countDown();
 		}
 
 		@Override
-		protected void doOnExeption(Exception exception) {
+		public void onExeption(Exception exception) {
 			countDownLatch.countDown();
 		}
 

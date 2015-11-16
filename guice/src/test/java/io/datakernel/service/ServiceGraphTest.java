@@ -19,7 +19,7 @@ package io.datakernel.service;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.guice.servicegraph.ServiceGraphFactory;
+import io.datakernel.guice.servicegraph.AsyncServiceAdapter;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
 import org.junit.Test;
 
@@ -31,9 +31,9 @@ public class ServiceGraphTest {
 	public void testStartStop() throws Exception {
 		Injector injector = Guice.createInjector(
 				new ServiceGraphModule()
-						.serviceForAssignableClasses(TestGraph.S.class, new ServiceGraphFactory<TestGraph.S>() {
+						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
-							public AsyncService getService(TestGraph.S service, Executor executor) {
+							public AsyncService toService(TestGraph.S service, Executor executor) {
 								return ConcurrentServices.immediateService();
 							}
 						})
@@ -63,12 +63,12 @@ public class ServiceGraphTest {
 	}
 
 	@Test
-	public void testStartStopWithoutOverwrite() throws Exception {
+	public void testStartStopWithoutOverride() throws Exception {
 		Injector injector = Guice.createInjector(
 				new ServiceGraphModule()
-						.serviceForAssignableClasses(TestGraph.S.class, new ServiceGraphFactory<TestGraph.S>() {
+						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
-							public AsyncService getService(TestGraph.S service, Executor executor) {
+							public AsyncService toService(TestGraph.S service, Executor executor) {
 								return ConcurrentServices.immediateService();
 							}
 						})
