@@ -1,0 +1,184 @@
+/*
+ * Copyright (C) 2015 SoftIndex LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.datakernel.rpc.client.sender;
+
+import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Arrays.asList;
+
+public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
+	private Map<Class<? extends Object>, StrategySpecifications> dataTypeToSpecification;
+	private StrategySpecifications defaultStrategySpecification;
+
+	RpcStrategyTypeDispatching() {
+		dataTypeToSpecification = new HashMap<>();
+		defaultStrategySpecification = null;
+	}
+
+	@Override
+	public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
+		return asList(create(pool));
+	}
+
+	@Override
+	public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
+		HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender = new HashMap<>();
+		for (Class<? extends Object> dataType : dataTypeToSpecification.keySet()) {
+			StrategySpecifications specs = dataTypeToSpecification.get(dataType);
+			RpcRequestSenderHolder holder = specs.getStrategy().create(pool);
+			if (holder.isSenderPresent()) {
+				dataTypeToSender.put(dataType, holder.getSender());
+			} else if (specs.isCrucialForActivation()) {
+				return RpcRequestSenderHolder.absent();
+			}
+		}
+		RpcRequestSender defaultSender = null;
+		if (defaultStrategySpecification != null) {
+			defaultSender = defaultStrategySpecification.getStrategy().create(pool).getSenderOrNull();
+			if (defaultSender == null && defaultStrategySpecification.isCrucialForActivation()) {
+				return RpcRequestSenderHolder.absent();
+			}
+		}
+		return RpcRequestSenderHolder.of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender));
+	}
+
+	public RpcStrategySpecsSetting on(Class<? extends Object> dataType,
+	                                  RpcSingleSenderStrategy strategy) {
+		checkNotNull(dataType);
+		checkNotNull(strategy);
+		checkState(!dataTypeToSpecification.containsKey(dataType),
+				"Strategy for type " + dataType.toString() + " is already set");
+		dataTypeToSpecification.put(dataType, new StrategySpecifications(strategy, false));
+		return new RpcTypeStrategySpecsHelper(dataType);
+	}
+
+	public RpcStrategySpecsSetting onDefault(RpcSingleSenderStrategy strategy) {
+		checkState(defaultStrategySpecification == null, "Default Strategy is already set");
+		defaultStrategySpecification = new StrategySpecifications(strategy, false);
+		return new RpcDefaultStrategySpecsHelper();
+	}
+
+	public abstract class RpcStrategySpecsSetting implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
+		private RpcStrategySpecsSetting() {
+
+		}
+
+		@Override
+		public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
+			return RpcStrategyTypeDispatching.this.createAsList(pool);
+		}
+
+		@Override
+		public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
+			return RpcStrategyTypeDispatching.this.create(pool);
+		}
+
+		public RpcStrategySpecsSetting on(Class<? extends Object> dataType,
+		                                  RpcSingleSenderStrategy strategy) {
+			return RpcStrategyTypeDispatching.this.on(dataType, strategy);
+		}
+
+		public RpcStrategySpecsSetting onDefault(RpcSingleSenderStrategy strategy) {
+			return RpcStrategyTypeDispatching.this.onDefault(strategy);
+		}
+
+		public abstract RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial);
+	}
+
+	private final class RpcTypeStrategySpecsHelper extends RpcStrategySpecsSetting {
+		private final Class<? extends Object> dataType;
+
+		private RpcTypeStrategySpecsHelper(Class<? extends Object> dataType) {
+			this.dataType = dataType;
+		}
+
+		@Override
+		public RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial) {
+			StrategySpecifications specs = checkNotNull(dataTypeToSpecification.get(dataType));
+			dataTypeToSpecification.put(dataType, new StrategySpecifications(specs.getStrategy(), isCrucial));
+			return RpcStrategyTypeDispatching.this;
+		}
+	}
+
+	private final class RpcDefaultStrategySpecsHelper extends RpcStrategySpecsSetting {
+
+		private RpcDefaultStrategySpecsHelper() {
+
+		}
+
+		@Override
+		public RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial) {
+			checkNotNull(defaultStrategySpecification);
+			defaultStrategySpecification
+					= new StrategySpecifications(defaultStrategySpecification.getStrategy(), isCrucial);
+			return RpcStrategyTypeDispatching.this;
+		}
+	}
+
+	private static final class StrategySpecifications {
+		private final RpcSingleSenderStrategy strategy;
+		private final boolean crucialForActivation;
+
+		public StrategySpecifications(RpcSingleSenderStrategy strategy, boolean crucialForActivation) {
+			this.strategy = strategy;
+			this.crucialForActivation = crucialForActivation;
+		}
+
+		public RpcSingleSenderStrategy getStrategy() {
+			return strategy;
+		}
+
+		public boolean isCrucialForActivation() {
+			return crucialForActivation;
+		}
+	}
+
+	final static class RequestSenderTypeDispatcher implements RpcRequestSender {
+		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
+				= new RpcNoSenderAvailableException("No active senders available");
+
+		private final HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender;
+		private final RpcRequestSender defaultSender;
+
+		public RequestSenderTypeDispatcher(HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender,
+		                                   RpcRequestSender defaultSender) {
+			checkNotNull(dataTypeToSender);
+
+			this.dataTypeToSender = dataTypeToSender;
+			this.defaultSender = defaultSender;
+		}
+
+		@Override
+		public <T> void sendRequest(Object request, int timeout,
+		                            ResultCallback<T> callback) {
+			RpcRequestSender specifiedSender = dataTypeToSender.get(request.getClass());
+			RpcRequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;
+			if (sender != null) {
+				sender.sendRequest(request, timeout, callback);
+			} else {
+				callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
+			}
+		}
+	}
+}

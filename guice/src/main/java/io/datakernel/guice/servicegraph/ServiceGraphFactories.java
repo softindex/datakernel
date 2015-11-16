@@ -16,10 +16,11 @@
 
 package io.datakernel.guice.servicegraph;
 
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioServer;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.service.ConcurrentService;
+import io.datakernel.service.ConcurrentServiceCallback;
 import io.datakernel.service.Service;
 import org.slf4j.Logger;
 
@@ -32,7 +33,6 @@ import java.util.Timer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.common.util.concurrent.Futures.immediateFuture;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -53,6 +53,107 @@ public final class ServiceGraphFactories {
 		};
 	}
 
+	public static ServiceGraphFactory<NioService> factoryForNioService() {
+		return new ServiceGraphFactory<NioService>() {
+
+			@Override
+			public ConcurrentService getService(final NioService node, Executor executor) {
+				return new ConcurrentService() {
+					@Override
+					public void start(final ConcurrentServiceCallback callback) {
+						node.getNioEventloop().postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								node.start(callback);
+								callback.onComplete();
+							}
+						});
+					}
+
+					@Override
+					public void stop(final ConcurrentServiceCallback callback) {
+						node.getNioEventloop().postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								node.stop(callback);
+								callback.onComplete();
+							}
+						});
+					}
+				};
+			}
+		};
+	}
+
+	public static ServiceGraphFactory<NioServer> factoryForNioServer() {
+		return new ServiceGraphFactory<NioServer>() {
+			@Override
+			public ConcurrentService getService(final NioServer node, Executor executor) {
+				return new ConcurrentService() {
+					@Override
+					public void start(final ConcurrentServiceCallback callback) {
+						node.getNioEventloop().postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								try {
+									node.listen();
+									callback.onComplete();
+								} catch (IOException e) {
+									callback.onException(e);
+								}
+							}
+						});
+					}
+
+					@Override
+					public void stop(final ConcurrentServiceCallback callback) {
+						node.getNioEventloop().postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								node.close();
+								callback.onComplete();
+							}
+						});
+					}
+				};
+			}
+		};
+	}
+
+	public static ServiceGraphFactory<NioEventloop> factoryForNioEventloop() {
+		return new ServiceGraphFactory<NioEventloop>() {
+			@Override
+			public ConcurrentService getService(final NioEventloop node, final Executor executor) {
+				return new ConcurrentService() {
+					@Override
+					public void start(final ConcurrentServiceCallback callback) {
+						// TODO (vsavchuk) executor or threadFactory?
+						executor.execute(new Runnable() {
+							@Override
+							public void run() {
+
+								node.keepAlive(true);
+								callback.onComplete();
+								node.run();
+							}
+						});
+					}
+
+					@Override
+					public void stop(final ConcurrentServiceCallback callback) {
+						node.postConcurrently(new Runnable() {
+							@Override
+							public void run() {
+								callback.onComplete();
+								node.keepAlive(false);
+							}
+						});
+					}
+				};
+			}
+		};
+	}
+
 	/**
 	 * Returns factory which transforms blocking Service to asynchronous non-blocking ConcurrentService. It runs blocking operations from other thread from executor.
 	 */
@@ -62,37 +163,33 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Service service, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public ListenableFuture<?> startFuture() {
-						final SettableFuture<Boolean> future = SettableFuture.create();
+					public void start(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
 									service.start();
-									future.set(true);
+									callback.onComplete();
 								} catch (Exception e) {
-									future.setException(e);
+									callback.onException(e);
 								}
 							}
 						});
-						return future;
 					}
 
 					@Override
-					public ListenableFuture<?> stopFuture() {
-						final SettableFuture<Boolean> future = SettableFuture.create();
+					public void stop(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
 									service.stop();
-									future.set(true);
+									callback.onComplete();
 								} catch (Exception e) {
-									future.setException(e);
+									callback.onException(e);
 								}
 							}
 						});
-						return future;
 					}
 				};
 			}
@@ -108,14 +205,14 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Timer timer, Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public ListenableFuture<?> startFuture() {
-						return Futures.immediateFuture(true);
+					public void start(ConcurrentServiceCallback callback) {
+						callback.onComplete();
 					}
 
 					@Override
-					public ListenableFuture<?> stopFuture() {
+					public void stop(ConcurrentServiceCallback callback) {
 						timer.cancel();
-						return Futures.immediateFuture(true);
+						callback.onComplete();
 					}
 				};
 			}
@@ -131,17 +228,17 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final ExecutorService executorService, Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public ListenableFuture<?> startFuture() {
-						return Futures.immediateFuture(true);
+					public void start(ConcurrentServiceCallback callback) {
+						callback.onComplete();
 					}
 
 					@Override
-					public ListenableFuture<?> stopFuture() {
+					public void stop(ConcurrentServiceCallback callback) {
 						List<Runnable> runnables = executorService.shutdownNow();
 						for (Runnable runnable : runnables) {
 							logger.warn("Remaining tasks {}", runnable);
 						}
-						return Futures.immediateFuture(true);
+						callback.onComplete();
 					}
 				};
 			}
@@ -157,25 +254,23 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final Closeable closeable, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public ListenableFuture<?> startFuture() {
-						return immediateFuture(true);
+					public void start(ConcurrentServiceCallback callback) {
+						callback.onComplete();
 					}
 
 					@Override
-					public ListenableFuture<?> stopFuture() {
-						final SettableFuture<Boolean> future = SettableFuture.create();
+					public void stop(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
 									closeable.close();
-									future.set(true);
+									callback.onComplete();
 								} catch (IOException e) {
-									future.setException(e);
+									callback.onException(e);
 								}
 							}
 						});
-						return future;
 					}
 				};
 			}
@@ -191,41 +286,37 @@ public final class ServiceGraphFactories {
 			public ConcurrentService getService(final DataSource dataSource, final Executor executor) {
 				return new ConcurrentService() {
 					@Override
-					public ListenableFuture<?> startFuture() {
-						final SettableFuture<Boolean> future = SettableFuture.create();
+					public void start(final ConcurrentServiceCallback callback) {
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
 									Connection connection = dataSource.getConnection();
 									connection.close();
-									future.set(true);
+									callback.onComplete();
 								} catch (Exception e) {
-									future.setException(e);
+									callback.onException(e);
 								}
 							}
 						});
-						return future;
 					}
 
 					@Override
-					public ListenableFuture<?> stopFuture() {
+					public void stop(final ConcurrentServiceCallback callback) {
 						if (dataSource instanceof Closeable) {
-							final SettableFuture<Boolean> future = SettableFuture.create();
 							executor.execute(new Runnable() {
 								@Override
 								public void run() {
 									try {
 										((Closeable) dataSource).close();
-										future.set(true);
+										callback.onComplete();
 									} catch (IOException e) {
-										future.setException(e);
+										callback.onException(e);
 									}
 								}
 							});
-							return future;
 						} else
-							return immediateFuture(true);
+							callback.onComplete();
 					}
 				};
 			}

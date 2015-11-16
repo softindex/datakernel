@@ -18,7 +18,6 @@ package io.datakernel.rpc;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.ImmutableList;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -28,10 +27,11 @@ import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.example.CumulativeServiceHelper;
 import io.datakernel.rpc.protocol.RpcException;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.service.NioEventloopRunner;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.concurrent.Executors;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -46,7 +46,6 @@ public final class CumulativeBenchmark {
 
 	private final NioEventloop serverEventloop = new NioEventloop();
 	private final RpcServer server = CumulativeServiceHelper.createServer(serverEventloop, SERVICE_PORT);
-	private final NioEventloopRunner serverRunner = new NioEventloopRunner(serverEventloop).addNioServers(server);
 
 	private final NioEventloop eventloop = new NioEventloop();
 	private final RpcClient client = CumulativeServiceHelper.createClient(eventloop, addresses, new ConnectSettings(500));
@@ -81,7 +80,14 @@ public final class CumulativeBenchmark {
 	private void run() throws Exception {
 		printBenchmarkInfo();
 
-		serverRunner.startFuture().get();
+		Executors.defaultThreadFactory().newThread(new Runnable() {
+			@Override
+			public void run() {
+				serverEventloop.keepAlive(true);
+				serverEventloop.run();
+			}
+		}).start();
+		server.listen();
 
 		try {
 			final CompletionCallback finishCallback = new CompletionCallback() {
@@ -114,7 +120,15 @@ public final class CumulativeBenchmark {
 			eventloop.run();
 
 		} finally {
-			serverRunner.stopFuture().get();
+			serverEventloop.postConcurrently(new Runnable() {
+				@Override
+				public void run() {
+
+					server.close();
+				}
+			});
+			serverEventloop.keepAlive(false);
+
 		}
 	}
 

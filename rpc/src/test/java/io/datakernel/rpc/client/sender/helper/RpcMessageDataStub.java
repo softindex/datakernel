@@ -14,13 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.sender;
+package io.datakernel.rpc.client.sender.helper;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-
-public interface RequestSenderMXBean {
-	void resetStats();
-
-	CompositeData getRequestSenderInfo() throws OpenDataException;
+public final class RpcMessageDataStub {
 }

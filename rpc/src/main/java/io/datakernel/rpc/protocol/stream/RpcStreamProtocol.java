@@ -34,7 +34,7 @@ import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
 import java.nio.channels.SocketChannel;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 abstract class RpcStreamProtocol implements RpcProtocol {
 
@@ -61,16 +61,13 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onEndOfStream() {
-//			RpcStreamProtocol.this.close();
 			sender.close();
-//			deserializer.onProducerEndOfStream();
 			connection.close();
 		}
 
 		@Override
 		protected void onError(Exception e) {
 			sender.closeWithError(e);
-//			closeProtocolWithError(e);
 		}
 
 		public void closeWithError(Exception e) {
@@ -107,8 +104,8 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 			return getProducerStatus() != StreamStatus.READY;
 		}
 
-		public void sendMessage(RpcMessage message) throws Exception {
-			downstreamDataReceiver.onData(message);
+		public void sendMessage(RpcMessage item) {
+			super.send(item);
 		}
 
 		public void close() {
@@ -122,7 +119,6 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		@Override
 		protected void onError(Exception e) {
 			receiver.closeWithError(e);
-//			closeProtocolWithError(e);
 		}
 	}
 

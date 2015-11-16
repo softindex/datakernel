@@ -16,11 +16,22 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.protocol.RpcException;
+import java.util.List;
 
-public class RpcNoConnectionsException extends RpcException {
+public final class RpcStrategyFirstAvailable extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
 
-	public RpcNoConnectionsException() {
-		super("No available connections");
+	public RpcStrategyFirstAvailable(List<RpcRequestSendingStrategy> subStrategies) {
+		super(subStrategies);
 	}
+
+	public RpcStrategyFirstAvailable withMinActiveSubStrategies(int minActiveSubStrategies) {
+		setMinSubStrategiesForCreation(minActiveSubStrategies);
+		return this;
+	}
+
+	@Override
+	protected RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders) {
+		return subSenders.get(0);
+	}
+
 }

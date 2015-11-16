@@ -16,30 +16,29 @@
 
 package io.datakernel.rpc.server;
 
-import com.google.common.collect.ImmutableMap;
 import io.datakernel.async.AsyncFunction;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.protocol.RpcMessage;
 import org.slf4j.Logger;
 
 import java.util.HashMap;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.rpc.util.ImmutableCollections.immutableHashMapOf;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RequestHandlers implements AsyncFunction<RpcMessage.RpcMessageData, RpcMessage.RpcMessageData> {
+public final class RpcRequestHandlers implements AsyncFunction<Object, Object> {
 
-	public interface RequestHandler<R extends RpcMessage.RpcMessageData> {
-		void run(R request, ResultCallback<RpcMessage.RpcMessageData> callback);
+	public interface RequestHandler<R> {
+		void run(R request, ResultCallback<Object> callback);
 	}
 
 	public static final class Builder {
-		private final Map<Class<? extends RpcMessage.RpcMessageData>, RequestHandler<RpcMessage.RpcMessageData>> handlers = new HashMap<>();
+		private final Map<Class<? extends Object>, RequestHandler<Object>> handlers = new HashMap<>();
 		private Logger logger;
 
 		@SuppressWarnings("unchecked")
-		public <T extends RpcMessage.RpcMessageData> Builder put(Class<T> requestClass, RequestHandler<T> handler) {
-			handlers.put(requestClass, (RequestHandler<RpcMessage.RpcMessageData>) handler);
+		public <T> Builder put(Class<T> requestClass, RequestHandler<T> handler) {
+			handlers.put(requestClass, (RequestHandler<Object>) handler);
 			return this;
 		}
 
@@ -48,22 +47,22 @@ public final class RequestHandlers implements AsyncFunction<RpcMessage.RpcMessag
 			return this;
 		}
 
-		public RequestHandlers build() {
-			return new RequestHandlers(ImmutableMap.copyOf(handlers), logger);
+		public RpcRequestHandlers build() {
+			return new RpcRequestHandlers(immutableHashMapOf(handlers), logger);
 		}
 	}
 
-	private final ImmutableMap<Class<? extends RpcMessage.RpcMessageData>, RequestHandler<RpcMessage.RpcMessageData>> handlers;
+	private final Map<Class<? extends Object>, RequestHandler<Object>> handlers;
 	private final Logger logger;
 
-	private RequestHandlers(ImmutableMap<Class<? extends RpcMessage.RpcMessageData>, RequestHandler<RpcMessage.RpcMessageData>> handlers, Logger logger) {
+	private RpcRequestHandlers(Map<Class<? extends Object>, RequestHandler<Object>> handlers, Logger logger) {
 		this.handlers = handlers;
 		this.logger = logger;
 	}
 
 	@Override
-	public void apply(RpcMessage.RpcMessageData request, ResultCallback<RpcMessage.RpcMessageData> callback) {
-		RequestHandler<RpcMessage.RpcMessageData> requestHandler;
+	public void apply(Object request, ResultCallback<Object> callback) {
+		RequestHandler<Object> requestHandler;
 		try {
 			checkNotNull(request);
 			checkNotNull(callback);

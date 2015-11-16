@@ -17,7 +17,6 @@
 package io.datakernel.rpc.client;
 
 import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
 
 public interface RpcClientMBean {
 	void resetStats();
@@ -35,6 +34,4 @@ public interface RpcClientMBean {
 	boolean isPingEnabled();
 
 	int getPingReconnects();
-
-	CompositeData getRequestSenderInfo() throws OpenDataException;
 }

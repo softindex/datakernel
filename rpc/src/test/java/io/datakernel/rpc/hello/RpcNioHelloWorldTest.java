@@ -16,8 +16,6 @@
 
 package io.datakernel.rpc.hello;
 
-import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
@@ -25,19 +23,18 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.client.sender.RequestSenderFactory;
-import io.datakernel.rpc.protocol.RpcMessage.AbstractRpcMessage;
-import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
+import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolSettings;
-import io.datakernel.rpc.server.RequestHandlers;
-import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
+import io.datakernel.rpc.server.RpcRequestHandlers;
+import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
+import io.datakernel.util.Stopwatch;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -49,9 +46,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static io.datakernel.async.AsyncCallbacks.closeFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
+import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.servers;
+import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 
@@ -71,7 +69,7 @@ public class RpcNioHelloWorldTest {
 		}
 	}
 
-	protected static class HelloRequest extends AbstractRpcMessage {
+	protected static class HelloRequest {
 		@Serialize(order = 0)
 		public String name;
 
@@ -80,7 +78,7 @@ public class RpcNioHelloWorldTest {
 		}
 	}
 
-	protected static class HelloResponse extends AbstractRpcMessage {
+	protected static class HelloResponse {
 		@Serialize(order = 0)
 		public String message;
 
@@ -89,10 +87,10 @@ public class RpcNioHelloWorldTest {
 		}
 	}
 
-	private static RequestHandlers helloServiceRequestHandler(final HelloService helloService) {
-		return new RequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
+	private static RpcRequestHandlers helloServiceRequestHandler(final HelloService helloService) {
+		return new RpcRequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
 			@Override
-			public void run(HelloRequest request, ResultCallback<RpcMessageData> callback) {
+			public void run(HelloRequest request, ResultCallback<Object> callback) {
 				String result;
 				try {
 					result = helloService.hello(request.name);
@@ -123,13 +121,13 @@ public class RpcNioHelloWorldTest {
 		private final RpcClient client;
 
 		public HelloClient(NioEventloop eventloop, RpcProtocolFactory protocolFactory) throws Exception {
-			List<InetSocketAddress> addresses = ImmutableList.of(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT));
+			List<InetSocketAddress> addresses = asList(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT));
 			this.eventloop = eventloop;
 			this.client = new RpcClient.Builder(eventloop)
 					.addresses(addresses)
 					.serializer(serializer())
 					.protocolFactory(protocolFactory)
-					.requestSenderFactory(RequestSenderFactory.firstAvailable())
+					.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(servers(addresses)))
 					.build();
 
 			final CompletionCallbackFuture connectCompletion = new CompletionCallbackFuture();
@@ -149,7 +147,7 @@ public class RpcNioHelloWorldTest {
 			try {
 				return result.get().message;
 			} catch (ExecutionException e) {
-				throw (Exception)e.getCause();
+				throw (Exception) e.getCause();
 			}
 		}
 

@@ -27,13 +27,13 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.nio.channels.SocketChannel;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcServer extends AbstractNioServer<RpcServer> implements RpcServerMBean {
 
 	public static class Builder {
 		private final NioEventloop eventloop;
-		private RequestHandlers handlers;
+		private RpcRequestHandlers handlers;
 		private RpcMessageSerializer serializer;
 		private RpcProtocolFactory protocolFactory;
 
@@ -41,7 +41,7 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 			this.eventloop = checkNotNull(eventloop);
 		}
 
-		public Builder requestHandlers(RequestHandlers handlers) {
+		public Builder requestHandlers(RpcRequestHandlers handlers) {
 			this.handlers = handlers;
 			return this;
 		}
@@ -64,13 +64,13 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 	}
 
 	private final RpcServerConnectionPool connections = new RpcServerConnectionPool();
-	private final RequestHandlers handlers;
+	private final RpcRequestHandlers handlers;
 	private final RpcProtocolFactory protocolFactory;
 	private final RpcMessageSerializer serializer;
 
 	private RpcServer(Builder builder) {
 		super(builder.eventloop);
-		this.handlers = checkNotNull(builder.handlers, "RequestHandlers is not set");
+		this.handlers = checkNotNull(builder.handlers, "RpcRequestHandlers is not set");
 		this.protocolFactory = builder.protocolFactory;
 		this.serializer = builder.serializer;
 	}

@@ -26,11 +26,11 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.RpcClientSettings;
-import io.datakernel.rpc.client.sender.RequestSenderFactory;
+import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
-import io.datakernel.rpc.server.RequestHandlers;
-import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
+import io.datakernel.rpc.server.RpcRequestHandlers;
+import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
@@ -45,13 +45,14 @@ import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
 import static org.junit.Assert.assertEquals;
 
 public class RpcBinaryProtocolTest {
 	private static final int LISTEN_PORT = 12345;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
 
-	public static class TestRpcRequestMessage extends RpcMessage.AbstractRpcMessage {
+	public static class TestRpcRequestMessage {
 		private final String request;
 
 		public TestRpcRequestMessage(@Deserialize("request") String request) {
@@ -64,7 +65,7 @@ public class RpcBinaryProtocolTest {
 		}
 	}
 
-	public static class TestRpcResponseMessage extends RpcMessage.AbstractMandatoryRpcMessage {
+	public static class TestRpcResponseMessage {
 		private final String response;
 
 		public TestRpcResponseMessage(@Deserialize("response") String response) {
@@ -77,10 +78,10 @@ public class RpcBinaryProtocolTest {
 		}
 	}
 
-	private static RequestHandlers createAsyncFunc(final TestService service) {
-		return new RequestHandlers.Builder().put(TestRpcRequestMessage.class, new RequestHandler<TestRpcRequestMessage>() {
+	private static RpcRequestHandlers createAsyncFunc(final TestService service) {
+		return new RpcRequestHandlers.Builder().put(TestRpcRequestMessage.class, new RequestHandler<TestRpcRequestMessage>() {
 			@Override
-			public void run(final TestRpcRequestMessage request, final ResultCallback<RpcMessage.RpcMessageData> callback) {
+			public void run(final TestRpcRequestMessage request, final ResultCallback<Object> callback) {
 				service.call(request.getRequest(), new ResultCallback<String>() {
 					@Override
 					public void onResult(String result) {
@@ -114,7 +115,7 @@ public class RpcBinaryProtocolTest {
 
 	@Test
 	public void test() throws Exception {
-		RequestHandlers handlers = createAsyncFunc(new TestService() {
+		RpcRequestHandlers handlers = createAsyncFunc(new TestService() {
 			@Override
 			public void call(String request, ResultCallback<String> resultCallback) {
 				resultCallback.onResult("Hello, " + request + "!");
@@ -133,7 +134,7 @@ public class RpcBinaryProtocolTest {
 				.packetSize(1 << 10, 1 << 16).compression(true);
 		final RpcClient client = new RpcClient.Builder(eventloop, clientSettings)
 				.serializer(serializer)
-				.requestSenderFactory(RequestSenderFactory.firstAvailable())
+				.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(server(address)))
 				.connectSettings(new ConnectSettings(100))
 				.protocolFactory(new RpcStreamProtocolFactory(protocolSettings))
 				.build();

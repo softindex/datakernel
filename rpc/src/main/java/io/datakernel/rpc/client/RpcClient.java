@@ -16,8 +16,6 @@
 
 package io.datakernel.rpc.client;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -31,9 +29,10 @@ import io.datakernel.jmx.MBeanUtils;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
-import io.datakernel.rpc.client.sender.RequestSender;
-import io.datakernel.rpc.client.sender.RequestSenderFactory;
-import io.datakernel.rpc.protocol.RpcMessage;
+import io.datakernel.rpc.client.sender.RpcNoSenderAvailableException;
+import io.datakernel.rpc.client.sender.RpcRequestSender;
+import io.datakernel.rpc.client.sender.RpcRequestSenderHolder;
+import io.datakernel.rpc.client.sender.RpcRequestSendingStrategy;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import org.slf4j.Logger;
@@ -41,16 +40,16 @@ import org.slf4j.LoggerFactory;
 
 import javax.management.MBeanServer;
 import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.google.common.base.Preconditions.*;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAny;
+import static io.datakernel.rpc.util.ImmutableCollections.immutableArrayListOf;
+import static io.datakernel.util.Preconditions.*;
 
 public final class RpcClient implements NioService, RpcClientMBean {
 
@@ -60,8 +59,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		private final RpcClientSettings settings;
 		private RpcMessageSerializer serializer;
 		private RpcProtocolFactory protocolFactory;
-		private RequestSenderFactory requestSenderFactory;
-		private RpcMessage.RpcMessageData pingMessage;
+		private RpcRequestSendingStrategy requestSendingStrategy;
+		private Object pingMessage;
 		private Integer countAwaitsConnects;
 		private Logger parentLogger;
 
@@ -84,19 +83,19 @@ public final class RpcClient implements NioService, RpcClientMBean {
 			return this;
 		}
 
-		public Builder requestSenderFactory(RequestSenderFactory requestSenderFactory) {
-			this.requestSenderFactory = requestSenderFactory;
+		public Builder requestSendingStrategy(RpcRequestSendingStrategy requestSendingStrategy) {
+			this.requestSendingStrategy = requestSendingStrategy;
 			return this;
 		}
 
-		public Builder pingMessage(RpcMessage.RpcMessageData pingMessage) {
+		public Builder pingMessage(Object pingMessage) {
 			checkArgument(settings.getPingAmountFailed() >= 0);
 			this.pingMessage = checkNotNull(pingMessage);
 			return this;
 		}
 
 		public Builder addresses(List<InetSocketAddress> addresses) {
-			this.settings.addresses(ImmutableList.copyOf(addresses));
+			this.settings.addresses(immutableArrayListOf(addresses));
 			return this;
 		}
 
@@ -137,7 +136,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		public RpcClient build() {
 			checkNotNull(serializer, "RpcMessageSerializer is no set");
 			checkNotNull(protocolFactory, "RpcProtocolFactory is no set");
-			checkNotNull(requestSenderFactory, "RequestSenderFactory is not set");
+			checkNotNull(requestSendingStrategy, "RequestSenderFactory is not set");
 			checkNotNull(settings.getAddresses(), "Addresses is not set");
 			return new RpcClient(this);
 		}
@@ -157,15 +156,17 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	private final List<InetSocketAddress> addresses;
 	private final RpcProtocolFactory protocolFactory;
 	private final RpcMessageSerializer serializer;
-	private final RequestSender requestSender;
+	private final RpcRequestSendingStrategy requestSendingStrategy;
 	private final SocketSettings socketSettings;
 	private final ConnectSettings connectSettings;
 	private final int countAwaitsConnects;
 	private final int timeoutPrecision;
 	private final Map<InetSocketAddress, Long> pingTimestamps = new HashMap<>();
-	private final RpcMessage.RpcMessageData pingMessage;
+	private final Object pingMessage;
 	private final long pingIntervalMillis;
 	private final long pingAmountFailed;
+
+	private RpcRequestSender requestSender;
 
 	private AsyncCancellable schedulePingTask;
 	private boolean running;
@@ -184,7 +185,9 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		this.connections = new RpcClientConnectionPool(addresses);
 		this.protocolFactory = builder.protocolFactory;
 		this.serializer = builder.serializer;
-		this.requestSender = builder.requestSenderFactory.create(connections);
+		this.requestSendingStrategy = builder.requestSendingStrategy;
+		RpcRequestSenderHolder holder = requestSendingStrategy.create(connections);
+		this.requestSender = holder.isSenderPresent() ? holder.getSender() : new RequestSenderError();
 		this.socketSettings = builder.settings.getSocketSettings();
 		this.connectSettings = builder.settings.getConnectSettings();
 		this.countAwaitsConnects = builder.getCountAwaitsConnects();
@@ -294,7 +297,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 						connect(address, connectSettings.attemptsReconnection(), ignoreCompletionCallback());
 					}
 				};
-				RpcClientConnection connection = new RpcClientConnection(eventloop, socketChannel, timeoutPrecision, serializer, protocolFactory, statusListener);
+				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel, timeoutPrecision, serializer, protocolFactory, statusListener);
 				connection.getSocketConnection().register();
 				successfulConnects++;
 				logger.info("Connection to {} established", address);
@@ -335,7 +338,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 
 	private void addConnection(InetSocketAddress address, RpcClientConnection connection) {
 		connections.add(address, connection);
-		requestSender.onConnectionsUpdated();
+		RpcRequestSenderHolder holder = requestSendingStrategy.create(connections);
+		requestSender = holder.isSenderPresent() ? holder.getSender() : new RequestSenderError();
 		if (isPingEnabled()) {
 			pingTimestamps.put(address, eventloop.currentTimeMillis());
 			schedulePingTask(address);
@@ -347,7 +351,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		if (isPingEnabled()) {
 			pingTimestamps.remove(address);
 		}
-		requestSender.onConnectionsUpdated();
+		RpcRequestSenderHolder holder = requestSendingStrategy.create(connections);
+		requestSender = holder.isSenderPresent() ? holder.getSender() : new RequestSenderError();
 	}
 
 	private void closeConnections() {
@@ -376,9 +381,9 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		if (pingTimestamp == null || eventloop.currentTimeMillis() - pingTimestamp < pingIntervalMillis)
 			return;
 
-		connection.callMethod(pingMessage, (int) pingIntervalMillis, new ResultCallback<RpcMessage.RpcMessageData>() {
+		connection.callMethod(pingMessage, (int) pingIntervalMillis, new ResultCallback<Object>() {
 			@Override
-			public void onResult(RpcMessage.RpcMessageData result) {
+			public void onResult(Object result) {
 				pingTimestamps.put(address, eventloop.currentTimeMillis());
 			}
 
@@ -398,13 +403,24 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		});
 	}
 
-	public <T extends RpcMessage.RpcMessageData> void sendRequest(RpcMessage.RpcMessageData request, int timeout, ResultCallback<T> callback) {
+	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 		requestSender.sendRequest(request, timeout, callback);
 	}
 
-	@VisibleForTesting
-	public RequestSender getRequestSender() {
+	// visible for testing
+	public RpcRequestSender getRequestSender() {
 		return requestSender;
+	}
+
+	private static final class RequestSenderError implements RpcRequestSender {
+		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
+				= new RpcNoSenderAvailableException("No senders available");
+
+		@Override
+		public <T> void sendRequest(Object request,
+		                            int timeout, ResultCallback<T> callback) {
+			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
+		}
 	}
 
 	// JMX
@@ -460,10 +476,5 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	@Override
 	public int getPingReconnects() {
 		return pingReconnects;
-	}
-
-	@Override
-	public CompositeData getRequestSenderInfo() throws OpenDataException {
-		return requestSender.getRequestSenderInfo();
 	}
 }

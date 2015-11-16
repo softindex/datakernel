@@ -16,30 +16,23 @@
 
 package io.datakernel.service;
 
-import com.google.common.base.Function;
-import com.google.common.base.Stopwatch;
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.SetMultimap;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
+import io.datakernel.util.Preconditions;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Predicates.in;
-import static com.google.common.base.Predicates.not;
-import static com.google.common.base.Strings.repeat;
-import static com.google.common.collect.Iterables.*;
-import static com.google.common.collect.Sets.difference;
-import static com.google.common.util.concurrent.Futures.immediateFuture;
-import static com.google.common.util.concurrent.MoreExecutors.sameThreadExecutor;
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static org.slf4j.LoggerFactory.getLogger;
 
 public class ServiceGraph implements ConcurrentService {
 
@@ -90,7 +83,7 @@ public class ServiceGraph implements ConcurrentService {
 		}
 	}
 
-	private static final Logger logger = getLogger(ServiceGraph.class);
+	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
 
 	private final ThreadFactory threadFactory;
 
@@ -105,6 +98,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * exists edge from N1 to N2, it can be represent as adding to this SetMultimap element <N1,N2>.
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
+
 	private final SetMultimap<Node, Node> forwards = LinkedHashMultimap.create();
 
 	/**
@@ -112,6 +106,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * exists edge from N1 to N2, it can be represent as adding to this SetMultimap element <N2,N1>
 	 * This collection consist of nodes in which there are edges and their keys - previous nodes.
 	 */
+
 	private final SetMultimap<Node, Node> backwards = LinkedHashMultimap.create();
 
 	/**
@@ -143,7 +138,7 @@ public class ServiceGraph implements ConcurrentService {
 	 * @return changed service graph
 	 */
 	public final ServiceGraph add(Node service, Node... dependencies) {
-		checkArgument(!started, "Already started");
+		Preconditions.check(!started, "Already started");
 		return add(service, Arrays.asList(dependencies));
 	}
 
@@ -156,12 +151,12 @@ public class ServiceGraph implements ConcurrentService {
 	 * @return changed service graph
 	 */
 	public ServiceGraph add(Node service, Iterable<Node> dependencies) {
-		checkArgument(!started, "Already started");
+		Preconditions.check(!started, "Already started");
 		vertices.add(service);
 		for (Node dependency : dependencies) {
 			vertices.add(dependency);
-			forwards.put(service, dependency);
-			backwards.put(dependency, service);
+			forwards.get(service).add(dependency);
+			backwards.get(dependency).add(service);
 		}
 		return this;
 	}
@@ -192,18 +187,15 @@ public class ServiceGraph implements ConcurrentService {
 	public interface ServiceGraphAction {
 		/**
 		 * Executes the action for service from argument. Used under traversing the graph.
-		 *
-		 * @return ListenableFuture with listener which guaranteed to be called once the action is
-		 * complete. It is used as an input to another derived Future
 		 */
-		ListenableFuture<?> asyncAction(Node service);
+		void asyncAction(Node service, ConcurrentServiceCallback serviceCallback);
 	}
 
 	private void longestPath(Map<Node, Long> timings,
 	                         Set<Node> vertices, SetMultimap<Node, Node> forwardNodes, SetMultimap<Node, Node> backwardNodes) {
 		List<Node> stack = new ArrayList<>();
 		List<Iterator<Node>> path = new ArrayList<>();
-		path.add(filter(vertices, not(in(backwardNodes.keySet()))).iterator());
+		path.add(difference(vertices, (backwardNodes.keySet())).iterator());
 		int length = 0;
 		int maxLength = -1;
 		List<Node> maxLengthStack = null;
@@ -250,10 +242,10 @@ public class ServiceGraph implements ConcurrentService {
 		}
 	}
 
-	synchronized private void next(final SettableFuture<Boolean> future, final ServiceGraphAction action, final ExecutorService executorService,
+	synchronized private void next(final ServiceGraphAction action, final ExecutorService executorService,
 	                               final Set<Node> activeNodes, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes,
 	                               final Set<Node> vertices, final SetMultimap<Node, Node> forwardNodes, final SetMultimap<Node, Node> backwardNodes,
-	                               final Map<Node, Long> processingTimes) {
+	                               final Map<Node, Long> processingTimes, final ConcurrentServiceCallback callback, final String done, final String fail) {
 		List<Node> newNodes = Collections.emptyList();
 		if (failedNodes.isEmpty()) {
 			newNodes = nextNodes(processedNodes, vertices, forwardNodes, backwardNodes);
@@ -264,10 +256,10 @@ public class ServiceGraph implements ConcurrentService {
 			if (activeNodes.isEmpty()) {
 				executorService.shutdown();
 				if (failedNodes.isEmpty()) {
-					future.set(true);
 					longestPath(processingTimes, vertices, forwardNodes, backwardNodes);
+					callback.onComplete();
 				} else {
-					future.setException(getFirst(failedNodes.values(), null));
+					callback.onException((Exception) (failedNodes.values().iterator().next()));
 				}
 			}
 			return;
@@ -283,124 +275,59 @@ public class ServiceGraph implements ConcurrentService {
 			final long startProcessingTime = currentTimeMillis();
 
 			Stopwatch asyncActionTime = Stopwatch.createStarted();
-			final ListenableFuture<?> nodeFuture = action.asyncAction(node);
-			if (asyncActionTime.elapsed(TimeUnit.SECONDS) >= 1)
-				logger.info("action.asyncAction time for {} is {}", node, asyncActionTime);
+			final Stopwatch sw = Stopwatch.createStarted();
 
-			nodeFuture.addListener(new Runnable() {
+			ConcurrentServiceCallback callbackAction = new ConcurrentServiceCallback() {
 				@Override
-				public void run() {
+				public void doOnComplete() {
 					synchronized (ServiceGraph.this) {
+						logger.info(done + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
 						activeNodes.remove(node);
-						try {
-							nodeFuture.get();
-							processedNodes.add(node);
-						} catch (InterruptedException e) {
-							failedNodes.put(node, e);
-						} catch (ExecutionException e) {
-							failedNodes.put(node, e.getCause());
-						}
-						next(future, action, executorService,
-								activeNodes, processedNodes, failedNodes,
-								vertices, forwardNodes, backwardNodes, processingTimes);
+						processedNodes.add(node);
+						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes, backwardNodes, processingTimes, callback, done, fail);
 					}
 				}
-			}, executorService);
+
+				@Override
+				public void doOnExeption(Exception e) {
+					synchronized (ServiceGraph.this) {
+						logger.error(fail + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
+						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
+						activeNodes.remove(node);
+						failedNodes.put(node, e);
+						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes, backwardNodes, processingTimes, callback, done, fail);
+						throw new RuntimeException(e);
+					}
+				}
+			};
+			action.asyncAction(node, callbackAction);
+			if (asyncActionTime.elapsed(TimeUnit.SECONDS) >= 1)
+				logger.info("action.asyncAction time for {} is {}", node, asyncActionTime);
 		}
 	}
 
 	private void removeIntermediate(Node vertex) {
 		for (Node backward : backwards.get(vertex)) {
-			forwards.remove(backward, vertex);
+			forwards.get(backward).remove(vertex);
 			for (Node forward : forwards.get(vertex)) {
 				if (!forward.equals(backward)) {
-					forwards.put(backward, forward);
+					forwards.get(backward).add(forward);
 				}
 			}
 		}
 		for (Node forward : forwards.get(vertex)) {
-			backwards.remove(forward, vertex);
+			backwards.get(forward).remove(vertex);
 			for (Node backward : backwards.get(vertex)) {
 				if (!forward.equals(backward)) {
-					backwards.put(forward, backward);
+					backwards.get(forward).add(backward);
 				}
 			}
 		}
+
 		forwards.removeAll(vertex);
 		backwards.removeAll(vertex);
 		vertices.remove(vertex);
-	}
-
-	/**
-	 * Removes nodes which don't have services
-	 */
-	public void removeIntermediateNodes() {
-		checkArgument(!started, "Already started");
-		List<Node> toRemove = new ArrayList<>();
-		for (Node v : vertices) {
-			if (v.getService() == null) {
-				toRemove.add(v);
-			}
-		}
-
-		for (Node v : toRemove) {
-			removeIntermediate(v);
-		}
-	}
-
-	/**
-	 * Handles the situation when few nodes forming a dependency circle. Breaks circular
-	 * dependencies.
-	 */
-	public void breakCircularDependencies() {
-		checkArgument(!started, "Already started");
-		Set<Node> visited = new LinkedHashSet<>();
-		List<Node> path = new ArrayList<>();
-		next:
-		while (true) {
-			for (Node node : path.isEmpty() ? vertices : forwards.get(path.get(path.size() - 1))) {
-				int loopIndex = path.indexOf(node);
-				if (loopIndex != -1) {
-					logger.warn("Found circular dependency, breaking: " + nodesToString(path.subList(loopIndex, path.size())));
-					Node last = path.get(path.size() - 1);
-					forwards.remove(last, node);
-					backwards.remove(node, last);
-					continue next;
-				}
-				if (!visited.contains(node)) {
-					visited.add(node);
-					path.add(node);
-					continue next;
-				}
-			}
-			if (path.isEmpty())
-				break;
-			path.remove(path.size() - 1);
-		}
-	}
-
-	private void logFutureWhenDone(ListenableFuture<?> future, Node node, Stopwatch sw, String done, String failed) {
-		try {
-			future.get();
-			logger.info(done + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
-		} catch (Exception e) {
-			logger.error(failed + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""), e);
-		}
-	}
-
-	private void logFuture(final Node node, final ListenableFuture<?> future, final Stopwatch sw, String working, final String done, final String failed) {
-		if (future.isDone()) {
-			logFutureWhenDone(future, node, sw, done, failed);
-		} else {
-			logger.trace(working + " " + nodeToString(node));
-			future.addListener(new Runnable() {
-				@Override
-				public void run() {
-					logFutureWhenDone(future, node, sw, done, failed);
-				}
-			}, sameThreadExecutor());
-		}
 	}
 
 	/**
@@ -411,79 +338,56 @@ public class ServiceGraph implements ConcurrentService {
 
 	/**
 	 * Started services from the service graph
-	 *
-	 * @return ListenableFuture with listener which guaranteed to be called once the action is
-	 * complete.It is used as an input to another derived Future
 	 */
 	@Override
-	synchronized public ListenableFuture<?> startFuture() {
+	synchronized public void start(ConcurrentServiceCallback callback) {
 		if (!started) {
 			onStart();
 			started = true;
 		}
-		final Stopwatch swTotal = Stopwatch.createStarted();
 		logger.info("Starting services...");
-		final SettableFuture<?> future = visitBackwardAsync(new ServiceGraphAction() {
+		visitBackwardAsync(new ServiceGraphAction() {
 			@Override
-			public ListenableFuture<?> asyncAction(Node service) {
+			public void asyncAction(final Node service, final ConcurrentServiceCallback callback) {
 				ConcurrentService serviceOrNull = service.getService();
-				if (serviceOrNull == null)
-					return immediateFuture(true);
-				Stopwatch sw = Stopwatch.createStarted();
-				ListenableFuture<?> future = serviceOrNull.startFuture();
-				logFuture(service, future, sw, "...starting", "...started", "...failed");
-				return future;
-			}
-		}, vertices, startedServices, failedServices);
-		future.addListener(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					future.get();
-					logger.info("Services started in {}", swTotal);
-				} catch (InterruptedException | ExecutionException e) {
-					logger.error("Failed services: {}", nodesToString(failedServices.keySet()));
+				if (serviceOrNull == null) {
+					callback.onComplete();
+					return;
 				}
-				started = true;
+
+				serviceOrNull.start(callback);
 			}
-		}, sameThreadExecutor());
-		return future;
+		}, vertices, startedServices, failedServices, callback, "started", "failed");
 	}
 
 	/**
 	 * Stops services from  the service graph
-	 *
-	 * @return ListenableFuture with listener which guaranteed to be called once the action is
-	 * complete.It is used as an input to another derived Future
 	 */
 	@Override
-	synchronized public ListenableFuture<?> stopFuture() {
-		final Stopwatch swTotal = Stopwatch.createStarted();
+	synchronized public void stop(final ConcurrentServiceCallback callback) {
 		logger.info("Stopping running services: " + nodesToString(startedServices));
-		final SettableFuture<?> future = visitForwardAsync(new ServiceGraphAction() {
+		visitForwardAsync(new ServiceGraphAction() {
 			@Override
-			public ListenableFuture<?> asyncAction(Node service) {
+			public void asyncAction(final Node service, final ConcurrentServiceCallback callback) {
 				ConcurrentService serviceOrNull = service.getService();
-				if (serviceOrNull == null)
-					return immediateFuture(true);
-				Stopwatch sw = Stopwatch.createStarted();
-				ListenableFuture<?> future = serviceOrNull.stopFuture();
-				logFuture(service, future, sw, "...stopping", "...stopped", "...failed");
-				return future;
-			}
-		}, startedServices, new HashSet<>(difference(vertices, startedServices)), new LinkedHashMap<Node, Throwable>());
-		future.addListener(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					future.get();
-					logger.info("Services stopped in {}", swTotal);
-				} catch (InterruptedException | ExecutionException e) {
-					logger.error("Services stopped with failed services: {}", failedServices.keySet());
+				if (serviceOrNull == null) {
+					callback.onComplete();
+					return;
 				}
+
+				serviceOrNull.stop(callback);
 			}
-		}, sameThreadExecutor());
-		return future;
+		}, startedServices, difference(vertices, startedServices), new LinkedHashMap<Node, Throwable>(), callback, "stopped", "failed");
+	}
+
+	private Set<Node> difference(Set<Node> main, Set<Node> other) {
+		Set<Node> set = new HashSet<>();
+		for (Node mainNode : main) {
+			if (!other.contains(mainNode)) {
+				set.add(mainNode);
+			}
+		}
+		return set;
 	}
 
 	/**
@@ -495,18 +399,17 @@ public class ServiceGraph implements ConcurrentService {
 	 * @param failedNodes    nodes which have not started
 	 * @return SettableFuture  with result of action
 	 */
-	public SettableFuture<?> visitForwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes) {
-		final SettableFuture<Boolean> future = SettableFuture.create();
+	public void visitForwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes,
+	                              final Map<Node, Throwable> failedNodes, final ConcurrentServiceCallback callback,
+	                              final String done, final String fail) {
 		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
 		executor.execute(new Runnable() {
 			@Override
 			public void run() {
 				HashMap<Node, Long> processingTimes = new HashMap<>();
-				next(future, action, executor,
-						new HashSet<Node>(), processedNodes, failedNodes, vertices, forwards, backwards, processingTimes);
+				next(action, executor, new HashSet<Node>(), processedNodes, failedNodes, vertices, forwards, backwards, processingTimes, callback, done, fail);
 			}
 		});
-		return future;
 	}
 
 	/**
@@ -518,18 +421,18 @@ public class ServiceGraph implements ConcurrentService {
 	 * @param failedNodes    nodes which have not started
 	 * @return SettableFuture  with result of action
 	 */
-	public SettableFuture<?> visitBackwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes) {
-		final SettableFuture<Boolean> future = SettableFuture.create();
+	public void visitBackwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes,
+	                               final Map<Node, Throwable> failedNodes, final ConcurrentServiceCallback callback,
+	                               final String done, final String fail) {
 		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
 		executor.execute(new Runnable() {
 			@Override
 			public void run() {
 				HashMap<Node, Long> processingTimes = new HashMap<>();
-				next(future, action, executor,
-						new HashSet<Node>(), processedNodes, failedNodes, vertices, backwards, forwards, processingTimes);
+				next(action, executor, new HashSet<Node>(), processedNodes, failedNodes, vertices, backwards, forwards, processingTimes, callback, done, fail);
 			}
 		});
-		return future;
+
 	}
 
 	@Override
@@ -538,7 +441,7 @@ public class ServiceGraph implements ConcurrentService {
 		StringBuilder sb = new StringBuilder();
 		Set<Node> visited = new LinkedHashSet<>();
 		List<Iterator<Node>> path = new ArrayList<>();
-		Iterable<Node> roots = filter(vertices, not(in(backwards.keySet())));
+		Iterable<Node> roots = difference(vertices, (backwards.keySet()));
 		path.add(roots.iterator());
 		while (!path.isEmpty()) {
 			Iterator<Node> it = path.get(path.size() - 1);
@@ -558,17 +461,80 @@ public class ServiceGraph implements ConcurrentService {
 		return sb.toString();
 	}
 
+	private static String repeat(String s, int count) {
+		Preconditions.checkNotNull(s);
+		StringBuilder builder = new StringBuilder();
+
+		while (count-- > 0) {
+			builder.append(s);
+		}
+
+		return builder.toString();
+	}
+
+	/**
+	 * Removes nodes which don't have services
+	 */
+	public void removeIntermediateNodes() {
+		Preconditions.check(!started, "Already started");
+		List<Node> toRemove = new ArrayList<>();
+		for (Node v : vertices) {
+			if (v.getService() == null) {
+				toRemove.add(v);
+			}
+		}
+
+		for (Node v : toRemove) {
+			removeIntermediate(v);
+		}
+	}
+
+	/**
+	 * Handles the situation when few nodes forming a dependency circle. Breaks circular
+	 * dependencies.
+	 */
+	public void breakCircularDependencies() {
+		Preconditions.check(!started, "Already started");
+		Set<Node> visited = new LinkedHashSet<>();
+		List<Node> path = new ArrayList<>();
+		next:
+		while (true) {
+			for (Node node : path.isEmpty() ? vertices : forwards.get(path.get(path.size() - 1))) {
+				int loopIndex = path.indexOf(node);
+				if (loopIndex != -1) {
+					logger.warn("Found circular dependency, breaking: " + nodesToString(path.subList(loopIndex, path.size())));
+					Node last = path.get(path.size() - 1);
+					forwards.get(last).remove(node);
+					backwards.get(node).remove(last);
+					continue next;
+				}
+				if (!visited.contains(node)) {
+					visited.add(node);
+					path.add(node);
+					continue next;
+				}
+			}
+			if (path.isEmpty())
+				break;
+			path.remove(path.size() - 1);
+		}
+	}
+
 	protected String nodeToString(Node node) {
 		return node.toString();
 	}
 
 	private String nodesToString(Iterable<Node> newNodes) {
-		return "" + transform(newNodes, new Function<Node, String>() {
-			@Override
-			public String apply(Node node) {
-				return nodeToString(node);
+		StringBuilder builder = new StringBuilder().append("[");
+		Iterator<Node> iterator = newNodes.iterator();
+
+		while (iterator.hasNext()) {
+			builder.append(nodeToString(iterator.next()));
+			if (iterator.hasNext()) {
+				builder.append(", ");
 			}
-		});
+		}
+		return builder.append("]").toString();
 	}
 
 }

@@ -16,16 +16,16 @@
 
 package io.datakernel.rpc.client;
 
-import com.google.common.collect.ImmutableList;
 import io.datakernel.eventloop.SocketReconnector;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.net.SocketSettings;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.*;
+import static io.datakernel.util.Preconditions.*;
 
 public final class RpcClientSettings {
 	private static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
@@ -158,14 +158,14 @@ public final class RpcClientSettings {
 	}
 
 	public List<RpcClientSettings> getPartitionSettings() {
-		ImmutableList.Builder<RpcClientSettings> result = new ImmutableList.Builder<>();
+		List<RpcClientSettings> result = new ArrayList<>();
 		for (List<InetSocketAddress> partitionAddresses : getPartitionsAddresses()) {
 			RpcClientSettings partitionSettings = getCopy()
 					.addresses(partitionAddresses)
 					.minAliveConnections(Math.min(this.getMinAliveConnections(), partitionAddresses.size()));
 			result.add(partitionSettings);
 		}
-		return result.build();
+		return Collections.unmodifiableList(result);
 	}
 
 	public RpcClientSettings getStandbySettings() {

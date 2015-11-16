@@ -20,14 +20,14 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.client.sender.RequestSenderFactory;
+import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
 import io.datakernel.rpc.protocol.stream.RpcStreamProtocolSettings;
-import io.datakernel.rpc.server.RequestHandlers;
-import io.datakernel.rpc.server.RequestHandlers.RequestHandler;
+import io.datakernel.rpc.server.RpcRequestHandlers;
+import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationOutputBuffer;
@@ -37,11 +37,13 @@ import io.datakernel.serializer.annotations.Serialize;
 import java.net.InetSocketAddress;
 import java.util.List;
 
+import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.servers;
+
 /**
  * This class contains static factory methods to setup RPC client and server.
  */
 public final class CumulativeServiceHelper {
-	public static final class ValueMessage extends RpcMessage.AbstractRpcMessage {
+	public static final class ValueMessage {
 		@Serialize(order = 0)
 		public int value;
 
@@ -58,14 +60,14 @@ public final class CumulativeServiceHelper {
 		return RpcMessageSerializer.builder().addExtraRpcMessageType(ValueMessage.class).build();
 	}
 
-	public static RequestHandlers cumulativeService() {
-		return new RequestHandlers.Builder()
+	public static RpcRequestHandlers cumulativeService() {
+		return new RpcRequestHandlers.Builder()
 				.put(ValueMessage.class, new RequestHandler<ValueMessage>() {
 
 					private final ValueMessage currentSum = new ValueMessage(0);
 
 					@Override
-					public void run(ValueMessage request, ResultCallback<RpcMessage.RpcMessageData> callback) {
+					public void run(ValueMessage request, ResultCallback<Object> callback) {
 						if (request.value != 0) {
 							currentSum.value += request.value;
 						} else {
@@ -91,7 +93,7 @@ public final class CumulativeServiceHelper {
 				.connectSettings(connectSettings)
 				.waitForAllConnected()
 				.serializer(CumulativeServiceHelper.MESSAGE_SERIALIZER)
-				.requestSenderFactory(RequestSenderFactory.firstAvailable())
+				.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(servers(addresses)))
 				.protocolFactory(PROTOCOL_FACTORY)
 				.build();
 	}

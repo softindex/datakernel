@@ -20,7 +20,7 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.annotations.SerializeNullable;
 
-public class RpcRemoteException extends Exception implements RpcMessage.RpcMessageData {
+public class RpcRemoteException extends Exception implements RpcMandatoryData {
 	private static final long serialVersionUID = 769022174067373741L;
 	private final String causeMessage;
 	private final String causeClassName;
@@ -48,11 +48,6 @@ public class RpcRemoteException extends Exception implements RpcMessage.RpcMessa
 		super(message);
 		this.causeClassName = causeClassName;
 		this.causeMessage = causeMessage;
-	}
-
-	@Override
-	public boolean isMandatory() {
-		return true;
 	}
 
 	@Serialize(order = 1)

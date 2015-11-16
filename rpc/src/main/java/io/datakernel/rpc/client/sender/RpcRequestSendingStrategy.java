@@ -16,12 +16,14 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.protocol.RpcMessage.RpcMessageData;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
 
-public interface RequestSender extends RequestSenderMXBean {
+import java.util.List;
 
-	<T extends RpcMessageData> void sendRequest(RpcMessageData request, int timeout, ResultCallback<T> callback);
+public interface RpcRequestSendingStrategy {
 
-	void onConnectionsUpdated();
+	RpcRequestSenderHolder create(RpcClientConnectionPool pool);
+
+	List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool);
+
 }

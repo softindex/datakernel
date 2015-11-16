@@ -33,5 +33,6 @@ public interface ServiceGraphFactory<V> {
 	 * @param executor object that executes submitted Runnable tasks
 	 * @return new instance of  ConcurrentService
 	 */
+	// TODO (vsavchuk) change Executor to ThreadFactory
 	ConcurrentService getService(V node, Executor executor);
 }
