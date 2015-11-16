@@ -331,7 +331,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		                            ResultCallback<HttpResponse> callback) {
 			if (results.isEmpty()) {
 				callback.onResult(createResponse(constructEmptyResult()));
-				logger.info("Sent response to reporting request {} (query {}) in {}", request, query, sw);
+				logger.info("Sent response to reporting request {} (query {}) [time={}]", request, query, sw);
 				return;
 			}
 
@@ -343,7 +343,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			String jsonResult = constructQueryResultJson(results, resultClass,
 					newArrayList(concat(requestDimensions, attributes)), queryMeasures, totalsPlaceholder);
 			callback.onResult(createResponse(jsonResult));
-			logger.info("Sent response to reporting request {} (query {}) in {}", request, query, sw);
+			logger.info("Sent response to reporting request {} (query {}) [time={}]", request, query, sw);
 		}
 
 		private TotalsPlaceholder computeTotals(List<QueryResultPlaceholder> results) {
@@ -429,7 +429,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 			for (String field : resultFields) {
 				Object totalFieldValue = generateGetter(classLoader, totalsPlaceholder.getClass(), field).get(totalsPlaceholder);
-				jsonTotals.addProperty(field, totalFieldValue.toString());
+				jsonTotals.add(field, new JsonPrimitive((Number) totalFieldValue));
 			}
 
 			jsonResult.add("records", jsonRecords);

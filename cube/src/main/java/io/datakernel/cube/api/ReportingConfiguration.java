@@ -5,6 +5,7 @@ import io.datakernel.codegen.Expression;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.google.common.collect.Maps.newHashMap;
 
@@ -78,5 +79,13 @@ public final class ReportingConfiguration {
 
 	public Expression getComputedMeasureExpression(String computedMeasure) {
 		return computedMeasures.get(computedMeasure).getExpression();
+	}
+
+	public Set<String> getComputedMeasures() {
+		return computedMeasures.keySet();
+	}
+
+	public Set<String> getComputedMeasureDependencies(String computedMeasure) {
+		return computedMeasures.get(computedMeasure).getMeasureDependencies();
 	}
 }

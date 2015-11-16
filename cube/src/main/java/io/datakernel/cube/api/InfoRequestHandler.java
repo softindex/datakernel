@@ -28,6 +28,7 @@ import io.datakernel.cube.Cube;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,8 +37,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.google.common.base.Predicates.in;
+import static com.google.common.collect.Iterables.all;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Maps.newLinkedHashMap;
+import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.cube.api.CommonUtils.*;
 
 public final class InfoRequestHandler implements AsyncHttpServlet {
@@ -74,7 +78,7 @@ public final class InfoRequestHandler implements AsyncHttpServlet {
 	}
 
 	private void processRequest(HttpRequest request, ResultCallback<HttpResponse> callback) {
-		logger.info("Got request {} for available drill downs.", request);
+		Stopwatch sw = Stopwatch.createStarted();
 		Set<String> dimensions = getSetOfStrings(gson, request.getParameter("dimensions"));
 		Set<String> measures = getSetOfStrings(gson, request.getParameter("measures"));
 		String attributesJson = request.getParameter("attributes");
@@ -83,7 +87,16 @@ public final class InfoRequestHandler implements AsyncHttpServlet {
 
 		AggregationQuery.QueryPredicates queryPredicates = filtersJson == null ? new AggregationQuery.QueryPredicates() : gson.fromJson(filtersJson, AggregationQuery.QueryPredicates.class);
 		Map<String, AggregationQuery.QueryPredicate> predicates = queryPredicates.asMap();
-		AvailableDrillDowns availableDrillDowns = cube.getAvailableDrillDowns(dimensions, queryPredicates, measures);
+
+		Set<String> storedMeasures = newHashSet();
+		for (String measure : measures) {
+			if (reportingConfiguration.containsComputedMeasure(measure))
+				storedMeasures.addAll(reportingConfiguration.getComputedMeasureDependencies(measure));
+			else
+				storedMeasures.add(measure);
+		}
+
+		AvailableDrillDowns availableDrillDowns = cube.getAvailableDrillDowns(dimensions, queryPredicates, storedMeasures);
 
 		Map<AttributeResolver, List<String>> resolverKeys = newLinkedHashMap();
 		Map<String, Class<?>> attributeTypes = newLinkedHashMap();
@@ -117,20 +130,28 @@ public final class InfoRequestHandler implements AsyncHttpServlet {
 
 		resolver.resolve(Arrays.asList(attributesObject), attributesClass, attributeTypes, resolverKeys, keyConstants);
 
-		String resultJson = constructJson(availableDrillDowns, attributesClass, attributesObject, attributeTypes.keySet());
+		String resultJson = constructJson(availableDrillDowns, attributesClass, attributesObject, attributeTypes.keySet(), measures);
 
 		callback.onResult(createResponse(resultJson));
+
+		logger.info("Sent response to GET /info request {} [time={}]", request, sw);
 	}
 
 	private String constructJson(AvailableDrillDowns availableDrillDowns, Class<?> attributesClass,
-	                             Object attributesObject, Set<String> attributes) {
+	                             Object attributesObject, Set<String> attributes, Set<String> requestedMeasures) {
 		JsonObject jsonResult = new JsonObject();
 		JsonArray jsonDrillDowns = new JsonArray();
 		JsonArray jsonMeasures = new JsonArray();
 		JsonObject jsonAttributes = new JsonObject();
 
-		for (String measure : availableDrillDowns.getMeasures()) {
-			jsonMeasures.add(new JsonPrimitive(measure));
+		for (String measure : requestedMeasures) {
+			if (availableDrillDowns.getMeasures().contains(measure)) {
+				jsonMeasures.add(new JsonPrimitive(measure));
+			} else if (reportingConfiguration.containsComputedMeasure(measure)) {
+				Set<String> computedMeasureDependencies = reportingConfiguration.getComputedMeasureDependencies(measure);
+				if (all(computedMeasureDependencies, in(availableDrillDowns.getMeasures())))
+					jsonMeasures.add(new JsonPrimitive(measure));
+			}
 		}
 
 		for (List<String> drillDown : availableDrillDowns.getDrillDowns()) {
@@ -142,7 +163,8 @@ public final class InfoRequestHandler implements AsyncHttpServlet {
 		}
 
 		for (String attribute : attributes) {
-			jsonAttributes.add(attribute, new JsonPrimitive(generateGetter(classLoader, attributesClass, attribute).get(attributesObject).toString()));
+			Object resolvedAttribute = generateGetter(classLoader, attributesClass, attribute).get(attributesObject);
+			jsonAttributes.add(attribute, resolvedAttribute == null ? null : new JsonPrimitive(resolvedAttribute.toString()));
 		}
 
 		jsonResult.add("drillDowns", jsonDrillDowns);

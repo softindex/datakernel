@@ -78,7 +78,6 @@ public final class DimensionsRequestHandler implements AsyncHttpServlet {
 
 	@SuppressWarnings("unchecked")
 	private void processRequest(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-		logger.info("Got request {} for dimensions.", request);
 		final Stopwatch sw = Stopwatch.createStarted();
 		String predicatesJson = request.getParameter("filters");
 		String measuresJson = request.getParameter("measures");
@@ -145,7 +144,7 @@ public final class DimensionsRequestHandler implements AsyncHttpServlet {
 	                            Stopwatch sw,  ResultCallback<HttpResponse> callback) {
 		String jsonResult = constructDimensionsJson(resultClass, results, query);
 		callback.onResult(createResponse(jsonResult));
-		logger.info("Sent response to /dimensions request {} (query: {}) in {}", request, query, sw);
+		logger.info("Sent response to GET /dimensions request {} (query: {}) [time={}]", request, query, sw);
 	}
 
 	private <T> String constructDimensionsJson(Class<?> resultClass, List<T> results, AggregationQuery query) {
