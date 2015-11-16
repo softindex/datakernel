@@ -86,20 +86,32 @@ public final class DimensionsRequestHandler implements AsyncHttpServlet {
 
 		AggregationQuery.QueryPredicates queryPredicates = gson.fromJson(predicatesJson, AggregationQuery.QueryPredicates.class);
 		List<String> measures = getListOfStrings(gson, measuresJson);
-		List<String> chain = cube.buildDrillDownChain(queryPredicates.keys(), dimension);
+
 		final Set<String> childrenDimensions = cube.findChildrenDimensions(dimension);
-		List<AggregationQuery.QueryPredicate> filteredPredicates = newArrayList(Iterables.filter(queryPredicates.asCollection(), new Predicate<AggregationQuery.QueryPredicate>() {
-			@Override
-			public boolean apply(AggregationQuery.QueryPredicate predicate) {
-				return !childrenDimensions.contains(predicate.key) && !predicate.key.equals(dimension);
-			}
-		}));
+
+		List<String> chain;
+		List<AggregationQuery.QueryPredicate> filteredPredicates;
+
+		if (queryPredicates == null) {
+			chain = cube.buildDrillDownChain(dimension);
+			filteredPredicates = newArrayList();
+		} else {
+			chain = cube.buildDrillDownChain(queryPredicates.keys(), dimension);
+			filteredPredicates = newArrayList(Iterables.filter(queryPredicates.asCollection(), new Predicate<AggregationQuery.QueryPredicate>() {
+				@Override
+				public boolean apply(AggregationQuery.QueryPredicate predicate) {
+					return !childrenDimensions.contains(predicate.key) && !predicate.key.equals(dimension);
+				}
+			}));
+		}
+
 		List<String> predicateKeys = newArrayList(Iterables.transform(filteredPredicates, new Function<AggregationQuery.QueryPredicate, String>() {
 			@Override
 			public String apply(AggregationQuery.QueryPredicate queryPredicate) {
 				return queryPredicate.key;
 			}
 		}));
+
 		Set<String> availableMeasures = cube.getAvailableMeasures(newArrayList(Iterables.concat(chain, predicateKeys)), measures);
 
 		final AggregationQuery query = new AggregationQuery()

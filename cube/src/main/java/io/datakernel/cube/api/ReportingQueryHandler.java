@@ -330,7 +330,8 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		private void processResults(List<QueryResultPlaceholder> results, HttpRequest request, Stopwatch sw,
 		                            ResultCallback<HttpResponse> callback) {
 			if (results.isEmpty()) {
-				callback.onResult(createResponse(""));
+				callback.onResult(createResponse(constructEmptyResult()));
+				logger.info("Sent response to reporting request {} (query {}) in {}", request, query, sw);
 				return;
 			}
 
@@ -364,6 +365,14 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			if (comparator != null) {
 				Collections.sort(results, comparator);
 			}
+		}
+
+		private String constructEmptyResult() {
+			JsonObject jsonResult = new JsonObject();
+			jsonResult.add("records", new JsonArray());
+			jsonResult.add("totals", new JsonObject());
+			jsonResult.addProperty("count", 0);
+			return jsonResult.toString();
 		}
 
 		private <T> String constructQueryResultJson(List<T> results, Class<?> resultClass,
@@ -431,7 +440,9 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 		}
 
 		private Integer valueOrNull(String str) {
-			return str == null ? null : Integer.valueOf(str);
+			if (str == null)
+				return null;
+			return str.isEmpty() ? null : Integer.valueOf(str);
 		}
 
 		private TotalsPlaceholder createTotalsPlaceholder(Class<?> inputClass, Set<String> requestedStoredFields,
