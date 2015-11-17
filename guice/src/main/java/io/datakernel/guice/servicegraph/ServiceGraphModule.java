@@ -26,7 +26,7 @@ import io.datakernel.guice.workers.NioWorkerScope;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
 import io.datakernel.guice.workers.WorkerThread;
 import io.datakernel.service.AsyncService;
-import io.datakernel.service.AsyncServiceCallback;
+import io.datakernel.service.AsyncServices;
 import io.datakernel.service.ServiceGraph;
 import org.slf4j.Logger;
 
@@ -246,7 +246,7 @@ public final class ServiceGraphModule extends AbstractModule {
 			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
 			for (Dependency<?> dependency : dependencies) {
 				if (dependency.getKey().equals(Key.get(NioWorkerScopeFactory.class))) {
-					return containerOfServices();
+					return AsyncServices.immediateService();
 				}
 			}
 		}
@@ -276,11 +276,13 @@ public final class ServiceGraphModule extends AbstractModule {
 						Set<Dependency<?>> dependencies = ((HasDependencies) injector.getBinding(key)).getDependencies();
 						for (Dependency<?> dependency : dependencies) {
 							Key<?> dependencyForKey = dependency.getKey();
+
 							if (dependencyForKey.getTypeLiteral().getRawType().equals(Provider.class)
 									&& dependencyForKey.getAnnotationType().equals(WorkerThread.class)) {
 
 								Class<?> actualTypeArguments = (Class<?>) ((MoreTypes.ParameterizedTypeImpl)
 										dependencyForKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
+
 								for (KeyInPool actualKeyInPool : mapClassKey.get(actualTypeArguments)) {
 									ServiceGraph.Node dependencyNode = nodeFromNioScope(actualKeyInPool,
 											pool.get(actualKeyInPool.index).get(actualKeyInPool.key));
@@ -366,20 +368,6 @@ public final class ServiceGraphModule extends AbstractModule {
 							(annotation != null ? " " + annotation : "");
 				}
 				return super.nodeToString(node);
-			}
-		};
-	}
-
-	private AsyncService containerOfServices() {
-		return new AsyncService() {
-			@Override
-			public void start(AsyncServiceCallback callback) {
-				callback.onComplete();
-			}
-
-			@Override
-			public void stop(AsyncServiceCallback callback) {
-				callback.onComplete();
 			}
 		};
 	}
