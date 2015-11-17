@@ -106,7 +106,7 @@ public class HttpServerGuiceExample {
 		Injector injector = Guice.createInjector(new TestModule());
 		ServiceGraph graph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		try {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.start(callback);
 			callback.await();
 
@@ -114,7 +114,7 @@ public class HttpServerGuiceExample {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.stop(callback);
 			callback.await();
 		}

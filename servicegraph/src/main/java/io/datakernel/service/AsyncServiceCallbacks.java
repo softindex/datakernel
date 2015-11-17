@@ -17,17 +17,19 @@
 package io.datakernel.service;
 
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 
 public class AsyncServiceCallbacks {
 	private AsyncServiceCallbacks() {
 	}
 
-	public static CountDownServiceCallback withCountDownLatch() {
-		return new CountDownServiceCallback();
+	public static BlockingServiceCallback withCountDownLatch() {
+		return new BlockingServiceCallback();
 	}
 
-	public static class CountDownServiceCallback implements AsyncServiceCallback {
-		CountDownLatch countDownLatch = new CountDownLatch(1);
+	public static class BlockingServiceCallback implements AsyncServiceCallback {
+		private final CountDownLatch countDownLatch = new CountDownLatch(1);
+		private Exception exception;
 
 		@Override
 		public void onComplete() {
@@ -35,12 +37,16 @@ public class AsyncServiceCallbacks {
 		}
 
 		@Override
-		public void onExeption(Exception exception) {
+		public void onException(Exception exception) {
+			this.exception = exception;
 			countDownLatch.countDown();
 		}
 
-		public void await() throws InterruptedException {
+		public void await() throws Exception {
 			countDownLatch.await();
+			if (exception != null) {
+				throw new ExecutionException(exception);
+			}
 		}
 	}
 }

@@ -34,13 +34,13 @@ public class ServiceGraphTest {
 		graph.add(new ServiceGraph.Node("t2", AsyncServices.immediateService()), new ServiceGraph.Node("t1", null));
 
 		try {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.start(callback);
 			callback.await();
 		} catch (Exception e) {
 			e.printStackTrace();
 		} finally {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			graph.stop(callback);
 			callback.await();
 		}

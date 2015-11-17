@@ -41,12 +41,12 @@ public class AsyncServices {
 		return new AsyncService() {
 			@Override
 			public void start(AsyncServiceCallback callback) {
-				callback.onExeption(e);
+				callback.onException(e);
 			}
 
 			@Override
 			public void stop(AsyncServiceCallback callback) {
-				callback.onExeption(e);
+				callback.onException(e);
 			}
 		};
 	}

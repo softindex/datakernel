@@ -257,7 +257,7 @@ public class ServiceGraph implements AsyncService {
 					callback.onComplete();
 					longestPath(processingTimes, vertices, forwardNodes, backwardNodes);
 				} else {
-					callback.onExeption((Exception) (failedNodes.values().iterator().next()));
+					callback.onException((Exception) (failedNodes.values().iterator().next()));
 				}
 			}
 			return;
@@ -288,7 +288,7 @@ public class ServiceGraph implements AsyncService {
 				}
 
 				@Override
-				public void onExeption(Exception e) {
+				public void onException(Exception e) {
 					synchronized (ServiceGraph.this) {
 						logger.error(fail + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
@@ -308,6 +308,18 @@ public class ServiceGraph implements AsyncService {
 	 * Called before starting execution service graph
 	 */
 	protected void onStart() {
+	}
+
+	public void start() throws Exception {
+		AsyncServiceCallbacks.BlockingServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
+		start(startCallback);
+		startCallback.await();
+	}
+
+	public void stop() throws Exception {
+		AsyncServiceCallbacks.BlockingServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
+		stop(stopCallback);
+		stopCallback.await();
 	}
 
 	/**

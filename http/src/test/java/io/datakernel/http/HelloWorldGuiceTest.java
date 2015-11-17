@@ -114,7 +114,7 @@ public class HelloWorldGuiceTest {
 		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.start(callback);
 			callback.await();
 
@@ -135,7 +135,7 @@ public class HelloWorldGuiceTest {
 				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 29\r\n\r\nHello world: worker server #1");
 			}
 		} finally {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.stop(callback);
 			callback.await();
 			Closeables.close(socket0, true);
@@ -149,7 +149,7 @@ public class HelloWorldGuiceTest {
 		Injector injector = Guice.createInjector(new TestModule());
 		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
 		try {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.start(callback);
 			callback.await();
 
@@ -157,7 +157,7 @@ public class HelloWorldGuiceTest {
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			AsyncServiceCallbacks.CountDownServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
+			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.stop(callback);
 			callback.await();
 		}

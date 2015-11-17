@@ -53,11 +53,11 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		AsyncServiceCallbacks.CountDownServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.BlockingServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.start(startCallback);
 		startCallback.await();
 
-		AsyncServiceCallbacks.CountDownServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.BlockingServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.stop(stopCallback);
 		stopCallback.await();
 	}
@@ -82,11 +82,11 @@ public class ServiceGraphTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		AsyncServiceCallbacks.CountDownServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.BlockingServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.start(startCallback);
 		startCallback.await();
 
-		AsyncServiceCallbacks.CountDownServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
+		AsyncServiceCallbacks.BlockingServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
 		serviceGraph.stop(stopCallback);
 		stopCallback.await();
 	}

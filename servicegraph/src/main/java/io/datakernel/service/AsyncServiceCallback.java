@@ -20,5 +20,5 @@ public interface AsyncServiceCallback {
 
 	void onComplete();
 
-	void onExeption(Exception exception);
+	void onException(Exception exception);
 }

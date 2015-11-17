@@ -85,9 +85,9 @@ public class ParallelService implements AsyncService {
 				}
 
 				@Override
-				public void onExeption(Exception e) {
+				public void onException(Exception e) {
 					logger.error("Exception while {} {}", action, service);
-					callback.onExeption(e);
+					callback.onException(e);
 				}
 			};
 			action.apply(service, applyCallback);
