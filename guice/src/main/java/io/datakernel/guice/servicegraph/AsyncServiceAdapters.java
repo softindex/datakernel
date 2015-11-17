@@ -47,7 +47,7 @@ public final class AsyncServiceAdapters {
 	private AsyncServiceAdapters() {
 	}
 
-	public static AsyncServiceAdapter<AsyncService> forConcurrentService() {
+	public static AsyncServiceAdapter<AsyncService> forAsyncService() {
 		return new AsyncServiceAdapter<AsyncService>() {
 			@Override
 			public AsyncService toService(AsyncService service, Executor executor) {
