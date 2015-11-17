@@ -32,7 +32,7 @@ import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-public class ServiceGraph implements AsyncService {
+public class ServiceGraph {
 
 	/**
 	 * Inner class which represents service with its identification key - object. This object can
@@ -325,7 +325,6 @@ public class ServiceGraph implements AsyncService {
 	/**
 	 * Started services from the service graph
 	 */
-	@Override
 	synchronized public void start(AsyncServiceCallback callback) {
 		if (!started) {
 			onStart();
@@ -349,7 +348,6 @@ public class ServiceGraph implements AsyncService {
 	/**
 	 * Stops services from  the service graph
 	 */
-	@Override
 	synchronized public void stop(final AsyncServiceCallback callback) {
 		logger.info("Stopping running services: " + nodesToString(startedServices));
 		visitForwardAsync(new ServiceGraphAction() {

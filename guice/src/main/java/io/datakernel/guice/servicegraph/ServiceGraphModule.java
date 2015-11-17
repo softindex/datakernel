@@ -51,6 +51,8 @@ public final class ServiceGraphModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
+	private final Map<Key<?>, Object> services = new LinkedHashMap<>();
+
 	private final Executor executor;
 
 	/**
@@ -223,9 +225,7 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	@SuppressWarnings("unchecked")
 	private AsyncService getServiceOrNull(Key<?> key, Injector injector) {
-		Binding<?> binding = injector.getBinding(key);
-		if (!Scopes.isSingleton(binding)) return null;
-		Object object = injector.getInstance(key);
+		Object object = services.get(key);
 
 		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
 		if (factoryForKey != null) {
@@ -242,6 +242,7 @@ public final class ServiceGraphModule extends AbstractModule {
 				return checkNotNull(service);
 			}
 		}
+		Binding<?> binding = injector.getBinding(key);
 		if (binding instanceof HasDependencies) {
 			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
 			for (Dependency<?> dependency : dependencies) {
@@ -321,8 +322,30 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 	}
 
+	private final class SingletonServiceScope implements Scope {
+		@SuppressWarnings("unchecked")
+		@Override
+		public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
+			return new Provider<T>() {
+				@Override
+				public T get() {
+					synchronized (SingletonServiceScope.this) {
+						T instance = (T) services.get(key);
+						if (instance == null) {
+							instance = unscoped.get();
+							services.put(key, instance);
+						}
+						return instance;
+					}
+				}
+			};
+		}
+	}
+
 	@Override
 	protected void configure() {
+		SingletonServiceScope serviceScope = new SingletonServiceScope();
+		bindScope(SingletonService.class, serviceScope);
 	}
 
 	public static ServiceGraph getServiceGraph(Injector injector, Key<?>... rootKeys) {

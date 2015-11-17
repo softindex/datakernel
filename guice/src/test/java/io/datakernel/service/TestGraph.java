@@ -19,7 +19,7 @@ package io.datakernel.service;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 import com.google.inject.Provides;
-import com.google.inject.Singleton;
+import io.datakernel.guice.servicegraph.SingletonService;
 
 import java.util.Arrays;
 import java.util.List;
@@ -64,25 +64,25 @@ public class TestGraph {
 		}
 	}
 
-	@Singleton
+	@SingletonService
 	static class S1 extends S {
 	}
 
-	@Singleton
+	@SingletonService
 	static class S2 extends S {
 	}
 
 	static class O1<T> {
 	}
 
-	@Singleton
+	@SingletonService
 	static class S3 extends S {
 		@Inject
 		public S3(O1<Integer> o1) {
 		}
 	}
 
-	@Singleton
+	@SingletonService
 	static class S4 extends S {
 		@Inject
 		public S4(S1 s1, S2 s2) {
@@ -108,7 +108,7 @@ public class TestGraph {
 		}
 	}
 
-	@Singleton
+	@SingletonService
 	static class S5 extends S {
 		@Inject
 		public S5(O4 o4) {
@@ -133,7 +133,7 @@ public class TestGraph {
 		}
 
 		@Provides
-		@Singleton
+		@SingletonService
 		S6 create(S4 s4, S2 s2, S5 s5) {
 			return new S6(s4, s2, s5);
 		}
