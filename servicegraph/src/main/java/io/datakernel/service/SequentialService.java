@@ -87,7 +87,6 @@ public class SequentialService implements AsyncService {
 				public void onExeption(Exception e) {
 					logger.error("Exception while {} {}", action, service);
 					callback.onExeption(e);
-					throw new RuntimeException(e);
 				}
 			};
 			action.apply(service, applyCallback);

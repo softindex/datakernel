@@ -46,7 +46,7 @@ public class AsyncServices {
 
 			@Override
 			public void stop(AsyncServiceCallback callback) {
-				callback.onComplete();
+				callback.onExeption(e);
 			}
 		};
 	}
