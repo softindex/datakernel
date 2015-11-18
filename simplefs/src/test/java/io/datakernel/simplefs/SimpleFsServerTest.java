@@ -84,6 +84,25 @@ public class SimpleFsServerTest {
 	}
 
 	@Test
+	public void testStart() throws IOException {
+		NioEventloop eventloop = new NioEventloop();
+		ExecutorService executor = newCachedThreadPool();
+		Path container = temporaryFolder.getRoot().toPath();
+		Path differentStorage = container.resolve("another/path/in/file/system");
+		Path differentTmpStorage = container.resolve("path/for/tmp/files");
+
+		SimpleFsServer server = SimpleFsServer.buildInstance(eventloop, executor, differentStorage)
+				.setTmpStorage(differentTmpStorage)
+				.build();
+
+		server.start(ignoreCompletionCallback());
+		server.stop(ignoreCompletionCallback());
+
+		assertTrue(Files.exists(differentStorage));
+		assertTrue(Files.exists(differentTmpStorage));
+	}
+
+	@Test
 	public void testUpload() throws IOException {
 		String requestedFile = "file1.txt";
 		final String resultFile = "file1_uploaded.txt";

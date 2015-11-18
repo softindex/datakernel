@@ -274,10 +274,13 @@ final class FileSystem {
 	}
 
 	void ensureInfrastructure() throws IOException {
+		if (!Files.exists(fileStorage)) {
+			Files.createDirectories(fileStorage);
+		}
 		if (Files.exists(tmpStorage)) {
 			cleanFolder(tmpStorage);
 		} else {
-			Files.createDirectory(tmpStorage);
+			Files.createDirectories(tmpStorage);
 		}
 	}
 
