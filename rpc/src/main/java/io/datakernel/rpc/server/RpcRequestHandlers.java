@@ -20,10 +20,10 @@ import io.datakernel.async.AsyncFunction;
 import io.datakernel.async.ResultCallback;
 import org.slf4j.Logger;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.rpc.util.ImmutableCollections.immutableHashMapOf;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcRequestHandlers implements AsyncFunction<Object, Object> {
@@ -48,7 +48,7 @@ public final class RpcRequestHandlers implements AsyncFunction<Object, Object> {
 		}
 
 		public RpcRequestHandlers build() {
-			return new RpcRequestHandlers(immutableHashMapOf(handlers), logger);
+			return new RpcRequestHandlers(Collections.unmodifiableMap(new HashMap<>(handlers)), logger);
 		}
 	}
 

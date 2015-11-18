@@ -42,13 +42,10 @@ import javax.management.MBeanServer;
 import javax.management.openmbean.CompositeData;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.async.AsyncCallbacks.waitAny;
-import static io.datakernel.rpc.util.ImmutableCollections.immutableArrayListOf;
 import static io.datakernel.util.Preconditions.*;
 
 public final class RpcClient implements NioService, RpcClientMBean {
@@ -95,7 +92,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		}
 
 		public Builder addresses(List<InetSocketAddress> addresses) {
-			this.settings.addresses(immutableArrayListOf(addresses));
+			this.settings.addresses(Collections.unmodifiableList(new ArrayList<>(addresses)));
 			return this;
 		}
 

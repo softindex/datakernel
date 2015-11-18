@@ -24,8 +24,6 @@ import javax.management.openmbean.SimpleType;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.rpc.util.ImmutableCollections.immutableArrayListOf;
-
 public final class RpcClientConnectionPool implements RpcClientConnectionPoolMBean {
 	private final List<InetSocketAddress> addresses;
 	private final Map<InetSocketAddress, RpcClientConnection> pool;
@@ -34,7 +32,7 @@ public final class RpcClientConnectionPool implements RpcClientConnectionPoolMBe
 	private boolean monitoring;
 
 	public RpcClientConnectionPool(List<InetSocketAddress> addresses) {
-		this.addresses = immutableArrayListOf(addresses);
+		this.addresses = Collections.unmodifiableList(new ArrayList<>(addresses));
 		this.pool = new HashMap<>(addresses.size());
 	}
 
