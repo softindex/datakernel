@@ -21,11 +21,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.FsClient;
-import io.datakernel.remotefs.RfsConfig;
-import io.datakernel.remotefs.ServerInfo;
-import io.datakernel.remotefs.protocol.ClientProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
@@ -54,13 +49,11 @@ import java.util.concurrent.Executors;
 
 public class StressClient {
 	private static final Logger logger = LoggerFactory.getLogger(StressClient.class);
-
-	private ServerInfo serverInfo = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 5560), 1.0);
-
+	private InetSocketAddress address = new InetSocketAddress(5560);
 	private NioEventloop eventloop = new NioEventloop();
 	private ExecutorService executor = Executors.newCachedThreadPool();
-	private ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, RfsConfig.getDefaultConfig());
-	private FsClient client = SimpleFsClient.createInstance(serverInfo, protocol);
+
+	private SimpleFsClient client = SimpleFsClient.buildInstance(eventloop, address).build();
 
 	private static Random rand = new Random();
 

@@ -21,11 +21,7 @@ import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.FsClient;
-import io.datakernel.remotefs.RfsConfig;
-import io.datakernel.remotefs.ServerInfo;
-import io.datakernel.remotefs.protocol.ClientProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
@@ -36,38 +32,88 @@ import java.util.Set;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
-public final class SimpleFsClient implements FsClient {
-	private final ServerInfo serverInfo;
-	private final ClientProtocol protocol;
+public final class SimpleFsClient {
+	public static final class Builder {
+		private final InetSocketAddress address;
+		private final GsonClientProtocol.Builder protocolBuilder;
 
-	private SimpleFsClient(ServerInfo serverInfo, ClientProtocol protocol) {
-		this.serverInfo = serverInfo;
+		private Builder(NioEventloop eventloop, InetSocketAddress address) {
+			this.address = address;
+			protocolBuilder = GsonClientProtocol.buildInstance(eventloop);
+		}
+
+		public Builder setMinChunkSize(int minChunkSize) {
+			protocolBuilder.setMinChunkSize(minChunkSize);
+			return this;
+		}
+
+		public Builder setSerializerBufferSize(int serializerBufferSize) {
+			protocolBuilder.setSerializerBufferSize(serializerBufferSize);
+			return this;
+		}
+
+		public Builder setMaxChunkSize(int maxChunkSize) {
+			protocolBuilder.setMaxChunkSize(maxChunkSize);
+			return this;
+		}
+
+		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
+			protocolBuilder.setDeserializerBufferSize(deserializerBufferSize);
+			return this;
+		}
+
+		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+			protocolBuilder.setSerializerFlushDelayMillis(serializerFlushDelayMillis);
+			return this;
+		}
+
+		public Builder setConnectTimeout(int connectTimeout) {
+			protocolBuilder.setConnectTimeout(connectTimeout);
+			return this;
+		}
+
+		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+			protocolBuilder.setSerializerMaxMessageSize(serializerMaxMessageSize);
+			return this;
+		}
+
+		public Builder setSocketSettings(SocketSettings socketSettings) {
+			protocolBuilder.setSocketSettings(socketSettings);
+			return this;
+		}
+
+		public SimpleFsClient build() {
+			GsonClientProtocol protocol = protocolBuilder.build();
+			return new SimpleFsClient(address, protocol);
+		}
+	}
+
+	private final InetSocketAddress serverAddress;
+	private final GsonClientProtocol protocol;
+
+	private SimpleFsClient(InetSocketAddress serverAddress, GsonClientProtocol protocol) {
+		this.serverAddress = serverAddress;
 		this.protocol = protocol;
 	}
 
-	public static SimpleFsClient createInstance(ServerInfo serverInfo, ClientProtocol protocol) {
-		return new SimpleFsClient(serverInfo, protocol);
-	}
-
 	public static SimpleFsClient createInstance(NioEventloop eventloop, InetSocketAddress address) {
-		ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, RfsConfig.getDefaultConfig());
-		ServerInfo info = new ServerInfo(-1, address, 1.0);
-		return new SimpleFsClient(info, protocol);
+		return buildInstance(eventloop, address).build();
 	}
 
-	@Override
-	public void upload(final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
-		protocol.upload(serverInfo, fileName, producer, callback);
+	public static Builder buildInstance(NioEventloop eventloop, InetSocketAddress address) {
+		return new Builder(eventloop, address);
 	}
 
-	@Override
-	public void download(final String fileName, final StreamConsumer<ByteBuf> consumer) {
-		protocol.download(serverInfo, fileName, consumer, ignoreCompletionCallback());
+	public void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+		protocol.upload(serverAddress, fileName, producer, callback);
 	}
 
-	@Override
+	public void download(String fileName, StreamConsumer<ByteBuf> consumer) {
+		protocol.download(serverAddress, fileName, consumer, ignoreCompletionCallback());
+	}
+
 	public void list(final ResultCallback<List<String>> callback) {
-		protocol.list(serverInfo, new ForwardingResultCallback<Set<String>>(callback) {
+		protocol.list(serverAddress, new ForwardingResultCallback<Set<String>>(callback) {
 			@Override
 			public void onResult(Set<String> result) {
 				callback.onResult(new ArrayList<>(result));
@@ -75,8 +121,7 @@ public final class SimpleFsClient implements FsClient {
 		});
 	}
 
-	@Override
-	public void delete(final String fileName, final CompletionCallback callback) {
-		protocol.delete(serverInfo, fileName, callback);
+	public void delete(String fileName, CompletionCallback callback) {
+		protocol.delete(serverAddress, fileName, callback);
 	}
 }

@@ -18,8 +18,8 @@ package io.datakernel.hashfs.example;
 
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.hashfs.HashFsServer;
-import io.datakernel.remotefs.RfsConfig;
-import io.datakernel.remotefs.ServerInfo;
+import io.datakernel.hashfs.RfsConfig;
+import io.datakernel.hashfs.ServerInfo;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

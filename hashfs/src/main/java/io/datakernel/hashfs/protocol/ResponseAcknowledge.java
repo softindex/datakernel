@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.hashfs.protocol;
 
-import java.util.Collection;
-import java.util.List;
-
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+class ResponseAcknowledge extends Response {
+	@Override
+	public String toString() {
+		return "Uploaded{OK}";
+	}
 }

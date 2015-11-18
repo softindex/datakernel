@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.hashfs.protocol;
 
-import java.util.Collection;
-import java.util.List;
+class ResponseError extends Response {
+	public final String msg;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+	public ResponseError(String msg) {
+		this.msg = msg;
+	}
+
+	@Override
+	public String toString() {
+		return "Error{" + msg + "}";
+	}
 }

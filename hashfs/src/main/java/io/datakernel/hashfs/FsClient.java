@@ -16,9 +16,20 @@
 
 package io.datakernel.hashfs;
 
-import java.util.Collection;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+
 import java.util.List;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+public interface FsClient {
+	void upload(String destinationFileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+
+	void download(String sourceFileName, StreamConsumer<ByteBuf> consumer);
+
+	void list(ResultCallback<List<String>> callback);
+
+	void delete(String fileName, CompletionCallback callback);
 }

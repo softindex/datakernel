@@ -20,11 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.FsClient;
-import io.datakernel.remotefs.RfsConfig;
-import io.datakernel.remotefs.ServerInfo;
-import io.datakernel.remotefs.protocol.ClientProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
+import io.datakernel.hashfs.protocol.GsonClientProtocol;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
@@ -137,7 +133,7 @@ public class HashFsClient implements FsClient {
 	private void upload(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
 	                    final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.upload(server, fileName, producer, new CompletionCallback() {
+		protocol.upload(server.getAddress(), fileName, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.onComplete();
@@ -164,7 +160,7 @@ public class HashFsClient implements FsClient {
 	                      final StreamConsumer<ByteBuf> consumer) {
 		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.download(server, fileName, forwarder.getInput(), new CompletionCallback() {
+		protocol.download(server.getAddress(), fileName, forwarder.getInput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				forwarder.getOutput().streamTo(consumer);
@@ -190,7 +186,7 @@ public class HashFsClient implements FsClient {
 	private void delete(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
 	                    final CompletionCallback callback) {
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.delete(server, fileName, new CompletionCallback() {
+		protocol.delete(server.getAddress(), fileName, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.onComplete();
@@ -225,7 +221,7 @@ public class HashFsClient implements FsClient {
 			}
 		});
 		for (ServerInfo server : servers) {
-			protocol.list(server, waiter);
+			protocol.list(server.getAddress(), waiter);
 		}
 	}
 
@@ -256,7 +252,7 @@ public class HashFsClient implements FsClient {
 			}
 		});
 		for (ServerInfo server : bootstrap) {
-			protocol.alive(server, waiter);
+			protocol.alive(server.getAddress(), waiter);
 		}
 	}
 

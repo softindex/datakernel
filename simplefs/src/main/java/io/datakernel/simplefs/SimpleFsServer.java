@@ -16,62 +16,161 @@
 
 package io.datakernel.simplefs;
 
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.*;
-import io.datakernel.remotefs.protocol.ServerProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
-import io.datakernel.stream.StreamConsumer;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.remotefs.FsServer.ServerStatus.RUNNING;
-import static io.datakernel.remotefs.FsServer.ServerStatus.SHUTDOWN;
+import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.RUNNING;
+import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.SHUTDOWN;
 
-public final class SimpleFsServer implements FsServer {
+public final class SimpleFsServer implements NioService {
+	public static final long DEFAULT_APPROVE_WAIT_TIME = 10 * 100;
+	public static final Exception SERVER_IS_DOWN_EXCEPTION = new Exception("Server is down");
+
+	public static final class Builder {
+		private final NioEventloop eventloop;
+		private final FileSystem.Builder fsBuilder;
+		private final GsonServerProtocol.Builder protocolBuilder;
+
+		private final List<InetSocketAddress> addresses = new ArrayList<>();
+
+		private long approveWaitTime = DEFAULT_APPROVE_WAIT_TIME;
+
+		public Builder(NioEventloop eventloop, ExecutorService executor, Path storage) {
+			this.eventloop = eventloop;
+			fsBuilder = FileSystem.buildInstance(eventloop, executor, storage);
+			protocolBuilder = GsonServerProtocol.createInstance(eventloop);
+		}
+
+		public Builder setApproveWaitTime(long approveWaitTime) {
+			this.approveWaitTime = approveWaitTime;
+			return this;
+		}
+
+		public Builder specifyListenAddress(InetSocketAddress address) {
+			this.addresses.add(address);
+			return this;
+		}
+
+		public Builder specifyListenAddresses(List<InetSocketAddress> addresses) {
+			this.addresses.addAll(addresses);
+			return this;
+		}
+
+		public Builder specifyListenPort(int port) {
+			this.addresses.add(new InetSocketAddress(port));
+			return this;
+		}
+
+		public Builder setTmpStorage(Path tmpStorage) {
+			fsBuilder.setTmpStorage(tmpStorage);
+			return this;
+		}
+
+		public Builder setInProgressExtension(String inProgressExtension) {
+			fsBuilder.setInProgressExtension(inProgressExtension);
+			return this;
+		}
+
+		public Builder setReaderBufferSize(int readerBufferSize) {
+			fsBuilder.setReaderBufferSize(readerBufferSize);
+			return this;
+		}
+
+		public Builder setTmpDirectoryName(String tmpDirectoryName) {
+			fsBuilder.setTmpDirectoryName(tmpDirectoryName);
+			return this;
+		}
+
+		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
+			protocolBuilder.setDeserializerBufferSize(deserializerBufferSize);
+			return this;
+		}
+
+		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+			protocolBuilder.setSerializerFlushDelayMillis(serializerFlushDelayMillis);
+			return this;
+		}
+
+		public Builder setSerializerBufferSize(int serializerBufferSize) {
+			protocolBuilder.setSerializerBufferSize(serializerBufferSize);
+			return this;
+		}
+
+		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+			protocolBuilder.setSerializerMaxMessageSize(serializerMaxMessageSize);
+			return this;
+		}
+
+		public SimpleFsServer build() {
+			FileSystem fs = fsBuilder.build();
+			GsonServerProtocol protocol = protocolBuilder.build();
+			SimpleFsServer server = new SimpleFsServer(eventloop, fs, protocol, approveWaitTime);
+			protocol.wireServer(server);
+			protocol.setListenAddresses(addresses);
+			return server;
+		}
+	}
+
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServer.class);
 	private final NioEventloop eventloop;
 
 	private final FileSystem fileSystem;
-	private ServerProtocol protocol;
+	private final GsonServerProtocol protocol;
 
 	private final Set<String> filesToBeCommited = new HashSet<>();
-	private CompletionCallback callbackOnStop;
 	private final long approveWaitTime;
 
+	private CompletionCallback callbackOnStop;
 	private ServerStatus serverStatus;
 
-	private SimpleFsServer(NioEventloop eventLoop, FileSystem fileSystem, ServerProtocol protocol, long approveWaitTime) {
+	private SimpleFsServer(NioEventloop eventLoop, FileSystem fileSystem, GsonServerProtocol protocol, long approveWaitTime) {
 		this.eventloop = eventLoop;
 		this.fileSystem = fileSystem;
 		this.protocol = protocol;
 		this.approveWaitTime = approveWaitTime;
 	}
 
-	public static SimpleFsServer createInstance(NioEventloop eventLoop, FileSystem fileSystem, ServerProtocol protocol, RfsConfig config) {
-		SimpleFsServer server = new SimpleFsServer(eventLoop, fileSystem, protocol, config.getApproveWaitTime());
-		protocol.wireServer(server);
-		return server;
+	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
+	                                            List<InetSocketAddress> addresses) {
+		return buildInstance(eventloop, executor, storage)
+				.specifyListenAddresses(addresses)
+				.build();
 	}
 
 	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
-	                                            List<InetSocketAddress> addresses, RfsConfig config) {
-		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, storage, config);
-		ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, addresses, config);
-		return createInstance(eventloop, fileSystem, protocol, config);
+	                                            InetSocketAddress address) {
+		return buildInstance(eventloop, executor, storage)
+				.specifyListenAddress(address)
+				.build();
+	}
+
+	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
+	                                            int port) {
+		return buildInstance(eventloop, executor, storage)
+				.specifyListenPort(port)
+				.build();
+	}
+
+	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
+		return new Builder(eventloop, executor, storage);
 	}
 
 	@Override
@@ -88,20 +187,15 @@ public final class SimpleFsServer implements FsServer {
 			return;
 		}
 
-		CompletionCallback waiter = AsyncCallbacks.waitAll(2, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				serverStatus = RUNNING;
-				callback.onComplete();
-			}
+		try {
+			protocol.listen();
+			fileSystem.ensureInfrastructure();
+			serverStatus = RUNNING;
+			callback.onComplete();
+		} catch (IOException e) {
+			callback.onException(e);
+		}
 
-			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
-			}
-		});
-		fileSystem.start(waiter);
-		protocol.start(waiter);
 	}
 
 	@Override
@@ -109,21 +203,19 @@ public final class SimpleFsServer implements FsServer {
 		logger.info("Stopping SimpleFS");
 		serverStatus = SHUTDOWN;
 		if (filesToBeCommited.isEmpty()) {
-			CompletionCallback waiter = AsyncCallbacks.waitAll(2, callback);
-			fileSystem.stop(waiter);
-			protocol.stop(waiter);
+			protocol.close();
+			callback.onComplete();
 		} else {
 			callbackOnStop = callback;
 		}
 	}
 
-	@Override
 	public void upload(final String fileName, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		logger.info("Received command to upload file: {}", fileName);
 
 		if (serverStatus != RUNNING) {
 			logger.info("Can't perform operation. Server is down!");
-			callback.onException(new Exception("Server is down"));
+			callback.onException(SERVER_IS_DOWN_EXCEPTION);
 			return;
 		}
 
@@ -137,13 +229,12 @@ public final class SimpleFsServer implements FsServer {
 		});
 	}
 
-	@Override
 	public void commit(final String fileName, boolean success, final CompletionCallback callback) {
 		logger.info("Received command to commit file: {}, {}", fileName, success);
 
 		if (serverStatus != RUNNING && !filesToBeCommited.contains(fileName)) {
 			logger.info("Can't perform operation. Server is down!");
-			callback.onException(new Exception("Server is down"));
+			callback.onException(SERVER_IS_DOWN_EXCEPTION);
 			return;
 		}
 
@@ -155,14 +246,14 @@ public final class SimpleFsServer implements FsServer {
 				public void onComplete() {
 					logger.info("Commited file: {}", fileName);
 					callback.onComplete();
-					operationFinished();
+					onOperationFinished();
 				}
 
 				@Override
 				public void onException(Exception e) {
 					logger.error("Can't commit file: {}", fileName, e);
 					callback.onException(e);
-					operationFinished();
+					onOperationFinished();
 				}
 			});
 		} else {
@@ -171,67 +262,56 @@ public final class SimpleFsServer implements FsServer {
 				public void onComplete() {
 					logger.info("Cancel commit file: {}", fileName);
 					callback.onComplete();
-					operationFinished();
+					onOperationFinished();
 				}
 
 				@Override
 				public void onException(Exception e) {
 					logger.error("Can't cancel commit file: {}", fileName, e);
 					callback.onException(e);
-					operationFinished();
+					onOperationFinished();
 				}
 			});
 		}
 	}
 
-	@Override
-	public void download(final String fileName, final StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
+	public long size(String fileName) {
+		return fileSystem.exists(fileName);
+	}
+
+	public StreamProducer<ByteBuf> download(final String fileName) {
 		logger.info("Received command to download file: {}", fileName);
 
 		if (serverStatus != RUNNING) {
 			logger.info("Can't perform operation. Server is down!");
-			callback.onException(new Exception("Server is down"));
-			return;
+			return StreamProducers.closingWithError(eventloop, SERVER_IS_DOWN_EXCEPTION);
 		}
 
-		fileSystem.get(fileName).streamTo(consumer);
-		callback.onResult(ignoreCompletionCallback());
+		return fileSystem.get(fileName);
 	}
 
-	@Override
 	public void delete(String fileName, CompletionCallback callback) {
 		logger.info("Received command to delete file: {}", fileName);
 
 		if (serverStatus != RUNNING) {
 			logger.info("Can't perform operation. Server is down!");
-			callback.onException(new Exception("Server is down"));
+			callback.onException(SERVER_IS_DOWN_EXCEPTION);
 			return;
 		}
 
 		fileSystem.delete(fileName, callback);
 	}
 
-	@Override
 	public void list(ResultCallback<Set<String>> callback) {
 		logger.info("Received command to list files");
 
 		if (serverStatus != RUNNING) {
 			logger.info("Can't perform operation. Server is down!");
-			callback.onException(new Exception("Server is down"));
+			callback.onException(SERVER_IS_DOWN_EXCEPTION);
 			return;
 		}
 
 		fileSystem.list(callback);
-	}
-
-	@Override
-	public void showAlive(ResultCallback<Set<ServerInfo>> callback) {
-		callback.onException(new UnsupportedOperationException());
-	}
-
-	@Override
-	public void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
-		callback.onException(new UnsupportedOperationException());
 	}
 
 	private void scheduleTmpFileDeletion(final String fileName) {
@@ -245,11 +325,13 @@ public final class SimpleFsServer implements FsServer {
 		});
 	}
 
-	private void operationFinished() {
+	private void onOperationFinished() {
 		if (serverStatus == SHUTDOWN && filesToBeCommited.isEmpty()) {
-			CompletionCallback waiter = AsyncCallbacks.waitAll(2, callbackOnStop);
-			fileSystem.stop(waiter);
-			protocol.stop(waiter);
+			protocol.close();
 		}
+	}
+
+	enum ServerStatus {
+		RUNNING, SHUTDOWN
 	}
 }

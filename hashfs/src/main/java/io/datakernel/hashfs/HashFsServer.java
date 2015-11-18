@@ -22,11 +22,9 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.*;
-import io.datakernel.remotefs.protocol.ClientProtocol;
-import io.datakernel.remotefs.protocol.ServerProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
+import io.datakernel.eventloop.NioService;
+import io.datakernel.hashfs.protocol.GsonClientProtocol;
+import io.datakernel.hashfs.protocol.GsonServerProtocol;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
@@ -39,7 +37,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
-public class HashFsServer implements Commands, FsServer {
+public class HashFsServer implements Commands, FsServer, NioService {
 	private static final Logger logger = LoggerFactory.getLogger(HashFsServer.class);
 	private final NioEventloop eventloop;
 
@@ -75,7 +73,7 @@ public class HashFsServer implements Commands, FsServer {
 
 	public static HashFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path serverStorage,
 	                                          ServerInfo myId, Set<ServerInfo> bootstrap, RfsConfig config) {
-		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, serverStorage, config);
+		FileSystem fileSystem = FileSystemImpl.buildInstance(eventloop, executor, serverStorage).build();
 		HashingStrategy hashing = new RendezvousHashing();
 		Logic logic = LogicImpl.createInstance(hashing, myId, bootstrap, config);
 		ClientProtocol clientProtocol = GsonClientProtocol.createInstance(eventloop, config);
@@ -313,7 +311,7 @@ public class HashFsServer implements Commands, FsServer {
 		logger.info("Received command to replicate file {} to server {}", fileName, server);
 		StreamProducer<ByteBuf> producer = fileSystem.get(fileName);
 		logic.onReplicationStart(fileName);
-		clientProtocol.upload(server, fileName, producer, new CompletionCallback() {
+		clientProtocol.upload(server.getAddress(), fileName, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				logger.info("Successfully replicated file {} to server {}", fileName, server);
@@ -348,7 +346,7 @@ public class HashFsServer implements Commands, FsServer {
 	public void offer(ServerInfo server, Set<String> forUpload, Set<String> forDeletion,
 	                  ResultCallback<Set<String>> callback) {
 		logger.info("Received command to offer {} files (forUpload: {}, forDeletion: {})", server, forUpload.size(), forDeletion.size());
-		clientProtocol.offer(server, forUpload, forDeletion, callback);
+		clientProtocol.offer(server.getAddress(), forUpload, forDeletion, callback);
 	}
 
 	@Override
@@ -362,7 +360,7 @@ public class HashFsServer implements Commands, FsServer {
 		final int[] counter = {bootstrap.size()};
 
 		for (final ServerInfo server : bootstrap) {
-			clientProtocol.alive(server, new ResultCallback<Set<ServerInfo>>() {
+			clientProtocol.alive(server.getAddress(), new ResultCallback<Set<ServerInfo>>() {
 				@Override
 				public void onResult(Set<ServerInfo> result) {
 					logger.trace("Received {} alive servers from {}", result.size(), server);

@@ -24,11 +24,8 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.remotefs.*;
-import io.datakernel.remotefs.protocol.ClientProtocol;
-import io.datakernel.remotefs.protocol.ServerProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
+import io.datakernel.hashfs.protocol.GsonClientProtocol;
+import io.datakernel.hashfs.protocol.GsonServerProtocol;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
@@ -492,8 +489,8 @@ public class IntegrationSingleNodeTest {
 		return HashFsClient.createInstance(eventloop, clientProtocol, new RendezvousHashing(), Lists.newArrayList(local), config);
 	}
 
-	private FsServer getServer(NioEventloop eventloop, ExecutorService executor) {
-		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, serverStorage, config);
+	private NioService getServer(NioEventloop eventloop, ExecutorService executor) {
+		FileSystem fileSystem = FileSystemImpl.buildInstance(eventloop, executor, serverStorage).build();
 		Logic logic = LogicImpl.createInstance(new RendezvousHashing(), local, Sets.newHashSet(local), config);
 		ClientProtocol clientProtocol1 = GsonClientProtocol.createInstance(eventloop, config);
 		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, Lists.newArrayList(local.getAddress()), config);

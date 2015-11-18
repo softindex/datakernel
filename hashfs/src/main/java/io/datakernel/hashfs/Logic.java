@@ -18,7 +18,6 @@ package io.datakernel.hashfs;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.remotefs.ServerInfo;
 
 import java.util.Set;
 

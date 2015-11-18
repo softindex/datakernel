@@ -14,11 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.hashfs.protocol;
 
-import java.util.Collection;
-import java.util.List;
+class CommandCommit extends Command {
+	public final String filePath;
+	public final boolean isOk;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+	public CommandCommit(String filePath, boolean isOk) {
+		this.filePath = filePath;
+		this.isOk = isOk;
+	}
+
+	@Override
+	public String toString() {
+		return "Commit{filepath=\'" + filePath + "\',isOk=" + isOk + "}";
+	}
 }

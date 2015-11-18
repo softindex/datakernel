@@ -16,18 +16,11 @@
 
 package io.datakernel.simplefs.stress;
 
-import com.google.common.collect.Lists;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.FileSystem;
-import io.datakernel.remotefs.FileSystemImpl;
-import io.datakernel.remotefs.FsServer;
-import io.datakernel.remotefs.RfsConfig;
-import io.datakernel.remotefs.protocol.ServerProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.simplefs.SimpleFsServer;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -37,20 +30,18 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
-	private static final Path SERVER_STORAGE_PATH = Paths.get("./test/server_storage");
+	private static final Path STORAGE_PATH = Paths.get("./test/server_storage");
 	public static final int PORT = 5560;
 
 	private static final ExecutorService executor = newCachedThreadPool();
 	private static final NioEventloop eventloop = new NioEventloop();
 
-	public static RfsConfig config = RfsConfig.getDefaultConfig();
-	public static FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, SERVER_STORAGE_PATH, config);
-	public static ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, Lists.newArrayList(new InetSocketAddress(PORT)), config);
-
-	public static FsServer server = SimpleFsServer.createInstance(eventloop, fileSystem, protocol, config);
+	public static NioService server = SimpleFsServer.buildInstance(eventloop, executor, STORAGE_PATH)
+			.specifyListenPort(PORT)
+			.build();
 
 	public static void main(String[] args) throws IOException {
-		Files.createDirectories(SERVER_STORAGE_PATH);
+		Files.createDirectories(STORAGE_PATH);
 		server.start(ignoreCompletionCallback());
 		eventloop.run();
 	}

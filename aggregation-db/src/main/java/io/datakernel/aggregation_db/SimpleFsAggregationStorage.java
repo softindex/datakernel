@@ -18,7 +18,6 @@ package io.datakernel.aggregation_db;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.FsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamConsumer;
@@ -38,7 +37,7 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 
 	private final NioEventloop eventloop;
 	private final AggregationStructure aggregationStructure;
-	private final FsClient client;
+	private final SimpleFsClient client;
 
 	private static final int LISTEN_PORT = 45555;
 	private static final InetSocketAddress address = new InetSocketAddress("127.0.0.1", LISTEN_PORT);

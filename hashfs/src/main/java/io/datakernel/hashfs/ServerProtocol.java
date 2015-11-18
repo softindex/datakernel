@@ -16,9 +16,14 @@
 
 package io.datakernel.hashfs;
 
-import java.util.Collection;
-import java.util.List;
+import io.datakernel.eventloop.AbstractNioServer;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioService;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+public abstract class ServerProtocol extends AbstractNioServer<ServerProtocol> implements NioService {
+	public ServerProtocol(NioEventloop eventloop) {
+		super(eventloop);
+	}
+
+	public abstract void wireServer(FsServer server);
 }

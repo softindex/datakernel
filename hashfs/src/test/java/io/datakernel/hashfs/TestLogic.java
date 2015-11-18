@@ -17,8 +17,6 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.remotefs.RfsConfig;
-import io.datakernel.remotefs.ServerInfo;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;

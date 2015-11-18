@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.hashfs.protocol;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.Collections;
+import java.util.Set;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+class ResponseListFiles extends Response {
+	public final Set<String> files;
+
+	public ResponseListFiles(Set<String> files) {
+		this.files = Collections.unmodifiableSet(files);
+	}
+
+	@Override
+	public String toString() {
+		return "Listed{" + files.size() + "}";
+	}
 }

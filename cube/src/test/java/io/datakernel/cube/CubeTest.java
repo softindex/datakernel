@@ -32,9 +32,7 @@ import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.remotefs.FsServer;
-import io.datakernel.remotefs.RfsConfig;
-import io.datakernel.simplefs.SimpleFsClient;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -155,10 +153,10 @@ public class CubeTest {
 
 	private static final int LISTEN_PORT = 45578;
 
-	private FsServer prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
+	private NioService prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage,
-				Lists.newArrayList(new InetSocketAddress(LISTEN_PORT)), RfsConfig.getDefaultConfig());
+				Lists.newArrayList(new InetSocketAddress(LISTEN_PORT)));
 
 		fileServer.start(new CompletionCallback() {
 			@Override
@@ -174,7 +172,7 @@ public class CubeTest {
 		return fileServer;
 	}
 
-	private void stop(FsServer server) {
+	private void stop(NioService server) {
 		server.stop(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -196,7 +194,7 @@ public class CubeTest {
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 
 		Path serverStorage = temporaryFolder.newFolder().toPath();
-		final FsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
+		final NioService simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
 		AggregationChunkStorage storage = new SimpleFsAggregationStorage(eventloop, aggregationStructure, new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
@@ -226,7 +224,7 @@ public class CubeTest {
 
 		eventloop.run();
 
-		final FsServer simpleFsServer2 = prepareServer(eventloop, serverStorage);
+		final NioService simpleFsServer2 = prepareServer(eventloop, serverStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		final AggregationQuery query = new AggregationQuery()
 				.keys("key1", "key2")

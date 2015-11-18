@@ -24,18 +24,12 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.remotefs.*;
-import io.datakernel.remotefs.protocol.ClientProtocol;
-import io.datakernel.remotefs.protocol.ServerProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
-import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -58,8 +52,7 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
 public class SimpleFsServerTest {
-	private static final ServerInfo serverInfo = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 6432), 1.0);
-	private static final RfsConfig config = RfsConfig.getDefaultConfig();
+	private static final InetSocketAddress address = new InetSocketAddress(5560);
 
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -90,7 +83,6 @@ public class SimpleFsServerTest {
 		Files.copy(clientStorage.resolve("file1.txt"), serverStorage.resolve("first file.txt"));
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Test
 	public void testUpload() throws IOException {
 		String requestedFile = "file1.txt";
@@ -110,7 +102,7 @@ public class SimpleFsServerTest {
 
 		ExecutorService executor = newCachedThreadPool();
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		final CompletionCallback callback = AsyncCallbacks.waitAll(files, new CompletionCallback() {
 			@Override
@@ -178,7 +170,7 @@ public class SimpleFsServerTest {
 		NioEventloop eventloop = new NioEventloop();
 		ExecutorService executor = newCachedThreadPool();
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
 				16 * 1024, clientStorage.resolve(requestedFile));
@@ -218,7 +210,7 @@ public class SimpleFsServerTest {
 		NioEventloop eventloop = new NioEventloop();
 		ExecutorService executor = newCachedThreadPool();
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		final StreamProducer<ByteBuf> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop,
@@ -253,7 +245,6 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Test
 	public void testDownload() throws Exception {
 		final String requestedFile = "file1.txt";
@@ -276,7 +267,6 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Ignore
 	@Test
 	public void testDownloadNotExist() throws Exception {
 		final String requestedFile = "file_not_exist.txt";
@@ -285,7 +275,7 @@ public class SimpleFsServerTest {
 		ExecutorService executor = newCachedThreadPool();
 		NioEventloop eventloop = new NioEventloop();
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		final StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile), true);
 
@@ -328,7 +318,7 @@ public class SimpleFsServerTest {
 		ExecutorService executor = newCachedThreadPool();
 		NioEventloop eventloop = new NioEventloop();
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		final StreamFileWriter consumer1 = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile1), true);
 		final StreamFileWriter consumer2 = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile2), true);
@@ -378,7 +368,6 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Test
 	public void testDeleteFile() throws Exception {
 		final String requestedFile = "first file.txt";
@@ -408,7 +397,7 @@ public class SimpleFsServerTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		server.start(new CompletionCallback() {
 			@Override
@@ -437,7 +426,6 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	@Test
 	public void testFileList() throws Exception {
 		ExecutorService executor = newCachedThreadPool();
@@ -447,7 +435,7 @@ public class SimpleFsServerTest {
 		final List<String> expected = Lists.newArrayList("this/is/not/empty/directory/file1.txt", "file1.txt", "first file.txt");
 
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		server.start(new CompletionCallback() {
 			@Override
@@ -481,7 +469,6 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	private static void createFile(Path container, String fileName, String text) throws IOException {
 		Path path = container.resolve(fileName);
 		Files.write(path, text.getBytes(UTF_8));
@@ -491,7 +478,7 @@ public class SimpleFsServerTest {
 		NioEventloop eventloop = new NioEventloop();
 		ExecutorService executor = newCachedThreadPool();
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		final StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor,
 				16 * 1024, clientStorage.resolve(requestedFile));
@@ -526,7 +513,7 @@ public class SimpleFsServerTest {
 		ExecutorService executor = newCachedThreadPool();
 		NioEventloop eventloop = new NioEventloop();
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		final StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve(resultFile), true);
 
@@ -562,7 +549,7 @@ public class SimpleFsServerTest {
 		NioEventloop eventloop = new NioEventloop();
 
 		final NioService server = createServer(eventloop, executor);
-		final FsClient client = createClient(eventloop);
+		final SimpleFsClient client = createClient(eventloop);
 
 		server.start(new CompletionCallback() {
 			@Override
@@ -591,14 +578,13 @@ public class SimpleFsServerTest {
 	}
 
 	private static NioService createServer(NioEventloop eventloop, ExecutorService executor) {
-		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, serverStorage, config);
-		ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, Lists.newArrayList(serverInfo.getAddress()), config);
-		return SimpleFsServer.createInstance(eventloop, fileSystem, protocol, config);
+		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage)
+				.specifyListenAddress(address)
+				.build();
 	}
 
-	private static FsClient createClient(NioEventloop eventloop) {
-		ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, config);
-		return SimpleFsClient.createInstance(serverInfo, protocol);
+	private static SimpleFsClient createClient(NioEventloop eventloop) {
+		return SimpleFsClient.buildInstance(eventloop, address).build();
 
 	}
 }

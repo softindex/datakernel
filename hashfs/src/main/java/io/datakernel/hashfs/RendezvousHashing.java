@@ -16,8 +16,6 @@
 
 package io.datakernel.hashfs;
 
-import io.datakernel.remotefs.ServerInfo;
-
 import java.util.*;
 
 import static com.google.common.base.Preconditions.checkArgument;
