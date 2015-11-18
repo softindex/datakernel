@@ -133,10 +133,11 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 	}
 
 	public void endStreaming() {
+		sendEndOfStream = true;
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				sendEndOfStream();
+				doProduce();
 			}
 		});
 	}
