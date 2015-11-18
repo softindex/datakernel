@@ -56,7 +56,7 @@ public final class AsyncServiceAdapters {
 		};
 	}
 
-	private static CompletionCallback toCompletionCallback(final AsyncServiceCallback callback) {
+	public static CompletionCallback toCompletionCallback(final AsyncServiceCallback callback) {
 		return new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -82,7 +82,6 @@ public final class AsyncServiceAdapters {
 							@Override
 							public void run() {
 								node.start(toCompletionCallback(callback));
-								callback.onComplete();
 							}
 						});
 					}
@@ -93,7 +92,6 @@ public final class AsyncServiceAdapters {
 							@Override
 							public void run() {
 								node.stop(toCompletionCallback(callback));
-								callback.onComplete();
 							}
 						});
 					}
