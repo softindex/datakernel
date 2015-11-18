@@ -33,6 +33,39 @@ import java.util.Set;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
+	public static class Builder {
+		private final NioEventloop eventloop;
+		private int deserializerBufferSize = DEFAULT_DESERIALIZER_BUFFER_SIZE;
+		private int serializerBufferSize = DEFAULT_SERIALIZER_BUFFER_SIZE;
+		private int serializerMaxMessageSize = DEFAULT_SERIALIZER_MAX_MESSAGE_SIZE;
+		private int serializerFlushDelayMillis = DEFAULT_SERIALIZER_FLUSH_DELAY_MS;
+
+		private Builder(NioEventloop eventloop) {
+			this.eventloop = eventloop;
+		}
+
+		public void setDeserializerBufferSize(int deserializerBufferSize) {
+			this.deserializerBufferSize = deserializerBufferSize;
+		}
+
+		public void setSerializerBufferSize(int serializerBufferSize) {
+			this.serializerBufferSize = serializerBufferSize;
+		}
+
+		public void setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+			this.serializerMaxMessageSize = serializerMaxMessageSize;
+		}
+
+		public void setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+			this.serializerFlushDelayMillis = serializerFlushDelayMillis;
+		}
+
+		public GsonServerProtocol build() {
+			return new GsonServerProtocol(eventloop, deserializerBufferSize, serializerBufferSize,
+					serializerMaxMessageSize, serializerFlushDelayMillis);
+		}
+	}
+
 	public static final int DEFAULT_DESERIALIZER_BUFFER_SIZE = 10;
 	public static final int DEFAULT_SERIALIZER_BUFFER_SIZE = 256 * 1024;
 	public static final int DEFAULT_SERIALIZER_MAX_MESSAGE_SIZE = 256 * (1 << 20);
@@ -175,38 +208,5 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 				});
 			}
 		};
-	}
-
-	public static class Builder {
-		private final NioEventloop eventloop;
-		private int deserializerBufferSize = DEFAULT_DESERIALIZER_BUFFER_SIZE;
-		private int serializerBufferSize = DEFAULT_SERIALIZER_BUFFER_SIZE;
-		private int serializerMaxMessageSize = DEFAULT_SERIALIZER_MAX_MESSAGE_SIZE;
-		private int serializerFlushDelayMillis = DEFAULT_SERIALIZER_FLUSH_DELAY_MS;
-
-		public Builder(NioEventloop eventloop) {
-			this.eventloop = eventloop;
-		}
-
-		public void setDeserializerBufferSize(int deserializerBufferSize) {
-			this.deserializerBufferSize = deserializerBufferSize;
-		}
-
-		public void setSerializerBufferSize(int serializerBufferSize) {
-			this.serializerBufferSize = serializerBufferSize;
-		}
-
-		public void setSerializerMaxMessageSize(int serializerMaxMessageSize) {
-			this.serializerMaxMessageSize = serializerMaxMessageSize;
-		}
-
-		public void setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
-			this.serializerFlushDelayMillis = serializerFlushDelayMillis;
-		}
-
-		public GsonServerProtocol build() {
-			return new GsonServerProtocol(eventloop, deserializerBufferSize, serializerBufferSize,
-					serializerMaxMessageSize, serializerFlushDelayMillis);
-		}
 	}
 }

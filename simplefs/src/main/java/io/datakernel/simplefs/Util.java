@@ -21,7 +21,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
-public class Util {
+class Util {
 	static class CounterTransformer extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 		private InputConsumer inputConsumer;
 		private OutputProducer outputProducer;

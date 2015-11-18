@@ -124,6 +124,10 @@ final class GsonClientProtocol {
 		this.socketSettings = socketSettings;
 	}
 
+	public static GsonClientProtocol createInstance(NioEventloop eventloop) {
+		return buildInstance(eventloop).build();
+	}
+
 	public static GsonClientProtocol.Builder buildInstance(NioEventloop eventloop) {
 		return new Builder(eventloop);
 	}

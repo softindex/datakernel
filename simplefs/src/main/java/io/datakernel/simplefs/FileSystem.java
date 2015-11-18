@@ -105,7 +105,7 @@ final class FileSystem {
 		this.inProgressExtension = inProgressExtension;
 	}
 
-	public static FileSystem createInstatnce(NioEventloop eventloop, ExecutorService executor, Path storage) {
+	public static FileSystem createInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
 		return buildInstance(eventloop, executor, storage).build();
 	}
 

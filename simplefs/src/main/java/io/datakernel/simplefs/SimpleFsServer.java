@@ -328,6 +328,7 @@ public final class SimpleFsServer implements NioService {
 	private void onOperationFinished() {
 		if (serverStatus == SHUTDOWN && filesToBeCommited.isEmpty()) {
 			protocol.close();
+			callbackOnStop.onComplete();
 		}
 	}
 
