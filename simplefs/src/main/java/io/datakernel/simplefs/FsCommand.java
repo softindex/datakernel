@@ -36,7 +36,7 @@ abstract class FsCommand {
 				.create();
 	}
 
-	public static class Upload extends FsCommand {
+	static class Upload extends FsCommand {
 
 		public final String filePath;
 
@@ -51,7 +51,7 @@ abstract class FsCommand {
 
 	}
 
-	public static class Commit extends FsCommand {
+	static class Commit extends FsCommand {
 		public final String filePath;
 
 		public final boolean isOk;
@@ -68,7 +68,7 @@ abstract class FsCommand {
 
 	}
 
-	public static class Delete extends FsCommand {
+	static class Delete extends FsCommand {
 
 		public final String filePath;
 
@@ -83,7 +83,7 @@ abstract class FsCommand {
 
 	}
 
-	public static class Download extends FsCommand {
+	static class Download extends FsCommand {
 
 		public final String filePath;
 
@@ -98,7 +98,7 @@ abstract class FsCommand {
 
 	}
 
-	public static class List extends FsCommand {
+	static class List extends FsCommand {
 		@Override
 		public String toString() {
 			return "List{all files}";
