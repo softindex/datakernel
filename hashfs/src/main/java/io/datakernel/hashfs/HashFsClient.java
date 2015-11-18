@@ -20,7 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.hashfs.protocol.ClientProtocol;
+import io.datakernel.hashfs.protocol.GsonClientProtocol;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
@@ -31,7 +31,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-class HashFsClient implements FsClient {
+public class HashFsClient implements FsClient {
 	private final NioEventloop eventloop;
 
 	private final ClientProtocol protocol;
@@ -41,14 +41,29 @@ class HashFsClient implements FsClient {
 	private final long baseRetryTimeout;
 	private final int maxRetryAttempts;
 
-	public HashFsClient(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
-	                    List<ServerInfo> bootstrap, long baseRetryTimeout, int maxRetryAttempts) {
+	private HashFsClient(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
+	                     List<ServerInfo> bootstrap, long baseRetryTimeout, int maxRetryAttempts) {
 		this.eventloop = eventloop;
 		this.protocol = protocol;
 		this.hashing = hashing;
 		this.bootstrap = bootstrap;
 		this.baseRetryTimeout = baseRetryTimeout;
 		this.maxRetryAttempts = maxRetryAttempts;
+	}
+
+	public static HashFsClient createInstance(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
+	                                          List<ServerInfo> bootstrap, RfsConfig config) {
+		return new HashFsClient(eventloop, protocol, hashing, bootstrap,
+				config.getBaseRetryTimeout(),
+				config.getMaxRetryAttempts());
+	}
+
+	public static HashFsClient createInstance(NioEventloop eventloop, List<ServerInfo> bootstrap, RfsConfig config) {
+		ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, config);
+		HashingStrategy hashing = new RendezvousHashing();
+		return new HashFsClient(eventloop, protocol, hashing, bootstrap,
+				config.getBaseRetryTimeout(),
+				config.getMaxRetryAttempts());
 	}
 
 	@Override
@@ -118,7 +133,7 @@ class HashFsClient implements FsClient {
 	private void upload(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
 	                    final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.upload(server, fileName, producer, new CompletionCallback() {
+		protocol.upload(server.getAddress(), fileName, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.onComplete();
@@ -145,7 +160,7 @@ class HashFsClient implements FsClient {
 	                      final StreamConsumer<ByteBuf> consumer) {
 		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.download(server, fileName, forwarder.getInput(), new CompletionCallback() {
+		protocol.download(server.getAddress(), fileName, forwarder.getInput(), new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				forwarder.getOutput().streamTo(consumer);
@@ -171,7 +186,7 @@ class HashFsClient implements FsClient {
 	private void delete(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
 	                    final CompletionCallback callback) {
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.delete(server, fileName, new CompletionCallback() {
+		protocol.delete(server.getAddress(), fileName, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.onComplete();
@@ -206,7 +221,7 @@ class HashFsClient implements FsClient {
 			}
 		});
 		for (ServerInfo server : servers) {
-			protocol.list(server, waiter);
+			protocol.list(server.getAddress(), waiter);
 		}
 	}
 
@@ -237,7 +252,7 @@ class HashFsClient implements FsClient {
 			}
 		});
 		for (ServerInfo server : bootstrap) {
-			protocol.alive(server, waiter);
+			protocol.alive(server.getAddress(), waiter);
 		}
 	}
 

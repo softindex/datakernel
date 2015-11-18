@@ -49,7 +49,7 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 	public SimpleFsAggregationStorage(NioEventloop eventloop, AggregationStructure aggregationStructure, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
 		this.aggregationStructure = aggregationStructure;
-		this.client = new SimpleFsClient(eventloop, serverAddress);
+		this.client = SimpleFsClient.createInstance(eventloop, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -98,6 +98,6 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 
 	@Override
 	public void removeChunk(final String aggregationId, final long id, CompletionCallback callback) {
-		client.deleteFile(path(id), callback);
+		client.delete(path(id), callback);
 	}
 }

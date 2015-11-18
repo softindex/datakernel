@@ -19,6 +19,7 @@ package io.datakernel.cube;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
@@ -31,6 +32,7 @@ import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -151,15 +153,11 @@ public class CubeTest {
 
 	private static final int LISTEN_PORT = 45578;
 
-	private SimpleFsServer prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
+	private NioService prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		SimpleFsServer fileServer = SimpleFsServer.createServer(eventloop, serverStorage, executor);
-		fileServer.setListenPort(LISTEN_PORT);
-		try {
-			fileServer.listen();
-		} catch (IOException e) {
-			logger.error("Can't start listen", e);
-		}
+		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage,
+				Lists.newArrayList(new InetSocketAddress(LISTEN_PORT)));
+
 		fileServer.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -174,7 +172,7 @@ public class CubeTest {
 		return fileServer;
 	}
 
-	private void stop(SimpleFsServer server) {
+	private void stop(NioService server) {
 		server.stop(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -196,7 +194,7 @@ public class CubeTest {
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 
 		Path serverStorage = temporaryFolder.newFolder().toPath();
-		final SimpleFsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
+		final NioService simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
 		AggregationChunkStorage storage = new SimpleFsAggregationStorage(eventloop, aggregationStructure, new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
@@ -226,7 +224,7 @@ public class CubeTest {
 
 		eventloop.run();
 
-		final SimpleFsServer simpleFsServer2 = prepareServer(eventloop, serverStorage);
+		final NioService simpleFsServer2 = prepareServer(eventloop, serverStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		final AggregationQuery query = new AggregationQuery()
 				.keys("key1", "key2")

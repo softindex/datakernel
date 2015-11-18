@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.hashfs.protocol;
 
-import java.util.Collection;
-import java.util.List;
+class CommandUpload extends Command {
+	public final String filePath;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+	public CommandUpload(String filePath) {
+		this.filePath = filePath;
+	}
+
+	@Override
+	public String toString() {
+		return "Upload{filepath=\'" + filePath + "\'}";
+	}
 }

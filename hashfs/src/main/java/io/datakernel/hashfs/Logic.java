@@ -21,8 +21,10 @@ import io.datakernel.eventloop.NioService;
 
 import java.util.Set;
 
-public interface Logic extends NioService {
+interface Logic extends NioService {
 	void update(long timestamp);
+
+	void wire(Commands commands);
 
 	boolean canUpload(String fileName);
 

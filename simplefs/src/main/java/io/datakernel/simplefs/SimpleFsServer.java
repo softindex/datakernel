@@ -17,27 +17,18 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingCompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.AbstractNioServer;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.net.Messaging;
-import io.datakernel.stream.net.MessagingHandler;
-import io.datakernel.stream.net.StreamMessagingConnection;
-import io.datakernel.stream.processor.StreamGsonDeserializer;
-import io.datakernel.stream.processor.StreamGsonSerializer;
+import io.datakernel.stream.StreamProducers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.channels.SocketChannel;
-import java.nio.file.DirectoryStream;
-import java.nio.file.Files;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -45,55 +36,150 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.RUNNING;
 import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.SHUTDOWN;
 
-public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements NioService {
+public final class SimpleFsServer implements NioService {
+	public static final long DEFAULT_APPROVE_WAIT_TIME = 10 * 100;
+	public static final Exception SERVER_IS_DOWN_EXCEPTION = new Exception("Server is down");
+
+	public static final class Builder {
+		private final NioEventloop eventloop;
+		private final FileSystem.Builder fsBuilder;
+		private final GsonServerProtocol.Builder protocolBuilder;
+
+		private final List<InetSocketAddress> addresses = new ArrayList<>();
+
+		private long approveWaitTime = DEFAULT_APPROVE_WAIT_TIME;
+
+		public Builder(NioEventloop eventloop, ExecutorService executor, Path storage) {
+			this.eventloop = eventloop;
+			fsBuilder = FileSystem.buildInstance(eventloop, executor, storage);
+			protocolBuilder = GsonServerProtocol.createInstance(eventloop);
+		}
+
+		public Builder setApproveWaitTime(long approveWaitTime) {
+			this.approveWaitTime = approveWaitTime;
+			return this;
+		}
+
+		public Builder specifyListenAddress(InetSocketAddress address) {
+			this.addresses.add(address);
+			return this;
+		}
+
+		public Builder specifyListenAddresses(List<InetSocketAddress> addresses) {
+			this.addresses.addAll(addresses);
+			return this;
+		}
+
+		public Builder specifyListenPort(int port) {
+			this.addresses.add(new InetSocketAddress(port));
+			return this;
+		}
+
+		public Builder setTmpStorage(Path tmpStorage) {
+			fsBuilder.setTmpStorage(tmpStorage);
+			return this;
+		}
+
+		public Builder setInProgressExtension(String inProgressExtension) {
+			fsBuilder.setInProgressExtension(inProgressExtension);
+			return this;
+		}
+
+		public Builder setReaderBufferSize(int readerBufferSize) {
+			fsBuilder.setReaderBufferSize(readerBufferSize);
+			return this;
+		}
+
+		public Builder setTmpDirectoryName(String tmpDirectoryName) {
+			fsBuilder.setTmpDirectoryName(tmpDirectoryName);
+			return this;
+		}
+
+		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
+			protocolBuilder.setDeserializerBufferSize(deserializerBufferSize);
+			return this;
+		}
+
+		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+			protocolBuilder.setSerializerFlushDelayMillis(serializerFlushDelayMillis);
+			return this;
+		}
+
+		public Builder setSerializerBufferSize(int serializerBufferSize) {
+			protocolBuilder.setSerializerBufferSize(serializerBufferSize);
+			return this;
+		}
+
+		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+			protocolBuilder.setSerializerMaxMessageSize(serializerMaxMessageSize);
+			return this;
+		}
+
+		public SimpleFsServer build() {
+			FileSystem fs = fsBuilder.build();
+			GsonServerProtocol protocol = protocolBuilder.build();
+			SimpleFsServer server = new SimpleFsServer(eventloop, fs, protocol, approveWaitTime);
+			protocol.wireServer(server);
+			protocol.setListenAddresses(addresses);
+			return server;
+		}
+	}
+
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServer.class);
-	private static final long TIMEOUT = 10 * 1000;
+	private final NioEventloop eventloop;
 
-	private static final String IN_PROGRESS_EXTENSION = ".partial";
-	private static final String TMP_DIRECTORY = "tmp";
+	private final FileSystem fileSystem;
+	private final GsonServerProtocol protocol;
 
-	private final ExecutorService executor;
-
-	private int pendingOperationsCounter;
 	private final Set<String> filesToBeCommited = new HashSet<>();
+	private final long approveWaitTime;
+
 	private CompletionCallback callbackOnStop;
-
-	private final Path fileStorage;
-	private final Path tmpStorage;
-	private final int bufferSize;
-
 	private ServerStatus serverStatus;
 
-	enum ServerStatus {
-		RUNNING, SHUTDOWN
+	private SimpleFsServer(NioEventloop eventLoop, FileSystem fileSystem, GsonServerProtocol protocol, long approveWaitTime) {
+		this.eventloop = eventLoop;
+		this.fileSystem = fileSystem;
+		this.protocol = protocol;
+		this.approveWaitTime = approveWaitTime;
 	}
 
-	private SimpleFsServer(final NioEventloop eventloop, final Path fileStorage, final Path tmpStorage, ExecutorService executor, int bufferSize) {
-		super(eventloop);
-		this.fileStorage = fileStorage;
-		this.tmpStorage = tmpStorage;
-		this.executor = executor;
-		this.bufferSize = bufferSize;
+	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
+	                                            List<InetSocketAddress> addresses) {
+		return buildInstance(eventloop, executor, storage)
+				.specifyListenAddresses(addresses)
+				.build();
 	}
 
-	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor) {
-		return createServer(eventloop, fileStorage, executor, 256 * 1024);
+	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
+	                                            InetSocketAddress address) {
+		return buildInstance(eventloop, executor, storage)
+				.specifyListenAddress(address)
+				.build();
 	}
 
-	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, final Path tmpStorage, ExecutorService executor) {
-		return new SimpleFsServer(eventloop, fileStorage, tmpStorage, executor, 256 * 1024);
+	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
+	                                            int port) {
+		return buildInstance(eventloop, executor, storage)
+				.specifyListenPort(port)
+				.build();
 	}
 
-	public static SimpleFsServer createServer(final NioEventloop eventloop, final Path fileStorage, ExecutorService executor, int bufferSize) {
-		Path tmpStorage = fileStorage.resolve(TMP_DIRECTORY);
-		return new SimpleFsServer(eventloop, fileStorage, tmpStorage, executor, bufferSize);
+	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
+		return new Builder(eventloop, executor, storage);
 	}
 
 	@Override
-	public void start(CompletionCallback callback) {
+	public NioEventloop getNioEventloop() {
+		return eventloop;
+	}
+
+	@Override
+	public void start(final CompletionCallback callback) {
 		logger.info("Starting SimpleFS");
 
 		if (serverStatus == RUNNING) {
@@ -102,370 +188,151 @@ public class SimpleFsServer extends AbstractNioServer<SimpleFsServer> implements
 		}
 
 		try {
-			ensureInfrastructure();
-			cleanFolder(tmpStorage);
+			protocol.listen();
+			fileSystem.ensureInfrastructure();
 			serverStatus = RUNNING;
-			logger.trace("Started SimpleFS");
 			callback.onComplete();
 		} catch (IOException e) {
-			logger.error("Failed to start SimpleFS");
 			callback.onException(e);
 		}
+
 	}
 
 	@Override
 	public void stop(final CompletionCallback callback) {
 		logger.info("Stopping SimpleFS");
 		serverStatus = SHUTDOWN;
-		if (pendingOperationsCounter == 0) {
+		if (filesToBeCommited.isEmpty()) {
+			protocol.close();
 			callback.onComplete();
-			self().close();
+		} else {
+			callbackOnStop = callback;
+		}
+	}
+
+	public void upload(final String fileName, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+		logger.info("Received command to upload file: {}", fileName);
+
+		if (serverStatus != RUNNING) {
+			logger.info("Can't perform operation. Server is down!");
+			callback.onException(SERVER_IS_DOWN_EXCEPTION);
 			return;
 		}
-		callbackOnStop = callback;
-	}
 
-	@Override
-	protected SocketConnection createConnection(SocketChannel socketChannel) {
-		return new StreamMessagingConnection<>(eventloop, socketChannel,
-				new StreamGsonDeserializer<>(eventloop, SimpleFsCommandSerialization.GSON, SimpleFsCommand.class, 10),
-				new StreamGsonSerializer<>(eventloop, SimpleFsResponseSerialization.GSON, SimpleFsResponse.class, 256 * 1024, 256 * (1 << 20), 0))
-				.addHandler(SimpleFsCommandUpload.class, defineUploadHandler())
-				.addHandler(SimpleFsCommandCommit.class, defineCommitHandler())
-				.addHandler(SimpleFsCommandDownload.class, defineDownloadHandler())
-				.addHandler(SimpleFsCommandDelete.class, defineDeleteHandler())
-				.addHandler(SimpleFsCommandList.class, defineListHandler());
-	}
-
-	private MessagingHandler<SimpleFsCommandUpload, SimpleFsResponse> defineUploadHandler() {
-		return new MessagingHandler<SimpleFsCommandUpload, SimpleFsResponse>() {
+		fileSystem.saveToTmp(fileName, producer, new ForwardingCompletionCallback(callback) {
 			@Override
-			public void onMessage(final SimpleFsCommandUpload item, final Messaging<SimpleFsResponse> messaging) {
-				final String fileName = item.fileName;
-				logger.info("Server received command to upload file {}", fileName);
-
-				if (serverStatus != RUNNING) {
-					refuse(messaging, "Server is being shut down");
-					return;
-				}
-
-				Path destination;
-				final Path inProgress;
-				try {
-					destination = getDestinationDirectory(fileName);
-					inProgress = getInProgressDirectory(fileName);
-				} catch (IOException e) {
-					logger.error("Can't create directory for file {}", fileName, e);
-					refuse(messaging, "Can't create directory for file");
-					return;
-				}
-
-				if (Files.exists(destination) || Files.exists(inProgress)) {
-					refuse(messaging, "File already exists");
-					return;
-				}
-
-				messaging.sendMessage(new SimpleFsResponseOperationOk());
-				startOperation();
-
-				logger.trace("Starting uploading file {}", fileName);
-				StreamProducer<ByteBuf> producer = messaging.read();
-				StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, inProgress, true);
-				producer.streamTo(diskWrite);
-
-				diskWrite.setFlushCallback(new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						logger.trace("Uploaded file {}", fileName);
-						filesToBeCommited.add(fileName);
-						eventloop.scheduleBackground(eventloop.currentTimeMillis() + TIMEOUT, new Runnable() {
-							@Override
-							public void run() {
-								if (filesToBeCommited.contains(fileName)) {
-									try {
-										filesToBeCommited.remove(fileName);
-										Files.delete(inProgress);
-										operationFinished();
-										logger.info("Deleted uploaded but not approved for commit file {}", fileName);
-									} catch (IOException e) {
-										logger.error("Can't delete uploaded but not approved for commit file {}", fileName, e);
-									}
-								}
-							}
-						});
-						messaging.sendMessage(new SimpleFsResponseAcknowledge());
-						messaging.shutdown();
-					}
-
-					@Override
-					public void onException(Exception e) {
-						logger.error("Can't upload file {}", fileName, e);
-						operationFinished();
-						messaging.sendMessage(new SimpleFsResponseError("Can't upload file: " + e.getMessage()));
-						messaging.shutdown();
-					}
-				});
+			public void onComplete() {
+				filesToBeCommited.add(fileName);
+				scheduleTmpFileDeletion(fileName);
+				callback.onComplete();
 			}
-		};
+		});
 	}
 
-	private MessagingHandler<SimpleFsCommandCommit, SimpleFsResponse> defineCommitHandler() {
-		return new MessagingHandler<SimpleFsCommandCommit, SimpleFsResponse>() {
-			@Override
-			public void onMessage(SimpleFsCommandCommit item, Messaging<SimpleFsResponse> messaging) {
-				final String fileName = item.fileName;
-				logger.info("Server received command to " + (item.isOk ? "commit" : "cancel upload") + " file {}", fileName);
+	public void commit(final String fileName, boolean success, final CompletionCallback callback) {
+		logger.info("Received command to commit file: {}, {}", fileName, success);
 
-				if (serverStatus != RUNNING && pendingOperationsCounter <= 0) {
-					refuse(messaging, "Server is being shut down");
-					return;
+		if (serverStatus != RUNNING && !filesToBeCommited.contains(fileName)) {
+			logger.info("Can't perform operation. Server is down!");
+			callback.onException(SERVER_IS_DOWN_EXCEPTION);
+			return;
+		}
+
+		filesToBeCommited.remove(fileName);
+
+		if (success) {
+			fileSystem.commitTmp(fileName, new CompletionCallback() {
+				@Override
+				public void onComplete() {
+					logger.info("Commited file: {}", fileName);
+					callback.onComplete();
+					onOperationFinished();
 				}
 
-				Path destination;
-				Path inProgress;
-				try {
-					destination = getDestinationDirectory(fileName);
-					inProgress = getInProgressDirectory(fileName);
-				} catch (IOException e) {
-					logger.error("Can't create directory for file {}", fileName);
-					refuse(messaging, "Can't create directory for file");
-					return;
+				@Override
+				public void onException(Exception e) {
+					logger.error("Can't commit file: {}", fileName, e);
+					callback.onException(e);
+					onOperationFinished();
 				}
-
-				filesToBeCommited.remove(fileName);
-
-				if (item.isOk) {
-					try {
-						Files.move(inProgress, destination);
-						messaging.sendMessage(new SimpleFsResponseOperationOk());
-						logger.info("File {} commited", fileName);
-					} catch (IOException e) {
-						try {
-							Files.delete(inProgress);
-							logger.trace("Temporary file {} removed (impossible to commit)", inProgress.toAbsolutePath());
-						} catch (IOException e1) {
-							logger.trace("Can't remove temporary file {} (impossible to commit) ", inProgress.toAbsolutePath());
-						}
-						messaging.sendMessage(new SimpleFsResponseError(e.getMessage()));
-					}
-				} else {
-					try {
-						Files.delete(inProgress);
-						messaging.sendMessage(new SimpleFsResponseOperationOk());
-						logger.trace("Temporary file {} removed (Exception on client side)", inProgress.toAbsolutePath());
-					} catch (IOException e) {
-						logger.trace("Can't remove temporary file {} (impossible to commit) ", inProgress.toAbsolutePath());
-					}
-				}
-				operationFinished();
-				messaging.shutdown();
-			}
-		};
-	}
-
-	private MessagingHandler<SimpleFsCommandDownload, SimpleFsResponse> defineDownloadHandler() {
-		return new MessagingHandler<SimpleFsCommandDownload, SimpleFsResponse>() {
-			@Override
-			public void onMessage(SimpleFsCommandDownload item, final Messaging<SimpleFsResponse> messaging) {
-				final String fileName = item.fileName;
-				logger.info("Server received command to download file {}", fileName);
-
-				if (serverStatus != RUNNING) {
-					refuse(messaging, "Server is being shut down");
-					return;
-				}
-
-				Path source = fileStorage.resolve(fileName);
-				if (!Files.exists(source)) {
-					refuse(messaging, "File not found");
-					return;
-				}
-
-				startOperation();
-				messaging.sendMessage(new SimpleFsResponseOperationOk());
-
-				StreamProducer<ByteBuf> producer = StreamFileReader.readFileFrom(eventloop, executor, bufferSize, source, 0L);
-
-				messaging.write(producer, new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						logger.trace("File {} send", fileName);
-						operationFinished();
-					}
-
-					@Override
-					public void onException(Exception e) {
-						logger.error("File {} was not send", fileName, e);
-						operationFinished();
-					}
-				});
-
-				messaging.shutdownReader();
-			}
-
-		};
-	}
-
-	private MessagingHandler<SimpleFsCommandDelete, SimpleFsResponse> defineDeleteHandler() {
-		return new MessagingHandler<SimpleFsCommandDelete, SimpleFsResponse>() {
-			@Override
-			public void onMessage(SimpleFsCommandDelete item, Messaging<SimpleFsResponse> messaging) {
-				String fileName = item.fileName;
-				logger.info("Server received command to delete file: {}", fileName);
-
-				if (serverStatus != RUNNING) {
-					refuse(messaging, "Server is being shut down");
-					return;
-				}
-
-				Path path = fileStorage.resolve(fileName);
-				if (!Files.exists(path)) {
-					refuse(messaging, "File not found");
-					return;
-				}
-
-				try {
-					deleteFile(path);
-					messaging.sendMessage(new SimpleFsResponseOperationOk());
-					logger.info("File {} deleted", fileName);
-				} catch (IOException e) {
-					messaging.sendMessage(new SimpleFsResponseError("Can't delete file: " + e.getMessage()));
-					logger.error("Can't delete file: {}", fileName, e);
-				}
-				messaging.shutdown();
-			}
-		};
-	}
-
-	private MessagingHandler<SimpleFsCommandList, SimpleFsResponse> defineListHandler() {
-		return new MessagingHandler<SimpleFsCommandList, SimpleFsResponse>() {
-			@Override
-			public void onMessage(SimpleFsCommandList item, Messaging<SimpleFsResponse> messaging) {
-				logger.info("Server received command to list files");
-
-				if (serverStatus != RUNNING) {
-					refuse(messaging, "Server is being shut down");
-					return;
-				}
-
-				try {
-					List<String> fileList = new ArrayList<>();
-					listFiles(fileStorage, fileList);
-					messaging.sendMessage(new SimpleFsResponseFileList(fileList));
-					logger.info("Send list(size={}) of files", fileList.size());
-				} catch (IOException e) {
-					messaging.sendMessage(new SimpleFsResponseError("Can't get list of files: " + e.getMessage()));
-					logger.error("Can't get list of files");
-				}
-				messaging.shutdown();
-			}
-		};
-	}
-
-	private void deleteFile(Path path) throws IOException {
-		if (Files.isDirectory(path)) {
-			if (isDirEmpty(path)) {
-				Files.delete(path);
-			}
-			path = path.getParent();
-			if (path != null && !path.equals(fileStorage)) {
-				deleteFile(path);
-			}
+			});
 		} else {
-			Files.delete(path);
-			deleteFile(path.getParent());
+			fileSystem.deleteTmp(fileName, new CompletionCallback() {
+				@Override
+				public void onComplete() {
+					logger.info("Cancel commit file: {}", fileName);
+					callback.onComplete();
+					onOperationFinished();
+				}
+
+				@Override
+				public void onException(Exception e) {
+					logger.error("Can't cancel commit file: {}", fileName, e);
+					callback.onException(e);
+					onOperationFinished();
+				}
+			});
 		}
 	}
 
-	private boolean isDirEmpty(final Path directory) throws IOException {
-		try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(directory)) {
-			return !dirStream.iterator().hasNext();
+	public long size(String fileName) {
+		return fileSystem.exists(fileName);
+	}
+
+	public StreamProducer<ByteBuf> download(final String fileName) {
+		logger.info("Received command to download file: {}", fileName);
+
+		if (serverStatus != RUNNING) {
+			logger.info("Can't perform operation. Server is down!");
+			return StreamProducers.closingWithError(eventloop, SERVER_IS_DOWN_EXCEPTION);
 		}
+
+		return fileSystem.get(fileName);
 	}
 
-	private Path getDestinationDirectory(String path) throws IOException {
-		return getDirectory(fileStorage, path);
-	}
+	public void delete(String fileName, CompletionCallback callback) {
+		logger.info("Received command to delete file: {}", fileName);
 
-	private Path getInProgressDirectory(String path) throws IOException {
-		return getDirectory(tmpStorage, path + IN_PROGRESS_EXTENSION);
-	}
-
-	private Path getDirectory(Path container, String path) throws IOException {
-		String fileName = getFileName(path);
-		String filePath = getFilePath(path);
-
-		Path destinationDirectory = container.resolve(filePath);
-
-		Files.createDirectories(destinationDirectory);
-		logger.trace("Resolved directory for path {}", filePath);
-
-		return destinationDirectory.resolve(fileName);
-	}
-
-	private void refuse(Messaging<SimpleFsResponse> messaging, String msg) {
-		logger.info("Refused: " + msg);
-		messaging.sendMessage(new SimpleFsResponseError(msg));
-		messaging.shutdown();
-	}
-
-	private void startOperation() {
-		pendingOperationsCounter++;
-	}
-
-	private void operationFinished() {
-		pendingOperationsCounter--;
-		if (serverStatus == SHUTDOWN && pendingOperationsCounter == 0) {
-			if (callbackOnStop != null) {
-				callbackOnStop.onComplete();
-			}
-			self().close();
+		if (serverStatus != RUNNING) {
+			logger.info("Can't perform operation. Server is down!");
+			callback.onException(SERVER_IS_DOWN_EXCEPTION);
+			return;
 		}
+
+		fileSystem.delete(fileName, callback);
 	}
 
-	private void ensureInfrastructure() throws IOException {
-		Files.createDirectories(tmpStorage);
+	public void list(ResultCallback<Set<String>> callback) {
+		logger.info("Received command to list files");
+
+		if (serverStatus != RUNNING) {
+			logger.info("Can't perform operation. Server is down!");
+			callback.onException(SERVER_IS_DOWN_EXCEPTION);
+			return;
+		}
+
+		fileSystem.list(callback);
 	}
 
-	private void cleanFolder(Path container) throws IOException {
-		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(container)) {
-			for (Path path : directoryStream) {
-				if (Files.isDirectory(path) && path.iterator().hasNext()) {
-					cleanFolder(path);
-				} else {
-					Files.delete(path);
+	private void scheduleTmpFileDeletion(final String fileName) {
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + approveWaitTime, new Runnable() {
+			@Override
+			public void run() {
+				if (filesToBeCommited.contains(fileName)) {
+					commit(fileName, false, ignoreCompletionCallback());
 				}
 			}
+		});
+	}
+
+	private void onOperationFinished() {
+		if (serverStatus == SHUTDOWN && filesToBeCommited.isEmpty()) {
+			protocol.close();
+			callbackOnStop.onComplete();
 		}
 	}
 
-	private void listFiles(Path container, List<String> fileNames) throws IOException {
-		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(container)) {
-			for (Path path : directoryStream) {
-				if (Files.isDirectory(path)) {
-					if (!path.equals(tmpStorage)) {
-						listFiles(path, fileNames);
-					}
-				} else {
-					fileNames.add(path.getFileName().toString());
-				}
-			}
-		}
-	}
-
-	private String getFileName(String path) {
-		if (path.contains(File.separator)) {
-			path = path.substring(path.lastIndexOf(File.separator) + 1);
-		}
-		return path;
-	}
-
-	private String getFilePath(String path) {
-		if (path.contains(File.separator)) {
-			path = path.substring(0, path.lastIndexOf(File.separator));
-		} else {
-			path = "";
-		}
-		return path;
+	enum ServerStatus {
+		RUNNING, SHUTDOWN
 	}
 }

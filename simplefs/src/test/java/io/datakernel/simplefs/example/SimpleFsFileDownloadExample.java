@@ -36,36 +36,36 @@ import java.util.concurrent.Executors;
  * If run successfully, the requested file will be downloaded to ./test/ (you may change this setting).
  */
 public class SimpleFsFileDownloadExample {
-	private static final int SERVER_PORT = 6732;
-	private static final Path DOWNLOAD_PATH = Paths.get("./test/client_storage");
-
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsFileDownloadExample.class);
 
-	// Specify the name of file to download in the first argument
-	public static void main(String[] args) {
-		final String downloadFileName = args[0];
-		final InetSocketAddress serverAddress = new InetSocketAddress("127.0.0.1", SERVER_PORT);
-		final ExecutorService executor = Executors.newCachedThreadPool();
+	private static final int SERVER_PORT = 6732;
+	private static final Path CLIENT_STORAGE = Paths.get("./");
 
+	public static void main(String[] args) {
+		final ExecutorService executor = Executors.newCachedThreadPool();
 		final NioEventloop eventloop = new NioEventloop();
 
-		SimpleFsClient client = new SimpleFsClient(eventloop, serverAddress);
+		String requiredFile = "test.txt";
+		final String downloadedFile = "downloaded_test.txt";
+
+		SimpleFsClient client = SimpleFsClient.buildInstance(eventloop, new InetSocketAddress(SERVER_PORT))
+				.build();
 
 		StreamFileWriter consumer =
-				StreamFileWriter.createFile(eventloop, executor, DOWNLOAD_PATH.resolve("downloaded_" + downloadFileName));
+				StreamFileWriter.createFile(eventloop, executor, CLIENT_STORAGE.resolve(downloadedFile));
 		consumer.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.info("Client finished downloading file {}", downloadFileName);
+				logger.info("Client finished downloading file {}", downloadedFile);
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				logger.error("Can't download file {}", downloadFileName, exception);
+				logger.error("Can't download file {}", downloadedFile, exception);
 			}
 		});
 
-		client.download(downloadFileName, consumer);
+		client.download(requiredFile, consumer);
 
 		eventloop.run();
 		executor.shutdown();

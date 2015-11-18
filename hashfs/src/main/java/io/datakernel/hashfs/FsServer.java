@@ -19,21 +19,23 @@ package io.datakernel.hashfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.Set;
 
-interface FileSystem extends NioService {
-	void saveToTmp(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
+public interface FsServer {
+	void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void deleteTmp(String fileName, CompletionCallback callback);
+	void commit(String fileName, boolean success, CompletionCallback callback);
 
-	void commitTmp(String fileName, CompletionCallback callback);
-
-	StreamProducer<ByteBuf> get(String fileName);
+	void download(String fileName, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback);
 
 	void delete(String fileName, CompletionCallback callback);
 
 	void list(ResultCallback<Set<String>> callback);
+
+	void showAlive(ResultCallback<Set<ServerInfo>> callback);
+
+	void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback);
 }

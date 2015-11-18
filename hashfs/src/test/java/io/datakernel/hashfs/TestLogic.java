@@ -39,7 +39,7 @@ public class TestLogic {
 		server3.updateState(1);
 	}
 
-	private final Config config = new Config();
+	private final RfsConfig config = new RfsConfig();
 
 	{
 		config.setMaxReplicaQuantity(2);
@@ -60,7 +60,8 @@ public class TestLogic {
 	public void testUpdate() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		logic.wire(cMock);
 		logic.start(ignoreCompletionCallback());
 		logic.update(1);
 
@@ -81,7 +82,8 @@ public class TestLogic {
 	public void testUpload() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		logic.wire(cMock);
 		logic.start(ignoreCompletionCallback());
 		logic.update(1);
 
@@ -104,7 +106,8 @@ public class TestLogic {
 	public void testDelete() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		logic.wire(cMock);
 		logic.start(ignoreCompletionCallback());
 		logic.update(1);
 		logic.onReplicationStart(a);
@@ -139,7 +142,8 @@ public class TestLogic {
 	public void testDownload() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		logic.wire(cMock);
 		logic.update(1);
 		logic.update(1);
 		assertFalse(logic.canDownload(a));
@@ -149,7 +153,8 @@ public class TestLogic {
 	public void testOffer() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		logic.wire(cMock);
 		logic.start(ignoreCompletionCallback());
 		logic.update(1);
 
@@ -183,7 +188,8 @@ public class TestLogic {
 	public void testAlive() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = ServerFactory.createLogic(cMock, hMock, local, bootstrap, config);
+		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		logic.wire(cMock);
 
 		logic.onShowAliveRequest(1, new ResultCallback<Set<ServerInfo>>() {
 			@Override

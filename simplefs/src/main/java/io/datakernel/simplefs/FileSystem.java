@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.simplefs;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -36,7 +35,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-public final class FileSystemImpl implements FileSystem, NioService {
+final class FileSystem {
 	public static final class Builder {
 		private final NioEventloop eventLoop;
 		private final ExecutorService executor;
@@ -73,11 +72,11 @@ public final class FileSystemImpl implements FileSystem, NioService {
 			return this;
 		}
 
-		public FileSystemImpl build() {
+		public FileSystem build() {
 			if (tmpStorage == null) {
 				tmpStorage = storage.resolve(tmpDirectoryName);
 			}
-			return new FileSystemImpl(eventLoop, executor, storage, tmpStorage, readerBufferSize, inProgressExtension);
+			return new FileSystem(eventLoop, executor, storage, tmpStorage, readerBufferSize, inProgressExtension);
 		}
 	}
 
@@ -85,7 +84,7 @@ public final class FileSystemImpl implements FileSystem, NioService {
 	public static final String DEFAULT_TMP_FOLDER_NAME = "tmp";
 	public static final int DEFAULT_READER_BUFFER_SIZE = 256 * 1024;
 
-	private static final Logger logger = LoggerFactory.getLogger(FileSystemImpl.class);
+	private static final Logger logger = LoggerFactory.getLogger(FileSystem.class);
 	private final String inProgressExtension;
 	private final int bufferSize;
 
@@ -95,9 +94,9 @@ public final class FileSystemImpl implements FileSystem, NioService {
 	private final Path fileStorage;
 	private final Path tmpStorage;
 
-	private FileSystemImpl(NioEventloop eventloop, ExecutorService executor,
-	                       Path fileStorage, Path tmpStorage, int bufferSize,
-	                       String inProgressExtension) {
+	private FileSystem(NioEventloop eventloop, ExecutorService executor,
+	                   Path fileStorage, Path tmpStorage, int bufferSize,
+	                   String inProgressExtension) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.fileStorage = fileStorage;
@@ -106,7 +105,7 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		this.inProgressExtension = inProgressExtension;
 	}
 
-	public static FileSystemImpl createInstatnce(NioEventloop eventloop, ExecutorService executor, Path storage) {
+	public static FileSystem createInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
 		return buildInstance(eventloop, executor, storage).build();
 	}
 
@@ -114,30 +113,6 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		return new Builder(eventloop, executor, storage);
 	}
 
-	@Override
-	public NioEventloop getNioEventloop() {
-		return eventloop;
-	}
-
-	@Override
-	public void start(CompletionCallback callback) {
-		try {
-			this.ensureInfrastructure();
-			logger.trace("FileSystem for HashFs initiated");
-			callback.onComplete();
-		} catch (IOException e) {
-			logger.error("Can't initiate FileSystem for HashFs", e);
-			callback.onException(e);
-		}
-	}
-
-	@Override
-	public void stop(CompletionCallback callback) {
-		logger.trace("FileSystem stopped");
-		callback.onComplete();
-	}
-
-	@Override
 	public void saveToTmp(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
 		logger.trace("Saving to temporary dir {}", fileName);
 		Path tmpPath;
@@ -152,7 +127,6 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		producer.streamTo(diskWrite);
 	}
 
-	@Override
 	public void commitTmp(String fileName, CompletionCallback callback) {
 		logger.trace("Moving file from temporary dir to {}", fileName);
 		Path destinationPath;
@@ -179,7 +153,6 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		}
 	}
 
-	@Override
 	public void deleteTmp(String fileName, CompletionCallback callback) {
 		logger.trace("Deleting temporary file {}", fileName);
 		Path path = tmpStorage.resolve(fileName + inProgressExtension);
@@ -192,14 +165,12 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		}
 	}
 
-	@Override
 	public StreamProducer<ByteBuf> get(String fileName) {
 		logger.trace("Streaming file {}", fileName);
 		Path destination = fileStorage.resolve(fileName);
 		return StreamFileReader.readFileFully(eventloop, executor, bufferSize, destination);
 	}
 
-	@Override
 	public void delete(String fileName, CompletionCallback callback) {
 		logger.trace("Deleting file {}", fileName);
 		Path path = fileStorage.resolve(fileName);
@@ -212,7 +183,6 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		}
 	}
 
-	@Override
 	public void list(ResultCallback<Set<String>> callback) {
 		logger.trace("Listing files");
 		Set<String> result = new HashSet<>();
@@ -223,6 +193,14 @@ public final class FileSystemImpl implements FileSystem, NioService {
 			logger.error("Can't list files", e);
 			callback.onException(e);
 		}
+	}
+
+	public long exists(String fileName) {
+		File file = fileStorage.resolve(fileName).toFile();
+		if (!file.exists() || file.isDirectory()) {
+			return -1;
+		}
+		return file.length();
 	}
 
 	private void listFiles(Path parent, Set<String> files, String previousPath) throws IOException {
@@ -295,7 +273,7 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		}
 	}
 
-	private void ensureInfrastructure() throws IOException {
+	void ensureInfrastructure() throws IOException {
 		if (Files.exists(tmpStorage)) {
 			cleanFolder(tmpStorage);
 		} else {

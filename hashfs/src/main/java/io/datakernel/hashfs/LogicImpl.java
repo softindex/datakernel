@@ -32,17 +32,16 @@ final class LogicImpl implements Logic {
 	private final int minSafeReplicaQuantity;
 	private final ServerInfo myId;
 
-	private final Commands commands;
 	private final HashingStrategy hashing;
+	private Commands commands;
 
 	private final Map<String, FileInfo> files = new HashMap<>();
 	private final Set<ServerInfo> servers = new HashSet<>();
 
 	private CompletionCallback onStopCallback;
 
-	public LogicImpl(Commands commands, HashingStrategy hashing, ServerInfo myId, Set<ServerInfo> bootstrap,
-	                 long serverDeathTimeout, int maxReplicaQuantity, int minSafeReplicaQuantity, long approveWaitTime) {
-		this.commands = commands;
+	private LogicImpl(HashingStrategy hashing, ServerInfo myId, Set<ServerInfo> bootstrap,
+	                  long serverDeathTimeout, int maxReplicaQuantity, int minSafeReplicaQuantity, long approveWaitTime) {
 		this.hashing = hashing;
 		this.myId = myId;
 		this.serverDeathTimeout = serverDeathTimeout;
@@ -50,6 +49,14 @@ final class LogicImpl implements Logic {
 		this.minSafeReplicaQuantity = minSafeReplicaQuantity;
 		this.approveWaitTime = approveWaitTime;
 		this.servers.addAll(bootstrap);
+	}
+
+	public static LogicImpl createInstance(HashingStrategy hashing, ServerInfo myId, Set<ServerInfo> bootstrap, RfsConfig config) {
+		return new LogicImpl(hashing, myId, bootstrap,
+				config.getServerDeathTimeout(),
+				config.getMaxReplicaQuantity(),
+				config.getMinSafeReplicasQuantity(),
+				config.getApproveWaitTime());
 	}
 
 	@Override
@@ -81,6 +88,11 @@ final class LogicImpl implements Logic {
 	public void stop(final CompletionCallback callback) {
 		onStopCallback = callback;
 		onOperationFinished();
+	}
+
+	@Override
+	public void wire(Commands commands) {
+		this.commands = commands;
 	}
 
 	private void onOperationFinished() {

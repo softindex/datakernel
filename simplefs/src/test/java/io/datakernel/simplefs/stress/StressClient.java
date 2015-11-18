@@ -25,7 +25,6 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.simplefs.SimpleFsClient;
-import io.datakernel.simplefs.StopAndHugeFileUploadTest;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
@@ -49,14 +48,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class StressClient {
-	private static final Logger logger = LoggerFactory.getLogger(StopAndHugeFileUploadTest.class);
-
-	private static final int SERVER_PORT = 6732;
-	private static final InetSocketAddress serverAddress = new InetSocketAddress("127.0.0.1", SERVER_PORT);
-
+	private static final Logger logger = LoggerFactory.getLogger(StressClient.class);
+	private InetSocketAddress address = new InetSocketAddress(5560);
 	private NioEventloop eventloop = new NioEventloop();
 	private ExecutorService executor = Executors.newCachedThreadPool();
-	private SimpleFsClient client = new SimpleFsClient(eventloop, serverAddress);
+
+	private SimpleFsClient client = SimpleFsClient.buildInstance(eventloop, address).build();
 
 	private static Random rand = new Random();
 
@@ -137,7 +134,7 @@ public class StressClient {
 				int index = rand.nextInt(existingClientFiles.size());
 				final String fileName = existingClientFiles.get(index);
 
-				client.deleteFile(fileName, new CompletionCallback() {
+				client.delete(fileName, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						existingClientFiles.remove(fileName);
@@ -156,7 +153,7 @@ public class StressClient {
 		operations.add(new Operation() {
 			@Override
 			public void go() {
-				client.listFiles(new ResultCallback<List<String>>() {
+				client.list(new ResultCallback<List<String>>() {
 					@Override
 					public void onResult(List<String> result) {
 						logger.info("Listed: " + result.size());

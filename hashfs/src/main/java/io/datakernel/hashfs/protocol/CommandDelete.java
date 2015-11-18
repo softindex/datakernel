@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs;
+package io.datakernel.hashfs.protocol;
 
-import java.util.Collection;
-import java.util.List;
+class CommandDelete extends Command {
+	public final String filePath;
 
-interface HashingStrategy {
-	List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers);
+	public CommandDelete(String filePath) {
+		this.filePath = filePath;
+	}
+
+	@Override
+	public String toString() {
+		return "Delete{filepath=\'" + filePath + "\'}";
+	}
 }
