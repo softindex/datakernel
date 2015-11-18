@@ -16,15 +16,18 @@
 
 package io.datakernel.hashfs;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioService;
 
+import java.util.Collection;
 import java.util.Set;
 
-interface Logic extends NioService {
+interface Logic {
+	void start(Collection<String> files);
+
 	void update(long timestamp);
 
-	void wire(Commands commands);
+	void stop(CompletionCallback callback);
 
 	boolean canUpload(String fileName);
 
@@ -67,4 +70,6 @@ interface Logic extends NioService {
 	void onReplicationComplete(ServerInfo server, String fileName);
 
 	void onReplicationFailed(ServerInfo server, String filePath);
+
+	void wire(Commands commands);
 }

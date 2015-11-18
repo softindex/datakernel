@@ -24,8 +24,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.hashfs.protocol.GsonClientProtocol;
-import io.datakernel.hashfs.protocol.GsonServerProtocol;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
@@ -56,7 +54,6 @@ public class IntegrationSingleNodeTest {
 	private static final Logger logger = LoggerFactory.getLogger(IntegrationSingleNodeTest.class);
 
 	private ServerInfo local = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 4455), 1.0);
-	private static RfsConfig config;
 	private static Path serverStorage;
 	private static Path clientStorage;
 
@@ -94,10 +91,6 @@ public class IntegrationSingleNodeTest {
 		Files.write(e, "Local e.txt".getBytes(UTF_8));
 		Path f = serverStorage.resolve("f.txt");
 		Files.write(f, "Local f.txt".getBytes(UTF_8));
-
-		config = new RfsConfig();
-		config.setMaxReplicaQuantity(1);
-		config.setMaxRetryAttempts(1);
 	}
 
 	@Test
@@ -485,15 +478,11 @@ public class IntegrationSingleNodeTest {
 	}
 
 	private FsClient getClient(NioEventloop eventloop) {
-		ClientProtocol clientProtocol = GsonClientProtocol.createInstance(eventloop, config);
-		return HashFsClient.createInstance(eventloop, clientProtocol, new RendezvousHashing(), Lists.newArrayList(local), config);
+		ClientProtocol clientProtocol = GsonClientProtocol.createInstance(eventloop);
+		return HashFsClient.createInstance(eventloop, Lists.newArrayList(local));
 	}
 
 	private NioService getServer(NioEventloop eventloop, ExecutorService executor) {
-		FileSystem fileSystem = FileSystemImpl.buildInstance(eventloop, executor, serverStorage).build();
-		Logic logic = LogicImpl.createInstance(new RendezvousHashing(), local, Sets.newHashSet(local), config);
-		ClientProtocol clientProtocol1 = GsonClientProtocol.createInstance(eventloop, config);
-		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, Lists.newArrayList(local.getAddress()), config);
-		return HashFsServer.createInstance(eventloop, fileSystem, logic, clientProtocol1, serverProtocol, config);
+		return HashFsServer.buildInstance(eventloop, executor, serverStorage, local, Sets.newHashSet(local)).build();
 	}
 }

@@ -19,12 +19,14 @@ package io.datakernel.hashfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioService;
 import io.datakernel.stream.StreamProducer;
 
+import java.io.IOException;
 import java.util.Set;
 
-interface FileSystem extends NioService {
+interface FileSystem {
+	void ensureInfrastructure() throws IOException;
+
 	void saveToTmp(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
 	void deleteTmp(String fileName, CompletionCallback callback);
@@ -36,4 +38,6 @@ interface FileSystem extends NioService {
 	void delete(String fileName, CompletionCallback callback);
 
 	void list(ResultCallback<Set<String>> callback);
+
+	long exists(String filePath);
 }

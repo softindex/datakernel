@@ -20,7 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.hashfs.protocol.GsonClientProtocol;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
@@ -32,12 +32,95 @@ import java.util.List;
 import java.util.Set;
 
 public class HashFsClient implements FsClient {
-	private final NioEventloop eventloop;
+	final static class Builder {
+		private final NioEventloop eventloop;
+		private final GsonClientProtocol.Builder protocolBuilder;
+		private final List<ServerInfo> bootstrap;
 
+		private ClientProtocol protocol;
+		private HashingStrategy strategy = DEFAULT_HASHING_STRATEGY;
+		private long baseRetryTimeout = DEFAULT_BASE_RETRY_TIMEOUT;
+		private int maxRetryAttempts = DEFAULT_MAX_RETRY_ATTEMPTS;
+
+		private Builder(NioEventloop eventloop, List<ServerInfo> bootstrap) {
+			this.eventloop = eventloop;
+			this.protocolBuilder = GsonClientProtocol.buildInstance(eventloop);
+			this.bootstrap = bootstrap;
+		}
+
+		public void setStrategy(HashingStrategy strategy) {
+			this.strategy = strategy;
+		}
+
+		public Builder setBaseRetryTimeout(long baseRetryTimeout) {
+			this.baseRetryTimeout = baseRetryTimeout;
+			return this;
+		}
+
+		public Builder setMaxRetryAttempts(int maxRetryAttempts) {
+			this.maxRetryAttempts = maxRetryAttempts;
+			return this;
+		}
+
+		public Builder setProtocol(ClientProtocol protocol) {
+			this.protocol = protocol;
+			return this;
+		}
+
+		public Builder setMinChunkSize(int minChunkSize) {
+			protocolBuilder.setMinChunkSize(minChunkSize);
+			return this;
+		}
+
+		public Builder setSocketSettings(SocketSettings socketSettings) {
+			protocolBuilder.setSocketSettings(socketSettings);
+			return this;
+		}
+
+		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
+			protocolBuilder.setDeserializerBufferSize(deserializerBufferSize);
+			return this;
+		}
+
+		public void setMaxChunkSize(int maxChunkSize) {
+			protocolBuilder.setMaxChunkSize(maxChunkSize);
+		}
+
+		public Builder setConnectTimeout(int connectTimeout) {
+			protocolBuilder.setConnectTimeout(connectTimeout);
+			return this;
+		}
+
+		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+			protocolBuilder.setSerializerMaxMessageSize(serializerMaxMessageSize);
+			return this;
+		}
+
+		public Builder setSerializerBufferSize(int serializerBufferSize) {
+			protocolBuilder.setSerializerBufferSize(serializerBufferSize);
+			return this;
+		}
+
+		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+			protocolBuilder.setSerializerFlushDelayMillis(serializerFlushDelayMillis);
+			return this;
+		}
+
+		public HashFsClient build() {
+			ClientProtocol p = this.protocol == null ? protocolBuilder.build() : this.protocol;
+			return new HashFsClient(eventloop, p, strategy, bootstrap, baseRetryTimeout, maxRetryAttempts);
+		}
+	}
+
+	private static final int DEFAULT_MAX_RETRY_ATTEMPTS = 3;
+	private static final long DEFAULT_BASE_RETRY_TIMEOUT = 100;
+	private static final HashingStrategy DEFAULT_HASHING_STRATEGY = new RendezvousHashing();
+
+	private final NioEventloop eventloop;
 	private final ClientProtocol protocol;
 	private final HashingStrategy hashing;
-
 	private final List<ServerInfo> bootstrap;
+
 	private final long baseRetryTimeout;
 	private final int maxRetryAttempts;
 
@@ -51,19 +134,12 @@ public class HashFsClient implements FsClient {
 		this.maxRetryAttempts = maxRetryAttempts;
 	}
 
-	public static HashFsClient createInstance(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
-	                                          List<ServerInfo> bootstrap, RfsConfig config) {
-		return new HashFsClient(eventloop, protocol, hashing, bootstrap,
-				config.getBaseRetryTimeout(),
-				config.getMaxRetryAttempts());
+	public static HashFsClient createInstance(NioEventloop eventloop, List<ServerInfo> bootstrap) {
+		return new Builder(eventloop, bootstrap).build();
 	}
 
-	public static HashFsClient createInstance(NioEventloop eventloop, List<ServerInfo> bootstrap, RfsConfig config) {
-		ClientProtocol protocol = GsonClientProtocol.createInstance(eventloop, config);
-		HashingStrategy hashing = new RendezvousHashing();
-		return new HashFsClient(eventloop, protocol, hashing, bootstrap,
-				config.getBaseRetryTimeout(),
-				config.getMaxRetryAttempts());
+	public static Builder buildInstance(NioEventloop eventloop, List<ServerInfo> bootstrap) {
+		return new Builder(eventloop, bootstrap);
 	}
 
 	@Override

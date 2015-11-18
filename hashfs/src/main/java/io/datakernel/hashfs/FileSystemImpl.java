@@ -36,7 +36,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
-public final class FileSystemImpl implements FileSystem, NioService {
+final class FileSystemImpl implements FileSystem, NioService {
 	public static final class Builder {
 		private final NioEventloop eventLoop;
 		private final ExecutorService executor;
@@ -225,6 +225,16 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		}
 	}
 
+	@Override
+	public long exists(String filePath) {
+		File file = fileStorage.resolve(filePath).toFile();
+		if (!file.exists() || file.isDirectory()) {
+			return -1l;
+		} else {
+			return file.length();
+		}
+	}
+
 	private void listFiles(Path parent, Set<String> files, String previousPath) throws IOException {
 		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(parent)) {
 			for (Path path : directoryStream) {
@@ -295,7 +305,8 @@ public final class FileSystemImpl implements FileSystem, NioService {
 		}
 	}
 
-	private void ensureInfrastructure() throws IOException {
+	@Override
+	public void ensureInfrastructure() throws IOException {
 		if (Files.exists(tmpStorage)) {
 			cleanFolder(tmpStorage);
 		} else {

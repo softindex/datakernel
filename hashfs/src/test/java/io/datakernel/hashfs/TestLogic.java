@@ -22,7 +22,6 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static org.junit.Assert.*;
 
 public class TestLogic {
@@ -37,12 +36,6 @@ public class TestLogic {
 		server1.updateState(1);
 		server2.updateState(1);
 		server3.updateState(1);
-	}
-
-	private final RfsConfig config = new RfsConfig();
-
-	{
-		config.setMaxReplicaQuantity(2);
 	}
 
 	private final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(local, server1, server2, server3));
@@ -60,9 +53,21 @@ public class TestLogic {
 	public void testUpdate() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
+				.setHashing(hMock)
+				.build();
 		logic.wire(cMock);
-		logic.start(ignoreCompletionCallback());
+		cMock.scan(new ResultCallback<Set<String>>() {
+			@Override
+			public void onResult(Set<String> result) {
+				logic.start(result);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+
+			}
+		});
 		logic.update(1);
 
 		Set<String> real1 = cMock.servers2files.get(server1);
@@ -82,9 +87,21 @@ public class TestLogic {
 	public void testUpload() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
+				.setHashing(hMock)
+				.build();
 		logic.wire(cMock);
-		logic.start(ignoreCompletionCallback());
+		cMock.scan(new ResultCallback<Set<String>>() {
+			@Override
+			public void onResult(Set<String> result) {
+				logic.start(result);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+
+			}
+		});
 		logic.update(1);
 
 		assertFalse(logic.canUpload(b));
@@ -106,9 +123,21 @@ public class TestLogic {
 	public void testDelete() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
+				.setHashing(hMock)
+				.build();
 		logic.wire(cMock);
-		logic.start(ignoreCompletionCallback());
+		cMock.scan(new ResultCallback<Set<String>>() {
+			@Override
+			public void onResult(Set<String> result) {
+				logic.start(result);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+
+			}
+		});
 		logic.update(1);
 		logic.onReplicationStart(a);
 		logic.onReplicationStart(a);
@@ -142,8 +171,21 @@ public class TestLogic {
 	public void testDownload() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
+				.setHashing(hMock)
+				.build();
 		logic.wire(cMock);
+		cMock.scan(new ResultCallback<Set<String>>() {
+			@Override
+			public void onResult(Set<String> result) {
+				logic.start(result);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+
+			}
+		});
 		logic.update(1);
 		logic.update(1);
 		assertFalse(logic.canDownload(a));
@@ -153,9 +195,21 @@ public class TestLogic {
 	public void testOffer() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
+				.setHashing(hMock)
+				.build();
 		logic.wire(cMock);
-		logic.start(ignoreCompletionCallback());
+		cMock.scan(new ResultCallback<Set<String>>() {
+			@Override
+			public void onResult(Set<String> result) {
+				logic.start(result);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+
+			}
+		});
 		logic.update(1);
 
 		logic.onReplicationComplete(server1, a);
@@ -188,8 +242,21 @@ public class TestLogic {
 	public void testAlive() {
 		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		Logic logic = LogicImpl.createInstance(hMock, local, bootstrap, config);
+		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
+				.setHashing(hMock)
+				.build();
 		logic.wire(cMock);
+		cMock.scan(new ResultCallback<Set<String>>() {
+			@Override
+			public void onResult(Set<String> result) {
+				logic.start(result);
+			}
+
+			@Override
+			public void onException(Exception ignored) {
+
+			}
+		});
 
 		logic.onShowAliveRequest(1, new ResultCallback<Set<ServerInfo>>() {
 			@Override

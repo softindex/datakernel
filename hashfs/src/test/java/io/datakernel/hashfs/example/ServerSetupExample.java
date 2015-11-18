@@ -18,7 +18,6 @@ package io.datakernel.hashfs.example;
 
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.hashfs.HashFsServer;
-import io.datakernel.hashfs.RfsConfig;
 import io.datakernel.hashfs.ServerInfo;
 
 import java.io.IOException;
@@ -34,8 +33,6 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class ServerSetupExample {
 
-	private static RfsConfig config;
-
 	public static void main(String[] args) throws IOException {
 
 		ServerInfo server0 = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 5570), 1);
@@ -50,8 +47,8 @@ public class ServerSetupExample {
 
 		for (ServerInfo server : bootstrap) {
 			Path serverStorage = Paths.get("./test/server_storage_" + server.getServerId());
-			config = RfsConfig.getDefaultConfig();
-			HashFsServer.createInstance(eventloop, newCachedThreadPool(), serverStorage, server, bootstrap, config)
+			HashFsServer.buildInstance(eventloop, newCachedThreadPool(), serverStorage, server, bootstrap)
+					.build()
 					.start(ignoreCompletionCallback());
 		}
 		eventloop.run();

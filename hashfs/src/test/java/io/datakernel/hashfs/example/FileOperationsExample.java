@@ -21,9 +21,8 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.hashfs.FsClient;
-import io.datakernel.hashfs.RfsConfig;
+import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.hashfs.ServerInfo;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -54,7 +53,7 @@ public class FileOperationsExample {
 
 		final List<ServerInfo> bootstrap = Arrays.asList(server3, server4);
 
-		FsClient client = HashFsClient.createInstance(eventloop, bootstrap, RfsConfig.getDefaultConfig());
+		FsClient client = HashFsClient.createInstance(eventloop, bootstrap);
 
 		upload("./test/client_storage/ptt.txt", "java.txt", client, ignoreCompletionCallback());
 		list(client, AsyncCallbacks.<List<String>>ignoreResultCallback());
