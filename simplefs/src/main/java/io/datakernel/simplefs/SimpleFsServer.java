@@ -210,7 +210,7 @@ public final class SimpleFsServer implements NioService {
 		}
 	}
 
-	public void upload(final String fileName, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	void upload(final String fileName, StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		logger.info("Received command to upload file: {}", fileName);
 
 		if (serverStatus != RUNNING) {
@@ -229,7 +229,7 @@ public final class SimpleFsServer implements NioService {
 		});
 	}
 
-	public void commit(final String fileName, boolean success, final CompletionCallback callback) {
+	void commit(final String fileName, boolean success, final CompletionCallback callback) {
 		logger.info("Received command to commit file: {}, {}", fileName, success);
 
 		if (serverStatus != RUNNING && !filesToBeCommited.contains(fileName)) {
@@ -275,11 +275,11 @@ public final class SimpleFsServer implements NioService {
 		}
 	}
 
-	public long size(String fileName) {
+	long size(String fileName) {
 		return fileSystem.exists(fileName);
 	}
 
-	public StreamProducer<ByteBuf> download(final String fileName) {
+	StreamProducer<ByteBuf> download(final String fileName) {
 		logger.info("Received command to download file: {}", fileName);
 
 		if (serverStatus != RUNNING) {
@@ -290,7 +290,7 @@ public final class SimpleFsServer implements NioService {
 		return fileSystem.get(fileName);
 	}
 
-	public void delete(String fileName, CompletionCallback callback) {
+	void delete(String fileName, CompletionCallback callback) {
 		logger.info("Received command to delete file: {}", fileName);
 
 		if (serverStatus != RUNNING) {
@@ -302,7 +302,7 @@ public final class SimpleFsServer implements NioService {
 		fileSystem.delete(fileName, callback);
 	}
 
-	public void list(ResultCallback<Set<String>> callback) {
+	void list(ResultCallback<Set<String>> callback) {
 		logger.info("Received command to list files");
 
 		if (serverStatus != RUNNING) {
