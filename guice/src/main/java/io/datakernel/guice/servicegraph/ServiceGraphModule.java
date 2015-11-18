@@ -20,6 +20,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import com.google.inject.*;
 import com.google.inject.internal.MoreTypes;
+import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.Dependency;
 import com.google.inject.spi.HasDependencies;
 import io.datakernel.guice.workers.NioWorkerScope;
@@ -52,6 +53,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
 	private final Map<Key<?>, Object> services = new LinkedHashMap<>();
+	private SingletonServiceScope serviceScope = new SingletonServiceScope();
 
 	private final Executor executor;
 
@@ -223,9 +225,35 @@ public final class ServiceGraphModule extends AbstractModule {
 		return nodeFromNioScope(new KeyInPool(key, poolIndex), instance);
 	}
 
+	private boolean isScoped(Binding<?> binding, final Scope scope, final Class<? extends Annotation> annotation) {
+		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
+			public Boolean visitNoScoping() {
+				return false;
+			}
+
+			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
+				return visitedAnnotation == annotation;
+			}
+
+			public Boolean visitScope(Scope visitedScope) {
+				return visitedScope == scope;
+			}
+
+			public Boolean visitEagerSingleton() {
+				return false;
+			}
+		});
+	}
+
 	@SuppressWarnings("unchecked")
 	private AsyncService getServiceOrNull(Key<?> key, Injector injector) {
-		Object object = services.get(key);
+		Binding<?> binding = injector.getBinding(key);
+
+		if (!isScoped(binding, serviceScope, SingletonService.class)) return null;
+
+		Object object = (injector.getInstance(Stage.class).equals(Stage.DEVELOPMENT)
+				? services.get(key)
+				: injector.getInstance(key));
 
 		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
 		if (factoryForKey != null) {
@@ -242,7 +270,6 @@ public final class ServiceGraphModule extends AbstractModule {
 				return checkNotNull(service);
 			}
 		}
-		Binding<?> binding = injector.getBinding(key);
 		if (binding instanceof HasDependencies) {
 			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
 			for (Dependency<?> dependency : dependencies) {
@@ -251,7 +278,7 @@ public final class ServiceGraphModule extends AbstractModule {
 				}
 			}
 		}
-		return null;
+		throw new IllegalArgumentException("Could not find factory for service " + key);
 	}
 
 	private ServiceGraph.Node nodeFromService(Key<?> key, Injector injector) {
@@ -344,7 +371,6 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		SingletonServiceScope serviceScope = new SingletonServiceScope();
 		bindScope(SingletonService.class, serviceScope);
 	}
 
