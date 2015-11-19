@@ -16,9 +16,13 @@
 
 package io.datakernel.http;
 
+import com.google.common.base.Charsets;
 import com.google.common.net.HttpHeaders;
+import com.google.common.net.MediaType;
 import io.datakernel.bytebuf.ByteBuf;
 
+import java.net.HttpCookie;
+import java.nio.charset.Charset;
 import java.util.List;
 
 import static io.datakernel.util.ByteBufStrings.*;
@@ -241,6 +245,118 @@ public class HttpHeader {
 
 	public static HttpHeaderValue ofString(HttpHeader key, String string) {
 		return new HttpHeaderValueOfString(key, string);
+	}
+
+	public static HttpHeaderValue ofCharset(HttpHeader key, Charset charset) {
+		return new HttpHeaderValueOfCharset(key, charset);
+	}
+
+	public static HttpHeaderValue ofCookies(HttpHeader key, List<HttpCookie> cookies) {
+		return new HttpHeaderValueOfCookies(key, cookies);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	private static final class HttpHeaderValueofContentType extends HttpHeaderValue {
+		private final MediaType type;
+
+		public HttpHeaderValueofContentType(HttpHeader key, MediaType type) {
+			super(key);
+			this.type = type;
+		}
+
+		@Override
+		public int estimateSize() {
+			return 0;
+		}
+
+		@Override
+		public void writeTo(ByteBuf buf) {
+
+		}
+	}
+
+	private static final class HttpHeaderValueOfCookies extends HttpHeaderValue {
+		// FIXME using java.net cookies - impossible to operate with some attributes
+		private final List<HttpCookie> cookies;
+
+		public HttpHeaderValueOfCookies(HttpHeader key, List<HttpCookie> cookies) {
+			super(key);
+			this.cookies = cookies;
+		}
+
+		@Override
+		public int estimateSize() {
+			int size = 0;
+			for (HttpCookie cookie : cookies) {
+				size += cookie.getName().length();
+				size += cookie.getValue().length();
+				size += 50; // expires-av
+				size += 20; // max age-av
+				size += cookie.getDomain() == null ? 0 : cookie.getDomain().length() + 10; // domain-av
+				size += cookie.getPath() == null ? 0 : cookie.getPath().length() + 6; // path-av
+				size += 14; // Secure + HttpOnly
+			}
+			return size;
+		}
+
+		@Override
+		public void writeTo(ByteBuf buf) {
+			// rfc 6265 due to java.net.HttpCookie restrictions impossible to implement all the fields
+			for (HttpCookie cookie : cookies) {
+				// name-value pair
+				putAscii(buf, cookie.getName());
+				putAscii(buf, "=\"");
+				putAscii(buf, cookie.getValue());
+				putAscii(buf, "\"; ");
+
+				putAttr(buf, "Expires=", null);
+				putAttr(buf, "Max-Age=", (int) cookie.getMaxAge());
+				putAttr(buf, "Domain=", cookie.getDomain());
+				putAttr(buf, "Path=", cookie.getPath());
+				if (cookie.getSecure()) {
+					putAscii(buf, "Secure; ");
+				}
+				if (cookie.isHttpOnly()) {
+					putAscii(buf, "HttpOnly; ");
+				}
+				// extensions
+			}
+		}
+
+		private void putAttr(ByteBuf buf, String name, String attr) {
+			if (attr != null) {
+				putAscii(buf, name);
+				putAscii(buf, attr);
+				putAscii(buf, "; ");
+			}
+		}
+
+		private void putAttr(ByteBuf buf, String name, int attr) {
+			if (attr != 0) {
+				putAscii(buf, name);
+				putDecimal(buf, attr);
+				putAscii(buf, "; ");
+			}
+		}
+	}
+
+	private static final class HttpHeaderValueOfCharset extends HttpHeaderValue {
+		private final Charset charset;
+
+		public HttpHeaderValueOfCharset(HttpHeader key, Charset charset) {
+			super(key);
+			this.charset = charset;
+		}
+
+		@Override
+		public int estimateSize() {
+			return charset.name().length();
+		}
+
+		@Override
+		public void writeTo(ByteBuf buf) {
+			buf.put(charset.name().getBytes(Charsets.UTF_8));
+		}
 	}
 
 	private static final class HttpHeaderValueOfBytes extends HttpHeaderValue {
