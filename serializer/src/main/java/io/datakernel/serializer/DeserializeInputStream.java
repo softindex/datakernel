@@ -21,14 +21,14 @@ import java.io.InputStream;
 
 import static java.lang.Math.min;
 
-public class DeserializeInputStream<T> {
+public final class DeserializeInputStream<T> implements ObjectReader<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
 	public static final int MAX_HEADER_BYTES = 3;
-	public static final int INITIAL_BUFFER_SIZE = 10;
 
 	private final InputStream inputStream;
 	private final BufferSerializer<T> bufferSerializer;
 	private final SerializationInputBuffer inputBuffer = new SerializationInputBuffer();
+	private final int maxMessageSize;
 	private byte[] buffer;
 	private byte[] buf;
 	private int off;
@@ -36,7 +36,6 @@ public class DeserializeInputStream<T> {
 
 	private int dataSize;
 	private int bufferPos;
-	private final int maxMessageSize;
 
 	public DeserializeInputStream(InputStream inputStream, BufferSerializer<T> bufferSerializer, int maxMessageSize) {
 		this(inputStream, bufferSerializer, maxMessageSize, DEFAULT_BUFFER_SIZE);
@@ -51,11 +50,16 @@ public class DeserializeInputStream<T> {
 		this.maxMessageSize = maxMessageSize;
 	}
 
-	public T read() throws IOException {
+	@Override
+	public T read() {
 		for (; ; ) {
 			if (readBytes == 0) {
-				readBytes = inputStream.read(buf);
-				off = 0;
+				try {
+					readBytes = inputStream.read(buf);
+					off = 0;
+				} catch (IOException e) {
+					return null;
+				}
 			}
 			if (readBytes == -1) {
 				return null;
@@ -126,6 +130,10 @@ public class DeserializeInputStream<T> {
 		byte[] bytes = new byte[newSize];
 		System.arraycopy(buffer, 0, bytes, 0, bufferPos);
 		buffer = bytes;
+		// TODO (vsavchuk) ???
+		byte[] bufBytes = new byte[newSize];
+		System.arraycopy(buf, 0, bufBytes, 0, buf.length);
+		buf = bufBytes;
 	}
 
 	private void copyIntoBuffer(byte[] b, int off, int len) {
@@ -161,6 +169,7 @@ public class DeserializeInputStream<T> {
 		return Integer.MAX_VALUE;
 	}
 
+	@Override
 	public void close() throws IOException {
 		inputStream.close();
 	}

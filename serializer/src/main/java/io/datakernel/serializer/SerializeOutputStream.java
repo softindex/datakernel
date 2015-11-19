@@ -21,7 +21,7 @@ import java.io.OutputStream;
 
 import static java.lang.Math.max;
 
-public class SerializeOutputStream<T> {
+public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 	public static final int DEFAULT_BUFFER_SIZE = 1 << 20;
 
@@ -35,24 +35,26 @@ public class SerializeOutputStream<T> {
 	private final BufferSerializer<T> serializer;
 	private final OutputStream outputStream;
 
-	private SerializationOutputBuffer outputBuffer = new SerializationOutputBuffer();
+	private final SerializationOutputBuffer outputBuffer = new SerializationOutputBuffer();
 
+	private final boolean skipSerializationErrors;
 	private final int maxMessageSize;
 	private final int headerSize;
 	private final int bufferSize;
 	private int estimatedMessageSize;
 
-	public SerializeOutputStream(OutputStream output, BufferSerializer<T> serializer, int maxMessageSize) {
-		this(output, serializer, maxMessageSize, DEFAULT_BUFFER_SIZE);
+	public SerializeOutputStream(OutputStream output, BufferSerializer<T> serializer, int maxMessageSize, boolean skipSerializationErrors) {
+		this(output, serializer, maxMessageSize, DEFAULT_BUFFER_SIZE, skipSerializationErrors);
 	}
 
-	public SerializeOutputStream(OutputStream outputStream, BufferSerializer<T> serializer, int maxMessageSize, int bufferSize) {
+	public SerializeOutputStream(OutputStream outputStream, BufferSerializer<T> serializer, int maxMessageSize, int bufferSize, boolean skipSerializationErrors) {
 		this.serializer = serializer;
 		this.bufferSize = bufferSize;
 		this.outputStream = outputStream;
 		this.maxMessageSize = maxMessageSize;
 		this.headerSize = varint32Size(maxMessageSize);
 		this.estimatedMessageSize = 1;
+		this.skipSerializationErrors = skipSerializationErrors;
 		allocateBuffer();
 	}
 
@@ -91,11 +93,15 @@ public class SerializeOutputStream<T> {
 	}
 
 	private void allocateBuffer() {
-		byte[] bytes = new byte[(max(bufferSize, headerSize + estimatedMessageSize))];
-		outputBuffer.set(bytes, 0);
+		int max = max(bufferSize, headerSize + estimatedMessageSize);
+		if (outputBuffer.array() == null || max > outputBuffer.array().length) {
+			outputBuffer.set(new byte[max], 0);
+		} else {
+			outputBuffer.position(0);
+		}
 	}
 
-	// TODO (vsavchuk) check logic
+	@Override
 	public void write(T value) throws IOException {
 		for (; ; ) {
 			int positionBegin = outputBuffer.position();
@@ -136,9 +142,12 @@ public class SerializeOutputStream<T> {
 	}
 
 	private void handleSerializationError(Exception e) {
-		// TODO (vsavchuk)
+		if (!skipSerializationErrors) {
+			throw new RuntimeException(e);
+		}
 	}
 
+	@Override
 	public void flush() throws IOException {
 		int size = outputBuffer.position();
 		if (size != 0) {
@@ -147,6 +156,7 @@ public class SerializeOutputStream<T> {
 		allocateBuffer();
 	}
 
+	@Override
 	public void close() throws IOException {
 		outputStream.close();
 		outputBuffer.set(null, 0);
