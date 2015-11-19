@@ -22,6 +22,7 @@ import org.junit.Test;
 import java.net.InetSocketAddress;
 import java.util.*;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static org.junit.Assert.*;
 
 public class TestLogic {
@@ -51,23 +52,8 @@ public class TestLogic {
 
 	@Test
 	public void testUpdate() {
-		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
-				.setHashing(hMock)
-				.build();
-		logic.wire(cMock);
-		cMock.scan(new ResultCallback<Set<String>>() {
-			@Override
-			public void onResult(Set<String> result) {
-				logic.start(result);
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-
-			}
-		});
+		final Logic logic = getLogic(cMock);
 		logic.update(1);
 
 		Set<String> real1 = cMock.servers2files.get(server1);
@@ -85,23 +71,8 @@ public class TestLogic {
 
 	@Test
 	public void testUpload() {
-		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
-				.setHashing(hMock)
-				.build();
-		logic.wire(cMock);
-		cMock.scan(new ResultCallback<Set<String>>() {
-			@Override
-			public void onResult(Set<String> result) {
-				logic.start(result);
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-
-			}
-		});
+		final Logic logic = getLogic(cMock);
 		logic.update(1);
 
 		assertFalse(logic.canUpload(b));
@@ -121,23 +92,8 @@ public class TestLogic {
 
 	@Test
 	public void testDelete() {
-		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
-				.setHashing(hMock)
-				.build();
-		logic.wire(cMock);
-		cMock.scan(new ResultCallback<Set<String>>() {
-			@Override
-			public void onResult(Set<String> result) {
-				logic.start(result);
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-
-			}
-		});
+		final Logic logic = getLogic(cMock);
 		logic.update(1);
 		logic.onReplicationStart(a);
 		logic.onReplicationStart(a);
@@ -169,23 +125,9 @@ public class TestLogic {
 
 	@Test
 	public void testDownload() {
-		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
-				.setHashing(hMock)
-				.build();
-		logic.wire(cMock);
-		cMock.scan(new ResultCallback<Set<String>>() {
-			@Override
-			public void onResult(Set<String> result) {
-				logic.start(result);
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-
-			}
-		});
+		final Logic logic = getLogic(cMock);
+		logic.update(1);
 		logic.update(1);
 		logic.update(1);
 		assertFalse(logic.canDownload(a));
@@ -193,23 +135,8 @@ public class TestLogic {
 
 	@Test
 	public void testOffer() {
-		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
-				.setHashing(hMock)
-				.build();
-		logic.wire(cMock);
-		cMock.scan(new ResultCallback<Set<String>>() {
-			@Override
-			public void onResult(Set<String> result) {
-				logic.start(result);
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-
-			}
-		});
+		final Logic logic = getLogic(cMock);
 		logic.update(1);
 
 		logic.onReplicationComplete(server1, a);
@@ -240,23 +167,8 @@ public class TestLogic {
 
 	@Test
 	public void testAlive() {
-		HashingMock hMock = new HashingMock();
 		CommandsMock cMock = new CommandsMock();
-		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
-				.setHashing(hMock)
-				.build();
-		logic.wire(cMock);
-		cMock.scan(new ResultCallback<Set<String>>() {
-			@Override
-			public void onResult(Set<String> result) {
-				logic.start(result);
-			}
-
-			@Override
-			public void onException(Exception ignored) {
-
-			}
-		});
+		final Logic logic = getLogic(cMock);
 
 		logic.onShowAliveRequest(1, new ResultCallback<Set<ServerInfo>>() {
 			@Override
@@ -269,6 +181,17 @@ public class TestLogic {
 				fail("Can't end here");
 			}
 		});
+	}
+
+	private Logic getLogic(Commands commands) {
+		HashingStrategy hashing = new HashingMock();
+		final Logic logic = LogicImpl.buildInstance(local, bootstrap)
+				.setMaxReplicaQuantity(2)
+				.setHashing(hashing)
+				.build();
+		logic.wire(commands);
+		logic.start(ignoreCompletionCallback());
+		return logic;
 	}
 
 	class HashingMock implements HashingStrategy {

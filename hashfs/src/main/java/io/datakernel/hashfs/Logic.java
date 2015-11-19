@@ -19,13 +19,12 @@ package io.datakernel.hashfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
-import java.util.Collection;
 import java.util.Set;
 
 interface Logic {
-	void start(Collection<String> files);
-
 	void update(long timestamp);
+
+	void start(CompletionCallback callback);
 
 	void stop(CompletionCallback callback);
 

@@ -108,6 +108,7 @@ public class IntegrationSingleNodeTest {
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
+				logger.info("Server started");
 				client.upload("this/is/a.txt", producerA, new CompletionCallback() {
 					@Override
 					public void onComplete() {
@@ -478,11 +479,13 @@ public class IntegrationSingleNodeTest {
 	}
 
 	private FsClient getClient(NioEventloop eventloop) {
-		ClientProtocol clientProtocol = GsonClientProtocol.createInstance(eventloop);
-		return HashFsClient.createInstance(eventloop, Lists.newArrayList(local));
+		return HashFsClient.buildInstance(eventloop, Lists.newArrayList(local))
+				.setMaxRetryAttempts(1)
+				.build();
 	}
 
 	private NioService getServer(NioEventloop eventloop, ExecutorService executor) {
-		return HashFsServer.buildInstance(eventloop, executor, serverStorage, local, Sets.newHashSet(local)).build();
+		return HashFsServer.buildInstance(eventloop, executor, serverStorage, local, Sets.newHashSet(local))
+				.build();
 	}
 }

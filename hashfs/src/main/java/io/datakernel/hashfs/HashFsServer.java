@@ -56,8 +56,8 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		private FileSystem fileSystem;
 		private Logic logic;
 
-		public Builder(NioEventloop eventloop, ExecutorService executor,
-		               Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
+		private Builder(NioEventloop eventloop, ExecutorService executor,
+		                Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
 			this.eventloop = eventloop;
 			this.clientBuilder = GsonClientProtocol.buildInstance(eventloop);
 			this.serverBuilder = GsonServerProtocol.buildInstance(eventloop);
@@ -201,6 +201,8 @@ public class HashFsServer implements Commands, FsServer, NioService {
 			FileSystem fs = fileSystem == null ? fsBuilder.build() : fileSystem;
 			Logic l = logic == null ? logicBuilder.build() : logic;
 
+			sp.setListenAddresses(addresses);
+
 			HashFsServer server = new HashFsServer(eventloop, fs, l, cp, sp, systemUpdateTimeout, mapUpdateTimeout);
 			l.wire(server);
 			sp.wire(server);
@@ -235,6 +237,11 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		this.mapUpdateTimeout = mapUpdateTimeout;
 	}
 
+	public static HashFsServer createInstance(NioEventloop eventloop, ExecutorService executor,
+	                                          Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
+		return buildInstance(eventloop, executor, storage, myId, bootstrap).build();
+	}
+
 	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor,
 	                                    Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
 		return new Builder(eventloop, executor, storage, myId, bootstrap);
@@ -250,15 +257,16 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		try {
 			fileSystem.ensureInfrastructure();
 			serverProtocol.listen();
-			fileSystem.list(new ResultCallback<Set<String>>() {
+			logic.start(new CompletionCallback() {
 				@Override
-				public void onResult(Set<String> result) {
-					logic.start(result);
+				public void onComplete() {
+					state = State.RUNNING;
 					callback.onComplete();
 				}
 
 				@Override
 				public void onException(Exception e) {
+					serverProtocol.close();
 					callback.onException(e);
 				}
 			});
@@ -505,7 +513,6 @@ public class HashFsServer implements Commands, FsServer, NioService {
 
 	@Override
 	public void updateServerMap(final Set<ServerInfo> bootstrap) {
-		// TODO (arashev) rework
 		logger.trace("Updating alive servers map");
 
 		final Set<ServerInfo> possiblyDown = new HashSet<>();

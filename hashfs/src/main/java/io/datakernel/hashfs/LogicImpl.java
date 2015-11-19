@@ -17,6 +17,7 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 
 import java.util.*;
@@ -25,7 +26,7 @@ import java.util.Map.Entry;
 import static io.datakernel.hashfs.LogicImpl.FileState.*;
 
 final class LogicImpl implements Logic {
-	static class Builder {
+	public static class Builder {
 		private final ServerInfo myId;
 		private HashingStrategy hashing = DEFAULT_HASHING_STRATEGY;
 		private final Set<ServerInfo> bootstrap;
@@ -102,6 +103,10 @@ final class LogicImpl implements Logic {
 		this.servers.addAll(bootstrap);
 	}
 
+	public static LogicImpl createInstance(ServerInfo myId, Set<ServerInfo> bootstrap) {
+		return buildInstance(myId, bootstrap).build();
+	}
+
 	public static Builder buildInstance(ServerInfo myId, Set<ServerInfo> bootstrap) {
 		return new Builder(myId, bootstrap);
 	}
@@ -112,10 +117,18 @@ final class LogicImpl implements Logic {
 	}
 
 	@Override
-	public void start(Collection<String> files) {
-		for (String file : files) {
-			this.files.put(file, new FileInfo(myId));
-		}
+	public void start(final CompletionCallback callback) {
+		commands.scan(new ForwardingResultCallback<Set<String>>(callback) {
+			@Override
+			public void onResult(Set<String> result) {
+				for (String s : result) {
+					files.put(s, new FileInfo(myId));
+				}
+				commands.updateServerMap(servers);
+				commands.scheduleUpdate();
+				callback.onComplete();
+			}
+		});
 	}
 
 	@Override
@@ -129,7 +142,7 @@ final class LogicImpl implements Logic {
 		}
 		files.clear();
 		servers.clear();
-		onStopCallback.onComplete();
+		callback.onComplete();
 	}
 
 	@Override

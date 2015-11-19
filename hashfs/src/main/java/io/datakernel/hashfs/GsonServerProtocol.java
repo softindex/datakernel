@@ -65,11 +65,6 @@ final class GsonServerProtocol extends ServerProtocol {
 		}
 	}
 
-	@Override
-	void wire(HashFsServer server) {
-		this.server = server;
-	}
-
 	public static final int DEFAULT_DESERIALIZER_BUFFER_SIZE = 10;
 	public static final int DEFAULT_SERIALIZER_BUFFER_SIZE = 256 * 1024;
 	public static final int DEFAULT_SERIALIZER_MAX_MESSAGE_SIZE = 256 * (1 << 20);
@@ -92,6 +87,11 @@ final class GsonServerProtocol extends ServerProtocol {
 
 	public static Builder buildInstance(NioEventloop eventloop) {
 		return new Builder(eventloop);
+	}
+
+	@Override
+	void wire(HashFsServer server) {
+		this.server = server;
 	}
 
 	@Override
@@ -167,7 +167,7 @@ final class GsonServerProtocol extends ServerProtocol {
 						@Override
 						public void onResult(final CompletionCallback callback) {
 							messaging.write(forwarder.getOutput(), callback);
-							messaging.shutdown();
+							messaging.shutdownWriter();
 						}
 
 						@Override

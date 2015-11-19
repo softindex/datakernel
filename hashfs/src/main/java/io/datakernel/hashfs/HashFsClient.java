@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Set;
 
 public class HashFsClient implements FsClient {
-	final static class Builder {
+	public final static class Builder {
 		private final NioEventloop eventloop;
 		private final GsonClientProtocol.Builder protocolBuilder;
 		private final List<ServerInfo> bootstrap;
@@ -82,8 +82,9 @@ public class HashFsClient implements FsClient {
 			return this;
 		}
 
-		public void setMaxChunkSize(int maxChunkSize) {
+		public Builder setMaxChunkSize(int maxChunkSize) {
 			protocolBuilder.setMaxChunkSize(maxChunkSize);
+			return this;
 		}
 
 		public Builder setConnectTimeout(int connectTimeout) {

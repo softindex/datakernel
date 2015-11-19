@@ -196,7 +196,6 @@ final class GsonClientProtocol implements ClientProtocol {
 								messaging.write(byteChunker.getOutput(), new CompletionCallback() {
 									@Override
 									public void onComplete() {
-
 									}
 
 									@Override
@@ -256,6 +255,7 @@ final class GsonClientProtocol implements ClientProtocol {
 								Util.CounterTransformer counter = new Util.CounterTransformer(eventloop, item.size);
 								messaging.read().streamTo(counter.getInput());
 								counter.getOutput().streamTo(consumer);
+								callback.onComplete();
 								messaging.shutdown();
 							}
 						})

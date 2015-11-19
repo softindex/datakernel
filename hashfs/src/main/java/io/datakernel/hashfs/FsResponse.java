@@ -16,16 +16,29 @@
 
 package io.datakernel.hashfs;
 
+import com.google.common.base.Splitter;
+import com.google.common.net.InetAddresses;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Set;
+
+import static com.google.common.base.Preconditions.checkArgument;
 
 abstract class FsResponse {
 	public static Gson getGSON() {
 		return new GsonBuilder()
+				.registerTypeAdapter(InetSocketAddress.class, new GsonInetSocketAddressAdapter())
 				.registerTypeAdapter(FsResponse.class, GsonSubclassesAdapter.builder()
 						.subclassField("commandType")
 						.subclass("Error", Error.class)
@@ -103,6 +116,36 @@ abstract class FsResponse {
 		@Override
 		public String toString() {
 			return "Listed{" + servers.size() + "}";
+		}
+	}
+
+	private static final class GsonInetSocketAddressAdapter extends TypeAdapter<InetSocketAddress> {
+		@Override
+		public InetSocketAddress read(JsonReader reader) throws IOException {
+			if (reader.peek() == JsonToken.NULL) {
+				reader.nextNull();
+				return null;
+			}
+			try {
+				Iterator<String> split = Splitter.on(':').split(reader.nextString()).iterator();
+				InetAddress hostname = InetAddresses.forString(split.next());
+				int port = Integer.parseInt(split.next());
+				checkArgument(!split.hasNext());
+				return new InetSocketAddress(hostname, port);
+			} catch (IOException e) {
+				throw e;
+			} catch (Exception e) {
+				throw new IOException(e);
+			}
+		}
+
+		@Override
+		public void write(JsonWriter writer, InetSocketAddress value) throws IOException {
+			if (value == null) {
+				writer.nullValue();
+				return;
+			}
+			writer.value(value.getAddress().getHostAddress() + ':' + value.getPort());
 		}
 	}
 }

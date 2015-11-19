@@ -106,7 +106,7 @@ final class FileSystemImpl implements FileSystem, NioService {
 		this.inProgressExtension = inProgressExtension;
 	}
 
-	public static FileSystemImpl createInstatnce(NioEventloop eventloop, ExecutorService executor, Path storage) {
+	public static FileSystemImpl createInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
 		return buildInstance(eventloop, executor, storage).build();
 	}
 
@@ -148,8 +148,8 @@ final class FileSystemImpl implements FileSystem, NioService {
 			return;
 		}
 		StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, tmpPath, true);
-		diskWrite.setFlushCallback(callback);
 		producer.streamTo(diskWrite);
+		diskWrite.setFlushCallback(callback);
 	}
 
 	@Override
@@ -307,6 +307,9 @@ final class FileSystemImpl implements FileSystem, NioService {
 
 	@Override
 	public void ensureInfrastructure() throws IOException {
+		if (!Files.exists(fileStorage)) {
+			Files.createDirectories(fileStorage);
+		}
 		if (Files.exists(tmpStorage)) {
 			cleanFolder(tmpStorage);
 		} else {
