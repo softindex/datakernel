@@ -31,6 +31,7 @@ import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeMetadataStorage;
 import io.datakernel.cube.CubeMetadataStorageSql;
+import io.datakernel.cube.api.CubeHttpServer;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.logfs.*;
@@ -52,7 +53,6 @@ import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
-import static io.datakernel.cube.api.HttpJsonApiServer.httpServer;
 import static java.util.Arrays.asList;
 
 /**
@@ -212,7 +212,7 @@ public class CubeExample {
 		eventloop.run();
 
 		/* Launch HTTP server, that accepts JSON queries to cube. */
-		AsyncHttpServer server = httpServer(cube, eventloop, classLoader, HTTP_SERVER_PORT);
+		AsyncHttpServer server = CubeHttpServer.createServer(cube, eventloop, classLoader, HTTP_SERVER_PORT);
 		server.listen();
 		eventloop.run();
 

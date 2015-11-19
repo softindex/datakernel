@@ -161,6 +161,10 @@ public final class Expressions {
 		return cmp(PredicateDefCmp.Operation.LE, left, right);
 	}
 
+	public static PredicateDefCmp cmpNe(Expression left, Expression right) {
+		return cmp(PredicateDefCmp.Operation.NE, left, right);
+	}
+
 	/**
 	 * Returns result of logical 'and' for the list of predicates
 	 *
@@ -258,6 +262,10 @@ public final class Expressions {
 	 */
 	public static ExpressionComparator comparator() {
 		return new ExpressionComparator();
+	}
+
+	public static ExpressionComparatorNullable comparatorNullable() {
+		return new ExpressionComparatorNullable();
 	}
 
 	/**
@@ -379,6 +387,18 @@ public final class Expressions {
 
 	public static ExpressionArithmeticOp sub(Expression left, Expression right) {
 		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.SUB, left, right);
+	}
+
+	public static ExpressionArithmeticOp mul(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.MUL, left, right);
+	}
+
+	public static ExpressionArithmeticOp div(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.DIV, left, right);
+	}
+
+	public static ExpressionArithmeticOp rem(Expression left, Expression right) {
+		return new ExpressionArithmeticOp(ExpressionArithmeticOp.Operation.REM, left, right);
 	}
 
 	/**

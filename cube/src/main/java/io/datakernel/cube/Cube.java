@@ -17,6 +17,7 @@
 package io.datakernel.cube;
 
 import com.google.common.base.Function;
+import com.google.common.base.Functions;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
 import com.google.common.collect.LinkedHashMultimap;
@@ -24,11 +25,13 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import io.datakernel.aggregation_db.*;
+import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -63,6 +66,7 @@ public final class Cube {
 	private final int sorterItemsInMemory;
 
 	private final AggregationStructure structure;
+	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
 
 	private Map<String, Aggregation> aggregations = new LinkedHashMap<>();
 
@@ -100,6 +104,26 @@ public final class Cube {
 
 	public AggregationStructure getStructure() {
 		return structure;
+	}
+
+	public ReportingConfiguration getReportingConfiguration() {
+		return reportingConfiguration;
+	}
+
+	public void setReportingConfiguration(ReportingConfiguration reportingConfiguration) {
+		this.reportingConfiguration = reportingConfiguration;
+		initResolverKeys();
+	}
+
+	public void initResolverKeys() {
+		for (Map.Entry<String, String> attributeDimension : reportingConfiguration.getAttributeDimensions().entrySet()) {
+			List<String> key = buildDrillDownChain(attributeDimension.getValue());
+			reportingConfiguration.setKeyForAttribute(attributeDimension.getKey(), key);
+		}
+	}
+
+	public Map<String, AttributeResolver> getResolvers() {
+		return reportingConfiguration == null ? new HashMap<String, AttributeResolver>() : reportingConfiguration.getResolvers();
 	}
 
 	/**
@@ -319,7 +343,7 @@ public final class Cube {
 
 			logger.info("Streaming query {} result from aggregation '{}'", filteredQuery, aggregation.getId());
 
-			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getInputFields()))));
+			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getOutputFields()))));
 		}
 
 		checkArgument(queryMeasures.isEmpty());
@@ -423,6 +447,10 @@ public final class Cube {
 		return structure.getChildParentRelationships().buildDrillDownChain(usedDimensions, dimension);
 	}
 
+	public List<String> buildDrillDownChain(String dimension) {
+		return buildDrillDownChain(Sets.<String>newHashSet(), dimension);
+	}
+
 	public Set<String> getAvailableMeasures(List<String> dimensions, List<String> allMeasures) {
 		Set<String> availableMeasures = newHashSet();
 		Set<String> allMeasuresSet = newHashSet();
@@ -450,13 +478,9 @@ public final class Cube {
 	                                                     StreamReducer<Comparable, T, Object> rawResultStream,
 	                                                     List<String> dimensions, List<String> measures) {
 		if (queryRequiresSorting(query)) {
-			ArrayList<String> orderingFields = new ArrayList<>(query.getOrderingFields());
-			Class<?> fieldClass = structure.createFieldClass(orderingFields);
-			Function sortingMeasureFunction = structure.createFieldFunction(resultClass, fieldClass, orderingFields);
-			Comparator fieldComparator = structure.createFieldComparator(query, fieldClass);
-
+			Comparator fieldComparator = structure.createFieldComparator(query, resultClass);
 			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure, resultClass, dimensions, measures);
-			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, sortingMeasureFunction,
+			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
 					fieldComparator, false, sorterItemsInMemory);
 			rawResultStream.getOutput().streamTo(sorter.getInput());
 			return sorter.getOutput();

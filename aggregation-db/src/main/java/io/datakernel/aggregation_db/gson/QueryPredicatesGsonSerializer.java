@@ -16,10 +16,10 @@
 
 package io.datakernel.aggregation_db.gson;
 
-import com.google.common.base.Preconditions;
 import com.google.gson.*;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.keytype.KeyType;
 
 import java.lang.reflect.Type;
@@ -46,7 +46,8 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 	@SuppressWarnings("ConstantConditions")
 	@Override
 	public AggregationQuery.QueryPredicates deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-		Preconditions.checkArgument(json instanceof JsonObject);
+		if (!(json instanceof JsonObject))
+			throw new QueryException("Incorrect filters format. Should be represented as a JSON object");
 
 		JsonObject predicates = (JsonObject) json;
 		AggregationQuery.QueryPredicates queryPredicates = new AggregationQuery.QueryPredicates();
@@ -56,9 +57,15 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 			String key = entry.getKey();
 			if (value instanceof JsonPrimitive) {
 				queryPredicates.eq(key, parseKey(key, value));
-			} else if (value instanceof JsonArray) {
+			} else if (value instanceof JsonArray && ((JsonArray) value).get(0) instanceof JsonPrimitive &&
+					((JsonArray) value).get(0).getAsString().equals("between") && ((JsonArray) value).get(1) instanceof JsonArray) {
 				JsonArray range = (JsonArray) ((JsonArray) value).get(1);
 				queryPredicates.between(key, parseKey(key, range.get(0)), parseKey(key, range.get(1)));
+			} else if (value instanceof JsonArray && ((JsonArray) value).get(0) instanceof JsonPrimitive &&
+					((JsonArray) value).get(0).getAsString().equals("ne") && ((JsonArray) value).get(1) instanceof JsonPrimitive) {
+				queryPredicates.ne(key, parseKey(key, ((JsonArray) value).get(1)));
+			} else {
+				throw new QueryException("Incorrect filters format.");
 			}
 		}
 		return queryPredicates;
