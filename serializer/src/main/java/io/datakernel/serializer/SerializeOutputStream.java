@@ -88,7 +88,7 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 
 	private void ensureSize(int size) throws IOException {
 		if (outputBuffer.remaining() < size) {
-			flush();
+			write();
 		}
 	}
 
@@ -138,7 +138,7 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 			}
 		}
 
-		flush();
+		write();
 	}
 
 	private void handleSerializationError(Exception e) {
@@ -147,13 +147,17 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 		}
 	}
 
-	@Override
-	public void flush() throws IOException {
+	public void write() throws IOException {
 		int size = outputBuffer.position();
 		if (size != 0) {
 			outputStream.write(outputBuffer.array(), 0, size);
 		}
 		allocateBuffer();
+	}
+
+	@Override
+	public void flush() throws IOException {
+		outputStream.flush();
 	}
 
 	@Override
