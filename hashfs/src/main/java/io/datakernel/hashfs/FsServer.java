@@ -24,7 +24,7 @@ import io.datakernel.stream.StreamProducer;
 
 import java.util.Set;
 
-public interface FsServer {
+interface FsServer {
 	void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
 	void commit(String fileName, boolean success, CompletionCallback callback);
@@ -38,4 +38,6 @@ public interface FsServer {
 	void showAlive(ResultCallback<Set<ServerInfo>> callback);
 
 	void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback);
+
+	long fileSize(String filePath);
 }

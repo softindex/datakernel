@@ -18,12 +18,11 @@ package io.datakernel.hashfs;
 
 import io.datakernel.eventloop.AbstractNioServer;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
 
-public abstract class ServerProtocol extends AbstractNioServer<ServerProtocol> implements NioService {
+abstract class ServerProtocol extends AbstractNioServer<ServerProtocol> {
 	public ServerProtocol(NioEventloop eventloop) {
 		super(eventloop);
 	}
 
-	public abstract void wireServer(FsServer server);
+	abstract void wire(HashFsServer server);
 }

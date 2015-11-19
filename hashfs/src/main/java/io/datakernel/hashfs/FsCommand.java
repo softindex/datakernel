@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs;
+package io.datakernel.hashfs;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
+import java.util.Set;
+
+import static java.util.Collections.unmodifiableSet;
+
 abstract class FsCommand {
-	static Gson getGSON() {
+	public static Gson getGSON() {
 		return new GsonBuilder()
 				.registerTypeAdapter(FsCommand.class, GsonSubclassesAdapter.builder()
 						.subclassField("commandType")
@@ -30,6 +34,8 @@ abstract class FsCommand {
 						.subclass("Download", Download.class)
 						.subclass("Delete", Delete.class)
 						.subclass("List", List.class)
+						.subclass("Alive", Alive.class)
+						.subclass("Offer", Offer.class)
 						.build())
 				.setPrettyPrinting()
 				.enableComplexMapKeySerialization()
@@ -37,6 +43,7 @@ abstract class FsCommand {
 	}
 
 	static class Upload extends FsCommand {
+
 		public final String filePath;
 
 		public Upload(String filePath) {
@@ -47,6 +54,7 @@ abstract class FsCommand {
 		public String toString() {
 			return "Upload{filepath=\'" + filePath + "\'}";
 		}
+
 	}
 
 	static class Commit extends FsCommand {
@@ -63,9 +71,11 @@ abstract class FsCommand {
 		public String toString() {
 			return "Commit{filepath=\'" + filePath + "\',isOk=" + isOk + "}";
 		}
+
 	}
 
 	static class Delete extends FsCommand {
+
 		public final String filePath;
 
 		public Delete(String filePath) {
@@ -76,9 +86,11 @@ abstract class FsCommand {
 		public String toString() {
 			return "Delete{filepath=\'" + filePath + "\'}";
 		}
+
 	}
 
 	static class Download extends FsCommand {
+
 		public final String filePath;
 
 		public Download(String filePath) {
@@ -89,12 +101,36 @@ abstract class FsCommand {
 		public String toString() {
 			return "Delete{filepath=\'" + filePath + "\'}";
 		}
+
 	}
 
 	static class List extends FsCommand {
 		@Override
 		public String toString() {
 			return "List{all files}";
+		}
+
+	}
+
+	static class Alive extends FsCommand {
+		@Override
+		public String toString() {
+			return "Alive{servers}";
+		}
+	}
+
+	static class Offer extends FsCommand {
+		public final Set<String> forDeletion;
+		public final Set<String> forUpload;
+
+		public Offer(Set<String> forDeletion, Set<String> forUpload) {
+			this.forDeletion = unmodifiableSet(forDeletion);
+			this.forUpload = unmodifiableSet(forUpload);
+		}
+
+		@Override
+		public String toString() {
+			return "Offer{forDeletion:" + forDeletion.size() + ",forUpload:" + forUpload.size() + "}";
 		}
 	}
 }

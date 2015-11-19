@@ -16,43 +16,218 @@
 
 package io.datakernel.hashfs;
 
-import com.google.common.collect.Lists;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.hashfs.protocol.GsonClientProtocol;
-import io.datakernel.hashfs.protocol.GsonServerProtocol;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 public class HashFsServer implements Commands, FsServer, NioService {
+	public final static class Builder {
+		private final NioEventloop eventloop;
+
+		private final GsonClientProtocol.Builder clientBuilder;
+		private final GsonServerProtocol.Builder serverBuilder;
+		private final FileSystemImpl.Builder fsBuilder;
+		private final LogicImpl.Builder logicBuilder;
+		private final List<InetSocketAddress> addresses = new ArrayList<>();
+
+		private long systemUpdateTimeout = DEFAULT_SYSTEM_UPDATE_TIMEOUT;
+		private long mapUpdateTimeout = DEFAULT_MAP_UPDATE_TIMEOUT;
+		private ClientProtocol clientProtocol;
+		private ServerProtocol serverProtocol;
+		private FileSystem fileSystem;
+		private Logic logic;
+
+		private Builder(NioEventloop eventloop, ExecutorService executor,
+		                Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
+			this.eventloop = eventloop;
+			this.clientBuilder = GsonClientProtocol.buildInstance(eventloop);
+			this.serverBuilder = GsonServerProtocol.buildInstance(eventloop);
+			this.fsBuilder = FileSystemImpl.buildInstance(eventloop, executor, storage);
+			this.logicBuilder = LogicImpl.buildInstance(myId, bootstrap);
+			addresses.add(myId.getAddress());
+		}
+
+		public void setLogic(Logic logic) {
+			this.logic = logic;
+		}
+
+		public Builder specifyListenAddress(InetSocketAddress address) {
+			this.addresses.add(address);
+			return this;
+		}
+
+		public Builder specifyListenAddresses(List<InetSocketAddress> addresses) {
+			this.addresses.addAll(addresses);
+			return this;
+		}
+
+		public Builder specifyListenPort(int port) {
+			this.addresses.add(new InetSocketAddress(port));
+			return this;
+		}
+
+		public Builder setSystemUpdateTimeout(long systemUpdateTimeout) {
+			this.systemUpdateTimeout = systemUpdateTimeout;
+			return this;
+		}
+
+		public Builder setMapUpdateTimeout(long mapUpdateTimeout) {
+			this.mapUpdateTimeout = mapUpdateTimeout;
+			return this;
+		}
+
+		public Builder setClientProtocol(ClientProtocol clientProtocol) {
+			this.clientProtocol = clientProtocol;
+			return this;
+		}
+
+		public Builder setServerProtocol(ServerProtocol serverProtocol) {
+			this.serverProtocol = serverProtocol;
+			return this;
+		}
+
+		public Builder setFileSystem(FileSystem fileSystem) {
+			this.fileSystem = fileSystem;
+			return this;
+		}
+
+		public Builder setMinChunkSize(int minChunkSize) {
+			clientBuilder.setMinChunkSize(minChunkSize);
+			return this;
+		}
+
+		public Builder setSocketSettings(SocketSettings socketSettings) {
+			clientBuilder.setSocketSettings(socketSettings);
+			return this;
+		}
+
+		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
+			clientBuilder.setDeserializerBufferSize(deserializerBufferSize);
+			return this;
+		}
+
+		public Builder setMaxChunkSize(int maxChunkSize) {
+			clientBuilder.setMaxChunkSize(maxChunkSize);
+			return this;
+		}
+
+		public Builder setConnectTimeout(int connectTimeout) {
+			clientBuilder.setConnectTimeout(connectTimeout);
+			return this;
+		}
+
+		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+			clientBuilder.setSerializerMaxMessageSize(serializerMaxMessageSize);
+			return this;
+		}
+
+		public Builder setSerializerBufferSize(int serializerBufferSize) {
+			clientBuilder.setSerializerBufferSize(serializerBufferSize);
+			return this;
+		}
+
+		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+			clientBuilder.setSerializerFlushDelayMillis(serializerFlushDelayMillis);
+			return this;
+		}
+
+		public Builder setInProgressExtension(String inProgressExtension) {
+			fsBuilder.setInProgressExtension(inProgressExtension);
+			return this;
+		}
+
+		public Builder setTmpStorage(Path tmpStorage) {
+			fsBuilder.setTmpStorage(tmpStorage);
+			return this;
+		}
+
+		public Builder setReaderBufferSize(int readerBufferSize) {
+			fsBuilder.setReaderBufferSize(readerBufferSize);
+			return this;
+		}
+
+		public Builder setTmpDirectoryName(String tmpDirectoryName) {
+			fsBuilder.setTmpDirectoryName(tmpDirectoryName);
+			return this;
+		}
+
+		public Builder setServerDeathTimeout(long serverDeathTimeout) {
+			logicBuilder.setServerDeathTimeout(serverDeathTimeout);
+			return this;
+		}
+
+		public Builder setApproveWaitTime(long approveWaitTime) {
+			logicBuilder.setApproveWaitTime(approveWaitTime);
+			return this;
+		}
+
+		public Builder setMaxReplicaQuantity(int maxReplicaQuantity) {
+			logicBuilder.setMaxReplicaQuantity(maxReplicaQuantity);
+			return this;
+		}
+
+		public Builder setMinSafeReplicaQuantity(int minSafeReplicaQuantity) {
+			logicBuilder.setMinSafeReplicaQuantity(minSafeReplicaQuantity);
+			return this;
+		}
+
+		public Builder setHashing(HashingStrategy hashing) {
+			logicBuilder.setHashing(hashing);
+			return this;
+		}
+
+		public HashFsServer build() {
+			ClientProtocol cp = clientProtocol == null ? clientBuilder.build() : clientProtocol;
+			ServerProtocol sp = serverProtocol == null ? serverBuilder.build() : serverProtocol;
+			FileSystem fs = fileSystem == null ? fsBuilder.build() : fileSystem;
+			Logic l = logic == null ? logicBuilder.build() : logic;
+
+			sp.setListenAddresses(addresses);
+
+			HashFsServer server = new HashFsServer(eventloop, fs, l, cp, sp, systemUpdateTimeout, mapUpdateTimeout);
+			l.wire(server);
+			sp.wire(server);
+			return server;
+		}
+	}
+
+	private static final long DEFAULT_SYSTEM_UPDATE_TIMEOUT = 10 * 1000;
+	private static final long DEFAULT_MAP_UPDATE_TIMEOUT = 10 * 1000;
+
 	private static final Logger logger = LoggerFactory.getLogger(HashFsServer.class);
 	private final NioEventloop eventloop;
 
 	private final ClientProtocol clientProtocol;
-	private final FileSystem fileSystem;
 	private final ServerProtocol serverProtocol;
+	private final FileSystem fileSystem;
 	private final Logic logic;
 	private State state;
 
 	private final long systemUpdateTimeout;
 	private final long mapUpdateTimeout;
 
-	public HashFsServer(NioEventloop eventloop, FileSystem fileSystem, Logic logic,
-	                    ClientProtocol clientProtocol, ServerProtocol serverProtocol,
-	                    long systemUpdateTimeout, long mapUpdateTimeout) {
+	private HashFsServer(NioEventloop eventloop, FileSystem fileSystem, Logic logic,
+	                     ClientProtocol clientProtocol, ServerProtocol serverProtocol,
+	                     long systemUpdateTimeout, long mapUpdateTimeout) {
 		this.eventloop = eventloop;
 		this.fileSystem = fileSystem;
 		this.logic = logic;
@@ -62,27 +237,14 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		this.mapUpdateTimeout = mapUpdateTimeout;
 	}
 
-	public static HashFsServer createInstance(NioEventloop eventloop, FileSystem fileSystem, Logic logic,
-	                                          ClientProtocol clientProtocol, ServerProtocol serverProtocol, RfsConfig config) {
-		HashFsServer server = new HashFsServer(eventloop, fileSystem, logic, clientProtocol, serverProtocol,
-				config.getSystemUpdateTimeout(), config.getMapUpdateTimeout());
-		serverProtocol.wireServer(server);
-		logic.wire(server);
-		return server;
+	public static HashFsServer createInstance(NioEventloop eventloop, ExecutorService executor,
+	                                          Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
+		return buildInstance(eventloop, executor, storage, myId, bootstrap).build();
 	}
 
-	public static HashFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path serverStorage,
-	                                          ServerInfo myId, Set<ServerInfo> bootstrap, RfsConfig config) {
-		FileSystem fileSystem = FileSystemImpl.buildInstance(eventloop, executor, serverStorage).build();
-		HashingStrategy hashing = new RendezvousHashing();
-		Logic logic = LogicImpl.createInstance(hashing, myId, bootstrap, config);
-		ClientProtocol clientProtocol = GsonClientProtocol.createInstance(eventloop, config);
-		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, Lists.newArrayList(myId.getAddress()), config);
-		HashFsServer server = new HashFsServer(eventloop, fileSystem, logic, clientProtocol, serverProtocol,
-				config.getSystemUpdateTimeout(), config.getMapUpdateTimeout());
-		serverProtocol.wireServer(server);
-		logic.wire(server);
-		return server;
+	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor,
+	                                    Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
+		return new Builder(eventloop, executor, storage, myId, bootstrap);
 	}
 
 	@Override
@@ -92,41 +254,37 @@ public class HashFsServer implements Commands, FsServer, NioService {
 
 	@Override
 	public void start(final CompletionCallback callback) {
-		CompletionCallback waiter = AsyncCallbacks.waitAll(3, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				state = State.RUNNING;
-				logger.info("Started HashFsServer");
-				callback.onComplete();
-			}
+		try {
+			fileSystem.ensureInfrastructure();
+			serverProtocol.listen();
+			logic.start(new CompletionCallback() {
+				@Override
+				public void onComplete() {
+					state = State.RUNNING;
+					callback.onComplete();
+				}
 
-			@Override
-			public void onException(Exception e) {
-				logger.error("Can't start HashFsServer", e);
-				callback.onException(e);
-			}
-		});
-		fileSystem.start(waiter);
-		logic.start(waiter);
-		serverProtocol.start(waiter);
+				@Override
+				public void onException(Exception e) {
+					serverProtocol.close();
+					callback.onException(e);
+				}
+			});
+		} catch (IOException e) {
+			callback.onException(e);
+		}
 	}
 
 	@Override
 	public void stop(final CompletionCallback callback) {
 		state = State.SHUTDOWN;
-		CompletionCallback waiter = AsyncCallbacks.waitAll(2, new CompletionCallback() {
+		logic.stop(new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
-				serverProtocol.stop(callback);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
+				serverProtocol.close();
+				callback.onComplete();
 			}
 		});
-		fileSystem.stop(waiter);
-		logic.stop(waiter);
 	}
 
 	@Override
@@ -201,8 +359,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 	}
 
 	@Override
-	public void download(final String fileName, StreamConsumer<ByteBuf> consumer,
-	                     ResultCallback<CompletionCallback> callback) {
+	public void download(final String fileName, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
 		logger.info("Received request for file download {}", fileName);
 
 		if (state != State.RUNNING) {
@@ -294,6 +451,11 @@ public class HashFsServer implements Commands, FsServer, NioService {
 	}
 
 	@Override
+	public long fileSize(String filePath) {
+		return fileSystem.exists(filePath);
+	}
+
+	@Override
 	public void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback) {
 		logger.info("Received offer (forUpload: {}, forDeletion: {})", forUpload.size(), forDeletion.size());
 
@@ -351,7 +513,6 @@ public class HashFsServer implements Commands, FsServer, NioService {
 
 	@Override
 	public void updateServerMap(final Set<ServerInfo> bootstrap) {
-		// TODO (arashev) rework
 		logger.trace("Updating alive servers map");
 
 		final Set<ServerInfo> possiblyDown = new HashSet<>();

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.hashfs.protocol;
+package io.datakernel.hashfs;
 
 import com.google.common.base.Splitter;
 import com.google.common.net.InetAddresses;
@@ -29,24 +29,95 @@ import io.datakernel.serializer.GsonSubclassesAdapter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.Set;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-class ResponseSerializer {
-	public static final Gson GSON = new GsonBuilder()
-			.registerTypeAdapter(InetSocketAddress.class, new GsonInetSocketAddressAdapter())
-			.registerTypeAdapter(Response.class, GsonSubclassesAdapter.builder()
-					.subclassField("commandType")
-					.subclass("Error", ResponseError.class)
-					.subclass("FileList", ResponseListFiles.class)
-					.subclass("ServerList", ResponseListServers.class)
-					.subclass("ResponseOk", ResponseOk.class)
-					.subclass("Acknowledge", ResponseAcknowledge.class)
-					.build())
-			.setPrettyPrinting()
-			.enableComplexMapKeySerialization()
-			.create();
+abstract class FsResponse {
+	public static Gson getGSON() {
+		return new GsonBuilder()
+				.registerTypeAdapter(InetSocketAddress.class, new GsonInetSocketAddressAdapter())
+				.registerTypeAdapter(FsResponse.class, GsonSubclassesAdapter.builder()
+						.subclassField("commandType")
+						.subclass("Error", Error.class)
+						.subclass("FileList", ListFiles.class)
+						.subclass("ResponseOk", Ok.class)
+						.subclass("Acknowledge", Acknowledge.class)
+						.subclass("ReadyBytes", Ready.class)
+						.subclass("ServersList", ListServers.class)
+						.build())
+				.setPrettyPrinting()
+				.enableComplexMapKeySerialization()
+				.create();
+	}
+
+	static class Acknowledge extends FsResponse {
+		@Override
+		public String toString() {
+			return "Done{OK}";
+		}
+	}
+
+	static class Ready extends FsResponse {
+		public final long size;
+
+		public Ready(long size) {
+			this.size = size;
+		}
+
+		@Override
+		public String toString() {
+			return "Ready{" + size + "}";
+		}
+	}
+
+	static class Ok extends FsResponse {
+		@Override
+		public String toString() {
+			return "Operation{OK}";
+		}
+	}
+
+	static class Error extends FsResponse {
+		public final String msg;
+
+		public Error(String msg) {
+			this.msg = msg;
+		}
+
+		@Override
+		public String toString() {
+			return "Error{" + msg + "}";
+		}
+	}
+
+	static class ListFiles extends FsResponse {
+		public final Set<String> files;
+
+		public ListFiles(Set<String> files) {
+			this.files = Collections.unmodifiableSet(files);
+		}
+
+		@Override
+		public String toString() {
+			return "Listed{" + files.size() + "}";
+		}
+	}
+
+	static class ListServers extends FsResponse {
+		public final Set<ServerInfo> servers;
+
+		public ListServers(Set<ServerInfo> infos) {
+			servers = Collections.unmodifiableSet(infos);
+		}
+
+		@Override
+		public String toString() {
+			return "Listed{" + servers.size() + "}";
+		}
+	}
 
 	private static final class GsonInetSocketAddressAdapter extends TypeAdapter<InetSocketAddress> {
 		@Override

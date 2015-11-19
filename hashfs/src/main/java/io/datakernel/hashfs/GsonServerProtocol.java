@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs;
+package io.datakernel.hashfs;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.AbstractNioServer;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
 import io.datakernel.stream.net.StreamMessagingConnection;
@@ -30,10 +31,8 @@ import io.datakernel.stream.processor.StreamGsonSerializer;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-
-final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
-	public static final class Builder {
+final class GsonServerProtocol extends ServerProtocol {
+	public static class Builder {
 		private final NioEventloop eventloop;
 		private int deserializerBufferSize = DEFAULT_DESERIALIZER_BUFFER_SIZE;
 		private int serializerBufferSize = DEFAULT_SERIALIZER_BUFFER_SIZE;
@@ -44,24 +43,20 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 			this.eventloop = eventloop;
 		}
 
-		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
+		public void setDeserializerBufferSize(int deserializerBufferSize) {
 			this.deserializerBufferSize = deserializerBufferSize;
-			return this;
 		}
 
-		public Builder setSerializerBufferSize(int serializerBufferSize) {
+		public void setSerializerBufferSize(int serializerBufferSize) {
 			this.serializerBufferSize = serializerBufferSize;
-			return this;
 		}
 
-		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+		public void setSerializerMaxMessageSize(int serializerMaxMessageSize) {
 			this.serializerMaxMessageSize = serializerMaxMessageSize;
-			return this;
 		}
 
-		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+		public void setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
 			this.serializerFlushDelayMillis = serializerFlushDelayMillis;
-			return this;
 		}
 
 		public GsonServerProtocol build() {
@@ -75,7 +70,7 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 	public static final int DEFAULT_SERIALIZER_MAX_MESSAGE_SIZE = 256 * (1 << 20);
 	public static final int DEFAULT_SERIALIZER_FLUSH_DELAY_MS = 0;
 
-	private SimpleFsServer server;
+	private HashFsServer server;
 	private final int deserializerBufferSize;
 	private final int serializerBufferSize;
 	private final int serializerMaxMessageSize;
@@ -94,7 +89,8 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 		return new Builder(eventloop);
 	}
 
-	void wireServer(SimpleFsServer server) {
+	@Override
+	void wire(HashFsServer server) {
 		this.server = server;
 	}
 
@@ -108,7 +104,9 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 				.addHandler(FsCommand.Commit.class, defineCommitHandler())
 				.addHandler(FsCommand.Download.class, defineDownloadHandler())
 				.addHandler(FsCommand.Delete.class, defineDeleteHandler())
-				.addHandler(FsCommand.List.class, defineListHandler());
+				.addHandler(FsCommand.List.class, defineListHandler())
+				.addHandler(FsCommand.Alive.class, defineAliveHandler())
+				.addHandler(FsCommand.Offer.class, defineOfferHandler());
 	}
 
 	protected MessagingHandler<FsCommand.Upload, FsResponse> defineUploadHandler() {
@@ -158,13 +156,25 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 		return new MessagingHandler<FsCommand.Download, FsResponse>() {
 			@Override
 			public void onMessage(FsCommand.Download item, final Messaging<FsResponse> messaging) {
-				long size = server.size(item.filePath);
+				final long size = server.fileSize(item.filePath);
 				if (size < 0) {
 					messaging.sendMessage(new FsResponse.Error("File not found"));
 					messaging.shutdown();
 				} else {
+					final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 					messaging.sendMessage(new FsResponse.Ready(size));
-					messaging.write(server.download(item.filePath), ignoreCompletionCallback());
+					server.download(item.filePath, forwarder.getInput(), new ResultCallback<CompletionCallback>() {
+						@Override
+						public void onResult(final CompletionCallback callback) {
+							messaging.write(forwarder.getOutput(), callback);
+							messaging.shutdownWriter();
+						}
+
+						@Override
+						public void onException(Exception e) {
+							messaging.sendMessage(new FsResponse.Error(e.getMessage()));
+						}
+					});
 					messaging.shutdownWriter();
 				}
 
@@ -201,6 +211,48 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 					@Override
 					public void onComplete() {
 						messaging.sendMessage(new FsResponse.Ok());
+						messaging.shutdown();
+					}
+
+					@Override
+					public void onException(Exception e) {
+						messaging.sendMessage(new FsResponse.Error(e.getMessage()));
+						messaging.shutdown();
+					}
+				});
+			}
+		};
+	}
+
+	private MessagingHandler<FsCommand.Alive, FsResponse> defineAliveHandler() {
+		return new MessagingHandler<FsCommand.Alive, FsResponse>() {
+			@Override
+			public void onMessage(FsCommand.Alive item, final Messaging<FsResponse> messaging) {
+				server.showAlive(new ResultCallback<Set<ServerInfo>>() {
+					@Override
+					public void onResult(Set<ServerInfo> result) {
+						messaging.sendMessage(new FsResponse.ListServers(result));
+						messaging.shutdown();
+					}
+
+					@Override
+					public void onException(Exception e) {
+						messaging.sendMessage(new FsResponse.Error(e.getMessage()));
+						messaging.shutdown();
+					}
+				});
+			}
+		};
+	}
+
+	private MessagingHandler<FsCommand.Offer, FsResponse> defineOfferHandler() {
+		return new MessagingHandler<FsCommand.Offer, FsResponse>() {
+			@Override
+			public void onMessage(FsCommand.Offer item, final Messaging<FsResponse> messaging) {
+				server.checkOffer(item.forUpload, item.forDeletion, new ResultCallback<Set<String>>() {
+					@Override
+					public void onResult(Set<String> result) {
+						messaging.sendMessage(new FsResponse.ListFiles(result));
 						messaging.shutdown();
 					}
 

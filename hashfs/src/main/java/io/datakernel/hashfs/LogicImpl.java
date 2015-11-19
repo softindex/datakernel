@@ -17,8 +17,8 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
 
 import java.util.*;
 import java.util.Map.Entry;
@@ -26,6 +26,58 @@ import java.util.Map.Entry;
 import static io.datakernel.hashfs.LogicImpl.FileState.*;
 
 final class LogicImpl implements Logic {
+	public static class Builder {
+		private final ServerInfo myId;
+		private HashingStrategy hashing = DEFAULT_HASHING_STRATEGY;
+		private final Set<ServerInfo> bootstrap;
+
+		private long serverDeathTimeout = DEFAULT_SERVER_DEATH_TIMEOUT;
+		private long approveWaitTime = DEFAULT_APPROVE_WAIT_TIME;
+		private int maxReplicaQuantity = DEFAULT_MAX_REPLICA_QUANTITY;
+		private int minSafeReplicaQuantity = DEFAULT_MIN_REPLICA_QUANTITY;
+
+		private Builder(ServerInfo myId, Set<ServerInfo> bootstrap) {
+			this.myId = myId;
+			this.bootstrap = bootstrap;
+		}
+
+		public Builder setServerDeathTimeout(long serverDeathTimeout) {
+			this.serverDeathTimeout = serverDeathTimeout;
+			return this;
+		}
+
+		public Builder setApproveWaitTime(long approveWaitTime) {
+			this.approveWaitTime = approveWaitTime;
+			return this;
+		}
+
+		public Builder setMaxReplicaQuantity(int maxReplicaQuantity) {
+			this.maxReplicaQuantity = maxReplicaQuantity;
+			return this;
+		}
+
+		public Builder setMinSafeReplicaQuantity(int minSafeReplicaQuantity) {
+			this.minSafeReplicaQuantity = minSafeReplicaQuantity;
+			return this;
+		}
+
+		public Builder setHashing(HashingStrategy hashing) {
+			this.hashing = hashing;
+			return this;
+		}
+
+		public LogicImpl build() {
+			return new LogicImpl(hashing, myId, bootstrap, serverDeathTimeout, maxReplicaQuantity,
+					minSafeReplicaQuantity, approveWaitTime);
+		}
+	}
+
+	public static final long DEFAULT_SERVER_DEATH_TIMEOUT = 11 * 1000;
+	public static final long DEFAULT_APPROVE_WAIT_TIME = 10 * 1000;
+	public static final int DEFAULT_MAX_REPLICA_QUANTITY = 3;
+	public static final int DEFAULT_MIN_REPLICA_QUANTITY = 1;
+	public static final HashingStrategy DEFAULT_HASHING_STRATEGY = new RendezvousHashing();
+
 	private final long serverDeathTimeout;
 	private final long approveWaitTime;
 	private final int maxReplicaQuantity;
@@ -51,43 +103,12 @@ final class LogicImpl implements Logic {
 		this.servers.addAll(bootstrap);
 	}
 
-	public static LogicImpl createInstance(HashingStrategy hashing, ServerInfo myId, Set<ServerInfo> bootstrap, RfsConfig config) {
-		return new LogicImpl(hashing, myId, bootstrap,
-				config.getServerDeathTimeout(),
-				config.getMaxReplicaQuantity(),
-				config.getMinSafeReplicasQuantity(),
-				config.getApproveWaitTime());
+	public static LogicImpl createInstance(ServerInfo myId, Set<ServerInfo> bootstrap) {
+		return buildInstance(myId, bootstrap).build();
 	}
 
-	@Override
-	public NioEventloop getNioEventloop() {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void start(final CompletionCallback callback) {
-		commands.scan(new ResultCallback<Set<String>>() {
-			@Override
-			public void onResult(Set<String> result) {
-				for (String fileName : result) {
-					files.put(fileName, new FileInfo(myId));
-				}
-				commands.updateServerMap(servers);
-				commands.scheduleUpdate();
-				callback.onComplete();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
-			}
-		});
-	}
-
-	@Override
-	public void stop(final CompletionCallback callback) {
-		onStopCallback = callback;
-		onOperationFinished();
+	public static Builder buildInstance(ServerInfo myId, Set<ServerInfo> bootstrap) {
+		return new Builder(myId, bootstrap);
 	}
 
 	@Override
@@ -95,18 +116,33 @@ final class LogicImpl implements Logic {
 		this.commands = commands;
 	}
 
-	private void onOperationFinished() {
-		if (onStopCallback != null) {
-			for (Entry<String, FileInfo> file : files.entrySet()) {
-				FileInfo info = file.getValue();
-				if (info.pendingOperationsCounter != 0) {
-					return;
+	@Override
+	public void start(final CompletionCallback callback) {
+		commands.scan(new ForwardingResultCallback<Set<String>>(callback) {
+			@Override
+			public void onResult(Set<String> result) {
+				for (String s : result) {
+					files.put(s, new FileInfo(myId));
 				}
+				commands.updateServerMap(servers);
+				commands.scheduleUpdate();
+				callback.onComplete();
 			}
-			files.clear();
-			servers.clear();
-			onStopCallback.onComplete();
+		});
+	}
+
+	@Override
+	public void stop(CompletionCallback callback) {
+		for (Entry<String, FileInfo> file : files.entrySet()) {
+			FileInfo info = file.getValue();
+			if (info.pendingOperationsCounter != 0) {
+				onStopCallback = callback;
+				return;
+			}
 		}
+		files.clear();
+		servers.clear();
+		callback.onComplete();
 	}
 
 	@Override
@@ -372,6 +408,20 @@ final class LogicImpl implements Logic {
 			});
 		}
 		commands.scheduleUpdate();
+	}
+
+	private void onOperationFinished() {
+		if (onStopCallback != null) {
+			for (Entry<String, FileInfo> file : files.entrySet()) {
+				FileInfo info = file.getValue();
+				if (info.pendingOperationsCounter != 0) {
+					return;
+				}
+			}
+			files.clear();
+			servers.clear();
+			onStopCallback.onComplete();
+		}
 	}
 
 	private final class FileInfo {

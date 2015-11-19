@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.simplefs;
+package io.datakernel.hashfs;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -22,8 +22,9 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.hashfs.FsCommand.List;
+import io.datakernel.hashfs.FsResponse.Ok;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.simplefs.FsResponse.Ok;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -37,7 +38,7 @@ import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.Set;
 
-final class GsonClientProtocol {
+final class GsonClientProtocol implements ClientProtocol {
 	public static final class Builder {
 		private final NioEventloop eventloop;
 		private int minChunkSize = DEFAULT_MIN_CHUNK_SIZE;
@@ -140,22 +141,37 @@ final class GsonClientProtocol {
 		return new Builder(eventloop);
 	}
 
+	@Override
 	public void upload(InetSocketAddress address, String fileName, StreamProducer<ByteBuf> producer,
 	                   CompletionCallback callback) {
 		connect(address, defineUpload(address, fileName, producer, callback));
 	}
 
+	@Override
 	public void download(InetSocketAddress address, String fileName, StreamConsumer<ByteBuf> consumer,
 	                     CompletionCallback callback) {
 		connect(address, defineDownload(fileName, consumer, callback));
 	}
 
+	@Override
 	public void delete(InetSocketAddress address, String fileName, CompletionCallback callback) {
 		connect(address, defineDelete(fileName, callback));
 	}
 
+	@Override
 	public void list(InetSocketAddress address, ResultCallback<Set<String>> callback) {
 		connect(address, defineList(callback));
+	}
+
+	@Override
+	public void alive(InetSocketAddress address, ResultCallback<Set<ServerInfo>> callback) {
+		connect(address, defineAlive(callback));
+	}
+
+	@Override
+	public void offer(InetSocketAddress address, Set<String> forUpload,
+	                  Set<String> forDeletion, ResultCallback<Set<String>> callback) {
+		connect(address, defineOffer(forUpload, forDeletion, callback));
 	}
 
 	protected ConnectCallback defineUpload(final InetSocketAddress address, final String fileName,
@@ -180,7 +196,6 @@ final class GsonClientProtocol {
 								messaging.write(byteChunker.getOutput(), new CompletionCallback() {
 									@Override
 									public void onComplete() {
-
 									}
 
 									@Override
@@ -240,6 +255,7 @@ final class GsonClientProtocol {
 								Util.CounterTransformer counter = new Util.CounterTransformer(eventloop, item.size);
 								messaging.read().streamTo(counter.getInput());
 								counter.getOutput().streamTo(consumer);
+								callback.onComplete();
 								messaging.shutdown();
 							}
 						})
@@ -280,9 +296,9 @@ final class GsonClientProtocol {
 								messaging.sendMessage(commandDelete);
 							}
 						})
-						.addHandler(FsResponse.Ok.class, new MessagingHandler<FsResponse.Ok, FsCommand>() {
+						.addHandler(Ok.class, new MessagingHandler<Ok, FsCommand>() {
 							@Override
-							public void onMessage(FsResponse.Ok item, Messaging<FsCommand> messaging) {
+							public void onMessage(Ok item, Messaging<FsCommand> messaging) {
 								messaging.shutdown();
 								callback.onComplete();
 							}
@@ -319,7 +335,7 @@ final class GsonClientProtocol {
 						.addStarter(new MessagingStarter<FsCommand>() {
 							@Override
 							public void onStart(Messaging<FsCommand> messaging) {
-								FsCommand commandList = new FsCommand.List();
+								FsCommand commandList = new List();
 								messaging.sendMessage(commandList);
 							}
 						})
@@ -354,6 +370,81 @@ final class GsonClientProtocol {
 		};
 	}
 
+	private ConnectCallback defineAlive(final ResultCallback<Set<ServerInfo>> callback) {
+		return new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				SocketConnection connection = createConnection(socketChannel)
+						.addStarter(new MessagingStarter<FsCommand>() {
+							@Override
+							public void onStart(Messaging<FsCommand> messaging) {
+								FsCommand checkAlive = new FsCommand.Alive();
+								messaging.sendMessage(checkAlive);
+							}
+						})
+						.addHandler(FsResponse.ListServers.class, new MessagingHandler<FsResponse.ListServers, FsCommand>() {
+							@Override
+							public void onMessage(FsResponse.ListServers item, Messaging<FsCommand> messaging) {
+								messaging.shutdown();
+								callback.onResult(item.servers);
+							}
+						})
+						.addHandler(FsResponse.Error.class, new MessagingHandler<FsResponse.Error, FsCommand>() {
+							@Override
+							public void onMessage(FsResponse.Error item, Messaging<FsCommand> messaging) {
+								messaging.shutdown();
+								Exception e = new Exception(item.msg);
+								callback.onException(e);
+							}
+						});
+				connection.register();
+			}
+
+			@Override
+			public void onException(Exception e) {
+				callback.onException(e);
+			}
+		};
+	}
+
+	private ConnectCallback defineOffer(final Set<String> forUpload, final Set<String> forDeletion,
+	                                    final ResultCallback<Set<String>> callback) {
+		return new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				SocketConnection connection = createConnection(socketChannel)
+						.addStarter(new MessagingStarter<FsCommand>() {
+							@Override
+							public void onStart(Messaging<FsCommand> messaging) {
+								FsCommand offerCommand = new FsCommand.Offer(forDeletion, forUpload);
+								messaging.sendMessage(offerCommand);
+							}
+						})
+						.addHandler(FsResponse.ListFiles.class, new MessagingHandler<FsResponse.ListFiles, FsCommand>() {
+							@Override
+							public void onMessage(FsResponse.ListFiles item, Messaging<FsCommand> messaging) {
+								messaging.shutdown();
+								callback.onResult(item.files);
+							}
+						})
+						.addHandler(FsResponse.Error.class, new MessagingHandler<FsResponse.Error, FsCommand>() {
+							@Override
+							public void onMessage(FsResponse.Error item, Messaging<FsCommand> messaging) {
+								messaging.shutdown();
+								Exception e = new Exception(item.msg);
+								callback.onException(e);
+							}
+						});
+				connection.register();
+			}
+
+			@Override
+			public void onException(Exception e) {
+				callback.onException(e);
+			}
+		};
+	}
+
 	protected void commit(InetSocketAddress address, final String fileName, final boolean success,
 	                      final CompletionCallback callback) {
 		connect(address, new ConnectCallback() {
@@ -367,9 +458,9 @@ final class GsonClientProtocol {
 								messaging.sendMessage(commandCommit);
 							}
 						})
-						.addHandler(FsResponse.Ok.class, new MessagingHandler<FsResponse.Ok, FsCommand>() {
+						.addHandler(Ok.class, new MessagingHandler<Ok, FsCommand>() {
 							@Override
-							public void onMessage(FsResponse.Ok item, Messaging<FsCommand> messaging) {
+							public void onMessage(Ok item, Messaging<FsCommand> messaging) {
 								messaging.shutdown();
 								if (success) {
 									callback.onComplete();

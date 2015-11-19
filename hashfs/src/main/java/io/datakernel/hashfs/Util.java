@@ -17,6 +17,10 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
+import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,5 +56,52 @@ class Util {
 
 	interface Resolver<T> {
 		void resolve(List<T> results, List<Exception> exceptions);
+	}
+
+	static class CounterTransformer extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+		private InputConsumer inputConsumer;
+		private OutputProducer outputProducer;
+		private long expectedSize;
+
+		protected CounterTransformer(Eventloop eventloop, long requiredSize) {
+			super(eventloop);
+			inputConsumer = new InputConsumer();
+			outputProducer = new OutputProducer();
+			expectedSize = requiredSize;
+		}
+
+		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBuf> {
+			@Override
+			protected void onUpstreamEndOfStream() {
+				if (expectedSize == 0) {
+					outputProducer.sendEndOfStream();
+				} else {
+					onError(new Exception("Expected and actual sizes mismatch"));
+				}
+			}
+
+			@Override
+			public StreamDataReceiver<ByteBuf> getDataReceiver() {
+				return this;
+			}
+
+			@Override
+			public void onData(ByteBuf item) {
+				expectedSize -= (item.limit() - item.position());
+				outputProducer.send(item);
+			}
+		}
+
+		private class OutputProducer extends AbstractOutputProducer {
+			@Override
+			protected void onDownstreamSuspended() {
+				inputConsumer.suspend();
+			}
+
+			@Override
+			protected void onDownstreamResumed() {
+				inputConsumer.resume();
+			}
+		}
 	}
 }

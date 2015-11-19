@@ -25,7 +25,7 @@ import io.datakernel.stream.StreamProducer;
 import java.net.InetSocketAddress;
 import java.util.Set;
 
-public interface ClientProtocol {
+interface ClientProtocol {
 	void upload(InetSocketAddress address, String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
 	void download(InetSocketAddress address, String fileName, StreamConsumer<ByteBuf> consumer, CompletionCallback callback);
