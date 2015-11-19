@@ -47,7 +47,7 @@ public class SerializeStreamTest {
 
 		ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
 		DeserializeInputStream<String> deserializeInputStream =
-				new DeserializeInputStream<>(byteInputStream, bufferSerializer, 30, 10);
+				new DeserializeInputStream<>(byteInputStream, bufferSerializer, 30, 30);
 
 		for (String string : strings) {
 			assertEquals(string, deserializeInputStream.read());
@@ -56,10 +56,10 @@ public class SerializeStreamTest {
 	}
 
 	@Test
-	public void testStringFull() throws IOException {
+	public void testLittleBuffer() throws IOException {
 		ByteArrayOutputStream byteOutputStream = new ByteArrayOutputStream();
 		final SerializeOutputStream<String> serializeOutputStream =
-				new SerializeOutputStream<>(byteOutputStream, stringSerializer(), 30, 10, false);
+				new SerializeOutputStream<>(byteOutputStream, stringSerializer(), 30, 3, false);
 
 		String[] strings = new String[]{"test1-string", "test2-int", "test3-t", "test4-str"};
 		for (String string : strings) {
@@ -69,7 +69,7 @@ public class SerializeStreamTest {
 
 		ByteArrayInputStream byteInputStream = new ByteArrayInputStream(byteOutputStream.toByteArray());
 		DeserializeInputStream<String> deserializeInputStream =
-				new DeserializeInputStream<>(byteInputStream, stringSerializer(), 30, 10);
+				new DeserializeInputStream<>(byteInputStream, stringSerializer(), 30, 3);
 
 		for (String string : strings) {
 			assertEquals(string, deserializeInputStream.read());

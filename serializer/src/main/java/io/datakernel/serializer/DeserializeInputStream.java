@@ -130,7 +130,6 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 		byte[] bytes = new byte[newSize];
 		System.arraycopy(buffer, 0, bytes, 0, bufferPos);
 		buffer = bytes;
-		// TODO (vsavchuk) ???
 		byte[] bufBytes = new byte[newSize];
 		System.arraycopy(buf, 0, bufBytes, 0, buf.length);
 		buf = bufBytes;
