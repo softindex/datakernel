@@ -33,7 +33,7 @@ import java.util.Set;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
-	public static class Builder {
+	public static final class Builder {
 		private final NioEventloop eventloop;
 		private int deserializerBufferSize = DEFAULT_DESERIALIZER_BUFFER_SIZE;
 		private int serializerBufferSize = DEFAULT_SERIALIZER_BUFFER_SIZE;
@@ -44,20 +44,24 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 			this.eventloop = eventloop;
 		}
 
-		public void setDeserializerBufferSize(int deserializerBufferSize) {
+		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
 			this.deserializerBufferSize = deserializerBufferSize;
+			return this;
 		}
 
-		public void setSerializerBufferSize(int serializerBufferSize) {
+		public Builder setSerializerBufferSize(int serializerBufferSize) {
 			this.serializerBufferSize = serializerBufferSize;
+			return this;
 		}
 
-		public void setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
 			this.serializerMaxMessageSize = serializerMaxMessageSize;
+			return this;
 		}
 
-		public void setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
 			this.serializerFlushDelayMillis = serializerFlushDelayMillis;
+			return this;
 		}
 
 		public GsonServerProtocol build() {
@@ -86,11 +90,11 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 		this.serializerFlushDelayMillis = serializerFlushDelayMillis;
 	}
 
-	public static Builder createInstance(NioEventloop eventloop) {
+	public static Builder buildInstance(NioEventloop eventloop) {
 		return new Builder(eventloop);
 	}
 
-	public void wireServer(SimpleFsServer server) {
+	void wireServer(SimpleFsServer server) {
 		this.server = server;
 	}
 

@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.Set;
 
 abstract class FsResponse {
-	public static Gson getGSON() {
+	static Gson getGSON() {
 		return new GsonBuilder()
 				.registerTypeAdapter(FsResponse.class, GsonSubclassesAdapter.builder()
 						.subclassField("commandType")

@@ -53,36 +53,44 @@ final class GsonClientProtocol {
 			this.eventloop = eventloop;
 		}
 
-		public void setMinChunkSize(int minChunkSize) {
+		public Builder setMinChunkSize(int minChunkSize) {
 			this.minChunkSize = minChunkSize;
+			return this;
 		}
 
-		public void setMaxChunkSize(int maxChunkSize) {
+		public Builder setMaxChunkSize(int maxChunkSize) {
 			this.maxChunkSize = maxChunkSize;
+			return this;
 		}
 
-		public void setDeserializerBufferSize(int deserializerBufferSize) {
+		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
 			this.deserializerBufferSize = deserializerBufferSize;
+			return this;
 		}
 
-		public void setConnectTimeout(int connectTimeout) {
+		public Builder setConnectTimeout(int connectTimeout) {
 			this.connectTimeout = connectTimeout;
+			return this;
 		}
 
-		public void setSerializerBufferSize(int serializerBufferSize) {
+		public Builder setSerializerBufferSize(int serializerBufferSize) {
 			this.serializerBufferSize = serializerBufferSize;
+			return this;
 		}
 
-		public void setSerializerMaxMessageSize(int serializerMaxMessageSize) {
+		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
 			this.serializerMaxMessageSize = serializerMaxMessageSize;
+			return this;
 		}
 
-		public void setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
+		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
 			this.serializerFlushDelayMillis = serializerFlushDelayMillis;
+			return this;
 		}
 
-		public void setSocketSettings(SocketSettings socketSettings) {
+		public Builder setSocketSettings(SocketSettings socketSettings) {
 			this.socketSettings = socketSettings;
+			return this;
 		}
 
 		public GsonClientProtocol build() {

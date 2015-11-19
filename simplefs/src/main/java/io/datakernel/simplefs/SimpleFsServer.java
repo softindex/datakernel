@@ -41,9 +41,6 @@ import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.RUNNING;
 import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.SHUTDOWN;
 
 public final class SimpleFsServer implements NioService {
-	public static final long DEFAULT_APPROVE_WAIT_TIME = 10 * 100;
-	public static final Exception SERVER_IS_DOWN_EXCEPTION = new Exception("Server is down");
-
 	public static final class Builder {
 		private final NioEventloop eventloop;
 		private final FileSystem.Builder fsBuilder;
@@ -56,7 +53,7 @@ public final class SimpleFsServer implements NioService {
 		public Builder(NioEventloop eventloop, ExecutorService executor, Path storage) {
 			this.eventloop = eventloop;
 			fsBuilder = FileSystem.buildInstance(eventloop, executor, storage);
-			protocolBuilder = GsonServerProtocol.createInstance(eventloop);
+			protocolBuilder = GsonServerProtocol.buildInstance(eventloop);
 		}
 
 		public Builder setApproveWaitTime(long approveWaitTime) {
@@ -128,6 +125,9 @@ public final class SimpleFsServer implements NioService {
 			return server;
 		}
 	}
+
+	public static final long DEFAULT_APPROVE_WAIT_TIME = 10 * 100;
+	public static final Exception SERVER_IS_DOWN_EXCEPTION = new Exception("Server is down");
 
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServer.class);
 	private final NioEventloop eventloop;

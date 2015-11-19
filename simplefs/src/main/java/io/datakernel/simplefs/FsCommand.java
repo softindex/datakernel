@@ -21,7 +21,7 @@ import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
 abstract class FsCommand {
-	public static Gson getGSON() {
+	static Gson getGSON() {
 		return new GsonBuilder()
 				.registerTypeAdapter(FsCommand.class, GsonSubclassesAdapter.builder()
 						.subclassField("commandType")
@@ -37,7 +37,6 @@ abstract class FsCommand {
 	}
 
 	static class Upload extends FsCommand {
-
 		public final String filePath;
 
 		public Upload(String filePath) {
@@ -48,7 +47,6 @@ abstract class FsCommand {
 		public String toString() {
 			return "Upload{filepath=\'" + filePath + "\'}";
 		}
-
 	}
 
 	static class Commit extends FsCommand {
@@ -65,11 +63,9 @@ abstract class FsCommand {
 		public String toString() {
 			return "Commit{filepath=\'" + filePath + "\',isOk=" + isOk + "}";
 		}
-
 	}
 
 	static class Delete extends FsCommand {
-
 		public final String filePath;
 
 		public Delete(String filePath) {
@@ -80,11 +76,9 @@ abstract class FsCommand {
 		public String toString() {
 			return "Delete{filepath=\'" + filePath + "\'}";
 		}
-
 	}
 
 	static class Download extends FsCommand {
-
 		public final String filePath;
 
 		public Download(String filePath) {
@@ -95,7 +89,6 @@ abstract class FsCommand {
 		public String toString() {
 			return "Delete{filepath=\'" + filePath + "\'}";
 		}
-
 	}
 
 	static class List extends FsCommand {
@@ -103,6 +96,5 @@ abstract class FsCommand {
 		public String toString() {
 			return "List{all files}";
 		}
-
 	}
 }

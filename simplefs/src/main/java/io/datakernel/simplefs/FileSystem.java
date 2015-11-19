@@ -113,6 +113,14 @@ final class FileSystem {
 		return new Builder(eventloop, executor, storage);
 	}
 
+	void ensureInfrastructure() throws IOException {
+		if (Files.exists(tmpStorage)) {
+			cleanFolder(tmpStorage);
+		} else {
+			Files.createDirectory(tmpStorage);
+		}
+	}
+
 	public void saveToTmp(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
 		logger.trace("Saving to temporary dir {}", fileName);
 		Path tmpPath;
@@ -270,14 +278,6 @@ final class FileSystem {
 	private boolean isDirEmpty(final Path directory) throws IOException {
 		try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(directory)) {
 			return !dirStream.iterator().hasNext();
-		}
-	}
-
-	void ensureInfrastructure() throws IOException {
-		if (Files.exists(tmpStorage)) {
-			cleanFolder(tmpStorage);
-		} else {
-			Files.createDirectory(tmpStorage);
 		}
 	}
 
