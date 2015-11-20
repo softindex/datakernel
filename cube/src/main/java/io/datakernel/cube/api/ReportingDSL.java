@@ -137,7 +137,16 @@ public final class ReportingDSL {
 
 	/* Other functions */
 	public static ReportingDSLExpression sqrt(ReportingDSLExpression reportingExpression) {
-		Expression expression = callStatic(Math.class, "sqrt", reportingExpression.getExpression());
+		Expression argument = reportingExpression.getExpression();
+		/*
+		if (Double.compare(argument, 0.0d) < 0)
+			return 0.0d;
+		else
+			return Math.sqrt(argument);
+		 */
+		Expression expression = choice(cmpLt(callStatic(Double.class, "compare", argument, value(0.0d)), value(0)),
+				value(0.0d),
+				callStatic(Math.class, "sqrt", argument));
 		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
 	}
 
