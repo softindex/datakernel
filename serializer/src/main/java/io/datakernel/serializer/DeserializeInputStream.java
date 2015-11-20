@@ -19,23 +19,20 @@ package io.datakernel.serializer;
 import java.io.IOException;
 import java.io.InputStream;
 
-import static java.lang.Math.min;
-
 public final class DeserializeInputStream<T> implements ObjectReader<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
 	public static final int MAX_HEADER_BYTES = 3;
 
-	private final InputStream inputStream;
+	private InputStream inputStream;
 	private final BufferSerializer<T> bufferSerializer;
 	private final SerializationInputBuffer inputBuffer = new SerializationInputBuffer();
 	private final int maxMessageSize;
 	private byte[] buffer;
-	private byte[] buf;
 	private int off;
-	private int readBytes;
 
 	private int dataSize;
-	private int bufferPos;
+	private int bufferLastPos;
+	private int messageStart;
 
 	public DeserializeInputStream(InputStream inputStream, BufferSerializer<T> bufferSerializer, int maxMessageSize) {
 		this(inputStream, bufferSerializer, maxMessageSize, DEFAULT_BUFFER_SIZE);
@@ -44,103 +41,102 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 	public DeserializeInputStream(InputStream inputStream, BufferSerializer<T> bufferSerializer, int maxMessageSize, int bufferSize) {
 		this.inputStream = inputStream;
 		this.bufferSerializer = bufferSerializer;
-		this.buf = new byte[bufferSize];
 		this.buffer = new byte[bufferSize];
 		this.inputBuffer.set(buffer, 0);
 		this.maxMessageSize = maxMessageSize;
 	}
 
+	public void changeInputStream(InputStream inputStream) throws IOException {
+		if (this.inputStream != null) {
+			this.inputStream.close();
+		}
+		this.inputStream = inputStream;
+		off = 0;
+		bufferLastPos = 0;
+		messageStart = 0;
+	}
+
 	@Override
 	public T read() {
 		for (; ; ) {
-			if (readBytes == 0) {
-				try {
-					readBytes = inputStream.read(buf);
-					off = 0;
-				} catch (IOException e) {
-					return null;
+			int readBytes;
+			try {
+				readBytes = inputStream.read(buffer, bufferLastPos, buffer.length - bufferLastPos);
+				if (readBytes != -1) {
+					bufferLastPos += readBytes;
 				}
-			}
-			if (readBytes == -1) {
+			} catch (IOException e) {
 				return null;
 			}
-			while (readBytes > 0) {
-				if (dataSize == 0) {
-					assert bufferPos < MAX_HEADER_BYTES;
-					assert buffer.length >= MAX_HEADER_BYTES;
-					// read message header:
-					if (bufferPos == 0 && readBytes >= MAX_HEADER_BYTES) {
-						int sizeLen = tryReadSize(buf, off);
-						if (sizeLen > MAX_HEADER_BYTES)
-							throw new IllegalArgumentException("Parsed size length > MAX_HEADER_BYTES");
-						readBytes -= sizeLen;
-						off += sizeLen;
-						bufferPos = 0;
-					} else {
-						int readSize = min(readBytes, MAX_HEADER_BYTES - bufferPos);
-						System.arraycopy(buf, off, buffer, bufferPos, readSize);
-						readBytes -= readSize;
-						off += readSize;
-						bufferPos += readSize;
-						int sizeLen = tryReadSize(buffer, 0);
-						if (sizeLen > bufferPos) {
-							// Read past last position - incomplete varint in buffer, waiting for more bytes
-							dataSize = 0;
-							break;
-						}
-						int unreadSize = bufferPos - sizeLen;
-						readBytes += unreadSize;
-						off -= unreadSize;
-						bufferPos = 0;
+
+			if (readBytes == -1 && off == bufferLastPos) {
+				return null;
+			}
+
+			if (dataSize == 0) {
+				assert buffer.length >= MAX_HEADER_BYTES;
+				// read message header
+				if (bufferLastPos - off >= MAX_HEADER_BYTES) {
+					int sizeLen = tryReadSize(buffer, off);
+					if (sizeLen > MAX_HEADER_BYTES)
+						throw new IllegalArgumentException("Parsed size length > MAX_HEADER_BYTES");
+					readBytes -= sizeLen;
+					off += sizeLen;
+					messageStart = off;
+					if (off + dataSize >= bufferLastPos) {
+						replaceInStart();
+						resizeBuffer(dataSize);
+						continue;
 					}
-					if (dataSize > maxMessageSize)
-						throw new IllegalArgumentException("Parsed data size > message size");
-				}
-				// read message body:
-				if (bufferPos == 0 && readBytes >= dataSize) {
-					inputBuffer.set(buf, off);
-					T item = bufferSerializer.deserialize(inputBuffer);
-					if ((inputBuffer.position() - off) != dataSize)
-						throw new IllegalArgumentException("Deserialized size != parsed data size");
-					readBytes -= dataSize;
-					off += dataSize;
-					bufferPos = 0;
-					dataSize = 0;
-					return item;
 				} else {
-					int readSize = min(readBytes, dataSize - bufferPos);
-					copyIntoBuffer(buf, off, readSize);
-					readBytes -= readSize;
-					off += readSize;
-					if (bufferPos != dataSize)
-						break;
-					inputBuffer.set(buffer, 0);
-					T item = bufferSerializer.deserialize(inputBuffer);
-					if (inputBuffer.position() != dataSize)
-						throw new IllegalArgumentException("Deserialized size != parsed data size");
-					bufferPos = 0;
-					dataSize = 0;
-					return item;
+					replaceInStart();
+					off += readBytes;
+					int sizeLen = tryReadSize(buffer, 0);
+					if (sizeLen > off) {
+						// Read past last position - incomplete varint in buffer, waiting for more bytes
+						dataSize = 0;
+						continue;
+					}
+					off = 0;
 				}
+				if (dataSize > maxMessageSize)
+					throw new IllegalArgumentException("Parsed data size > message size");
+			}
+
+			// read message body:
+			if (readBytes >= dataSize || bufferLastPos - messageStart >= dataSize) {
+				inputBuffer.set(buffer, off);
+				T item = bufferSerializer.deserialize(inputBuffer);
+				if ((inputBuffer.position() - off) != dataSize)
+					throw new IllegalArgumentException("Deserialized size != parsed data size");
+				off += dataSize;
+				dataSize = 0;
+				return item;
+			} else {
+				resizeBuffer(dataSize);
 			}
 		}
+
 	}
 
-	private void growBuf(int newSize) {
-		byte[] bytes = new byte[newSize];
-		System.arraycopy(buffer, 0, bytes, 0, bufferPos);
-		buffer = bytes;
-		byte[] bufBytes = new byte[newSize];
-		System.arraycopy(buf, 0, bufBytes, 0, buf.length);
-		buf = bufBytes;
-	}
-
-	private void copyIntoBuffer(byte[] b, int off, int len) {
-		if (buffer.length < bufferPos + len) {
-			growBuf(bufferPos + len);
+	private void replaceInStart() {
+		if (off != 0) {
+			System.arraycopy(buffer, off, buffer, 0, bufferLastPos - off);
+			bufferLastPos -= off;
+			if (messageStart != 0) {
+				messageStart -= off;
+			}
+			off = 0;
 		}
-		System.arraycopy(b, off, buffer, bufferPos, len);
-		bufferPos += len;
+	}
+
+	private void resizeBuffer(int readSize) {
+		int newSize = readSize + readSize / 4;
+		if (newSize > buffer.length) {
+			byte[] bytes = new byte[newSize];
+			System.arraycopy(buffer, 0, bytes, 0, bufferLastPos);
+			buffer = bytes;
+		}
 	}
 
 	private int tryReadSize(byte[] buf, int off) {
@@ -171,5 +167,6 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 	@Override
 	public void close() throws IOException {
 		inputStream.close();
+		this.inputBuffer.set(null, 0);
 	}
 }

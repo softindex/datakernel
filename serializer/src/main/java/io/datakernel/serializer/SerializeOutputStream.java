@@ -33,7 +33,7 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 	private static final int MAX_HEADER_BYTES = 3;
 
 	private final BufferSerializer<T> serializer;
-	private final OutputStream outputStream;
+	private OutputStream outputStream;
 
 	private final SerializationOutputBuffer outputBuffer = new SerializationOutputBuffer();
 
@@ -56,6 +56,13 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 		this.estimatedMessageSize = 1;
 		this.skipSerializationErrors = skipSerializationErrors;
 		allocateBuffer();
+	}
+
+	public void changeOutputStream(OutputStream outputStream) throws IOException {
+		if (this.outputStream != null) {
+			this.outputStream.close();
+		}
+		this.outputStream = outputStream;
 	}
 
 	private int varint32Size(int value) {
@@ -163,7 +170,5 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 	@Override
 	public void close() throws IOException {
 		outputStream.close();
-		outputBuffer.set(null, 0);
 	}
-
 }
