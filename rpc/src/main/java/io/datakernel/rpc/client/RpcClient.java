@@ -308,8 +308,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 				= new RpcNoSenderAvailableException("No senders available");
 
 		@Override
-		public <T> void sendRequest(Object request,
-		                            int timeout, ResultCallback<T> callback) {
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 	}

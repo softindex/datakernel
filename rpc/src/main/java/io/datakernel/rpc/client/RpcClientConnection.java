@@ -16,14 +16,11 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.rpc.client.sender.RpcRequestSender;
 import io.datakernel.rpc.protocol.RpcConnection;
 
-public interface RpcClientConnection extends RpcConnection {
-
-	<I, O> void callMethod(I request, int timeout, ResultCallback<O> callback);
-
+public interface RpcClientConnection extends RpcConnection, RpcRequestSender {
 	void close();
 
 	SocketConnection getSocketConnection();

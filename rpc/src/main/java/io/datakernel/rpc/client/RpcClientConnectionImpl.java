@@ -79,7 +79,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	private final NioEventloop eventloop;
 	private final RpcProtocol protocol;
 	private final StatusListener statusListener;
-	private final Map<Integer, ResultCallback<? extends Object>> requests = new HashMap<>();
+	private final Map<Integer, ResultCallback<?>> requests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
 	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
 
@@ -106,7 +106,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection, RpcCl
 	}
 
 	@Override
-	public <I, O> void callMethod(I request, int timeout, ResultCallback<O> callback) {
+	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 		assert eventloop.inEventloopThread();
 
 		if (!(request instanceof RpcMandatoryData) && protocol.isOverloaded()) {

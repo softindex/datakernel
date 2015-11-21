@@ -19,7 +19,7 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
-import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
+import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
 import io.datakernel.rpc.hash.Sharder;
 import org.junit.Test;
 
@@ -43,9 +43,9 @@ public class RpcStrategyShardingTest {
 	@Test
 	public void itShouldSelectSubSenderConsideringHashCodeOfRequestData() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
 		final int shardsAmount = 3;
 		Sharder<Integer> sharder = new Sharder<Integer>() {
 			@Override
@@ -72,16 +72,16 @@ public class RpcStrategyShardingTest {
 		senderSharding.sendRequest(0, timeout, callback);
 		senderSharding.sendRequest(2, timeout, callback);
 
-		assertEquals(5, connection1.getCallsAmount());
-		assertEquals(1, connection2.getCallsAmount());
-		assertEquals(2, connection3.getCallsAmount());
+		assertEquals(5, connection1.getSendsNumber());
+		assertEquals(1, connection2.getSendsNumber());
+		assertEquals(2, connection3.getSendsNumber());
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionOfCallbackWhenChosenServerIsNotActive() throws ExecutionException, InterruptedException {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
 		final int shardsAmount = 3;
 		Sharder<Integer> sharder = new Sharder<Integer>() {
 			@Override
@@ -105,8 +105,8 @@ public class RpcStrategyShardingTest {
 		sender.sendRequest(1, 50, callback2);
 		sender.sendRequest(2, 50, callback3);
 
-		assertEquals(1, connection2.getCallsAmount());
-		assertEquals(1, connection3.getCallsAmount());
+		assertEquals(1, connection2.getSendsNumber());
+		assertEquals(1, connection3.getSendsNumber());
 		callback1.get();
 
 	}

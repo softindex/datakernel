@@ -16,8 +16,10 @@
 
 package io.datakernel.rpc.client;
 
+import io.datakernel.rpc.client.sender.RpcRequestSender;
+
 import java.net.InetSocketAddress;
 
 public interface RpcClientConnectionPool {
-	RpcClientConnection get(InetSocketAddress key);
+	RpcRequestSender get(InetSocketAddress key);
 }

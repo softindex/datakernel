@@ -18,7 +18,7 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
-import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
+import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -40,9 +40,9 @@ public class RpcStrategyFirstAvailableTest {
 	@Test
 	public void itShouldSendRequestToFirstAvailableSubSender() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
 		RpcRequestSendingStrategy firstAvailableStrategy = firstAvailable(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		RpcRequestSender sender;
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -70,15 +70,15 @@ public class RpcStrategyFirstAvailableTest {
 			sender.sendRequest(new Object(), 50, callback);
 		}
 
-		assertEquals(callsToSender1, connection1.getCallsAmount());
-		assertEquals(callsToSender2, connection2.getCallsAmount());
-		assertEquals(callsToSender3, connection3.getCallsAmount());
+		assertEquals(callsToSender1, connection1.getSendsNumber());
+		assertEquals(callsToSender2, connection2.getSendsNumber());
+		assertEquals(callsToSender3, connection3.getSendsNumber());
 	}
 
 	@Test
 	public void itShouldBeCreatedWhenThereIsAtLeastOneActiveSubSender() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection = new RpcRequestSenderStub();
 		// one connection is added
 		pool.put(ADDRESS_2, connection);
 		RpcRequestSendingStrategy firstAvailableStrategy =

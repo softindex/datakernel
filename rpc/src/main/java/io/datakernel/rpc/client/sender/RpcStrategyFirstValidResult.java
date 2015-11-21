@@ -77,10 +77,11 @@ public final class RpcStrategyFirstValidResult implements RpcRequestSendingStrat
 			this.noValidResultException = noValidResultException;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
-		public <T> void sendRequest(Object request, int timeout, final ResultCallback<T> callback) {
-			FirstResultCallback<T> resultCallback
-					= new FirstResultCallback<>(callback, (Predicate<T>) resultValidator, subSenders.length, noValidResultException);
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+			FirstResultCallback<O> resultCallback
+					= new FirstResultCallback<>(callback, (Predicate<O>) resultValidator, subSenders.length, noValidResultException);
 			for (RpcRequestSender sender : subSenders) {
 				sender.sendRequest(request, timeout, resultCallback);
 			}

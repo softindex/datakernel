@@ -16,8 +16,6 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
@@ -42,22 +40,6 @@ public final class RpcStrategySingleServer implements RpcRequestSendingStrategy 
 
 	@Override
 	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
-		RpcClientConnection connection = pool.get(address);
-		if (connection == null)
-			return null;
-		return new RequestSenderToSingleServer(connection);
-	}
-
-	final static class RequestSenderToSingleServer implements RpcRequestSender {
-		private final RpcClientConnection connection;
-
-		public RequestSenderToSingleServer(RpcClientConnection connection) {
-			this.connection = checkNotNull(connection);
-		}
-
-		@Override
-		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
-			connection.callMethod(request, timeout, callback);
-		}
+		return pool.get(address);
 	}
 }

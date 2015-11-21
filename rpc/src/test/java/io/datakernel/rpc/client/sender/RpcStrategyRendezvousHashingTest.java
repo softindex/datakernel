@@ -40,9 +40,9 @@ public class RpcStrategyRendezvousHashingTest {
 	@Test
 	public void itShouldDistributeCallsBetweenActiveSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
@@ -81,15 +81,15 @@ public class RpcStrategyRendezvousHashingTest {
 		int expectedCallsOfConnection2 = (callsPerLoop / 3) + (callsPerLoop / 2) + callsPerLoop;
 		int expectedCallsOfConnection3 = (callsPerLoop / 3) + (callsPerLoop / 2);
 		double delta = callsPerLoop / 30.0;
-		assertEquals(expectedCallsOfConnection1, connection1.getCallsAmount(), delta);
-		assertEquals(expectedCallsOfConnection2, connection2.getCallsAmount(), delta);
-		assertEquals(expectedCallsOfConnection3, connection3.getCallsAmount(), delta);
+		assertEquals(expectedCallsOfConnection1, connection1.getSendsNumber(), delta);
+		assertEquals(expectedCallsOfConnection2, connection2.getSendsNumber(), delta);
+		assertEquals(expectedCallsOfConnection3, connection3.getSendsNumber(), delta);
 	}
 
 	@Test
 	public void itShouldBeCreatedWhenThereAreAtLeastOneActiveSubSender() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
@@ -140,9 +140,9 @@ public class RpcStrategyRendezvousHashingTest {
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNotEnoughSubSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
@@ -169,8 +169,8 @@ public class RpcStrategyRendezvousHashingTest {
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNotEnoughActiveSubSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;

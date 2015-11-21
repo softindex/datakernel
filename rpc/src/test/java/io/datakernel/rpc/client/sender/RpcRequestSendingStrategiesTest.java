@@ -19,7 +19,7 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
-import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
+import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.hash.Sharder;
 import org.junit.Test;
@@ -48,11 +48,11 @@ public class RpcRequestSendingStrategiesTest {
 	@Test
 	public void testCombination1() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection4 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection5 = new RpcRequestSenderStub();
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
@@ -66,20 +66,20 @@ public class RpcRequestSendingStrategiesTest {
 			sender.sendRequest(new Object(), 50, new ResultCallbackFuture<>());
 		}
 
-		List<RpcClientConnectionStub> connections =
+		List<RpcRequestSenderStub> connections =
 				asList(connection1, connection2, connection3, connection4, connection5);
 		for (int i = 0; i < 5; i++) {
-			assertEquals(iterations / 5, connections.get(i).getCallsAmount());
+			assertEquals(iterations / 5, connections.get(i).getSendsNumber());
 		}
 	}
 
 	@Test
 	public void testCombination2() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection4 = new RpcRequestSenderStub();
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		// we don't put connection3
@@ -95,20 +95,20 @@ public class RpcRequestSendingStrategiesTest {
 			sender.sendRequest(new Object(), 50, callback);
 		}
 
-		assertEquals(iterations / 2, connection1.getCallsAmount());
-		assertEquals(0, connection2.getCallsAmount());
-		assertEquals(0, connection3.getCallsAmount());
-		assertEquals(iterations / 2, connection4.getCallsAmount());
+		assertEquals(iterations / 2, connection1.getSendsNumber());
+		assertEquals(0, connection2.getSendsNumber());
+		assertEquals(0, connection3.getSendsNumber());
+		assertEquals(iterations / 2, connection4.getSendsNumber());
 	}
 
 	@Test
 	public void testCombination3() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection4 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection5 = new RpcRequestSenderStub();
 		pool.put(ADDRESS_1, connection1);
 		// we don't put connection2
 		pool.put(ADDRESS_3, connection3);
@@ -133,21 +133,21 @@ public class RpcRequestSendingStrategiesTest {
 		sender.sendRequest(1, 50, callback);
 		sender.sendRequest(0, 50, callback);
 
-		assertEquals(3, connection1.getCallsAmount());
-		assertEquals(0, connection2.getCallsAmount());
-		assertEquals(2, connection3.getCallsAmount());
-		assertEquals(2, connection4.getCallsAmount());
-		assertEquals(2, connection5.getCallsAmount());
+		assertEquals(3, connection1.getSendsNumber());
+		assertEquals(0, connection2.getSendsNumber());
+		assertEquals(2, connection3.getSendsNumber());
+		assertEquals(2, connection4.getSendsNumber());
+		assertEquals(2, connection5.getSendsNumber());
 	}
 
 	@Test
 	public void testCombination4() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection4 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection5 = new RpcRequestSenderStub();
 		HashFunction<Integer> hashFunction = new HashFunction<Integer>() {
 			@Override
 			public int hashCode(Integer item) {
@@ -178,21 +178,21 @@ public class RpcRequestSendingStrategiesTest {
 		}
 
 		double acceptableError = iterationsPerLoop / 10.0;
-		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection1.getCallsAmount(), acceptableError);
-		assertEquals(0, connection2.getCallsAmount());
-		assertEquals(iterationsPerLoop / 3, connection3.getCallsAmount(), acceptableError);
-		assertEquals(0, connection4.getCallsAmount());
-		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection5.getCallsAmount(), acceptableError);
+		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection1.getSendsNumber(), acceptableError);
+		assertEquals(0, connection2.getSendsNumber());
+		assertEquals(iterationsPerLoop / 3, connection3.getSendsNumber(), acceptableError);
+		assertEquals(0, connection4.getSendsNumber());
+		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection5.getSendsNumber(), acceptableError);
 	}
 
 	@Test
 	public void testCombination5() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection4 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection5 = new RpcRequestSenderStub();
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
@@ -217,10 +217,10 @@ public class RpcRequestSendingStrategiesTest {
 			sender.sendRequest("request", timeout, callback);
 		}
 
-		assertEquals(iterationsPerDataStubWithKey, connection1.getCallsAmount());
-		assertEquals(iterationsPerDataStubWithKey, connection2.getCallsAmount());
-		assertEquals(iterationsPerDataStub, connection3.getCallsAmount());
-		assertEquals(0, connection4.getCallsAmount());
-		assertEquals(0, connection5.getCallsAmount());
+		assertEquals(iterationsPerDataStubWithKey, connection1.getSendsNumber());
+		assertEquals(iterationsPerDataStubWithKey, connection2.getSendsNumber());
+		assertEquals(iterationsPerDataStub, connection3.getSendsNumber());
+		assertEquals(0, connection4.getSendsNumber());
+		assertEquals(0, connection5.getSendsNumber());
 	}
 }

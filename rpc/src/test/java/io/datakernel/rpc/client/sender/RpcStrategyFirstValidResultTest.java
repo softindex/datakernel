@@ -20,7 +20,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
-import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
+import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
 import io.datakernel.rpc.util.Predicate;
 import org.junit.Test;
 
@@ -47,9 +47,9 @@ public class RpcStrategyFirstValidResultTest {
 	@Test
 	public void itShouldSendRequestToAllAvailableSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
 		RpcRequestSendingStrategy firstValidResult = firstValidResult(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 		int callsAmountIterationOne = 10;
 		int callsAmountIterationTwo = 25;
@@ -69,9 +69,9 @@ public class RpcStrategyFirstValidResultTest {
 			senderToAll.sendRequest(new Object(), 50, new ResultCallbackFuture<>());
 		}
 
-		assertEquals(callsAmountIterationOne, connection1.getCallsAmount());
-		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection2.getCallsAmount());
-		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection3.getCallsAmount());
+		assertEquals(callsAmountIterationOne, connection1.getSendsNumber());
+		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection2.getSendsNumber());
+		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection3.getSendsNumber());
 	}
 
 	@Test
@@ -152,7 +152,7 @@ public class RpcStrategyFirstValidResultTest {
 	@Test
 	public void itShouldBeCreatedWhenThereIsAtLeastOneActiveSubSender() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection = new RpcRequestSenderStub();
 		// one connection is added
 		pool.put(ADDRESS_2, connection);
 		RpcRequestSendingStrategy firstValidResult = firstValidResult(servers(ADDRESS_1, ADDRESS_2));
@@ -169,7 +169,7 @@ public class RpcStrategyFirstValidResultTest {
 
 	static final class RequestSenderOnResultWithNullCaller implements RpcRequestSender {
 		@Override
-		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 			callback.onResult(null);
 		}
 	}
@@ -181,9 +181,10 @@ public class RpcStrategyFirstValidResultTest {
 			this.data = data;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
-		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
-			callback.onResult((T) data);
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+			callback.onResult((O) data);
 		}
 	}
 

@@ -19,36 +19,15 @@ package io.datakernel.rpc.client.sender.helper;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.sender.RpcRequestSender;
 
-public final class RequestSenderStub implements RpcRequestSender {
+public final class RpcRequestSenderStub implements RpcRequestSender {
+	private int sends;
 
-	private final int id;
-	private int sendRequestCalls;
-
-	public RequestSenderStub(int id) {
-		this.id = id;
-		this.sendRequestCalls = 0;
+	public int getSendsNumber() {
+		return sends;
 	}
 
 	@Override
-	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
-		++sendRequestCalls;
-	}
-
-	public int getId() {
-		return id;
-	}
-
-	public int getSendRequestCalls() {
-		return sendRequestCalls;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		return ((RequestSenderStub) obj).getId() == id;
-	}
-
-	@Override
-	public int hashCode() {
-		return id;
+	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		sends++;
 	}
 }

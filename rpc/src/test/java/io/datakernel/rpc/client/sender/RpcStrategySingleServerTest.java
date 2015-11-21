@@ -18,8 +18,8 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
-import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
+import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -36,7 +36,7 @@ public class RpcStrategySingleServerTest {
 	@Test
 	public void itShouldBeCreatedWhenThereIsConnectionInPool() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection = new RpcRequestSenderStub();
 		pool.put(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
 
@@ -59,7 +59,7 @@ public class RpcStrategySingleServerTest {
 	@Test
 	public void itShouldProcessAllCalls() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcClientConnectionStub connection = new RpcClientConnectionStub();
+		RpcRequestSenderStub connection = new RpcRequestSenderStub();
 		pool.put(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
 		RpcRequestSender sender = strategySingleServer.createSender(pool);
@@ -72,6 +72,6 @@ public class RpcStrategySingleServerTest {
 			sender.sendRequest(data, timeout, callback);
 		}
 
-		assertEquals(calls, connection.getCallsAmount());
+		assertEquals(calls, connection.getSendsNumber());
 	}
 }

@@ -20,6 +20,6 @@ import io.datakernel.async.ResultCallback;
 
 public interface RpcRequestSender {
 
-	<T> void sendRequest(Object request, int timeout, ResultCallback<T> callback);
+	<I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback);
 
 }

@@ -63,7 +63,7 @@ public final class RpcStrategySharding implements RpcRequestSendingStrategy {
 		}
 
 		@Override
-		public <T> void sendRequest(Object request, int timeout, final ResultCallback<T> callback) {
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 			checkNotNull(callback);
 
 			RpcRequestSender sender = chooseSender(request);
