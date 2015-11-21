@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.sender;
+package io.datakernel.rpc.hash;
 
-import io.datakernel.rpc.client.RpcClientConnectionPool;
-
-public interface RpcSingleSenderStrategy {
-	RpcRequestSenderHolder create(RpcClientConnectionPool pool);
+public interface HashBucketFunction {
+	int hash(Object shardId, int bucket);
 }

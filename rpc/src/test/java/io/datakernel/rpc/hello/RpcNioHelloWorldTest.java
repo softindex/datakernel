@@ -23,7 +23,6 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.rpc.protocol.RpcRemoteException;
@@ -48,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
+import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.firstAvailable;
 import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.servers;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -57,16 +57,6 @@ public class RpcNioHelloWorldTest {
 
 	private interface HelloService {
 		String hello(String name) throws Exception;
-	}
-
-	private static class HelloServiceImpl implements HelloService {
-		@Override
-		public String hello(String name) throws Exception {
-			if (name.equals("--")) {
-				throw new Exception("Illegal name");
-			}
-			return "Hello, " + name + "!";
-		}
 	}
 
 	protected static class HelloRequest {
@@ -109,7 +99,15 @@ public class RpcNioHelloWorldTest {
 
 	private static RpcServer createServer(NioEventloop eventloop, RpcProtocolFactory protocolFactory) {
 		return new RpcServer.Builder(eventloop)
-				.requestHandlers(helloServiceRequestHandler(new HelloServiceImpl()))
+				.requestHandlers(helloServiceRequestHandler(new HelloService() {
+					@Override
+					public String hello(String name) throws Exception {
+						if (name.equals("--")) {
+							throw new Exception("Illegal name");
+						}
+						return "Hello, " + name + "!";
+					}
+				}))
 				.serializer(serializer())
 				.protocolFactory(protocolFactory)
 				.build()
@@ -123,11 +121,10 @@ public class RpcNioHelloWorldTest {
 		public HelloClient(NioEventloop eventloop, RpcProtocolFactory protocolFactory) throws Exception {
 			List<InetSocketAddress> addresses = asList(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT));
 			this.eventloop = eventloop;
-			this.client = new RpcClient.Builder(eventloop)
-					.addresses(addresses)
+			this.client = RpcClient.builder(eventloop)
 					.serializer(serializer())
 					.protocolFactory(protocolFactory)
-					.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(servers(addresses)))
+					.requestSendingStrategy(firstAvailable(servers(addresses)))
 					.build();
 
 			final CompletionCallbackFuture connectCompletion = new CompletionCallbackFuture();

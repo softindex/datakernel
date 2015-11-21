@@ -38,7 +38,8 @@ import java.util.PriorityQueue;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcClientConnectionImpl implements RpcClientConnection {
+public final class RpcClientConnectionImpl implements RpcClientConnection, RpcClientConnectionMBean {
+	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
 		private final int timeout;
@@ -81,7 +82,6 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	private final Map<Integer, ResultCallback<? extends Object>> requests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
 	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
-	private final int timeoutPrecision;
 
 	private AsyncCancellable scheduleExpiredResponsesTask;
 	private int cookieCounter = 0;
@@ -98,11 +98,10 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	private int successfulRequests, failedRequests, rejectedRequests, expiredRequests;
 	private boolean monitoring;
 
-	public RpcClientConnectionImpl(NioEventloop eventloop, SocketChannel socketChannel, int timeoutPrecision, RpcMessageSerializer serializer,
+	public RpcClientConnectionImpl(NioEventloop eventloop, SocketChannel socketChannel, RpcMessageSerializer serializer,
 	                               RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;
 		this.statusListener = statusListener;
-		this.timeoutPrecision = timeoutPrecision;
 		this.protocol = protocolFactory.create(this, socketChannel, serializer, false);
 	}
 
@@ -156,7 +155,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	private void scheduleExpiredResponsesTask() {
 		if (closing)
 			return;
-		scheduleExpiredResponsesTask = eventloop.schedule(eventloop.currentTimeMillis() + timeoutPrecision, expiredResponsesTask);
+		scheduleExpiredResponsesTask = eventloop.schedule(eventloop.currentTimeMillis() + DEFAULT_TIMEOUT_PRECISION, expiredResponsesTask);
 	}
 
 	private Runnable createExpiredResponsesTask() {

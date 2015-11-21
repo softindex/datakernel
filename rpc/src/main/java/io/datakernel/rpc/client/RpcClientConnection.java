@@ -20,10 +20,9 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.rpc.protocol.RpcConnection;
 
-public interface RpcClientConnection extends RpcConnection, RpcClientConnectionMBean {
+public interface RpcClientConnection extends RpcConnection {
 
-	<I, O> void callMethod(
-			I request, int timeout, ResultCallback<O> callback);
+	<I, O> void callMethod(I request, int timeout, ResultCallback<O> callback);
 
 	void close();
 

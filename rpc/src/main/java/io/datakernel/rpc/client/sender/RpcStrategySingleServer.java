@@ -21,12 +21,12 @@ import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
 import java.net.InetSocketAddress;
-import java.util.List;
+import java.util.Collections;
+import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static java.util.Arrays.asList;
 
-public final class RpcStrategySingleServer implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
+public final class RpcStrategySingleServer implements RpcRequestSendingStrategy {
 
 	private final InetSocketAddress address;
 
@@ -36,18 +36,16 @@ public final class RpcStrategySingleServer implements RpcRequestSendingStrategy,
 	}
 
 	@Override
-	public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
-		return asList(create(pool));
+	public Set<InetSocketAddress> getAddresses() {
+		return Collections.singleton(address);
 	}
 
 	@Override
-	public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
+	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
 		RpcClientConnection connection = pool.get(address);
-		if (connection != null) {
-			return RpcRequestSenderHolder.of(new RequestSenderToSingleServer(connection));
-		} else {
-			return RpcRequestSenderHolder.absent();
-		}
+		if (connection == null)
+			return null;
+		return new RequestSenderToSingleServer(connection);
 	}
 
 	final static class RequestSenderToSingleServer implements RpcRequestSender {
@@ -59,7 +57,6 @@ public final class RpcStrategySingleServer implements RpcRequestSendingStrategy,
 
 		@Override
 		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
-
 			connection.callMethod(request, timeout, callback);
 		}
 	}

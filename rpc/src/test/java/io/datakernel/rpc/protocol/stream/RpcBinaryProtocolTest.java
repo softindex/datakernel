@@ -16,16 +16,13 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.client.RpcClientSettings;
 import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcMessageSerializer;
@@ -127,15 +124,11 @@ public class RpcBinaryProtocolTest {
 
 		final NioEventloop eventloop = new NioEventloop();
 
-		final RpcClientSettings clientSettings = new RpcClientSettings()
-				.addresses(ImmutableList.of(address))
-				.connectSettings(new ConnectSettings(100));
 		RpcStreamProtocolSettings protocolSettings = new RpcStreamProtocolSettings()
 				.packetSize(1 << 10, 1 << 16).compression(true);
-		final RpcClient client = new RpcClient.Builder(eventloop, clientSettings)
+		final RpcClient client = RpcClient.builder(eventloop)
 				.serializer(serializer)
 				.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(server(address)))
-				.connectSettings(new ConnectSettings(100))
 				.protocolFactory(new RpcStreamProtocolFactory(protocolSettings))
 				.build();
 

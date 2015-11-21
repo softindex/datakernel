@@ -19,149 +19,77 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
+import java.net.InetSocketAddress;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
-import static java.util.Arrays.asList;
 
-public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
-	private Map<Class<? extends Object>, StrategySpecifications> dataTypeToSpecification;
-	private StrategySpecifications defaultStrategySpecification;
+public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrategy {
+	private Map<Class<?>, RpcRequestSendingStrategy> dataTypeToStrategy;
+	private RpcRequestSendingStrategy defaultStrategy;
 
 	RpcStrategyTypeDispatching() {
-		dataTypeToSpecification = new HashMap<>();
-		defaultStrategySpecification = null;
+		dataTypeToStrategy = new HashMap<>();
+		defaultStrategy = null;
 	}
 
 	@Override
-	public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
-		return asList(create(pool));
+	public Set<InetSocketAddress> getAddresses() {
+		HashSet<InetSocketAddress> result = new HashSet<>();
+		for (RpcRequestSendingStrategy strategy : dataTypeToStrategy.values()) {
+			result.addAll(strategy.getAddresses());
+		}
+		return result;
 	}
 
 	@Override
-	public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
-		HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender = new HashMap<>();
-		for (Class<? extends Object> dataType : dataTypeToSpecification.keySet()) {
-			StrategySpecifications specs = dataTypeToSpecification.get(dataType);
-			RpcRequestSenderHolder holder = specs.getStrategy().create(pool);
-			if (holder.isSenderPresent()) {
-				dataTypeToSender.put(dataType, holder.getSender());
-			} else if (specs.isCrucialForActivation()) {
-				return RpcRequestSenderHolder.absent();
-			}
+	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
+		HashMap<Class<?>, RpcRequestSender> dataTypeToSender = new HashMap<>();
+		for (Class<?> dataType : dataTypeToStrategy.keySet()) {
+			RpcRequestSendingStrategy strategy = dataTypeToStrategy.get(dataType);
+			RpcRequestSender sender = strategy.createSender(pool);
+			if (sender == null)
+				return null;
+			dataTypeToSender.put(dataType, sender);
 		}
 		RpcRequestSender defaultSender = null;
-		if (defaultStrategySpecification != null) {
-			defaultSender = defaultStrategySpecification.getStrategy().create(pool).getSenderOrNull();
-			if (defaultSender == null && defaultStrategySpecification.isCrucialForActivation()) {
-				return RpcRequestSenderHolder.absent();
-			}
+		if (defaultStrategy != null) {
+			defaultSender = defaultStrategy.createSender(pool);
+			if (defaultSender == null)
+				return null;
 		}
-		return RpcRequestSenderHolder.of(new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender));
+		return new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender);
 	}
 
-	public RpcStrategySpecsSetting on(Class<? extends Object> dataType,
-	                                  RpcSingleSenderStrategy strategy) {
+	public RpcStrategyTypeDispatching on(Class<?> dataType,
+	                                     RpcRequestSendingStrategy strategy) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
-		checkState(!dataTypeToSpecification.containsKey(dataType),
+		checkState(!dataTypeToStrategy.containsKey(dataType),
 				"Strategy for type " + dataType.toString() + " is already set");
-		dataTypeToSpecification.put(dataType, new StrategySpecifications(strategy, false));
-		return new RpcTypeStrategySpecsHelper(dataType);
+		dataTypeToStrategy.put(dataType, strategy);
+		return this;
 	}
 
-	public RpcStrategySpecsSetting onDefault(RpcSingleSenderStrategy strategy) {
-		checkState(defaultStrategySpecification == null, "Default Strategy is already set");
-		defaultStrategySpecification = new StrategySpecifications(strategy, false);
-		return new RpcDefaultStrategySpecsHelper();
-	}
-
-	public abstract class RpcStrategySpecsSetting implements RpcRequestSendingStrategy, RpcSingleSenderStrategy {
-		private RpcStrategySpecsSetting() {
-
-		}
-
-		@Override
-		public List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool) {
-			return RpcStrategyTypeDispatching.this.createAsList(pool);
-		}
-
-		@Override
-		public RpcRequestSenderHolder create(RpcClientConnectionPool pool) {
-			return RpcStrategyTypeDispatching.this.create(pool);
-		}
-
-		public RpcStrategySpecsSetting on(Class<? extends Object> dataType,
-		                                  RpcSingleSenderStrategy strategy) {
-			return RpcStrategyTypeDispatching.this.on(dataType, strategy);
-		}
-
-		public RpcStrategySpecsSetting onDefault(RpcSingleSenderStrategy strategy) {
-			return RpcStrategyTypeDispatching.this.onDefault(strategy);
-		}
-
-		public abstract RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial);
-	}
-
-	private final class RpcTypeStrategySpecsHelper extends RpcStrategySpecsSetting {
-		private final Class<? extends Object> dataType;
-
-		private RpcTypeStrategySpecsHelper(Class<? extends Object> dataType) {
-			this.dataType = dataType;
-		}
-
-		@Override
-		public RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial) {
-			StrategySpecifications specs = checkNotNull(dataTypeToSpecification.get(dataType));
-			dataTypeToSpecification.put(dataType, new StrategySpecifications(specs.getStrategy(), isCrucial));
-			return RpcStrategyTypeDispatching.this;
-		}
-	}
-
-	private final class RpcDefaultStrategySpecsHelper extends RpcStrategySpecsSetting {
-
-		private RpcDefaultStrategySpecsHelper() {
-
-		}
-
-		@Override
-		public RpcStrategyTypeDispatching crucialForActivation(boolean isCrucial) {
-			checkNotNull(defaultStrategySpecification);
-			defaultStrategySpecification
-					= new StrategySpecifications(defaultStrategySpecification.getStrategy(), isCrucial);
-			return RpcStrategyTypeDispatching.this;
-		}
-	}
-
-	private static final class StrategySpecifications {
-		private final RpcSingleSenderStrategy strategy;
-		private final boolean crucialForActivation;
-
-		public StrategySpecifications(RpcSingleSenderStrategy strategy, boolean crucialForActivation) {
-			this.strategy = strategy;
-			this.crucialForActivation = crucialForActivation;
-		}
-
-		public RpcSingleSenderStrategy getStrategy() {
-			return strategy;
-		}
-
-		public boolean isCrucialForActivation() {
-			return crucialForActivation;
-		}
+	public RpcStrategyTypeDispatching onDefault(RpcRequestSendingStrategy strategy) {
+		checkState(defaultStrategy == null, "Default Strategy is already set");
+		defaultStrategy = strategy;
+		return this;
 	}
 
 	final static class RequestSenderTypeDispatcher implements RpcRequestSender {
+		@SuppressWarnings("ThrowableInstanceNeverThrown")
 		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
 				= new RpcNoSenderAvailableException("No active senders available");
 
-		private final HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender;
+		private final HashMap<Class<?>, RpcRequestSender> dataTypeToSender;
 		private final RpcRequestSender defaultSender;
 
-		public RequestSenderTypeDispatcher(HashMap<Class<? extends Object>, RpcRequestSender> dataTypeToSender,
+		public RequestSenderTypeDispatcher(HashMap<Class<?>, RpcRequestSender> dataTypeToSender,
 		                                   RpcRequestSender defaultSender) {
 			checkNotNull(dataTypeToSender);
 

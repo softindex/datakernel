@@ -227,12 +227,11 @@ public class CombinedStrategiesIntegrationTest {
 			InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_2);
 			InetSocketAddress address3 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_3);
 
-			Sharder<Object> sharder = new Sharder<Object>() {
+			Sharder<HelloRequest> sharder = new Sharder<HelloRequest>() {
 				@Override
-				public int getShard(Object item) {
-					HelloRequest helloRequest = (HelloRequest) item;
+				public int getShard(HelloRequest item) {
 					int shard = 0;
-					if (helloRequest.name.startsWith("S")) {
+					if (item.name.startsWith("S")) {
 						shard = 1;
 					}
 					return shard;
@@ -242,8 +241,7 @@ public class CombinedStrategiesIntegrationTest {
 			List<InetSocketAddress> addresses = ImmutableList.of(address1, address2, address3);
 
 			this.eventloop = eventloop;
-			this.client = new RpcClient.Builder(eventloop)
-					.addresses(addresses)
+			this.client = RpcClient.builder(eventloop)
 					.serializer(serializer())
 					.protocolFactory(protocolFactory)
 					.requestSendingStrategy(
@@ -251,9 +249,7 @@ public class CombinedStrategiesIntegrationTest {
 									server(address1),
 									sharding(sharder,
 											server(address2),
-											server(address3))
-							)
-					)
+											server(address3))))
 					.build();
 
 			final CompletionCallbackFuture connectCompletion = new CompletionCallbackFuture();

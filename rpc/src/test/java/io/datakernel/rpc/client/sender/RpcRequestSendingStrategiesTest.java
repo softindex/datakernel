@@ -16,8 +16,10 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.client.sender.helper.*;
+import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
+import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
+import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
 import io.datakernel.rpc.hash.HashFunction;
 import io.datakernel.rpc.hash.Sharder;
 import org.junit.Test;
@@ -45,32 +47,23 @@ public class RpcRequestSendingStrategiesTest {
 
 	@Test
 	public void testCombination1() {
-		RpcClientConnectionPool pool =
-				new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4, ADDRESS_5));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
-		pool.add(ADDRESS_1, connection1);
-		pool.add(ADDRESS_2, connection2);
-		pool.add(ADDRESS_3, connection3);
-		pool.add(ADDRESS_4, connection4);
-		pool.add(ADDRESS_5, connection5);
-		int timeout = 50;
-		RpcMessageDataStub data = new RpcMessageDataStub();
-		ResultCallbackStub callback = new ResultCallbackStub();
+		pool.put(ADDRESS_1, connection1);
+		pool.put(ADDRESS_2, connection2);
+		pool.put(ADDRESS_3, connection3);
+		pool.put(ADDRESS_4, connection4);
+		pool.put(ADDRESS_5, connection5);
 		int iterations = 100;
-		RpcRequestSendingStrategy strategy =
-				roundRobin(
-						server(ADDRESS_1),
-						server(ADDRESS_2),
-						servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)
-				);
+		RpcRequestSendingStrategy strategy = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4, ADDRESS_5));
 
-		RpcRequestSender sender = strategy.create(pool).getSender();
+		RpcRequestSender sender = strategy.createSender(pool);
 		for (int i = 0; i < iterations; i++) {
-			sender.sendRequest(data, timeout, callback);
+			sender.sendRequest(new Object(), 50, new ResultCallbackFuture<>());
 		}
 
 		List<RpcClientConnectionStub> connections =
@@ -82,32 +75,24 @@ public class RpcRequestSendingStrategiesTest {
 
 	@Test
 	public void testCombination2() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
-		pool.add(ADDRESS_1, connection1);
-		pool.add(ADDRESS_2, connection2);
-		// we don't add connection3
-		pool.add(ADDRESS_4, connection4);
-		int timeout = 50;
-		RpcMessageDataStub data = new RpcMessageDataStub();
+		pool.put(ADDRESS_1, connection1);
+		pool.put(ADDRESS_2, connection2);
+		// we don't put connection3
+		pool.put(ADDRESS_4, connection4);
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int iterations = 20;
-		RpcRequestSendingStrategy strategy =
-				roundRobin(
-						firstAvailable(
-								servers(ADDRESS_1, ADDRESS_2)
-						),
-						firstAvailable(
-								servers(ADDRESS_3, ADDRESS_4)
-						)
-				);
+		RpcRequestSendingStrategy strategy = roundRobin(
+				firstAvailable(servers(ADDRESS_1, ADDRESS_2)),
+				firstAvailable(servers(ADDRESS_3, ADDRESS_4)));
 
-		RpcRequestSender sender = strategy.create(pool).getSender();
+		RpcRequestSender sender = strategy.createSender(pool);
 		for (int i = 0; i < iterations; i++) {
-			sender.sendRequest(data, timeout, callback);
+			sender.sendRequest(new Object(), 50, callback);
 		}
 
 		assertEquals(iterations / 2, connection1.getCallsAmount());
@@ -118,47 +103,35 @@ public class RpcRequestSendingStrategiesTest {
 
 	@Test
 	public void testCombination3() {
-		RpcClientConnectionPool pool =
-				new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4, ADDRESS_5));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
-		pool.add(ADDRESS_1, connection1);
-		// we don't add connection2
-		pool.add(ADDRESS_3, connection3);
-		pool.add(ADDRESS_4, connection4);
-		pool.add(ADDRESS_5, connection5);
-		final int shardsAmount = 2;
-		Sharder<Object> sharder = new Sharder<Object>() {
+		pool.put(ADDRESS_1, connection1);
+		// we don't put connection2
+		pool.put(ADDRESS_3, connection3);
+		pool.put(ADDRESS_4, connection4);
+		pool.put(ADDRESS_5, connection5);
+		final int shardsCount = 2;
+		Sharder<Integer> sharder = new Sharder<Integer>() {
 			@Override
-			public int getShard(Object item) {
-				RpcMessageDataStubWithKey data = (RpcMessageDataStubWithKey) item;
-				return data.getKey() % shardsAmount;
+			public int getShard(Integer item) {
+				return item % shardsCount;
 			}
 		};
-		int timeout = 50;
-		RpcMessageDataStubWithKey data0 = new RpcMessageDataStubWithKey(0);
-		RpcMessageDataStubWithKey data1 = new RpcMessageDataStubWithKey(1);
 		ResultCallbackStub callback = new ResultCallbackStub();
-		RpcRequestSendingStrategy strategy =
-				sharding(
-						sharder,
-						firstValidResult(
-								servers(ADDRESS_1, ADDRESS_2)
-						),
-						firstValidResult(
-								servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)
-						)
-				);
+		RpcRequestSendingStrategy strategy = sharding(sharder,
+				firstValidResult(servers(ADDRESS_1, ADDRESS_2)),
+				firstValidResult(servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)));
 
-		RpcRequestSender sender = strategy.create(pool).getSender();
-		sender.sendRequest(data0, timeout, callback);
-		sender.sendRequest(data0, timeout, callback);
-		sender.sendRequest(data1, timeout, callback);
-		sender.sendRequest(data1, timeout, callback);
-		sender.sendRequest(data0, timeout, callback);
+		RpcRequestSender sender = strategy.createSender(pool);
+		sender.sendRequest(0, 50, callback);
+		sender.sendRequest(0, 50, callback);
+		sender.sendRequest(1, 50, callback);
+		sender.sendRequest(1, 50, callback);
+		sender.sendRequest(0, 50, callback);
 
 		assertEquals(3, connection1.getCallsAmount());
 		assertEquals(0, connection2.getCallsAmount());
@@ -169,41 +142,39 @@ public class RpcRequestSendingStrategiesTest {
 
 	@Test
 	public void testCombination4() {
-		RpcClientConnectionPool pool =
-				new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4, ADDRESS_5));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
-		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RpcRequestSendingStrategy strategy =
-				rendezvousHashing(hashFunction)
-						.put(1, firstAvailable(servers(ADDRESS_1, ADDRESS_2)))
-						.put(2, firstAvailable(servers(ADDRESS_3, ADDRESS_4)))
-						.put(3, server(ADDRESS_5)
-						);
-		int timeout = 50;
-		ResultCallbackStub callback = new ResultCallbackStub();
+		HashFunction<Integer> hashFunction = new HashFunction<Integer>() {
+			@Override
+			public int hashCode(Integer item) {
+				return item;
+			}
+		};
+		RpcRequestSendingStrategy strategy = rendezvousHashing(hashFunction)
+				.put(1, firstAvailable(servers(ADDRESS_1, ADDRESS_2)))
+				.put(2, firstAvailable(servers(ADDRESS_3, ADDRESS_4)))
+				.put(3, server(ADDRESS_5));
 		int iterationsPerLoop = 1000;
 		RpcRequestSender sender;
 
-		pool.add(ADDRESS_1, connection1);
-		pool.add(ADDRESS_2, connection2);
-		pool.add(ADDRESS_3, connection3);
-		pool.add(ADDRESS_4, connection4);
-		pool.add(ADDRESS_5, connection5);
-		sender = strategy.create(pool).getSender();
+		pool.put(ADDRESS_1, connection1);
+		pool.put(ADDRESS_2, connection2);
+		pool.put(ADDRESS_3, connection3);
+		pool.put(ADDRESS_4, connection4);
+		pool.put(ADDRESS_5, connection5);
+		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			RpcMessageDataStubWithKey data = new RpcMessageDataStubWithKey(i);
-			sender.sendRequest(data, timeout, callback);
+			sender.sendRequest(i, 50, new ResultCallbackFuture<>());
 		}
 		pool.remove(ADDRESS_3);
 		pool.remove(ADDRESS_4);
-		sender = strategy.create(pool).getSender();
+		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerLoop; i++) {
-			RpcMessageDataStubWithKey data = new RpcMessageDataStubWithKey(i);
-			sender.sendRequest(data, timeout, callback);
+			sender.sendRequest(i, 50, new ResultCallbackFuture<>());
 		}
 
 		double acceptableError = iterationsPerLoop / 10.0;
@@ -216,44 +187,34 @@ public class RpcRequestSendingStrategiesTest {
 
 	@Test
 	public void testCombination5() {
-		RpcClientConnectionPool pool =
-				new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4, ADDRESS_5));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection4 = new RpcClientConnectionStub();
 		RpcClientConnectionStub connection5 = new RpcClientConnectionStub();
-		pool.add(ADDRESS_1, connection1);
-		pool.add(ADDRESS_2, connection2);
-		pool.add(ADDRESS_3, connection3);
-		pool.add(ADDRESS_4, connection4);
-		pool.add(ADDRESS_5, connection5);
+		pool.put(ADDRESS_1, connection1);
+		pool.put(ADDRESS_2, connection2);
+		pool.put(ADDRESS_3, connection3);
+		pool.put(ADDRESS_4, connection4);
+		pool.put(ADDRESS_5, connection5);
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 		int iterationsPerDataStub = 25;
 		int iterationsPerDataStubWithKey = 35;
 		RpcRequestSender sender;
-		RpcRequestSendingStrategy strategy =
-				typeDispatching()
-						.on(RpcMessageDataStubWithKey.class,
-								firstValidResult(
-										servers(ADDRESS_1, ADDRESS_2)
-								)
-						)
-						.onDefault(
-								firstAvailable(
-										servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)
-								)
-						);
+		RpcRequestSendingStrategy strategy = typeDispatching()
+				.on(String.class,
+						firstValidResult(servers(ADDRESS_1, ADDRESS_2)))
+				.onDefault(
+						firstAvailable(servers(ADDRESS_3, ADDRESS_4, ADDRESS_5)));
 
-		sender = strategy.create(pool).getSender();
+		sender = strategy.createSender(pool);
 		for (int i = 0; i < iterationsPerDataStub; i++) {
-			RpcMessageDataStub data = new RpcMessageDataStub();
-			sender.sendRequest(data, timeout, callback);
+			sender.sendRequest(new Object(), timeout, callback);
 		}
 		for (int i = 0; i < iterationsPerDataStubWithKey; i++) {
-			RpcMessageDataStubWithKey data = new RpcMessageDataStubWithKey(i);
-			sender.sendRequest(data, timeout, callback);
+			sender.sendRequest("request", timeout, callback);
 		}
 
 		assertEquals(iterationsPerDataStubWithKey, connection1.getCallsAmount());

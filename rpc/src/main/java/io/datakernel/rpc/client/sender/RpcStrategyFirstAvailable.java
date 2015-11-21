@@ -16,22 +16,29 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.rpc.client.RpcClientConnectionPool;
+
+import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Set;
 
-public final class RpcStrategyFirstAvailable extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
+public final class RpcStrategyFirstAvailable implements RpcRequestSendingStrategy {
+	private final RpcStrategyList group;
 
-	public RpcStrategyFirstAvailable(List<RpcRequestSendingStrategy> subStrategies) {
-		super(subStrategies);
-	}
-
-	public RpcStrategyFirstAvailable withMinActiveSubStrategies(int minActiveSubStrategies) {
-		setMinSubStrategiesForCreation(minActiveSubStrategies);
-		return this;
+	public RpcStrategyFirstAvailable(RpcStrategyList list) {
+		this.group = list;
 	}
 
 	@Override
-	protected RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders) {
-		return subSenders.get(0);
+	public Set<InetSocketAddress> getAddresses() {
+		return group.getAddresses();
 	}
 
+	@Override
+	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
+		List<RpcRequestSender> senders = group.listOfSenders(pool);
+		if (senders.isEmpty())
+			return null;
+		return senders.get(0);
+	}
 }

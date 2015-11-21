@@ -17,11 +17,32 @@
 package io.datakernel.rpc.client;
 
 import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
 
 public interface RpcClientMBean {
+	void startMonitoring();
+
+	void stopMonitoring();
+
+	boolean isMonitoring();
+
 	void resetStats();
 
 	String getAddresses();
+
+	int getConnectionsCount();
+
+	CompositeData[] getConnections() throws OpenDataException;
+
+	long getTotalSuccessfulRequests();
+
+	long getTotalPendingRequests();
+
+	long getTotalRejectedRequests();
+
+	long getTotalFailedRequests();
+
+	long getTotalExpiredRequests();
 
 	int getSuccessfulConnects();
 
@@ -31,7 +52,4 @@ public interface RpcClientMBean {
 
 	CompositeData getLastException();
 
-	boolean isPingEnabled();
-
-	int getPingReconnects();
 }

@@ -22,7 +22,6 @@ import com.google.common.collect.ImmutableList;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.example.CumulativeServiceHelper;
 import io.datakernel.rpc.protocol.RpcException;
@@ -48,7 +47,7 @@ public final class CumulativeBenchmark {
 	private final RpcServer server = CumulativeServiceHelper.createServer(serverEventloop, SERVICE_PORT);
 
 	private final NioEventloop eventloop = new NioEventloop();
-	private final RpcClient client = CumulativeServiceHelper.createClient(eventloop, addresses, new ConnectSettings(500));
+	private final RpcClient client = CumulativeServiceHelper.createClient(eventloop, addresses);
 
 	private final CumulativeServiceHelper.ValueMessage incrementMessage;
 	private final int totalRounds;

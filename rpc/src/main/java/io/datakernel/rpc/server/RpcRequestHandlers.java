@@ -20,7 +20,6 @@ import io.datakernel.async.AsyncFunction;
 import io.datakernel.async.ResultCallback;
 import org.slf4j.Logger;
 
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,7 +32,7 @@ public final class RpcRequestHandlers implements AsyncFunction<Object, Object> {
 	}
 
 	public static final class Builder {
-		private final Map<Class<? extends Object>, RequestHandler<Object>> handlers = new HashMap<>();
+		private final Map<Class<?>, RequestHandler<Object>> handlers = new HashMap<>();
 		private Logger logger;
 
 		@SuppressWarnings("unchecked")
@@ -48,14 +47,14 @@ public final class RpcRequestHandlers implements AsyncFunction<Object, Object> {
 		}
 
 		public RpcRequestHandlers build() {
-			return new RpcRequestHandlers(Collections.unmodifiableMap(new HashMap<>(handlers)), logger);
+			return new RpcRequestHandlers(handlers, logger);
 		}
 	}
 
-	private final Map<Class<? extends Object>, RequestHandler<Object>> handlers;
+	private final Map<Class<?>, RequestHandler<Object>> handlers;
 	private final Logger logger;
 
-	private RpcRequestHandlers(Map<Class<? extends Object>, RequestHandler<Object>> handlers, Logger logger) {
+	private RpcRequestHandlers(Map<Class<?>, RequestHandler<Object>> handlers, Logger logger) {
 		this.handlers = handlers;
 		this.logger = logger;
 	}

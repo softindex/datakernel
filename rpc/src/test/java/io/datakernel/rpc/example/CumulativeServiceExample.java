@@ -19,7 +19,6 @@ package io.datakernel.rpc.example;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.example.CumulativeServiceHelper.ValueMessage;
 import io.datakernel.rpc.server.RpcServer;
@@ -39,7 +38,7 @@ public class CumulativeServiceExample {
 	public static void main(String[] args) throws IOException {
 		final NioEventloop eventloop = new NioEventloop();
 		final RpcServer server = CumulativeServiceHelper.createServer(eventloop, SERVICE_PORT);
-		final RpcClient client = CumulativeServiceHelper.createClient(eventloop, singletonList(new InetSocketAddress(SERVICE_PORT)), new ConnectSettings(500));
+		final RpcClient client = CumulativeServiceHelper.createClient(eventloop, singletonList(new InetSocketAddress(SERVICE_PORT)));
 
 		final CompletionCallback finishCallback = new CompletionCallback() {
 			@Override

@@ -16,14 +16,15 @@
 
 package io.datakernel.rpc.client.sender;
 
+import io.datakernel.annotation.Nullable;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 
-import java.util.List;
+import java.net.InetSocketAddress;
+import java.util.Set;
 
 public interface RpcRequestSendingStrategy {
+	Set<InetSocketAddress> getAddresses();
 
-	RpcRequestSenderHolder create(RpcClientConnectionPool pool);
-
-	List<RpcRequestSenderHolder> createAsList(RpcClientConnectionPool pool);
-
+	@Nullable
+	RpcRequestSender createSender(RpcClientConnectionPool pool);
 }

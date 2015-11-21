@@ -17,31 +17,43 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
 
+import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Set;
 
-import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public final class RpcStrategyRoundRobin extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
+public final class RpcStrategyRoundRobin implements RpcRequestSendingStrategy {
+	private final RpcStrategyList list;
+	private int minActiveSubStrategies;
 
-	public RpcStrategyRoundRobin(List<RpcRequestSendingStrategy> subStrategies) {
-		super(subStrategies);
+	public RpcStrategyRoundRobin(RpcStrategyList list) {
+		this.list = list;
 	}
 
 	public RpcStrategyRoundRobin withMinActiveSubStrategies(int minActiveSubStrategies) {
-		setMinSubStrategiesForCreation(minActiveSubStrategies);
+		this.minActiveSubStrategies = minActiveSubStrategies;
 		return this;
 	}
 
 	@Override
-	protected RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders) {
-		if (subSenders.size() > 1) {
+	public Set<InetSocketAddress> getAddresses() {
+		return list.getAddresses();
+	}
+
+	@Override
+	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
+		List<RpcRequestSender> subSenders = list.listOfSenders(pool);
+		if (subSenders.size() < minActiveSubStrategies)
+			return null;
+		else if (subSenders.size() > 1) {
 			return new RequestSenderRoundRobin(subSenders);
-		} else {
-			assert subSenders.size() == 1;
+		} else if (subSenders.size() == 1) {
 			return subSenders.get(0);
-		}
+		} else
+			return null;
 	}
 
 	final static class RequestSenderRoundRobin implements RpcRequestSender {
@@ -49,7 +61,7 @@ public final class RpcStrategyRoundRobin extends RpcRequestSendingStrategyToGrou
 		private RpcRequestSender[] subSenders;
 
 		public RequestSenderRoundRobin(List<RpcRequestSender> senders) {
-			checkArgument(senders != null && senders.size() > 0 && !containsNullValues(senders));
+			checkArgument(senders != null && senders.size() > 0);
 			this.subSenders = senders.toArray(new RpcRequestSender[senders.size()]);
 			this.nextSender = 0;
 		}

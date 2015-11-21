@@ -18,7 +18,6 @@ package io.datakernel.rpc.example;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -87,11 +86,9 @@ public final class CumulativeServiceHelper {
 		return server.setListenPort(listenPort);
 	}
 
-	public static RpcClient createClient(NioEventloop eventloop, List<InetSocketAddress> addresses, ConnectSettings connectSettings) {
-		return new RpcClient.Builder(eventloop)
-				.addresses(addresses)
-				.connectSettings(connectSettings)
-				.waitForAllConnected()
+	public static RpcClient createClient(NioEventloop eventloop, List<InetSocketAddress> addresses) {
+		return RpcClient.builder(eventloop)
+				.connectTimeoutMillis(500)
 				.serializer(CumulativeServiceHelper.MESSAGE_SERIALIZER)
 				.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(servers(addresses)))
 				.protocolFactory(PROTOCOL_FACTORY)

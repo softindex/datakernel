@@ -16,16 +16,16 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
+import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
 
-import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class RpcStrategySingleServerTest {
 
@@ -35,46 +35,34 @@ public class RpcStrategySingleServerTest {
 
 	@Test
 	public void itShouldBeCreatedWhenThereIsConnectionInPool() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcClientConnectionStub connection = new RpcClientConnectionStub();
-		pool.add(ADDRESS, connection);
+		pool.put(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
 
-		RpcRequestSenderHolder singleServer = strategySingleServer.create(pool);
+		RpcRequestSender sender = strategySingleServer.createSender(pool);
 
-		assertTrue(singleServer.isSenderPresent());
+		assertTrue(sender != null);
 	}
 
 	@Test
 	public void itShouldNotBeCreatedWhenThereIsNoConnectionInPool() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		// no connections were added to pool
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
 
-		RpcRequestSenderHolder singleServer = strategySingleServer.create(pool);
+		RpcRequestSender sender = strategySingleServer.createSender(pool);
 
-		assertFalse(singleServer.isSenderPresent());
-	}
-
-	@Test(expected = Exception.class)
-	public void itShouldThrowExceptionWhenAddressIsNull() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
-		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(null);
-	}
-
-	@Test(expected = Exception.class)
-	public void itShouldThrowExceptionWhenConnectionPoolIsNull() {
-		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(null);
-		strategySingleServer.create(null);
+		assertTrue(sender == null);
 	}
 
 	@Test
 	public void itShouldProcessAllCalls() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		RpcClientConnectionStub connection = new RpcClientConnectionStub();
-		pool.add(ADDRESS, connection);
+		pool.put(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
-		RpcRequestSender sender = strategySingleServer.create(pool).getSender();
+		RpcRequestSender sender = strategySingleServer.createSender(pool);
 		final int calls = 100;
 		int timeout = 50;
 		RpcMessageDataStub data = new RpcMessageDataStub();

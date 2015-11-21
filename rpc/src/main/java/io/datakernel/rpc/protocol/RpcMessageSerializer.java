@@ -48,7 +48,7 @@ public final class RpcMessageSerializer {
 		}
 
 		@SafeVarargs
-		public final Builder addExtraRpcMessageType(Class<? extends Object>... subclasses) {
+		public final Builder addExtraRpcMessageType(Class<?>... subclasses) {
 			extraSubClasses.addAll(Arrays.asList(subclasses));
 			return this;
 		}
@@ -71,14 +71,14 @@ public final class RpcMessageSerializer {
 	private final BufferSerializer<RpcMessage> messageSerializer;
 
 	private RpcMessageSerializer(Builder builder) {
-		SerializerBuilder serializersRegistry = SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
+		SerializerBuilder serializerBuilder = SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
 		for (Entry<Class<?>, SerializerGenBuilder> serializer : builder.extraSerializers.entrySet())
-			serializersRegistry.registry(serializer.getKey(), serializer.getValue());
-		serializersRegistry.setExtraSubclasses("extraRpcMessageData", builder.extraSubClasses);
+			serializerBuilder.registry(serializer.getKey(), serializer.getValue());
+		serializerBuilder.setExtraSubclasses("extraRpcMessageData", builder.extraSubClasses);
 		if (builder.serializeVersion == 0)
-			this.messageSerializer = serializersRegistry.create(RpcMessage.class);
+			this.messageSerializer = serializerBuilder.create(RpcMessage.class);
 		else
-			this.messageSerializer = serializersRegistry.version(builder.serializeVersion).create(RpcMessage.class);
+			this.messageSerializer = serializerBuilder.version(builder.serializeVersion).create(RpcMessage.class);
 	}
 
 	public BufferSerializer<RpcMessage> getSerializer() {

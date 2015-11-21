@@ -17,32 +17,31 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.util.Predicate;
 
+import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Set;
 
-import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
-	private static final Predicate<? extends Object> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
+public final class RpcStrategyFirstValidResult implements RpcRequestSendingStrategy {
+	private static final Predicate<?> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
 
-	private Predicate<? extends Object> resultValidator;
+	private final RpcStrategyList list;
+
+	private Predicate<?> resultValidator;
 	private Exception noValidResultException;
 
-	public RpcStrategyFirstValidResult(List<RpcRequestSendingStrategy> subStrategies) {
-		super(subStrategies);
-		resultValidator = DEFAULT_RESULT_VALIDATOR;
-		noValidResultException = null;
+	public RpcStrategyFirstValidResult(RpcStrategyList list) {
+		this.list = list;
+		this.resultValidator = DEFAULT_RESULT_VALIDATOR;
+		this.noValidResultException = null;
 	}
 
-	public RpcStrategyFirstValidResult withMinActiveSubStrategies(int minActiveSubStrategies) {
-		setMinSubStrategiesForCreation(minActiveSubStrategies);
-		return this;
-	}
-
-	public RpcStrategyFirstValidResult withResultValidator(Predicate<? extends Object> resultValidator) {
+	public RpcStrategyFirstValidResult withResultValidator(Predicate<?> resultValidator) {
 		this.resultValidator = resultValidator;
 		return this;
 	}
@@ -53,20 +52,26 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 	}
 
 	@Override
-	protected RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders) {
-		return new RequestSenderToAll(subSenders, resultValidator, noValidResultException);
+	public Set<InetSocketAddress> getAddresses() {
+		return list.getAddresses();
+	}
+
+	@Override
+	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
+		List<RpcRequestSender> senders = list.listOfSenders(pool);
+		if (senders.size() == 0)
+			return null;
+		return new RequestSenderToAll(senders, resultValidator, noValidResultException);
 	}
 
 	final static class RequestSenderToAll implements RpcRequestSender {
-
 		private final RpcRequestSender[] subSenders;
-		private final Predicate<? extends Object> resultValidator;
+		private final Predicate<?> resultValidator;
 		private final Exception noValidResultException;
 
-		public RequestSenderToAll(List<RpcRequestSender> senders, Predicate<? extends Object> resultValidator,
+		public RequestSenderToAll(List<RpcRequestSender> senders, Predicate<?> resultValidator,
 		                          Exception noValidResultException) {
-			checkArgument(senders != null && senders.size() > 0 && !containsNullValues(senders));
-			;
+			checkArgument(senders != null && senders.size() > 0);
 			this.subSenders = senders.toArray(new RpcRequestSender[senders.size()]);
 			this.resultValidator = checkNotNull(resultValidator);
 			this.noValidResultException = noValidResultException;
