@@ -18,6 +18,7 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
@@ -30,8 +31,8 @@ import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.sender.RpcNoSenderAvailableException;
 import io.datakernel.rpc.client.sender.RpcRequestSender;
 import io.datakernel.rpc.client.sender.RpcRequestSendingStrategy;
-import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
+import io.datakernel.rpc.protocol.RpcSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,93 +47,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 public final class RpcClient implements NioService, RpcClientMBean {
-	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
-	public static final int DEFAULT_RECONNECT_INTERVAL = 30 * 1000;
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
+	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
+	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
 
-	public static Builder builder(NioEventloop eventloop) {
-		return new Builder(eventloop);
-	}
+	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
-	@SuppressWarnings("unused")
-	public static class Builder {
-		private final NioEventloop eventloop;
-		private RpcMessageSerializer serializer;
-		private RpcProtocolFactory protocolFactory;
-		private RpcRequestSendingStrategy requestSendingStrategy;
-		private Logger parentLogger;
-
-		private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
-
-		private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
-		private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
-
-		private Builder(NioEventloop eventloop) {
-			this.eventloop = checkNotNull(eventloop);
-		}
-
-		public Builder socketSettings(SocketSettings socketSettings) {
-			this.socketSettings = checkNotNull(socketSettings);
-			return this;
-		}
-
-		public SocketSettings getSocketSettings() {
-			return socketSettings;
-		}
-
-		public Builder serializer(RpcMessageSerializer serializer) {
-			this.serializer = serializer;
-			return this;
-		}
-
-		public Builder protocolFactory(RpcProtocolFactory protocolFactory) {
-			this.protocolFactory = protocolFactory;
-			return this;
-		}
-
-		public Builder requestSendingStrategy(RpcRequestSendingStrategy requestSendingStrategy) {
-			this.requestSendingStrategy = requestSendingStrategy;
-			return this;
-		}
-
-		public Builder parentLogger(Logger logger) {
-			checkNotNull(logger, "Logger must not be null");
-			this.parentLogger = logger;
-			return this;
-		}
-
-		public Builder connectTimeoutMillis(int connectTimeoutMillis) {
-			this.connectTimeoutMillis = connectTimeoutMillis;
-			return this;
-		}
-
-		public Builder reconnectIntervalMillis(int reconnectIntervalMillis) {
-			this.reconnectIntervalMillis = reconnectIntervalMillis;
-			return this;
-		}
-
-		public RpcClient build() {
-			checkNotNull(serializer, "RpcMessageSerializer is no set");
-			checkNotNull(protocolFactory, "RpcProtocolFactory is no set");
-			checkNotNull(requestSendingStrategy, "RequestSenderFactory is not set");
-			return new RpcClient(this);
-		}
-	}
-
-	private final Logger logger;
 	private final NioEventloop eventloop;
-	private final RpcRequestSendingStrategy requestSendingStrategy;
-	private final List<InetSocketAddress> addresses;
+	private RpcRequestSendingStrategy requestSendingStrategy;
+	private List<InetSocketAddress> addresses;
 	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
-	private final RpcProtocolFactory protocolFactory;
-	private final RpcMessageSerializer serializer;
-	private final SocketSettings socketSettings;
-	private int connectTimeoutMillis;
-	private int reconnectIntervalMillis;
+	private RpcProtocolFactory protocolFactory = streamProtocol();
+	private final RpcSerializer serializerFactory;
+	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
+	private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
+	private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
 
 	private RpcRequestSender requestSender;
 
@@ -154,17 +88,49 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		}
 	};
 
-	private RpcClient(Builder builder) {
-		this.eventloop = builder.eventloop;
-		this.requestSendingStrategy = builder.requestSendingStrategy;
+	private RpcClient(NioEventloop eventloop, RpcSerializer serializerFactory) {
+		this.eventloop = eventloop;
+		this.serializerFactory = serializerFactory;
+	}
+
+	public static RpcClient create(final NioEventloop eventloop, final RpcSerializer serializerFactory) {
+		return new RpcClient(eventloop, serializerFactory);
+	}
+
+	public RpcClient strategy(RpcRequestSendingStrategy requestSendingStrategy) {
+		this.requestSendingStrategy = requestSendingStrategy;
 		this.addresses = new ArrayList<>(requestSendingStrategy.getAddresses());
-		this.protocolFactory = builder.protocolFactory;
-		this.serializer = builder.serializer;
-		this.socketSettings = builder.socketSettings;
-		this.connectTimeoutMillis = builder.connectTimeoutMillis;
-		this.reconnectIntervalMillis = builder.reconnectIntervalMillis;
-		this.logger = LoggerFactory.getLogger((builder.parentLogger == null) ? RpcClient.class.getSimpleName() :
-				builder.parentLogger.getName() + "$" + RpcClient.class.getSimpleName());
+		return this;
+	}
+
+	public RpcClient protocol(RpcProtocolFactory protocolFactory) {
+		this.protocolFactory = protocolFactory;
+		return this;
+	}
+
+	public RpcClient socketSettings(SocketSettings socketSettings) {
+		this.socketSettings = checkNotNull(socketSettings);
+		return this;
+	}
+
+	public SocketSettings getSocketSettings() {
+		return socketSettings;
+	}
+
+	public RpcClient parentLogger(Logger parentLogger) {
+		checkNotNull(parentLogger, "Logger must not be null");
+		this.logger = LoggerFactory.getLogger(parentLogger.getName() + "$" + RpcClient.class.getSimpleName());
+		return this;
+	}
+
+	public RpcClient connectTimeoutMillis(int connectTimeoutMillis) {
+		this.connectTimeoutMillis = connectTimeoutMillis;
+		return this;
+	}
+
+	public RpcClient reconnectIntervalMillis(int reconnectIntervalMillis) {
+		this.reconnectIntervalMillis = reconnectIntervalMillis;
+		return this;
 	}
 
 	@Override
@@ -240,7 +206,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 						connect(address);
 					}
 				};
-				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel, serializer, protocolFactory, statusListener);
+				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel,
+						serializerFactory.createSerializer(), protocolFactory, statusListener);
 				connection.getSocketConnection().register();
 				successfulConnects++;
 				logger.info("Connection to {} established", address);
@@ -295,6 +262,17 @@ public final class RpcClient implements NioService, RpcClientMBean {
 
 	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 		requestSender.sendRequest(request, timeout, callback);
+	}
+
+	public <T> ResultCallbackFuture<T> sendRequestFuture(final Object request, final int timeout) {
+		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		eventloop.postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				sendRequest(request, timeout, future);
+			}
+		});
+		return future;
 	}
 
 	// visible for testing

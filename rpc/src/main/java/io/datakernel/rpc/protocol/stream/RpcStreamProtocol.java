@@ -23,8 +23,8 @@ import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.rpc.protocol.RpcMessage;
-import io.datakernel.rpc.protocol.RpcMessageSerializer;
 import io.datakernel.rpc.protocol.RpcProtocol;
+import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
 import io.datakernel.stream.net.TcpStreamSocketConnection;
 import io.datakernel.stream.processor.*;
@@ -33,8 +33,6 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
 import java.nio.channels.SocketChannel;
-
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 abstract class RpcStreamProtocol implements RpcProtocol {
 
@@ -134,14 +132,16 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	private boolean monitoring;
 	private long timeMonitoring;
 
-	protected RpcStreamProtocol(NioEventloop eventloop, SocketChannel socketChannel, RpcMessageSerializer messageSerializer, RpcStreamProtocolSettings settings) {
+	protected RpcStreamProtocol(NioEventloop eventloop, SocketChannel socketChannel,
+	                            BufferSerializer<RpcMessage> messageSerializer,
+	                            int defaultPacketSize, int maxPacketSize, boolean compression) {
 		sender = new Sender(eventloop);
 		receiver = new Receiver(eventloop);
 
-		serializer = new StreamBinarySerializer<>(eventloop, checkNotNull(messageSerializer).getSerializer(), settings.getDefaultPacketSize(),
-				settings.getMaxPacketSize(), 0, true);
-		deserializer = new StreamBinaryDeserializer<>(eventloop, checkNotNull(messageSerializer).getSerializer(), settings.getMaxPacketSize());
-		compression = settings.isCompression();
+		serializer = new StreamBinarySerializer<>(eventloop, messageSerializer, defaultPacketSize,
+				maxPacketSize, 0, true);
+		deserializer = new StreamBinaryDeserializer<>(eventloop, messageSerializer, maxPacketSize);
+		this.compression = compression;
 		if (compression) {
 			compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 			decompressor = new StreamLZ4Decompressor(eventloop);
@@ -153,18 +153,18 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
 			@Override
 			protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-				if (compression) {
+				if (RpcStreamProtocol.this.compression) {
 					socketReader.streamTo(decompressor.getInput());
 					decompressor.getOutput().streamTo(deserializer.getInput());
 
-					serializer.getOutput().streamTo(compressor.getInput());
+					RpcStreamProtocol.this.serializer.getOutput().streamTo(compressor.getInput());
 					compressor.getOutput().streamTo(socketWriter);
 				} else {
 					socketReader.streamTo(deserializer.getInput());
-					serializer.getOutput().streamTo(socketWriter);
+					RpcStreamProtocol.this.serializer.getOutput().streamTo(socketWriter);
 				}
 				deserializer.getOutput().streamTo(receiver);
-				sender.streamTo(serializer.getInput());
+				sender.streamTo(RpcStreamProtocol.this.serializer.getInput());
 
 				onWired();
 			}

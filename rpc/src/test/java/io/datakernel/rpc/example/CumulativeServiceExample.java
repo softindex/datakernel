@@ -20,76 +20,71 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.example.CumulativeServiceHelper.ValueMessage;
+import io.datakernel.rpc.protocol.RpcSerializer;
+import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static java.util.Collections.singletonList;
+import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
+import static io.datakernel.rpc.protocol.RpcSerializer.serializerFor;
 
 /**
  * Here we construct and launch both server and client.
  */
 public class CumulativeServiceExample {
-	private static final int SERVICE_PORT = 12345;
+	private static final int SERVICE_PORT = 34765;
 
 	public static void main(String[] args) throws IOException {
 		final NioEventloop eventloop = new NioEventloop();
-		final RpcServer server = CumulativeServiceHelper.createServer(eventloop, SERVICE_PORT);
-		final RpcClient client = CumulativeServiceHelper.createClient(eventloop, singletonList(new InetSocketAddress(SERVICE_PORT)));
 
-		final CompletionCallback finishCallback = new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				stopProcess();
-			}
+		RpcSerializer serializer = serializerFor(String.class);
 
-			@Override
-			public void onException(Exception exception) {
-				System.err.println("Exception while process: " + exception);
-				stopProcess();
-			}
-
-			public void stopProcess() {
-				client.stop(ignoreCompletionCallback());
-				server.close();
-			}
-		};
-
-		final ResultCallback<ValueMessage> resultCallback = new ResultCallback<ValueMessage>() {
-			@Override
-			public void onResult(ValueMessage response) {
-				System.out.println("== CumulativeService response is: " + response.value);
-				finishCallback.onComplete();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				finishCallback.onException(exception);
-			}
-		};
-
-		final CompletionCallback startClientComplete = new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				eventloop.post(new Runnable() {
+		final RpcServer server = RpcServer.create(eventloop, serializer)
+				.on(String.class, new RpcRequestHandler<String>() {
 					@Override
-					public void run() {
-						client.sendRequest(new ValueMessage(10), 1000, resultCallback);
+					public void run(String request, ResultCallback<Object> callback) {
+						callback.onResult("Hello " + request);
+					}
+				})
+				.setListenPort(SERVICE_PORT);
+
+		final RpcClient client = RpcClient.create(eventloop, serializer)
+				.strategy(server(new InetSocketAddress(SERVICE_PORT)))
+				.connectTimeoutMillis(500);
+
+		server.listen();
+		client.start(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				client.sendRequest("World", 1000, new ResultCallback<String>() {
+					@Override
+					public void onResult(String result) {
+						System.out.println("Got result: " + result);
+						stopExample();
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						System.err.println("Got exception: " + exception);
+						stopExample();
 					}
 				});
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				finishCallback.onException(exception);
+				System.err.println("Could not start client: " + exception);
+				stopExample();
 			}
-		};
 
-		server.listen();
-		client.start(startClientComplete);
+			public void stopExample() {
+				client.stop();
+				server.close();
+			}
+		});
+
 		eventloop.run();
 	}
 }

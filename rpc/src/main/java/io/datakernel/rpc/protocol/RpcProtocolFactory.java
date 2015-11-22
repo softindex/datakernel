@@ -16,8 +16,12 @@
 
 package io.datakernel.rpc.protocol;
 
+import io.datakernel.serializer.BufferSerializer;
+
 import java.nio.channels.SocketChannel;
 
 public interface RpcProtocolFactory {
-	RpcProtocol create(RpcConnection connection, SocketChannel socketChannel, RpcMessageSerializer serializer, boolean isServer);
+	RpcProtocol create(RpcConnection connection, SocketChannel socketChannel,
+	                   BufferSerializer<RpcMessage> messageSerializer,
+	                   boolean isServer);
 }

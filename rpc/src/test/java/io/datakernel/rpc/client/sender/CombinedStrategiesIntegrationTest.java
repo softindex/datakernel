@@ -16,36 +16,29 @@
 
 package io.datakernel.rpc.client.sender;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.net.InetAddresses;
-import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.hash.Sharder;
-import io.datakernel.rpc.protocol.RpcMessageSerializer;
-import io.datakernel.rpc.protocol.RpcProtocolFactory;
-import io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory;
-import io.datakernel.rpc.protocol.stream.RpcStreamProtocolSettings;
-import io.datakernel.rpc.server.RpcRequestHandlers;
-import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
+import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.async.AsyncCallbacks.startFuture;
+import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
 import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.*;
+import static io.datakernel.rpc.protocol.RpcSerializer.serializerFor;
 import static org.junit.Assert.assertEquals;
 
 public class CombinedStrategiesIntegrationTest {
@@ -58,7 +51,6 @@ public class CombinedStrategiesIntegrationTest {
 	private RpcServer serverOne;
 	private RpcServer serverTwo;
 	private RpcServer serverThree;
-	private final RpcProtocolFactory protocolFactory = new RpcStreamProtocolFactory(new RpcStreamProtocolSettings());
 
 	@Before
 	public void setUp() throws Exception {
@@ -66,18 +58,28 @@ public class CombinedStrategiesIntegrationTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
 		eventloop = new NioEventloop();
-		serverOne = createServerOne(eventloop, protocolFactory);
+
+		serverOne = RpcServer.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplOne()))
+				.setListenPort(PORT_1);
 		serverOne.listen();
-		serverTwo = createServerTwo(eventloop, protocolFactory);
+
+		serverTwo = RpcServer.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplTwo()))
+				.setListenPort(PORT_2);
 		serverTwo.listen();
-		serverThree = createServerThree(eventloop, protocolFactory);
+
+		serverThree = RpcServer.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplThree()))
+				.setListenPort(PORT_3);
 		serverThree.listen();
+
 		defaultNioThreadFactory().newThread(eventloop).start();
 	}
 
 	@Test
 	public void testBlockingCall() throws Exception {
-		try (HelloClient client = new HelloClient(eventloop, protocolFactory)) {
+		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
 
 			String currentName = "John";
 			String currentResponse = client.hello(currentName);
@@ -170,8 +172,8 @@ public class CombinedStrategiesIntegrationTest {
 		}
 	}
 
-	private static RpcRequestHandlers helloServiceRequestHandler(final HelloService helloService) {
-		return new RpcRequestHandlers.Builder().put(HelloRequest.class, new RequestHandler<HelloRequest>() {
+	private static RpcRequestHandler<HelloRequest> helloServiceRequestHandler(final HelloService helloService) {
+		return new RpcRequestHandler<HelloRequest>() {
 			@Override
 			public void run(HelloRequest request, ResultCallback<Object> callback) {
 				String result;
@@ -183,45 +185,13 @@ public class CombinedStrategiesIntegrationTest {
 				}
 				callback.onResult(new HelloResponse(result));
 			}
-		}).build();
+		};
 	}
 
-	private static RpcMessageSerializer serializer() {
-		return RpcMessageSerializer.builder().addExtraRpcMessageType(HelloRequest.class, HelloResponse.class).build();
-	}
-
-	private static RpcServer createServerOne(NioEventloop eventloop, RpcProtocolFactory protocolFactory) {
-		return new RpcServer.Builder(eventloop)
-				.requestHandlers(helloServiceRequestHandler(new HelloServiceImplOne()))
-				.serializer(serializer())
-				.protocolFactory(protocolFactory)
-				.build()
-				.setListenPort(PORT_1);
-	}
-
-	private static RpcServer createServerTwo(NioEventloop eventloop, RpcProtocolFactory protocolFactory) {
-		return new RpcServer.Builder(eventloop)
-				.requestHandlers(helloServiceRequestHandler(new HelloServiceImplTwo()))
-				.serializer(serializer())
-				.protocolFactory(protocolFactory)
-				.build()
-				.setListenPort(PORT_2);
-	}
-
-	private static RpcServer createServerThree(NioEventloop eventloop, RpcProtocolFactory protocolFactory) {
-		return new RpcServer.Builder(eventloop)
-				.requestHandlers(helloServiceRequestHandler(new HelloServiceImplThree()))
-				.serializer(serializer())
-				.protocolFactory(protocolFactory)
-				.build()
-				.setListenPort(PORT_3);
-	}
-
-	private static class HelloClient implements HelloService, Closeable {
-		private final NioEventloop eventloop;
+	private static class BlockingHelloClient implements HelloService, AutoCloseable {
 		private final RpcClient client;
 
-		public HelloClient(NioEventloop eventloop, RpcProtocolFactory protocolFactory) throws Exception {
+		public BlockingHelloClient(NioEventloop eventloop) throws Exception {
 
 			InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_1);
 			InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_2);
@@ -238,64 +208,30 @@ public class CombinedStrategiesIntegrationTest {
 				}
 			};
 
-			List<InetSocketAddress> addresses = ImmutableList.of(address1, address2, address3);
-
-			this.eventloop = eventloop;
-			this.client = RpcClient.builder(eventloop)
-					.serializer(serializer())
-					.protocolFactory(protocolFactory)
-					.requestSendingStrategy(
+			this.client = RpcClient.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+					.strategy(
 							roundRobin(
 									server(address1),
 									sharding(sharder,
 											server(address2),
-											server(address3))))
-					.build();
+											server(address3))));
 
-			final CompletionCallbackFuture connectCompletion = new CompletionCallbackFuture();
-			eventloop.postConcurrently(new Runnable() {
-				@Override
-				public void run() {
-					client.start(connectCompletion);
-				}
-			});
-			connectCompletion.await();
+			startFuture(client).await();
 		}
 
 		@Override
-		public String hello(String name) throws Exception {
-			ResultCallbackFuture<HelloResponse> result = new ResultCallbackFuture<>();
-			helloAsync(name, result);
+		public String hello(final String name) throws Exception {
 			try {
-				return result.get().message;
+				ResultCallbackFuture<HelloResponse> future = client.sendRequestFuture(new HelloRequest(name), TIMEOUT);
+				return future.get().message;
 			} catch (ExecutionException e) {
 				throw (Exception) e.getCause();
 			}
 		}
 
-		public void helloAsync(final String name, final ResultCallback<HelloResponse> callback) {
-			eventloop.postConcurrently(new Runnable() {
-				@Override
-				public void run() {
-					client.sendRequest(new HelloRequest(name), TIMEOUT, callback);
-				}
-			});
-		}
-
 		@Override
-		public void close() throws IOException {
-			final CompletionCallbackFuture callback = new CompletionCallbackFuture();
-			eventloop.postConcurrently(new Runnable() {
-				@Override
-				public void run() {
-					client.stop(callback);
-				}
-			});
-			try {
-				callback.await();
-			} catch (Exception e) {
-				throw new RuntimeException(e);
-			}
+		public void close() throws Exception {
+			stopFuture(client).await();
 		}
 	}
 }

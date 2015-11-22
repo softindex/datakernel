@@ -20,29 +20,33 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class NioThreadFactory {
-	private static class NioThreadFactoryHolder {
-		private static final ThreadFactory DEFAULT_NIO_THREAD_FACTORY = createNioThreadFactory(Thread.MAX_PRIORITY, true);
+public final class NioThreadFactory implements ThreadFactory{
+	private static final ThreadFactory DEFAULT_NIO_THREAD_FACTORY = createNioThreadFactory(Thread.NORM_PRIORITY, true);
+
+	private final int priority;
+	private final boolean daemon;
+	final AtomicLong count = new AtomicLong(0);
+
+	public NioThreadFactory(int priority, boolean daemon) {
+		this.priority = priority;
+		this.daemon = daemon;
 	}
 
 	public static ThreadFactory defaultNioThreadFactory() {
-		return NioThreadFactoryHolder.DEFAULT_NIO_THREAD_FACTORY;
+		return DEFAULT_NIO_THREAD_FACTORY;
 	}
 
-	public static ThreadFactory createNioThreadFactory(final int priority, final boolean daemon) {
-		final AtomicLong count = new AtomicLong(0);
-		return new ThreadFactory() {
-			@Override
-			public Thread newThread(Runnable runnable) {
-				Thread thread = Executors.defaultThreadFactory().newThread(runnable);
-				thread.setName(String.format("NioThread-%d", count.getAndIncrement()));
-				thread.setDaemon(daemon);
-				thread.setPriority(priority);
-				return thread;
-			}
-		};
+	public static ThreadFactory createNioThreadFactory(int priority, boolean daemon) {
+		return new NioThreadFactory(priority, daemon);
 	}
 
-	private NioThreadFactory() {
+	@Override
+	public Thread newThread(Runnable runnable) {
+		Thread thread = Executors.defaultThreadFactory().newThread(runnable);
+		thread.setName(String.format("NioThread-%d", count.getAndIncrement()));
+		thread.setDaemon(daemon);
+		thread.setPriority(priority);
+		return thread;
 	}
+
 }

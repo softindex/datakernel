@@ -19,60 +19,45 @@ package io.datakernel.rpc.server;
 import io.datakernel.eventloop.AbstractNioServer;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.rpc.protocol.RpcMessageSerializer;
+import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
+import io.datakernel.rpc.protocol.RpcSerializer;
 import io.datakernel.rpc.server.RpcServerConnection.StatusListener;
+import io.datakernel.serializer.BufferSerializer;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.nio.channels.SocketChannel;
+import java.util.HashMap;
+import java.util.Map;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 
 public final class RpcServer extends AbstractNioServer<RpcServer> implements RpcServerMBean {
-
-	public static class Builder {
-		private final NioEventloop eventloop;
-		private RpcRequestHandlers handlers;
-		private RpcMessageSerializer serializer;
-		private RpcProtocolFactory protocolFactory;
-
-		public Builder(NioEventloop eventloop) {
-			this.eventloop = checkNotNull(eventloop);
-		}
-
-		public Builder requestHandlers(RpcRequestHandlers handlers) {
-			this.handlers = handlers;
-			return this;
-		}
-
-		public Builder serializer(RpcMessageSerializer serializer) {
-			this.serializer = serializer;
-			return this;
-		}
-
-		public Builder protocolFactory(RpcProtocolFactory protocolFactory) {
-			this.protocolFactory = protocolFactory;
-			return this;
-		}
-
-		public RpcServer build() {
-			checkNotNull(serializer, "RpcMessageSerializer is no set");
-			checkNotNull(protocolFactory, "RpcProtocolFactory is no set");
-			return new RpcServer(this);
-		}
-	}
+	private final Map<Class<?>, RpcRequestHandler<Object>> handlers = new HashMap<>();
+	private RpcProtocolFactory protocolFactory = streamProtocol();
+	private final RpcSerializer serializerFactory;
 
 	private final RpcServerConnectionPool connections = new RpcServerConnectionPool();
-	private final RpcRequestHandlers handlers;
-	private final RpcProtocolFactory protocolFactory;
-	private final RpcMessageSerializer serializer;
 
-	private RpcServer(Builder builder) {
-		super(builder.eventloop);
-		this.handlers = checkNotNull(builder.handlers, "RpcRequestHandlers is not set");
-		this.protocolFactory = builder.protocolFactory;
-		this.serializer = builder.serializer;
+	private RpcServer(NioEventloop eventloop, RpcSerializer serializerFactory) {
+		super(eventloop);
+		this.serializerFactory = serializerFactory;
+	}
+
+	public static RpcServer create(NioEventloop eventloop, RpcSerializer serializerFactory) {
+		return new RpcServer(eventloop, serializerFactory);
+	}
+
+	public RpcServer protocol(RpcProtocolFactory protocolFactory) {
+		this.protocolFactory = protocolFactory;
+		return this;
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T> RpcServer on(Class<T> requestClass, RpcRequestHandler<T> handler) {
+		handlers.put(requestClass, (RpcRequestHandler<Object>) handler);
+		return this;
 	}
 
 	@Override
@@ -88,7 +73,10 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 				connections.remove(socketChannel);
 			}
 		};
-		RpcServerConnection serverConnection = new RpcServerConnection(eventloop, socketChannel, serializer, handlers, protocolFactory, statusListener);
+		BufferSerializer<RpcMessage> messageSerializer = serializerFactory.createSerializer();
+		RpcServerConnection serverConnection = new RpcServerConnection(eventloop, socketChannel,
+				messageSerializer, messageSerializer,
+				handlers, protocolFactory, statusListener);
 		return serverConnection.getSocketConnection();
 	}
 

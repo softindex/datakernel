@@ -22,14 +22,16 @@ import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.jmx.StatsCounter;
 import io.datakernel.rpc.protocol.*;
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.time.CurrentTimeProviderSystem;
+import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import java.nio.channels.SocketChannel;
+import java.util.Map;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcServerConnection implements RpcConnection, RpcServerConnectionMBean {
 
@@ -42,32 +44,50 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 	private final NioEventloop eventloop;
 	private final RpcProtocol protocol;
-	private final RpcRequestHandlers handlers;
+	private final Map<Class<?>, RpcRequestHandler<Object>> handlers;
 	private final StatusListener statusListener;
 
 	// JMX
 	private final LastExceptionCounter lastRemoteException = new LastExceptionCounter("RemoteException");
 	private final LastExceptionCounter lastInternalException = new LastExceptionCounter("InternalException");
-	private final CurrentTimeProvider statsTimeProvider = CurrentTimeProviderSystem.instance();
 	private final StatsCounter timeExecution = new StatsCounter();
 	private int successfulResponses = 0;
 	private int errorResponses = 0;
 	private boolean monitoring;
 
-	public RpcServerConnection(NioEventloop eventloop, SocketChannel socketChannel, RpcMessageSerializer serializer, RpcRequestHandlers handlers,
+	public RpcServerConnection(NioEventloop eventloop, SocketChannel socketChannel,
+	                           BufferSerializer<RpcMessage> messageSerializer, BufferSerializer<RpcMessage> messageDeserializer,
+	                           Map<Class<?>, RpcRequestHandler<Object>> handlers,
 	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;
-		this.protocol = protocolFactory.create(this, socketChannel, serializer, true);
+		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, true);
 		this.handlers = handlers;
 		this.statusListener = statusListener;
+	}
+
+	public void apply(Object request, ResultCallback<Object> callback) {
+		RpcRequestHandler<Object> requestHandler;
+		try {
+			checkNotNull(request);
+			checkNotNull(callback);
+			requestHandler = handlers.get(request.getClass());
+			checkNotNull(requestHandler, "Unknown request class: %", request.getClass());
+		} catch (Exception e) {
+			if (logger != null) {
+				logger.error("Failed to process request " + request, e);
+			}
+			callback.onException(e);
+			return;
+		}
+		requestHandler.run(request, callback);
 	}
 
 	@Override
 	public void onReceiveMessage(final RpcMessage message) {
 		final int cookie = message.getCookie();
-		final long startTime = monitoring ? statsTimeProvider.currentTimeMillis() : 0;
+		final long startTime = monitoring ? System.currentTimeMillis() : 0;
 
-		handlers.apply(message.getData(), new ResultCallback<Object>() {
+		apply(message.getData(), new ResultCallback<Object>() {
 			@Override
 			public void onResult(Object result) {
 				updateProcessTime();
@@ -90,7 +110,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 			private void updateProcessTime() {
 				if (startTime == 0)
 					return;
-				int value = (int) (statsTimeProvider.currentTimeMillis() - startTime);
+				int value = (int) (System.currentTimeMillis() - startTime);
 				timeExecution.add(value);
 			}
 		});
