@@ -77,11 +77,11 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 				assert buffer.length >= MAX_HEADER_BYTES;
 				// read message header
 				if (bufferLastPos - off >= MAX_HEADER_BYTES) {
-					int sizeLen = tryReadSize(buffer, off);
-					if (sizeLen > MAX_HEADER_BYTES)
+					int headerLen = tryReadSize(buffer, off);
+					if (headerLen > MAX_HEADER_BYTES)
 						throw new IllegalArgumentException("Parsed size length > MAX_HEADER_BYTES");
-					readBytes -= sizeLen;
-					off += sizeLen;
+					readBytes -= headerLen;
+					off += headerLen;
 					messageStart = off;
 					if (off + dataSize >= bufferLastPos) {
 						replaceInStart();
@@ -90,18 +90,18 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 					}
 				} else {
 					replaceInStart();
-					int sizeLen = tryReadSize(buffer, 0);
-					if (sizeLen > bufferLastPos - sizeLen) {
+					int headerLen = tryReadSize(buffer, 0);
+					if (headerLen > bufferLastPos) {
 						dataSize = 0;
 						continue;
 					}
-					off += sizeLen;
+					off += headerLen;
+					messageStart = off;
 					continue;
 				}
 				if (dataSize > maxMessageSize)
 					throw new IllegalArgumentException("Parsed data size > message size");
 			}
-
 			// read message body:
 			if (readBytes >= dataSize || bufferLastPos - messageStart >= dataSize) {
 				inputBuffer.set(buffer, off);
@@ -112,6 +112,7 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 				dataSize = 0;
 				return item;
 			} else {
+				replaceInStart();
 				resizeBuffer(dataSize);
 			}
 		}
