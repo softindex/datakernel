@@ -90,14 +90,13 @@ public final class DeserializeInputStream<T> implements ObjectReader<T> {
 					}
 				} else {
 					replaceInStart();
-					off += readBytes;
 					int sizeLen = tryReadSize(buffer, 0);
-					if (sizeLen > off) {
-						// Read past last position - incomplete varint in buffer, waiting for more bytes
+					if (sizeLen > bufferLastPos - sizeLen) {
 						dataSize = 0;
 						continue;
 					}
-					off = 0;
+					off += sizeLen;
+					continue;
 				}
 				if (dataSize > maxMessageSize)
 					throw new IllegalArgumentException("Parsed data size > message size");
