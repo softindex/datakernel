@@ -330,7 +330,7 @@ public final class Cube {
 
 			Class aggregationClass = structure.createRecordClass(aggregation.getKeys(), aggregationMeasures);
 
-			StreamProducer<T> queryResultProducer = aggregation.query(filteredQuery, aggregationClass);
+			StreamProducer<T> queryResultProducer = aggregation.query(filteredQuery, aggregationMeasures, aggregationClass);
 
 			Function keyFunction = structure.createKeyFunction(aggregationClass, resultKeyClass, resultDimensions);
 

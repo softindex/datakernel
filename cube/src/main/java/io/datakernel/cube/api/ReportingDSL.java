@@ -155,6 +155,14 @@ public final class ReportingDSL {
 		return new ReportingDSLExpression(expression, reportingExpression.getMeasureDependencies());
 	}
 
+	public static ReportingDSLExpression deviation(String value, String squaredValue, String totalValue) {
+		return sqrt(subtract(divide(squaredValue, totalValue), squared(divide(value, totalValue))));
+	}
+
+	public static ReportingDSLExpression percent(ReportingDSLExpression reportingExpression) {
+		return multiply(reportingExpression, 100);
+	}
+
 	/* Utility methods */
 	private static Set<String> mergeMeasureDependencies(ReportingDSLExpression reportingExpression1, ReportingDSLExpression reportingExpression2) {
 		Set<String> measureDependencies = reportingExpression1.getMeasureDependencies();
