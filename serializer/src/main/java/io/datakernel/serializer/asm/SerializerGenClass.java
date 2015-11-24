@@ -339,9 +339,9 @@ public class SerializerGenClass implements SerializerGen {
 
 		Expression constructor;
 		if (factory == null) {
-			constructor = _insertCallConstructor(this.getRawType(), map, version);
+			constructor = callConstructor(this.getRawType(), map, version);
 		} else {
-			constructor = _insertCallFactory(map);
+			constructor = callFactory(map);
 		}
 
 		Expression local = let(constructor);
@@ -392,7 +392,7 @@ public class SerializerGenClass implements SerializerGen {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 
-	private Expression _insertCallFactory(Map<String, Expression> map) {
+	private Expression callFactory(Map<String, Expression> map) {
 		Expression[] param = new Expression[factoryParams.size()];
 		int i = 0;
 		for (String fieldName : factoryParams) {
@@ -401,7 +401,7 @@ public class SerializerGenClass implements SerializerGen {
 		return callStatic(factory.getDeclaringClass(), factory.getName(), param);
 	}
 
-	private Expression _insertCallConstructor(Class<?> targetType, final Map<String, Expression> map, int version) {
+	private Expression callConstructor(Class<?> targetType, final Map<String, Expression> map, int version) {
 		Expression[] param;
 		if (constructorParams == null) {
 			param = new Expression[0];
