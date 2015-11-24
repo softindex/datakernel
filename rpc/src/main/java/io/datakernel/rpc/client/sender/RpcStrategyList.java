@@ -28,30 +28,30 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcStrategyList {
-	private final List<RpcRequestSendingStrategy> strategies;
+	private final List<RpcStrategy> strategies;
 
-	private RpcStrategyList(List<RpcRequestSendingStrategy> strategies) {
+	private RpcStrategyList(List<RpcStrategy> strategies) {
 		this.strategies = strategies;
 	}
 
 	public static RpcStrategyList ofAddresses(List<InetSocketAddress> addresses) {
 		checkNotNull(addresses);
 		checkArgument(addresses.size() > 0, "at least one address must be present");
-		List<RpcRequestSendingStrategy> subSenders = new ArrayList<>();
+		List<RpcStrategy> subSenders = new ArrayList<>();
 		for (InetSocketAddress address : addresses) {
 			subSenders.add(new RpcStrategySingleServer(address));
 		}
 		return new RpcStrategyList(subSenders);
 	}
 
-	public static RpcStrategyList ofStrategies(List<RpcRequestSendingStrategy> strategies) {
+	public static RpcStrategyList ofStrategies(List<RpcStrategy> strategies) {
 		return new RpcStrategyList(new ArrayList<>(strategies));
 	}
 
-	public List<RpcRequestSender> listOfSenders(RpcClientConnectionPool pool) {
-		List<RpcRequestSender> senders = new ArrayList<>();
-		for (RpcRequestSendingStrategy strategy : strategies) {
-			RpcRequestSender sender = strategy.createSender(pool);
+	public List<RpcSender> listOfSenders(RpcClientConnectionPool pool) {
+		List<RpcSender> senders = new ArrayList<>();
+		for (RpcStrategy strategy : strategies) {
+			RpcSender sender = strategy.createSender(pool);
 			if (sender != null) {
 				senders.add(sender);
 			}
@@ -59,17 +59,18 @@ public final class RpcStrategyList {
 		return senders;
 	}
 
-	public List<RpcRequestSender> listOfNullableSenders(RpcClientConnectionPool pool) {
-		List<RpcRequestSender> senders = new ArrayList<>();
-		for (RpcRequestSendingStrategy strategy : strategies) {
-			senders.add(strategy.createSender(pool));
+	public List<RpcSender> listOfNullableSenders(RpcClientConnectionPool pool) {
+		List<RpcSender> senders = new ArrayList<>();
+		for (RpcStrategy strategy : strategies) {
+			RpcSender sender = strategy.createSender(pool);
+			senders.add(sender);
 		}
 		return senders;
 	}
 
 	public Set<InetSocketAddress> getAddresses() {
 		HashSet<InetSocketAddress> result = new HashSet<>();
-		for (RpcRequestSendingStrategy sender : strategies) {
+		for (RpcStrategy sender : strategies) {
 			result.addAll(sender.getAddresses());
 		}
 		return result;
@@ -79,8 +80,8 @@ public final class RpcStrategyList {
 		return strategies.size();
 	}
 
-	public RpcRequestSendingStrategy get(int index) {
-		return strategies.get(0);
+	public RpcStrategy get(int index) {
+		return strategies.get(index);
 	}
 
 }

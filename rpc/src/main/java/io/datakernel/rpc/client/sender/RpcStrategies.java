@@ -17,7 +17,7 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.rpc.hash.HashFunction;
-import io.datakernel.rpc.hash.Sharder;
+import io.datakernel.rpc.hash.ShardingFunction;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -26,8 +26,8 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
-public final class RpcRequestSendingStrategies {
-	private RpcRequestSendingStrategies() {
+public final class RpcStrategies {
+	private RpcStrategies() {
 	}
 
 	public static RpcStrategySingleServer server(InetSocketAddress address) {
@@ -43,11 +43,11 @@ public final class RpcRequestSendingStrategies {
 		return RpcStrategyList.ofAddresses(addresses);
 	}
 
-	public static RpcStrategyFirstAvailable firstAvailable(RpcRequestSendingStrategy... senders) {
+	public static RpcStrategyFirstAvailable firstAvailable(RpcStrategy... senders) {
 		return firstAvailable(asList(senders));
 	}
 
-	public static RpcStrategyFirstAvailable firstAvailable(List<RpcRequestSendingStrategy> strategies) {
+	public static RpcStrategyFirstAvailable firstAvailable(List<RpcStrategy> strategies) {
 		return new RpcStrategyFirstAvailable(RpcStrategyList.ofStrategies(strategies));
 	}
 
@@ -55,11 +55,11 @@ public final class RpcRequestSendingStrategies {
 		return new RpcStrategyFirstAvailable(list);
 	}
 
-	public static RpcStrategyFirstValidResult firstValidResult(RpcRequestSendingStrategy... senders) {
+	public static RpcStrategyFirstValidResult firstValidResult(RpcStrategy... senders) {
 		return firstValidResult(asList(senders));
 	}
 
-	public static RpcStrategyFirstValidResult firstValidResult(List<RpcRequestSendingStrategy> senders) {
+	public static RpcStrategyFirstValidResult firstValidResult(List<RpcStrategy> senders) {
 		return new RpcStrategyFirstValidResult(RpcStrategyList.ofStrategies(senders));
 	}
 
@@ -67,11 +67,11 @@ public final class RpcRequestSendingStrategies {
 		return new RpcStrategyFirstValidResult(list);
 	}
 
-	public static RpcStrategyRoundRobin roundRobin(RpcRequestSendingStrategy... senders) {
+	public static RpcStrategyRoundRobin roundRobin(RpcStrategy... senders) {
 		return roundRobin(asList(senders));
 	}
 
-	public static RpcStrategyRoundRobin roundRobin(List<RpcRequestSendingStrategy> senders) {
+	public static RpcStrategyRoundRobin roundRobin(List<RpcStrategy> senders) {
 		return new RpcStrategyRoundRobin(RpcStrategyList.ofStrategies(senders));
 	}
 
@@ -79,20 +79,20 @@ public final class RpcRequestSendingStrategies {
 		return new RpcStrategyRoundRobin(list);
 	}
 
-	public static RpcStrategySharding sharding(final Sharder<?> hashFunction,
-	                                           RpcRequestSendingStrategy... senders) {
+	public static RpcStrategySharding sharding(final ShardingFunction<?> hashFunction,
+	                                           RpcStrategy... senders) {
 		return sharding(hashFunction, asList(senders));
 	}
 
-	public static RpcStrategySharding sharding(final Sharder<?> hashFunction,
-	                                           final List<RpcRequestSendingStrategy> senders) {
+	public static RpcStrategySharding sharding(final ShardingFunction<?> hashFunction,
+	                                           final List<RpcStrategy> senders) {
 		checkNotNull(senders);
 		checkArgument(senders.size() > 0, "at least one sender must be present");
 		checkNotNull(hashFunction);
 		return new RpcStrategySharding(hashFunction, RpcStrategyList.ofStrategies(senders));
 	}
 
-	public static RpcStrategySharding sharding(final Sharder<?> hashFunction,
+	public static RpcStrategySharding sharding(final ShardingFunction<?> hashFunction,
 	                                           RpcStrategyList list) {
 		checkNotNull(list);
 		checkNotNull(hashFunction);

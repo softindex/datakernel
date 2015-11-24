@@ -16,11 +16,15 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.protocol.RpcException;
+import io.datakernel.annotation.Nullable;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
 
-public class RpcNoSenderAvailableException extends RpcException {
+import java.net.InetSocketAddress;
+import java.util.Set;
 
-	public RpcNoSenderAvailableException(String message) {
-		super(message);
-	}
+public interface RpcStrategy {
+	Set<InetSocketAddress> getAddresses();
+
+	@Nullable
+	RpcSender createSender(RpcClientConnectionPool pool);
 }

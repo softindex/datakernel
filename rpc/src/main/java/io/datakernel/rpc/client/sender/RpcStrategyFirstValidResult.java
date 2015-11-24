@@ -27,7 +27,7 @@ import java.util.Set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RpcStrategyFirstValidResult implements RpcRequestSendingStrategy {
+public final class RpcStrategyFirstValidResult implements RpcStrategy {
 	private static final Predicate<?> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
 
 	private final RpcStrategyList list;
@@ -57,22 +57,22 @@ public final class RpcStrategyFirstValidResult implements RpcRequestSendingStrat
 	}
 
 	@Override
-	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
-		List<RpcRequestSender> senders = list.listOfSenders(pool);
+	public RpcSender createSender(RpcClientConnectionPool pool) {
+		List<RpcSender> senders = list.listOfSenders(pool);
 		if (senders.size() == 0)
 			return null;
-		return new RequestSenderToAll(senders, resultValidator, noValidResultException);
+		return new Sender(senders, resultValidator, noValidResultException);
 	}
 
-	final static class RequestSenderToAll implements RpcRequestSender {
-		private final RpcRequestSender[] subSenders;
+	static final class Sender implements RpcSender {
+		private final RpcSender[] subSenders;
 		private final Predicate<?> resultValidator;
 		private final Exception noValidResultException;
 
-		public RequestSenderToAll(List<RpcRequestSender> senders, Predicate<?> resultValidator,
-		                          Exception noValidResultException) {
+		public Sender(List<RpcSender> senders, Predicate<?> resultValidator,
+		              Exception noValidResultException) {
 			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders.toArray(new RpcRequestSender[senders.size()]);
+			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
 			this.resultValidator = checkNotNull(resultValidator);
 			this.noValidResultException = noValidResultException;
 		}
@@ -82,7 +82,7 @@ public final class RpcStrategyFirstValidResult implements RpcRequestSendingStrat
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 			FirstResultCallback<O> resultCallback
 					= new FirstResultCallback<>(callback, (Predicate<O>) resultValidator, subSenders.length, noValidResultException);
-			for (RpcRequestSender sender : subSenders) {
+			for (RpcSender sender : subSenders) {
 				sender.sendRequest(request, timeout, resultCallback);
 			}
 		}

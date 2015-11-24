@@ -27,19 +27,19 @@ import io.datakernel.rpc.server.RpcServer;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
-import static io.datakernel.rpc.protocol.RpcSerializer.serializerFor;
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 
 /**
  * Here we construct and launch both server and client.
  */
-public class CumulativeServiceExample {
+public class RpcExample {
 	private static final int SERVICE_PORT = 34765;
 
 	public static void main(String[] args) throws IOException {
 		final NioEventloop eventloop = new NioEventloop();
 
-		RpcSerializer serializer = serializerFor(String.class);
+		RpcSerializer serializer = rpcSerializer(String.class);
 
 		final RpcServer server = RpcServer.create(eventloop, serializer)
 				.on(String.class, new RpcRequestHandler<String>() {

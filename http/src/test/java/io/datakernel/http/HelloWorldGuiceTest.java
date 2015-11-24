@@ -22,9 +22,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.PrimaryNioServer;
-import io.datakernel.guice.servicegraph.AsyncServiceAdapters;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
 import io.datakernel.guice.servicegraph.SingletonService;
 import io.datakernel.guice.workers.NioWorkerModule;
@@ -63,10 +61,7 @@ public class HelloWorldGuiceTest {
 		@Override
 		protected void configure() {
 			install(new NioWorkerModule());
-			install(new ServiceGraphModule()
-							.register(NioServer.class, AsyncServiceAdapters.forNioServer())
-							.register(NioEventloop.class, AsyncServiceAdapters.forNioEventloop())
-			);
+			install(new ServiceGraphModule());
 		}
 
 		@Provides

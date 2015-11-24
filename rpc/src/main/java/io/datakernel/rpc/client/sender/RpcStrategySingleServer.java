@@ -24,7 +24,7 @@ import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RpcStrategySingleServer implements RpcRequestSendingStrategy {
+public final class RpcStrategySingleServer implements RpcStrategy {
 
 	private final InetSocketAddress address;
 
@@ -39,7 +39,7 @@ public final class RpcStrategySingleServer implements RpcRequestSendingStrategy 
 	}
 
 	@Override
-	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
+	public RpcSender createSender(RpcClientConnectionPool pool) {
 		return pool.get(address);
 	}
 }

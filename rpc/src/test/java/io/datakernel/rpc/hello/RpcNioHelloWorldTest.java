@@ -40,8 +40,8 @@ import static io.datakernel.async.AsyncCallbacks.startFuture;
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
-import static io.datakernel.rpc.protocol.RpcSerializer.serializerFor;
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 
@@ -86,7 +86,7 @@ public class RpcNioHelloWorldTest {
 	}
 
 	private static RpcServer createServer(NioEventloop eventloop) {
-		return RpcServer.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+		return RpcServer.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
 				.on(HelloRequest.class, helloServiceRequestHandler(new HelloService() {
 					@Override
 					public String hello(String name) throws Exception {
@@ -105,7 +105,7 @@ public class RpcNioHelloWorldTest {
 
 		public BlockingHelloClient(NioEventloop eventloop) throws Exception {
 			this.eventloop = eventloop;
-			this.client = RpcClient.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+			this.client = RpcClient.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
 					.strategy(server(new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT)));
 
 			startFuture(client).await();

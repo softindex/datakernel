@@ -19,7 +19,7 @@ package io.datakernel.rpc.hash;
 /**
  * Sharder interface determines to which shard item will be sent
  */
-public interface Sharder<T> {
+public interface ShardingFunction<T> {
 	/**
 	 * Determines to which shard {@code item} will be sent
 	 *

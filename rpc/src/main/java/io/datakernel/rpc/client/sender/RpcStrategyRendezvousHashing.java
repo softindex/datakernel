@@ -27,12 +27,12 @@ import java.util.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStrategy {
+public final class RpcStrategyRendezvousHashing implements RpcStrategy {
 	private static final int MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT = 1;
 	private static final int DEFAULT_BUCKET_CAPACITY = 2048;
 	private static final HashBucketFunction DEFAULT_BUCKET_HASH_FUNCTION = new DefaultHashBucketFunction();
 
-	private final Map<Object, RpcRequestSendingStrategy> shards = new HashMap<>();
+	private final Map<Object, RpcStrategy> shards = new HashMap<>();
 	private final HashFunction<?> hashFunction;
 	private int minShards = MIN_SUB_STRATEGIES_FOR_CREATION_DEFAULT;
 	private HashBucketFunction hashBucketFunction = DEFAULT_BUCKET_HASH_FUNCTION;
@@ -59,7 +59,7 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		return this;
 	}
 
-	public RpcStrategyRendezvousHashing put(Object shardId, RpcRequestSendingStrategy strategy) {
+	public RpcStrategyRendezvousHashing put(Object shardId, RpcStrategy strategy) {
 		checkNotNull(strategy);
 		shards.put(shardId, strategy);
 		return this;
@@ -80,19 +80,19 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 	@Override
 	public Set<InetSocketAddress> getAddresses() {
 		HashSet<InetSocketAddress> result = new HashSet<>();
-		for (RpcRequestSendingStrategy strategy : shards.values()) {
+		for (RpcStrategy strategy : shards.values()) {
 			result.addAll(strategy.getAddresses());
 		}
 		return result;
 	}
 
 	@Override
-	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
-		Map<Object, RpcRequestSender> shardsSenders = new HashMap<>();
-		for (Map.Entry<Object, RpcRequestSendingStrategy> entry : shards.entrySet()) {
+	public RpcSender createSender(RpcClientConnectionPool pool) {
+		Map<Object, RpcSender> shardsSenders = new HashMap<>();
+		for (Map.Entry<Object, RpcStrategy> entry : shards.entrySet()) {
 			Object shardId = entry.getKey();
-			RpcRequestSendingStrategy strategy = entry.getValue();
-			RpcRequestSender sender = strategy.createSender(pool);
+			RpcStrategy strategy = entry.getValue();
+			RpcSender sender = strategy.createSender(pool);
 			if (sender != null) {
 				shardsSenders.put(shardId, sender);
 			}
@@ -104,13 +104,13 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		}
 
 		checkNotNull(hashBucketFunction);
-		RpcRequestSender[] sendersBuckets = new RpcRequestSender[buckets];
+		RpcSender[] sendersBuckets = new RpcSender[buckets];
 		for (int n = 0; n < sendersBuckets.length; n++) {
-			RpcRequestSender chosenSender = null;
+			RpcSender chosenSender = null;
 			int max = Integer.MIN_VALUE;
-			for (Map.Entry<Object, RpcRequestSender> entry : shardsSenders.entrySet()) {
+			for (Map.Entry<Object, RpcSender> entry : shardsSenders.entrySet()) {
 				Object key = entry.getKey();
-				RpcRequestSender sender = entry.getValue();
+				RpcSender sender = entry.getValue();
 				int hash = hashBucketFunction.hash(key, n);
 				if (hash >= max) {
 					chosenSender = sender;
@@ -123,12 +123,11 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		return new Sender(hashFunction, sendersBuckets);
 	}
 
-	// visible for testing
-	static final class Sender implements RpcRequestSender {
+	static final class Sender implements RpcSender {
 		private final HashFunction<?> hashFunction;
-		private final RpcRequestSender[] hashBuckets;
+		private final RpcSender[] hashBuckets;
 
-		public Sender(HashFunction<?> hashFunction, RpcRequestSender[] hashBuckets) {
+		public Sender(HashFunction<?> hashFunction, RpcSender[] hashBuckets) {
 			this.hashFunction = checkNotNull(hashFunction);
 			this.hashBuckets = checkNotNull(hashBuckets);
 		}
@@ -136,12 +135,13 @@ public final class RpcStrategyRendezvousHashing implements RpcRequestSendingStra
 		@SuppressWarnings("unchecked")
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			int hash = ((HashFunction<Object>) hashFunction).hashCode(request);
-			RpcRequestSender sender = chooseBucket(hash);
+			RpcSender sender = chooseBucket(request);
 			sender.sendRequest(request, timeout, callback);
 		}
 
-		RpcRequestSender chooseBucket(int hash) {
+		@SuppressWarnings("unchecked")
+		RpcSender chooseBucket(Object request) {
+			int hash = ((HashFunction<Object>) hashFunction).hashCode(request);
 			return hashBuckets[hash & (hashBuckets.length - 1)];
 		}
 	}

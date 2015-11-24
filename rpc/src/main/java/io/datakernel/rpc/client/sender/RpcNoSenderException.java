@@ -16,10 +16,11 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.protocol.RpcException;
 
-public interface RpcRequestSender {
+public class RpcNoSenderException extends RpcException {
 
-	<I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback);
-
+	public RpcNoSenderException(String message) {
+		super(message);
+	}
 }

@@ -22,21 +22,21 @@ import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Set;
 
-public final class RpcStrategyFirstAvailable implements RpcRequestSendingStrategy {
-	private final RpcStrategyList group;
+public final class RpcStrategyFirstAvailable implements RpcStrategy {
+	private final RpcStrategyList list;
 
 	public RpcStrategyFirstAvailable(RpcStrategyList list) {
-		this.group = list;
+		this.list = list;
 	}
 
 	@Override
 	public Set<InetSocketAddress> getAddresses() {
-		return group.getAddresses();
+		return list.getAddresses();
 	}
 
 	@Override
-	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
-		List<RpcRequestSender> senders = group.listOfSenders(pool);
+	public RpcSender createSender(RpcClientConnectionPool pool) {
+		List<RpcSender> senders = list.listOfSenders(pool);
 		if (senders.isEmpty())
 			return null;
 		return senders.get(0);

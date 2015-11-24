@@ -14,25 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.server;
+package io.datakernel.rpc.client.sender.helper;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.client.sender.RpcSender;
 
-public interface RpcServerConnectionPoolMBean {
-	void startMonitoring();
+public final class RpcSenderStub implements RpcSender {
+	private int sends;
 
-	void stopMonitoring();
+	public int getSendsNumber() {
+		return sends;
+	}
 
-	boolean isMonitoring();
-
-	void resetStats();
-
-	int getConnectionsCount();
-
-	CompositeData[] getConnections() throws OpenDataException;
-
-	long getTotalRequests();
-
-	long getTotalProcessingErrors();
+	@Override
+	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+		sends++;
+	}
 }

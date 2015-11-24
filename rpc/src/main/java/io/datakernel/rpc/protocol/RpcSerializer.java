@@ -28,21 +28,21 @@ import java.util.Map.Entry;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcSerializer {
-
 	private ClassLoader classLoader = ClassLoader.getSystemClassLoader();
 	private final Set<Class<?>> extraSubClasses = new LinkedHashSet<>();
 	private final Map<Class<?>, SerializerGenBuilder> extraSerializers = new LinkedHashMap<>();
 	private int serializeVersion;
 
-	private RpcSerializer() {
+	private RpcSerializer(List<Class<?>> messageTypes) {
+		this.extraSubClasses.addAll(messageTypes);
 	}
 
-	public static RpcSerializer serializerFor() {
-		return new RpcSerializer();
+	public static RpcSerializer rpcSerializer(Class<?>... messageTypes) {
+		return new RpcSerializer(Arrays.asList(messageTypes));
 	}
 
-	public static RpcSerializer serializerFor(Class<?>... messageTypes) {
-		return serializerFor().messageTypes(messageTypes);
+	public static RpcSerializer rpcSerializer(List<Class<?>> messageTypes) {
+		return new RpcSerializer(messageTypes);
 	}
 
 	public RpcSerializer setClassLoader(ClassLoader classLoader) {
@@ -50,21 +50,16 @@ public final class RpcSerializer {
 		return this;
 	}
 
-	public RpcSerializer addSerializer(Class<?> type, SerializerGenBuilder serializer) {
+	public RpcSerializer extraSerializer(Class<?> type, SerializerGenBuilder serializer) {
 		extraSerializers.put(type, checkNotNull(serializer));
 		return this;
 	}
 
-	public RpcSerializer addSerializer(Class<?> type, SerializerGen serializer) {
-		return addSerializer(type, new SerializerGenBuilderConst(checkNotNull(serializer)));
+	public RpcSerializer extraSerializer(Class<?> type, SerializerGen serializer) {
+		return extraSerializer(type, new SerializerGenBuilderConst(checkNotNull(serializer)));
 	}
 
-	public RpcSerializer messageTypes(Class<?>... messageTypes) {
-		extraSubClasses.addAll(Arrays.asList(messageTypes));
-		return this;
-	}
-
-	public RpcSerializer setSerializeVersion(int serializeVersion) {
+	public RpcSerializer version(int serializeVersion) {
 		this.serializeVersion = serializeVersion;
 		return this;
 	}

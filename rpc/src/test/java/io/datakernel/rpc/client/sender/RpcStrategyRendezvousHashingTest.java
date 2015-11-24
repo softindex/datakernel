@@ -22,8 +22,8 @@ import org.junit.Test;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.rendezvousHashing;
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
+import static io.datakernel.rpc.client.sender.RpcStrategies.rendezvousHashing;
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -40,9 +40,9 @@ public class RpcStrategyRendezvousHashingTest {
 	@Test
 	public void itShouldDistributeCallsBetweenActiveSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
@@ -50,11 +50,11 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server1 = server(ADDRESS_1);
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
-		RpcRequestSendingStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
 				.put(shardId1, server1)
 				.put(shardId2, server2)
 				.put(shardId3, server3);
-		RpcRequestSender sender;
+		RpcSender sender;
 		int callsPerLoop = 10000;
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -89,7 +89,7 @@ public class RpcStrategyRendezvousHashingTest {
 	@Test
 	public void itShouldBeCreatedWhenThereAreAtLeastOneActiveSubSender() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
@@ -97,7 +97,7 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server1 = server(ADDRESS_1);
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
-		RpcRequestSendingStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
 				.put(shardId1, server1)
 				.put(shardId2, server2)
 				.put(shardId3, server3);
@@ -118,7 +118,7 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server1 = server(ADDRESS_1);
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
-		RpcRequestSendingStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
 				.put(shardId1, server1)
 				.put(shardId2, server2)
 				.put(shardId3, server3);
@@ -132,7 +132,7 @@ public class RpcStrategyRendezvousHashingTest {
 	public void itShouldNotBeCreatedWhenNoSendersWereAdded() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RpcRequestSendingStrategy rendezvousHashing = rendezvousHashing(hashFunction);
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction);
 
 		assertTrue(rendezvousHashing.createSender(pool) == null);
 	}
@@ -140,9 +140,9 @@ public class RpcStrategyRendezvousHashingTest {
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNotEnoughSubSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
@@ -150,7 +150,7 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server1 = server(ADDRESS_1);
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
-		RpcRequestSendingStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
 				.withMinActiveShards(4)
 				.put(shardId1, server1)
 				.put(shardId2, server2)
@@ -169,8 +169,8 @@ public class RpcStrategyRendezvousHashingTest {
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNotEnoughActiveSubSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
@@ -178,7 +178,7 @@ public class RpcStrategyRendezvousHashingTest {
 		RpcStrategySingleServer server1 = server(ADDRESS_1);
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
-		RpcRequestSendingStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
 				.withMinActiveShards(4)
 				.put(shardId1, server1)
 				.put(shardId2, server2)
@@ -196,6 +196,6 @@ public class RpcStrategyRendezvousHashingTest {
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
-		RpcRequestSendingStrategy rendezvousHashing = rendezvousHashing(null);
+		RpcStrategy rendezvousHashing = rendezvousHashing(null);
 	}
 }

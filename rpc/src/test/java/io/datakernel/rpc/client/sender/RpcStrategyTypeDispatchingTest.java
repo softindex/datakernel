@@ -20,13 +20,13 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
-import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
+import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -45,16 +45,16 @@ public class RpcStrategyTypeDispatchingTest {
 	@Test
 	public void itShouldChooseSubStrategyDependingOnRpcMessageDataType() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
 		RpcStrategySingleServer server1 = server(ADDRESS_1);
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
-		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
+		RpcStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, server1)
 				.on(RpcMessageDataTypeTwo.class, server2)
 				.on(RpcMessageDataTypeThree.class, server3);
@@ -62,7 +62,7 @@ public class RpcStrategyTypeDispatchingTest {
 		int dataTypeTwoRequests = 2;
 		int dataTypeThreeRequests = 5;
 
-		RpcRequestSender sender = typeDispatchingStrategy.createSender(pool);
+		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		for (int i = 0; i < dataTypeOneRequests; i++) {
 			sender.sendRequest(new RpcMessageDataTypeOne(), 50, new ResultCallbackFuture<>());
 		}
@@ -82,10 +82,10 @@ public class RpcStrategyTypeDispatchingTest {
 	@Test
 	public void itShouldChooseDefaultSubStrategyWhenThereIsNoSpecifiedSubSenderForCurrentDataType() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection4 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
+		RpcSenderStub connection4 = new RpcSenderStub();
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
@@ -94,14 +94,14 @@ public class RpcStrategyTypeDispatchingTest {
 		RpcStrategySingleServer server2 = server(ADDRESS_2);
 		RpcStrategySingleServer server3 = server(ADDRESS_3);
 		RpcStrategySingleServer defaultServer = server(ADDRESS_4);
-		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
+		RpcStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, server1)
 				.on(RpcMessageDataTypeTwo.class, server2)
 				.on(RpcMessageDataTypeThree.class, server3)
 				.onDefault(defaultServer);
 		ResultCallbackStub callback = new ResultCallbackStub();
 
-		RpcRequestSender sender = typeDispatchingStrategy.createSender(pool);
+		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		sender.sendRequest(new RpcMessageDataStub(), 50, callback);
 
 		assertEquals(0, connection1.getSendsNumber());
@@ -114,21 +114,21 @@ public class RpcStrategyTypeDispatchingTest {
 	@Test(expected = ExecutionException.class)
 	public void itShouldRaiseExceptionWhenStrategyForDataIsNotSpecifiedAndDefaultSenderIsNull() throws ExecutionException, InterruptedException {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		pool.put(ADDRESS_1, connection1);
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
 		RpcStrategySingleServer server1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer server2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer server3 = new RpcStrategySingleServer(ADDRESS_3);
-		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
+		RpcStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, server1)
 				.on(RpcMessageDataTypeTwo.class, server2)
 				.on(RpcMessageDataTypeThree.class, server3);
 
-		RpcRequestSender sender = typeDispatchingStrategy.createSender(pool);
+		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		// sender is not specified for RpcMessageDataStub, default sender is null
 		ResultCallbackFuture<Object> callback = new ResultCallbackFuture<>();
 		sender.sendRequest(new RpcMessageDataStub(), 50, callback);
@@ -139,12 +139,12 @@ public class RpcStrategyTypeDispatchingTest {
 	@Test
 	public void itShouldNotBeCreatedWhenAtLeastOneOfCrucialSubStrategyIsNotActive() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		RpcStrategySingleServer server1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer server2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer server3 = new RpcStrategySingleServer(ADDRESS_3);
-		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
+		RpcStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, server1)
 				.on(RpcMessageDataTypeTwo.class, server2)
 				.on(RpcMessageDataTypeThree.class, server3);
@@ -159,14 +159,14 @@ public class RpcStrategyTypeDispatchingTest {
 	@Test
 	public void itShouldNotBeCreatedWhenDefaultStrategyIsNotActiveAndCrucial() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		RpcStrategySingleServer server1 = new RpcStrategySingleServer(ADDRESS_1);
 		RpcStrategySingleServer server2 = new RpcStrategySingleServer(ADDRESS_2);
 		RpcStrategySingleServer server3 = new RpcStrategySingleServer(ADDRESS_3);
 		RpcStrategySingleServer defaultServer = new RpcStrategySingleServer(ADDRESS_4);
-		RpcRequestSendingStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
+		RpcStrategy typeDispatchingStrategy = new RpcStrategyTypeDispatching()
 				.on(RpcMessageDataTypeOne.class, server1)
 				.on(RpcMessageDataTypeTwo.class, server2)
 				.on(RpcMessageDataTypeThree.class, server3)

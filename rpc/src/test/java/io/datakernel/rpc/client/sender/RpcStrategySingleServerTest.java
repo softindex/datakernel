@@ -19,7 +19,7 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
-import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
+import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -36,11 +36,11 @@ public class RpcStrategySingleServerTest {
 	@Test
 	public void itShouldBeCreatedWhenThereIsConnectionInPool() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection = new RpcRequestSenderStub();
+		RpcSenderStub connection = new RpcSenderStub();
 		pool.put(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
 
-		RpcRequestSender sender = strategySingleServer.createSender(pool);
+		RpcSender sender = strategySingleServer.createSender(pool);
 
 		assertTrue(sender != null);
 	}
@@ -51,7 +51,7 @@ public class RpcStrategySingleServerTest {
 		// no connections were added to pool
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
 
-		RpcRequestSender sender = strategySingleServer.createSender(pool);
+		RpcSender sender = strategySingleServer.createSender(pool);
 
 		assertTrue(sender == null);
 	}
@@ -59,10 +59,10 @@ public class RpcStrategySingleServerTest {
 	@Test
 	public void itShouldProcessAllCalls() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection = new RpcRequestSenderStub();
+		RpcSenderStub connection = new RpcSenderStub();
 		pool.put(ADDRESS, connection);
 		RpcStrategySingleServer strategySingleServer = new RpcStrategySingleServer(ADDRESS);
-		RpcRequestSender sender = strategySingleServer.createSender(pool);
+		RpcSender sender = strategySingleServer.createSender(pool);
 		final int calls = 100;
 		int timeout = 50;
 		RpcMessageDataStub data = new RpcMessageDataStub();

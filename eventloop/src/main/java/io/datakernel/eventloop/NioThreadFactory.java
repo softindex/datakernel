@@ -16,16 +16,15 @@
 
 package io.datakernel.eventloop;
 
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class NioThreadFactory implements ThreadFactory{
+public final class NioThreadFactory implements ThreadFactory {
 	private static final ThreadFactory DEFAULT_NIO_THREAD_FACTORY = createNioThreadFactory(Thread.NORM_PRIORITY, true);
 
 	private final int priority;
 	private final boolean daemon;
-	final AtomicLong count = new AtomicLong(0);
+	private final AtomicLong count = new AtomicLong(1);
 
 	public NioThreadFactory(int priority, boolean daemon) {
 		this.priority = priority;
@@ -42,8 +41,7 @@ public final class NioThreadFactory implements ThreadFactory{
 
 	@Override
 	public Thread newThread(Runnable runnable) {
-		Thread thread = Executors.defaultThreadFactory().newThread(runnable);
-		thread.setName(String.format("NioThread-%d", count.getAndIncrement()));
+		Thread thread = new Thread(runnable, "NioThread-%d" + count.getAndIncrement());
 		thread.setDaemon(daemon);
 		thread.setPriority(priority);
 		return thread;

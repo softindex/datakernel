@@ -14,20 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.sender.helper;
+package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.rpc.client.sender.RpcRequestSender;
 
-public final class RpcRequestSenderStub implements RpcRequestSender {
-	private int sends;
+public interface RpcSender {
 
-	public int getSendsNumber() {
-		return sends;
-	}
+	<I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback);
 
-	@Override
-	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-		sends++;
-	}
 }

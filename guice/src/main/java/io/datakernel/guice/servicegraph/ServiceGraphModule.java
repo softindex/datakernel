@@ -23,20 +23,23 @@ import com.google.inject.internal.MoreTypes;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.Dependency;
 import com.google.inject.spi.HasDependencies;
+import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.NioServer;
+import io.datakernel.eventloop.NioService;
 import io.datakernel.guice.workers.NioWorkerScope;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
 import io.datakernel.guice.workers.WorkerThread;
 import io.datakernel.service.AsyncService;
 import io.datakernel.service.AsyncServices;
+import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraph;
 import org.slf4j.Logger;
 
+import javax.sql.DataSource;
+import java.io.Closeable;
 import java.lang.annotation.Annotation;
 import java.util.*;
-import java.util.concurrent.Executor;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Sets.*;
@@ -61,9 +64,9 @@ public final class ServiceGraphModule extends AbstractModule {
 	 * Creates a new instance of ServiceGraphModule with default executor
 	 */
 	public ServiceGraphModule() {
-		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
+		this(new ThreadPoolExecutor(0, Integer.MAX_VALUE,
 				10, TimeUnit.MILLISECONDS,
-				new SynchronousQueue<Runnable>());
+				new SynchronousQueue<Runnable>()));
 	}
 
 	/**
@@ -73,6 +76,15 @@ public final class ServiceGraphModule extends AbstractModule {
 	 */
 	public ServiceGraphModule(Executor executor) {
 		this.executor = executor;
+		register(AsyncService.class, AsyncServiceAdapters.forAsyncService());
+		register(Service.class, AsyncServiceAdapters.forBlockingService());
+		register(Closeable.class, AsyncServiceAdapters.forCloseable());
+		register(ExecutorService.class, AsyncServiceAdapters.forExecutorService());
+		register(Timer.class, AsyncServiceAdapters.forTimer());
+		register(DataSource.class, AsyncServiceAdapters.forDataSource());
+		register(NioService.class, AsyncServiceAdapters.forNioService());
+		register(NioServer.class, AsyncServiceAdapters.forNioServer());
+		register(NioEventloop.class, AsyncServiceAdapters.forNioEventloop());
 	}
 
 	/**
@@ -207,14 +219,17 @@ public final class ServiceGraphModule extends AbstractModule {
 		if (factoryForKey != null) {
 			return ((AsyncServiceAdapter<Object>) factoryForKey).toService(instance, executor);
 		}
+		Class<?> foundType = null;
 		for (Class<?> type : factoryMap.keySet()) {
 			if (type.isAssignableFrom(instance.getClass())) {
-				AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(type);
-				AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
-				return checkNotNull(service);
+				foundType = type;
 			}
 		}
-		return null;
+		if (foundType == null)
+			return null;
+		AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(foundType);
+		AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
+		return checkNotNull(service);
 	}
 
 	private ServiceGraph.Node nodeFromNioScope(KeyInPool keyInPool, Object instance) {

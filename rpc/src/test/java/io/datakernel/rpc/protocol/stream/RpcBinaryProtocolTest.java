@@ -38,8 +38,8 @@ import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
-import static io.datakernel.rpc.protocol.RpcSerializer.serializerFor;
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 import static org.junit.Assert.assertEquals;
 
 public class RpcBinaryProtocolTest {
@@ -51,7 +51,7 @@ public class RpcBinaryProtocolTest {
 	}
 
 	private static RpcSerializer buildMessageSerializer() {
-		return serializerFor(String.class);
+		return rpcSerializer(String.class);
 	}
 
 	@Before

@@ -56,7 +56,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	private boolean monitoring;
 
 	public RpcServerConnection(NioEventloop eventloop, SocketChannel socketChannel,
-	                           BufferSerializer<RpcMessage> messageSerializer, BufferSerializer<RpcMessage> messageDeserializer,
+	                           BufferSerializer<RpcMessage> messageSerializer,
 	                           Map<Class<?>, RpcRequestHandler<Object>> handlers,
 	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;

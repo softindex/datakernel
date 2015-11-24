@@ -22,11 +22,12 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.hash.Sharder;
+import io.datakernel.rpc.hash.ShardingFunction;
 import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -37,17 +38,20 @@ import static io.datakernel.async.AsyncCallbacks.startFuture;
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.*;
-import static io.datakernel.rpc.protocol.RpcSerializer.serializerFor;
+import static io.datakernel.rpc.client.sender.RpcStrategies.*;
+import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 import static org.junit.Assert.assertEquals;
 
-public class CombinedStrategiesIntegrationTest {
+public class RpcBlockingTest {
 
 	private static final int PORT_1 = 10001;
 	private static final int PORT_2 = 10002;
 	private static final int PORT_3 = 10003;
 	private static final int TIMEOUT = 1500;
+
 	private NioEventloop eventloop;
+	private Thread thread;
+
 	private RpcServer serverOne;
 	private RpcServer serverTwo;
 	private RpcServer serverThree;
@@ -59,65 +63,101 @@ public class CombinedStrategiesIntegrationTest {
 
 		eventloop = new NioEventloop();
 
-		serverOne = RpcServer.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+		serverOne = RpcServer.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
 				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplOne()))
 				.setListenPort(PORT_1);
 		serverOne.listen();
 
-		serverTwo = RpcServer.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+		serverTwo = RpcServer.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
 				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplTwo()))
 				.setListenPort(PORT_2);
 		serverTwo.listen();
 
-		serverThree = RpcServer.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
+		serverThree = RpcServer.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
 				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplThree()))
 				.setListenPort(PORT_3);
 		serverThree.listen();
 
-		defaultNioThreadFactory().newThread(eventloop).start();
+		thread = defaultNioThreadFactory().newThread(eventloop);
+		thread.start();
+	}
+
+	@After
+	public void tearDown() throws InterruptedException {
+		thread.join();
 	}
 
 	@Test
 	public void testBlockingCall() throws Exception {
-		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
+		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_1);
+		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_2);
+		InetSocketAddress address3 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_3);
 
-			String currentName = "John";
-			String currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello, " + currentName + "!", currentResponse);
+		ShardingFunction<HelloRequest> shardingFunction = new ShardingFunction<HelloRequest>() {
+			@Override
+			public int getShard(HelloRequest item) {
+				int shard = 0;
+				if (item.name.startsWith("S")) {
+					shard = 1;
+				}
+				return shard;
+			}
+		};
 
-			currentName = "Winston";
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello Hello, " + currentName + "!", currentResponse);
+		RpcClient client = RpcClient.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
+				.strategy(
+						roundRobin(
+								server(address1),
+								sharding(shardingFunction, server(address2), server(address3)).withMinActiveSubStrategies(2)));
 
-			currentName = "Ann";
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello, " + currentName + "!", currentResponse);
+		startFuture(client).await();
 
-			currentName = "Emma";
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello Hello, " + currentName + "!", currentResponse);
+		String currentName = "John";
+		String currentResponse = blockingRequest(client, currentName);
+		System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+		assertEquals("Hello, " + currentName + "!", currentResponse);
 
-			currentName = "Lukas";
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello, " + currentName + "!", currentResponse);
+		currentName = "Winston";
+		currentResponse = blockingRequest(client, currentName);
+		System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+		assertEquals("Hello Hello, " + currentName + "!", currentResponse);
 
-			currentName = "Sophia"; // name starts with "s", so hash code is different from previous examples
-			currentResponse = client.hello(currentName);
-			System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
-			assertEquals("Hello Hello Hello, " + currentName + "!", currentResponse);
+		currentName = "Ann";
+		currentResponse = blockingRequest(client, currentName);
+		System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+		assertEquals("Hello, " + currentName + "!", currentResponse);
 
-		} finally {
-			serverOne.closeFuture().await();
-			serverTwo.closeFuture().await();
-			serverThree.closeFuture().await();
+		currentName = "Emma";
+		currentResponse = blockingRequest(client, currentName);
+		System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+		assertEquals("Hello Hello, " + currentName + "!", currentResponse);
 
-		}
+		currentName = "Lukas";
+		currentResponse = blockingRequest(client, currentName);
+		System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+		assertEquals("Hello, " + currentName + "!", currentResponse);
+
+		currentName = "Sophia"; // name starts with "s", so hash code is different from previous examples
+		currentResponse = blockingRequest(client, currentName);
+		System.out.println("Request with name \"" + currentName + "\": " + currentResponse);
+		assertEquals("Hello Hello Hello, " + currentName + "!", currentResponse);
+
+		stopFuture(client).await();
+
+		serverOne.closeFuture().await();
+		serverTwo.closeFuture().await();
+		serverThree.closeFuture().await();
+
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	private static String blockingRequest(RpcClient rpcClient, final String name) throws Exception {
+		try {
+			ResultCallbackFuture<HelloResponse> future = rpcClient.sendRequestFuture(new HelloRequest(name), TIMEOUT);
+			return future.get().message;
+		} catch (ExecutionException e) {
+			throw (Exception) e.getCause();
+		}
 	}
 
 	private interface HelloService {
@@ -188,51 +228,5 @@ public class CombinedStrategiesIntegrationTest {
 		};
 	}
 
-	private static class BlockingHelloClient implements HelloService, AutoCloseable {
-		private final RpcClient client;
-
-		public BlockingHelloClient(NioEventloop eventloop) throws Exception {
-
-			InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_1);
-			InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_2);
-			InetSocketAddress address3 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), PORT_3);
-
-			Sharder<HelloRequest> sharder = new Sharder<HelloRequest>() {
-				@Override
-				public int getShard(HelloRequest item) {
-					int shard = 0;
-					if (item.name.startsWith("S")) {
-						shard = 1;
-					}
-					return shard;
-				}
-			};
-
-			this.client = RpcClient.create(eventloop, serializerFor(HelloRequest.class, HelloResponse.class))
-					.strategy(
-							roundRobin(
-									server(address1),
-									sharding(sharder,
-											server(address2),
-											server(address3))));
-
-			startFuture(client).await();
-		}
-
-		@Override
-		public String hello(final String name) throws Exception {
-			try {
-				ResultCallbackFuture<HelloResponse> future = client.sendRequestFuture(new HelloRequest(name), TIMEOUT);
-				return future.get().message;
-			} catch (ExecutionException e) {
-				throw (Exception) e.getCause();
-			}
-		}
-
-		@Override
-		public void close() throws Exception {
-			stopFuture(client).await();
-		}
-	}
 }
 

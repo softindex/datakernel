@@ -19,12 +19,12 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcMessageDataStub;
-import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
+import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
 
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.*;
+import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -45,14 +45,14 @@ public class RpcStrategyRoundRobinTest {
 	@Test
 	public void itShouldSendRequestUsingRoundRobinAlgorithm() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
-		RpcRequestSendingStrategy server1 = server(ADDRESS_1);
-		RpcRequestSendingStrategy server2 = server(ADDRESS_2);
-		RpcRequestSendingStrategy server3 = server(ADDRESS_3);
-		RpcRequestSendingStrategy roundRobin = roundRobin(server1, server2, server3);
-		RpcRequestSender senderRoundRobin;
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
+		RpcStrategy server1 = server(ADDRESS_1);
+		RpcStrategy server2 = server(ADDRESS_2);
+		RpcStrategy server3 = server(ADDRESS_3);
+		RpcStrategy roundRobin = roundRobin(server1, server2, server3);
+		RpcSender senderRoundRobin;
 		int timeout = 50;
 		Object data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -74,11 +74,11 @@ public class RpcStrategyRoundRobinTest {
 	@Test
 	public void itShouldNotSendRequestToNonActiveSubSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection4 = new RpcRequestSenderStub();
-		RpcRequestSendingStrategy roundRobinStrategy = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4, ADDRESS_5));
-		RpcRequestSender senderRoundRobin;
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection4 = new RpcSenderStub();
+		RpcStrategy roundRobinStrategy = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3, ADDRESS_4, ADDRESS_5));
+		RpcSender senderRoundRobin;
 		int timeout = 50;
 		Object data = new RpcMessageDataStub();
 		ResultCallbackStub callback = new ResultCallbackStub();
@@ -101,10 +101,10 @@ public class RpcStrategyRoundRobinTest {
 	@Test
 	public void itShouldBeCreatedWhenThereIsAtLeastOneActiveSubSender() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection = new RpcRequestSenderStub();
+		RpcSenderStub connection = new RpcSenderStub();
 		// one connection is added
 		pool.put(ADDRESS_2, connection);
-		RpcRequestSendingStrategy roundRobin = new RpcStrategyRoundRobin(servers(ADDRESS_1, ADDRESS_2));
+		RpcStrategy roundRobin = new RpcStrategyRoundRobin(servers(ADDRESS_1, ADDRESS_2));
 
 		assertTrue(roundRobin.createSender(pool) != null);
 	}
@@ -113,7 +113,7 @@ public class RpcStrategyRoundRobinTest {
 	public void itShouldNotBeCreatedWhenThereAreNoActiveSubSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		// no connections were added to pool
-		RpcRequestSendingStrategy roundRobin = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcStrategy roundRobin = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 
 		assertTrue(roundRobin.createSender(pool) == null);
 	}
@@ -121,10 +121,10 @@ public class RpcStrategyRoundRobinTest {
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNotEnoughSubSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
-		RpcRequestSendingStrategy roundRobin = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3))
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
+		RpcStrategy roundRobin = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3))
 				.withMinActiveSubStrategies(4);
 
 		pool.put(ADDRESS_1, connection1);
@@ -137,9 +137,9 @@ public class RpcStrategyRoundRobinTest {
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNotEnoughActiveSubSenders() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSendingStrategy roundRobin = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3))
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcStrategy roundRobin = roundRobin(servers(ADDRESS_1, ADDRESS_2, ADDRESS_3))
 				.withMinActiveSubStrategies(3);
 
 		pool.put(ADDRESS_1, connection1);

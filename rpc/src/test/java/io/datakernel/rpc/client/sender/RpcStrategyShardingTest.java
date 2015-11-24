@@ -19,15 +19,15 @@ package io.datakernel.rpc.client.sender;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.rpc.client.sender.helper.ResultCallbackStub;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
-import io.datakernel.rpc.client.sender.helper.RpcRequestSenderStub;
-import io.datakernel.rpc.hash.Sharder;
+import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
+import io.datakernel.rpc.hash.ShardingFunction;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutionException;
 
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.servers;
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.sharding;
+import static io.datakernel.rpc.client.sender.RpcStrategies.servers;
+import static io.datakernel.rpc.client.sender.RpcStrategies.sharding;
 import static org.junit.Assert.assertEquals;
 
 public class RpcStrategyShardingTest {
@@ -43,19 +43,19 @@ public class RpcStrategyShardingTest {
 	@Test
 	public void itShouldSelectSubSenderConsideringHashCodeOfRequestData() {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection1 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		final int shardsAmount = 3;
-		Sharder<Integer> sharder = new Sharder<Integer>() {
+		ShardingFunction<Integer> shardingFunction = new ShardingFunction<Integer>() {
 			@Override
 			public int getShard(Integer item) {
 				return item % shardsAmount;
 			}
 		};
-		RpcRequestSendingStrategy shardingStrategy = sharding(sharder,
+		RpcStrategy shardingStrategy = sharding(shardingFunction,
 				servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-		RpcRequestSender senderSharding;
+		RpcSender senderSharding;
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 
@@ -80,22 +80,22 @@ public class RpcStrategyShardingTest {
 	@Test(expected = Exception.class)
 	public void itShouldCallOnExceptionOfCallbackWhenChosenServerIsNotActive() throws ExecutionException, InterruptedException {
 		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
-		RpcRequestSenderStub connection2 = new RpcRequestSenderStub();
-		RpcRequestSenderStub connection3 = new RpcRequestSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		final int shardsAmount = 3;
-		Sharder<Integer> sharder = new Sharder<Integer>() {
+		ShardingFunction<Integer> shardingFunction = new ShardingFunction<Integer>() {
 			@Override
 			public int getShard(Integer item) {
 				return item % shardsAmount;
 			}
 		};
-		RpcRequestSendingStrategy shardingStrategy = sharding(sharder,
+		RpcStrategy shardingStrategy = sharding(shardingFunction,
 				servers(ADDRESS_1, ADDRESS_2, ADDRESS_3));
 
 		// we don't add connection for ADDRESS_1
 		pool.put(ADDRESS_2, connection2);
 		pool.put(ADDRESS_3, connection3);
-		RpcRequestSender sender = shardingStrategy.createSender(pool);
+		RpcSender sender = shardingStrategy.createSender(pool);
 
 		ResultCallbackFuture<Object> callback1 = new ResultCallbackFuture<>();
 		ResultCallbackFuture<Object> callback2 = new ResultCallbackFuture<>();

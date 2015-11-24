@@ -25,7 +25,7 @@ import java.util.Set;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public final class RpcStrategyRoundRobin implements RpcRequestSendingStrategy {
+public final class RpcStrategyRoundRobin implements RpcStrategy {
 	private final RpcStrategyList list;
 	private int minActiveSubStrategies;
 
@@ -44,38 +44,33 @@ public final class RpcStrategyRoundRobin implements RpcRequestSendingStrategy {
 	}
 
 	@Override
-	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
-		List<RpcRequestSender> subSenders = list.listOfSenders(pool);
+	public RpcSender createSender(RpcClientConnectionPool pool) {
+		List<RpcSender> subSenders = list.listOfSenders(pool);
 		if (subSenders.size() < minActiveSubStrategies)
 			return null;
-		else if (subSenders.size() > 1) {
-			return new RequestSenderRoundRobin(subSenders);
-		} else if (subSenders.size() == 1) {
-			return subSenders.get(0);
-		} else
+		if (subSenders.size() == 0)
 			return null;
+		if (subSenders.size() == 1)
+			return subSenders.get(0);
+		return new Sender(subSenders);
 	}
 
-	final static class RequestSenderRoundRobin implements RpcRequestSender {
+	static final class Sender implements RpcSender {
 		private int nextSender;
-		private RpcRequestSender[] subSenders;
+		private RpcSender[] subSenders;
 
-		public RequestSenderRoundRobin(List<RpcRequestSender> senders) {
+		public Sender(List<RpcSender> senders) {
 			checkArgument(senders != null && senders.size() > 0);
-			this.subSenders = senders.toArray(new RpcRequestSender[senders.size()]);
+			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
 			this.nextSender = 0;
 		}
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			RpcRequestSender sender = getCurrentSubSender();
+			RpcSender sender = subSenders[nextSender];
+			nextSender = (nextSender + 1) % subSenders.length;
 			sender.sendRequest(request, timeout, callback);
 		}
 
-		private RpcRequestSender getCurrentSubSender() {
-			RpcRequestSender currentSender = subSenders[nextSender];
-			nextSender = (nextSender + 1) % subSenders.length;
-			return currentSender;
-		}
 	}
 }

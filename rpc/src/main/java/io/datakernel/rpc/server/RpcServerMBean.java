@@ -18,5 +18,25 @@ package io.datakernel.rpc.server;
 
 import io.datakernel.eventloop.AbstractNioServerMBean;
 
-public interface RpcServerMBean extends AbstractNioServerMBean, RpcServerConnectionPoolMBean {
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
+
+public interface RpcServerMBean extends AbstractNioServerMBean {
+
+	void startMonitoring();
+
+	void stopMonitoring();
+
+	boolean isMonitoring();
+
+	void resetStats();
+
+	int getConnectionsCount();
+
+	CompositeData[] getConnections() throws OpenDataException;
+
+	long getTotalRequests();
+
+	long getTotalProcessingErrors();
+
 }

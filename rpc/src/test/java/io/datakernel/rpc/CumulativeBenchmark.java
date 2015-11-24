@@ -36,8 +36,8 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
-import static io.datakernel.rpc.protocol.RpcSerializer.serializerFor;
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -61,7 +61,7 @@ public final class CumulativeBenchmark {
 	private final NioEventloop serverEventloop = new NioEventloop();
 	private final NioEventloop clientEventloop = new NioEventloop();
 
-	private final RpcServer server = RpcServer.create(serverEventloop, serializerFor(ValueMessage.class))
+	private final RpcServer server = RpcServer.create(serverEventloop, rpcSerializer(ValueMessage.class))
 			.protocol(streamProtocol(64 << 10, 64 << 10, true))
 			.on(ValueMessage.class, new RpcRequestHandler<ValueMessage>() {
 				private final ValueMessage currentSum = new ValueMessage(0);
@@ -78,7 +78,7 @@ public final class CumulativeBenchmark {
 			})
 			.setListenPort(SERVICE_PORT);
 
-	private final RpcClient client = RpcClient.create(clientEventloop, serializerFor(ValueMessage.class))
+	private final RpcClient client = RpcClient.create(clientEventloop, rpcSerializer(ValueMessage.class))
 			.protocol(streamProtocol(64 << 10, 64 << 10, true))
 			.strategy(server(new InetSocketAddress(SERVICE_PORT)));
 
@@ -106,7 +106,7 @@ public final class CumulativeBenchmark {
 		System.out.println("Requests at once   : " + requestsAtOnce);
 		System.out.println("Increment value    : " + incrementMessage.value);
 		System.out.println("Request timeout    : " + requestTimeout + " ms");
-		BufferSerializer<RpcMessage> serializer = serializerFor(ValueMessage.class).createSerializer();
+		BufferSerializer<RpcMessage> serializer = rpcSerializer(ValueMessage.class).createSerializer();
 		int defaultBufferSize = 100;
 		SerializationOutputBuffer output;
 		while (true) {

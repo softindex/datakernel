@@ -18,7 +18,7 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.hash.Sharder;
+import io.datakernel.rpc.hash.ShardingFunction;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -27,13 +27,19 @@ import java.util.Set;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RpcStrategySharding implements RpcRequestSendingStrategy {
+public final class RpcStrategySharding implements RpcStrategy {
 	private final RpcStrategyList list;
-	private final Sharder<?> sharder;
+	private final ShardingFunction<?> shardingFunction;
+	private int minActiveSubStrategies;
 
-	public RpcStrategySharding(Sharder<?> sharder, RpcStrategyList list) {
-		this.sharder = checkNotNull(sharder);
+	public RpcStrategySharding(ShardingFunction<?> shardingFunction, RpcStrategyList list) {
+		this.shardingFunction = checkNotNull(shardingFunction);
 		this.list = list;
+	}
+
+	public RpcStrategySharding withMinActiveSubStrategies(int minActiveSubStrategies) {
+		this.minActiveSubStrategies = minActiveSubStrategies;
+		return this;
 	}
 
 	@Override
@@ -42,41 +48,45 @@ public final class RpcStrategySharding implements RpcRequestSendingStrategy {
 	}
 
 	@Override
-	public final RpcRequestSender createSender(RpcClientConnectionPool pool) {
-		List<RpcRequestSender> subSenders = list.listOfNullableSenders(pool);
-		return new RequestSenderSharding(sharder, subSenders);
+	public final RpcSender createSender(RpcClientConnectionPool pool) {
+		List<RpcSender> subSenders = list.listOfNullableSenders(pool);
+		if (subSenders.size() < minActiveSubStrategies)
+			return null;
+		if (subSenders.size() == 0)
+			return null;
+		if (subSenders.size() == 1)
+			return subSenders.get(0);
+		return new Sender(shardingFunction, subSenders);
 	}
 
-	final static class RequestSenderSharding implements RpcRequestSender {
+	static final class Sender implements RpcSender {
 		@SuppressWarnings("ThrowableInstanceNeverThrown")
-		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
-				= new RpcNoSenderAvailableException("No senders available");
+		private static final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
+				= new RpcNoSenderException("No senders available");
 
-		private final Sharder<?> sharder;
-		private final RpcRequestSender[] subSenders;
+		private final ShardingFunction<?> shardingFunction;
+		private final RpcSender[] subSenders;
 
-		public RequestSenderSharding(Sharder<?> sharder, List<RpcRequestSender> senders) {
+		public Sender(ShardingFunction<?> shardingFunction, List<RpcSender> senders) {
 			// null values are allowed in senders list
 			checkArgument(senders != null && senders.size() > 0);
-			this.sharder = checkNotNull(sharder);
-			this.subSenders = senders.toArray(new RpcRequestSender[senders.size()]);
+			this.shardingFunction = checkNotNull(shardingFunction);
+			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 			checkNotNull(callback);
 
-			RpcRequestSender sender = chooseSender(request);
+			int shardIndex = ((ShardingFunction<Object>) shardingFunction).getShard(request);
+			RpcSender sender = subSenders[shardIndex];
 			if (sender != null) {
 				sender.sendRequest(request, timeout, callback);
-				return;
+			} else {
+				callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 			}
-			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 
-		private RpcRequestSender chooseSender(Object request) {
-			int shardIndex = ((Sharder<Object>) sharder).getShard(request);
-			return subSenders[shardIndex];
-		}
 	}
 }

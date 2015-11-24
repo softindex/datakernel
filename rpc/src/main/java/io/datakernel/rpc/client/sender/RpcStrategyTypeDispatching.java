@@ -28,45 +28,12 @@ import java.util.Set;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrategy {
-	private Map<Class<?>, RpcRequestSendingStrategy> dataTypeToStrategy;
-	private RpcRequestSendingStrategy defaultStrategy;
-
-	RpcStrategyTypeDispatching() {
-		dataTypeToStrategy = new HashMap<>();
-		defaultStrategy = null;
-	}
-
-	@Override
-	public Set<InetSocketAddress> getAddresses() {
-		HashSet<InetSocketAddress> result = new HashSet<>();
-		for (RpcRequestSendingStrategy strategy : dataTypeToStrategy.values()) {
-			result.addAll(strategy.getAddresses());
-		}
-		return result;
-	}
-
-	@Override
-	public RpcRequestSender createSender(RpcClientConnectionPool pool) {
-		HashMap<Class<?>, RpcRequestSender> dataTypeToSender = new HashMap<>();
-		for (Class<?> dataType : dataTypeToStrategy.keySet()) {
-			RpcRequestSendingStrategy strategy = dataTypeToStrategy.get(dataType);
-			RpcRequestSender sender = strategy.createSender(pool);
-			if (sender == null)
-				return null;
-			dataTypeToSender.put(dataType, sender);
-		}
-		RpcRequestSender defaultSender = null;
-		if (defaultStrategy != null) {
-			defaultSender = defaultStrategy.createSender(pool);
-			if (defaultSender == null)
-				return null;
-		}
-		return new RequestSenderTypeDispatcher(dataTypeToSender, defaultSender);
-	}
+public final class RpcStrategyTypeDispatching implements RpcStrategy {
+	private Map<Class<?>, RpcStrategy> dataTypeToStrategy = new HashMap<>();
+	private RpcStrategy defaultStrategy;
 
 	public RpcStrategyTypeDispatching on(Class<?> dataType,
-	                                     RpcRequestSendingStrategy strategy) {
+	                                     RpcStrategy strategy) {
 		checkNotNull(dataType);
 		checkNotNull(strategy);
 		checkState(!dataTypeToStrategy.containsKey(dataType),
@@ -75,32 +42,64 @@ public final class RpcStrategyTypeDispatching implements RpcRequestSendingStrate
 		return this;
 	}
 
-	public RpcStrategyTypeDispatching onDefault(RpcRequestSendingStrategy strategy) {
+	public RpcStrategyTypeDispatching onDefault(RpcStrategy strategy) {
 		checkState(defaultStrategy == null, "Default Strategy is already set");
 		defaultStrategy = strategy;
 		return this;
 	}
 
-	final static class RequestSenderTypeDispatcher implements RpcRequestSender {
+	@Override
+	public Set<InetSocketAddress> getAddresses() {
+		HashSet<InetSocketAddress> result = new HashSet<>();
+		for (RpcStrategy strategy : dataTypeToStrategy.values()) {
+			result.addAll(strategy.getAddresses());
+		}
+		return result;
+	}
+
+	@Override
+	public RpcSender createSender(RpcClientConnectionPool pool) {
+		HashMap<Class<?>, RpcSender> typeToSender = new HashMap<>();
+		for (Class<?> dataType : dataTypeToStrategy.keySet()) {
+			RpcStrategy strategy = dataTypeToStrategy.get(dataType);
+			RpcSender sender = strategy.createSender(pool);
+			if (sender == null)
+				return null;
+			typeToSender.put(dataType, sender);
+		}
+		RpcSender defaultSender = null;
+		if (defaultStrategy != null) {
+			defaultSender = defaultStrategy.createSender(pool);
+			if (typeToSender.isEmpty())
+				return defaultSender;
+			if (defaultSender == null)
+				return null;
+		}
+		return new Sender(typeToSender, defaultSender);
+	}
+
+	static final class Sender implements RpcSender {
 		@SuppressWarnings("ThrowableInstanceNeverThrown")
-		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
-				= new RpcNoSenderAvailableException("No active senders available");
+		private static final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
+				= new RpcNoSenderException("No active senders available");
 
-		private final HashMap<Class<?>, RpcRequestSender> dataTypeToSender;
-		private final RpcRequestSender defaultSender;
+		private final HashMap<Class<?>, RpcSender> typeToSender;
+		private final RpcSender defaultSender;
 
-		public RequestSenderTypeDispatcher(HashMap<Class<?>, RpcRequestSender> dataTypeToSender,
-		                                   RpcRequestSender defaultSender) {
-			checkNotNull(dataTypeToSender);
+		public Sender(HashMap<Class<?>, RpcSender> typeToSender,
+		              RpcSender defaultSender) {
+			checkNotNull(typeToSender);
 
-			this.dataTypeToSender = dataTypeToSender;
+			this.typeToSender = typeToSender;
 			this.defaultSender = defaultSender;
 		}
 
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			RpcRequestSender specifiedSender = dataTypeToSender.get(request.getClass());
-			RpcRequestSender sender = specifiedSender != null ? specifiedSender : defaultSender;
+			RpcSender sender = typeToSender.get(request.getClass());
+			if (sender == null) {
+				sender = defaultSender;
+			}
 			if (sender != null) {
 				sender.sendRequest(request, timeout, callback);
 			} else {
