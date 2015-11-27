@@ -37,7 +37,7 @@ import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final Exception CLOSED_CONNECTION = new IOException("Connection is closed");
-	private static final HttpHeaderValue CONNECTION_KEEP_ALIVE = HttpHeader.asBytes(CONNECTION, "keep-alive");
+	private static final HttpHeader.Value CONNECTION_KEEP_ALIVE = HttpHeader.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
 	private AsyncCancellable cancellable;

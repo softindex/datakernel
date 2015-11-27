@@ -21,12 +21,15 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.net.InetAddresses;
 import io.datakernel.annotation.Nullable;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.util.ByteBufStrings;
 
 import java.io.UnsupportedEncodingException;
 import java.net.HttpCookie;
 import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -36,6 +39,36 @@ import static com.google.common.base.Strings.isNullOrEmpty;
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
+	public static class Pair<E> {
+		private E value;
+		private double quot;
+
+		public Pair(E value) {
+			this.value = value;
+		}
+
+		public Pair(E value, double quot) {
+			this.value = value;
+			this.quot = quot;
+		}
+
+		public E getValue() {
+			return value;
+		}
+
+		public void setValue(E value) {
+			this.value = value;
+		}
+
+		public double getQuot() {
+			return quot;
+		}
+
+		public void setQuot(double quot) {
+			this.quot = quot;
+		}
+	}
+
 	private static final Splitter splitCookies = Splitter.on("; ");
 	private static final Splitter splitComma = Splitter.on(',').trimResults();
 	private static final Splitter querySplitter = Splitter.on('&');

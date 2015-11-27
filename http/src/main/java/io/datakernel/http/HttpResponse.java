@@ -19,9 +19,13 @@ package io.datakernel.http;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.util.ByteBufStrings;
 
-import java.net.HttpCookie;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
+import java.util.List;
 
 import static io.datakernel.http.HttpHeader.*;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -33,178 +37,24 @@ import static io.datakernel.util.ByteBufStrings.putDecimal;
  * not use it later.
  */
 public final class HttpResponse extends HttpMessage {
-
 	private final int code;
-
-	private HttpResponse() {
-		this(200);
-	}
 
 	private HttpResponse(int code) {
 		this.code = code;
 	}
 
-	/**
-	 * Creates a new HttpResponse with result code from argument
-	 *
-	 * @param code the code for new HttpResponse
-	 * @return the new HttpResponse
-	 */
 	public static HttpResponse create(int code) {
 		assert code >= 100 && code < 600;
 		return new HttpResponse(code);
 	}
 
-	/**
-	 * Returns HttpResponse with contains status 200
-	 *
-	 * @return new HttpResponse
-	 */
 	public static HttpResponse create() {
-		return new HttpResponse();
+		return new HttpResponse(200);
 	}
 
-	/**
-	 * Returns HttpResponse with contains status 302 and the URL for redirecting
-	 *
-	 * @param url the URL for redirecting
-	 * @return new HttpResponse
-	 */
 	public static HttpResponse redirect302(String url) {
 		return create(302)
 				.header(HttpHeader.LOCATION, url);
-	}
-
-	// common builder methods
-
-	/**
-	 * Sets the header for this HttpResponse
-	 *
-	 * @param value value of header
-	 * @return this HttpResponse
-	 */
-	public HttpResponse header(HttpHeaderValue value) {
-		assert !recycled;
-		setHeader(value);
-		return this;
-	}
-
-	/**
-	 * Sets the header with value as ByteBuf for this HttpResponse
-	 *
-	 * @param header header for this HttpResponse
-	 * @param value  value o this header
-	 * @return this HttpResponse
-	 */
-	public HttpResponse header(HttpHeader header, ByteBuf value) {
-		assert !recycled;
-		setHeader(header, value);
-		return this;
-	}
-
-	/**
-	 * Sets the header as array of bytes for this HttpResponse
-	 *
-	 * @param header header for this HttpResponse
-	 * @param value  value of header
-	 * @return this HttpResponse
-	 */
-	public HttpResponse header(HttpHeader header, byte[] value) {
-		assert !recycled;
-		setHeader(header, value);
-		return this;
-	}
-
-	/**
-	 * Sets the header as string for this HttpResponse
-	 *
-	 * @param header header for this HttpResponse
-	 * @param value  value of header
-	 * @return this HttpResponse
-	 */
-	public HttpResponse header(HttpHeader header, String value) {
-		assert !recycled;
-		setHeader(header, value);
-		return this;
-	}
-
-	/**
-	 * Sets the collection of headers to this HttpResponse
-	 *
-	 * @param headers collection with headers and its values
-	 * @return this HttpResponse
-	 */
-	public HttpResponse headers(Collection<HttpHeaderValue> headers) {
-		assert !recycled;
-		setHeaders(headers);
-		return this;
-	}
-
-	/**
-	 * Sets the body to this HttpResponse as ByteBuf
-	 *
-	 * @param body new body
-	 * @return this HttpResponse
-	 */
-	public HttpResponse body(ByteBuf body) {
-		assert !recycled;
-		setBody(body);
-		return this;
-	}
-
-	/**
-	 * Sets the body for this HttpResult as byte array
-	 *
-	 * @param array the new body
-	 * @return this HttpResponse
-	 */
-	public HttpResponse body(byte[] array) {
-		assert !recycled;
-		return body(ByteBuf.wrap(array));
-	}
-
-	/**
-	 * Sets header CONTENT_TYPE
-	 *
-	 * @param contentType value of header
-	 * @return this HttpResponse
-	 */
-	public HttpResponse contentType(String contentType) {
-		assert !recycled;
-		setHeader(CONTENT_TYPE, contentType);
-		return this;
-	}
-
-	// specific builder methods
-
-	private static final HttpHeaderValue CACHE_CONTROL__NO_STORE = HttpHeader.asBytes(CACHE_CONTROL, "no-store");
-	private static final HttpHeaderValue PRAGMA__NO_CACHE = HttpHeader.asBytes(PRAGMA, "no-cache");
-	private static final HttpHeaderValue AGE__0 = HttpHeader.asBytes(AGE, "0");
-
-	/**
-	 * Sets the headers that means that it is no cache
-	 *
-	 * @return this HttpResponse
-	 */
-	public HttpResponse noCache() {
-		assert !recycled;
-		setHeader(CACHE_CONTROL__NO_STORE);
-		setHeader(PRAGMA__NO_CACHE);
-		setHeader(AGE__0);
-		return this;
-	}
-
-	/**
-	 * Adds the header SET_COOKIE
-	 *
-	 * @param cookie cookie for setting
-	 * @return this HttpResponse
-	 */
-	public HttpResponse cookie(HttpCookie cookie) {
-		assert !recycled;
-		String s = HttpUtils.cookieToServerString(cookie);
-		addHeader(HttpHeader.SET_COOKIE, s);
-		return this;
 	}
 
 	public static HttpResponse notFound404() {
@@ -215,28 +65,182 @@ public final class HttpResponse extends HttpMessage {
 		return create(500);
 	}
 
-	/**
-	 * Adds the header SET_COOKIE
-	 *
-	 * @param cookies collection with cookies for setting
-	 * @return this HttpResponse
-	 */
+	// common builder methods
+	public HttpResponse header(HttpHeader header, ByteBuf value) {
+		assert !recycled;
+		setHeader(header, value);
+		return this;
+	}
+
+	public HttpResponse header(HttpHeader header, byte[] value) {
+		assert !recycled;
+		setHeader(header, value);
+		return this;
+	}
+
+	public HttpResponse header(HttpHeader header, String value) {
+		assert !recycled;
+		setHeader(header, value);
+		return this;
+	}
+
+	public HttpResponse body(ByteBuf body) {
+		assert !recycled;
+		setBody(body);
+		return this;
+	}
+
+	public HttpResponse body(byte[] array) {
+		assert !recycled;
+		return body(ByteBuf.wrap(array));
+	}
+
+	// specific builder methods
+	private static final Value CACHE_CONTROL__NO_STORE = HttpHeader.asBytes(CACHE_CONTROL, "no-store");
+	private static final Value PRAGMA__NO_CACHE = HttpHeader.asBytes(PRAGMA, "no-cache");
+	private static final Value AGE__0 = HttpHeader.asBytes(AGE, "0");
+
+	public HttpResponse noCache() {
+		assert !recycled;
+		setHeader(CACHE_CONTROL__NO_STORE);
+		setHeader(PRAGMA__NO_CACHE);
+		setHeader(AGE__0);
+		return this;
+	}
+
+	public HttpResponse setAge(int value) {
+		assert !recycled;
+		setHeader(HttpHeader.AGE, value);
+		return this;
+	}
+
+	public HttpResponse setContentLength(int value) {
+		assert !recycled;
+		setHeader(HttpHeader.CONTENT_LENGTH, value);
+		return this;
+	}
+
+	public HttpResponse setContentType(ContentType contentType) {
+		assert !recycled;
+		addContentTypeHeader(CONTENT_TYPE, contentType);
+		return this;
+	}
+
+	public HttpResponse setContentTypes(List<ContentType> contentTypes) {
+		assert !recycled;
+		addContentTypeHeader(CONTENT_TYPE, contentTypes);
+		return this;
+	}
+
+	public HttpResponse setDate(Date value) {
+		assert !recycled;
+		setHeader(HttpHeader.DATE, value);
+		return this;
+	}
+
+	public HttpResponse setExpires(Date value) {
+		assert !recycled;
+		setHeader(HttpHeader.EXPIRES, value);
+		return this;
+	}
+
+	public HttpResponse setLastModified(Date value) {
+		assert !recycled;
+		setHeader(HttpHeader.LAST_MODIFIED, value);
+		return this;
+	}
+
+	public HttpResponse cookie(HttpCookie cookie) {
+		assert !recycled;
+		addCookieHeader(HttpHeader.SET_COOKIE, cookie);
+		return this;
+	}
+
 	public HttpResponse cookie(Collection<HttpCookie> cookies) {
 		assert !recycled;
 		for (HttpCookie cookie : cookies) {
-			String s = HttpUtils.cookieToServerString(cookie);
-			addHeader(HttpHeader.SET_COOKIE, s);
+			addCookieHeader(HttpHeader.SET_COOKIE, cookie);
 		}
 		return this;
 	}
 
 	// getters
-
 	public int getCode() {
 		assert !recycled;
 		return code;
 	}
 
+	public int getAge() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.AGE);
+		if (value == null || value.equals("")) {
+			return -1;
+		}
+		return ByteBufStrings.decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
+	}
+
+	public int getContentLength() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.CONTENT_LENGTH);
+		if (value == null || value.equals("")) {
+			return -1;
+		}
+		return ByteBufStrings.decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
+	}
+
+	public List<ContentType> getContentTypes() {
+		assert !recycled;
+		String value = concatResults(CONTENT_TYPE);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		List<ContentType> cts = new ArrayList<>();
+		ContentType.parse(value, cts);
+		return cts;
+	}
+
+	public Date getDate() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.DATE);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+		return new Date(timestamp);
+	}
+
+	public Date getExpires() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.EXPIRES);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+		return new Date(timestamp);
+	}
+
+	public Date getLastModified() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.LAST_MODIFIED);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+		return new Date(timestamp);
+	}
+
+	public List<HttpCookie> getCookies() {
+		assert !recycled;
+		String value = concatResults(SET_COOKIE);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		List<HttpCookie> cookie = new ArrayList<>();
+		HttpCookie.parse(value, cookie);
+		return cookie;
+	}
+
+	// internal
 	private static final byte[] HTTP11_BYTES = encodeAscii("HTTP/1.1 ");
 	private static final byte[] CODE_ERROR_BYTES = encodeAscii(" Error");
 	private static final byte[] CODE_OK_BYTES = encodeAscii(" OK");
@@ -331,5 +335,4 @@ public final class HttpResponse extends HttpMessage {
 	public String toString() {
 		return HttpResponse.class.getSimpleName() + ": " + code;
 	}
-
 }

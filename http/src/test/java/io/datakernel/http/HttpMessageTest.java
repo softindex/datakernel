@@ -22,8 +22,6 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
-import java.net.HttpCookie;
-
 import static io.datakernel.http.HttpHeader.headerOfString;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -53,11 +51,11 @@ public class HttpMessageTest {
 				"The server encountered an internal error and was unable to complete your request.", HttpResponse.create(500));
 		assertHttpResponseEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
 				"Error 502", HttpResponse.create(502).body("Error 502".getBytes(Charsets.UTF_8)));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1;Path=/\r\nContent-Length: 0\r\n\r\n",
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"; Path=/\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.create(200).cookie(new HttpCookie("cookie1", "value1")));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1;Path=/\r\nSet-Cookie: cookie2=value2;Path=/\r\nContent-Length: 0\r\n\r\n",
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"; Path=/\r\nSet-Cookie: cookie2=\"value2\"; Path=/\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.create(200).cookie(new HttpCookie("cookie1", "value1")).cookie(new HttpCookie("cookie2", "value2")));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=value1;Path=/\r\nSet-Cookie: cookie2=value2;Path=/\r\nContent-Length: 0\r\n\r\n",
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"; Path=/\r\nSet-Cookie: cookie2=\"value2\"; Path=/\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.create(200).cookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 	}
 

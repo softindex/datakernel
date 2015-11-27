@@ -42,7 +42,7 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final Logger logger = LoggerFactory.getLogger(HttpServerConnection.class);
 	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
-	private static final HttpHeaderValue CONNECTION_KEEP_ALIVE = HttpHeader.asBytes(CONNECTION, "keep-alive");
+	private static final HttpHeader.Value CONNECTION_KEEP_ALIVE = HttpHeader.asBytes(CONNECTION, "keep-alive");
 
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;
@@ -176,7 +176,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving every request. It handles it,
 	 * using servlet and sends a response back to the client.
-	 * <p/>
+	 * <p>
 	 * After sending a response, request and response will be recycled and you can not use it twice.
 	 *
 	 * @param bodyBuf the received message

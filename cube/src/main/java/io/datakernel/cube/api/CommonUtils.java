@@ -16,7 +16,6 @@
 
 package io.datakernel.cube.api;
 
-import com.google.common.net.MediaType;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationException;
@@ -25,6 +24,7 @@ import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpHeader;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.stream.StreamConsumers;
@@ -60,7 +60,7 @@ class CommonUtils {
 
 	public static HttpResponse createResponse(String body) {
 		return HttpResponse.create()
-				.contentType(MediaType.HTML_UTF_8.toString())
+				.setContentType(ContentType.HTML)
 				.body(wrapUTF8(body))
 				.header(HttpHeader.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 	}

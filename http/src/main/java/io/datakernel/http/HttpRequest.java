@@ -18,15 +18,14 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.util.ByteBufStrings;
 
-import java.net.HttpCookie;
 import java.net.InetAddress;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.charset.Charset;
+import java.util.*;
 
 import static com.google.common.base.Strings.nullToEmpty;
-import static io.datakernel.http.HttpHeader.CONTENT_LENGTH;
+import static io.datakernel.http.HttpHeader.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.util.ByteBufStrings.*;
 
@@ -36,174 +35,133 @@ import static io.datakernel.util.ByteBufStrings.*;
  * use it later.
  */
 public final class HttpRequest extends HttpMessage {
-
 	private final HttpMethod method;
-
 	private HttpUri url;
-
 	private InetAddress remoteAddress;
-
 	private Map<String, String> urlParameters;
-
 	private int pos;
 
 	private HttpRequest(HttpMethod method) {
 		this.method = method;
 	}
 
-	/**
-	 * Return the new HttpRequest with {@link HttpMethod}.
-	 *
-	 * @param method method for request
-	 * @return the  new HttpRequest with request method.
-	 */
 	public static HttpRequest create(HttpMethod method) {
 		assert method != null;
 		return new HttpRequest(method);
 	}
 
-	/**
-	 * Creates the new HttpRequest with method get and URL from argument
-	 *
-	 * @param url URL for new HttpRequest
-	 * @return the  new HttpRequest
-	 */
 	public static HttpRequest get(String url) {
 		return create(GET).url(url);
 	}
 
-	/**
-	 * Creates the new HttpRequest with method post and URL from argument
-	 *
-	 * @param url URL for new HttpRequest
-	 * @return the  new HttpRequest
-	 */
 	public static HttpRequest post(String url) {
 		return create(HttpMethod.POST).url(url);
 	}
 
 	// common builder methods
-
-	/**
-	 * Sets the header for this HttpRequest
-	 *
-	 * @param value value of header
-	 * @return this HttpRequest
-	 */
-	public HttpRequest header(HttpHeaderValue value) {
-		assert !recycled;
-		setHeader(value);
-		return this;
-	}
-
-	/**
-	 * Adds the header with value as ByteBuf for this HttpRequest
-	 *
-	 * @param header header for this HttpRequest
-	 * @param value  value of this header
-	 * @return this HttpRequest
-	 */
 	public HttpRequest header(HttpHeader header, ByteBuf value) {
 		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
-	/**
-	 * Adds the header with value as array of bytes for this HttpRequest
-	 *
-	 * @param header header for this HttpRequest
-	 * @param value  value of this header
-	 * @return this HttpRequest
-	 */
 	public HttpRequest header(HttpHeader header, byte[] value) {
 		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
-	/**
-	 * Adds the header with value as string for this HttpRequest
-	 *
-	 * @param header header for this HttpRequest
-	 * @param value  value of this header
-	 * @return this HttpRequest
-	 */
 	public HttpRequest header(HttpHeader header, String value) {
 		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
-	/**
-	 * Adds the collection of headers to this HttpRequest
-	 *
-	 * @param headers collection with headers and its values
-	 * @return this HttpRequest
-	 */
-	public HttpRequest headers(Collection<HttpHeaderValue> headers) {
-		assert !recycled;
-		setHeaders(headers);
-		return this;
-	}
-
-	/**
-	 * Sets the body to this HttpRequest as ByteBuf
-	 *
-	 * @param body new body
-	 * @return this HttpRequest
-	 */
 	public HttpRequest body(ByteBuf body) {
 		assert !recycled;
 		setBody(body);
 		return this;
 	}
 
-	/**
-	 * Sets the header CONTENT_TYPE
-	 *
-	 * @param contentType value of header CONTENT_TYPE
-	 * @return this HttpRequest
-	 */
-	public HttpRequest contentType(String contentType) {
+	// specific builder methods
+	public HttpRequest setAccept(List<ContentType> value) {
 		assert !recycled;
-		setHeader(HttpHeader.CONTENT_TYPE, contentType);
+		addContentTypeHeader(HttpHeader.ACCEPT, value);
 		return this;
 	}
 
-	// specific builder methods
+	public HttpRequest setAccept(ContentType value) {
+		assert !recycled;
+		addContentTypeHeader(HttpHeader.ACCEPT, value);
+		return this;
+	}
 
-	/**
-	 * Adds the header COOKIE
-	 *
-	 * @param cookie value of header COOKIE
-	 * @return this HttpRequest
-	 */
+	public HttpRequest setContentType(List<ContentType> value) {
+		assert !recycled;
+		addContentTypeHeader(HttpHeader.CONTENT_TYPE, value);
+		return this;
+	}
+
+	public HttpRequest setContentType(ContentType value) {
+		assert !recycled;
+		addContentTypeHeader(HttpHeader.CONTENT_TYPE, value);
+		return this;
+	}
+
+	public HttpRequest setAcceptCharsetPairs(List<HttpUtils.Pair<Charset>> values) {
+		assert !recycled;
+		addCharsetHeader(HttpHeader.ACCEPT_CHARSET, values);
+		return this;
+	}
+
+	public HttpRequest setAcceptCharsets(List<Charset> values) {
+		assert !recycled;
+		addCharsetRawHeader(HttpHeader.ACCEPT_CHARSET, values);
+		return this;
+	}
+
+	public HttpRequest setAcceptCharset(Charset value) {
+		assert !recycled;
+		addCharsetHeader(HttpHeader.ACCEPT_CHARSET, value);
+		return this;
+	}
+
+	public HttpRequest setContentLength(int value) {
+		assert !recycled;
+		setHeader(HttpHeader.CONTENT_LENGTH, value);
+		return this;
+	}
+
+	public HttpRequest setDate(Date value) {
+		assert !recycled;
+		setHeader(HttpHeader.DATE, value);
+		return this;
+	}
+
+	public HttpRequest setIfModifiedSince(Date value) {
+		assert !recycled;
+		setHeader(HttpHeader.IF_MODIFIED_SINCE, value);
+		return this;
+	}
+
+	public HttpRequest setIfUnModifiedSince(Date value) {
+		assert !recycled;
+		setHeader(HttpHeader.IF_UNMODIFIED_SINCE, value);
+		return this;
+	}
+
 	public HttpRequest cookie(HttpCookie cookie) {
 		assert !recycled;
-		addHeader(HttpHeader.COOKIE, cookie.toString());
+		addCookieHeader(COOKIE, Collections.singletonList(cookie));
 		return this;
 	}
 
-	/**
-	 * Adds the header COOKIE
-	 *
-	 * @param cookies collection with cookies for setting
-	 * @return this HttpResponse
-	 */
-	public HttpRequest cookie(Collection<HttpCookie> cookies) {
+	public HttpRequest cookie(List<HttpCookie> cookies) {
 		assert !recycled;
-		String s = HttpUtils.cookiesToString(cookies);
-		addHeader(HttpHeader.COOKIE, s);
+		addCookieHeader(COOKIE, cookies);
 		return this;
 	}
 
-	/**
-	 * Sets URL for this HttpRequest
-	 *
-	 * @param url new URL
-	 * @return this HttpRequest
-	 */
 	public HttpRequest url(HttpUri url) {
 		assert !recycled;
 		this.url = url;
@@ -213,25 +171,9 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	/**
-	 * Sets the  URL as string for this HttpRequest
-	 *
-	 * @param url new URL
-	 * @return this HttpRequest
-	 */
 	public HttpRequest url(String url) {
 		assert !recycled;
 		return url(HttpUri.ofUrl(url));
-	}
-
-	/**
-	 * Gets parameters form URL of this HttpRequest
-	 *
-	 * @return collections with parameters
-	 */
-	public Map<String, String> getParameters() {
-		assert !recycled;
-		return url.getParameters();
 	}
 
 	public HttpRequest remoteAddress(InetAddress inetAddress) {
@@ -241,6 +183,91 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	// getters
+	public List<HttpCookie> getCookies() {
+		assert !recycled;
+		String value = concatResults(COOKIE);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		List<HttpCookie> cookie = new ArrayList<>();
+		HttpCookie.parse(value, cookie);
+		return cookie;
+	}
+
+	public List<HttpUtils.Pair<Charset>> getAcceptPairCharsets() {
+		assert !recycled;
+		String value = concatResults(ACCEPT_CHARSET);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		List<HttpUtils.Pair<Charset>> charsets = new ArrayList<>();
+		CharsetUtils.parse(encodeAscii(value), 0, value.length(), charsets);
+		return charsets;
+	}
+
+	public List<Charset> getAcceptCharsets() {
+		assert !recycled;
+		String value = concatResults(ACCEPT_CHARSET);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		return CharsetUtils.parse(value);
+	}
+
+	public int getContentLength() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.CONTENT_LENGTH);
+		return ByteBufStrings.decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
+	}
+
+	public List<ContentType> getContentType() {
+		assert !recycled;
+		String value = concatResults(CONTENT_TYPE);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		List<ContentType> cts = new ArrayList<>();
+		ContentType.parse(value, cts);
+		return cts;
+	}
+
+	public List<ContentType> getAccept() {
+		assert !recycled;
+		String value = concatResults(ACCEPT);
+		if (value == null || value.equals("")) {
+			return null;
+		}
+		List<ContentType> cts = new ArrayList<>();
+		ContentType.parse(value, cts);
+		return cts;
+	}
+
+	public Date getDate() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.DATE);
+		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+		return new Date(timestamp);
+	}
+
+	public Date getIfModifiedSince() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.IF_MODIFIED_SINCE);
+		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+		return new Date(timestamp);
+	}
+
+	public Date getIfUnModifiedSince() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.IF_UNMODIFIED_SINCE);
+		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+		return new Date(timestamp);
+	}
+
+	// internal
+	public Map<String, String> getParameters() {
+		assert !recycled;
+		return url.getParameters();
+	}
 
 	int getPos() {
 		return pos;
@@ -329,7 +356,7 @@ public final class HttpRequest extends HttpMessage {
 	public ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
-			setHeader(HttpHeader.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+			setHeader(HttpHeader.ofDecimal(HttpHeader.CONTENT_LENGTH, body == null ? 0 : body.remaining()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE
@@ -356,5 +383,4 @@ public final class HttpRequest extends HttpMessage {
 			return host;
 		return host + url.getPathAndQuery();
 	}
-
 }

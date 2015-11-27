@@ -33,7 +33,7 @@ public class StaticServletExample {
 
 		NioEventloop eventloop = new NioEventloop();
 
-		main.use(URL, new StaticServlet(FILE_PATH, eventloop, newCachedThreadPool()));
+		main.setDefault(URL, new StaticServlet(FILE_PATH, eventloop, newCachedThreadPool()));
 
 		AsyncHttpServer staticFileServer = new AsyncHttpServer(eventloop, main);
 
@@ -41,8 +41,7 @@ public class StaticServletExample {
 
 		staticFileServer.listen();
 
+		System.out.println("Check http://localhost:5555/static/hello.html in your browser");
 		eventloop.run();
-
-		// Check localhost:5555/static/hello.html in your browser
 	}
 }

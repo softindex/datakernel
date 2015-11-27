@@ -31,9 +31,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
-import static com.google.common.io.Files.getFileExtension;
-import static io.datakernel.http.ContentTypes.extensionContentType;
-import static io.datakernel.http.HttpHeader.*;
 import static java.nio.file.StandardOpenOption.READ;
 
 public class StaticServlet implements AsyncHttpServlet {
@@ -60,11 +57,12 @@ public class StaticServlet implements AsyncHttpServlet {
 						file.readFully(new ResultCallback<ByteBuf>() {
 							@Override
 							public void onResult(ByteBuf byteBuf) {
-								HttpResponse response = HttpResponse.create();
-								response.header(ofDecimal(CONTENT_LENGTH, byteBuf.limit()));
-								byte[] contentType = getContentType(urlTrail);
-								if (contentType != null) {
-									response.header(CONTENT_TYPE, contentType);
+								HttpResponse response = HttpResponse.create()
+										.setContentLength(byteBuf.limit());
+
+								ContentType type = ContentType.getByExt(urlTrail);
+								if (type != null) {
+									response.setContentType(type);
 								}
 								response.body(byteBuf);
 								callback.onResult(response);
@@ -88,14 +86,8 @@ public class StaticServlet implements AsyncHttpServlet {
 			}
 		} catch (FileNotFoundException f) {
 			callback.onResult(HttpResponse.create(404).body(ByteBufStrings.wrapUTF8(f.getMessage())));
-		} catch (Exception exception) {
-			callback.onException(exception);
+		} catch (Exception e) {
+			callback.onException(e);
 		}
 	}
-
-	private static byte[] getContentType(String path) {
-		String fileExtension = getFileExtension(path);
-		return extensionContentType.get(fileExtension);
-	}
-
 }

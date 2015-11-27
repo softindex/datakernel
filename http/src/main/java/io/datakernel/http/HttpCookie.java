@@ -16,119 +16,62 @@
 
 package io.datakernel.http;
 
-import io.datakernel.util.ByteBufStrings;
+import io.datakernel.bytebuf.ByteBuf;
 
-import java.nio.charset.Charset;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
 
-public class HttpCookie {
-	private abstract static class CookieHandler {
+import static io.datakernel.util.ByteBufStrings.*;
+
+// RFC 6265
+public final class HttpCookie {
+	private abstract static class AvHandler {
 		protected abstract void handle(HttpCookie cookie, byte[] bytes, int start, int end);
 	}
 
-	private static final Charset ISO = Charset.forName("ISO-8859-1");
-
-	private static final byte[] EXPIRES = "expires".getBytes(ISO);
-	private static final byte[] MAX_AGE = "max-age".getBytes(ISO);
-	private static final byte[] DOMAIN = "domain".getBytes(ISO);
-	private static final byte[] PATH = "path".getBytes(ISO);
-	private static final byte[] HTTPONLY = "httponly".getBytes(ISO);
-	private static final byte[] SECURE = "secure".getBytes(ISO);
-
-	private static Map<Integer, CookieHandler> handlers = new HashMap<>();
-
-	static {
-		handlers.put(hash(EXPIRES), new CookieHandler() {
-			@Override
-			protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-				// TODO
-				System.out.println(new String(bytes, start, end - start));
-				cookie.setExpirationDate(new Date());
-			}
-		});
-
-		handlers.put(hash(MAX_AGE), new CookieHandler() {
-			@Override
-			protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-				System.out.println(new String(bytes, start, end - start));
-				cookie.setMaxAge(ByteBufStrings.decodeDecimal(bytes, start, end - start));
-			}
-		});
-
-		handlers.put(hash(DOMAIN), new CookieHandler() {
-			@Override
-			protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-				System.out.println(new String(bytes, start, end - start));
-				cookie.setDomain(new String(bytes, start, end - start));
-			}
-		});
-
-		handlers.put(hash(PATH), new CookieHandler() {
-			@Override
-			protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-				System.out.println(new String(bytes, start, end - start));
-				cookie.setPath(new String(bytes, start, end - start));
-			}
-		});
-
-		handlers.put(hash(HTTPONLY), new CookieHandler() {
-			@Override
-			protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-				System.out.println(new String(bytes, start, end - start));
-				cookie.setHttpOnly(true);
-			}
-		});
-
-		handlers.put(hash(SECURE), new CookieHandler() {
-			@Override
-			protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
-				System.out.println(new String(bytes, start, end - start));
-				cookie.setSecure(true);
-			}
-		});
-	}
-
-	public static int hash(byte[] bytes, int start, int end) {
-		int hash = 0;
-		for (int i = start; i < end; i++) {
-			byte value = bytes[i];
-			if (value > 64 && value < 91) {
-				value = (byte) (value + ('A' - 'a'));
-			}
-			hash += 31 * hash + value;
-		}
-		return hash;
-	}
-
-	private static int hash(byte[] bytes) {
-		return hash(bytes, 0, bytes.length);
-	}
+	private static final byte[] EXPIRES = encodeAscii("Expires"); // hc = 433574931
+	private static final byte[] MAX_AGE = encodeAscii("Max-Age"); // hc = -1709216267
+	private static final byte[] DOMAIN = encodeAscii("Domain"); // hc = -438693883
+	private static final byte[] PATH = encodeAscii("Path"); // hc = 4357030
+	private static final byte[] HTTPONLY = encodeAscii("HttpOnly"); //hc = -18770248
+	private static final byte[] SECURE = encodeAscii("Secure"); // hc = -1939729611
 
 	private final String name;
-	private final String value;
+	private String value;
 	private Date expirationDate;
 	private int maxAge;
 	private String domain;
-	private String path;
+	private String path = "/";
 	private boolean secure;
 	private boolean httpOnly;
 	private String extension;
 
-	public static List<HttpCookie> parse(String cookieString) {
-		List<HttpCookie> cookies = new ArrayList<>();
-		byte[] bytes = cookieString.getBytes(ISO);
-		parse(cookies, bytes);
-		return cookies;
+	// constructors & creators
+	public HttpCookie(String name, String value) {
+		this.name = name;
+		this.value = value;
 	}
 
-	private static void parse(List<HttpCookie> cookies, byte[] bytes) {
-		int pos = 0;
+	public HttpCookie(String name) {
+		this.name = name;
+	}
+
+	static void parse(String cookieString, List<HttpCookie> cookies) {
+		byte[] bytes = encodeAscii(cookieString);
+		parse(bytes, 0, bytes.length, cookies);
+	}
+
+	static void parse(ByteBuf buf, List<HttpCookie> cookies) {
+		parse(buf.array(), buf.position(), buf.limit(), cookies);
+	}
+
+	static void parse(byte[] bytes, int start, int end, List<HttpCookie> cookies) {
+		int pos = start;
 		HttpCookie cookie = new HttpCookie("", "");
-		while (pos < bytes.length) {
+
+		while (pos < end) {
 			int keyStart = pos;
-			while (bytes[pos] != ';') {
+			while (pos < end && bytes[pos] != ';') {
 				pos++;
 			}
 			int valueEnd = pos;
@@ -139,83 +82,167 @@ public class HttpCookie {
 					break;
 				}
 			}
-
-			String kkey;
-			String vvalue;
-
-			if (equalSign != -1) {
-				kkey = new String(bytes, keyStart, equalSign - keyStart, ISO);
-				vvalue = new String(bytes, equalSign + 1, valueEnd - equalSign - 1, ISO);
-			} else {
-				kkey = "";
-				vvalue = new String(bytes, keyStart, valueEnd - keyStart, ISO);
-			}
-
-			//hash(MAX_AGE, 0, MAX_AGE.length)
-
-			CookieHandler handler = handlers.get(hash(bytes, keyStart, equalSign == -1 ? valueEnd : equalSign));
+			AvHandler handler = getCookieHandler(hashCodeLowerCaseAscii
+					(bytes, keyStart, (equalSign == -1 ? valueEnd : equalSign) - keyStart));
 			if (equalSign == -1 && handler == null) {
-				cookie.setExtension(new String(bytes, keyStart, valueEnd - keyStart, ISO));
+				cookie.setExtension(decodeAscii(bytes, keyStart, valueEnd - keyStart));
 			} else if (handler == null) {
-				String key = new String(bytes, keyStart, equalSign - keyStart, ISO);
-				String value = new String(bytes, equalSign + 1, valueEnd - equalSign - 1, ISO);
+				String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
+				String value;
+				if (bytes[equalSign + 1] == '\"' && bytes[valueEnd - 1] == '\"') {
+					value = decodeAscii(bytes, equalSign + 2, valueEnd - equalSign - 3);
+				} else {
+					value = decodeAscii(bytes, equalSign + 1, valueEnd - equalSign - 1);
+				}
 				cookie = new HttpCookie(key, value);
 				cookies.add(cookie);
 			} else {
 				handler.handle(cookie, bytes, equalSign + 1, valueEnd);
 			}
-
 			pos = valueEnd + 2;
 		}
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		sb.append(name).append("=").append(value).append("; ");
-		if (expirationDate != null) {
-			renderExpirationDate(sb);
+	static void render(List<HttpCookie> cookies, ByteBuf buf) {
+		int pos = render(cookies, buf.array(), buf.position());
+		buf.position(pos);
+	}
+
+	static int render(List<HttpCookie> cookies, byte[] bytes, int pos) {
+		for (int i = 0; i < cookies.size(); i++) {
+			HttpCookie cookie = cookies.get(i);
+			encodeAscii(bytes, pos, cookie.name);
+			pos += cookie.name.length();
+
+			if (cookie.value != null) {
+				encodeAscii(bytes, pos, "=\"");
+				pos += 2;
+				encodeAscii(bytes, pos, cookie.value);
+				pos += cookie.value.length();
+				encodeAscii(bytes, pos, "\"");
+				pos += 1;
+			}
+
+			if (i != cookies.size() - 1) {
+				encodeAscii(bytes, pos, "; ");
+				pos += 2;
+			}
 		}
-		if (maxAge != 0) {
-			sb.append("Max-Age=").append(maxAge).append("; ");
+		return pos;
+	}
+
+	void renderSingle(ByteBuf buf) {
+		putAscii(buf, name);
+		if (value != null) {
+			putAscii(buf, "=\"");
+			putAscii(buf, value);
+			putAscii(buf, "\"");
+		}
+		if (expirationDate != null) {
+			putAscii(buf, "; ");
+			buf.put(EXPIRES);
+			putAscii(buf, "=");
+			HttpDate.render(expirationDate.getTime(), buf);
+		}
+		if (maxAge > 0) {
+			putAscii(buf, "; ");
+			buf.put(MAX_AGE);
+			putAscii(buf, "=");
+			putDecimal(buf, maxAge);
 		}
 		if (domain != null) {
-			sb.append("Domain=").append(domain).append("; ");
+			putAscii(buf, "; ");
+			buf.put(DOMAIN);
+			putAscii(buf, "=");
+			putAscii(buf, domain);
 		}
 		if (path != null) {
-			sb.append("Path=").append(path).append("; ");
+			putAscii(buf, "; ");
+			buf.put(PATH);
+			putAscii(buf, "=");
+			putAscii(buf, path);
 		}
 		if (secure) {
-			sb.append("Secure; ");
+			putAscii(buf, "; ");
+			buf.put(SECURE);
 		}
 		if (httpOnly) {
-			sb.append("HttpOnly; ");
+			putAscii(buf, "; ");
+			buf.put(HTTPONLY);
 		}
 		if (extension != null) {
-			sb.append(extension).append("; ");
+			putAscii(buf, "; \"");
+			putAscii(buf, extension);
+			putAscii(buf, "\"");
 		}
-		return sb.toString();
 	}
 
-	private void renderExpirationDate(StringBuilder sb) {
-		DateFormat df = new SimpleDateFormat("EEE, dd-MMM-yyyy HH:mm:ss zzz");
-		df.setTimeZone(TimeZone.getTimeZone("GMT"));
-		String cookieExpire = df.format(expirationDate);
-		sb.append("Expires=").append(cookieExpire).append("; ");
+	private static AvHandler getCookieHandler(int hash) {
+		switch (hash) {
+			case (433574931):
+				return new AvHandler() {
+					@Override
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
+						cookie.setExpirationDate(parseExpirationDate(bytes, start, end));
+					}
+				};
+			case (-1709216267):
+				return new AvHandler() {
+					@Override
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
+						cookie.setMaxAge(decodeDecimal(bytes, start, end - start));
+					}
+				};
+			case (-438693883):
+				return new AvHandler() {
+					@Override
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
+						cookie.setDomain(decodeAscii(bytes, start, end - start));
+					}
+				};
+			case (4357030):
+				return new AvHandler() {
+					@Override
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
+						cookie.setPath(decodeAscii(bytes, start, end - start));
+					}
+				};
+			case (-18770248):
+				return new AvHandler() {
+					@Override
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
+						cookie.setSecure(true);
+					}
+				};
+			case (-1939729611):
+				return new AvHandler() {
+					@Override
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
+						cookie.setHttpOnly(true);
+					}
+				};
+
+		}
+		return null;
 	}
 
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	private static Date parseExpirationDate(byte[] bytes, int start, int end) {
+		assert end - start == 29;
+		long timestamp = HttpDate.parse(bytes, start);
+		return new Date(timestamp);
+	}
+
+	// accessors
 	public String getName() {
 		return name;
 	}
 
-	public HttpCookie(String name, String value) {
-		this.name = name;
-		this.value = value;
-	}
-
 	public String getValue() {
 		return value;
+	}
+
+	public void setValue(String value) {
+		this.value = value;
 	}
 
 	public Date getExpirationDate() {
