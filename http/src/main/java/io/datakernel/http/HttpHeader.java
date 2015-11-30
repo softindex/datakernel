@@ -286,7 +286,7 @@ public class HttpHeader {
 
 		@Override
 		public int estimateSize() {
-			return types.size() * 25;
+			return types.size() * ContentType.MAXIMUM_CT_LENGTH;
 		}
 
 		@Override

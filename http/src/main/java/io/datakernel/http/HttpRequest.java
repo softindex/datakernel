@@ -114,7 +114,7 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest setAcceptCharsets(List<Charset> values) {
+	public HttpRequest setAcceptCharset(List<Charset> values) {
 		assert !recycled;
 		addCharsetRawHeader(HttpHeader.ACCEPT_CHARSET, values);
 		return this;
@@ -190,7 +190,7 @@ public final class HttpRequest extends HttpMessage {
 			return null;
 		}
 		List<HttpCookie> cookie = new ArrayList<>();
-		HttpCookie.parse(value, cookie);
+		HttpCookie.parseSingle(value, cookie);
 		return cookie;
 	}
 
@@ -245,8 +245,11 @@ public final class HttpRequest extends HttpMessage {
 	public Date getDate() {
 		assert !recycled;
 		String value = getHeaderString(HttpHeader.DATE);
-		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-		return new Date(timestamp);
+		if (value != null) {
+			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+			return new Date(timestamp);
+		}
+		return null;
 	}
 
 	public Date getIfModifiedSince() {

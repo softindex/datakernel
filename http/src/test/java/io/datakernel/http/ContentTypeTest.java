@@ -37,7 +37,7 @@ public class ContentTypeTest {
 
 	@Test
 	public void testRender() throws Exception {
-		String expected = "text/plain, image/bmp, application/ogg";
+		String expected = "text/plain,image/bmp,application/ogg";
 		List<ContentType> types = Arrays.asList(ContentType.PLAIN_TEXT, ContentType.BMP, ContentType.OGG_APP);
 		ByteBuf buf = ByteBuf.allocate(expected.length());
 		ContentType.render(types, buf.array(), buf.position());

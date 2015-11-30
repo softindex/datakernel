@@ -21,15 +21,12 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.net.InetAddresses;
 import io.datakernel.annotation.Nullable;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
 
 import java.io.UnsupportedEncodingException;
 import java.net.HttpCookie;
 import java.net.InetAddress;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
@@ -78,6 +75,13 @@ public final class HttpUtils {
 		SimpleDateFormat df = new SimpleDateFormat("EEE',' dd MMM yyyy HH:mm:ss 'GMT'", Locale.US);
 		df.setTimeZone(TimeZone.getTimeZone("GMT"));
 		return df;
+	}
+
+	public static int skipSpaces(byte[] bytes, int pos, int end) {
+		while (pos < end && bytes[pos] == ' ') {
+			pos++;
+		}
+		return pos;
 	}
 
 	/**

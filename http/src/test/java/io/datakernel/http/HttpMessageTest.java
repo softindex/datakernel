@@ -52,11 +52,11 @@ public class HttpMessageTest {
 		assertHttpResponseEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
 				"Error 502", HttpResponse.create(502).body("Error 502".getBytes(Charsets.UTF_8)));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"; Path=/\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).cookie(new HttpCookie("cookie1", "value1")));
+				HttpResponse.create(200).setCookie(new HttpCookie("cookie1", "value1")));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"; Path=/\r\nSet-Cookie: cookie2=\"value2\"; Path=/\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).cookie(new HttpCookie("cookie1", "value1")).cookie(new HttpCookie("cookie2", "value2")));
+				HttpResponse.create(200).setCookie(new HttpCookie("cookie1", "value1")).setCookie(new HttpCookie("cookie2", "value2")));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"; Path=/\r\nSet-Cookie: cookie2=\"value2\"; Path=/\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).cookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+				HttpResponse.create(200).setCookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 	}
 
 	@Test

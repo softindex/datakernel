@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import java.util.Date;
 import java.util.List;
 
+import static io.datakernel.http.HttpUtils.skipSpaces;
 import static io.datakernel.util.ByteBufStrings.*;
 
 // RFC 6265
@@ -65,13 +66,12 @@ public final class HttpCookie {
 		parse(buf.array(), buf.position(), buf.limit(), cookies);
 	}
 
-	static void parse(byte[] bytes, int start, int end, List<HttpCookie> cookies) {
-		int pos = start;
+	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
 		HttpCookie cookie = new HttpCookie("", "");
-
 		while (pos < end) {
+			pos = skipSpaces(bytes, pos, end);
 			int keyStart = pos;
-			while (pos < end && bytes[pos] != ';') {
+			while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
 				pos++;
 			}
 			int valueEnd = pos;
@@ -99,7 +99,7 @@ public final class HttpCookie {
 			} else {
 				handler.handle(cookie, bytes, equalSign + 1, valueEnd);
 			}
-			pos = valueEnd + 2;
+			pos = valueEnd + 1;
 		}
 	}
 
@@ -131,13 +131,52 @@ public final class HttpCookie {
 		return pos;
 	}
 
+	static void parseSingle(String string, List<HttpCookie> cookies) {
+		byte[] bytes = encodeAscii(string);
+		parseSingle(bytes, 0, bytes.length, cookies);
+	}
+
+	static void parseSingle(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
+		while (pos < end) {
+			pos = skipSpaces(bytes, pos, end);
+			int keyStart = pos;
+			while (pos < end && bytes[pos] != ';') {
+				pos++;
+			}
+			int valueEnd = pos;
+			int equalSign = -1;
+			for (int i = keyStart; i < valueEnd; i++) {
+				if (bytes[i] == '=') {
+					equalSign = i;
+					break;
+				}
+			}
+
+			if (equalSign == -1) {
+				String key = decodeAscii(bytes, keyStart, valueEnd - keyStart);
+				cookies.add(new HttpCookie(key));
+			} else {
+				String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
+				String value;
+				if (bytes[equalSign + 1] == '\"' && bytes[valueEnd - 1] == '\"') {
+					value = decodeAscii(bytes, equalSign + 2, valueEnd - equalSign - 3);
+				} else {
+					value = decodeAscii(bytes, equalSign + 1, valueEnd - equalSign - 1);
+				}
+				cookies.add(new HttpCookie(key, value));
+			}
+
+			pos = valueEnd + 1;
+		}
+	}
+
 	void renderSingle(ByteBuf buf) {
 		putAscii(buf, name);
+		putAscii(buf, "=\"");
 		if (value != null) {
-			putAscii(buf, "=\"");
 			putAscii(buf, value);
-			putAscii(buf, "\"");
 		}
+		putAscii(buf, "\"");
 		if (expirationDate != null) {
 			putAscii(buf, "; ");
 			buf.put(EXPIRES);
@@ -227,9 +266,24 @@ public final class HttpCookie {
 	}
 
 	private static Date parseExpirationDate(byte[] bytes, int start, int end) {
-		assert end - start == 29;
+		assert end - start <= 29;
 		long timestamp = HttpDate.parse(bytes, start);
 		return new Date(timestamp);
+	}
+
+	@Override
+	public String toString() {
+		return "HttpCookie{" +
+				"name='" + name + '\'' +
+				", value='" + value + '\'' +
+				", expirationDate=" + expirationDate +
+				", maxAge=" + maxAge +
+				", domain='" + domain + '\'' +
+				", path='" + path + '\'' +
+				", secure=" + secure +
+				", httpOnly=" + httpOnly +
+				", extension='" + extension + '\'' +
+				'}';
 	}
 
 	// accessors

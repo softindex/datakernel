@@ -202,14 +202,10 @@ public abstract class HttpMessage {
 			String s = headers.get(i);
 			sb.append(s);
 			if (i != headers.size() - 1) {
-				sb.append(", ");
+				sb.append(",");
 			}
 		}
-		String value = sb.toString();
-		if (value.equals("")) {
-			return null;
-		}
-		return value;
+		return sb.toString();
 	}
 
 	/**

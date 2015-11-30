@@ -126,7 +126,7 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-	public HttpResponse setContentTypes(List<ContentType> contentTypes) {
+	public HttpResponse setContentType(List<ContentType> contentTypes) {
 		assert !recycled;
 		addContentTypeHeader(CONTENT_TYPE, contentTypes);
 		return this;
@@ -150,13 +150,13 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-	public HttpResponse cookie(HttpCookie cookie) {
+	public HttpResponse setCookie(HttpCookie cookie) {
 		assert !recycled;
 		addCookieHeader(HttpHeader.SET_COOKIE, cookie);
 		return this;
 	}
 
-	public HttpResponse cookie(Collection<HttpCookie> cookies) {
+	public HttpResponse setCookie(Collection<HttpCookie> cookies) {
 		assert !recycled;
 		for (HttpCookie cookie : cookies) {
 			addCookieHeader(HttpHeader.SET_COOKIE, cookie);
@@ -232,10 +232,10 @@ public final class HttpResponse extends HttpMessage {
 	public List<HttpCookie> getCookies() {
 		assert !recycled;
 		String value = concatResults(SET_COOKIE);
-		if (value == null || value.equals("")) {
-			return null;
-		}
 		List<HttpCookie> cookie = new ArrayList<>();
+		if (value == null || value.equals("")) {
+			return cookie;
+		}
 		HttpCookie.parse(value, cookie);
 		return cookie;
 	}

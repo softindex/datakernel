@@ -59,14 +59,14 @@ public class HttpCookieTest {
 		HttpCookie cookie = new HttpCookie("name", "value");
 		cookie.setExpirationDate(date);
 		cookie.setMaxAge(10);
-		cookie.setPath("/");
+		cookie.setPath("/test");
 		cookie.setDomain("www.google.com");
 		cookie.setSecure(true);
 		cookie.setHttpOnly(true);
 		cookie.setExtension("Alhambra site");
 
 		String expected = "name=\"value\"; Expires=Thu, 19 Apr 2001 04:25:21 GMT; Max-Age=10; Domain=www.google.com; " +
-				"Path=/; Secure; HttpOnly; \"Alhambra site\"";
+				"Path=/test; Secure; HttpOnly; \"Alhambra site\"";
 		ByteBuf buf = ByteBuf.allocate(expected.length());
 		cookie.renderSingle(buf);
 		buf.position(0);
@@ -79,7 +79,7 @@ public class HttpCookieTest {
 		HttpCookie cookie1 = new HttpCookie("name1", "value1");
 		cookie1.setExpirationDate(date);
 		cookie1.setMaxAge(10);
-		cookie1.setPath("/");
+		cookie1.setPath("/test");
 		cookie1.setDomain("www.google.com");
 		cookie1.setSecure(true);
 		HttpCookie cookie2 = new HttpCookie("name2", "value2");

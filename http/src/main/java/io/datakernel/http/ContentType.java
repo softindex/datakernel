@@ -25,6 +25,13 @@ import static io.datakernel.http.ContentType.ParentType.*;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 
 public enum ContentType {
+	ANY("*/*"),
+	ANY_APPLICATION(APPLICATION, "*"),
+	ANY_TEXT(TEXT, "*"),
+	ANY_IMAGE(IMAGE, "*"),
+	ANY_AUDIO(AUDIO, "*"),
+	ANY_VIDEO(VIDEO, "*"),
+
 	ATOM(APPLICATION, "atom+xml", "atom"),
 	EDI_X12(APPLICATION, "EDI-X12"),
 	EDI_EDIFACT(APPLICATION, "EDIFACT"),
@@ -50,6 +57,8 @@ public enum ContentType {
 	WOFF(APPLICATION, "font-woff", "woff"),
 	EOT(APPLICATION, "vnd.ms-fontobject", "eot"),
 	SFNT(APPLICATION, "font-sfnt", "sfnt"),
+	XML_APP(APPLICATION, "xml"),
+	XHTML_APP(APPLICATION, "xhtml+xml"),
 
 	CSS(TEXT, "css", "css"),
 	CSV(TEXT, "csv", "csv"),
@@ -95,6 +104,8 @@ public enum ContentType {
 		APPLICATION, AUDIO, EXAMPLE, IMAGE, MESSAGE, MODEL, MULTIPART, TEXT, VIDEO
 	}
 
+	public static final int MAXIMUM_CT_LENGTH = 25;
+
 	private static final Map<String, ContentType> TYPES = new HashMap<>();
 
 	private static final Map<String, ContentType> EXT = new HashMap<>();
@@ -110,6 +121,10 @@ public enum ContentType {
 
 	private final String stringValue;
 	private final List<String> extension = new ArrayList<>();
+
+	ContentType(String value) {
+		this.stringValue = value;
+	}
 
 	ContentType(ParentType parentType, String subtype) {
 		this.stringValue = parentType.name().toLowerCase() + '/' + subtype;
@@ -132,18 +147,22 @@ public enum ContentType {
 	static void parse(byte[] bytes, int pos, int end, List<ContentType> list) {
 		// parsing wo parameters
 		while (pos < end) {
+			pos = HttpUtils.skipSpaces(bytes, pos, end);
 			int start = pos;
 			while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
 				pos++;
 			}
-			list.add(parse(decodeAscii(bytes, start, pos - start)));
+			ContentType type = parse(decodeAscii(bytes, start, pos - start));
+			if (type != null) {
+				list.add(type);
+			}
 			// skipping parameters
 			if (pos < end && bytes[pos] == ';') {
 				while (pos < end && bytes[pos] != ',') {
 					pos++;
 				}
 			}
-			pos += 2;
+			pos++;
 		}
 
 	}
@@ -153,7 +172,7 @@ public enum ContentType {
 	}
 
 	static String render(List<ContentType> types) {
-		int estimateSize = types.size() * 25;
+		int estimateSize = types.size() * MAXIMUM_CT_LENGTH;
 		ByteBuf buf = ByteBuf.allocate(estimateSize);
 		render(types, buf);
 		buf.flip();
@@ -173,9 +192,7 @@ public enum ContentType {
 			pos += string.length;
 			if (i != types.size() - 1) {
 				bytes[pos++] = ',';
-				bytes[pos] = ' ';
 			}
-			pos++;
 		}
 		return pos;
 	}
