@@ -6,7 +6,7 @@
     <parent>
         <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
-        <version>1.2.2-SNAPSHOT</version>
+        <version>1.3.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -21,6 +21,11 @@
         <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>async-streams</artifactId>
+            <version>${version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>hashfs</artifactId>
             <version>${version}</version>
         </dependency>
 

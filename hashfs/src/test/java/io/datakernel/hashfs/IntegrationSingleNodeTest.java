@@ -16,6 +16,7 @@
 
 package io.datakernel.hashfs;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
@@ -23,6 +24,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
+import io.datakernel.remotefs.*;
+import io.datakernel.remotefs.protocol.ClientProtocol;
+import io.datakernel.remotefs.protocol.ServerProtocol;
+import io.datakernel.remotefs.protocol.gson.GsonClientProtocol;
+import io.datakernel.remotefs.protocol.gson.GsonServerProtocol;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
@@ -53,7 +59,7 @@ public class IntegrationSingleNodeTest {
 	private static final Logger logger = LoggerFactory.getLogger(IntegrationSingleNodeTest.class);
 
 	private ServerInfo local = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 4455), 1.0);
-	private static Config config;
+	private static RfsConfig config;
 	private static Path serverStorage;
 	private static Path clientStorage;
 
@@ -92,7 +98,7 @@ public class IntegrationSingleNodeTest {
 		Path f = serverStorage.resolve("f.txt");
 		Files.write(f, "Local f.txt".getBytes(UTF_8));
 
-		config = new Config();
+		config = new RfsConfig();
 		config.setMaxReplicaQuantity(1);
 		config.setMaxRetryAttempts(1);
 	}
@@ -100,9 +106,11 @@ public class IntegrationSingleNodeTest {
 	@Test
 	public void testUpload() throws IOException {
 		NioEventloop eventloop = new NioEventloop();
-		final ExecutorService executor = newCachedThreadPool();
-		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
-		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		ExecutorService executor = newCachedThreadPool();
+
+		final NioService server = getServer(eventloop, executor);
+		final FsClient client = getClient(eventloop);
+
 		final StreamProducer<ByteBuf> producerA = StreamFileReader.readFileFully(eventloop, executor, 16 * 256, clientStorage.resolve("a.txt"));
 		final StreamProducer<ByteBuf> producerB = StreamFileReader.readFileFully(eventloop, executor, 16 * 256, clientStorage.resolve("b.txt"));
 		final StreamProducer<ByteBuf> producerC = StreamFileReader.readFileFully(eventloop, executor, 16 * 256, clientStorage.resolve("c.txt"));
@@ -174,9 +182,11 @@ public class IntegrationSingleNodeTest {
 	@Test
 	public void testFailedUpload() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
-		final ExecutorService executor = newCachedThreadPool();
-		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
-		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		ExecutorService executor = newCachedThreadPool();
+
+		final NioService server = getServer(eventloop, executor);
+		final FsClient client = getClient(eventloop);
+
 		final StreamProducer<ByteBuf> producer = new StreamProducers.ClosingWithError<>(eventloop, new Exception("Test Exception"));
 
 		server.start(new CompletionCallback() {
@@ -233,12 +243,15 @@ public class IntegrationSingleNodeTest {
 	@Test
 	public void testDownload() throws IOException {
 		NioEventloop eventloop = new NioEventloop();
-		final ExecutorService executor = newCachedThreadPool();
-		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
-		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		ExecutorService executor = newCachedThreadPool();
+
+		final NioService server = getServer(eventloop, executor);
+		final FsClient client = getClient(eventloop);
+
 		final StreamFileWriter consumerG = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("g_downloaded.txt"), true);
 		final StreamFileWriter consumerE = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("e_downloaded.txt"), true);
 		final StreamFileWriter consumerF = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("f_downloaded.txt"), true);
+
 		consumerE.setFlushCallback(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -287,9 +300,11 @@ public class IntegrationSingleNodeTest {
 	@Test
 	public void testFailedDownload() throws IOException {
 		NioEventloop eventloop = new NioEventloop();
-		final ExecutorService executor = newCachedThreadPool();
-		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
-		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		ExecutorService executor = newCachedThreadPool();
+
+		final NioService server = getServer(eventloop, executor);
+		final FsClient client = getClient(eventloop);
+
 		final StreamFileWriter consumerA = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"), true);
 		consumerA.setFlushCallback(new CompletionCallback() {
 			@Override
@@ -335,9 +350,11 @@ public class IntegrationSingleNodeTest {
 	@Test
 	public void testDelete() throws IOException {
 		NioEventloop eventloop = new NioEventloop();
-		final ExecutorService executor = newCachedThreadPool();
-		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
-		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		ExecutorService executor = newCachedThreadPool();
+
+		final NioService server = getServer(eventloop, executor);
+		final FsClient client = getClient(eventloop);
+
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -379,9 +396,11 @@ public class IntegrationSingleNodeTest {
 	@Test
 	public void testFailedDelete() throws IOException {
 		NioEventloop eventloop = new NioEventloop();
-		final ExecutorService executor = newCachedThreadPool();
-		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
-		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		ExecutorService executor = newCachedThreadPool();
+
+		final NioService server = getServer(eventloop, executor);
+		final FsClient client = getClient(eventloop);
+
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -422,9 +441,10 @@ public class IntegrationSingleNodeTest {
 	@Test
 	public void testList() throws Exception {
 		NioEventloop eventloop = new NioEventloop();
-		final ExecutorService executor = newCachedThreadPool();
-		final NioService server = ServerFactory.getServer(eventloop, executor, serverStorage, config, local, Sets.newHashSet(local));
-		final FsClient client = ServerFactory.getClient(eventloop, Sets.newHashSet(local), config);
+		ExecutorService executor = newCachedThreadPool();
+
+		final NioService server = getServer(eventloop, executor);
+		final FsClient client = getClient(eventloop);
 
 		final Set<String> expected = Sets.newHashSet("this/a.txt", "this/g.txt", "e.txt", "f.txt", "d.txt");
 		final Set<String> actual = new HashSet<>();
@@ -465,5 +485,18 @@ public class IntegrationSingleNodeTest {
 
 		assertEquals(expected, actual);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	private FsClient getClient(NioEventloop eventloop) {
+		ClientProtocol clientProtocol = GsonClientProtocol.createInstance(eventloop, config);
+		return HashFsClient.createInstance(eventloop, clientProtocol, new RendezvousHashing(), Lists.newArrayList(local), config);
+	}
+
+	private FsServer getServer(NioEventloop eventloop, ExecutorService executor) {
+		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, serverStorage, config);
+		Logic logic = LogicImpl.createInstance(new RendezvousHashing(), local, Sets.newHashSet(local), config);
+		ClientProtocol clientProtocol1 = GsonClientProtocol.createInstance(eventloop, config);
+		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, config, local.getAddress().getPort());
+		return HashFsServer.createInstance(eventloop, fileSystem, logic, clientProtocol1, serverProtocol, config);
 	}
 }

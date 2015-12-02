@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
+import java.nio.file.Paths;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -76,28 +77,13 @@ public class AggregationStructure {
 	}
 
 	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys,
-	                            Map<String, FieldType> fields, Map<String, FieldType> outputFields, Map<String, String> childParentRelationships) {
+	                            Map<String, FieldType> fields, Map<String, FieldType> outputFields,
+	                            Map<String, String> childParentRelationships) {
 		this.classLoader = classLoader;
 		this.keys = keys;
 		this.fields = fields;
 		this.outputFields = outputFields;
 		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
-	}
-
-	public void checkThatKeysExist(List<String> keys) {
-		for (String key : keys) {
-			if (!this.keys.containsKey(key)) {
-				throw new AggregationException("Key with the name '" + key + "' not found.");
-			}
-		}
-	}
-
-	public void checkThatFieldsExist(List<String> fields) {
-		for (String field : fields) {
-			if (!this.fields.containsKey(field)) {
-				throw new AggregationException("Field with the name '" + field + "' not found.");
-			}
-		}
 	}
 
 	public Map<String, KeyType> getKeys() {
@@ -106,6 +92,14 @@ public class AggregationStructure {
 
 	public KeyType getKeyType(String key) {
 		return keys.get(key);
+	}
+
+	public FieldType getInputFieldType(String inputField) {
+		return fields.get(inputField);
+	}
+
+	public FieldType getOutputFieldType(String outputField) {
+		return outputFields.get(outputField);
 	}
 
 	public Map<String, FieldType> getFields() {
@@ -118,6 +112,18 @@ public class AggregationStructure {
 
 	public AggregationKeyRelationships getChildParentRelationships() {
 		return childParentRelationships;
+	}
+
+	public boolean containsKey(String key) {
+		return keys.containsKey(key);
+	}
+
+	public boolean containsInputField(String field) {
+		return fields.containsKey(field);
+	}
+
+	public boolean containsOutputField(String field) {
+		return outputFields.containsKey(field);
 	}
 
 	public Class<?> createKeyClass(List<String> keys) {
@@ -183,7 +189,7 @@ public class AggregationStructure {
 
 	public Comparator createFieldComparator(AggregationQuery query, Class<?> fieldClass) {
 		logger.trace("Creating field comparator for query {}", query.toString());
-		AsmBuilder builder = new AsmBuilder(classLoader, Comparator.class);
+		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();
 		List<AggregationQuery.QueryOrdering> orderings = query.getOrderings();
 
@@ -202,7 +208,20 @@ public class AggregationStructure {
 
 		builder.method("compare", comparator);
 
-		return (Comparator) builder.newInstance();
+		return builder.newInstance();
+	}
+
+	public Comparator createKeyComparator(Class<?> recordClass, List<String> keys) {
+		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
+		ExpressionComparator comparator = comparator();
+
+		for (String key : keys) {
+			comparator.add(getter(cast(arg(0), recordClass), key), getter(cast(arg(1), recordClass), key));
+		}
+
+		builder.method("compare", comparator);
+
+		return builder.newInstance();
 	}
 
 	public Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> keys) {
@@ -241,18 +260,18 @@ public class AggregationStructure {
 		List<String> resultKeys = query.getResultKeys();
 		List<String> resultFields = query.getResultFields();
 		for (String key : resultKeys) {
-			KeyType d = this.keys.get(key);
-			if (d == null) {
+			KeyType keyType = this.keys.get(key);
+			if (keyType == null) {
 				throw new AggregationException("Key with the name '" + key + "' not found.");
 			}
-			builder.field(key, d.getDataType());
+			builder.field(key, keyType.getDataType());
 		}
 		for (String field : resultFields) {
-			FieldType m = this.fields.get(field);
-			if (m == null) {
+			FieldType fieldType = this.outputFields.get(field);
+			if (fieldType == null) {
 				throw new AggregationException("Field with the name '" + field + "' not found.");
 			}
-			builder.field(field, m.getDataType());
+			builder.field(field, fieldType.getDataType());
 		}
 		builder.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
 		return builder.defineClass();

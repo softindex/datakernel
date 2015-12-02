@@ -17,10 +17,11 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.remotefs.ServerInfo;
 
 import java.util.Set;
 
-public interface Commands {
+interface Commands {
 	void scan(ResultCallback<Set<String>> callback);
 
 	void updateServerMap(Set<ServerInfo> bootstrap);

@@ -144,6 +144,10 @@ public final class AggregationQuery {
 			return add(new QueryPredicateBetween(key, from, to));
 		}
 
+		public QueryPredicates ne(String key, Object value) {
+			return add(new QueryPredicateNotEquals(key, value));
+		}
+
 		@Override
 		public boolean equals(Object o) {
 			if (this == o) return true;
@@ -252,6 +256,38 @@ public final class AggregationQuery {
 		@Override
 		public String toString() {
 			return key + " BETWEEN " + from + " AND " + to;
+		}
+	}
+
+	/**
+	 * Represents a 'not equals' query predicate.
+	 * Defined by name of key and value, so that result records should have the value of the specified key not equal to given value.
+	 * Implemented through post-filtering of records read from physical storage.
+	 */
+	public static class QueryPredicateNotEquals extends QueryPredicate {
+		public final Object value;
+
+		public QueryPredicateNotEquals(String key, Object value) {
+			super(key);
+			this.value = value;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			QueryPredicateNotEquals that = (QueryPredicateNotEquals) o;
+			return Objects.equals(value, that.value);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(value);
+		}
+
+		@Override
+		public String toString() {
+			return key + "!=" + value;
 		}
 	}
 
@@ -374,6 +410,11 @@ public final class AggregationQuery {
 
 	public AggregationQuery eq(String key, Object value) {
 		this.predicates.add(new QueryPredicateEq(key, value));
+		return this;
+	}
+
+	public AggregationQuery ne(String key, Object value) {
+		this.predicates.add(new QueryPredicateNotEquals(key, value));
 		return this;
 	}
 

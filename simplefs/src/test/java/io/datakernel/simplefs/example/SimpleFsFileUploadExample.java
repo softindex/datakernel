@@ -18,6 +18,7 @@ package io.datakernel.simplefs.example;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.remotefs.FsClient;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.file.StreamFileReader;
 import org.slf4j.Logger;
@@ -48,7 +49,7 @@ public class SimpleFsFileUploadExample {
 		final NioEventloop eventloop = new NioEventloop();
 
 		// Create client
-		SimpleFsClient client = new SimpleFsClient(eventloop, serverAddress);
+		FsClient client = SimpleFsClient.createInstance(eventloop, serverAddress);
 
 		final StreamFileReader producer =
 				StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, Paths.get(uploadFileName));

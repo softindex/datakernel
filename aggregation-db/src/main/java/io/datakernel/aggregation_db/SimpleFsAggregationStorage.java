@@ -18,6 +18,7 @@ package io.datakernel.aggregation_db;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.remotefs.FsClient;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamConsumer;
@@ -37,7 +38,7 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 
 	private final NioEventloop eventloop;
 	private final AggregationStructure aggregationStructure;
-	private final SimpleFsClient client;
+	private final FsClient client;
 
 	private static final int LISTEN_PORT = 45555;
 	private static final InetSocketAddress address = new InetSocketAddress("127.0.0.1", LISTEN_PORT);
@@ -49,7 +50,7 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 	public SimpleFsAggregationStorage(NioEventloop eventloop, AggregationStructure aggregationStructure, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
 		this.aggregationStructure = aggregationStructure;
-		this.client = new SimpleFsClient(eventloop, serverAddress);
+		this.client = SimpleFsClient.createInstance(eventloop, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -98,6 +99,6 @@ public class SimpleFsAggregationStorage implements AggregationChunkStorage {
 
 	@Override
 	public void removeChunk(final String aggregationId, final long id, CompletionCallback callback) {
-		client.deleteFile(path(id), callback);
+		client.delete(path(id), callback);
 	}
 }

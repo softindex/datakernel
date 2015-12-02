@@ -20,7 +20,10 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.hashfs.protocol.ClientProtocol;
+import io.datakernel.remotefs.FsClient;
+import io.datakernel.remotefs.RfsConfig;
+import io.datakernel.remotefs.ServerInfo;
+import io.datakernel.remotefs.protocol.ClientProtocol;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.StreamProducer;
@@ -31,7 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-class HashFsClient implements FsClient {
+public class HashFsClient implements FsClient {
 	private final NioEventloop eventloop;
 
 	private final ClientProtocol protocol;
@@ -41,14 +44,21 @@ class HashFsClient implements FsClient {
 	private final long baseRetryTimeout;
 	private final int maxRetryAttempts;
 
-	public HashFsClient(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
-	                    List<ServerInfo> bootstrap, long baseRetryTimeout, int maxRetryAttempts) {
+	private HashFsClient(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
+	                     List<ServerInfo> bootstrap, long baseRetryTimeout, int maxRetryAttempts) {
 		this.eventloop = eventloop;
 		this.protocol = protocol;
 		this.hashing = hashing;
 		this.bootstrap = bootstrap;
 		this.baseRetryTimeout = baseRetryTimeout;
 		this.maxRetryAttempts = maxRetryAttempts;
+	}
+
+	public static FsClient createInstance(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
+	                                      List<ServerInfo> bootstrap, RfsConfig config) {
+		return new HashFsClient(eventloop, protocol, hashing, bootstrap,
+				config.getBaseRetryTimeout(),
+				config.getMaxRetryAttempts());
 	}
 
 	@Override
