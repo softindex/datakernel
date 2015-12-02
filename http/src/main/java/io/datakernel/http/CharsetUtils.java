@@ -56,7 +56,12 @@ final class CharsetUtils {
 			}
 			int keyEnd = pos;
 
-			Charset value = getCharset(bytes, start, keyEnd);
+			Charset value = null;
+			try {
+				value = getCharset(bytes, start, keyEnd);
+			} catch (Exception ignored) {
+
+			}
 			if (value != null && pos < end && bytes[pos] == ';') {
 				pos += 3;
 				int qStart = pos;
@@ -127,7 +132,7 @@ final class CharsetUtils {
 		return pos;
 	}
 
-	private static Charset getCharset(byte[] bytes, int start, int end) {
+	static Charset getCharset(byte[] bytes, int start, int end) {
 		return Charset.forName(decodeAscii(bytes, start, end - start));
 	}
 }

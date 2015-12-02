@@ -110,7 +110,7 @@ public final class HttpRequest extends HttpMessage {
 
 	public HttpRequest setAcceptCharsetPairs(List<HttpUtils.Pair<Charset>> values) {
 		assert !recycled;
-		addCharsetHeader(HttpHeader.ACCEPT_CHARSET, values);
+		addCharsetPairHeader(HttpHeader.ACCEPT_CHARSET, values);
 		return this;
 	}
 
@@ -185,85 +185,62 @@ public final class HttpRequest extends HttpMessage {
 	// getters
 	public List<HttpCookie> getCookies() {
 		assert !recycled;
-		String value = concatResults(COOKIE);
-		if (value == null || value.equals("")) {
-			return null;
-		}
 		List<HttpCookie> cookie = new ArrayList<>();
-		HttpCookie.parseSingle(value, cookie);
+		List<String> headers = getHeaderStrings(COOKIE);
+		for (String header : headers) {
+			HttpCookie.parseSimple(header, cookie);
+		}
 		return cookie;
 	}
 
 	public List<HttpUtils.Pair<Charset>> getAcceptPairCharsets() {
 		assert !recycled;
-		String value = concatResults(ACCEPT_CHARSET);
-		if (value == null || value.equals("")) {
-			return null;
-		}
 		List<HttpUtils.Pair<Charset>> charsets = new ArrayList<>();
-		CharsetUtils.parse(encodeAscii(value), 0, value.length(), charsets);
+		List<String> headers = getHeaderStrings(ACCEPT_CHARSET);
+		for (String header : headers) {
+			CharsetUtils.parse(header, charsets);
+		}
 		return charsets;
 	}
 
 	public List<Charset> getAcceptCharsets() {
 		assert !recycled;
-		String value = concatResults(ACCEPT_CHARSET);
-		if (value == null || value.equals("")) {
-			return null;
+		List<Charset> charsets = new ArrayList<>();
+		List<String> headers = getHeaderStrings(ACCEPT_CHARSET);
+		for (String header : headers) {
+			charsets.addAll(CharsetUtils.parse(header));
 		}
-		return CharsetUtils.parse(value);
-	}
-
-	public int getContentLength() {
-		assert !recycled;
-		String value = getHeaderString(HttpHeader.CONTENT_LENGTH);
-		return ByteBufStrings.decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
-	}
-
-	public List<ContentType> getContentType() {
-		assert !recycled;
-		String value = concatResults(CONTENT_TYPE);
-		if (value == null || value.equals("")) {
-			return null;
-		}
-		List<ContentType> cts = new ArrayList<>();
-		ContentType.parse(value, cts);
-		return cts;
+		return charsets;
 	}
 
 	public List<ContentType> getAccept() {
 		assert !recycled;
-		String value = concatResults(ACCEPT);
-		if (value == null || value.equals("")) {
-			return null;
-		}
 		List<ContentType> cts = new ArrayList<>();
-		ContentType.parse(value, cts);
+		List<String> headers = getHeaderStrings(ACCEPT);
+		for (String header : headers) {
+			ContentType.parse(header, cts);
+		}
 		return cts;
 	}
 
-	public Date getDate() {
+	public Date getIfModifiedSince() {
 		assert !recycled;
-		String value = getHeaderString(HttpHeader.DATE);
-		if (value != null) {
+		String value = getHeaderString(HttpHeader.IF_MODIFIED_SINCE);
+		if (value != null && !value.equals("")) {
 			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
 			return new Date(timestamp);
 		}
 		return null;
 	}
 
-	public Date getIfModifiedSince() {
-		assert !recycled;
-		String value = getHeaderString(HttpHeader.IF_MODIFIED_SINCE);
-		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-		return new Date(timestamp);
-	}
-
 	public Date getIfUnModifiedSince() {
 		assert !recycled;
 		String value = getHeaderString(HttpHeader.IF_UNMODIFIED_SINCE);
-		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-		return new Date(timestamp);
+		if (value != null && !value.equals("")) {
+			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+			return new Date(timestamp);
+		}
+		return null;
 	}
 
 	// internal
@@ -351,12 +328,7 @@ public final class HttpRequest extends HttpMessage {
 		urlParameters.put(key, value);
 	}
 
-	/**
-	 * Creates HttpRequest as ByteBuf
-	 *
-	 * @return HttpRequest as ByteBuf
-	 */
-	public ByteBuf write() {
+	ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
 			setHeader(HttpHeader.ofDecimal(HttpHeader.CONTENT_LENGTH, body == null ? 0 : body.remaining()));

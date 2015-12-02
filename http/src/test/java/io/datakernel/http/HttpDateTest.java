@@ -35,7 +35,7 @@ public class HttpDateTest {
 		long timestamp = calendar.getTimeInMillis();
 		byte[] bytes = new byte[29];
 		int end = HttpDate.render(timestamp, bytes, 0);
-		assertEquals(30, end);
+		assertEquals(29, end);
 		assertTrue(Arrays.equals("Thu, 01 Jan 2015 00:00:00 GMT".getBytes(Charset.forName("ISO-8859-1")), bytes));
 	}
 

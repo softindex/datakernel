@@ -28,8 +28,7 @@ import java.util.Date;
 import java.util.List;
 
 import static io.datakernel.http.HttpHeader.*;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.ByteBufStrings.putDecimal;
+import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * It represents the HTTP result with which server response in client {@link HttpRequest}. It must ave only
@@ -114,12 +113,6 @@ public final class HttpResponse extends HttpMessage {
 		return this;
 	}
 
-	public HttpResponse setContentLength(int value) {
-		assert !recycled;
-		setHeader(HttpHeader.CONTENT_LENGTH, value);
-		return this;
-	}
-
 	public HttpResponse setContentType(ContentType contentType) {
 		assert !recycled;
 		addContentTypeHeader(CONTENT_TYPE, contentType);
@@ -173,70 +166,39 @@ public final class HttpResponse extends HttpMessage {
 	public int getAge() {
 		assert !recycled;
 		String value = getHeaderString(HttpHeader.AGE);
-		if (value == null || value.equals("")) {
-			return -1;
+		if (value != null && !value.equals("")) {
+			return decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
 		}
-		return ByteBufStrings.decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
-	}
-
-	public int getContentLength() {
-		assert !recycled;
-		String value = getHeaderString(HttpHeader.CONTENT_LENGTH);
-		if (value == null || value.equals("")) {
-			return -1;
-		}
-		return ByteBufStrings.decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
-	}
-
-	public List<ContentType> getContentTypes() {
-		assert !recycled;
-		String value = concatResults(CONTENT_TYPE);
-		if (value == null || value.equals("")) {
-			return null;
-		}
-		List<ContentType> cts = new ArrayList<>();
-		ContentType.parse(value, cts);
-		return cts;
-	}
-
-	public Date getDate() {
-		assert !recycled;
-		String value = getHeaderString(HttpHeader.DATE);
-		if (value == null || value.equals("")) {
-			return null;
-		}
-		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-		return new Date(timestamp);
+		return -1;
 	}
 
 	public Date getExpires() {
 		assert !recycled;
 		String value = getHeaderString(HttpHeader.EXPIRES);
-		if (value == null || value.equals("")) {
-			return null;
+		if (value != null && !value.equals("")) {
+			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+			return new Date(timestamp);
 		}
-		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-		return new Date(timestamp);
+		return null;
 	}
 
 	public Date getLastModified() {
 		assert !recycled;
 		String value = getHeaderString(HttpHeader.LAST_MODIFIED);
-		if (value == null || value.equals("")) {
-			return null;
+		if (value != null && !value.equals("")) {
+			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+			return new Date(timestamp);
 		}
-		long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-		return new Date(timestamp);
+		return null;
 	}
 
 	public List<HttpCookie> getCookies() {
 		assert !recycled;
-		String value = concatResults(SET_COOKIE);
 		List<HttpCookie> cookie = new ArrayList<>();
-		if (value == null || value.equals("")) {
-			return cookie;
+		List<String> headers = getHeaderStrings(SET_COOKIE);
+		for (String header : headers) {
+			HttpCookie.parse(header, cookie);
 		}
-		HttpCookie.parse(value, cookie);
 		return cookie;
 	}
 
@@ -312,7 +274,7 @@ public final class HttpResponse extends HttpMessage {
 	 *
 	 * @return HttpResponse as ByteBuf
 	 */
-	public ByteBuf write() {
+	ByteBuf write() {
 		assert !recycled;
 		if (code >= 400 && getBody() == null) {
 			setBody(DEFAULT_CODE_BODIES.get(code));

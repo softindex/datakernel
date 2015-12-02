@@ -20,27 +20,74 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.http.ContentType.*;
 import static org.junit.Assert.assertEquals;
 
 public class ContentTypeTest {
 	@Test
 	public void testParse() {
-		String string = "text/plain, image/bmp;q=0.9, application/ogg;charset=utf-8";
-		List<ContentType> types = new ArrayList<>();
-		ContentType.parse(ByteBufStrings.encodeAscii(string), 0, string.length(), types);
-		assertEquals(3, types.size());
+		String string = "text/plain, image/bmp,application/ogg";
+		List<ContentType> expected = Arrays.asList(PLAIN_TEXT, BMP, OGG_APP);
+		List<ContentType> actual = new ArrayList<>();
+		parse(ByteBufStrings.encodeAscii(string), 0, string.length(), actual);
+		assertEquals(expected, actual);
 	}
 
 	@Test
-	public void testRender() throws Exception {
+	public void testCaseInsensitive() {
+		ContentType ct1 = getByName("APPLICATION/JSON");
+		ContentType ct2 = JSON;
+		assertEquals(ct1, ct2);
+
+		ct1 = getByName("TEXT/PLAIN");
+		ct2 = getByName("text/plain"); // ContentType.PLAIN_TEXT
+		assertEquals(ct1, ct2);
+
+		ct1 = getByName("*/*");
+		ct2 = ANY;
+		assertEquals(ct1, ct2);
+	}
+
+	@Test
+	public void testRender() {
 		String expected = "text/plain,image/bmp,application/ogg";
-		List<ContentType> types = Arrays.asList(ContentType.PLAIN_TEXT, ContentType.BMP, ContentType.OGG_APP);
+		List<ContentType> types = Arrays.asList(PLAIN_TEXT, BMP, OGG_APP);
 		ByteBuf buf = ByteBuf.allocate(expected.length());
-		ContentType.render(types, buf.array(), buf.position());
+		render(types, buf);
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf.array()));
+	}
+
+	@Test
+	public void testGetExt() {
+		ContentType expected = HTML;
+		ContentType actual = getByExt("html");
+		assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testRenderWithParameters() {
+		List<ContentType> actual = Arrays.asList(PLAIN_TEXT, ANY_TEXT.specify(0.7, Charset.forName("UTF-8")));
+		String expected = "text/plain,text/*;q=0.7;charset=utf-8";
+		ByteBuf buf = ByteBuf.allocate(expected.length());
+		render(actual, buf);
+		buf.flip();
+		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
+	}
+
+	@Test
+	public void testParseWithParameters() {
+		List<ContentType> expected = Arrays.asList(PLAIN_TEXT, MP3,
+				ANY_TEXT.specify(0.7, Charset.forName("UTF-8")),
+				OGG_VIDEO.specify(0.7, Charset.forName("ISO-8859-1")));
+		String string = "text/plain,audio/mp3,text/*; q=0.7; charset=utf-8,video/ogg; q=0.8";
+		ByteBuf buf = ByteBufStrings.wrapAscii(string);
+		List<ContentType> actual = new ArrayList<>();
+		parse(buf, actual);
+		assertEquals(expected.size(), actual.size());
 	}
 }

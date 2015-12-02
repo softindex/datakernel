@@ -104,11 +104,11 @@ public final class HttpCookie {
 	}
 
 	static void render(List<HttpCookie> cookies, ByteBuf buf) {
-		int pos = render(cookies, buf.array(), buf.position());
+		int pos = renderSimple(cookies, buf.array(), buf.position());
 		buf.position(pos);
 	}
 
-	static int render(List<HttpCookie> cookies, byte[] bytes, int pos) {
+	static int renderSimple(List<HttpCookie> cookies, byte[] bytes, int pos) {
 		for (int i = 0; i < cookies.size(); i++) {
 			HttpCookie cookie = cookies.get(i);
 			encodeAscii(bytes, pos, cookie.name);
@@ -131,12 +131,12 @@ public final class HttpCookie {
 		return pos;
 	}
 
-	static void parseSingle(String string, List<HttpCookie> cookies) {
+	static void parseSimple(String string, List<HttpCookie> cookies) {
 		byte[] bytes = encodeAscii(string);
-		parseSingle(bytes, 0, bytes.length, cookies);
+		parseSimple(bytes, 0, bytes.length, cookies);
 	}
 
-	static void parseSingle(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
+	static void parseSimple(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
 		while (pos < end) {
 			pos = skipSpaces(bytes, pos, end);
 			int keyStart = pos;
@@ -170,7 +170,7 @@ public final class HttpCookie {
 		}
 	}
 
-	void renderSingle(ByteBuf buf) {
+	void renderFull(ByteBuf buf) {
 		putAscii(buf, name);
 		putAscii(buf, "=\"");
 		if (value != null) {
@@ -195,7 +195,7 @@ public final class HttpCookie {
 			putAscii(buf, "=");
 			putAscii(buf, domain);
 		}
-		if (path != null) {
+		if (!(path == null || path.equals("/"))) {
 			putAscii(buf, "; ");
 			buf.put(PATH);
 			putAscii(buf, "=");
@@ -275,15 +275,7 @@ public final class HttpCookie {
 	public String toString() {
 		return "HttpCookie{" +
 				"name='" + name + '\'' +
-				", value='" + value + '\'' +
-				", expirationDate=" + expirationDate +
-				", maxAge=" + maxAge +
-				", domain='" + domain + '\'' +
-				", path='" + path + '\'' +
-				", secure=" + secure +
-				", httpOnly=" + httpOnly +
-				", extension='" + extension + '\'' +
-				'}';
+				", value='" + value + '\'' + '}';
 	}
 
 	// accessors

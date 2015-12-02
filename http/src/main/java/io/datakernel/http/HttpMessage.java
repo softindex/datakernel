@@ -17,10 +17,12 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.util.ByteBufStrings;
 
 import java.nio.charset.Charset;
 import java.util.*;
 
+import static io.datakernel.http.HttpHeader.CONTENT_TYPE;
 import static io.datakernel.util.ByteBufStrings.*;
 
 /**
@@ -36,30 +38,18 @@ public abstract class HttpMessage {
 	protected HttpMessage() {
 	}
 
-	/**
-	 * Returns headers from this HttpMessage
-	 */
 	public List<HttpHeader.Value> getHeaders() {
 		assert !recycled;
 		return headers;
 	}
 
-	/**
-	 * Sets all headers from collection from argument to this HttpMessage
-	 *
-	 * @param headers headers for adding
-	 */
+	// common header setters
 	protected void setHeaders(Collection<HttpHeader.Value> headers) {
 		assert !recycled;
 		assert Collections.disjoint(this.headers, headers) : "Duplicate headers: " + this.headers + " : " + headers;
 		this.headers.addAll(headers);
 	}
 
-	/**
-	 * Adds all headers from collection from argument to this HttpMessage
-	 *
-	 * @param headers headers for adding
-	 */
 	protected void addHeaders(Collection<HttpHeader.Value> headers) {
 		assert !recycled;
 		this.headers.addAll(headers);
@@ -130,7 +120,7 @@ public abstract class HttpMessage {
 		addHeader(HttpHeader.ofString(header, string));
 	}
 
-	// spec
+	// special header setters
 	protected void addCookieHeader(HttpHeader header, HttpCookie cookie) {
 		assert !recycled;
 		addHeader(HttpHeader.ofCookie(header, cookie));
@@ -153,7 +143,6 @@ public abstract class HttpMessage {
 
 	protected void addCharsetHeader(HttpHeader header, Charset charset) {
 		assert !recycled;
-
 		addHeader(HttpHeader.ofCharsets(header, Collections.singletonList(new HttpUtils.Pair<>(charset))));
 	}
 
@@ -163,11 +152,10 @@ public abstract class HttpMessage {
 		for (Charset charset : charsets) {
 			ch.add(new HttpUtils.Pair<>(charset));
 		}
-
 		addHeader(HttpHeader.ofCharsets(header, ch));
 	}
 
-	protected void addCharsetHeader(HttpHeader header, List<HttpUtils.Pair<Charset>> charsets) {
+	protected void addCharsetPairHeader(HttpHeader header, List<HttpUtils.Pair<Charset>> charsets) {
 		assert !recycled;
 		addHeader(HttpHeader.ofCharsets(header, charsets));
 	}
@@ -187,25 +175,46 @@ public abstract class HttpMessage {
 		setHeader(HttpHeader.ofDate(header, value));
 	}
 
+	protected void setBody(ByteBuf body) {
+		assert !recycled;
+		if (this.body != null)
+			this.body.recycle();
+		this.body = body;
+	}
+
 	public ByteBuf getBody() {
 		assert !recycled;
 		return body;
 	}
 
-	protected String concatResults(HttpHeader header) {
-		List<String> headers = getHeaderStrings(header);
-		if (headers == null) {
-			return null;
+	// specs
+	public int getContentLength() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.CONTENT_LENGTH);
+		if (value == null || value.equals("")) {
+			return -1;
 		}
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < headers.size(); i++) {
-			String s = headers.get(i);
-			sb.append(s);
-			if (i != headers.size() - 1) {
-				sb.append(",");
-			}
+		return ByteBufStrings.decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
+	}
+
+	public List<ContentType> getContentType() {
+		assert !recycled;
+		List<ContentType> cts = new ArrayList<>();
+		List<String> headers = getHeaderStrings(CONTENT_TYPE);
+		for (String header : headers) {
+			ContentType.parse(header, cts);
 		}
-		return sb.toString();
+		return cts;
+	}
+
+	public Date getDate() {
+		assert !recycled;
+		String value = getHeaderString(HttpHeader.DATE);
+		if (value != null && !value.equals("")) {
+			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
+			return new Date(timestamp);
+		}
+		return null;
 	}
 
 	/**
@@ -218,13 +227,6 @@ public abstract class HttpMessage {
 		ByteBuf buf = body;
 		body = null;
 		return buf;
-	}
-
-	protected void setBody(ByteBuf body) {
-		assert !recycled;
-		if (this.body != null)
-			this.body.recycle();
-		this.body = body;
 	}
 
 	/**

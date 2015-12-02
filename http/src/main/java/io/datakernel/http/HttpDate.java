@@ -18,9 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import static io.datakernel.util.ByteBufStrings.*;
 
 // <[RFC2616], Section 3.3.1>
@@ -35,33 +32,33 @@ final class HttpDate {
 
 	private static final byte[] GMT = encodeAscii("GMT");
 
-	private static final Map<Integer, byte[]> DAYS_OF_WEEK = new HashMap<>(7);
+	private static final byte[][] DAYS_OF_WEEK = new byte[7][];
 
 	static {
-		DAYS_OF_WEEK.put(1, encodeAscii("Sun"));
-		DAYS_OF_WEEK.put(2, encodeAscii("Mon"));
-		DAYS_OF_WEEK.put(3, encodeAscii("Tue"));
-		DAYS_OF_WEEK.put(4, encodeAscii("Wed"));
-		DAYS_OF_WEEK.put(5, encodeAscii("Thu"));
-		DAYS_OF_WEEK.put(6, encodeAscii("Fri"));
-		DAYS_OF_WEEK.put(7, encodeAscii("Sat"));
+		DAYS_OF_WEEK[0] = encodeAscii("Sun");
+		DAYS_OF_WEEK[1] = encodeAscii("Mon");
+		DAYS_OF_WEEK[2] = encodeAscii("Tue");
+		DAYS_OF_WEEK[3] = encodeAscii("Wed");
+		DAYS_OF_WEEK[4] = encodeAscii("Thu");
+		DAYS_OF_WEEK[5] = encodeAscii("Fri");
+		DAYS_OF_WEEK[6] = encodeAscii("Sat");
 	}
 
-	private static final Map<Integer, byte[]> MONTHS_IN_YEAR = new HashMap<>(12);
+	private static final byte[][] MONTHS_IN_YEAR = new byte[12][];
 
 	static {
-		MONTHS_IN_YEAR.put(0, encodeAscii("Jan"));
-		MONTHS_IN_YEAR.put(1, encodeAscii("Feb"));
-		MONTHS_IN_YEAR.put(2, encodeAscii("Mar"));
-		MONTHS_IN_YEAR.put(3, encodeAscii("Apr"));
-		MONTHS_IN_YEAR.put(4, encodeAscii("May"));
-		MONTHS_IN_YEAR.put(5, encodeAscii("Jun"));
-		MONTHS_IN_YEAR.put(6, encodeAscii("Jul"));
-		MONTHS_IN_YEAR.put(7, encodeAscii("Aug"));
-		MONTHS_IN_YEAR.put(8, encodeAscii("Sep"));
-		MONTHS_IN_YEAR.put(9, encodeAscii("Oct"));
-		MONTHS_IN_YEAR.put(10, encodeAscii("Nov"));
-		MONTHS_IN_YEAR.put(11, encodeAscii("Dec"));
+		MONTHS_IN_YEAR[0] = encodeAscii("Jan");
+		MONTHS_IN_YEAR[1] = encodeAscii("Feb");
+		MONTHS_IN_YEAR[2] = encodeAscii("Mar");
+		MONTHS_IN_YEAR[3] = encodeAscii("Apr");
+		MONTHS_IN_YEAR[4] = encodeAscii("May");
+		MONTHS_IN_YEAR[5] = encodeAscii("Jun");
+		MONTHS_IN_YEAR[6] = encodeAscii("Jul");
+		MONTHS_IN_YEAR[7] = encodeAscii("Aug");
+		MONTHS_IN_YEAR[8] = encodeAscii("Sep");
+		MONTHS_IN_YEAR[9] = encodeAscii("Oct");
+		MONTHS_IN_YEAR[10] = encodeAscii("Nov");
+		MONTHS_IN_YEAR[11] = encodeAscii("Dec");
 	}
 
 	private HttpDate() {}
@@ -74,12 +71,12 @@ final class HttpDate {
 		int day = decodeDecimal(bytes, start + 5, 2);
 
 		int month = -1;
-		for (Map.Entry<Integer, byte[]> entry : MONTHS_IN_YEAR.entrySet()) {
-			byte[] m = entry.getValue();
-			if (m[0] == bytes[start + 8] &&
-					m[1] == bytes[start + 9] &&
-					m[2] == bytes[start + 10]) {
-				month = entry.getKey();
+		for (int i = 0; i < MONTHS_IN_YEAR.length; i++) {
+			byte[] entry = MONTHS_IN_YEAR[i];
+			if (entry[0] == bytes[start + 8] &&
+					entry[1] == bytes[start + 9] &&
+					entry[2] == bytes[start + 10]) {
+				month = i;
 			}
 		}
 
@@ -115,9 +112,8 @@ final class HttpDate {
 	}
 
 	public static void render(long timestamp, ByteBuf buf) {
-		byte[] bytes = new byte[29];
-		render(timestamp, bytes, 0);
-		buf.put(bytes);
+		int pos = render(timestamp, buf.array(), buf.position());
+		buf.position(pos);
 	}
 
 	public static int render(long timestamp, byte[] bytes, int pos) {
@@ -161,7 +157,7 @@ final class HttpDate {
 
 		int dayOfWeek = (int) ((timestamp / (24 * 60 * 60 * 1000L) + 4) % 7) + 1;
 
-		byte[] stringDay = DAYS_OF_WEEK.get(dayOfWeek);
+		byte[] stringDay = DAYS_OF_WEEK[dayOfWeek - 1];
 		System.arraycopy(stringDay, 0, bytes, pos, stringDay.length);
 		pos += stringDay.length;
 		bytes[pos++] = ',';
@@ -174,7 +170,7 @@ final class HttpDate {
 		pos += encodeDecimal(bytes, pos, day);
 		bytes[pos++] = ' ';
 
-		byte[] stringMonth = MONTHS_IN_YEAR.get(month);
+		byte[] stringMonth = MONTHS_IN_YEAR[month];
 		System.arraycopy(stringMonth, 0, bytes, pos, stringMonth.length);
 		pos += stringMonth.length;
 		bytes[pos++] = ' ';
@@ -201,7 +197,7 @@ final class HttpDate {
 		bytes[pos++] = ' ';
 
 		System.arraycopy(GMT, 0, bytes, pos, GMT.length);
-		return pos + 4;
+		return pos + 3;
 	}
 
 	private static boolean isLeap(int year) {

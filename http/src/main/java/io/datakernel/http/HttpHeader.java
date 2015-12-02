@@ -24,9 +24,7 @@ import java.util.List;
 
 import static io.datakernel.util.ByteBufStrings.*;
 
-/**
- * Represent the header {@link HttpResponse}
- */
+@SuppressWarnings("unused")
 public class HttpHeader {
 	private static final int HEADERS_SLOTS = 512;
 	private static final int MAX_PROBINGS = 2;
@@ -216,7 +214,7 @@ public class HttpHeader {
 		return decodeAscii(bytes, offset, length);
 	}
 
-	public void writeTo(ByteBuf buf) {
+	void writeTo(ByteBuf buf) {
 		buf.put(bytes, offset, length);
 	}
 
@@ -286,7 +284,11 @@ public class HttpHeader {
 
 		@Override
 		public int estimateSize() {
-			return types.size() * ContentType.MAXIMUM_CT_LENGTH;
+			int size = 0;
+			for (ContentType type : types) {
+				size += type.estimateSize() + 2;
+			}
+			return size;
 		}
 
 		@Override
@@ -317,11 +319,6 @@ public class HttpHeader {
 		public void writeTo(ByteBuf buf) {
 			HttpCookie.render(cookies, buf);
 		}
-
-		@Override
-		public String toString() {
-			return cookies.toString();
-		}
 	}
 
 	private static final class ValueOfCookie extends Value {
@@ -346,12 +343,7 @@ public class HttpHeader {
 
 		@Override
 		public void writeTo(ByteBuf buf) {
-			cookie.renderSingle(buf);
-		}
-
-		@Override
-		public String toString() {
-			return cookie.toString();
+			cookie.renderFull(buf);
 		}
 	}
 
@@ -383,13 +375,13 @@ public class HttpHeader {
 		}
 
 		@Override
-		public void writeTo(ByteBuf buf) {
-			HttpDate.render(date.getTime(), buf);
+		public int estimateSize() {
+			return 29;
 		}
 
 		@Override
-		public int estimateSize() {
-			return 29;
+		public void writeTo(ByteBuf buf) {
+			HttpDate.render(date.getTime(), buf);
 		}
 	}
 

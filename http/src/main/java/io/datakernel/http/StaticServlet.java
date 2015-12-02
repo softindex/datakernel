@@ -57,9 +57,7 @@ public class StaticServlet implements AsyncHttpServlet {
 						file.readFully(new ResultCallback<ByteBuf>() {
 							@Override
 							public void onResult(ByteBuf byteBuf) {
-								HttpResponse response = HttpResponse.create()
-										.setContentLength(byteBuf.limit());
-
+								HttpResponse response = HttpResponse.create();
 								ContentType type = ContentType.getByExt(urlTrail);
 								if (type != null) {
 									response.setContentType(type);

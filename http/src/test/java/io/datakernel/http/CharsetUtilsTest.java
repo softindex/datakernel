@@ -51,4 +51,13 @@ public class CharsetUtilsTest {
 
 		assertEquals(4, actual.size());
 	}
+
+	@Test
+	public void testParseUnknown() {
+		List<HttpUtils.Pair<Charset>> actual = new ArrayList<>();
+		String string = "someUnsupportedCharset";
+		CharsetUtils.parse(ByteBufStrings.encodeAscii(string), 0, string.length(), actual);
+		assertEquals(0, actual.size());
+	}
+
 }
