@@ -23,7 +23,11 @@ import io.datakernel.serializer.asm.SerializerGenByte;
 
 public class KeyTypeByte extends KeyType implements KeyTypeEnumerable {
 	public KeyTypeByte() {
-		super(byte.class);
+		this(null);
+	}
+
+	public KeyTypeByte(Object restrictedValue) {
+		super(byte.class, restrictedValue);
 	}
 
 	@Override

@@ -25,7 +25,11 @@ public class KeyTypeEnum<T extends Enum<T>> extends KeyType {
 	private Class<T> enumClass;
 
 	public KeyTypeEnum(Class<T> enumClass) {
-		super(enumClass);
+		this(enumClass, null);
+	}
+
+	public KeyTypeEnum(Class<T> enumClass, Object restrictedValue) {
+		super(enumClass, restrictedValue);
 		this.enumClass = enumClass;
 	}
 

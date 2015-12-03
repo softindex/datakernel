@@ -94,6 +94,10 @@ public class AggregationStructure {
 		return keys.get(key);
 	}
 
+	public Object getRestrictedValue(String key) {
+		return keys.get(key).getRestrictedValue();
+	}
+
 	public FieldType getInputFieldType(String inputField) {
 		return fields.get(inputField);
 	}

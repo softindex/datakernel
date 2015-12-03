@@ -289,6 +289,12 @@ public class Aggregation {
 
 		List<AggregationQuery.QueryPredicateNotEquals> notEqualsPredicates = getNotEqualsPredicates(query.getPredicates());
 
+		for (String key : resultKeys) {
+			Object restrictedValue = structure.getRestrictedValue(key);
+			if (restrictedValue != null)
+				notEqualsPredicates.add(new AggregationQuery.QueryPredicateNotEquals(key, restrictedValue));
+		}
+
 		if (!notEqualsPredicates.isEmpty()) {
 			StreamFilter streamFilter = new StreamFilter<>(eventloop, createNotEqualsPredicate(outputClass, notEqualsPredicates));
 			streamProducer.streamTo(streamFilter.getInput());
