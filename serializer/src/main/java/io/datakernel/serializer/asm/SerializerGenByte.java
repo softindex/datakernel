@@ -17,6 +17,8 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -28,8 +30,8 @@ public final class SerializerGenByte extends SerializerGenPrimitive {
 	}
 
 	@Override
-	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return call(arg(0), "writeByte", cast(value, byte.class));
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+		return callStatic(SerializationOutputBuffer.class, "writeByte", byteArray, off, cast(value, byte.class));
 	}
 
 	@Override

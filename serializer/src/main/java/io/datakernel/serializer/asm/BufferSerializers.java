@@ -26,8 +26,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Byte> BYTE_SERIALIZER = new BufferSerializer<Byte>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Byte item) {
-			output.writeByte(item);
+		public int serialize(SerializationOutputBuffer output, Byte item) {
+			output.position(SerializationOutputBuffer.writeByte(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -38,9 +39,10 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<byte[]> BYTES_SERIALIZER = new BufferSerializer<byte[]>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, byte[] item) {
-			output.writeVarInt(item.length);
-			output.write(item);
+		public int serialize(SerializationOutputBuffer output, byte[] item) {
+			output.position(SerializationOutputBuffer.writeVarInt(output.array(), output.position(), item.length));
+			output.position(SerializationOutputBuffer.write(item, output.array(), output.position()));
+			return output.position();
 		}
 
 		@Override
@@ -54,8 +56,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Short> SHORT_SERIALIZER = new BufferSerializer<Short>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Short item) {
-			output.writeShort(item);
+		public int serialize(SerializationOutputBuffer output, Short item) {
+			output.position(SerializationOutputBuffer.writeShort(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -66,8 +69,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Integer> INT_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
-			output.writeInt(item);
+		public int serialize(SerializationOutputBuffer output, Integer item) {
+			output.position(SerializationOutputBuffer.writeInt(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -78,8 +82,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Integer> VARINT_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
-			output.writeVarInt(item);
+		public int serialize(SerializationOutputBuffer output, Integer item) {
+			output.position(SerializationOutputBuffer.writeVarInt(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -90,8 +95,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Integer> VARINT_ZIGZAG_SERIALIZER = new BufferSerializer<Integer>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Integer item) {
-			output.writeVarInt((item << 1) ^ (item >> 31));
+		public int serialize(SerializationOutputBuffer output, Integer item) {
+			output.position(SerializationOutputBuffer.writeVarInt(output.array(), output.position(), (item << 1) ^ (item >> 31)));
+			return output.position();
 		}
 
 		@Override
@@ -103,8 +109,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Long> LONG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
-			output.writeLong(item);
+		public int serialize(SerializationOutputBuffer output, Long item) {
+			output.position(SerializationOutputBuffer.writeLong(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -115,8 +122,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Long> VARLONG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
-			output.writeVarLong(item);
+		public int serialize(SerializationOutputBuffer output, Long item) {
+			output.position(SerializationOutputBuffer.writeVarLong(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -127,8 +135,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Long> VARLONG_ZIGZAG_SERIALIZER = new BufferSerializer<Long>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Long item) {
-			output.writeVarLong((item << 1) ^ (item >> 63));
+		public int serialize(SerializationOutputBuffer output, Long item) {
+			output.position(SerializationOutputBuffer.writeVarLong(output.array(), output.position(), (item << 1) ^ (item >> 63)));
+			return output.position();
 		}
 
 		@Override
@@ -140,8 +149,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Float> FLOAT_SERIALIZER = new BufferSerializer<Float>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Float item) {
-			output.writeFloat(item);
+		public int serialize(SerializationOutputBuffer output, Float item) {
+			output.position(SerializationOutputBuffer.writeFloat(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -152,8 +162,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Double> DOUBLE_SERIALIZER = new BufferSerializer<Double>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Double item) {
-			output.writeDouble(item);
+		public int serialize(SerializationOutputBuffer output, Double item) {
+			output.position(SerializationOutputBuffer.writeDouble(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -164,8 +175,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Character> CHAR_SERIALIZER = new BufferSerializer<Character>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Character item) {
-			output.writeChar(item);
+		public int serialize(SerializationOutputBuffer output, Character item) {
+			output.position(SerializationOutputBuffer.writeChar(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -176,8 +188,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<String> UTF8_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
-			output.writeUTF8(item);
+		public int serialize(SerializationOutputBuffer output, String item) {
+			output.position(SerializationOutputBuffer.writeUTF8(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -188,8 +201,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<String> UTF16_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
-			output.writeUTF16(item);
+		public int serialize(SerializationOutputBuffer output, String item) {
+			output.position(SerializationOutputBuffer.writeUTF16(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -200,8 +214,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<Boolean> BOOLEAN_SERIALIZER = new BufferSerializer<Boolean>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, Boolean item) {
-			output.writeBoolean(item);
+		public int serialize(SerializationOutputBuffer output, Boolean item) {
+			output.position(SerializationOutputBuffer.writeBoolean(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override
@@ -212,8 +227,9 @@ public final class BufferSerializers {
 
 	private static final BufferSerializer<String> ISO_8859_1_SERIALIZER = new BufferSerializer<String>() {
 		@Override
-		public void serialize(SerializationOutputBuffer output, String item) {
-			output.writeIso88591(item);
+		public int serialize(SerializationOutputBuffer output, String item) {
+			output.position(SerializationOutputBuffer.writeIso88591(output.array(), output.position(), item));
+			return output.position();
 		}
 
 		@Override

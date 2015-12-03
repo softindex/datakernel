@@ -19,6 +19,7 @@ package io.datakernel.serializer;
 import io.datakernel.asm.Annotations;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.annotations.*;
@@ -877,7 +878,8 @@ public final class SerializerBuilder {
 
 		Expression version = voidExp();
 		if (currentVersion != null) {
-			version = call(arg(0), "writeVarInt", value(currentVersion));
+			version = call(arg(0), "position",
+					callStatic(SerializationOutputBuffer.class, "writeVarInt", call(arg(0), "array"), call(arg(0), "position"), value(currentVersion)));
 		}
 
 		StaticMethods staticMethods = new StaticMethods();
@@ -887,11 +889,18 @@ public final class SerializerBuilder {
 		for (StaticMethods.Key key : staticMethods.mapSerialize.keySet()) {
 			StaticMethods.Value value = staticMethods.mapSerialize.get(key);
 			asmFactory.staticMethod(value.method,
-					void.class,
-					asList(SerializationOutputBuffer.class, key.serializerGen.getRawType()),
+					int.class,
+					asList(byte[].class, int.class, key.serializerGen.getRawType()),
 					value.expression);
 		}
-		asmFactory.method("serialize", sequence(version, serializerGen.serialize(cast(arg(1), dataType), currentVersion, staticMethods)));
+		ExpressionLet position = let(call(arg(0), "position"));
+		asmFactory.method("serialize", sequence(version,
+						call(arg(0), "position", serializerGen.serialize(
+								call(arg(0), "array"), position,
+								cast(arg(1), dataType), currentVersion, staticMethods)),
+						call(arg(0), "position")
+				)
+		);
 
 		defineDeserialize(serializerGen, asmFactory, allVersions, staticMethods);
 		for (StaticMethods.Key key : staticMethods.mapDeserialize.keySet()) {

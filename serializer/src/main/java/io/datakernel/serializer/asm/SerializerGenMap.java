@@ -18,6 +18,8 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.EnumMap;
@@ -60,18 +62,19 @@ public final class SerializerGenMap implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = call(arg(0), "writeVarInt", length(value));
+	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = set(off, callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, length(value)));
 
 		return sequence(length, mapForEach(value,
 						new ForVar() {
 							@Override
-							public Expression forVar(Expression it) {return keySerializer.serialize(cast(it, keySerializer.getRawType()), version, staticMethods);}
+							public Expression forVar(Expression it) {return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods));}
 						},
 						new ForVar() {
 							@Override
-							public Expression forVar(Expression it) {return valueSerializer.serialize(cast(it, valueSerializer.getRawType()), version, staticMethods);}
-						})
+							public Expression forVar(Expression it) {return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods));}
+						}),
+				off
 		);
 	}
 

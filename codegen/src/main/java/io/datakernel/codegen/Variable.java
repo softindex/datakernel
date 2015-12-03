@@ -14,12 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer;
+package io.datakernel.codegen;
 
-public interface BufferSerializer<T> {
-
-	int serialize(SerializationOutputBuffer output, T item);
-
-	T deserialize(SerializationInputBuffer input);
-
+public interface Variable extends Expression, StoreDef {
 }

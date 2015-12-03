@@ -18,6 +18,8 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.HashMap;
@@ -104,14 +106,14 @@ public class SerializerGenHppcSet implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = call(arg(0), "writeVarInt", call(value, "size"));
+	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+		Expression length = set(off, callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, call(value, "size")));
 		return sequence(length, hppcSetForEach(iteratorType, value, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return valueSerializer.serialize(cast(it, valueSerializer.getRawType()), version, staticMethods);
+				return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods));
 			}
-		}));
+		}), off);
 	}
 
 	@Override

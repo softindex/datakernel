@@ -120,8 +120,8 @@ public class AsmSerializerTest {
 		testData1.lBoxed = Long.MIN_VALUE;
 		testData1.fBoxed = Float.MIN_VALUE;
 		testData1.dBoxed = Double.MIN_VALUE;
-		testData1.bytes = new byte[]{1, 2, 3};
 
+		testData1.bytes = new byte[]{1, 2, 3};
 		testData1.string = "abc";
 		testData1.testEnum = TestDataScalars.TestEnum.TWO;
 		testData1.address = InetAddress.getByName("127.0.0.1");
@@ -708,19 +708,43 @@ public class AsmSerializerTest {
 		assertEquals(subclass1.initByCons, subclass2.initByCons);
 	}
 
-	public static class TestDataSerializerUtf16 {
+	public static class TestDataSerializerFormat {
 		@Serialize(order = 0)
 		@SerializeStringFormat(value = StringFormat.UTF16, path = {0})
 		@SerializeNullable(path = {0})
-		public List<String> strings;
+		public List<String> stringsUtf16;
+
+		@Serialize(order = 1)
+		@SerializeStringFormat(value = StringFormat.UTF8, path = {0})
+		@SerializeNullable(path = {0})
+		public List<String> stringsUtf8;
+
+		@Serialize(order = 2)
+		@SerializeStringFormat(value = StringFormat.UTF8_CUSTOM, path = {0})
+		@SerializeNullable(path = {0})
+		public List<String> stringsUtf8Custom;
+
+		@Serialize(order = 3)
+		@SerializeStringFormat(value = StringFormat.ISO_8859_1, path = {0})
+		@SerializeNullable(path = {0})
+		public List<String> stringsIso88591;
+
 	}
 
 	@Test
 	public void testSerializerUtf16() {
-		TestDataSerializerUtf16 testData1 = new TestDataSerializerUtf16();
-		testData1.strings = Arrays.asList("abc", null, "123");
-		TestDataSerializerUtf16 testData2 = doTest(TestDataSerializerUtf16.class, testData1);
-		assertEquals(testData1.strings, testData2.strings);
+		TestDataSerializerFormat testData1 = new TestDataSerializerFormat();
+		testData1.stringsUtf16 = Arrays.asList("abc", null, "123");
+		testData1.stringsUtf8 = Arrays.asList("abc", null, "123");
+		testData1.stringsUtf8Custom = Arrays.asList("abc", null, "123");
+		testData1.stringsIso88591 = Arrays.asList("abc", null, "123");
+
+		TestDataSerializerFormat testData2 = doTest(TestDataSerializerFormat.class, testData1);
+
+		assertEquals(testData1.stringsUtf16, testData2.stringsUtf16);
+		assertEquals(testData1.stringsUtf8, testData2.stringsUtf8);
+		assertEquals(testData1.stringsUtf8Custom, testData2.stringsUtf8Custom);
+		assertEquals(testData1.stringsIso88591, testData2.stringsIso88591);
 	}
 
 	public static class TestDataFixedSize {

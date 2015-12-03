@@ -19,6 +19,8 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -65,7 +67,7 @@ public final class SerializerGenArray implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		final Expression castedValue = cast(value, type);
 		Expression length;
 		if (fixedSize != -1) {
@@ -74,16 +76,16 @@ public final class SerializerGenArray implements SerializerGen {
 			length = length(castedValue);
 		}
 
-		Expression writeLength = call(arg(0), "writeVarInt", length);
+		Expression writeLength = set(off, callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, length));
 		if (type.getComponentType() == Byte.TYPE) {
-			return sequence(writeLength, call(arg(0), "write", castedValue));
+			return sequence(writeLength, callStatic(SerializationOutputBuffer.class, "write", castedValue, byteArray, off));
 		} else {
 			return sequence(writeLength, expressionFor(length, new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return valueSerializer.serialize(get(castedValue, it), version, staticMethods);
+					return set(off, valueSerializer.serialize(byteArray, off, get(castedValue, it), version, staticMethods));
 				}
-			}));
+			}), off);
 		}
 	}
 

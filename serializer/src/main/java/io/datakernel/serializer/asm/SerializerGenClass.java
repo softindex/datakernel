@@ -19,6 +19,7 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.VarField;
+import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.SerializerBuilder;
 import org.objectweb.asm.Type;
@@ -292,19 +293,20 @@ public class SerializerGenClass implements SerializerGen {
 
 			if (fieldGen.field != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods);
-				list.add(fieldGen.serializer.serialize(cast(getter(arg(1), fieldName), type), version, staticMethods));
+				list.add(set(arg(1), fieldGen.serializer.serialize(arg(0), arg(1), cast(getter(arg(2), fieldName), type), version, staticMethods)));
 			} else if (fieldGen.method != null) {
 				fieldGen.serializer.prepareSerializeStaticMethods(version, staticMethods);
-				list.add(fieldGen.serializer.serialize(cast(call(arg(1), fieldGen.method.getName()), type), version, staticMethods));
+				list.add(set(arg(1), fieldGen.serializer.serialize(arg(0), arg(1), cast(call(arg(2), fieldGen.method.getName()), type), version, staticMethods)));
 			} else throw new AssertionError();
 		}
+		list.add(arg(1));
 
 		staticMethods.registerStaticSerializeMethod(this, version, sequence(list));
 	}
 
 	@Override
-	public Expression serialize(Expression field, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return staticMethods.callStaticSerializeMethod(this, version, arg(0), field);
+	public Expression serialize(Expression byteArray, Variable off, Expression field, int version, SerializerBuilder.StaticMethods staticMethods) {
+		return staticMethods.callStaticSerializeMethod(this, version, byteArray, off, field);
 	}
 
 	@Override

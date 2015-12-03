@@ -51,7 +51,7 @@ public final class Expressions {
 	 * @param expression expression which will be processed when variable will be used
 	 * @return new instance of the Expression
 	 */
-	public static Expression let(Expression expression) {
+	public static ExpressionLet let(Expression expression) {
 		return new ExpressionLet(expression);
 	}
 
@@ -126,7 +126,7 @@ public final class Expressions {
 	 * @param argument ordinal number in list of arguments
 	 * @return new instance of the VarArg
 	 */
-	public static Expression arg(int argument) {
+	public static VarArg arg(int argument) {
 		return new VarArg(argument);
 	}
 

@@ -18,7 +18,9 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.*;
@@ -51,15 +53,16 @@ public class SerializerGenSet implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		return sequence(
-				call(arg(0), "writeVarInt", call(value, "size")),
+				set(off, callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, call(value, "size"))),
 				forEach(value, valueSerializer.getRawType(), new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
-						return sequence(valueSerializer.serialize(it, version, staticMethods), voidExp());
+						return set(off, valueSerializer.serialize(arg(0), arg(1), it, version, staticMethods));
 					}
-				})
+				}),
+				off
 		);
 	}
 
