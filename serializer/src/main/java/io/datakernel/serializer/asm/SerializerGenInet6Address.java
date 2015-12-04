@@ -17,29 +17,56 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
+import java.net.Inet6Address;
+
 import static io.datakernel.codegen.Expressions.*;
 
-public final class SerializerGenChar extends SerializerGenPrimitive {
+public class SerializerGenInet6Address implements SerializerGen {
+	private static final SerializerGenInet6Address INSTANCE = new SerializerGenInet6Address();
 
-	public SerializerGenChar() {
-		super(char.class);
+	@Override
+	public void getVersions(VersionsCollector versions) {
+
+	}
+
+	@Override
+	public boolean isInline() {
+		return true;
+	}
+
+	@Override
+	public Class<?> getRawType() {
+		return Inet6Address.class;
+	}
+
+	@Override
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+
 	}
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializationOutputBuffer.class, "writeChar", byteArray, off, cast(value, char.class));
+		return callStatic(SerializationOutputBuffer.class, "write", call(cast(value, getRawType()), "getAddress"), byteArray, off);
+	}
+
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+
 	}
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		if (targetType.isPrimitive())
-			return call(arg(0), "readChar");
-		else
-			return cast(call(arg(0), "readChar"), Character.class);
+		Expression local = let(Expressions.newArray(byte[].class, value(16)));
+		return sequence(call(arg(0), "read", local), callStatic(getRawType(), "getByAddress", local));
+	}
+
+	public static SerializerGen instance() {
+		return INSTANCE;
 	}
 }

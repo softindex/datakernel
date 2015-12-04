@@ -72,7 +72,7 @@ public final class RpcSerializer {
 	public BufferSerializer<RpcMessage> createSerializer() {
 		SerializerBuilder serializerBuilder = SerializerBuilder.newDefaultInstance(classLoader);
 		for (Entry<Class<?>, SerializerGenBuilder> serializer : extraSerializers.entrySet())
-			serializerBuilder.registry(serializer.getKey(), serializer.getValue());
+			serializerBuilder.register(serializer.getKey(), serializer.getValue());
 		serializerBuilder.setExtraSubclasses("extraRpcMessageData", extraSubClasses);
 		if (serializeVersion == 0)
 			return serializerBuilder.create(RpcMessage.class);

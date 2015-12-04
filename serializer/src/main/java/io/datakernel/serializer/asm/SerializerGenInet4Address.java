@@ -19,26 +19,20 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
-import java.net.InetAddress;
+import java.net.Inet4Address;
 
 import static io.datakernel.codegen.Expressions.*;
 
-@SuppressWarnings("PointlessArithmeticExpression")
-public class SerializerGenInetAddress implements SerializerGen {
-	private static final SerializerGenInetAddress INSTANCE = new SerializerGenInetAddress();
-
-	public static SerializerGenInetAddress instance() {
-		return INSTANCE;
-	}
-
-	private SerializerGenInetAddress() {
-	}
+public class SerializerGenInet4Address implements SerializerGen {
+	private static final SerializerGenInet4Address INSTANCE = new SerializerGenInet4Address();
 
 	@Override
 	public void getVersions(VersionsCollector versions) {
+
 	}
 
 	@Override
@@ -48,28 +42,31 @@ public class SerializerGenInetAddress implements SerializerGen {
 
 	@Override
 	public Class<?> getRawType() {
-		return InetAddress.class;
+		return Inet4Address.class;
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-
-	}
-
-	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return callStatic(SerializationOutputBuffer.class, "write", call(value, "getAddress"), byteArray, off);
-	}
-
-	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		return callStatic(SerializationOutputBuffer.class, "write", call(cast(value, getRawType()), "getAddress"), byteArray, off);
+	}
+
+	@Override
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+
+	}
+
+	@Override
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression local = let(Expressions.newArray(byte[].class, value(4)));
-		return sequence(call(arg(0), "read", local), callStatic(targetType, "getByAddress", local));
+		return sequence(call(arg(0), "read", local), callStatic(getRawType(), "getByAddress", local));
 	}
 
+	public static SerializerGen instance() {
+		return INSTANCE;
+	}
 }

@@ -49,7 +49,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ByteBuffer.class, new SerializerGenByteBuffer())
+				.register(ByteBuffer.class, new SerializerGenByteBuffer())
 				.create(ByteBuffer.class);
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
 
@@ -67,7 +67,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<ByteBuffer> serializerByteBuffer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.register(ByteBuffer.class, new SerializerGenByteBuffer(true))
 				.create(ByteBuffer.class);
 
 		ByteBuffer testBuffer2 = doTest(testBuffer1, serializerByteBuffer, serializerByteBuffer);
@@ -88,7 +88,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ByteBuffer.class, new SerializerGenByteBuffer())
+				.register(ByteBuffer.class, new SerializerGenByteBuffer())
 				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
@@ -123,7 +123,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<ByteBuffer> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.register(ByteBuffer.class, new SerializerGenByteBuffer(true))
 				.create(ByteBuffer.class);
 
 		byte[] buffer = new byte[1000];
@@ -177,7 +177,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ByteBuffer.class, new SerializerGenByteBuffer())
+				.register(ByteBuffer.class, new SerializerGenByteBuffer())
 				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];
@@ -214,7 +214,7 @@ public class CodeGenSerializerGenByteBufferTest {
 
 		BufferSerializer<TestByteBufferData> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ByteBuffer.class, new SerializerGenByteBuffer(true))
+				.register(ByteBuffer.class, new SerializerGenByteBuffer(true))
 				.create(TestByteBufferData.class);
 
 		byte[] buffer = new byte[1000];

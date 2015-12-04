@@ -16,6 +16,7 @@
 
 package io.datakernel.serializer.annotations;
 
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
@@ -23,7 +24,7 @@ import io.datakernel.serializer.asm.SerializerGenString;
 
 public class SerializeStringFormatHandler implements AnnotationHandler<SerializeStringFormat, SerializeStringFormatEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, final SerializeStringFormat annotation) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, final SerializeStringFormat annotation, final CompatibilityLevel compatibilityLevel) {
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {

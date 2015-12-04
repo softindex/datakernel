@@ -169,7 +169,7 @@ public final class SerializationOutputBuffer {
 			off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
 			v >>>= 7;
 			if ((v & ~0x7F) == 0) {
-				off =writeByte(buf, off, (byte) v);
+				off = writeByte(buf, off, (byte) v);
 			} else {
 				off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
 				v >>>= 7;
@@ -344,4 +344,4 @@ public final class SerializationOutputBuffer {
 	public String toString() {
 		return "[pos: " + pos + ", buf" + (buf.length < 100 ? ": " + Arrays.toString(buf) : " size " + buf.length) + "]";
 	}
- }
+}

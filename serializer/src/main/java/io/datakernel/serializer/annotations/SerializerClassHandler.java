@@ -16,19 +16,27 @@
 
 package io.datakernel.serializer.annotations;
 
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenBuilder;
 import io.datakernel.serializer.asm.SerializerGenBuilderConst;
 
+import java.lang.reflect.InvocationTargetException;
+
 public final class SerializerClassHandler implements AnnotationHandler<SerializerClass, SerializerClassEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, final SerializerClass annotation) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, final SerializerClass annotation, CompatibilityLevel compatibilityLevel) {
 		try {
 			SerializerGen serializer = annotation.value().newInstance();
 			return new SerializerGenBuilderConst(serializer);
 		} catch (InstantiationException | IllegalAccessException e) {
-			throw new RuntimeException(e);
+			try {
+				SerializerGen serializer = (SerializerGen) annotation.value().getMethod("instance").invoke(null);
+				return new SerializerGenBuilderConst(serializer);
+			} catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e1) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
