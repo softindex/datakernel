@@ -16,16 +16,14 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.file.File;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.util.ByteBufStrings;
 
-import java.io.FileNotFoundException;
-import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -47,45 +45,38 @@ public class StaticServlet implements AsyncHttpServlet {
 	@Override
 	public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		final String urlTrail = request.getRelativePath();
-		final String filePath = directory + urlTrail;
-		try {
-			Path path = Paths.get(filePath);
-			if (Files.exists(path)) {
-				AsyncFile.open(eventloop, executor, path, new OpenOption[]{READ}, new ResultCallback<File>() {
-					@Override
-					public void onResult(final File file) {
-						file.readFully(new ResultCallback<ByteBuf>() {
-							@Override
-							public void onResult(ByteBuf byteBuf) {
-								HttpResponse response = HttpResponse.create();
-								ContentType type = ContentType.getByExt(urlTrail);
-								if (type != null) {
-									response.setContentType(type);
-								}
-								response.body(byteBuf);
-								callback.onResult(response);
-								byteBuf.recycle();
-							}
+		Path path = Paths.get(directory + urlTrail);
 
-							@Override
-							public void onException(Exception exception) {
-								callback.onException(exception);
-							}
-						});
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						callback.onException(exception);
-					}
-				});
-			} else {
-				throw new FileNotFoundException("Static file not found");
+		findFile(path, new ResultCallback<ByteBuf>() {
+			@Override
+			public void onResult(ByteBuf buf) {
+				callback.onResult(HttpResponse.create()
+						.setContentType(defineContentType(urlTrail))
+						.body(buf));
 			}
-		} catch (FileNotFoundException f) {
-			callback.onResult(HttpResponse.create(404).body(ByteBufStrings.wrapUTF8(f.getMessage())));
-		} catch (Exception e) {
-			callback.onException(e);
+
+			@Override
+			public void onException(Exception e) {
+				callback.onResult(HttpResponse.create(404));
+			}
+		});
+	}
+
+	private void findFile(Path path, final ResultCallback<ByteBuf> callback) {
+		AsyncFile.open(eventloop, executor, path, new OpenOption[]{READ}, new ForwardingResultCallback<File>(callback) {
+			@Override
+			public void onResult(final File file) {
+				file.readFully(callback);
+			}
+		});
+	}
+
+	private ContentType defineContentType(String trail) {
+		int pos = trail.lastIndexOf(".");
+		if (pos != -1) {
+			trail = trail.substring(pos + 1);
 		}
+		ContentType type = ContentType.getByExt(trail);
+		return type == null ? ContentType.PLAIN_TEXT : type;
 	}
 }
