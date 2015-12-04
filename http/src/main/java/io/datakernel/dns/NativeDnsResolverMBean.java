@@ -35,5 +35,5 @@ public interface NativeDnsResolverMBean {
 
 	void setMaxTtlMillis(long maxTtlMillis);
 
-	Long getMaxTtlMillis();
+	long getMaxTtlMillis();
 }

@@ -44,11 +44,11 @@ public final class DnsCache {
 	private final Multimap<Long, String> expirations = HashMultimap.create();
 	private long lastCleanupSecond;
 
-	private final long errorCacheExpirationMillis;
-	private final long hardExpirationDeltaMillis;
+	private final long errorCacheExpirationSeconds;
+	private final long hardExpirationDeltaSeconds;
 	private final NioEventloop eventloop;
 
-	private Long maxTtlMillis;
+	private long maxTtlSeconds = Long.MAX_VALUE;
 
 	/**
 	 * Enum with freshness cache's entry.
@@ -79,8 +79,8 @@ public final class DnsCache {
 	 *                                   refreshing and time at which entry is considered not resolved
 	 */
 	public DnsCache(NioEventloop eventloop, long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
-		this.errorCacheExpirationMillis = errorCacheExpirationMillis;
-		this.hardExpirationDeltaMillis = hardExpirationDeltaMillis;
+		this.errorCacheExpirationSeconds = errorCacheExpirationMillis / 1000;
+		this.hardExpirationDeltaSeconds = hardExpirationDeltaMillis / 1000;
 		this.eventloop = eventloop;
 		this.lastCleanupSecond = getCurrentSecond();
 	}
@@ -179,13 +179,13 @@ public final class DnsCache {
 		if (result.getMinTtl() == 0)
 			return;
 		long expirationSecond;
-		if (maxTtlMillis != null && result.getMinTtl() > getMaxTtlSeconds())
-			expirationSecond = getMaxTtlSeconds() + getCurrentSecond();
+		if (result.getMinTtl() > maxTtlSeconds)
+			expirationSecond = maxTtlSeconds + getCurrentSecond();
 		else
 			expirationSecond = result.getMinTtl() + getCurrentSecond();
 		String domainName = result.getDomainName();
 		cache.put(domainName, CachedDnsLookupResult.fromQueryWithExpiration(result, expirationSecond));
-		expirations.put(expirationSecond + hardExpirationDeltaMillis / 1000, domainName);
+		expirations.put(expirationSecond + hardExpirationDeltaSeconds, domainName);
 		if (logger.isDebugEnabled())
 			logger.debug("Add result to cache for host: {}", domainName);
 	}
@@ -196,7 +196,7 @@ public final class DnsCache {
 	 * @param exception exception to add
 	 */
 	public void add(DnsException exception) {
-		long expirationSecond = errorCacheExpirationMillis / 1000 + getCurrentSecond();
+		long expirationSecond = errorCacheExpirationSeconds + getCurrentSecond();
 		String domainName = exception.getDomainName();
 		cache.put(domainName, CachedDnsLookupResult.fromExceptionWithExpiration(exception, expirationSecond));
 		expirations.put(expirationSecond, domainName);
@@ -228,12 +228,12 @@ public final class DnsCache {
 		}
 	}
 
-	public Long getMaxTtlMillis() {
-		return maxTtlMillis;
+	public long getMaxTtlMillis() {
+		return maxTtlSeconds * 1000;
 	}
 
-	public void setMaxTtlMillis(Long maxTtlMillis) {
-		this.maxTtlMillis = maxTtlMillis;
+	public void setMaxTtlMillis(long maxTtlMillis) {
+		this.maxTtlSeconds = maxTtlMillis / 1000;
 	}
 
 	public void emptyCache() {
@@ -246,11 +246,7 @@ public final class DnsCache {
 	}
 
 	private long getHardExpirationSecond(long softExpirationSecond) {
-		return softExpirationSecond + hardExpirationDeltaMillis / 1000;
-	}
-
-	private long getMaxTtlSeconds() {
-		return maxTtlMillis / 1000;
+		return softExpirationSecond + hardExpirationDeltaSeconds;
 	}
 
 	public int getNumberOfCachedDomainNames() {

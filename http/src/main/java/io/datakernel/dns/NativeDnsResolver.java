@@ -313,7 +313,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 	}
 
 	@Override
-	public Long getMaxTtlMillis() {
+	public long getMaxTtlMillis() {
 		return cache.getMaxTtlMillis();
 	}
 }
