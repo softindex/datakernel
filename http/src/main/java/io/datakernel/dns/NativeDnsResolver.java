@@ -302,4 +302,18 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 		return cache.getDomainNamesOfFailedRequests();
 	}
 
+	@Override
+	public void emptyCache() {
+		cache.emptyCache();
+	}
+
+	@Override
+	public void setMaxTtlMillis(long maxTtlMillis) {
+		cache.setMaxTtlMillis(maxTtlMillis);
+	}
+
+	@Override
+	public Long getMaxTtlMillis() {
+		return cache.getMaxTtlMillis();
+	}
 }
