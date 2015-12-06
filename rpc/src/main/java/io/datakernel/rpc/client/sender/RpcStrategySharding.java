@@ -50,7 +50,13 @@ public final class RpcStrategySharding implements RpcStrategy {
 	@Override
 	public final RpcSender createSender(RpcClientConnectionPool pool) {
 		List<RpcSender> subSenders = list.listOfNullableSenders(pool);
-		if (subSenders.size() < minActiveSubStrategies)
+		int activeSenders = 0;
+		for (RpcSender subSender : subSenders) {
+			if (subSender != null) {
+				activeSenders++;
+			}
+		}
+		if (activeSenders < minActiveSubStrategies)
 			return null;
 		if (subSenders.size() == 0)
 			return null;

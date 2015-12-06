@@ -47,6 +47,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.async.AsyncCallbacks.postCompletion;
+import static io.datakernel.async.AsyncCallbacks.postException;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
@@ -151,7 +153,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 					if (running && startCallback != null) {
 						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
 								connectTimeoutMillis / 1000.0);
-						startCallback.onException(new InterruptedException(errorMsg));
+						postException(eventloop, startCallback, new InterruptedException(errorMsg));
 						running = false;
 						startCallback = null;
 					}
@@ -169,7 +171,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		checkState(running);
 		running = false;
 		if (startCallback != null) {
-			startCallback.onException(new InterruptedException("Start aborted"));
+			postException(eventloop, startCallback, new InterruptedException("Start aborted"));
 			startCallback = null;
 		}
 		closeConnections();
@@ -211,7 +213,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 				successfulConnects++;
 				logger.info("Connection to {} established", address);
 				if (startCallback != null) {
-					startCallback.onComplete();
+					postCompletion(eventloop, startCallback);
 					startCallback = null;
 				}
 			}
