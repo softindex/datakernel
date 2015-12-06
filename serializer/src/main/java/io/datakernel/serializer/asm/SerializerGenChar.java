@@ -18,7 +18,6 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -31,12 +30,12 @@ public final class SerializerGenChar extends SerializerGenPrimitive {
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return callStatic(SerializationOutputBuffer.class, "writeChar", byteArray, off, cast(value, char.class));
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (targetType.isPrimitive())
 			return call(arg(0), "readChar");
 		else

@@ -19,7 +19,6 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -46,22 +45,22 @@ public class SerializerGenInet4Address implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		return callStatic(SerializationOutputBuffer.class, "write", call(cast(value, getRawType()), "getAddress"), byteArray, off);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		Expression local = let(Expressions.newArray(byte[].class, value(4)));
 		return sequence(call(arg(0), "read", local), callStatic(getRawType(), "getByAddress", local));
 	}

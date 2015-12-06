@@ -30,9 +30,9 @@ public final class SerializeNullableHandler implements AnnotationHandler<Seriali
 				Preconditions.check(!type.isPrimitive());
 				if (fallback instanceof SerializerGenString)
 					return ((SerializerGenString) fallback).nullable(true);
-				if (fallback instanceof SerializerGenEnum && compatibilityLevel != CompatibilityLevel.OLD_STANDARD)
+				if (fallback instanceof SerializerGenEnum && compatibilityLevel == CompatibilityLevel.STRING_ENUM_SUBCLASS_OPT)
 					return (((SerializerGenEnum) fallback)).nullable(true);
-				if (fallback instanceof SerializerGenSubclass && compatibilityLevel != CompatibilityLevel.OLD_STANDARD)
+				if (fallback instanceof SerializerGenSubclass && compatibilityLevel == CompatibilityLevel.STRING_ENUM_SUBCLASS_OPT)
 					return ((SerializerGenSubclass) fallback).nullable(true);
 				return new SerializerGenNullable(fallback);
 			}

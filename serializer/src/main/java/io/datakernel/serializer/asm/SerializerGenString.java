@@ -19,7 +19,6 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
-import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.StringFormat;
@@ -76,12 +75,12 @@ public class SerializerGenString implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		List<Expression> list = new ArrayList<>();
 
 		Expression maxLen = value(maxLength);
@@ -99,12 +98,12 @@ public class SerializerGenString implements SerializerGen {
 				list.add(callStatic(SerializationOutputBuffer.class, "writeNullableUTF16", byteArray, off, expression));
 			else
 				list.add(callStatic(SerializationOutputBuffer.class, "writeUTF16", byteArray, off, expression));
-		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.OLD_STANDARD) {
+		} else if (format == StringFormat.ISO_8859_1) {
 			if (nullable)
 				list.add(callStatic(SerializationOutputBuffer.class, "writeNullableIso88591", byteArray, off, expression));
 			else
 				list.add(callStatic(SerializationOutputBuffer.class, "writeIso88591", byteArray, off, expression));
-		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.OLD_STANDARD) {
+		} else if (format == StringFormat.UTF8) {
 			if (nullable)
 				list.add(callStatic(SerializationOutputBuffer.class, "writeNullableJavaUTF8", byteArray, off, expression));
 			else
@@ -121,23 +120,23 @@ public class SerializerGenString implements SerializerGen {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		if (format == StringFormat.UTF16) {
 			if (nullable)
 				return call(arg(0), "readNullableUTF16");
 			else
 				return call(arg(0), "readUTF16");
-		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.OLD_STANDARD) {
+		} else if (format == StringFormat.ISO_8859_1) {
 			if (nullable)
 				return call(arg(0), "readNullableIso88591");
 			else
 				return call(arg(0), "readIso88591");
-		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.OLD_STANDARD) {
+		} else if (format == StringFormat.UTF8) {
 			if (nullable)
 				return call(arg(0), "readNullableJavaUTF8");
 			else

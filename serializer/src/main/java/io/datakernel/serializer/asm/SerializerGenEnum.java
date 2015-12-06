@@ -19,7 +19,6 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 import org.objectweb.asm.Type;
@@ -60,12 +59,12 @@ public class SerializerGenEnum implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
 		Expression ordinal = cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE);
 		if (!nullable) {
 			return callStatic(SerializationOutputBuffer.class, "writeByte", byteArray, off, ordinal);
@@ -78,12 +77,12 @@ public class SerializerGenEnum implements SerializerGen {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
 		ExpressionLet value = let(call(arg(0), "readByte"));
 		if (!nullable) {
 			return get(callStatic(nameOfEnum, "values"), value);

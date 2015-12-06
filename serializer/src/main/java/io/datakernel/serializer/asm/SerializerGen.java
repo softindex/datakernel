@@ -60,12 +60,12 @@ public interface SerializerGen {
 
 	Class<?> getRawType();
 
-	void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
+	void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods);
 
-	Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
+	Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods);
 
-	void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
+	void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods);
 
-	Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
+	Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods);
 
 }

@@ -19,7 +19,6 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
-import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -119,37 +118,37 @@ public final class SerializerGenHppcMap implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		keySerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
-		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+		keySerializer.prepareSerializeStaticMethods(version, staticMethods);
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		Expression length = set(off, callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, call(value, "size")));
 		return sequence(length, hppcMapForEach(iteratorType, value,
 				new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
-						return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel));
+						return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods));
 					}
 				},
 				new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
-						return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));
+						return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods));
 					}
 				}), off);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		keySerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
-		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+		keySerializer.prepareDeserializeStaticMethods(version, staticMethods);
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
 		Expression length = let(call(arg(0), "readVarInt"));
 		final Expression map = let(constructor(hashMapType));
 		final Class<?> valueType = valueSerializer.getRawType();
@@ -158,8 +157,8 @@ public final class SerializerGenHppcMap implements SerializerGen {
 			@Override
 			public Expression forVar(Expression it) {
 				return sequence(call(map, "put",
-								cast(keySerializer.deserialize(keyType, version, staticMethods, compatibilityLevel), SerializerGenHppcMap.this.keyType),
-								cast(valueSerializer.deserialize(valueType, version, staticMethods, compatibilityLevel), SerializerGenHppcMap.this.valueType)
+								cast(keySerializer.deserialize(keyType, version, staticMethods), SerializerGenHppcMap.this.keyType),
+								cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcMap.this.valueType)
 						), voidExp()
 				);
 			}
