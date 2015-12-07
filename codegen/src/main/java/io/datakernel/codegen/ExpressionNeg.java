@@ -20,6 +20,9 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
+import static io.datakernel.codegen.Utils.getJavaType;
+import static java.lang.String.format;
 import static org.objectweb.asm.Type.*;
 
 public class ExpressionNeg implements Expression {
@@ -60,7 +63,11 @@ public class ExpressionNeg implements Expression {
 			case Type.DOUBLE:
 				return DOUBLE_TYPE;
 			default:
-				throw new IllegalArgumentException();
+				// TODO (vsavchuk) check
+				throw new RuntimeException(format("%s is not primitive. %s",
+						getJavaType(ctx.getClassLoader(), arg.type(ctx)),
+						exceptionInGeneratedClass(ctx))
+				);
 		}
 	}
 
@@ -95,6 +102,10 @@ public class ExpressionNeg implements Expression {
 			return INT_TYPE;
 		}
 
-		throw new IllegalArgumentException();
+		// TODO (vsavchuk) check
+		throw new RuntimeException(format("%s is not primitive. %s",
+				getJavaType(ctx.getClassLoader(), arg.type(ctx)),
+				exceptionInGeneratedClass(ctx))
+		);
 	}
 }

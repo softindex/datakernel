@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import static java.lang.ClassLoader.getSystemClassLoader;
+import static java.lang.String.format;
 import static org.objectweb.asm.Type.CHAR_TYPE;
 import static org.objectweb.asm.Type.getType;
 
@@ -95,7 +96,8 @@ public class Utils {
 		if (type.equals(getType(byte.class)) || type.equals(BYTE_TYPE))
 			return BYTE_VALUE;
 
-		throw new IllegalArgumentException();
+		// TODO (vsavchuk) check
+		throw new RuntimeException(format("%s is not primitive or wrapper", type.getClassName()));
 	}
 
 	public static Type wrap(Type type) {
@@ -118,7 +120,9 @@ public class Utils {
 			return DOUBLE_TYPE;
 		if (sort == Type.VOID)
 			return VOID_TYPE;
-		throw new IllegalArgumentException();
+
+		// TODO (vsavchuk) check
+		throw new RuntimeException(format("%s is not primitive", type.getClassName()));
 	}
 
 	public static Type unwrap(Type type) {
@@ -140,7 +144,9 @@ public class Utils {
 		Type result = complementTypeOrNull(type);
 		if (result != null)
 			return result;
-		throw new IllegalArgumentException();
+
+		// TODO (vsavchuk) check
+		throw new RuntimeException(format("%s is not primitive or wrapper", type.getClassName()));
 	}
 
 	public static Class<?> getJavaType(ClassLoader classLoader, Type type) {
@@ -167,7 +173,8 @@ public class Utils {
 			try {
 				return classLoader.loadClass(type.getClassName());
 			} catch (ClassNotFoundException e) {
-				throw new RuntimeException(e);
+				// TODO (vsavchuk) check
+				throw new RuntimeException(format("No such class %s in class loader", type.getClassName()));
 			}
 		}
 		if (sort == Type.ARRAY) {
@@ -183,7 +190,8 @@ public class Utils {
 			}
 			return result;
 		}
-		throw new IllegalArgumentException();
+		// TODO (vsavchuk) check
+		throw new RuntimeException(format("Can`t return Java type from %s", type.getClassName()));
 	}
 
 	public static Class<?> getJavaType(Type type) {
@@ -253,12 +261,6 @@ public class Utils {
 		return new VarLocal(local);
 	}
 
-//	public static VarLocal newLocal(Context ctx, Type type, String name) {
-//		VarLocal varLocal = newLocal(ctx, type);
-//		ctx.putLocal(name, varLocal);
-//		return varLocal;
-//	}
-
 	public static Expression argumentVar(int argument) {
 		return new VarArg(argument);
 	}
@@ -284,14 +286,21 @@ public class Utils {
 		}
 
 		if (type == Type.VOID_TYPE) {
-			throw new IllegalArgumentException();
+			// TODO (vsavchuk) check
+			throw new RuntimeException(format("Can`t cast VOID_TYPE to %s. %s",
+					targetType.getClassName(),
+					exceptionInGeneratedClass(ctx)));
 		}
 
 		if (type.equals(ctx.getThisType())) {
 			if (getJavaType(ctx.getClassLoader(), targetType).isAssignableFrom(ctx.getThisSuperclass())) {
 				return;
 			}
-			throw new IllegalArgumentException();
+			// TODO (vsavchuk) check
+			throw new RuntimeException(format("Cant cast self %s to %s, %s",
+					type.getClassName(),
+					targetType.getClassName(),
+					exceptionInGeneratedClass(ctx)));
 		}
 
 		if (!type.equals(ctx.getThisType()) && !targetType.equals(ctx.getThisType()) &&
@@ -311,8 +320,10 @@ public class Utils {
 			Type targetTypePrimitive = isPrimitiveType(targetType) ? targetType : unwrap(targetType);
 
 			if (isWrapperType(type)) {
-				g.invokeVirtual(type, primitiveValueMethod(targetType));
-				return;
+				// TODO (vsavchuk) fix
+//				g.invokeVirtual(type, primitiveValueMethod(targetType));
+				type = unwrap(type);
+				g.unbox(type);
 			}
 
 			assert isPrimitiveType(type);
@@ -329,5 +340,12 @@ public class Utils {
 		}
 
 		g.checkCast(targetType);
+	}
+
+	public static String exceptionInGeneratedClass(Context ctx) {
+		return format("Throwed in generated class %s in method %s",
+				ctx.getThisType().getClassName(),
+				ctx.getMethod()
+		);
 	}
 }

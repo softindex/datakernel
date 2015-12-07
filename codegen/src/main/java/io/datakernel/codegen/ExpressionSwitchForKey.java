@@ -24,16 +24,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.codegen.Expressions.call;
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.newLocal;
+import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
 public class ExpressionSwitchForKey implements Expression {
 	private final Expression key;
+	private final Expression defaultExp;
 	private final List<Expression> listKey = new ArrayList<>();
 	private final List<Expression> listValue = new ArrayList<>();
 
 	ExpressionSwitchForKey(Expression key, List<Expression> listKey, List<Expression> listValue) {
 		this.key = key;
+		this.defaultExp = null;
+		this.listKey.addAll(listKey);
+		this.listValue.addAll(listValue);
+	}
+
+	ExpressionSwitchForKey(Expression key, Expression defalultExp, List<Expression> listKey, List<Expression> listValue) {
+		this.key = key;
+		this.defaultExp = defalultExp;
 		this.listKey.addAll(listKey);
 		this.listValue.addAll(listValue);
 	}
@@ -74,7 +85,14 @@ public class ExpressionSwitchForKey implements Expression {
 			g.mark(labelNext);
 		}
 
-		g.throwException(getType(IllegalArgumentException.class), "");
+		if (defaultExp != null) {
+			defaultExp.load(ctx);
+		} else {
+			// TODO (vsavchuk) check
+			g.throwException(getType(IllegalArgumentException.class),
+					format("Key is out of listKey range. %s",
+							exceptionInGeneratedClass(ctx)));
+		}
 		g.mark(labelExit);
 
 		return type(ctx);

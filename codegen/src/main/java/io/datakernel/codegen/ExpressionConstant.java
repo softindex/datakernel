@@ -20,7 +20,9 @@ import io.datakernel.codegen.utils.Primitives;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -45,8 +47,12 @@ public final class ExpressionConstant implements Expression {
 			return getType(String.class);
 		} else if (value instanceof Type) {
 			return (Type) value;
-		} else
+		} else if (value instanceof Enum) {
+			// TODO (vsavchuk) ???
+			return getType(Enum.class);
+		} else {
 			return getType(Primitives.unwrap(value.getClass()));
+		}
 	}
 
 	@Override
@@ -74,9 +80,16 @@ public final class ExpressionConstant implements Expression {
 		} else if (value instanceof Type) {
 			g.push((Type) value);
 		} else if (value instanceof Enum) {
+			// TODO (vsavchuk) check enum logic
 			g.getStatic(type, ((Enum) value).name(), type);
-		} else
-			throw new IllegalArgumentException();
+		} else {
+			// TODO (vsavchuk) check
+			throw new RuntimeException(format("%s is not primitive, wrapper, String, Type or Enum. %s",
+					value.getClass(),
+					exceptionInGeneratedClass(ctx))
+			);
+		}
+
 		return type;
 	}
 

@@ -24,8 +24,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.codegen.Utils.getJavaType;
-import static io.datakernel.codegen.Utils.invokeVirtualOrInterface;
+import static io.datakernel.codegen.Utils.*;
+import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
 /**
@@ -81,7 +81,13 @@ public final class ExpressionCall implements Expression {
 			}
 
 		} catch (NoSuchMethodException e) {
-			throw new RuntimeException(e);
+			// TODO (vsavchuk) check
+			throw new RuntimeException(format("No such method %s.%s(%s). %s",
+					owner.type(ctx).getClassName(),
+					methodName,
+					(!argumentClasses.isEmpty() ? argumentClasses.toString() : ""),
+					exceptionInGeneratedClass(ctx)
+			));
 		}
 
 		return returnType;
@@ -136,7 +142,12 @@ public final class ExpressionCall implements Expression {
 					returnType, argumentTypes.toArray(new Type[]{})));
 
 		} catch (NoSuchMethodException e) {
-			throw new RuntimeException(e);
+			// TODO (vsavchuk) check
+			throw new RuntimeException(format("No such method %s.%s(%s). %s",
+					owner.type(ctx).getClassName(),
+					methodName,
+					(!argumentClasses.isEmpty() ? argumentClasses.toString() : ""),
+					exceptionInGeneratedClass(ctx)));
 		}
 		return returnType;
 	}

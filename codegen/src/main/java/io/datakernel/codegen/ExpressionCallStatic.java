@@ -24,7 +24,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
+import static java.lang.String.format;
 import static org.objectweb.asm.Type.getType;
 
 public class ExpressionCallStatic implements Expression {
@@ -55,7 +57,12 @@ public class ExpressionCallStatic implements Expression {
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
 		} catch (NoSuchMethodException e) {
-			throw new RuntimeException(e);
+			// TODO (vsavchuk) check
+			throw new RuntimeException(format("No such static method %s.%s(%s). %s",
+					owner.getName(),
+					name,
+					(!argumentClasses.isEmpty() ? argumentClasses.toString() : ""),
+					exceptionInGeneratedClass(ctx)));
 		}
 
 		return returnType;
@@ -84,7 +91,13 @@ public class ExpressionCallStatic implements Expression {
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
 		} catch (NoSuchMethodException e) {
-			throw new RuntimeException(e);
+			// TODO (vsavchuk) check
+			throw new RuntimeException(format("No such static method %s.%s(%s). %s",
+					owner.getName(),
+					name,
+					(!argumentClasses.isEmpty() ? argumentClasses.toString() : ""),
+					exceptionInGeneratedClass(ctx)));
+
 		}
 		GeneratorAdapter g = ctx.getGeneratorAdapter();
 		g.invokeStatic(Type.getType(owner), org.objectweb.asm.commons.Method.getMethod(method));

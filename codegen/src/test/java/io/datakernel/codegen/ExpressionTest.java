@@ -18,6 +18,8 @@ package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
+import java.net.UnknownHostException;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -322,9 +324,9 @@ public class ExpressionTest {
 				.newInstance();
 
 		assertTrue(testClass.negBoolean() == !z);
-		assertTrue(testClass.negShort() == -(int) s);
-		assertTrue(testClass.negByte() == -(int) b);
-		assertTrue(testClass.negChar() == -(int) c);
+		assertTrue(testClass.negShort() == -s);
+		assertTrue(testClass.negByte() == -b);
+		assertTrue(testClass.negChar() == -c);
 		assertTrue(testClass.negInt() == -i);
 		assertTrue(testClass.negLong() == -l);
 		assertTrue(testClass.negFloat() == -f);
@@ -565,16 +567,39 @@ public class ExpressionTest {
 	}
 
 	public interface CastPrimitive {
-		Object a();
+		Integer cast(Integer i);
+
+		void voidMethod();
 	}
 
 	@org.junit.Test
-	public void testCastPrimitive() {
+	public void testCastPrimitive() throws UnknownHostException {
 		CastPrimitive testClass = new AsmBuilder<>(new DefiningClassLoader(), CastPrimitive.class)
-				.method("a", value(1))
-				.newInstance();
+				.setBytecodeSaveDir(Paths.get("/home/vsavchuk/Desktop/new/datakernel/codegen/forG"))
+//				.method("cast", value(1))
+//				.method("cast", callStatic(Arrays.class, "asd", value(1), constructor(Integer.class, value(1))))
+//				.method("cast", callStatic(Arrays.class, "asd"))
+//				.method("cast", call(arg(0), "asd", value(1), constructor(Integer.class, value(1))))
+//				.method("cast", callStaticSelf("asd", value(1), constructor(Integer.class, value(1))))
+//				.method("cast", callStaticSelf("asd"))
+//				.method("cast", value(InetAddress.getByName("127.0.0.1")))
+//				.method("cast", constructor(Integer.class, value(1), value((byte) 1)))
+//				.method("cast", constructor(Integer.class))
+//				.method("cast", neg(constructor(Integer.class, value(1))))
+//				.method("cast", neg(cast(constructor(Integer.class, value(1)), int.class)))
+//				.method("cast", setter(self(), "f", value(1)))
+//				.method("cast", setter(arg(0), "f", value(1)))
+//				.method("cast", getter(self(), "f"))
+//				.method("cast", getter(arg(0), "f"))
+//				.method("cast", call(self(), "v"))
+//				.method("cast", cast(self(), Integer.class))
+//				.method("cast", cast(constructor(Integer.class, value(1)), InetAddress.class))
+				.method("cast", constructor(Long.class, value(3L)))
 
-		assertEquals(testClass.a(), 1);
+				.method("voidMethod", voidExp())
+				.newInstance();
+		testClass.cast(1);
+//		assertEquals(testClass.cast(1), 1);
 	}
 
 	public interface Initializable {

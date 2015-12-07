@@ -26,6 +26,7 @@ import java.lang.reflect.Modifier;
 
 import static io.datakernel.codegen.Utils.*;
 import static java.lang.Character.toUpperCase;
+import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isPublic;
 import static java.lang.reflect.Modifier.isStatic;
 import static org.objectweb.asm.Type.getType;
@@ -71,6 +72,13 @@ public final class VarField implements Variable {
 
 		if (ctx.getThisType().equals(ownerType)) {
 			Class<?> fieldClass = ctx.getThisFields().get(field);
+			if (fieldClass == null) {
+				// TODO (vsavchuk) check
+				throw new RuntimeException(format("No such field \"%s\" in generated class %s. %s",
+						field,
+						ctx.getThisType().getClassName(),
+						exceptionInGeneratedClass(ctx)));
+			}
 			Type fieldType = getType(fieldClass);
 			cast(ctx, valueType, fieldType);
 			g.putField(ownerType, field, fieldType);
@@ -117,7 +125,12 @@ public final class VarField implements Variable {
 			return;
 		}
 
-		throw new IllegalArgumentException();
+		// TODO (vsavchuk) check
+		throw new RuntimeException(format("Can`t find public field or setter for class %s for field \"%s\". %s ",
+				ownerType.getClassName(),
+				field,
+				exceptionInGeneratedClass(ctx))
+		);
 	}
 
 	private static Method tryFindSetter(Class<?> argumentClass, String field, Class<?> valueClass) {
@@ -167,6 +180,12 @@ public final class VarField implements Variable {
 					g.getField(ownerType, field, resultType);
 				}
 				return resultType;
+			} else {
+				// TODO (vsavchuk) check
+				throw new RuntimeException(format("Not such public field or getter for class %s for field \"%s\". %s",
+						ownerType.getClassName(),
+						field,
+						exceptionInGeneratedClass(ctx)));
 			}
 		}
 
@@ -205,7 +224,11 @@ public final class VarField implements Variable {
 			return resultType;
 		}
 
-		throw new IllegalArgumentException();
+		// TODO (vsavchuk) check
+		throw new RuntimeException(format("No such public field or getter for class %s for field \"%s\". %s",
+				ownerType.getClassName(),
+				field,
+				exceptionInGeneratedClass(ctx)));
 	}
 
 	@Override

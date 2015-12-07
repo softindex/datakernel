@@ -30,6 +30,7 @@ public final class Context {
 	private final DefiningClassLoader classLoader;
 	private final GeneratorAdapter g;
 	private final Type thisType;
+	private final Method method;
 	private final Class<?> thisSuperclass;
 	private final Map<String, Class<?>> thisFields;
 	private final Type[] argumentTypes;
@@ -37,9 +38,10 @@ public final class Context {
 	private final Map<Method, Expression> staticMethodToExpression;
 
 	public Context(DefiningClassLoader classLoader, GeneratorAdapter g, Type thisType, Class<?> thisSuperclass, Map<String, Class<?>> thisFields,
-	               Type[] argumentTypes, Map<Method, Expression> methodToExpression, Map<Method, Expression> staticMethodToExpression) {
+	               Type[] argumentTypes, Method method, Map<Method, Expression> methodToExpression, Map<Method, Expression> staticMethodToExpression) {
 		this.classLoader = classLoader;
 		this.g = g;
+		this.method = method;
 		this.thisSuperclass = thisSuperclass;
 		this.argumentTypes = argumentTypes;
 		this.thisType = thisType;
@@ -82,5 +84,9 @@ public final class Context {
 
 	public Map<Method, Expression> getMethodToExpression() {
 		return methodToExpression;
+	}
+
+	public Method getMethod() {
+		return method;
 	}
 }
