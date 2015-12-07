@@ -20,7 +20,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-public class SerializationOutputBuffer {
+public final class SerializationOutputBuffer {
 	protected byte[] buf;
 	protected int pos;
 
@@ -62,146 +62,144 @@ public class SerializationOutputBuffer {
 		return buf.length - pos;
 	}
 
-	protected void ensureSize(int size) {
+	protected static void ensureSize(int size) {
 	}
 
-	public void write(byte[] b) {
-		write(b, 0, b.length);
+	public static int write(byte[] from, byte[] to, int offTo) {
+		return write(from, 0, to, offTo, from.length);
 	}
 
-	public void write(byte[] b, int off, int len) {
+	public static int write(byte[] from, int offFrom, byte[] to, int offTo, int len) {
 		ensureSize(len);
-		System.arraycopy(b, off, buf, pos, len);
-		pos += len;
+		System.arraycopy(from, offFrom, to, offTo, len);
+		return offTo + len;
 	}
 
-	public void writeBoolean(boolean v) {
-		writeByte(v ? (byte) 1 : 0);
+	public static int writeBoolean(byte[] buf, int off, boolean v) {
+		return writeByte(buf, off, v ? (byte) 1 : 0);
 	}
 
-	public void writeByte(byte v) {
+	public static int writeByte(byte[] buf, int off, byte v) {
 		ensureSize(1);
-		buf[pos++] = v;
+		buf[off] = v;
+		return off + 1;
 	}
 
-	public void writeChar(char v) {
+	public static int writeChar(byte[] buf, int off, char v) {
 		ensureSize(2);
-		writeByte((byte) (v >>> 8));
-		writeByte((byte) (v));
+		writeByte(buf, off, (byte) (v >>> 8));
+		writeByte(buf, off + 1, (byte) (v));
+		return off + 2;
 	}
 
-	public void writeDouble(double v) {
-		writeLong(Double.doubleToLongBits(v));
+	public static int writeDouble(byte[] buf, int off, double v) {
+		return writeLong(buf, off, Double.doubleToLongBits(v));
 	}
 
-	public void writeFloat(float v) {
-		writeInt(Float.floatToIntBits(v));
+	public static int writeFloat(byte[] buf, int off, float v) {
+		return writeInt(buf, off, Float.floatToIntBits(v));
 	}
 
-	public void writeInt(int v) {
+	public static int writeInt(byte[] buf, int off, int v) {
 		ensureSize(4);
-		buf[pos] = (byte) (v >>> 24);
-		buf[pos + 1] = (byte) (v >>> 16);
-		buf[pos + 2] = (byte) (v >>> 8);
-		buf[pos + 3] = (byte) (v);
-		pos += 4;
+		buf[off] = (byte) (v >>> 24);
+		buf[off + 1] = (byte) (v >>> 16);
+		buf[off + 2] = (byte) (v >>> 8);
+		buf[off + 3] = (byte) (v);
+		return off + 4;
 	}
 
-	public void writeLong(long v) {
+	public static int writeLong(byte[] buf, int off, long v) {
 		ensureSize(8);
 		int high = (int) (v >>> 32);
 		int low = (int) v;
-		buf[pos] = (byte) (high >>> 24);
-		buf[pos + 1] = (byte) (high >>> 16);
-		buf[pos + 2] = (byte) (high >>> 8);
-		buf[pos + 3] = (byte) high;
-		buf[pos + 4] = (byte) (low >>> 24);
-		buf[pos + 5] = (byte) (low >>> 16);
-		buf[pos + 6] = (byte) (low >>> 8);
-		buf[pos + 7] = (byte) low;
-		pos += 8;
+		buf[off] = (byte) (high >>> 24);
+		buf[off + 1] = (byte) (high >>> 16);
+		buf[off + 2] = (byte) (high >>> 8);
+		buf[off + 3] = (byte) high;
+		buf[off + 4] = (byte) (low >>> 24);
+		buf[off + 5] = (byte) (low >>> 16);
+		buf[off + 6] = (byte) (low >>> 8);
+		buf[off + 7] = (byte) low;
+		return off + 8;
 	}
 
-	public void writeShort(short v) {
+	public static int writeShort(byte[] buf, int off, short v) {
 		ensureSize(2);
-		buf[pos] = (byte) (v >>> 8);
-		buf[pos + 1] = (byte) (v);
-		pos += 2;
+		buf[off] = (byte) (v >>> 8);
+		buf[off + 1] = (byte) (v);
+		return off + 2;
 	}
 
-	public void writeVarInt(int v) {
+	public static int writeVarInt(byte[] buf, int off, int v) {
 		ensureSize(5);
 		if ((v & ~0x7F) == 0) {
-			buf[pos] = (byte) v;
-			pos += 1;
-			return;
+			buf[off] = (byte) v;
+			return off + 1;
 		}
-		buf[pos] = (byte) ((v & 0x7F) | 0x80);
+		buf[off] = (byte) ((v & 0x7F) | 0x80);
 		v >>>= 7;
 		if ((v & ~0x7F) == 0) {
-			buf[pos + 1] = (byte) v;
-			pos += 2;
-			return;
+			buf[off + 1] = (byte) v;
+			return off + 2;
 		}
-		buf[pos + 1] = (byte) ((v & 0x7F) | 0x80);
+		buf[off + 1] = (byte) ((v & 0x7F) | 0x80);
 		v >>>= 7;
 		if ((v & ~0x7F) == 0) {
-			buf[pos + 2] = (byte) v;
-			pos += 3;
-			return;
+			buf[off + 2] = (byte) v;
+			return off + 3;
 		}
-		buf[pos + 2] = (byte) ((v & 0x7F) | 0x80);
+		buf[off + 2] = (byte) ((v & 0x7F) | 0x80);
 		v >>>= 7;
 		if ((v & ~0x7F) == 0) {
-			buf[pos + 3] = (byte) v;
-			pos += 4;
-			return;
+			buf[off + 3] = (byte) v;
+			return off + 4;
 		}
-		buf[pos + 3] = (byte) ((v & 0x7F) | 0x80);
+		buf[off + 3] = (byte) ((v & 0x7F) | 0x80);
 		v >>>= 7;
-		buf[pos + 4] = (byte) v;
-		pos += 5;
+		buf[off + 4] = (byte) v;
+		return off + 5;
 	}
 
-	public void writeVarLong(long v) {
+	public static int writeVarLong(byte[] buf, int off, long v) {
 		ensureSize(9);
 		if ((v & ~0x7F) == 0) {
-			writeByte((byte) v);
+			return writeByte(buf, off, (byte) v);
 		} else {
-			writeByte((byte) ((v & 0x7F) | 0x80));
+			off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
 			v >>>= 7;
 			if ((v & ~0x7F) == 0) {
-				writeByte((byte) v);
+				off = writeByte(buf, off, (byte) v);
 			} else {
-				writeByte((byte) ((v & 0x7F) | 0x80));
+				off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
 				v >>>= 7;
 				if ((v & ~0x7F) == 0) {
-					writeByte((byte) v);
+					off = writeByte(buf, off, (byte) v);
 				} else {
-					writeByte((byte) ((v & 0x7F) | 0x80));
+					off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
 					v >>>= 7;
 					if ((v & ~0x7F) == 0) {
-						writeByte((byte) v);
+						off = writeByte(buf, off, (byte) v);
 					} else {
-						writeByte((byte) ((v & 0x7F) | 0x80));
+						off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
 						v >>>= 7;
 						if ((v & ~0x7F) == 0) {
-							writeByte((byte) v);
+							off = writeByte(buf, off, (byte) v);
 						} else {
-							writeByte((byte) ((v & 0x7F) | 0x80));
+							off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
 							v >>>= 7;
 							if ((v & ~0x7F) == 0) {
-								writeByte((byte) v);
+								off = writeByte(buf, off, (byte) v);
 							} else {
-								writeByte((byte) ((v & 0x7F) | 0x80));
+								off = writeByte(buf, off, (byte) ((v & 0x7F) | 0x80));
 								v >>>= 7;
 
 								for (; ; ) {
 									if ((v & ~0x7FL) == 0) {
-										writeByte((byte) v);
-										return;
+										off = writeByte(buf, off, (byte) v);
+										return off;
 									} else {
-										writeByte((byte) (((int) v & 0x7F) | 0x80));
+										off = writeByte(buf, off, (byte) (((int) v & 0x7F) | 0x80));
 										v >>>= 7;
 									}
 								}
@@ -211,132 +209,135 @@ public class SerializationOutputBuffer {
 				}
 			}
 		}
+		return off;
 	}
 
-	public void writeIso88591(String s) {
+	public static int writeIso88591(byte[] buf, int off, String s) {
 		int length = s.length();
-		writeVarInt(length);
+		off = writeVarInt(buf, off, length);
 		ensureSize(length * 3);
 		for (int i = 0; i < length; i++) {
 			int c = s.charAt(i);
-			buf[pos++] = (byte) c;
+			buf[off++] = (byte) c;
 		}
+		return off;
 	}
 
-	public void writeNullableIso88591(String s) {
+	public static int writeNullableIso88591(byte[] buf, int off, String s) {
 		if (s == null) {
-			writeByte((byte) 0);
-			return;
+			return writeByte(buf, off, (byte) 0);
 		}
 		int length = s.length();
-		writeVarInt(length + 1);
+		off = writeVarInt(buf, off, length + 1);
 		ensureSize(length * 3);
 		for (int i = 0; i < length; i++) {
 			int c = s.charAt(i);
-			buf[pos++] = (byte) c;
+			buf[off++] = (byte) c;
 		}
+		return off;
 	}
 
-	public void writeJavaUTF8(String s) {
+	public static int writeJavaUTF8(byte[] buf, int off, String s) {
 		try {
-			writeWithLength(s.getBytes("UTF-8"));
+			return writeWithLength(buf, off, s.getBytes("UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException();
 		}
 
 	}
 
-	public void writeNullableJavaUTF8(String s) {
+	public static int writeNullableJavaUTF8(byte[] buf, int off, String s) {
 		if (s == null) {
-			writeByte((byte) 0);
-			return;
+			return writeByte(buf, off, (byte) 0);
 		}
 		try {
-			writeWithLengthNullable(s.getBytes("UTF-8"));
+			return writeWithLengthNullable(buf, off, s.getBytes("UTF-8"));
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException();
 		}
 	}
 
-	private void writeWithLengthNullable(byte[] bytes) {
-		writeVarInt(bytes.length + 1);
-		write(bytes);
+	private static int writeWithLengthNullable(byte[] buf, int off, byte[] bytes) {
+		off = writeVarInt(buf, off, bytes.length + 1);
+		return write(bytes, buf, off);
 	}
 
-	public void writeUTF8(String s) {
+	public static int writeUTF8(byte[] buf, int off, String s) {
 		int length = s.length();
-		writeVarInt(length);
+		off = writeVarInt(buf, off, length);
 		ensureSize(length * 3);
 		for (int i = 0; i < length; i++) {
 			int c = s.charAt(i);
 			if (c <= 0x007F) {
-				buf[pos++] = (byte) c;
+				buf[off++] = (byte) c;
 			} else {
-				writeUtfChar(c);
+				off = writeUtfChar(buf, off, c);
 			}
 		}
+		return off;
 	}
 
-	public void writeNullableUTF8(String s) {
+	public static int writeNullableUTF8(byte[] buf, int off, String s) {
 		if (s == null) {
-			writeByte((byte) 0);
-			return;
+			return writeByte(buf, off, (byte) 0);
 		}
 		int length = s.length();
-		writeVarInt(length + 1);
+		off = writeVarInt(buf, off, length + 1);
 		ensureSize(length * 3);
 		for (int i = 0; i < length; i++) {
 			int c = s.charAt(i);
 			if (c <= 0x007F) {
-				buf[pos++] = (byte) c;
+				buf[off++] = (byte) c;
 			} else {
-				writeUtfChar(c);
+				off = writeUtfChar(buf, off, c);
 			}
 		}
+		return off;
 	}
 
-	private void writeUtfChar(int c) {
+	private static int writeUtfChar(byte[] buf, int off, int c) {
 		if (c <= 0x07FF) {
-			buf[pos] = (byte) (0xC0 | c >> 6 & 0x1F);
-			buf[pos + 1] = (byte) (0x80 | c & 0x3F);
-			pos += 2;
+			buf[off] = (byte) (0xC0 | c >> 6 & 0x1F);
+			buf[off + 1] = (byte) (0x80 | c & 0x3F);
+			return off + 2;
 		} else {
-			buf[pos] = (byte) (0xE0 | c >> 12 & 0x0F);
-			buf[pos + 1] = (byte) (0x80 | c >> 6 & 0x3F);
-			buf[pos + 2] = (byte) (0x80 | c & 0x3F);
-			pos += 3;
+			buf[off] = (byte) (0xE0 | c >> 12 & 0x0F);
+			buf[off + 1] = (byte) (0x80 | c >> 6 & 0x3F);
+			buf[off + 2] = (byte) (0x80 | c & 0x3F);
+			return off + 3;
 		}
 	}
 
-	public final void writeWithLength(byte[] bytes) {
-		writeVarInt(bytes.length);
-		write(bytes);
+	public static int writeWithLength(byte[] buf, int off, byte[] bytes) {
+		off = writeVarInt(buf, off, bytes.length);
+		return write(bytes, buf, off);
 	}
 
-	public final void writeUTF16(String s) {
+	public static int writeUTF16(byte[] buf, int off, String s) {
 		int length = s.length();
-		writeVarInt(length);
+		off = writeVarInt(buf, off, length);
 		ensureSize(length * 2);
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
-			writeByte((byte) (v >>> 8));
-			writeByte((byte) (v));
+			off = writeByte(buf, off, (byte) (v >>> 8));
+			off = writeByte(buf, off, (byte) (v));
 		}
+		return off;
 	}
 
-	public final void writeNullableUTF16(String s) {
+	public static int writeNullableUTF16(byte[] buf, int off, String s) {
 		if (s == null) {
-			writeByte((byte) 0);
-			return;
+			return writeByte(buf, off, (byte) 0);
 		}
 		int length = s.length();
-		writeVarInt(length + 1);
+		off = writeVarInt(buf, off, length + 1);
 		ensureSize(length * 2);
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
-			writeByte((byte) (v >>> 8));
-			writeByte((byte) (v));
+			off = writeByte(buf, off, (byte) (v >>> 8));
+			off = writeByte(buf, off, (byte) (v));
 		}
+		return off;
 	}
 
 	@Override

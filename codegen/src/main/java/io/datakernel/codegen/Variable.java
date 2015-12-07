@@ -14,18 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.serializer.annotations;
+package io.datakernel.codegen;
 
-import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
-
-import java.lang.annotation.Annotation;
-
-public interface AnnotationHandler<A extends Annotation, P extends Annotation> {
-	SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, A annotation, CompatibilityLevel compatibilityLevel);
-
-	int[] extractPath(A annotation);
-
-	A[] extractList(P plural);
+public interface Variable extends Expression, StoreDef {
 }

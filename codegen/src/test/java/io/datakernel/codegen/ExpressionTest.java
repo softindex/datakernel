@@ -701,8 +701,11 @@ public class ExpressionTest {
 
 	public interface TestCompare {
 		boolean compareObjectLE(Integer i1, Integer i2);
+
 		boolean comparePrimitiveLE(int i1, int i2);
+
 		boolean compareObjectEQ(Integer i1, Integer i2);
+
 		boolean compareObjectNE(Integer i1, Integer i2);
 
 	}

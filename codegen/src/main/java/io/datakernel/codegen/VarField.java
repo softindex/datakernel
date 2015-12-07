@@ -34,7 +34,7 @@ import static org.objectweb.asm.commons.Method.getMethod;
 /**
  * Defines methods which allow to take field according to the name
  */
-public final class VarField implements Expression, StoreDef {
+public final class VarField implements Variable {
 	private final Expression owner;
 	private final String field;
 

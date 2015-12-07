@@ -40,7 +40,7 @@ public class CodeGenSerializerGenHppcSetTest {
 	private static <T, V> BufferSerializer<T> getBufferSerializer(Class<?> collectionType, Class<V> valueClass) {
 		return SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(collectionType, SerializerGenHppcSet.serializerGenBuilder(collectionType, valueClass))
+				.register(collectionType, SerializerGenHppcSet.serializerGenBuilder(collectionType, valueClass))
 				.create(collectionType);
 	}
 
@@ -161,7 +161,7 @@ public class CodeGenSerializerGenHppcSetTest {
 	public void testObjectSet() throws Exception {
 		BufferSerializer<ObjectSetStringHolder> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ObjectSet.class, SerializerGenHppcSet.serializerGenBuilder(ObjectSet.class, Object.class))
+				.register(ObjectSet.class, SerializerGenHppcSet.serializerGenBuilder(ObjectSet.class, Object.class))
 				.create(ObjectSetStringHolder.class);
 
 		ObjectSetStringHolder testData1 = new ObjectSetStringHolder();
@@ -179,6 +179,7 @@ public class CodeGenSerializerGenHppcSetTest {
 		public TestObject(String i) {
 			this.i = i;
 		}
+
 		public TestObject() {}
 
 		@Override
@@ -211,7 +212,7 @@ public class CodeGenSerializerGenHppcSetTest {
 	public void testMult() {
 		BufferSerializer<ManyMapHolder> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ObjectSet.class, SerializerGenHppcSet.serializerGenBuilder(ObjectSet.class, Object.class))
+				.register(ObjectSet.class, SerializerGenHppcSet.serializerGenBuilder(ObjectSet.class, Object.class))
 				.create(ManyMapHolder.class);
 
 		ManyMapHolder testMap1 = new ManyMapHolder();

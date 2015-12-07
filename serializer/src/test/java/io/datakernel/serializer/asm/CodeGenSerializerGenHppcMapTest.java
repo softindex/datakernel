@@ -40,7 +40,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	private static <T, K, V> BufferSerializer<T> getBufferSerializer(Class<?> collectionType, Class<K> keyClass, Class<V> valueClass) {
 		return SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(collectionType, SerializerGenHppcMap.serializerGenBuilder(collectionType, keyClass, valueClass))
+				.register(collectionType, SerializerGenHppcMap.serializerGenBuilder(collectionType, keyClass, valueClass))
 				.create(collectionType);
 	}
 
@@ -192,7 +192,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	public void testIntObjectMap() {
 		BufferSerializer<MapIntObjectHolder> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
+				.register(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
 				.create(MapIntObjectHolder.class);
 
 		MapIntObjectHolder testMap1 = new MapIntObjectHolder();
@@ -217,7 +217,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	public void testObjectShortMap() throws Exception {
 		BufferSerializer<MapObjectShortHolder> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ObjectShortMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectShortMap.class, Object.class, short.class))
+				.register(ObjectShortMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectShortMap.class, Object.class, short.class))
 				.create(MapObjectShortHolder.class);
 
 		MapObjectShortHolder testMap1 = new MapObjectShortHolder();
@@ -242,7 +242,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	public void testObjectObjectMap() throws Exception {
 		BufferSerializer<MapObjectObjectHolder> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(ObjectObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectObjectMap.class, Object.class, Object.class))
+				.register(ObjectObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(ObjectObjectMap.class, Object.class, Object.class))
 				.create(MapObjectObjectHolder.class);
 
 		MapObjectObjectHolder testMap1 = new MapObjectObjectHolder();
@@ -265,6 +265,7 @@ public class CodeGenSerializerGenHppcMapTest {
 		public TestObject(String i) {
 			this.i = i;
 		}
+
 		public TestObject() {}
 
 		@Override
@@ -297,7 +298,7 @@ public class CodeGenSerializerGenHppcMapTest {
 	public void testMult() {
 		BufferSerializer<ManyMapHolder> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
-				.registry(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
+				.register(IntObjectMap.class, SerializerGenHppcMap.serializerGenBuilder(IntObjectMap.class, int.class, Object.class))
 				.create(ManyMapHolder.class);
 
 		ManyMapHolder testMap1 = new ManyMapHolder();

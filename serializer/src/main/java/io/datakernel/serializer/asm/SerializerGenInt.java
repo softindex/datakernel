@@ -17,6 +17,9 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -24,6 +27,11 @@ import static io.datakernel.codegen.Expressions.*;
 public final class SerializerGenInt extends SerializerGenPrimitive {
 
 	private final boolean varLength;
+
+	public SerializerGenInt() {
+		super(int.class);
+		this.varLength = false;
+	}
 
 	public SerializerGenInt(boolean varLength) {
 		super(int.class);
@@ -50,16 +58,16 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 	}
 
 	@Override
-	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (varLength) {
-			return call(arg(0), "writeVarInt", cast(value, int.class));
+			return callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, cast(value, int.class));
 		} else {
-			return call(arg(0), "writeInt", cast(value, int.class));
+			return callStatic(SerializationOutputBuffer.class, "writeInt", byteArray, off, cast(value, int.class));
 		}
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (varLength) {
 			if (targetType.isPrimitive())
 				return call(arg(0), "readVarInt");

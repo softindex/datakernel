@@ -17,6 +17,8 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
 
 import java.util.Collection;
@@ -58,12 +60,12 @@ public interface SerializerGen {
 
 	Class<?> getRawType();
 
-	void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods);
+	void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
 
-	Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods);
+	Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
 
-	void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods);
+	void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
 
-	Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods);
+	Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel);
 
 }

@@ -21,7 +21,7 @@ import org.objectweb.asm.Type;
 /**
  * Defines method which allow to take argument according to their ordinal number
  */
-public final class VarArg implements Expression {
+public final class VarArg implements Variable {
 	private final int argument;
 
 	VarArg(int argument) {
@@ -52,5 +52,15 @@ public final class VarArg implements Expression {
 	@Override
 	public int hashCode() {
 		return argument;
+	}
+
+	@Override
+	public Object beginStore(Context ctx) {
+		return null;
+	}
+
+	@Override
+	public void store(Context ctx, Object storeContext, Type type) {
+		ctx.getGeneratorAdapter().storeArg(argument);
 	}
 }

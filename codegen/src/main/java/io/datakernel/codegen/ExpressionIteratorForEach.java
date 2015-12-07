@@ -59,7 +59,7 @@ public class ExpressionIteratorForEach implements Expression {
 			expressionFor(length(collection), new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return forCollection.forVar(get(collection, it));
+					return forCollection.forVar(getArrayItem(collection, it));
 				}
 			}).load(ctx);
 			return Type.VOID_TYPE;

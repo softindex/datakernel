@@ -51,7 +51,7 @@ public final class Expressions {
 	 * @param expression expression which will be processed when variable will be used
 	 * @return new instance of the Expression
 	 */
-	public static Expression let(Expression expression) {
+	public static ExpressionLet let(Expression expression) {
 		return new ExpressionLet(expression);
 	}
 
@@ -126,7 +126,7 @@ public final class Expressions {
 	 * @param argument ordinal number in list of arguments
 	 * @return new instance of the VarArg
 	 */
-	public static Expression arg(int argument) {
+	public static VarArg arg(int argument) {
 		return new VarArg(argument);
 	}
 
@@ -452,15 +452,15 @@ public final class Expressions {
 		return new ExpressionCallStaticSelf(method, arguments);
 	}
 
-	public static ExpressionArrayGet get(Expression array, Expression nom) {
+	public static ExpressionArrayGet getArrayItem(Expression array, Expression nom) {
 		return new ExpressionArrayGet(array, nom);
 	}
 
-	public static ExpressionCmpNull ifNull(Expression field) {
+	public static ExpressionCmpNull isNull(Expression field) {
 		return new ExpressionCmpNull(field);
 	}
 
-	public static ExpressionCmpNotNull ifNotNull(Expression field) {
+	public static ExpressionCmpNotNull isNotNull(Expression field) {
 		return new ExpressionCmpNotNull(field);
 	}
 
