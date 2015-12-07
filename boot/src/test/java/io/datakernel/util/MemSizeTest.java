@@ -27,54 +27,54 @@ public class MemSizeTest {
 		long bytes;
 
 		bytes = 0;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 
 		bytes = 512;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 
 		bytes = 1024;
-		assertEquals("1Kb", new MemSize(bytes).toString());
+		assertEquals("1Kb", MemSize.of(bytes).toString());
 
 		bytes = 2048;
-		assertEquals("2Kb", new MemSize(bytes).toString());
+		assertEquals("2Kb", MemSize.of(bytes).toString());
 
 		bytes = 1025;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L;
-		assertEquals("1Mb", new MemSize(bytes).toString());
+		assertEquals("1Mb", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L + 15;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 10;
-		assertEquals("10Mb", new MemSize(bytes).toString());
+		assertEquals("10Mb", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 10 - 1;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 1024L;
-		assertEquals("1Gb", new MemSize(bytes).toString());
+		assertEquals("1Gb", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 1024L + 15;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 1024L * 10;
-		assertEquals("10Gb", new MemSize(bytes).toString());
+		assertEquals("10Gb", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 1024L * 10 - 1;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 1024L * 1024L;
-		assertEquals("1Tb", new MemSize(bytes).toString());
+		assertEquals("1Tb", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 1024L * 1024L + 15;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 1024L * 1024L * 10;
-		assertEquals("10Tb", new MemSize(bytes).toString());
+		assertEquals("10Tb", MemSize.of(bytes).toString());
 
 		bytes = 1024L * 1024L * 1024L * 1024L * 10 - 1;
-		assertEquals(bytes + "b", new MemSize(bytes).toString());
+		assertEquals(bytes + "b", MemSize.of(bytes).toString());
 	}
 }

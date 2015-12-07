@@ -232,7 +232,7 @@ public final class ConfigConverters {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
 			config.set("backlog", Integer.toString(item.getBacklog()));
-			config.set("receiveBufferSize", new MemSize(item.getReceiveBufferSize()).toString());
+			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());
 			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
 		}
 	}
@@ -267,8 +267,8 @@ public final class ConfigConverters {
 		public void set(Config config, SocketSettings item) {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
-			config.set("receiveBufferSize", new MemSize(item.getReceiveBufferSize()).toString());
-			config.set("sendBufferSize", new MemSize(item.getSendBufferSize()).toString());
+			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());
+			config.set("sendBufferSize", MemSize.of(item.getSendBufferSize()).toString());
 			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
 			config.set("keepAlive", Boolean.toString(item.getKeepAlive()));
 			config.set("tcpNoDelay", Boolean.toString(item.getTcpNoDelay()));
@@ -301,8 +301,8 @@ public final class ConfigConverters {
 		public void set(Config config, DatagramSocketSettings item) {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
-			config.set("receiveBufferSize", new MemSize(item.getReceiveBufferSize()).toString());
-			config.set("sendBufferSize", new MemSize(item.getSendBufferSize()).toString());
+			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());
+			config.set("sendBufferSize", MemSize.of(item.getSendBufferSize()).toString());
 			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
 			config.set("broadcast", Boolean.toString(item.getBroadcast()));
 		}

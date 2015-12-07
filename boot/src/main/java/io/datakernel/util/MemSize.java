@@ -22,12 +22,23 @@ import java.util.regex.Pattern;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class MemSize {
+	public static final long KB = 1024;
+	public static final long MB = 1024 * KB;
+	public static final long GB = 1024 * MB;
+	public static final long TB = 1024 * GB;
+
 	private static final Pattern PATTERN = Pattern.compile("([0-9]+([\\.][0-9]+)?)\\s*(|K|M|G|T)B?", Pattern.CASE_INSENSITIVE);
+
 	private final long bytes;
 
-	public MemSize(long bytes) {
+	private MemSize(long bytes) {
 		checkArgument(bytes >= 0, "Bytes must be positive or zero");
 		this.bytes = bytes;
+	}
+
+	public static MemSize of(long bytes) {
+		checkArgument(bytes >= 0, "Bytes must be positive or zero");
+		return new MemSize(bytes);
 	}
 
 	public long getBytes() {
@@ -36,44 +47,37 @@ public final class MemSize {
 
 	public static MemSize valueOf(String string) {
 		Matcher matcher = PATTERN.matcher(string);
-		if (matcher.matches()) {
-			try {
-				double value = Double.valueOf(matcher.group(1));
-				String units = matcher.group(3).toLowerCase();
-
-				long unit;
-				switch (units) {
-					case "":
-						unit = 1;
-						break;
-					case "k":
-						unit = 1L << (10 * 1);
-						break;
-					case "m":
-						unit = 1L << (10 * 2);
-						break;
-					case "g":
-						unit = 1L << (10 * 3);
-						break;
-					case "t":
-						unit = 1L << (10 * 4);
-						break;
-					default:
-						throw new IllegalArgumentException("Illegal units: " + string);
-				}
-				long bytes = (long) (value * unit);
-				return new MemSize(bytes);
-			} catch (NumberFormatException e) {
-				throw new IllegalArgumentException("Illegal number format: " + string, e);
-			}
-		} else {
+		if (!matcher.matches())
 			throw new IllegalArgumentException("Illegal format: " + string);
-		}
-	}
+		try {
+			double value = Double.valueOf(matcher.group(1));
+			String units = matcher.group(3).toLowerCase();
 
-	@Override
-	public String toString() {
-		return format();
+			long unit;
+			switch (units) {
+				case "":
+					unit = 1;
+					break;
+				case "k":
+					unit = KB;
+					break;
+				case "m":
+					unit = MB;
+					break;
+				case "g":
+					unit = GB;
+					break;
+				case "t":
+					unit = TB;
+					break;
+				default:
+					throw new IllegalArgumentException("Illegal units: " + string);
+			}
+			long bytes = (long) (value * unit);
+			return new MemSize(bytes);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException("Illegal number format: " + string, e);
+		}
 	}
 
 	public String format() {
@@ -82,26 +86,27 @@ public final class MemSize {
 			return "0b";
 		}
 
-		long terabyte = 1L << (10 * 4);
-		if ((bytes % terabyte) == 0) {
-			return bytes / terabyte + "Tb";
+		if ((bytes % TB) == 0) {
+			return bytes / TB + "Tb";
 		}
 
-		long gigabyte = 1L << (10 * 3);
-		if ((bytes % gigabyte) == 0) {
-			return bytes / gigabyte + "Gb";
+		if ((bytes % GB) == 0) {
+			return bytes / GB + "Gb";
 		}
 
-		long megabyte = 1L << (10 * 2);
-		if ((bytes % megabyte) == 0) {
-			return bytes / megabyte + "Mb";
+		if ((bytes % MB) == 0) {
+			return bytes / MB + "Mb";
 		}
 
-		long kilobyte = 1L << (10 * 1);
-		if ((bytes % kilobyte) == 0) {
-			return bytes / kilobyte + "Kb";
+		if ((bytes % KB) == 0) {
+			return bytes / KB + "Kb";
 		}
 
 		return bytes + "b";
+	}
+
+	@Override
+	public String toString() {
+		return format();
 	}
 }
