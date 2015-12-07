@@ -33,7 +33,6 @@ public final class SerializerGenInt extends SerializerGenPrimitive {
 		this.varLength = false;
 	}
 
-
 	public SerializerGenInt(boolean varLength) {
 		super(int.class);
 		this.varLength = varLength;

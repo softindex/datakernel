@@ -71,8 +71,8 @@ public class SerializerGenNullable implements SerializerGen {
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression isNotNull = let(call(arg(0), "readByte"));
 		return sequence(isNotNull, choice(cmpEq(isNotNull, value((byte) 1)),
-				serializer.deserialize(serializer.getRawType(), version, staticMethods, compatibilityLevel),
-				nullRef(targetType))
+						serializer.deserialize(serializer.getRawType(), version, staticMethods, compatibilityLevel),
+						nullRef(targetType))
 		);
 	}
 

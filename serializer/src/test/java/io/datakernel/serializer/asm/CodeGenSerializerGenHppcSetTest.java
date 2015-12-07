@@ -179,6 +179,7 @@ public class CodeGenSerializerGenHppcSetTest {
 		public TestObject(String i) {
 			this.i = i;
 		}
+
 		public TestObject() {}
 
 		@Override

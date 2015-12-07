@@ -121,7 +121,7 @@ public class SerializerGenSubclass implements SerializerGen {
 			);
 		} else {
 			staticMethods.registerStaticSerializeMethod(this, version,
-							switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue)
+					switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue)
 			);
 		}
 	}

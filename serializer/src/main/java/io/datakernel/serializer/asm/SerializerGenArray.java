@@ -92,7 +92,7 @@ public final class SerializerGenArray implements SerializerGen {
 			return sequence(writeLength, expressionFor(length, new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return set(off,	valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)
+					return set(off, valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)
 					);
 				}
 			}), off);

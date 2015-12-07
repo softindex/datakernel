@@ -265,6 +265,7 @@ public class CodeGenSerializerGenHppcMapTest {
 		public TestObject(String i) {
 			this.i = i;
 		}
+
 		public TestObject() {}
 
 		@Override
