@@ -23,21 +23,17 @@
             <artifactId>eventloop</artifactId>
             <version>${version}</version>
         </dependency>
+
         <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>guice</artifactId>
-            <version>${version}</version>
-            <optional>true</optional>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
+            <groupId>io.datakernel</groupId>
+            <artifactId>boot</artifactId>
+            <version>${version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.openjdk.jmh</groupId>

@@ -1,37 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
+        <groupId>io.datakernel</groupId>
         <version>2.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
     </parent>
+    <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>cube</artifactId>
+    <artifactId>boot</artifactId>
 
-    <name>DataKernel: OLAP Cube</name>
+    <name>DataKernel: Boot</name>
     <description>
-        Specialized OLAP database for multidimensional data analytics.
+        An intelligent way of booting complex applications and services according to their depencencies
     </description>
 
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>aggregation-db</artifactId>
+            <artifactId>eventloop</artifactId>
             <version>${version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.datakernel</groupId>
-            <artifactId>http</artifactId>
-            <version>${version}</version>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
         </dependency>
     </dependencies>
+
 </project>
