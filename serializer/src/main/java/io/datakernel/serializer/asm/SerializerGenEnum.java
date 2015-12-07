@@ -19,6 +19,7 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 import org.objectweb.asm.Type;
@@ -59,17 +60,17 @@ public class SerializerGenEnum implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression ordinal = cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE);
 		if (!nullable) {
 			return callStatic(SerializationOutputBuffer.class, "writeByte", byteArray, off, ordinal);
 		} else {
-			return choice(ifNull(value),
+			return choice(isNull(value),
 					callStatic(SerializationOutputBuffer.class, "writeByte", byteArray, off, value((byte) 0)),
 					callStatic(SerializationOutputBuffer.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), Type.BYTE_TYPE))
 			);
@@ -77,19 +78,19 @@ public class SerializerGenEnum implements SerializerGen {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		ExpressionLet value = let(call(arg(0), "readByte"));
 		if (!nullable) {
-			return get(callStatic(nameOfEnum, "values"), value);
+			return getArrayItem(callStatic(nameOfEnum, "values"), value);
 		} else {
 			return choice(cmpEq(value, value((byte) 0)),
 					nullRef(nameOfEnum),
-					get(callStatic(nameOfEnum, "values"), sub(value, value(1))));
+					getArrayItem(callStatic(nameOfEnum, "values"), sub(value, value(1))));
 		}
 	}
 

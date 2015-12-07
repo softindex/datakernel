@@ -452,15 +452,15 @@ public final class Expressions {
 		return new ExpressionCallStaticSelf(method, arguments);
 	}
 
-	public static ExpressionArrayGet get(Expression array, Expression nom) {
+	public static ExpressionArrayGet getArrayItem(Expression array, Expression nom) {
 		return new ExpressionArrayGet(array, nom);
 	}
 
-	public static ExpressionCmpNull ifNull(Expression field) {
+	public static ExpressionCmpNull isNull(Expression field) {
 		return new ExpressionCmpNull(field);
 	}
 
-	public static ExpressionCmpNotNull ifNotNull(Expression field) {
+	public static ExpressionCmpNotNull isNotNull(Expression field) {
 		return new ExpressionCmpNotNull(field);
 	}
 

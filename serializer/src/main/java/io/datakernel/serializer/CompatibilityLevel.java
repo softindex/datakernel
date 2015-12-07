@@ -17,5 +17,5 @@
 package io.datakernel.serializer;
 
 public enum CompatibilityLevel {
-	@Deprecated OLD_STANDARD, STRING_OPT, STRING_ENUM_SUBCLASS_OPT
+	@Deprecated VERSION_1, STRING_OPT, STRING_ENUM_SUBCLASS_OPT
 }

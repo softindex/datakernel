@@ -20,6 +20,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
 
@@ -94,7 +95,7 @@ public class SerializerGenSubclass implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startSerializeStaticMethod(this, version)) {
 			return;
 		}
@@ -104,17 +105,17 @@ public class SerializerGenSubclass implements SerializerGen {
 		List<Expression> listValue = new ArrayList<>();
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
-			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods);
+			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 
 			listKey.add(value(subclass.getName()));
 			listValue.add(sequence(
 					set(arg(1), callStatic(SerializationOutputBuffer.class, "writeByte", arg(0), arg(1), value(subClassN++))),
-					subclassSerializer.serialize(arg(0), arg(1), cast(arg(2), subclassSerializer.getRawType()), version, staticMethods)
+					subclassSerializer.serialize(arg(0), arg(1), cast(arg(2), subclassSerializer.getRawType()), version, staticMethods, compatibilityLevel)
 			));
 		}
 		if (nullable) {
 			staticMethods.registerStaticSerializeMethod(this, version,
-					choice(ifNotNull(arg(2)),
+					choice(isNotNull(arg(2)),
 							switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue),
 							callStatic(SerializationOutputBuffer.class, "writeByte", arg(0), arg(1), value((byte) 0)))
 			);
@@ -126,12 +127,12 @@ public class SerializerGenSubclass implements SerializerGen {
 	}
 
 	@Override
-	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticSerializeMethod(this, version, byteArray, off, value);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startDeserializeStaticMethod(this, version)) {
 			return;
 		}
@@ -139,8 +140,8 @@ public class SerializerGenSubclass implements SerializerGen {
 		if (nullable) list.add(nullRef(getRawType()));
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
-			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods);
-			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods), this.getRawType()));
+			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
+			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), this.getRawType()));
 		}
 
 		ExpressionLet subClassN = let(call(arg(0), "readByte"));
@@ -149,7 +150,7 @@ public class SerializerGenSubclass implements SerializerGen {
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 

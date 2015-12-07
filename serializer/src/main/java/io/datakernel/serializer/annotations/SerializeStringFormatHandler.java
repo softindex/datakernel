@@ -29,7 +29,7 @@ public class SerializeStringFormatHandler implements AnnotationHandler<Serialize
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
-				if (compatibilityLevel == CompatibilityLevel.OLD_STANDARD) {
+				if (compatibilityLevel == CompatibilityLevel.VERSION_1) {
 					if (annotation.value() == StringFormat.ISO_8859_1 || annotation.value() == StringFormat.UTF8) {
 						return ((SerializerGenString) fallback).encoding(StringFormat.UTF8_CUSTOM);
 					}

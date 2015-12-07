@@ -899,7 +899,7 @@ public final class SerializerBuilder {
 		StaticMethods staticMethods = new StaticMethods();
 
 		if (currentVersion == null) currentVersion = 0;
-		serializerGen.prepareSerializeStaticMethods(currentVersion, staticMethods);
+		serializerGen.prepareSerializeStaticMethods(currentVersion, staticMethods, compatibilityLevel);
 		for (StaticMethods.Key key : staticMethods.mapSerialize.keySet()) {
 			StaticMethods.Value value = staticMethods.mapSerialize.get(key);
 			asmFactory.staticMethod(value.method,
@@ -911,7 +911,7 @@ public final class SerializerBuilder {
 		asmFactory.method("serialize", sequence(version,
 						call(arg(0), "position", serializerGen.serialize(
 								call(arg(0), "array"), position,
-								cast(arg(1), dataType), currentVersion, staticMethods)),
+								cast(arg(1), dataType), currentVersion, staticMethods, compatibilityLevel)),
 						call(arg(0), "position")
 				)
 		);
@@ -942,7 +942,7 @@ public final class SerializerBuilder {
 		asmFactory.method("deserializeVersion" + String.valueOf(version),
 				serializerGen.getRawType(),
 				asList(SerializationInputBuffer.class),
-				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods)));
+				sequence(serializerGen.deserialize(serializerGen.getRawType(), version, staticMethods, compatibilityLevel)));
 	}
 
 	private void defineDeserializeEarlierVersion(SerializerGen serializerGen, AsmBuilder asmFactory, List<Integer> allVersions, StaticMethods staticMethods) {
@@ -951,7 +951,7 @@ public final class SerializerBuilder {
 		for (int i = allVersions.size() - 2; i >= 0; i--) {
 			int version = allVersions.get(i);
 			listKey.add(value(version));
-			serializerGen.prepareDeserializeStaticMethods(version, staticMethods);
+			serializerGen.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 			listValue.add(call(self(), "deserializeVersion" + String.valueOf(version), arg(0)));
 		}
 		asmFactory.method("deserializeEarlierVersions", serializerGen.getRawType(), asList(SerializationInputBuffer.class, int.class),
@@ -960,13 +960,13 @@ public final class SerializerBuilder {
 
 	private void defineDeserializeLatest(final SerializerGen serializerGen, final AsmBuilder asmFactory, final Integer latestVersion, StaticMethods staticMethods) {
 		if (latestVersion == null) {
-			serializerGen.prepareDeserializeStaticMethods(0, staticMethods);
-			asmFactory.method("deserialize", serializerGen.deserialize(serializerGen.getRawType(), 0, staticMethods));
+			serializerGen.prepareDeserializeStaticMethods(0, staticMethods, compatibilityLevel);
+			asmFactory.method("deserialize", serializerGen.deserialize(serializerGen.getRawType(), 0, staticMethods, compatibilityLevel));
 		} else {
-			serializerGen.prepareDeserializeStaticMethods(latestVersion, staticMethods);
+			serializerGen.prepareDeserializeStaticMethods(latestVersion, staticMethods, compatibilityLevel);
 			Expression version = let(call(arg(0), "readVarInt"));
 			asmFactory.method("deserialize", sequence(version, choice(cmpEq(version, value(latestVersion)),
-					serializerGen.deserialize(serializerGen.getRawType(), latestVersion, staticMethods),
+					serializerGen.deserialize(serializerGen.getRawType(), latestVersion, staticMethods, compatibilityLevel),
 					call(self(), "deserializeEarlierVersions", arg(0), version))));
 		}
 	}
