@@ -19,29 +19,30 @@ package io.datakernel.http;
 import io.datakernel.eventloop.NioEventloop;
 
 import java.io.IOException;
+import java.net.URL;
+import java.nio.file.Paths;
 
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StaticServletExample {
-	private static final int SERVER_PORT = 5555;
-	private static final String URL = "/static";
-	private static final String FILE_PATH = "./test_data";
+	private static final int SERVER_PORT = 5556;
 
 	public static void main(String[] args) throws IOException {
 
-		MiddlewareServlet main = new MiddlewareServlet();
+		final URL resources = Paths.get("./test_data").toUri().toURL();
 
 		NioEventloop eventloop = new NioEventloop();
+		MiddlewareServlet main = new MiddlewareServlet();
 
-		main.setDefault(URL, new StaticServlet(FILE_PATH, eventloop, newCachedThreadPool()));
+		System.out.println(resources);
+
+		main.setDefault(new StaticServlet(StaticServlet.SimpleResourceLoader.create(eventloop, newCachedThreadPool(), resources)));
 
 		AsyncHttpServer staticFileServer = new AsyncHttpServer(eventloop, main);
-
 		staticFileServer.setListenPort(SERVER_PORT);
-
 		staticFileServer.listen();
 
-		System.out.println("Check http://localhost:5555/static/hello.html in your browser");
+		System.out.println("Check http://localhost:5556/hello.html in your browser");
 		eventloop.run();
 	}
 }
