@@ -16,7 +16,12 @@
 
 package io.datakernel.config;
 
+import com.google.common.base.Preconditions;
+import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
 import io.datakernel.util.Joiner;
+import io.datakernel.util.MemSize;
 import io.datakernel.util.Splitter;
 
 import java.net.InetAddress;
@@ -26,6 +31,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Integer.parseInt;
@@ -186,6 +192,122 @@ public final class ConfigConverters {
 		}
 	}
 
+	private static final class ConfigConverterMemSize extends ConfigConverterSingle<MemSize> {
+		static ConfigConverterMemSize INSTANCE = new ConfigConverterMemSize();
+
+		@Override
+		protected MemSize fromString(String string) {
+			return MemSize.valueOf(string);
+		}
+
+		@Override
+		protected String toString(MemSize item) {
+			return item.format();
+		}
+	}
+
+	private static final class ConfigConverterServerSocketSettings implements ConfigConverter<ServerSocketSettings> {
+		static ConfigConverterServerSocketSettings INSTANCE = new ConfigConverterServerSocketSettings();
+
+		private final ServerSocketSettings defaultValue = new ServerSocketSettings();
+
+		@Override
+		public ServerSocketSettings get(Config config) {
+			return get(config, defaultValue);
+		}
+
+		@Override
+		public ServerSocketSettings get(Config config, ServerSocketSettings defaultValue) {
+			ServerSocketSettings result = Preconditions.checkNotNull(defaultValue);
+			result = result.backlog(config.get(ofInteger(), "backlog", result.getBacklog()));
+			if (config.hasValue("receiveBufferSize"))
+				result = result.receiveBufferSize(config.get(ofInteger(), "receiveBufferSize"));
+			if (config.hasValue("reuseAddress"))
+				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+			return result;
+		}
+
+		@Override
+		public void set(Config config, ServerSocketSettings item) {
+			Preconditions.checkNotNull(config);
+			Preconditions.checkNotNull(item);
+			config.set("backlog", Integer.toString(item.getBacklog()));
+			config.set("receiveBufferSize", new MemSize(item.getReceiveBufferSize()).toString());
+			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
+		}
+	}
+
+	private static final class ConfigConverterSocketSettings implements ConfigConverter<SocketSettings> {
+		static ConfigConverterSocketSettings INSTANCE = new ConfigConverterSocketSettings();
+
+		private final SocketSettings defaultValue = new SocketSettings();
+
+		@Override
+		public SocketSettings get(Config config) {
+			return get(config, defaultValue);
+		}
+
+		@Override
+		public SocketSettings get(Config config, SocketSettings defaultValue) {
+			SocketSettings result = Preconditions.checkNotNull(defaultValue);
+			if (config.hasValue("receiveBufferSize"))
+				result = result.receiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
+			if (config.hasValue("sendBufferSize"))
+				result = result.sendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
+			if (config.hasValue("reuseAddress"))
+				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+			if (config.hasValue("keepAlive"))
+				result = result.keepAlive(config.get(ofBoolean(), "keepAlive"));
+			if (config.hasValue("tcpNoDelay"))
+				result = result.tcpNoDelay(config.get(ofBoolean(), "tcpNoDelay"));
+			return result;
+		}
+
+		@Override
+		public void set(Config config, SocketSettings item) {
+			Preconditions.checkNotNull(config);
+			Preconditions.checkNotNull(item);
+			config.set("receiveBufferSize", new MemSize(item.getReceiveBufferSize()).toString());
+			config.set("sendBufferSize", new MemSize(item.getSendBufferSize()).toString());
+			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
+			config.set("keepAlive", Boolean.toString(item.getKeepAlive()));
+			config.set("tcpNoDelay", Boolean.toString(item.getTcpNoDelay()));
+		}
+	}
+
+	private static final class ConfigConverterDatagramSocketSettings implements ConfigConverter<DatagramSocketSettings> {
+		static ConfigConverterDatagramSocketSettings INSTANCE = new ConfigConverterDatagramSocketSettings();
+
+		@Override
+		public DatagramSocketSettings get(Config config) {
+			return get(config, defaultDatagramSocketSettings());
+		}
+
+		@Override
+		public DatagramSocketSettings get(Config config, DatagramSocketSettings defaultValue) {
+			DatagramSocketSettings result = Preconditions.checkNotNull(defaultDatagramSocketSettings());
+			if (config.hasValue("receiveBufferSize"))
+				result = result.receiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
+			if (config.hasValue("sendBufferSize"))
+				result = result.sendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
+			if (config.hasValue("reuseAddress"))
+				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+			if (config.hasValue("broadcast"))
+				result = result.broadcast(config.get(ofBoolean(), "broadcast"));
+			return result;
+		}
+
+		@Override
+		public void set(Config config, DatagramSocketSettings item) {
+			Preconditions.checkNotNull(config);
+			Preconditions.checkNotNull(item);
+			config.set("receiveBufferSize", new MemSize(item.getReceiveBufferSize()).toString());
+			config.set("sendBufferSize", new MemSize(item.getSendBufferSize()).toString());
+			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
+			config.set("broadcast", Boolean.toString(item.getBroadcast()));
+		}
+	}
+
 	public static ConfigConverterSingle<String> ofString() {
 		return ConfigConverterString.INSTANCE;
 	}
@@ -222,5 +344,20 @@ public final class ConfigConverters {
 		return ofList(elementConverter, ",;");
 	}
 
+	public static ConfigConverterSingle<MemSize> ofMemSize() {
+		return ConfigConverterMemSize.INSTANCE;
+	}
+
+	public static ConfigConverter<ServerSocketSettings> ofServerSocketSettings() {
+		return ConfigConverterServerSocketSettings.INSTANCE;
+	}
+
+	public static ConfigConverter<SocketSettings> ofSocketSettings() {
+		return ConfigConverterSocketSettings.INSTANCE;
+	}
+
+	public static ConfigConverter<DatagramSocketSettings> ofDatagramSocketSettings() {
+		return ConfigConverterDatagramSocketSettings.INSTANCE;
+	}
 }
 
