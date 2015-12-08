@@ -19,7 +19,6 @@ package io.datakernel.http;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.util.ByteBufStrings;
-import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.profile.StackProfiler;
@@ -29,10 +28,17 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * To run benchmark - add maven dependency on jmh-generator-annprocess
+ */
+
+@Warmup(iterations = 4)
+@Measurement(iterations = 8)
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Thread)
-@Fork(value = 1, jvmArgsAppend = "-Djmh.stack.lines=4")
+@Fork(2)
+@Threads(1)
 public class MiddlewareBenchmark {
 
 	private final static MiddlewareServlet tree = new MiddlewareServlet();
@@ -83,7 +89,6 @@ public class MiddlewareBenchmark {
 
 	}
 
-	@Benchmark
 	public static void tree(final Blackhole bh) {
 		ResultCallback<HttpResponse> callback = new ResultCallback<HttpResponse>() {
 			@Override

@@ -142,11 +142,8 @@ public final class StaticServlet implements AsyncHttpServlet {
 				InputStream in = file.openStream();
 				ByteArrayOutputStream out = new ByteArrayOutputStream();
 				byte[] buffer = new byte[4096];
-				while (true) {
-					int size = in.read(buffer);
-					if (size <= 0) {
-						break;
-					}
+				int size;
+				while ((size = in.read(buffer)) != -1) {
 					out.write(buffer, 0, size);
 				}
 				callback.onResult(wrap(out.toByteArray()));
