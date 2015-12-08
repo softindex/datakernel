@@ -23,6 +23,8 @@ import io.datakernel.net.SocketSettings;
 import io.datakernel.util.Joiner;
 import io.datakernel.util.MemSize;
 import io.datakernel.util.Splitter;
+import org.joda.time.Period;
+import org.joda.time.format.PeriodFormat;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -308,6 +310,20 @@ public final class ConfigConverters {
 		}
 	}
 
+	private static final class ConfigConverterPeriod extends ConfigConverterSingle<Period> {
+		static ConfigConverterPeriod INSTANCE = new ConfigConverterPeriod();
+
+		@Override
+		protected Period fromString(String string) {
+			return PeriodFormat.getDefault().parsePeriod(string);
+		}
+
+		@Override
+		protected String toString(Period item) {
+			return PeriodFormat.getDefault().print(item);
+		}
+	}
+
 	public static ConfigConverterSingle<String> ofString() {
 		return ConfigConverterString.INSTANCE;
 	}
@@ -358,6 +374,10 @@ public final class ConfigConverters {
 
 	public static ConfigConverter<DatagramSocketSettings> ofDatagramSocketSettings() {
 		return ConfigConverterDatagramSocketSettings.INSTANCE;
+	}
+
+	public static ConfigConverterSingle<Period> ofPeriod() {
+		return ConfigConverterPeriod.INSTANCE;
 	}
 }
 
