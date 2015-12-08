@@ -18,7 +18,10 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -54,68 +57,69 @@ public final class SerializerGenMap implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		keySerializer.prepareSerializeStaticMethods(version, staticMethods);
-		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		keySerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = call(arg(0), "writeVarInt", length(value));
+	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+		Expression length = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, length(value)));
 
 		return sequence(length, mapForEach(value,
 						new ForVar() {
 							@Override
-							public Expression forVar(Expression it) {return keySerializer.serialize(cast(it, keySerializer.getRawType()), version, staticMethods);}
+							public Expression forVar(Expression it) {return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel));}
 						},
 						new ForVar() {
 							@Override
-							public Expression forVar(Expression it) {return valueSerializer.serialize(cast(it, valueSerializer.getRawType()), version, staticMethods);}
-						})
+							public Expression forVar(Expression it) {return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));}
+						}),
+				off
 		);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		keySerializer.prepareDeserializeStaticMethods(version, staticMethods);
-		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		keySerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, final int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, final int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		boolean isEnum = keySerializer.getRawType().isEnum();
 
 		if (!isEnum) {
-			return deserializeSimple(version, staticMethods);
+			return deserializeSimple(version, staticMethods, compatibilityLevel);
 		} else {
-			return deserializeEnum(version, staticMethods);
+			return deserializeEnum(version, staticMethods, compatibilityLevel);
 		}
 	}
 
-	public Expression deserializeSimple(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserializeSimple(final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
 		final Expression local = let(constructor(LinkedHashMap.class, length));
 		Expression forEach = expressionFor(length, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return sequence(call(local, "put",
-						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
-						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
+						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class),
+						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)
 				), voidExp());
 			}
 		});
 		return sequence(length, local, forEach, local);
 	}
 
-	public Expression deserializeEnum(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserializeEnum(final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
 		final Expression localMap = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
 		Expression forEach = expressionFor(length, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return sequence(call(localMap, "put",
-						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods), Object.class),
-						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)
+						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class),
+						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)
 				), voidExp());
 			}
 		});

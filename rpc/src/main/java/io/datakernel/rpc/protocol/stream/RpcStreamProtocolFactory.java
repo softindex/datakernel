@@ -16,20 +16,50 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import io.datakernel.rpc.protocol.*;
+import io.datakernel.rpc.protocol.RpcConnection;
+import io.datakernel.rpc.protocol.RpcMessage;
+import io.datakernel.rpc.protocol.RpcProtocol;
+import io.datakernel.rpc.protocol.RpcProtocolFactory;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.stream.processor.StreamBinarySerializer;
 
 import java.nio.channels.SocketChannel;
 
-public final class RpcStreamProtocolFactory implements RpcProtocolFactory {
-	private final RpcStreamProtocolSettings settings;
+import static io.datakernel.util.Preconditions.checkArgument;
 
-	public RpcStreamProtocolFactory(RpcStreamProtocolSettings settings) {
-		this.settings = settings;
+public final class RpcStreamProtocolFactory implements RpcProtocolFactory {
+	public static final int DEFAULT_PACKET_SIZE = 16;
+	public static final int MAX_PACKET_SIZE = StreamBinarySerializer.MAX_SIZE;
+
+	private int defaultPacketSize = DEFAULT_PACKET_SIZE;
+	private int maxPacketSize = MAX_PACKET_SIZE;
+	private boolean compression = true;
+
+	private RpcStreamProtocolFactory() {
 	}
 
-	@Override
-	public RpcProtocol create(final RpcConnection connection, SocketChannel socketChannel, RpcMessageSerializer serializer, boolean isServer) {
-		return new RpcStreamProtocol(connection.getEventloop(), socketChannel, serializer, settings) {
+	public RpcStreamProtocolFactory(int defaultPacketSize, int maxPacketSize, boolean compression) {
+		checkArgument(defaultPacketSize > 0);
+		checkArgument(maxPacketSize >= defaultPacketSize);
+		this.defaultPacketSize = defaultPacketSize;
+		this.maxPacketSize = maxPacketSize;
+		this.compression = compression;
+	}
+
+	public static RpcStreamProtocolFactory streamProtocol() {
+		return new RpcStreamProtocolFactory();
+	}
+
+	public static RpcStreamProtocolFactory streamProtocol(int defaultPacketSize, int maxPacketSize, boolean compression) {
+		return new RpcStreamProtocolFactory(defaultPacketSize, maxPacketSize, compression);
+	}
+
+	public RpcProtocol create(final RpcConnection connection, SocketChannel socketChannel,
+	                          BufferSerializer<RpcMessage> messageSerializer,
+	                          boolean isServer) {
+		return new RpcStreamProtocol(connection.getEventloop(), socketChannel,
+				messageSerializer,
+				defaultPacketSize, maxPacketSize, compression) {
 			@Override
 			protected void onReceiveMessage(RpcMessage message) {
 				connection.onReceiveMessage(message);

@@ -16,19 +16,16 @@
 
 package io.datakernel.rpc.client.sender;
 
-import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.*;
 import io.datakernel.rpc.hash.HashFunction;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
-import java.util.HashMap;
-import java.util.Map;
 
-import static io.datakernel.rpc.client.sender.RpcStrategyRendezvousHashing.DefaultBucketHashFunction;
-import static io.datakernel.rpc.client.sender.RpcStrategyRendezvousHashing.RendezvousHashBucket;
-import static java.util.Arrays.asList;
-import static org.junit.Assert.*;
+import static io.datakernel.rpc.client.sender.RpcStrategies.rendezvousHashing;
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class RpcStrategyRendezvousHashingTest {
 
@@ -42,223 +39,163 @@ public class RpcStrategyRendezvousHashingTest {
 
 	@Test
 	public void itShouldDistributeCallsBetweenActiveSenders() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
 		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
-		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
-		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
-		RpcRequestSendingStrategy rendezvousHashingStrategy =
-				new RpcStrategyRendezvousHashing(hashFunction)
-						.put(shardId1, strategySingleServer1)
-						.put(shardId2, strategySingleServer2)
-						.put(shardId3, strategySingleServer3);
-		RpcRequestSender rendezvousSender;
+		RpcStrategySingleServer server1 = server(ADDRESS_1);
+		RpcStrategySingleServer server2 = server(ADDRESS_2);
+		RpcStrategySingleServer server3 = server(ADDRESS_3);
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+				.put(shardId1, server1)
+				.put(shardId2, server2)
+				.put(shardId3, server3);
+		RpcSender sender;
 		int callsPerLoop = 10000;
 		int timeout = 50;
 		ResultCallbackStub callback = new ResultCallbackStub();
 
-		pool.add(ADDRESS_1, connection1);
-		pool.add(ADDRESS_2, connection2);
-		pool.add(ADDRESS_3, connection3);
-		rendezvousSender = rendezvousHashingStrategy.create(pool).getSender();
+		pool.put(ADDRESS_1, connection1);
+		pool.put(ADDRESS_2, connection2);
+		pool.put(ADDRESS_3, connection3);
+		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
+			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
 		pool.remove(ADDRESS_1);
-		rendezvousSender = rendezvousHashingStrategy.create(pool).getSender();
+		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
+			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
 		pool.remove(ADDRESS_3);
-		rendezvousSender = rendezvousHashingStrategy.create(pool).getSender();
+		sender = rendezvousHashing.createSender(pool);
 		for (int i = 0; i < callsPerLoop; i++) {
-			rendezvousSender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
+			sender.sendRequest(new RpcMessageDataStubWithKey(i), timeout, callback);
 		}
 
 		int expectedCallsOfConnection1 = callsPerLoop / 3;
 		int expectedCallsOfConnection2 = (callsPerLoop / 3) + (callsPerLoop / 2) + callsPerLoop;
 		int expectedCallsOfConnection3 = (callsPerLoop / 3) + (callsPerLoop / 2);
 		double delta = callsPerLoop / 30.0;
-		assertEquals(expectedCallsOfConnection1, connection1.getCallsAmount(), delta);
-		assertEquals(expectedCallsOfConnection2, connection2.getCallsAmount(), delta);
-		assertEquals(expectedCallsOfConnection3, connection3.getCallsAmount(), delta);
+		assertEquals(expectedCallsOfConnection1, connection1.getSendsNumber(), delta);
+		assertEquals(expectedCallsOfConnection2, connection2.getSendsNumber(), delta);
+		assertEquals(expectedCallsOfConnection3, connection3.getSendsNumber(), delta);
 	}
 
 	@Test
 	public void itShouldBeCreatedWhenThereAreAtLeastOneActiveSubSender() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
 		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
-		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
-		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
-		RpcRequestSendingStrategy rendezvousHashingStrategy =
-				new RpcStrategyRendezvousHashing(hashFunction)
-						.put(shardId1, strategySingleServer1)
-						.put(shardId2, strategySingleServer2)
-						.put(shardId3, strategySingleServer3);
+		RpcStrategySingleServer server1 = server(ADDRESS_1);
+		RpcStrategySingleServer server2 = server(ADDRESS_2);
+		RpcStrategySingleServer server3 = server(ADDRESS_3);
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+				.put(shardId1, server1)
+				.put(shardId2, server2)
+				.put(shardId3, server3);
 
 		// server3 is active
-		pool.add(ADDRESS_3, connection3);
+		pool.put(ADDRESS_3, connection3);
 
-		assertTrue(rendezvousHashingStrategy.create(pool).isSenderPresent());
+		assertTrue(rendezvousHashing.createSender(pool) != null);
 	}
 
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNoActiveSubSenders() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
 		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
-		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
-		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
-		RpcRequestSendingStrategy rendezvousHashingStrategy =
-				new RpcStrategyRendezvousHashing(hashFunction)
-						.put(shardId1, strategySingleServer1)
-						.put(shardId2, strategySingleServer2)
-						.put(shardId3, strategySingleServer3);
+		RpcStrategySingleServer server1 = server(ADDRESS_1);
+		RpcStrategySingleServer server2 = server(ADDRESS_2);
+		RpcStrategySingleServer server3 = server(ADDRESS_3);
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+				.put(shardId1, server1)
+				.put(shardId2, server2)
+				.put(shardId3, server3);
 
 		// no connections were added to pool, so there are no active servers
 
-		assertFalse(rendezvousHashingStrategy.create(pool).isSenderPresent());
+		assertTrue(rendezvousHashing.createSender(pool) == null);
 	}
 
 	@Test
 	public void itShouldNotBeCreatedWhenNoSendersWereAdded() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
 		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RpcRequestSendingStrategy rendezvousHashingStrategy = new RpcStrategyRendezvousHashing(hashFunction);
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction);
 
-		assertFalse(rendezvousHashingStrategy.create(pool).isSenderPresent());
+		assertTrue(rendezvousHashing.createSender(pool) == null);
 	}
 
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNotEnoughSubSenders() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection3 = new RpcClientConnectionStub();
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
+		RpcSenderStub connection3 = new RpcSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
 		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
-		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
-		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
-		RpcRequestSendingStrategy firstAvailableStrategy =
-				new RpcStrategyRendezvousHashing(hashFunction)
-						.withMinActiveSubStrategies(4)
-						.put(shardId1, strategySingleServer1)
-						.put(shardId2, strategySingleServer2)
-						.put(shardId3, strategySingleServer3);
+		RpcStrategySingleServer server1 = server(ADDRESS_1);
+		RpcStrategySingleServer server2 = server(ADDRESS_2);
+		RpcStrategySingleServer server3 = server(ADDRESS_3);
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+				.withMinActiveShards(4)
+				.put(shardId1, server1)
+				.put(shardId2, server2)
+				.put(shardId3, server3);
 
-		pool.add(ADDRESS_1, connection1);
-		pool.add(ADDRESS_2, connection2);
-		pool.add(ADDRESS_3, connection3);
+		pool.put(ADDRESS_1, connection1);
+		pool.put(ADDRESS_2, connection2);
+		pool.put(ADDRESS_3, connection3);
 
-		assertTrue(strategySingleServer1.create(pool).isSenderPresent());
-		assertTrue(strategySingleServer2.create(pool).isSenderPresent());
-		assertTrue(strategySingleServer3.create(pool).isSenderPresent());
-		assertFalse(firstAvailableStrategy.create(pool).isSenderPresent());
+		assertTrue(server1.createSender(pool) != null);
+		assertTrue(server2.createSender(pool) != null);
+		assertTrue(server3.createSender(pool) != null);
+		assertTrue(rendezvousHashing.createSender(pool) == null);
 	}
 
 	@Test
 	public void itShouldNotBeCreatedWhenThereAreNotEnoughActiveSubSenders() {
-		RpcClientConnectionPool pool = new RpcClientConnectionPool(asList(ADDRESS_1, ADDRESS_2, ADDRESS_3));
-		RpcClientConnectionStub connection1 = new RpcClientConnectionStub();
-		RpcClientConnectionStub connection2 = new RpcClientConnectionStub();
+		RpcClientConnectionPoolStub pool = new RpcClientConnectionPoolStub();
+		RpcSenderStub connection1 = new RpcSenderStub();
+		RpcSenderStub connection2 = new RpcSenderStub();
 		int shardId1 = 1;
 		int shardId2 = 2;
 		int shardId3 = 3;
 		HashFunction<Object> hashFunction = new RpcMessageDataStubWithKeyHashFunction();
-		RpcStrategySingleServer strategySingleServer1 = new RpcStrategySingleServer(ADDRESS_1);
-		RpcStrategySingleServer strategySingleServer2 = new RpcStrategySingleServer(ADDRESS_2);
-		RpcStrategySingleServer strategySingleServer3 = new RpcStrategySingleServer(ADDRESS_3);
-		RpcRequestSendingStrategy firstAvailableStrategy =
-				new RpcStrategyRendezvousHashing(hashFunction)
-						.withMinActiveSubStrategies(4)
-						.put(shardId1, strategySingleServer1)
-						.put(shardId2, strategySingleServer2)
-						.put(shardId3, strategySingleServer3);
+		RpcStrategySingleServer server1 = server(ADDRESS_1);
+		RpcStrategySingleServer server2 = server(ADDRESS_2);
+		RpcStrategySingleServer server3 = server(ADDRESS_3);
+		RpcStrategy rendezvousHashing = rendezvousHashing(hashFunction)
+				.withMinActiveShards(4)
+				.put(shardId1, server1)
+				.put(shardId2, server2)
+				.put(shardId3, server3);
 
-		pool.add(ADDRESS_1, connection1);
-		pool.add(ADDRESS_2, connection2);
+		pool.put(ADDRESS_1, connection1);
+		pool.put(ADDRESS_2, connection2);
 		// we don't add connection3
 
-		assertTrue(strategySingleServer1.create(pool).isSenderPresent());
-		assertTrue(strategySingleServer2.create(pool).isSenderPresent());
-		assertFalse(strategySingleServer3.create(pool).isSenderPresent());
-		assertFalse(firstAvailableStrategy.create(pool).isSenderPresent());
+		assertTrue(server1.createSender(pool) != null);
+		assertTrue(server2.createSender(pool) != null);
+		assertTrue(server3.createSender(pool) == null);
+		assertTrue(rendezvousHashing.createSender(pool) == null);
 	}
 
 	@Test(expected = Exception.class)
 	public void itShouldThrowExceptionWhenHashFunctionIsNull() {
-		RpcRequestSendingStrategy rendezvousHashingStrategy = new RpcStrategyRendezvousHashing(null);
-	}
-
-	@Test
-	public void testRendezvousHashBucket() {
-		final int SENDERS_AMOUNT = 4;
-		final int DEFAULT_BUCKET_CAPACITY = 1 << 11;
-		final Map<Object, RpcRequestSenderHolder> keyToSenderHolder = new HashMap<>(SENDERS_AMOUNT);
-		for (int i = 0; i < SENDERS_AMOUNT; i++) {
-			keyToSenderHolder.put(i, RpcRequestSenderHolder.of(new RequestSenderStub(i)));
-		}
-		RendezvousHashBucket hashBucket;
-
-		hashBucket = RendezvousHashBucket.create(keyToSenderHolder, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
-		RpcRequestSender[] baseBucket = new RpcRequestSender[DEFAULT_BUCKET_CAPACITY];
-		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
-			baseBucket[i] = hashBucket.chooseSender(i);
-		}
-
-		int key1 = 1;
-		RpcRequestSender sender1 = keyToSenderHolder.get(key1).getSender();
-		keyToSenderHolder.put(key1, RpcRequestSenderHolder.absent());
-		hashBucket = RendezvousHashBucket.create(keyToSenderHolder, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
-		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
-			if (!baseBucket[i].equals(sender1))
-				assertEquals(baseBucket[i], hashBucket.chooseSender(i));
-			else
-				assertFalse(hashBucket.chooseSender(i).equals(sender1));
-		}
-
-		int key2 = 2;
-		RpcRequestSender sender2 = keyToSenderHolder.get(key2).getSender();
-		keyToSenderHolder.put(key2, RpcRequestSenderHolder.absent());
-		hashBucket = RendezvousHashBucket.create(keyToSenderHolder, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
-		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
-			if (!baseBucket[i].equals(sender1) && !baseBucket[i].equals(sender2))
-				assertEquals(baseBucket[i], hashBucket.chooseSender(i));
-			else
-				assertFalse(hashBucket.chooseSender(i).equals(sender1));
-			assertFalse(hashBucket.chooseSender(i).equals(sender2));
-		}
-
-		keyToSenderHolder.put(key1, RpcRequestSenderHolder.of(new RequestSenderStub(key1)));
-		hashBucket = RendezvousHashBucket.create(keyToSenderHolder, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
-		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
-			if (!baseBucket[i].equals(sender2))
-				assertEquals(baseBucket[i], hashBucket.chooseSender(i));
-			else
-				assertFalse(hashBucket.chooseSender(i).equals(sender2));
-		}
-
-		keyToSenderHolder.put(key2, RpcRequestSenderHolder.of(new RequestSenderStub(key2)));
-		hashBucket = RendezvousHashBucket.create(keyToSenderHolder, new DefaultBucketHashFunction(), DEFAULT_BUCKET_CAPACITY);
-		for (int i = 0; i < DEFAULT_BUCKET_CAPACITY; i++) {
-			assertEquals(baseBucket[i], hashBucket.chooseSender(i));
-		}
+		RpcStrategy rendezvousHashing = rendezvousHashing(null);
 	}
 }

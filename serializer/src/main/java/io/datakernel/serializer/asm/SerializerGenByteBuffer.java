@@ -17,7 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import java.nio.ByteBuffer;
 
@@ -49,27 +52,28 @@ public class SerializerGenByteBuffer implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		Expression array = call(cast(value, ByteBuffer.class), "array");
-		Expression position = call(cast(value, ByteBuffer.class), "position");
-		Expression remaining = let(call(cast(value, ByteBuffer.class), "remaining"));
-		Expression writeLength = call(arg(0), "writeVarInt", remaining);
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		value = let(cast(value, ByteBuffer.class));
+		Expression array = call(value, "array");
+		Expression position = call(value, "position");
+		Expression remaining = let(call(value, "remaining"));
+		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, remaining));
 
-		return sequence(writeLength, call(arg(0), "write", array, position, remaining));
+		return sequence(writeLength, callStatic(SerializerUtils.class, "write", array, position, byteArray, off, remaining));
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
 
 		if (!wrapped) {

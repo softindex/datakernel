@@ -24,6 +24,7 @@ import io.datakernel.jmx.DynamicStatsCounter;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.jmx.StatsCounter;
 import io.datakernel.rpc.protocol.*;
+import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 
@@ -38,7 +39,8 @@ import java.util.PriorityQueue;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcClientConnectionImpl implements RpcClientConnection {
+public final class RpcClientConnectionImpl implements RpcClientConnection, RpcClientConnectionMBean {
+	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
 		private final int timeout;
@@ -74,14 +76,14 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	}
 
 	private static final Logger logger = getLogger(RpcClientConnection.class);
+	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	private static final RpcException OVERLOAD_EXCEPTION = new RpcException("Write connection is overloaded");
 	private final NioEventloop eventloop;
 	private final RpcProtocol protocol;
 	private final StatusListener statusListener;
-	private final Map<Integer, ResultCallback<? extends Object>> requests = new HashMap<>();
+	private final Map<Integer, ResultCallback<?>> requests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
 	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
-	private final int timeoutPrecision;
 
 	private AsyncCancellable scheduleExpiredResponsesTask;
 	private int cookieCounter = 0;
@@ -98,16 +100,16 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	private int successfulRequests, failedRequests, rejectedRequests, expiredRequests;
 	private boolean monitoring;
 
-	public RpcClientConnectionImpl(NioEventloop eventloop, SocketChannel socketChannel, int timeoutPrecision, RpcMessageSerializer serializer,
+	public RpcClientConnectionImpl(NioEventloop eventloop, SocketChannel socketChannel,
+	                               BufferSerializer<RpcMessage> messageSerializer,
 	                               RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;
 		this.statusListener = statusListener;
-		this.timeoutPrecision = timeoutPrecision;
-		this.protocol = protocolFactory.create(this, socketChannel, serializer, false);
+		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, false);
 	}
 
 	@Override
-	public <I, O> void callMethod(I request, int timeout, ResultCallback<O> callback) {
+	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 		assert eventloop.inEventloopThread();
 
 		if (!(request instanceof RpcMandatoryData) && protocol.isOverloaded()) {
@@ -120,7 +122,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 		sendMessageData(request, timeout, callback);
 	}
 
-	private void sendMessageData(Object request, int timeout, ResultCallback<? extends Object> callback) {
+	private void sendMessageData(Object request, int timeout, ResultCallback<?> callback) {
 		cookieCounter++;
 		if (requests.containsKey(cookieCounter)) {
 			String msg = "Request ID " + cookieCounter + " is already in use";
@@ -156,7 +158,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	private void scheduleExpiredResponsesTask() {
 		if (closing)
 			return;
-		scheduleExpiredResponsesTask = eventloop.schedule(eventloop.currentTimeMillis() + timeoutPrecision, expiredResponsesTask);
+		scheduleExpiredResponsesTask = eventloop.schedule(eventloop.currentTimeMillis() + DEFAULT_TIMEOUT_PRECISION, expiredResponsesTask);
 	}
 
 	private Runnable createExpiredResponsesTask() {
@@ -187,7 +189,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 	}
 
 	private void doTimeout(TimeoutCookie timeoutCookie) {
-		ResultCallback<? extends Object> callback = requests.remove(timeoutCookie.getCookie());
+		ResultCallback<?> callback = requests.remove(timeoutCookie.getCookie());
 		if (callback == null)
 			return;
 		expiredRequests++;
@@ -199,17 +201,17 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 		timeoutCookies.remove(timeoutCookie);
 	}
 
-	private void returnTimeout(ResultCallback<? extends Object> callback, Exception exception) {
+	private void returnTimeout(ResultCallback<?> callback, Exception exception) {
 		lastTimeoutException.update(exception, null, eventloop.currentTimeMillis());
 		returnError(callback, exception);
 	}
 
-	private void returnProtocolError(ResultCallback<? extends Object> callback, Exception exception) {
+	private void returnProtocolError(ResultCallback<?> callback, Exception exception) {
 		lastInternalException.update(exception, null, eventloop.currentTimeMillis());
 		returnError(callback, exception);
 	}
 
-	private void returnError(ResultCallback<? extends Object> callback, Exception exception) {
+	private void returnError(ResultCallback<?> callback, Exception exception) {
 		failedRequests++;
 		if (callback != null) {
 			Stopwatch stopwatch = (monitoring) ? Stopwatch.createStarted() : null;
@@ -231,7 +233,7 @@ public final class RpcClientConnectionImpl implements RpcClientConnection {
 
 	private void processError(RpcMessage message, RpcRemoteException exception) {
 		lastRemoteException.update(exception, message, eventloop.currentTimeMillis());
-		ResultCallback<? extends Object> callback = getResultCallback(message);
+		ResultCallback<?> callback = getResultCallback(message);
 		if (callback == null)
 			return;
 		returnError(callback, exception);

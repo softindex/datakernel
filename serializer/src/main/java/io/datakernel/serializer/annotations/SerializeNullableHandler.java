@@ -17,21 +17,23 @@
 package io.datakernel.serializer.annotations;
 
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.serializer.asm.SerializerGen;
-import io.datakernel.serializer.asm.SerializerGenBuilder;
-import io.datakernel.serializer.asm.SerializerGenNullable;
-import io.datakernel.serializer.asm.SerializerGenString;
+import io.datakernel.serializer.asm.*;
 
 public final class SerializeNullableHandler implements AnnotationHandler<SerializeNullable, SerializeNullableEx> {
 	@Override
-	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, SerializeNullable annotation) {
+	public SerializerGenBuilder createBuilder(SerializerBuilder serializerBuilder, SerializeNullable annotation, final CompatibilityLevel compatibilityLevel) {
 		return new SerializerGenBuilder() {
 			@Override
 			public SerializerGen serializer(Class<?> type, SerializerForType[] generics, SerializerGen fallback) {
 				Preconditions.check(!type.isPrimitive());
 				if (fallback instanceof SerializerGenString)
 					return ((SerializerGenString) fallback).nullable(true);
+				if (fallback instanceof SerializerGenEnum && compatibilityLevel == CompatibilityLevel.LEVEL_3)
+					return (((SerializerGenEnum) fallback)).nullable(true);
+				if (fallback instanceof SerializerGenSubclass && compatibilityLevel == CompatibilityLevel.LEVEL_3)
+					return ((SerializerGenSubclass) fallback).nullable(true);
 				return new SerializerGenNullable(fallback);
 			}
 		};

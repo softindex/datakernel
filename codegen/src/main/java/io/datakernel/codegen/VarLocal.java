@@ -22,7 +22,7 @@ import org.objectweb.asm.commons.GeneratorAdapter;
 /**
  * Defines methods which allow to create a local variable
  */
-public final class VarLocal implements Expression, StoreDef {
+public final class VarLocal implements Variable {
 	private final int local;
 
 	VarLocal(int local) {

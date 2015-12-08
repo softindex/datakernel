@@ -17,53 +17,60 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
 
+import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Set;
 
-import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public final class RpcStrategyRoundRobin extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
+public final class RpcStrategyRoundRobin implements RpcStrategy {
+	private final RpcStrategyList list;
+	private int minActiveSubStrategies;
 
-	public RpcStrategyRoundRobin(List<RpcRequestSendingStrategy> subStrategies) {
-		super(subStrategies);
+	public RpcStrategyRoundRobin(RpcStrategyList list) {
+		this.list = list;
 	}
 
 	public RpcStrategyRoundRobin withMinActiveSubStrategies(int minActiveSubStrategies) {
-		setMinSubStrategiesForCreation(minActiveSubStrategies);
+		this.minActiveSubStrategies = minActiveSubStrategies;
 		return this;
 	}
 
 	@Override
-	protected RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders) {
-		if (subSenders.size() > 1) {
-			return new RequestSenderRoundRobin(subSenders);
-		} else {
-			assert subSenders.size() == 1;
-			return subSenders.get(0);
-		}
+	public Set<InetSocketAddress> getAddresses() {
+		return list.getAddresses();
 	}
 
-	final static class RequestSenderRoundRobin implements RpcRequestSender {
-		private int nextSender;
-		private RpcRequestSender[] subSenders;
+	@Override
+	public RpcSender createSender(RpcClientConnectionPool pool) {
+		List<RpcSender> subSenders = list.listOfSenders(pool);
+		if (subSenders.size() < minActiveSubStrategies)
+			return null;
+		if (subSenders.size() == 0)
+			return null;
+		if (subSenders.size() == 1)
+			return subSenders.get(0);
+		return new Sender(subSenders);
+	}
 
-		public RequestSenderRoundRobin(List<RpcRequestSender> senders) {
-			checkArgument(senders != null && senders.size() > 0 && !containsNullValues(senders));
-			this.subSenders = senders.toArray(new RpcRequestSender[senders.size()]);
+	static final class Sender implements RpcSender {
+		private int nextSender;
+		private RpcSender[] subSenders;
+
+		public Sender(List<RpcSender> senders) {
+			checkArgument(senders != null && senders.size() > 0);
+			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
 			this.nextSender = 0;
 		}
 
 		@Override
-		public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
-			RpcRequestSender sender = getCurrentSubSender();
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+			RpcSender sender = subSenders[nextSender];
+			nextSender = (nextSender + 1) % subSenders.length;
 			sender.sendRequest(request, timeout, callback);
 		}
 
-		private RpcRequestSender getCurrentSubSender() {
-			RpcRequestSender currentSender = subSenders[nextSender];
-			nextSender = (nextSender + 1) % subSenders.length;
-			return currentSender;
-		}
 	}
 }

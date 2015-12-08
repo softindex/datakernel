@@ -17,17 +17,32 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 import org.objectweb.asm.Type;
 
 import static io.datakernel.codegen.Expressions.*;
 
 @SuppressWarnings("StatementWithEmptyBody")
 public class SerializerGenEnum implements SerializerGen {
-	private Class<?> nameOfEnum;
+	private final Class<?> nameOfEnum;
+	private final boolean nullable;
 
 	public SerializerGenEnum(Class<?> c) {
-		nameOfEnum = c;
+		this.nameOfEnum = c;
+		this.nullable = false;
+	}
+
+	public SerializerGenEnum(Class<?> c, boolean nullable) {
+		this.nameOfEnum = c;
+		this.nullable = nullable;
+	}
+
+	public SerializerGenEnum nullable(boolean nullable) {
+		return new SerializerGenEnum(nameOfEnum, nullable);
 	}
 
 	@Override
@@ -45,23 +60,38 @@ public class SerializerGenEnum implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return call(arg(0), "writeByte", cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE));
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		Expression ordinal = cast(call(cast(value, Enum.class), "ordinal"), Type.BYTE_TYPE);
+		if (!nullable) {
+			return callStatic(SerializerUtils.class, "writeByte", byteArray, off, ordinal);
+		} else {
+			return choice(isNull(value),
+					callStatic(SerializerUtils.class, "writeByte", byteArray, off, value((byte) 0)),
+					callStatic(SerializerUtils.class, "writeByte", byteArray, off, cast(add(ordinal, value((byte) 1)), Type.BYTE_TYPE))
+			);
+		}
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return get(callStatic(nameOfEnum, "values"), call(arg(0), "readByte"));
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		ExpressionLet value = let(call(arg(0), "readByte"));
+		if (!nullable) {
+			return getArrayItem(callStatic(nameOfEnum, "values"), value);
+		} else {
+			return choice(cmpEq(value, value((byte) 0)),
+					nullRef(nameOfEnum),
+					getArrayItem(callStatic(nameOfEnum, "values"), sub(value, value(1))));
+		}
 	}
 
 	@Override

@@ -20,10 +20,11 @@ import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import org.junit.Test;
 
+import java.nio.file.Paths;
+
 import static com.google.common.collect.Sets.newHashSet;
-import static io.datakernel.cube.api.ReportingDSL.divide;
-import static io.datakernel.cube.api.ReportingDSL.multiply;
 import static io.datakernel.codegen.Expressions.*;
+import static io.datakernel.cube.api.ReportingDSL.*;
 import static org.junit.Assert.assertEquals;
 
 public class ReportingTest {
@@ -73,6 +74,46 @@ public class ReportingTest {
 						set(getter(self(), "b"), value(0)),
 						set(getter(self(), "c"), value(0))))
 				.method("getResult", getter(self(), "d"))
+				.newInstance();
+		resultPlaceholder.init();
+		resultPlaceholder.computeMeasures();
+
+		assertEquals(0.0, resultPlaceholder.getResult());
+	}
+
+	@Test
+	public void testSqrt() throws Exception {
+		DefiningClassLoader classLoader = new DefiningClassLoader();
+		ReportingDSLExpression c = sqrt(add("a", "b"));
+		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
+				.field("a", double.class)
+				.field("b", double.class)
+				.field("c", double.class)
+				.method("computeMeasures", set(getter(self(), "c"), c.getExpression()))
+				.method("init", sequence(
+						set(getter(self(), "a"), value(2.0)),
+						set(getter(self(), "b"), value(7.0))))
+				.method("getResult", getter(self(), "c"))
+				.newInstance();
+		resultPlaceholder.init();
+		resultPlaceholder.computeMeasures();
+
+		assertEquals(3.0, resultPlaceholder.getResult());
+	}
+
+	@Test
+	public void testSqrtOfNegativeArgument() throws Exception {
+		DefiningClassLoader classLoader = new DefiningClassLoader();
+		ReportingDSLExpression c = sqrt(subtract("a", "b"));
+		TestQueryResultPlaceholder resultPlaceholder = new AsmBuilder<>(classLoader, TestQueryResultPlaceholder.class)
+				.field("a", double.class)
+				.field("b", double.class)
+				.field("c", double.class)
+				.method("computeMeasures", set(getter(self(), "c"), c.getExpression()))
+				.method("init", sequence(
+						set(getter(self(), "a"), value(0.0)),
+						set(getter(self(), "b"), value(1E-10))))
+				.method("getResult", getter(self(), "c"))
 				.newInstance();
 		resultPlaceholder.init();
 		resultPlaceholder.computeMeasures();

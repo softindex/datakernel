@@ -322,7 +322,7 @@ public class Utils {
 			}
 
 			if (isWrapperType(targetType)) {
-				g.box(targetTypePrimitive);
+				g.valueOf(targetTypePrimitive);
 			}
 
 			return;

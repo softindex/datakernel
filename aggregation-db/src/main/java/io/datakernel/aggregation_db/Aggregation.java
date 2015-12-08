@@ -275,10 +275,10 @@ public class Aggregation {
 	 * @return producer that streams query results
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> StreamProducer<T> query(AggregationQuery query, Class<T> outputClass) {
+	public <T> StreamProducer<T> query(AggregationQuery query, List<String> fields, Class<T> outputClass) {
 		List<String> resultKeys = query.getResultKeys();
 
-		List<String> aggregationFields = getAggregationFieldsForQuery(query.getResultFields());
+		List<String> aggregationFields = getAggregationFieldsForQuery(fields);
 
 		List<AggregationChunk> allChunks = aggregationMetadata.queryByPredicates(structure, chunks, query.getPredicates());
 
@@ -306,6 +306,10 @@ public class Aggregation {
 		}
 
 		return queryResultProducer;
+	}
+
+	public <T> StreamProducer<T> query(AggregationQuery query, Class<T> outputClass) {
+		return query(query, query.getResultFields(), outputClass);
 	}
 
 	private List<AggregationQuery.QueryPredicateNotEquals> getNotEqualsPredicates(AggregationQuery.QueryPredicates queryPredicates) {

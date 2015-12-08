@@ -20,7 +20,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-public class SerializationOutputBuffer {
+public final class SerializationOutputBuffer {
 	protected byte[] buf;
 	protected int pos;
 

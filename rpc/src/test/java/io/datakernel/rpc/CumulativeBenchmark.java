@@ -18,39 +18,71 @@ package io.datakernel.rpc;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import com.google.common.collect.ImmutableList;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.example.CumulativeServiceHelper;
 import io.datakernel.rpc.protocol.RpcException;
+import io.datakernel.rpc.protocol.RpcMessage;
+import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializationOutputBuffer;
+import io.datakernel.serializer.annotations.Deserialize;
+import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
+import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public final class CumulativeBenchmark {
+	public static final class ValueMessage {
+		@Serialize(order = 0)
+		public int value;
+
+		public ValueMessage(@Deserialize("value") int value) {
+			this.value = value;
+		}
+	}
+
 	private static final int TOTAL_ROUNDS = 30;
 	private static final int REQUESTS_TOTAL = 1_000_000;
 	private static final int REQUESTS_AT_ONCE = 100;
 	private static final int DEFAULT_TIMEOUT = 2_000;
 
 	private static final int SERVICE_PORT = 55555;
-	private static final ImmutableList<InetSocketAddress> addresses = ImmutableList.of(new InetSocketAddress(SERVICE_PORT));
 
 	private final NioEventloop serverEventloop = new NioEventloop();
-	private final RpcServer server = CumulativeServiceHelper.createServer(serverEventloop, SERVICE_PORT);
+	private final NioEventloop clientEventloop = new NioEventloop();
 
-	private final NioEventloop eventloop = new NioEventloop();
-	private final RpcClient client = CumulativeServiceHelper.createClient(eventloop, addresses, new ConnectSettings(500));
+	private final RpcServer server = RpcServer.create(serverEventloop, rpcSerializer(ValueMessage.class))
+			.protocol(streamProtocol(64 << 10, 64 << 10, true))
+			.on(ValueMessage.class, new RpcRequestHandler<ValueMessage>() {
+				private final ValueMessage currentSum = new ValueMessage(0);
 
-	private final CumulativeServiceHelper.ValueMessage incrementMessage;
+				@Override
+				public void run(ValueMessage request, ResultCallback<Object> callback) {
+					if (request.value != 0) {
+						currentSum.value += request.value;
+					} else {
+						currentSum.value = 0;
+					}
+					callback.onResult(currentSum);
+				}
+			})
+			.setListenPort(SERVICE_PORT);
+
+	private final RpcClient client = RpcClient.create(clientEventloop, rpcSerializer(ValueMessage.class))
+			.protocol(streamProtocol(64 << 10, 64 << 10, true))
+			.strategy(server(new InetSocketAddress(SERVICE_PORT)));
+
+	private final ValueMessage incrementMessage;
 	private final int totalRounds;
 	private final int roundRequests;
 	private final int requestsAtOnce;
@@ -65,7 +97,7 @@ public final class CumulativeBenchmark {
 		this.roundRequests = roundRequests;
 		this.requestsAtOnce = requestsAtOnce;
 		this.requestTimeout = requestTimeout;
-		this.incrementMessage = new CumulativeServiceHelper.ValueMessage(2);
+		this.incrementMessage = new ValueMessage(2);
 	}
 
 	private void printBenchmarkInfo() {
@@ -74,7 +106,20 @@ public final class CumulativeBenchmark {
 		System.out.println("Requests at once   : " + requestsAtOnce);
 		System.out.println("Increment value    : " + incrementMessage.value);
 		System.out.println("Request timeout    : " + requestTimeout + " ms");
-		System.out.println("RpcMessage size    : " + CumulativeServiceHelper.calculateRpcMessageSize(incrementMessage) + " bytes");
+		BufferSerializer<RpcMessage> serializer = rpcSerializer(ValueMessage.class).createSerializer();
+		int defaultBufferSize = 100;
+		SerializationOutputBuffer output;
+		while (true) {
+			try {
+				byte[] array = new byte[defaultBufferSize];
+				output = new SerializationOutputBuffer(array);
+				serializer.serialize(output, new RpcMessage(12345, incrementMessage));
+				break;
+			} catch (ArrayIndexOutOfBoundsException e) {
+				defaultBufferSize = defaultBufferSize * 2;
+			}
+		}
+		System.out.println("RpcMessage size    : " + output.position() + " bytes");
 	}
 
 	private void run() throws Exception {
@@ -117,7 +162,7 @@ public final class CumulativeBenchmark {
 
 			client.start(startCallback);
 
-			eventloop.run();
+			clientEventloop.run();
 
 		} finally {
 			serverEventloop.postConcurrently(new Runnable() {
@@ -157,7 +202,7 @@ public final class CumulativeBenchmark {
 						+ " rps: " + roundRequests * 1000.0 / stopwatch.elapsed(MILLISECONDS)
 						+ " (" + success + "/" + roundRequests + " with " + overloads + " overloads) sum=" + lastResponseValue);
 
-				eventloop.post(new Runnable() {
+				clientEventloop.post(new Runnable() {
 					@Override
 					public void run() {
 						startBenchmarkRound(roundNumber + 1, finishCallback);
@@ -171,7 +216,7 @@ public final class CumulativeBenchmark {
 			}
 		};
 
-		eventloop.post(new Runnable() {
+		clientEventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				stopwatch.start();
@@ -189,9 +234,9 @@ public final class CumulativeBenchmark {
 			if (i >= numberRequests)
 				return;
 
-			client.sendRequest(incrementMessage, requestTimeout, new ResultCallback<CumulativeServiceHelper.ValueMessage>() {
+			client.sendRequest(incrementMessage, requestTimeout, new ResultCallback<ValueMessage>() {
 				@Override
-				public void onResult(CumulativeServiceHelper.ValueMessage result) {
+				public void onResult(ValueMessage result) {
 					success++;
 					lastResponseValue = result.value;
 					tryCompete();
@@ -225,7 +270,7 @@ public final class CumulativeBenchmark {
 	}
 
 	private void postContinue(final int numberRequests, final CompletionCallback completionCallback) {
-		eventloop.post(new Runnable() {
+		clientEventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				sendRequests(numberRequests, completionCallback);
@@ -234,7 +279,7 @@ public final class CumulativeBenchmark {
 	}
 
 	private void scheduleContinue(final int numberRequests, final CompletionCallback completionCallback) {
-		eventloop.schedule(eventloop.currentTimeMillis() + 1, new Runnable() {
+		clientEventloop.schedule(clientEventloop.currentTimeMillis() + 1, new Runnable() {
 			@Override
 			public void run() {
 				sendRequests(numberRequests, completionCallback);

@@ -19,7 +19,10 @@ package io.datakernel.serializer.asm;
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -60,12 +63,17 @@ public final class SerializerGenArray implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(final Expression byteArray,
+	                            final Variable off,
+	                            Expression value,
+	                            final int version,
+	                            final SerializerBuilder.StaticMethods staticMethods,
+	                            final CompatibilityLevel compatibilityLevel) {
 		final Expression castedValue = cast(value, type);
 		Expression length;
 		if (fixedSize != -1) {
@@ -74,26 +82,30 @@ public final class SerializerGenArray implements SerializerGen {
 			length = length(castedValue);
 		}
 
-		Expression writeLength = call(arg(0), "writeVarInt", length);
+		Expression writeLength =
+				set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, length));
 		if (type.getComponentType() == Byte.TYPE) {
-			return sequence(writeLength, call(arg(0), "write", castedValue));
+			return sequence(writeLength,
+					callStatic(SerializerUtils.class, "write", castedValue, byteArray, off)
+			);
 		} else {
 			return sequence(writeLength, expressionFor(length, new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return valueSerializer.serialize(get(castedValue, it), version, staticMethods);
+					return set(off, valueSerializer.serialize(byteArray, off, getArrayItem(castedValue, it), version, staticMethods, compatibilityLevel)
+					);
 				}
-			}));
+			}), off);
 		}
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		final Expression len = let(call(arg(0), "readVarInt"));
 
 		final Expression array = let(Expressions.newArray(type, len));
@@ -103,7 +115,7 @@ public final class SerializerGenArray implements SerializerGen {
 			return sequence(array, expressionFor(len, new ForVar() {
 				@Override
 				public Expression forVar(Expression it) {
-					return setArrayItem(array, it, cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods), type.getComponentType()));
+					return setArrayItem(array, it, cast(valueSerializer.deserialize(type.getComponentType(), version, staticMethods, compatibilityLevel), type.getComponentType()));
 				}
 			}), array);
 		}

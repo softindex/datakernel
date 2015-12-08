@@ -16,24 +16,17 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.net.ConnectSettings;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.client.RpcClientSettings;
-import io.datakernel.rpc.client.sender.RpcRequestSendingStrategies;
 import io.datakernel.rpc.protocol.RpcMessage;
-import io.datakernel.rpc.protocol.RpcMessageSerializer;
-import io.datakernel.rpc.server.RpcRequestHandlers;
-import io.datakernel.rpc.server.RpcRequestHandlers.RequestHandler;
+import io.datakernel.rpc.protocol.RpcSerializer;
+import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.serializer.annotations.Deserialize;
-import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -45,66 +38,20 @@ import java.net.InetSocketAddress;
 import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.rpc.client.sender.RpcRequestSendingStrategies.server;
+import static io.datakernel.rpc.client.sender.RpcStrategies.server;
+import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 import static org.junit.Assert.assertEquals;
 
 public class RpcBinaryProtocolTest {
 	private static final int LISTEN_PORT = 12345;
 	private static final InetSocketAddress address = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
 
-	public static class TestRpcRequestMessage {
-		private final String request;
-
-		public TestRpcRequestMessage(@Deserialize("request") String request) {
-			this.request = request;
-		}
-
-		@Serialize(order = 1)
-		public String getRequest() {
-			return request;
-		}
-	}
-
-	public static class TestRpcResponseMessage {
-		private final String response;
-
-		public TestRpcResponseMessage(@Deserialize("response") String response) {
-			this.response = response;
-		}
-
-		@Serialize(order = 1)
-		public String getResponse() {
-			return response;
-		}
-	}
-
-	private static RpcRequestHandlers createAsyncFunc(final TestService service) {
-		return new RpcRequestHandlers.Builder().put(TestRpcRequestMessage.class, new RequestHandler<TestRpcRequestMessage>() {
-			@Override
-			public void run(final TestRpcRequestMessage request, final ResultCallback<Object> callback) {
-				service.call(request.getRequest(), new ResultCallback<String>() {
-					@Override
-					public void onResult(String result) {
-						callback.onResult(new TestRpcResponseMessage(result));
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						callback.onException(exception);
-					}
-				});
-			}
-		}).build();
-	}
-
 	interface TestService {
 		void call(String request, ResultCallback<String> resultCallback);
 	}
 
-	private static RpcMessageSerializer buildMessageSerializer() {
-		return RpcMessageSerializer.builder()
-				.addExtraRpcMessageType(TestRpcRequestMessage.class, TestRpcResponseMessage.class)
-				.build();
+	private static RpcSerializer buildMessageSerializer() {
+		return rpcSerializer(String.class);
 	}
 
 	@Before
@@ -115,66 +62,47 @@ public class RpcBinaryProtocolTest {
 
 	@Test
 	public void test() throws Exception {
-		RpcRequestHandlers handlers = createAsyncFunc(new TestService() {
-			@Override
-			public void call(String request, ResultCallback<String> resultCallback) {
-				resultCallback.onResult("Hello, " + request + "!");
-			}
-		});
-		RpcMessageSerializer serializer = buildMessageSerializer();
+		RpcSerializer serializer = buildMessageSerializer();
 
-		final TestRpcRequestMessage testMessage = new TestRpcRequestMessage("Test");
+		final String testMessage = "Test";
 
 		final NioEventloop eventloop = new NioEventloop();
 
-		final RpcClientSettings clientSettings = new RpcClientSettings()
-				.addresses(ImmutableList.of(address))
-				.connectSettings(new ConnectSettings(100));
-		RpcStreamProtocolSettings protocolSettings = new RpcStreamProtocolSettings()
-				.packetSize(1 << 10, 1 << 16).compression(true);
-		final RpcClient client = new RpcClient.Builder(eventloop, clientSettings)
-				.serializer(serializer)
-				.requestSendingStrategy(RpcRequestSendingStrategies.firstAvailable(server(address)))
-				.connectSettings(new ConnectSettings(100))
-				.protocolFactory(new RpcStreamProtocolFactory(protocolSettings))
-				.build();
+		final RpcClient client = RpcClient.create(eventloop, serializer)
+				.strategy(server(address));
 
-		final RpcServer server = new RpcServer.Builder(eventloop)
-				.serializer(serializer)
-				.requestHandlers(handlers)
-				.protocolFactory(new RpcStreamProtocolFactory(protocolSettings))
-				.build();
-		server.setListenAddress(address);
+		final RpcServer server = RpcServer.create(eventloop, serializer)
+				.on(String.class, new RpcRequestHandler<String>() {
+					@Override
+					public void run(String request, ResultCallback<Object> callback) {
+						callback.onResult("Hello, " + request + "!");
+					}
+				})
+				.setListenAddress(address);
 		server.listen();
 
 		final int countRequests = 10;
-		final List<TestRpcResponseMessage> results = Lists.newArrayList();
-		final ResultCallback<TestRpcResponseMessage> resultsObserver = new ResultCallback<TestRpcResponseMessage>() {
+		final List<String> results = Lists.newArrayList();
+		final ResultCallback<String> resultsObserver = new ResultCallback<String>() {
 			@Override
 			public void onException(Exception exception) {
-				onComplete();
+				client.stop();
+				server.close();
 				exception.printStackTrace();
 			}
 
 			@Override
-			public void onResult(TestRpcResponseMessage result) {
+			public void onResult(String result) {
 				results.add(result);
-				if (results.size() == countRequests)
-					onComplete();
+				if (results.size() == countRequests) {
+					client.stop();
+					server.close();
+				}
 			}
 
-			public void onComplete() {
-				eventloop.post(new Runnable() {
-					@Override
-					public void run() {
-						client.stop();
-						server.close();
-					}
-				});
-			}
 		};
 
-		final CompletionCallback completionCallback = new CompletionCallback() {
+		client.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				for (int i = 0; i < countRequests; i++) {
@@ -186,18 +114,13 @@ public class RpcBinaryProtocolTest {
 			public void onException(Exception e) {
 				resultsObserver.onException(e);
 			}
-		};
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				client.start(completionCallback);
-			}
 		});
 
 		eventloop.run();
+
 		assertEquals(countRequests, results.size());
 		for (int i = 0; i < countRequests; i++) {
-			assertEquals("Hello, " + testMessage.getRequest() + "!", results.get(i).getResponse());
+			assertEquals("Hello, " + testMessage + "!", results.get(i));
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
@@ -207,12 +130,12 @@ public class RpcBinaryProtocolTest {
 	public void testCompression() {
 		int countRequests = 10;
 		NioEventloop eventloop = new NioEventloop();
-		RpcMessageSerializer serializer = buildMessageSerializer();
+		RpcSerializer serializer = buildMessageSerializer();
 		int defaultPacketSize = 1 << 10;
 		int maxPacketSize = 1 << 16;
 
 		// client side
-		TestRpcRequestMessage testMessage = new TestRpcRequestMessage("Test");
+		String testMessage = "Test";
 		List<RpcMessage> sourceList = Lists.newArrayList();
 		for (int i = 0; i < countRequests; i++) {
 			sourceList.add(new RpcMessage(i, testMessage));
@@ -221,16 +144,16 @@ public class RpcBinaryProtocolTest {
 
 		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorClient = new StreamLZ4Decompressor(eventloop);
-		StreamSerializer<RpcMessage> serializerClient = new StreamBinarySerializer<>(eventloop, serializer.getSerializer(),
+		StreamSerializer<RpcMessage> serializerClient = new StreamBinarySerializer<>(eventloop, serializer.createSerializer(),
 				defaultPacketSize, maxPacketSize, 0, false);
-		StreamDeserializer<RpcMessage> deserializerClient = new StreamBinaryDeserializer<>(eventloop, serializer.getSerializer(), maxPacketSize);
+		StreamDeserializer<RpcMessage> deserializerClient = new StreamBinaryDeserializer<>(eventloop, serializer.createSerializer(), maxPacketSize);
 
 		// server side
 		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorServer = new StreamLZ4Decompressor(eventloop);
-		StreamSerializer<RpcMessage> serializerServer = new StreamBinarySerializer<>(eventloop, serializer.getSerializer(),
+		StreamSerializer<RpcMessage> serializerServer = new StreamBinarySerializer<>(eventloop, serializer.createSerializer(),
 				defaultPacketSize, maxPacketSize, 0, false);
-		StreamDeserializer<RpcMessage> deserializerServer = new StreamBinaryDeserializer<>(eventloop, serializer.getSerializer(), maxPacketSize);
+		StreamDeserializer<RpcMessage> deserializerServer = new StreamBinaryDeserializer<>(eventloop, serializer.createSerializer(), maxPacketSize);
 
 		StreamConsumers.ToList<RpcMessage> results = new StreamConsumers.ToList<>(eventloop);
 
@@ -252,8 +175,8 @@ public class RpcBinaryProtocolTest {
 		assertEquals(countRequests, resultsData.size());
 		for (int i = 0; i < countRequests; i++) {
 			assertEquals(i, resultsData.get(i).getCookie());
-			TestRpcRequestMessage data = (TestRpcRequestMessage) resultsData.get(i).getData();
-			assertEquals(testMessage.getRequest(), data.getRequest());
+			String data = (String) resultsData.get(i).getData();
+			assertEquals(testMessage, data);
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

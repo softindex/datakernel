@@ -18,7 +18,10 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -99,28 +102,28 @@ public class SerializerGenHppcSet implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
-		Expression length = call(arg(0), "writeVarInt", call(value, "size"));
+	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
+		Expression length = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, call(value, "size")));
 		return sequence(length, hppcSetForEach(iteratorType, value, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return valueSerializer.serialize(cast(it, valueSerializer.getRawType()), version, staticMethods);
+				return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));
 			}
-		}));
+		}), off);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		final Class<?> valueType = valueSerializer.getRawType();
 		Expression length = let(call(arg(0), "readVarInt"));
 		final Expression set = let(constructor(hashSetType));
@@ -128,7 +131,7 @@ public class SerializerGenHppcSet implements SerializerGen {
 			@Override
 			public Expression forVar(Expression it) {
 				return sequence(
-						call(set, "add", cast(valueSerializer.deserialize(valueType, version, staticMethods), SerializerGenHppcSet.this.valueType)),
+						call(set, "add", cast(valueSerializer.deserialize(valueType, version, staticMethods, compatibilityLevel), SerializerGenHppcSet.this.valueType)),
 						voidExp()
 				);
 			}

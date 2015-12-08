@@ -17,10 +17,16 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionLet;
+import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -29,6 +35,7 @@ import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 public class SerializerGenSubclass implements SerializerGen {
 	public static final class Builder {
 		private final Class<?> dataType;
+		private boolean nullable;
 		private final LinkedHashMap<Class<?>, SerializerGen> subclassSerializers = new LinkedHashMap<>();
 
 		public Builder(Class<?> dataType) {
@@ -40,17 +47,34 @@ public class SerializerGenSubclass implements SerializerGen {
 			return this;
 		}
 
+		public Builder nullable(boolean nullable) {
+			this.nullable = nullable;
+			return this;
+		}
+
 		public SerializerGenSubclass build() {
-			return new SerializerGenSubclass(dataType, subclassSerializers);
+			return new SerializerGenSubclass(dataType, subclassSerializers, nullable);
 		}
 	}
 
 	private final Class<?> dataType;
-	private final Map<Class<?>, SerializerGen> subclassSerializers;
+	private final LinkedHashMap<Class<?>, SerializerGen> subclassSerializers;
+	private final boolean nullable;
 
 	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers) {
 		this.dataType = checkNotNull(dataType);
 		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
+		this.nullable = false;
+	}
+
+	public SerializerGenSubclass(Class<?> dataType, LinkedHashMap<Class<?>, SerializerGen> subclassSerializers, boolean nullable) {
+		this.dataType = checkNotNull(dataType);
+		this.subclassSerializers = new LinkedHashMap<>(subclassSerializers);
+		this.nullable = nullable;
+	}
+
+	public SerializerGenSubclass nullable(boolean nullable) {
+		return new SerializerGenSubclass(dataType, subclassSerializers, nullable);
 	}
 
 	@Override
@@ -71,51 +95,62 @@ public class SerializerGenSubclass implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startSerializeStaticMethod(this, version)) {
 			return;
 		}
 
-		byte subClassN = 0;
+		byte subClassN = (byte) (nullable ? 1 : 0);
 		List<Expression> listKey = new ArrayList<>();
 		List<Expression> listValue = new ArrayList<>();
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
-			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods);
+			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
+
 			listKey.add(value(subclass.getName()));
 			listValue.add(sequence(
-					call(arg(0), "writeByte", value(subClassN++)),
-					subclassSerializer.serialize(cast(arg(1), subclassSerializer.getRawType()), version, staticMethods),
-					voidExp()));
+					set(arg(1), callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value(subClassN++))),
+					subclassSerializer.serialize(arg(0), arg(1), cast(arg(2), subclassSerializer.getRawType()), version, staticMethods, compatibilityLevel)
+			));
 		}
-		staticMethods.registerStaticSerializeMethod(this, version,
-				switchForKey(cast(call(call(cast(arg(1), Object.class), "getClass"), "getName"), Object.class), listKey, listValue));
+		if (nullable) {
+			staticMethods.registerStaticSerializeMethod(this, version,
+					choice(isNotNull(arg(2)),
+							switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue),
+							callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value((byte) 0)))
+			);
+		} else {
+			staticMethods.registerStaticSerializeMethod(this, version,
+					switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue)
+			);
+		}
 	}
 
 	@Override
-	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return staticMethods.callStaticSerializeMethod(this, version, arg(0), value);
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		return staticMethods.callStaticSerializeMethod(this, version, byteArray, off, value);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (staticMethods.startDeserializeStaticMethod(this, version)) {
 			return;
 		}
-
 		List<Expression> list = new ArrayList<>();
+		if (nullable) list.add(nullRef(getRawType()));
 		for (Class<?> subclass : subclassSerializers.keySet()) {
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
-			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods);
-			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods), this.getRawType()));
+			subclassSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
+			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), this.getRawType()));
 		}
 
-		staticMethods.registerStaticDeserializeMethod(this, version,
-				cast(switchForPosition(call(arg(0), "readByte"), list), this.getRawType()));
+		ExpressionLet subClassN = let(call(arg(0), "readByte"));
+
+		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassN, list), this.getRawType()));
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		return staticMethods.callStaticDeserializeMethod(this, version, arg(0));
 	}
 

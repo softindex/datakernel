@@ -17,8 +17,11 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 import io.datakernel.serializer.StringFormat;
 
 import java.util.ArrayList;
@@ -73,18 +76,18 @@ public class SerializerGenString implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		List<Expression> list = new ArrayList<>();
 
 		Expression maxLen = value(maxLength);
 		Expression expression;
 		if (maxLength != -1) {
-			expression = choice(and(ifNotNull(value), cmpGe(maxLen, value(0)), cmpGe(call(cast(value, String.class), "length"), value(maxLength + 1))),
+			expression = choice(and(isNotNull(value), cmpGe(maxLen, value(0)), cmpGe(call(cast(value, String.class), "length"), value(maxLength + 1))),
 					cast(call(cast(value, String.class), "substring", value(0), maxLen), String.class),
 					cast(value, String.class));
 		} else {
@@ -93,24 +96,24 @@ public class SerializerGenString implements SerializerGen {
 
 		if (format == StringFormat.UTF16) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableUTF16", expression));
+				list.add(callStatic(SerializerUtils.class, "writeNullableUTF16", byteArray, off, expression));
 			else
-				list.add(call(arg(0), "writeUTF16", expression));
-		} else if (format == StringFormat.ISO_8859_1) {
+				list.add(callStatic(SerializerUtils.class, "writeUTF16", byteArray, off, expression));
+		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableIso88591", expression));
+				list.add(callStatic(SerializerUtils.class, "writeNullableIso88591", byteArray, off, expression));
 			else
-				list.add(call(arg(0), "writeIso88591", expression));
-		} else if (format == StringFormat.UTF8) {
+				list.add(callStatic(SerializerUtils.class, "writeIso88591", byteArray, off, expression));
+		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableJavaUTF8", expression));
+				list.add(callStatic(SerializerUtils.class, "writeNullableJavaUTF8", byteArray, off, expression));
 			else
-				list.add(call(arg(0), "writeJavaUTF8", expression));
+				list.add(callStatic(SerializerUtils.class, "writeJavaUTF8", byteArray, off, expression));
 		} else {
 			if (nullable)
-				list.add(call(arg(0), "writeNullableUTF8", expression));
+				list.add(callStatic(SerializerUtils.class, "writeNullableUTF8", byteArray, off, expression));
 			else
-				list.add(call(arg(0), "writeUTF8", expression));
+				list.add(callStatic(SerializerUtils.class, "writeUTF8", byteArray, off, expression));
 		}
 
 		return sequence(list);
@@ -118,23 +121,23 @@ public class SerializerGenString implements SerializerGen {
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (format == StringFormat.UTF16) {
 			if (nullable)
 				return call(arg(0), "readNullableUTF16");
 			else
 				return call(arg(0), "readUTF16");
-		} else if (format == StringFormat.ISO_8859_1) {
+		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
 				return call(arg(0), "readNullableIso88591");
 			else
 				return call(arg(0), "readIso88591");
-		} else if (format == StringFormat.UTF8) {
+		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
 				return call(arg(0), "readNullableJavaUTF8");
 			else

@@ -16,185 +16,122 @@
 
 package io.datakernel.rpc.client;
 
-import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.eventloop.SocketReconnector;
+import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.jmx.LastExceptionCounter;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.MBeanUtils;
-import io.datakernel.net.ConnectSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
-import io.datakernel.rpc.client.sender.RpcNoSenderAvailableException;
-import io.datakernel.rpc.client.sender.RpcRequestSender;
-import io.datakernel.rpc.client.sender.RpcRequestSenderHolder;
-import io.datakernel.rpc.client.sender.RpcRequestSendingStrategy;
-import io.datakernel.rpc.protocol.RpcMessageSerializer;
+import io.datakernel.rpc.client.sender.RpcNoSenderException;
+import io.datakernel.rpc.client.sender.RpcSender;
+import io.datakernel.rpc.client.sender.RpcStrategy;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
+import io.datakernel.rpc.protocol.RpcSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.management.MBeanServer;
 import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.SimpleType;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.async.AsyncCallbacks.waitAny;
-import static io.datakernel.util.Preconditions.*;
+import static io.datakernel.async.AsyncCallbacks.postCompletion;
+import static io.datakernel.async.AsyncCallbacks.postException;
+import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 public final class RpcClient implements NioService, RpcClientMBean {
+	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
+	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
+	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
 
-	@SuppressWarnings("unused")
-	public static class Builder {
-		private final NioEventloop eventloop;
-		private final RpcClientSettings settings;
-		private RpcMessageSerializer serializer;
-		private RpcProtocolFactory protocolFactory;
-		private RpcRequestSendingStrategy requestSendingStrategy;
-		private Object pingMessage;
-		private Integer countAwaitsConnects;
-		private Logger parentLogger;
+	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
-		public Builder(NioEventloop eventloop) {
-			this(eventloop, new RpcClientSettings());
-		}
-
-		public Builder(NioEventloop eventloop, RpcClientSettings settings) {
-			this.eventloop = checkNotNull(eventloop);
-			this.settings = checkNotNull(settings);
-		}
-
-		public Builder serializer(RpcMessageSerializer serializer) {
-			this.serializer = serializer;
-			return this;
-		}
-
-		public Builder protocolFactory(RpcProtocolFactory protocolFactory) {
-			this.protocolFactory = protocolFactory;
-			return this;
-		}
-
-		public Builder requestSendingStrategy(RpcRequestSendingStrategy requestSendingStrategy) {
-			this.requestSendingStrategy = requestSendingStrategy;
-			return this;
-		}
-
-		public Builder pingMessage(Object pingMessage) {
-			checkArgument(settings.getPingAmountFailed() >= 0);
-			this.pingMessage = checkNotNull(pingMessage);
-			return this;
-		}
-
-		public Builder addresses(List<InetSocketAddress> addresses) {
-			this.settings.addresses(Collections.unmodifiableList(new ArrayList<>(addresses)));
-			return this;
-		}
-
-		public Builder socketSettings(SocketSettings socketSettings) {
-			this.settings.socketSettings(socketSettings);
-			return this;
-		}
-
-		public Builder connectSettings(ConnectSettings connectSettings) {
-			this.settings.connectSettings(connectSettings);
-			return this;
-		}
-
-		public Builder noWaitConnected() {
-			return countAwaitsConnects(0);
-		}
-
-		public Builder waitForFirstConnected() {
-			return countAwaitsConnects(1);
-		}
-
-		public Builder waitForAllConnected() {
-			return countAwaitsConnects(RpcClientSettings.DEFAULT_ALL_CONNECTIONS);
-		}
-
-		public Builder countAwaitsConnects(int countAwaitsConnects) {
-			checkState(this.countAwaitsConnects == null, "countAwaitsConnects already set");
-			this.countAwaitsConnects = countAwaitsConnects;
-			return this;
-		}
-
-		public Builder parentLogger(Logger logger) {
-			checkNotNull(logger, "Logger must not be null");
-			this.parentLogger = logger;
-			return this;
-		}
-
-		public RpcClient build() {
-			checkNotNull(serializer, "RpcMessageSerializer is no set");
-			checkNotNull(protocolFactory, "RpcProtocolFactory is no set");
-			checkNotNull(requestSendingStrategy, "RequestSenderFactory is not set");
-			checkNotNull(settings.getAddresses(), "Addresses is not set");
-			return new RpcClient(this);
-		}
-
-		private int getCountAwaitsConnects() {
-			if (countAwaitsConnects == null || countAwaitsConnects == RpcClientSettings.DEFAULT_ALL_CONNECTIONS) {
-				return Math.min(settings.getMinAliveConnections(), settings.getAddresses().size());
-			}
-			checkArgument(countAwaitsConnects >= 0 && countAwaitsConnects <= settings.getAddresses().size());
-			return countAwaitsConnects;
-		}
-	}
-
-	private final Logger logger;
-	private final RpcClientConnectionPool connections;
 	private final NioEventloop eventloop;
-	private final List<InetSocketAddress> addresses;
-	private final RpcProtocolFactory protocolFactory;
-	private final RpcMessageSerializer serializer;
-	private final RpcRequestSendingStrategy requestSendingStrategy;
-	private final SocketSettings socketSettings;
-	private final ConnectSettings connectSettings;
-	private final int countAwaitsConnects;
-	private final int timeoutPrecision;
-	private final Map<InetSocketAddress, Long> pingTimestamps = new HashMap<>();
-	private final Object pingMessage;
-	private final long pingIntervalMillis;
-	private final long pingAmountFailed;
+	private RpcStrategy strategy;
+	private List<InetSocketAddress> addresses;
+	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
+	private RpcProtocolFactory protocolFactory = streamProtocol();
+	private final RpcSerializer serializer;
+	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
+	private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
+	private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
 
-	private RpcRequestSender requestSender;
+	private RpcSender requestSender;
 
-	private AsyncCancellable schedulePingTask;
+	private CompletionCallback startCallback;
 	private boolean running;
 
 	// JMX
-	private final String addressesString;
+	private boolean monitoring;
+
 	private final LastExceptionCounter lastException = new LastExceptionCounter("LastException");
 	private int successfulConnects = 0;
 	private int failedConnects = 0;
 	private int closedConnects = 0;
-	private int pingReconnects = 0;
 
-	private RpcClient(Builder builder) {
-		this.eventloop = builder.eventloop;
-		this.addresses = builder.settings.getAddresses();
-		this.connections = new RpcClientConnectionPool(addresses);
-		this.protocolFactory = builder.protocolFactory;
-		this.serializer = builder.serializer;
-		this.requestSendingStrategy = builder.requestSendingStrategy;
-		RpcRequestSenderHolder holder = requestSendingStrategy.create(connections);
-		this.requestSender = holder.isSenderPresent() ? holder.getSender() : new RequestSenderError();
-		this.socketSettings = builder.settings.getSocketSettings();
-		this.connectSettings = builder.settings.getConnectSettings();
-		this.countAwaitsConnects = builder.getCountAwaitsConnects();
-		this.timeoutPrecision = builder.settings.getTimeoutPrecision();
-		this.pingMessage = builder.pingMessage;
-		this.pingIntervalMillis = builder.settings.getPingIntervalMillis();
-		this.pingAmountFailed = builder.settings.getPingAmountFailed();
-		this.addressesString = addresses.toString();
-		this.logger = LoggerFactory.getLogger((builder.parentLogger == null) ? RpcClient.class.getSimpleName() :
-				builder.parentLogger.getName() + "$" + RpcClient.class.getSimpleName());
+	private final RpcClientConnectionPool pool = new RpcClientConnectionPool() {
+		@Override
+		public RpcClientConnection get(InetSocketAddress key) {
+			return connections.get(key);
+		}
+	};
+
+	private RpcClient(NioEventloop eventloop, RpcSerializer serializer) {
+		this.eventloop = eventloop;
+		this.serializer = serializer;
+	}
+
+	public static RpcClient create(final NioEventloop eventloop, final RpcSerializer serializerFactory) {
+		return new RpcClient(eventloop, serializerFactory);
+	}
+
+	public RpcClient strategy(RpcStrategy requestSendingStrategy) {
+		this.strategy = requestSendingStrategy;
+		this.addresses = new ArrayList<>(requestSendingStrategy.getAddresses());
+		return this;
+	}
+
+	public RpcClient protocol(RpcProtocolFactory protocolFactory) {
+		this.protocolFactory = protocolFactory;
+		return this;
+	}
+
+	public RpcClient socketSettings(SocketSettings socketSettings) {
+		this.socketSettings = checkNotNull(socketSettings);
+		return this;
+	}
+
+	public SocketSettings getSocketSettings() {
+		return socketSettings;
+	}
+
+	public RpcClient logger(Logger logger) {
+		this.logger = checkNotNull(logger);
+		return this;
+	}
+
+	public RpcClient connectTimeoutMillis(int connectTimeoutMillis) {
+		this.connectTimeoutMillis = connectTimeoutMillis;
+		return this;
+	}
+
+	public RpcClient reconnectIntervalMillis(int reconnectIntervalMillis) {
+		this.reconnectIntervalMillis = reconnectIntervalMillis;
+		return this;
 	}
 
 	@Override
@@ -204,27 +141,39 @@ public final class RpcClient implements NioService, RpcClientMBean {
 
 	@Override
 	public void start(CompletionCallback callback) {
-		assert eventloop.inEventloopThread();
+		checkState(eventloop.inEventloopThread());
 		checkNotNull(callback);
-
-		if (running) {
-			callback.onComplete();
-			return;
-		}
+		checkState(!running);
 		running = true;
-		CompletionCallback connectTimeoutWrapper = scheduleConnectTimeout(callback);
-		CompletionCallback waitAny = waitAny(countAwaitsConnects, addresses.size(), connectTimeoutWrapper);
+		startCallback = callback;
+		if (connectTimeoutMillis != 0) {
+			eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, new Runnable() {
+				@Override
+				public void run() {
+					if (running && startCallback != null) {
+						String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
+								connectTimeoutMillis / 1000.0);
+						postException(eventloop, startCallback, new InterruptedException(errorMsg));
+						running = false;
+						startCallback = null;
+					}
+				}
+			});
+		}
+
 		for (InetSocketAddress address : addresses) {
-			connect(address, connectSettings.attemptsReconnection(), waitAny);
+			connect(address);
 		}
 	}
 
 	public void stop() {
-		assert eventloop.inEventloopThread();
-		if (!running) return;
+		checkState(eventloop.inEventloopThread());
+		checkState(running);
 		running = false;
-		if (schedulePingTask != null)
-			schedulePingTask.cancel();
+		if (startCallback != null) {
+			postException(eventloop, startCallback, new InterruptedException("Start aborted"));
+			startCallback = null;
+		}
 		closeConnections();
 	}
 
@@ -235,44 +184,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		callback.onComplete();
 	}
 
-	private CompletionCallback scheduleConnectTimeout(final CompletionCallback connectCompletion) {
-		long connectTimeoutMillis = connectSettings.connectTimeoutMillis();
-		if (connectCompletion == null || connectTimeoutMillis == 0)
-			return connectCompletion;
-		final CompletionCallback connectTimeoutWrapper = new CompletionCallback() {
-			private boolean completed = false;
-
-			@Override
-			public void onComplete() {
-				if (completed)
-					return;
-				completed = true;
-				connectCompletion.onComplete();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				if (completed)
-					return;
-				completed = true;
-				logger.error(exception.getMessage());
-				connectCompletion.onException(exception);
-			}
-		};
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectTimeoutMillis, new Runnable() {
-			@Override
-			public void run() {
-				String errorMsg = String.format("Some of the required servers did not respond within %.1f sec",
-						connectSettings.connectTimeoutMillis() / 1000.0);
-				connectTimeoutWrapper.onException(new InterruptedException(errorMsg));
-			}
-		});
-		return connectTimeoutWrapper;
-	}
-
-	private void connect(final InetSocketAddress address, final int reconnectAttempts, final CompletionCallback connectCallback) {
+	private void connect(final InetSocketAddress address) {
 		if (!running) {
-			connectCallback.onComplete();
 			return;
 		}
 
@@ -291,131 +204,90 @@ public final class RpcClient implements NioService, RpcClientMBean {
 						logger.info("Connection to {} closed", address);
 						removeConnection(address);
 						closedConnects++;
-						connect(address, connectSettings.attemptsReconnection(), ignoreCompletionCallback());
+						connect(address);
 					}
 				};
-				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel, timeoutPrecision, serializer, protocolFactory, statusListener);
+				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel,
+						serializer.createSerializer(), protocolFactory, statusListener);
 				connection.getSocketConnection().register();
 				successfulConnects++;
 				logger.info("Connection to {} established", address);
-				connectCallback.onComplete();
+				if (startCallback != null) {
+					postCompletion(eventloop, startCallback);
+					startCallback = null;
+				}
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				lastException.update(exception, "Connect fail to " + address.toString(), eventloop.currentTimeMillis());
 				failedConnects++;
-				if (running && reconnectAttempts > 0) {
+				if (running) {
 					if (logger.isWarnEnabled()) {
 						logger.warn("Connection failed, reconnecting to {}: {}", address, exception.toString());
 					}
-					scheduleReconnect(address, reconnectAttempts, connectCallback);
-				} else {
-					if (logger.isErrorEnabled()) {
-						logger.error("Could not reconnect to {}: {}", address, exception.toString());
-					}
-					connectCallback.onException(exception);
-				}
-			}
-		});
-	}
-
-	public void scheduleReconnect(final InetSocketAddress address, final int reconnectAttempts, final CompletionCallback connectCallback) {
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + connectSettings.reconnectIntervalMillis(), new Runnable() {
-			@Override
-			public void run() {
-				if (reconnectAttempts == SocketReconnector.RECONNECT_ALWAYS) {
-					connect(address, SocketReconnector.RECONNECT_ALWAYS, connectCallback);
-				} else {
-					connect(address, reconnectAttempts - 1, connectCallback);
+					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
+						@Override
+						public void run() {
+							if (running) {
+								connect(address);
+							}
+						}
+					});
 				}
 			}
 		});
 	}
 
 	private void addConnection(InetSocketAddress address, RpcClientConnection connection) {
-		connections.add(address, connection);
-		RpcRequestSenderHolder holder = requestSendingStrategy.create(connections);
-		requestSender = holder.isSenderPresent() ? holder.getSender() : new RequestSenderError();
-		if (isPingEnabled()) {
-			pingTimestamps.put(address, eventloop.currentTimeMillis());
-			schedulePingTask(address);
+		connections.put(address, connection);
+		if (monitoring) {
+			if (connection instanceof RpcClientConnectionMBean)
+				((RpcClientConnectionMBean) connection).startMonitoring();
 		}
+		RpcSender sender = strategy.createSender(pool);
+		requestSender = sender != null ? sender : new Sender();
 	}
 
 	private void removeConnection(InetSocketAddress address) {
 		connections.remove(address);
-		if (isPingEnabled()) {
-			pingTimestamps.remove(address);
-		}
-		RpcRequestSenderHolder holder = requestSendingStrategy.create(connections);
-		requestSender = holder.isSenderPresent() ? holder.getSender() : new RequestSenderError();
+		RpcSender sender = strategy.createSender(pool);
+		requestSender = sender != null ? sender : new Sender();
 	}
 
 	private void closeConnections() {
-		for (RpcClientConnection connection : connections.values()) {
+		for (RpcClientConnection connection : new ArrayList<>(connections.values())) {
 			connection.close();
 		}
-	}
-
-	private void schedulePingTask(final InetSocketAddress address) {
-		if (!running)
-			return;
-		schedulePingTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + pingIntervalMillis, new Runnable() {
-			@Override
-			public void run() {
-				pingToAddress(address);
-				schedulePingTask(address);
-			}
-		});
-	}
-
-	private void pingToAddress(final InetSocketAddress address) {
-		final RpcClientConnection connection = connections.get(address);
-		if (connection == null)
-			return;
-		Long pingTimestamp = pingTimestamps.get(address);
-		if (pingTimestamp == null || eventloop.currentTimeMillis() - pingTimestamp < pingIntervalMillis)
-			return;
-
-		connection.callMethod(pingMessage, (int) pingIntervalMillis, new ResultCallback<Object>() {
-			@Override
-			public void onResult(Object result) {
-				pingTimestamps.put(address, eventloop.currentTimeMillis());
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				Long timestamp = pingTimestamps.get(address);
-				if (timestamp != null) {
-					if (eventloop.currentTimeMillis() - timestamp > pingIntervalMillis * pingAmountFailed) {
-						pingTimestamps.remove(address);
-						logger.warn("Server {} does not respond for more then {} seconds for {} times. Reconnecting...",
-								address, pingIntervalMillis / 1000.0, pingAmountFailed);
-						pingReconnects++;
-						connection.close();
-					}
-				}
-			}
-		});
 	}
 
 	public <T> void sendRequest(Object request, int timeout, ResultCallback<T> callback) {
 		requestSender.sendRequest(request, timeout, callback);
 	}
 
+	public <T> ResultCallbackFuture<T> sendRequestFuture(final Object request, final int timeout) {
+		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		eventloop.postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				sendRequest(request, timeout, future);
+			}
+		});
+		return future;
+	}
+
 	// visible for testing
-	public RpcRequestSender getRequestSender() {
+	public RpcSender getRequestSender() {
 		return requestSender;
 	}
 
-	private static final class RequestSenderError implements RpcRequestSender {
-		private static final RpcNoSenderAvailableException NO_SENDER_AVAILABLE_EXCEPTION
-				= new RpcNoSenderAvailableException("No senders available");
+	static final class Sender implements RpcSender {
+		@SuppressWarnings("ThrowableInstanceNeverThrown")
+		private static final RpcNoSenderException NO_SENDER_AVAILABLE_EXCEPTION
+				= new RpcNoSenderException("No senders available");
 
 		@Override
-		public <T> void sendRequest(Object request,
-		                            int timeout, ResultCallback<T> callback) {
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 			callback.onException(NO_SENDER_AVAILABLE_EXCEPTION);
 		}
 	}
@@ -423,12 +295,35 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	// JMX
 	public void registerMBean(MBeanServer mbeanServer, String domain, String serviceName, String clientName) {
 		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClient.class.getSimpleName()), this);
-		MBeanUtils.register(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClientConnectionPool.class.getSimpleName()), connections);
 	}
 
 	public void unregisterMBean(MBeanServer mbeanServer, String domain, String serviceName, String clientName) {
 		MBeanUtils.unregisterIfExists(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClient.class.getSimpleName()));
-		MBeanUtils.unregisterIfExists(mbeanServer, MBeanFormat.name(domain, serviceName, clientName + "." + RpcClientConnectionPool.class.getSimpleName()));
+	}
+
+	@Override
+	public void startMonitoring() {
+		monitoring = true;
+		for (RpcClientConnection connection : connections.values()) {
+			if (connection instanceof RpcClientConnectionMBean) {
+				((RpcClientConnectionMBean) connection).startMonitoring();
+			}
+		}
+	}
+
+	@Override
+	public void stopMonitoring() {
+		monitoring = false;
+		for (RpcClientConnection connection : connections.values()) {
+			if (connection instanceof RpcClientConnectionMBean) {
+				((RpcClientConnectionMBean) connection).stopMonitoring();
+			}
+		}
+	}
+
+	@Override
+	public boolean isMonitoring() {
+		return monitoring;
 	}
 
 	@Override
@@ -437,12 +332,16 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		failedConnects = 0;
 		closedConnects = 0;
 		lastException.reset();
-		pingReconnects = 0;
+		for (RpcClientConnection connection : connections.values()) {
+			if (connection instanceof RpcClientConnectionMBean) {
+				((RpcClientConnectionMBean) connection).reset();
+			}
+		}
 	}
 
 	@Override
 	public String getAddresses() {
-		return addressesString;
+		return addresses.toString();
 	}
 
 	@Override
@@ -466,12 +365,97 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	}
 
 	@Override
-	public boolean isPingEnabled() {
-		return pingMessage != null;
+	public int getConnectionsCount() {
+		return connections.size();
 	}
 
 	@Override
-	public int getPingReconnects() {
-		return pingReconnects;
+	public CompositeData[] getConnections() throws OpenDataException {
+		List<CompositeData> compositeData = new ArrayList<>();
+		for (Map.Entry<InetSocketAddress, RpcClientConnection> entry : connections.entrySet()) {
+			InetSocketAddress address = entry.getKey();
+			RpcClientConnection connection = entry.getValue();
+
+			if (!(connection instanceof RpcClientConnectionMBean))
+				continue;
+			RpcClientConnectionMBean connectionMBean = (RpcClientConnectionMBean) connection;
+
+			CompositeData lastTimeoutException = connectionMBean.getLastTimeoutException();
+			CompositeData lastRemoteException = connectionMBean.getLastRemoteException();
+			CompositeData lastProtocolException = connectionMBean.getLastProtocolException();
+			CompositeData connectionDetails = connectionMBean.getConnectionDetails();
+
+			compositeData.add(CompositeDataBuilder.builder("Rpc connections", "Rpc connections status")
+					.add("Address", SimpleType.STRING, address.toString())
+					.add("SuccessfulRequests", SimpleType.INTEGER, connectionMBean.getSuccessfulRequests())
+					.add("FailedRequests", SimpleType.INTEGER, connectionMBean.getFailedRequests())
+					.add("RejectedRequests", SimpleType.INTEGER, connectionMBean.getRejectedRequests())
+					.add("ExpiredRequests", SimpleType.INTEGER, connectionMBean.getExpiredRequests())
+					.add("PendingRequests", SimpleType.STRING, connectionMBean.getPendingRequestsStats())
+					.add("ProcessResultTimeMicros", SimpleType.STRING, connectionMBean.getProcessResultTimeStats())
+					.add("ProcessExceptionTimeMicros", SimpleType.STRING, connectionMBean.getProcessExceptionTimeStats())
+					.add("SendPacketTimeMicros", SimpleType.STRING, connectionMBean.getSendPacketTimeStats())
+					.add("LastTimeoutException", lastTimeoutException)
+					.add("LastRemoteException", lastRemoteException)
+					.add("LastProtocolException", lastProtocolException)
+					.add("ConnectionDetails", connectionDetails)
+					.build());
+		}
+		return compositeData.toArray(new CompositeData[compositeData.size()]);
+	}
+
+	@Override
+	public long getTotalSuccessfulRequests() {
+		long result = 0;
+		for (RpcClientConnection connection : connections.values()) {
+			if (connection instanceof RpcClientConnectionMBean) {
+				result += ((RpcClientConnectionMBean) connection).getSuccessfulRequests();
+			}
+		}
+		return result;
+	}
+
+	@Override
+	public long getTotalPendingRequests() {
+		long result = 0;
+		for (RpcClientConnection connection : connections.values()) {
+			if (connection instanceof RpcClientConnectionMBean) {
+				result += ((RpcClientConnectionMBean) connection).getPendingRequests();
+			}
+		}
+		return result;
+	}
+
+	@Override
+	public long getTotalRejectedRequests() {
+		long result = 0;
+		for (RpcClientConnection connection : connections.values()) {
+			if (connection instanceof RpcClientConnectionMBean) {
+				result += ((RpcClientConnectionMBean) connection).getRejectedRequests();
+			}
+		}
+		return result;
+	}
+
+	@Override
+	public long getTotalFailedRequests() {
+		long result = 0;
+		for (RpcClientConnection connection : connections.values()) {
+			if (connection instanceof RpcClientConnectionMBean) {
+				result += ((RpcClientConnectionMBean) connection).getFailedRequests();
+			}
+		}
+		return result;
+	}
+
+	@Override
+	public long getTotalExpiredRequests() {
+		long result = 0;
+		for (RpcClientConnection connection : connections.values()) {
+			if (connection instanceof RpcClientConnectionMBean) {
+				result += ((RpcClientConnectionMBean) connection).getExpiredRequests();
+			}
+		}
+		return result;
 	}
 }

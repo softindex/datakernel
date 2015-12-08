@@ -17,32 +17,31 @@
 package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.util.Predicate;
 
+import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Set;
 
-import static io.datakernel.rpc.client.sender.RpcSendersUtils.containsNullValues;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategyToGroup implements RpcSingleSenderStrategy {
-	private static final Predicate<? extends Object> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
+public final class RpcStrategyFirstValidResult implements RpcStrategy {
+	private static final Predicate<?> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
 
-	private Predicate<? extends Object> resultValidator;
+	private final RpcStrategyList list;
+
+	private Predicate<?> resultValidator;
 	private Exception noValidResultException;
 
-	public RpcStrategyFirstValidResult(List<RpcRequestSendingStrategy> subStrategies) {
-		super(subStrategies);
-		resultValidator = DEFAULT_RESULT_VALIDATOR;
-		noValidResultException = null;
+	public RpcStrategyFirstValidResult(RpcStrategyList list) {
+		this.list = list;
+		this.resultValidator = DEFAULT_RESULT_VALIDATOR;
+		this.noValidResultException = null;
 	}
 
-	public RpcStrategyFirstValidResult withMinActiveSubStrategies(int minActiveSubStrategies) {
-		setMinSubStrategiesForCreation(minActiveSubStrategies);
-		return this;
-	}
-
-	public RpcStrategyFirstValidResult withResultValidator(Predicate<? extends Object> resultValidator) {
+	public RpcStrategyFirstValidResult withResultValidator(Predicate<?> resultValidator) {
 		this.resultValidator = resultValidator;
 		return this;
 	}
@@ -53,30 +52,37 @@ public final class RpcStrategyFirstValidResult extends RpcRequestSendingStrategy
 	}
 
 	@Override
-	protected RpcRequestSender createSenderInstance(List<RpcRequestSender> subSenders) {
-		return new RequestSenderToAll(subSenders, resultValidator, noValidResultException);
+	public Set<InetSocketAddress> getAddresses() {
+		return list.getAddresses();
 	}
 
-	final static class RequestSenderToAll implements RpcRequestSender {
+	@Override
+	public RpcSender createSender(RpcClientConnectionPool pool) {
+		List<RpcSender> senders = list.listOfSenders(pool);
+		if (senders.size() == 0)
+			return null;
+		return new Sender(senders, resultValidator, noValidResultException);
+	}
 
-		private final RpcRequestSender[] subSenders;
-		private final Predicate<? extends Object> resultValidator;
+	static final class Sender implements RpcSender {
+		private final RpcSender[] subSenders;
+		private final Predicate<?> resultValidator;
 		private final Exception noValidResultException;
 
-		public RequestSenderToAll(List<RpcRequestSender> senders, Predicate<? extends Object> resultValidator,
-		                          Exception noValidResultException) {
-			checkArgument(senders != null && senders.size() > 0 && !containsNullValues(senders));
-			;
-			this.subSenders = senders.toArray(new RpcRequestSender[senders.size()]);
+		public Sender(List<RpcSender> senders, Predicate<?> resultValidator,
+		              Exception noValidResultException) {
+			checkArgument(senders != null && senders.size() > 0);
+			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
 			this.resultValidator = checkNotNull(resultValidator);
 			this.noValidResultException = noValidResultException;
 		}
 
+		@SuppressWarnings("unchecked")
 		@Override
-		public <T> void sendRequest(Object request, int timeout, final ResultCallback<T> callback) {
-			FirstResultCallback<T> resultCallback
-					= new FirstResultCallback<>(callback, (Predicate<T>) resultValidator, subSenders.length, noValidResultException);
-			for (RpcRequestSender sender : subSenders) {
+		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
+			FirstResultCallback<O> resultCallback
+					= new FirstResultCallback<>(callback, (Predicate<O>) resultValidator, subSenders.length, noValidResultException);
+			for (RpcSender sender : subSenders) {
 				sender.sendRequest(request, timeout, resultCallback);
 			}
 		}

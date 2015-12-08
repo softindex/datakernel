@@ -17,7 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.Variable;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -46,31 +49,30 @@ public class SerializerGenNullable implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		serializer.prepareSerializeStaticMethods(version, staticMethods);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		serializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression serialize(Expression value, int version, SerializerBuilder.StaticMethods staticMethods) {
-		return choice(ifNotNull(value),
-				sequence(call(arg(0), "writeByte", value((byte) 1)),
-						serializer.serialize(value, version, staticMethods),
-						voidExp()),
-				sequence(call(arg(0), "writeByte", value((byte) 0)), voidExp())
+	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		return choice(isNotNull(value),
+				sequence(set(off, callStatic(SerializerUtils.class, "writeByte", byteArray, off, value((byte) 1))),
+						serializer.serialize(byteArray, off, value, version, staticMethods, compatibilityLevel)),
+				callStatic(SerializerUtils.class, "writeByte", byteArray, off, value((byte) 0))
 		);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		serializer.prepareDeserializeStaticMethods(version, staticMethods);
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		serializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		Expression isNotNull = let(call(arg(0), "readByte"));
 		return sequence(isNotNull, choice(cmpEq(isNotNull, value((byte) 1)),
-				serializer.deserialize(serializer.getRawType(), version, staticMethods),
-				nullRef(targetType))
+						serializer.deserialize(serializer.getRawType(), version, staticMethods, compatibilityLevel),
+						nullRef(targetType))
 		);
 	}
 

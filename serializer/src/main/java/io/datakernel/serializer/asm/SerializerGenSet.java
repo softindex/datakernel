@@ -18,8 +18,11 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
+import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
+import io.datakernel.serializer.CompatibilityLevel;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import java.util.*;
 
@@ -46,48 +49,51 @@ public class SerializerGenSet implements SerializerGen {
 	}
 
 	@Override
-	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		valueSerializer.prepareSerializeStaticMethods(version, staticMethods);
+	public void prepareSerializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		valueSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression serialize(Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	public Expression serialize(Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		return sequence(
-				call(arg(0), "writeVarInt", call(value, "size")),
+				set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, call(value, "size"))),
 				forEach(value, valueSerializer.getRawType(), new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
-						return sequence(valueSerializer.serialize(it, version, staticMethods), voidExp());
+						return set(off, valueSerializer.serialize(arg(0), arg(1), it, version, staticMethods, compatibilityLevel));
 					}
-				})
+				}),
+				off
 		);
 	}
 
 	@Override
-	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods) {
-		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods);
+	public void prepareDeserializeStaticMethods(int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
+		valueSerializer.prepareDeserializeStaticMethods(version, staticMethods, compatibilityLevel);
 	}
 
 	@Override
-	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods) {
+	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		boolean isEnum = valueSerializer.getRawType().isEnum();
 		Class<?> targetInstance = isEnum ? EnumSet.class : LinkedHashSet.class;
 		Preconditions.check(targetType.isAssignableFrom(targetInstance));
 
 		if (!isEnum) {
-			return deserializeSimpleSet(version, staticMethods);
+			return deserializeSimpleSet(version, staticMethods, compatibilityLevel);
 		} else {
-			return deserializeEnumSet(version, staticMethods);
+			return deserializeEnumSet(version, staticMethods, compatibilityLevel);
 		}
 	}
 
-	private Expression deserializeEnumSet(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	private Expression deserializeEnumSet(final int version,
+	                                      final SerializerBuilder.StaticMethods staticMethods,
+	                                      final CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
 		final Expression container = let(newArray(Object[].class, len));
 		Expression array = expressionFor(len, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return setArrayItem(container, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods));
+				return setArrayItem(container, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel));
 			}
 		});
 		Expression list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
@@ -95,14 +101,16 @@ public class SerializerGenSet implements SerializerGen {
 		return sequence(len, container, array, list, enumSet);
 	}
 
-	private Expression deserializeSimpleSet(final int version, final SerializerBuilder.StaticMethods staticMethods) {
+	private Expression deserializeSimpleSet(final int version,
+	                                        final SerializerBuilder.StaticMethods staticMethods,
+	                                        final CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
 		final Expression container = let(constructor(LinkedHashSet.class, length));
 		return sequence(length, container, expressionFor(length, new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
 						return sequence(
-								call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods), Object.class)),
+								call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)),
 								voidExp()
 						);
 					}
