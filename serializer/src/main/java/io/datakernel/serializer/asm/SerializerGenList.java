@@ -18,8 +18,8 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.*;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -57,7 +57,7 @@ public final class SerializerGenList implements SerializerGen {
 
 	@Override
 	public Expression serialize(final Expression byteArray, final Variable off, final Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
-		Expression len = set(off, callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, length(value)));
+		Expression len = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, length(value)));
 		Expression forEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {

@@ -21,8 +21,8 @@ import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -109,7 +109,7 @@ public class SerializerGenSubclass implements SerializerGen {
 
 			listKey.add(value(subclass.getName()));
 			listValue.add(sequence(
-					set(arg(1), callStatic(SerializationOutputBuffer.class, "writeByte", arg(0), arg(1), value(subClassN++))),
+					set(arg(1), callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value(subClassN++))),
 					subclassSerializer.serialize(arg(0), arg(1), cast(arg(2), subclassSerializer.getRawType()), version, staticMethods, compatibilityLevel)
 			));
 		}
@@ -117,7 +117,7 @@ public class SerializerGenSubclass implements SerializerGen {
 			staticMethods.registerStaticSerializeMethod(this, version,
 					choice(isNotNull(arg(2)),
 							switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue),
-							callStatic(SerializationOutputBuffer.class, "writeByte", arg(0), arg(1), value((byte) 0)))
+							callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value((byte) 0)))
 			);
 		} else {
 			staticMethods.registerStaticSerializeMethod(this, version,

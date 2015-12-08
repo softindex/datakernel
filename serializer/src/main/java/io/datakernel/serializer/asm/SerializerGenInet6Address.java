@@ -20,8 +20,8 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import java.net.Inet6Address;
 
@@ -52,7 +52,7 @@ public class SerializerGenInet6Address implements SerializerGen {
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializationOutputBuffer.class, "write", call(cast(value, getRawType()), "getAddress"), byteArray, off);
+		return callStatic(SerializerUtils.class, "write", call(cast(value, getRawType()), "getAddress"), byteArray, off);
 	}
 
 	@Override

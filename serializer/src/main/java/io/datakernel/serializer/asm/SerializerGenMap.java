@@ -20,8 +20,8 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -64,7 +64,7 @@ public final class SerializerGenMap implements SerializerGen {
 
 	@Override
 	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
-		Expression length = set(off, callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, length(value)));
+		Expression length = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, length(value)));
 
 		return sequence(length, mapForEach(value,
 						new ForVar() {

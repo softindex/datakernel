@@ -21,8 +21,8 @@ import io.datakernel.codegen.Expressions;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.SerializerUtils;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
@@ -83,10 +83,10 @@ public final class SerializerGenArray implements SerializerGen {
 		}
 
 		Expression writeLength =
-				set(off, callStatic(SerializationOutputBuffer.class, "writeVarInt", byteArray, off, length));
+				set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, length));
 		if (type.getComponentType() == Byte.TYPE) {
 			return sequence(writeLength,
-					callStatic(SerializationOutputBuffer.class, "write", castedValue, byteArray, off)
+					callStatic(SerializerUtils.class, "write", castedValue, byteArray, off)
 			);
 		} else {
 			return sequence(writeLength, expressionFor(length, new ForVar() {

@@ -50,7 +50,7 @@ public final class SerializerBuilder {
 	private int version = Integer.MAX_VALUE;
 	private StringFormat defaultFormat = StringFormat.UTF8;
 	private Path saveBytecodePath;
-	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.STRING_ENUM_SUBCLASS_OPT;
+	private CompatibilityLevel compatibilityLevel = CompatibilityLevel.LEVEL_3;
 
 	private final Map<Class<?>, SerializerGenBuilder> typeMap = new LinkedHashMap<>();
 
@@ -893,7 +893,7 @@ public final class SerializerBuilder {
 		Expression version = voidExp();
 		if (currentVersion != null) {
 			version = call(arg(0), "position",
-					callStatic(SerializationOutputBuffer.class, "writeVarInt", call(arg(0), "array"), call(arg(0), "position"), value(currentVersion)));
+					callStatic(SerializerUtils.class, "writeVarInt", call(arg(0), "array"), call(arg(0), "position"), value(currentVersion)));
 		}
 
 		StaticMethods staticMethods = new StaticMethods();
