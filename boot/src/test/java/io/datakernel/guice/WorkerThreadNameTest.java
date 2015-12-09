@@ -20,7 +20,6 @@ import com.google.inject.*;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.guice.servicegraph.AsyncServiceAdapter;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
-import io.datakernel.guice.servicegraph.SingletonService;
 import io.datakernel.guice.workers.NioWorkerModule;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
 import io.datakernel.guice.workers.WorkerId;
@@ -87,13 +86,13 @@ public class WorkerThreadNameTest {
 		}
 
 		@Provides
-		@SingletonService
+		@Singleton
 		Element1 primaryEventloop() {
 			return new Element1();
 		}
 
 		@Provides
-		@SingletonService
+		@Singleton
 		Element2 primaryNioServer(Element1 primaryEventloop,
 		                                  NioWorkerScopeFactory nioWorkerScope,
 		                                  @WorkerThread("First") Provider<Element4> unusedStringProvider,

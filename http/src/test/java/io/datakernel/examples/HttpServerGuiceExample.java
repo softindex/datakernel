@@ -22,7 +22,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
-import io.datakernel.guice.servicegraph.SingletonService;
 import io.datakernel.guice.workers.NioWorkerModule;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
 import io.datakernel.guice.workers.WorkerId;
@@ -56,13 +55,13 @@ public class HttpServerGuiceExample {
 		}
 
 		@Provides
-		@SingletonService
+		@Singleton
 		NioEventloop primaryEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-		@SingletonService
+		@Singleton
 		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,
 		                                  List<AsyncHttpServer> workerHttpServers) {
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);

@@ -38,10 +38,9 @@ public class HttpCookieTest {
 
 		assertTrue(cookie1.getName().equals("name1"));
 		assertTrue(cookie1.getValue().equals("value1"));
-		assertEquals(cookie1.getExpirationDate(), new GregorianCalendar.Builder()
-				.setDate(2015, 0, 1)
-				.setTimeZone(TimeZone.getTimeZone("GMT"))
-				.build().getTime());
+		GregorianCalendar calendar = new GregorianCalendar(2015, 0, 1);
+		calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
+		assertEquals(cookie1.getExpirationDate(), calendar.getTime());
 		assertEquals(0, cookie1.getMaxAge());
 		assertTrue(cookie1.isSecure());
 		assertFalse(cookie1.isHttpOnly());

@@ -19,7 +19,6 @@ package io.datakernel.guice;
 import com.google.inject.*;
 import io.datakernel.guice.servicegraph.AsyncServiceAdapter;
 import io.datakernel.guice.servicegraph.ServiceGraphModule;
-import io.datakernel.guice.servicegraph.SingletonService;
 import io.datakernel.guice.workers.NioWorkerModule;
 import io.datakernel.guice.workers.NioWorkerScopeFactory;
 import io.datakernel.guice.workers.WorkerThread;
@@ -61,7 +60,7 @@ public class TestGenericGraph {
 		}
 
 		@Provides
-		@SingletonService
+		@Singleton
 		Pojo<Integer> integerPojo(NioWorkerScopeFactory nioWorkerScope,
 		                          @WorkerThread Provider<Pojo<String>> pojoProvider,
 		                          @WorkerThread("other") Provider<Pojo<String>> pojoProviderOther) {
@@ -96,7 +95,7 @@ public class TestGenericGraph {
 			e.printStackTrace();
 		} finally {
 			Integer integer = injector.getInstance(Key.get(new TypeLiteral<Pojo<Integer>>() {})).getObject();
-			assertEquals(integer.intValue(), 479);
+			assertEquals(integer.intValue(), 579);
 			serviceGraph.stop();
 		}
 	}
