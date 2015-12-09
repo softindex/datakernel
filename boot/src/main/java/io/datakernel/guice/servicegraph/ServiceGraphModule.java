@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import javax.sql.DataSource;
 import java.io.Closeable;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -306,7 +307,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 
 		final List<Map<Key<?>, Object>> pool = nioWorkerScope.getPool();
-		final Map<Class<?>, List<KeyInPool>> mapClassKey = nioWorkerScope.getMapClassKey();
+		final Map<Key<?>, List<KeyInPool>> mapKeys = nioWorkerScope.getMapKeys();
 
 		for (final Key<?> key : injector.getAllBindings().keySet()) {
 			final ServiceGraph.Node serviceNode = nodeFromService(key, injector);
@@ -323,10 +324,10 @@ public final class ServiceGraphModule extends AbstractModule {
 							if (dependencyForKey.getTypeLiteral().getRawType().equals(Provider.class)
 									&& dependencyForKey.getAnnotationType().equals(WorkerThread.class)) {
 
-								Class<?> actualTypeArguments = (Class<?>) ((MoreTypes.ParameterizedTypeImpl)
+								Type actualType = ((MoreTypes.ParameterizedTypeImpl)
 										dependencyForKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
 
-								for (KeyInPool actualKeyInPool : mapClassKey.get(actualTypeArguments)) {
+								for (KeyInPool actualKeyInPool : mapKeys.get(Key.get(actualType, dependencyForKey.getAnnotation()))) {
 									ServiceGraph.Node dependencyNode = nodeFromNioScope(actualKeyInPool,
 											pool.get(actualKeyInPool.index).get(actualKeyInPool.key));
 									graph.add(serviceNode, dependencyNode);

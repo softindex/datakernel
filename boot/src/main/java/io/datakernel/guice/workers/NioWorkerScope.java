@@ -27,7 +27,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 public final class NioWorkerScope implements Scope, NioWorkerScopeFactory {
 	private List<Map<Key<?>, Object>> pool;
-	private Map<Class<?>, List<ServiceGraphModule.KeyInPool>> mapClassKey;
+	private Map<Key<?>, List<ServiceGraphModule.KeyInPool>> mapKeys;
 	private int currentPool = -1;
 
 	private final Provider<Integer> numberProvider = new Provider<Integer>() {
@@ -45,7 +45,7 @@ public final class NioWorkerScope implements Scope, NioWorkerScopeFactory {
 	public <T> List<T> getList(int size, Provider<T> itemProvider) {
 		if (pool == null) {
 			pool = initPool(size);
-			mapClassKey = new HashMap<>();
+			mapKeys = new HashMap<>();
 		} else {
 			if (pool.size() != size) {
 				throw new IllegalArgumentException("Pool cannot have different size: old size = " + pool.size() + ", new size: " + size);
@@ -77,9 +77,9 @@ public final class NioWorkerScope implements Scope, NioWorkerScopeFactory {
 					current = unscoped.get();
 					checkNioSingleton(key, current);
 					scopedObjects.put(key, current);
-					if (!mapClassKey.containsKey(current.getClass()))
-						mapClassKey.put(current.getClass(), new ArrayList<ServiceGraphModule.KeyInPool>());
-					mapClassKey.get(current.getClass()).add(new ServiceGraphModule.KeyInPool(key, currentPool));
+					if (!mapKeys.containsKey(key))
+						mapKeys.put(key, new ArrayList<ServiceGraphModule.KeyInPool>());
+					mapKeys.get(key).add(new ServiceGraphModule.KeyInPool(key, currentPool));
 				}
 				return current;
 			}
@@ -93,11 +93,11 @@ public final class NioWorkerScope implements Scope, NioWorkerScopeFactory {
 			return new ArrayList<>(pool);
 	}
 
-	public Map<Class<?>, List<ServiceGraphModule.KeyInPool>> getMapClassKey() {
-		if (mapClassKey == null) {
+	public Map<Key<?>, List<ServiceGraphModule.KeyInPool>> getMapKeys() {
+		if (mapKeys == null) {
 			return Collections.emptyMap();
 		} else {
-			return new HashMap<>(mapClassKey);
+			return new HashMap<>(mapKeys);
 		}
 	}
 
