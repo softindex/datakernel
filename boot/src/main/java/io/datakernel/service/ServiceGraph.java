@@ -85,6 +85,8 @@ public class ServiceGraph {
 
 	private final ThreadFactory threadFactory;
 
+	private static final Object EMPTY_OBJECT = new Object();
+
 	/**
 	 * It represents the set of Node - services with keys and in this time it is set of vertices for
 	 * this service graph
@@ -159,8 +161,8 @@ public class ServiceGraph {
 		return this;
 	}
 
-	private static List<Node> nextNodes(Set<Node> processedNodes,
-	                                    Set<Node> vertices, Map<Node, Set<Node>> directNodes, Map<Node, Set<Node>> backwardNodes) {
+	private static List<Node> nextNodes(Set<Node> processedNodes, Set<Node> vertices,
+	                                    Map<Node, Set<Node>> directNodes, Map<Node, Set<Node>> backwardNodes) {
 		List<Node> result = new ArrayList<>();
 		for (Node node : vertices) {
 			if (processedNodes.contains(node))
@@ -189,8 +191,8 @@ public class ServiceGraph {
 		void asyncAction(Node service, AsyncServiceCallback serviceCallback);
 	}
 
-	private void longestPath(Map<Node, Long> timings,
-	                         Set<Node> vertices, Map<Node, Set<Node>> forwardNodes, Map<Node, Set<Node>> backwardNodes) {
+	private void longestPath(Map<Node, Long> timings, Set<Node> vertices,
+	                         Map<Node, Set<Node>> forwardNodes, Map<Node, Set<Node>> backwardNodes) {
 		List<Node> stack = new ArrayList<>();
 		List<Iterator<Node>> path = new ArrayList<>();
 		path.add(difference(vertices, (backwardNodes.keySet())).iterator());
@@ -241,9 +243,12 @@ public class ServiceGraph {
 	}
 
 	synchronized private void next(final ServiceGraphAction action, final ExecutorService executorService,
-	                               final Set<Node> activeNodes, final Set<Node> processedNodes, final Map<Node, Throwable> failedNodes,
-	                               final Set<Node> vertices, final Map<Node, Set<Node>> forwardNodes, final Map<Node, Set<Node>> backwardNodes,
-	                               final Map<Node, Long> processingTimes, final AsyncServiceCallback callback, final String done, final String fail) {
+	                               final Set<Node> activeNodes, final Set<Node> processedNodes,
+	                               final Map<Node, Throwable> failedNodes, final Set<Node> vertices,
+	                               final Map<Node, Set<Node>> forwardNodes, final Map<Node, Set<Node>> backwardNodes,
+	                               final Map<Node, Long> processingTimes, final AsyncServiceCallback callback,
+	                               final IdentityHashMap<AsyncService, Object> identityHashMap,
+	                               final String done, final String fail) {
 		List<Node> newNodes = Collections.emptyList();
 		if (failedNodes.isEmpty()) {
 			newNodes = nextNodes(processedNodes, vertices, forwardNodes, backwardNodes);
@@ -279,22 +284,32 @@ public class ServiceGraph {
 				@Override
 				public void onComplete() {
 					synchronized (ServiceGraph.this) {
-						logger.info(done + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
+						logger.info(done
+								+ " "
+								+ nodeToString(node)
+								+ (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
+
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
 						activeNodes.remove(node);
 						processedNodes.add(node);
-						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes, backwardNodes, processingTimes, callback, done, fail);
+						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes,
+								backwardNodes, processingTimes, callback, identityHashMap, done, fail);
 					}
 				}
 
 				@Override
 				public void onException(Exception e) {
 					synchronized (ServiceGraph.this) {
-						logger.error(fail + " " + nodeToString(node) + (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
+						logger.error(fail
+								+ " "
+								+ nodeToString(node)
+								+ (sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
+
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
 						activeNodes.remove(node);
 						failedNodes.put(node, e);
-						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes, backwardNodes, processingTimes, callback, done, fail);
+						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes,
+								backwardNodes, processingTimes, callback, identityHashMap, done, fail);
 					}
 				}
 			};
@@ -330,6 +345,7 @@ public class ServiceGraph {
 			onStart();
 			started = true;
 		}
+		final IdentityHashMap<AsyncService, Object> identityHashMap = new IdentityHashMap<>();
 		logger.info("Starting services...");
 		visitBackwardAsync(new ServiceGraphAction() {
 			@Override
@@ -340,9 +356,15 @@ public class ServiceGraph {
 					return;
 				}
 
+				if (containsKeyInIdentityHashMap(identityHashMap, serviceOrNull)) {
+					callback.onComplete();
+					return;
+				}
+				putInIdentityHashMap(identityHashMap, service.getService());
+
 				serviceOrNull.start(callback);
 			}
-		}, vertices, startedServices, failedServices, callback, "started", "failed");
+		}, vertices, startedServices, failedServices, callback, identityHashMap, "started", "failed");
 	}
 
 	/**
@@ -350,6 +372,7 @@ public class ServiceGraph {
 	 */
 	synchronized public void stop(final AsyncServiceCallback callback) {
 		logger.info("Stopping running services: " + nodesToString(startedServices));
+		final IdentityHashMap<AsyncService, Object> identityHashMap = new IdentityHashMap<>();
 		visitForwardAsync(new ServiceGraphAction() {
 			@Override
 			public void asyncAction(final Node service, final AsyncServiceCallback callback) {
@@ -359,9 +382,16 @@ public class ServiceGraph {
 					return;
 				}
 
+				if (containsKeyInIdentityHashMap(identityHashMap, serviceOrNull)) {
+					callback.onComplete();
+					return;
+				}
+				putInIdentityHashMap(identityHashMap, serviceOrNull);
+
 				serviceOrNull.stop(callback);
 			}
-		}, startedServices, difference(vertices, startedServices), new LinkedHashMap<Node, Throwable>(), callback, "stopped", "failed");
+		}, startedServices, difference(vertices, startedServices),
+				new LinkedHashMap<Node, Throwable>(), callback, identityHashMap, "stopped", "failed");
 	}
 
 	private Set<Node> difference(Set<Node> main, Set<Node> other) {
@@ -383,15 +413,18 @@ public class ServiceGraph {
 	 * @param failedNodes    nodes which have not started
 	 * @return SettableFuture  with result of action
 	 */
-	public void visitForwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes,
+	public void visitForwardAsync(final ServiceGraphAction action, final Set<Node> vertices,
+	                              final Set<Node> processedNodes,
 	                              final Map<Node, Throwable> failedNodes, final AsyncServiceCallback callback,
+	                              final IdentityHashMap<AsyncService, Object> identityHashMap,
 	                              final String done, final String fail) {
 		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
 		executor.execute(new Runnable() {
 			@Override
 			public void run() {
 				HashMap<Node, Long> processingTimes = new HashMap<>();
-				next(action, executor, new HashSet<Node>(), processedNodes, failedNodes, vertices, forwards, backwards, processingTimes, callback, done, fail);
+				next(action, executor, new HashSet<Node>(), processedNodes, failedNodes, vertices, forwards, backwards,
+						processingTimes, callback, identityHashMap, done, fail);
 			}
 		});
 	}
@@ -405,15 +438,18 @@ public class ServiceGraph {
 	 * @param failedNodes    nodes which have not started
 	 * @return SettableFuture  with result of action
 	 */
-	public void visitBackwardAsync(final ServiceGraphAction action, final Set<Node> vertices, final Set<Node> processedNodes,
+	public void visitBackwardAsync(final ServiceGraphAction action, final Set<Node> vertices,
+	                               final Set<Node> processedNodes,
 	                               final Map<Node, Throwable> failedNodes, final AsyncServiceCallback callback,
+	                               final IdentityHashMap<AsyncService, Object> identityHashMap,
 	                               final String done, final String fail) {
 		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
 		executor.execute(new Runnable() {
 			@Override
 			public void run() {
 				HashMap<Node, Long> processingTimes = new HashMap<>();
-				next(action, executor, new HashSet<Node>(), processedNodes, failedNodes, vertices, backwards, forwards, processingTimes, callback, done, fail);
+				next(action, executor, new HashSet<Node>(), processedNodes, failedNodes, vertices, backwards, forwards,
+						processingTimes, callback, identityHashMap, done, fail);
 			}
 		});
 
@@ -509,7 +545,8 @@ public class ServiceGraph {
 			for (Node node : path.isEmpty() ? vertices : forwards.get(path.get(path.size() - 1))) {
 				int loopIndex = path.indexOf(node);
 				if (loopIndex != -1) {
-					logger.warn("Found circular dependency, breaking: " + nodesToString(path.subList(loopIndex, path.size())));
+					logger.warn("Found circular dependency, breaking: "
+							+ nodesToString(path.subList(loopIndex, path.size())));
 					Node last = path.get(path.size() - 1);
 					forwards.get(last).remove(node);
 					backwards.get(node).remove(last);
@@ -542,6 +579,14 @@ public class ServiceGraph {
 			}
 		}
 		return builder.append("]").toString();
+	}
+
+	private static Object putInIdentityHashMap(IdentityHashMap<AsyncService, Object> identityHashMap, AsyncService asyncService) {
+		return identityHashMap.put(asyncService, EMPTY_OBJECT);
+	}
+
+	private static boolean containsKeyInIdentityHashMap(IdentityHashMap<AsyncService, Object> identityHashMap, AsyncService asyncService) {
+		return identityHashMap.containsKey(asyncService);
 	}
 
 	private static class LinkedForwardSet implements Set<Node> {
