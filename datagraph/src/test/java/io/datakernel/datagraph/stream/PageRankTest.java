@@ -24,7 +24,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
-import io.datakernel.datagraph.dataset.impl.DatsetListConsumer;
+import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.RemotePartition;
@@ -243,7 +243,7 @@ public class PageRankTest {
 
 		SortedDataset<Long, Rank> pageRanks = pageRank(pages);
 
-		DatsetListConsumer<?> consumerNode = listConsumer(pageRanks, "result");
+		DatasetListConsumer<?> consumerNode = listConsumer(pageRanks, "result");
 		consumerNode.compileInto(graph);
 
 		server1.listen();

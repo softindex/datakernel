@@ -133,8 +133,8 @@ public final class Datasets {
 		return castToSorted(datasetOfList(dataId, resultType), keyType, keyFunction, keyComparator);
 	}
 
-	public static <T> DatsetListConsumer<T> listConsumer(Dataset<T> input, Object listId) {
-		return new DatsetListConsumer<>(input, listId);
+	public static <T> DatasetListConsumer<T> listConsumer(Dataset<T> input, Object listId) {
+		return new DatasetListConsumer<>(input, listId);
 	}
 
 }

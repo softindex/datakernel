@@ -24,12 +24,12 @@ import io.datakernel.datagraph.node.NodeConsumerToList;
 
 import java.util.List;
 
-public final class DatsetListConsumer<T> {
+public final class DatasetListConsumer<T> {
 	private final Object listId;
 
 	private final Dataset<T> input;
 
-	public DatsetListConsumer(Dataset<T> input, Object listId) {
+	public DatasetListConsumer(Dataset<T> input, Object listId) {
 		this.listId = listId;
 		this.input = input;
 	}

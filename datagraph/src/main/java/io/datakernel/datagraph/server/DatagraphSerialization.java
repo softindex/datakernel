@@ -38,9 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Type;
 import java.net.InetSocketAddress;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Responsible for setting up serialization operations for datagraph.
@@ -54,10 +52,14 @@ public final class DatagraphSerialization {
 
 	private final Map<Class<?>, BufferSerializer<?>> serializers = new HashMap<>();
 
+	public DatagraphSerialization() {
+		this(Collections.<NodeSubclass>emptyList());
+	}
+
 	/**
 	 * Constructs a new datagraph serialization object, initializes Gson object with used classes.
 	 */
-	public DatagraphSerialization() {
+	public DatagraphSerialization(List<NodeSubclass> nodeSubclasses) {
 		Class<?> naturalOrderingClass;
 		Class<?> identityFunctionClass;
 		try {
@@ -66,6 +68,26 @@ public final class DatagraphSerialization {
 		} catch (ClassNotFoundException e) {
 			throw Throwables.propagate(e);
 		}
+
+		GsonSubclassesAdapter.Builder<Object> gsonSubclassesAdapterBuilder = GsonSubclassesAdapter.builder()
+				.subclassField("nodeType")
+				.subclass("Download", NodeDownload.class)
+				.subclass("Upload", NodeUpload.class)
+				.subclass("Map", NodeMap.class)
+				.subclass("Filter", NodeFilter.class)
+				.subclass("Sort", NodeSort.class)
+				.subclass("Shard", NodeShard.class)
+				.subclass("Merge", NodeMerge.class)
+				.subclass("Reduce", NodeReduce.class)
+				.subclass("ReduceSimple", NodeReduceSimple.class)
+				.subclass("Join", NodeJoin.class)
+				.subclass("ProducerOfIterable", NodeProducerOfIterable.class)
+				.subclass("ConsumerToList", NodeConsumerToList.class);
+
+		for (NodeSubclass nodeSubclass : nodeSubclasses) {
+			gsonSubclassesAdapterBuilder.subclass(nodeSubclass.getSubclassName(), nodeSubclass.getSubclass());
+		}
+
 		this.gson = new GsonBuilder()
 				.registerTypeAdapter(Class.class, new GsonClassTypeAdapter())
 				.registerTypeAdapter(StreamId.class, new GsonStreamIdAdapter())
@@ -75,21 +97,7 @@ public final class DatagraphSerialization {
 						.subclass("Download", DatagraphCommandDownload.class)
 						.subclass("Execute", DatagraphCommandExecute.class)
 						.build())
-				.registerTypeAdapter(Node.class, GsonSubclassesAdapter.builder()
-						.subclassField("nodeType")
-						.subclass("Download", NodeDownload.class)
-						.subclass("Upload", NodeUpload.class)
-						.subclass("Map", NodeMap.class)
-						.subclass("Filter", NodeFilter.class)
-						.subclass("Sort", NodeSort.class)
-						.subclass("Shard", NodeShard.class)
-						.subclass("Merge", NodeMerge.class)
-						.subclass("Reduce", NodeReduce.class)
-						.subclass("ReduceSimple", NodeReduceSimple.class)
-						.subclass("Join", NodeJoin.class)
-						.subclass("ProducerOfIterable", NodeProducerOfIterable.class)
-						.subclass("ConsumerToList", NodeConsumerToList.class)
-						.build())
+				.registerTypeAdapter(Node.class, gsonSubclassesAdapterBuilder.build())
 				.registerTypeAdapter(Predicate.class, GsonSubclassesAdapter.builder()
 						.subclassField("predicateType")
 						.build())

@@ -228,13 +228,13 @@ public final class StreamJoin<K, L, R, V> extends AbstractStreamTransformer_N_1<
 				for (; ; ) {
 					int compare = keyComparator.compare(leftKey, rightKey);
 					if (compare < 0) {
+						joiner.onLeftJoin(leftKey, leftValue, getDownstreamDataReceiver());
 						leftDeque.poll();
 						if (leftDeque.isEmpty())
 							break;
 						leftValue = leftDeque.peek();
 						leftKey = leftKeyFunction.apply(leftValue);
 					} else if (compare > 0) {
-						joiner.onLeftJoin(leftKey, leftValue, getDownstreamDataReceiver());
 						rightDeque.poll();
 						if (rightDeque.isEmpty())
 							break;

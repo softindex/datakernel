@@ -24,7 +24,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
-import io.datakernel.datagraph.dataset.impl.DatsetListConsumer;
+import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.RemotePartition;
@@ -117,7 +117,7 @@ public class DatagraphExample {
 				localSort(filterDataset, long.class, new TestItem.KeyFunction(), Ordering.<Long>natural());
 
 		// Consumer dataset for result
-		DatsetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
+		DatasetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
 
 		// Compile the defined processing chain into a graph
 		consumerNode.compileInto(graph);

@@ -24,7 +24,7 @@ import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
-import io.datakernel.datagraph.dataset.impl.DatsetListConsumer;
+import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.RemotePartition;
@@ -117,7 +117,7 @@ public class DatagraphServerTest {
 
 		Dataset<TestItem> items = datasetOfList("items", TestItem.class);
 
-		DatsetListConsumer<?> consumerNode = listConsumer(items, "result");
+		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
 
 		System.out.println(graph);
@@ -181,7 +181,7 @@ public class DatagraphServerTest {
 		SortedDataset<Long, TestItem> items = repartition_Sort(sortedDatasetOfList("items",
 				TestItem.class, Long.class, new TestItem.KeyFunction(), Ordering.<Long>natural()));
 
-		DatsetListConsumer<?> consumerNode = listConsumer(items, "result");
+		DatasetListConsumer<?> consumerNode = listConsumer(items, "result");
 		consumerNode.compileInto(graph);
 
 		System.out.println(graph);
@@ -255,7 +255,7 @@ public class DatagraphServerTest {
 		LocallySortedDataset<Long, TestItem> sortedDataset =
 				localSort(filterDataset, long.class, new TestItem.KeyFunction(), Ordering.<Long>natural());
 
-		DatsetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
+		DatasetListConsumer<?> consumerNode = listConsumer(sortedDataset, "result");
 
 		consumerNode.compileInto(graph);
 
