@@ -271,6 +271,7 @@ public class ServiceGraph {
 		shuffle(newNodes);
 
 		logger.info("Processing " + nodesToString(newNodes));
+		logger.info("ActiveNodes " + nodesToString(activeNodes));
 
 		activeNodes.addAll(newNodes);
 
@@ -292,6 +293,8 @@ public class ServiceGraph {
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
 						activeNodes.remove(node);
 						processedNodes.add(node);
+
+						logger.info("ActiveNodes " + nodesToString(activeNodes));
 						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes,
 								backwardNodes, processingTimes, callback, identityHashMap, done, fail);
 					}
@@ -308,6 +311,8 @@ public class ServiceGraph {
 						processingTimes.put(node, currentTimeMillis() - startProcessingTime);
 						activeNodes.remove(node);
 						failedNodes.put(node, e);
+
+						logger.info("ActiveNodes " + nodesToString(activeNodes));
 						next(action, executorService, activeNodes, processedNodes, failedNodes, vertices, forwardNodes,
 								backwardNodes, processingTimes, callback, identityHashMap, done, fail);
 					}
@@ -390,8 +395,7 @@ public class ServiceGraph {
 
 				serviceOrNull.stop(callback);
 			}
-		}, startedServices, difference(vertices, startedServices),
-				new LinkedHashMap<Node, Throwable>(), callback, identityHashMap, "stopped", "failed");
+		}, startedServices, difference(vertices, startedServices), new LinkedHashMap<Node, Throwable>(), callback, identityHashMap, "stopped", "failed");
 	}
 
 	private Set<Node> difference(Set<Node> main, Set<Node> other) {
