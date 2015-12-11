@@ -90,14 +90,14 @@ public final class NioWorkerScope implements Scope, NioWorkerScopeFactory {
 		if (pool == null)
 			return Collections.emptyList();
 		else
-			return new ArrayList<>(pool);
+			return pool;
 	}
 
 	public Map<Key<?>, List<ServiceGraphModule.KeyInPool>> getMapKeys() {
 		if (mapKeys == null) {
 			return Collections.emptyMap();
 		} else {
-			return new HashMap<>(mapKeys);
+			return mapKeys;
 		}
 	}
 

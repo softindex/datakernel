@@ -301,9 +301,6 @@ public final class ServiceGraphModule extends AbstractModule {
 			logger.warn("Unused keys : {}", keys.keySet());
 		}
 
-		final List<Map<Key<?>, Object>> pool = nioWorkerScope.getPool();
-		final Map<Key<?>, List<KeyInPool>> mapKeys = nioWorkerScope.getMapKeys();
-
 		for (final Key<?> key : injector.getAllBindings().keySet()) {
 			final ServiceGraph.Node serviceNode = nodeFromService(key, injector);
 
@@ -311,17 +308,27 @@ public final class ServiceGraphModule extends AbstractModule {
 			processDependencies(serviceNode, key, injector, graph, new AddDependence() {
 				@Override
 				public void add(Key<?> dependencyKey) {
+					final List<Map<Key<?>, Object>> pool = nioWorkerScope.getPool();
+					final Map<Key<?>, List<KeyInPool>> mapKeys = nioWorkerScope.getMapKeys();
+
 					if (dependencyKey.equals(Key.get(NioWorkerScopeFactory.class))) {
 						Set<Dependency<?>> dependencies = ((HasDependencies) injector.getBinding(key)).getDependencies();
 						for (Dependency<?> dependency : dependencies) {
 							Key<?> dependencyForKey = dependency.getKey();
 
-							if (dependencyForKey.getTypeLiteral().getRawType().equals(Provider.class)
+							if (dependencyForKey.getAnnotationType() != null
+									&& dependencyForKey.getTypeLiteral().getRawType().equals(Provider.class)
 									&& dependencyForKey.getAnnotationType().equals(WorkerThread.class)) {
 
 								Type actualType = ((MoreTypes.ParameterizedTypeImpl)
 										dependencyForKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
 
+								if (!mapKeys.containsKey(Key.get(actualType, dependencyForKey.getAnnotation()))) {
+									logger.warn("Not found "
+											+ Key.get(actualType, dependencyForKey.getAnnotation())
+											+ " in nio worker pool");
+									continue;
+								}
 								for (KeyInPool actualKeyInPool : mapKeys.get(Key.get(actualType, dependencyForKey.getAnnotation()))) {
 									ServiceGraph.Node dependencyNode = nodeFromNioScope(actualKeyInPool,
 											pool.get(actualKeyInPool.index).get(actualKeyInPool.key));
@@ -334,8 +341,8 @@ public final class ServiceGraphModule extends AbstractModule {
 			});
 		}
 
-		for (int poolIndex = 0; poolIndex < pool.size(); poolIndex++) {
-			Map<Key<?>, Object> nioScopeMap = pool.get(poolIndex);
+		for (int poolIndex = 0; poolIndex < nioWorkerScope.getPool().size(); poolIndex++) {
+			Map<Key<?>, Object> nioScopeMap = nioWorkerScope.getPool().get(poolIndex);
 			createNioScopeGraph(nioScopeMap, injector, graph, poolIndex);
 		}
 	}
