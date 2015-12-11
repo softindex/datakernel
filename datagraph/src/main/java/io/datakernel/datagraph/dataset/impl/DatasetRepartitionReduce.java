@@ -19,6 +19,7 @@ package io.datakernel.datagraph.dataset.impl;
 import io.datakernel.datagraph.dataset.Dataset;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
+import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.stream.processor.StreamReducers;
 
@@ -31,15 +32,24 @@ public final class DatasetRepartitionReduce<K, I, O> extends Dataset<O> {
 
 	private final StreamReducers.Reducer<K, I, O, ?> reducer;
 
-	public DatasetRepartitionReduce(LocallySortedDataset<K, I> input, StreamReducers.Reducer<K, I, O, ?> reducer, Class<O> resultType) {
+	private final List<Partition> partitions;
+
+	public DatasetRepartitionReduce(LocallySortedDataset<K, I> input, StreamReducers.Reducer<K, I, O, ?> reducer,
+	                                Class<O> resultType) {
+		this(input, reducer, resultType, null);
+	}
+
+	public DatasetRepartitionReduce(LocallySortedDataset<K, I> input, StreamReducers.Reducer<K, I, O, ?> reducer,
+	                                Class<O> resultType, List<Partition> partitions) {
 		super(resultType);
 		this.input = input;
 		this.reducer = reducer;
+		this.partitions = partitions;
 	}
 
 	@Override
 	public List<StreamId> channels(DataGraph graph) {
-		return repartitionAndReduce(graph, input, reducer, graph.getAvailablePartitions());
+		return repartitionAndReduce(graph, input, reducer, partitions == null || partitions.isEmpty() ? graph.getAvailablePartitions() : partitions);
 	}
 
 }

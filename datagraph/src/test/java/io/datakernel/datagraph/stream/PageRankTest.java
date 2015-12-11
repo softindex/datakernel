@@ -180,7 +180,7 @@ public class PageRankTest {
 						page.disperse(rank, output);
 					}
 				},
-				Rank.class);
+				Rank.class, Rank.KEY_FUNCTION);
 
 		Dataset<Rank> newRanks = sort_Reduce_Repartition_Reduce(updates, new RankAccumulatorReducer(),
 				Long.class, Rank.KEY_FUNCTION, Ordering.<Long>natural(),

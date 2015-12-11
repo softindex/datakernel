@@ -16,7 +16,7 @@
 
 package io.datakernel.datagraph.dataset.impl;
 
-import io.datakernel.datagraph.dataset.Dataset;
+import com.google.common.base.Function;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.StreamId;
@@ -28,14 +28,14 @@ import java.util.List;
 
 import static io.datakernel.datagraph.dataset.impl.DatasetUtils.repartitionAndSort;
 
-public final class DatasetJoin<K, L, R, V> extends Dataset<V> {
+public final class DatasetJoin<K, L, R, V> extends SortedDataset<K, V> {
 	private final SortedDataset<K, L> left;
 	private final SortedDataset<K, R> right;
 	private final StreamJoin.Joiner<K, L, R, V> joiner;
 
 	public DatasetJoin(SortedDataset<K, L> left, SortedDataset<K, R> right, StreamJoin.Joiner<K, L, R, V> joiner,
-	                   Class<V> resultType) {
-		super(resultType);
+	                   Class<V> resultType, Function<V, K> keyFunction) {
+		super(resultType, left.keyComparator(), left.keyType(), keyFunction);
 		this.left = left;
 		this.right = right;
 		this.joiner = joiner;

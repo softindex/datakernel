@@ -46,8 +46,9 @@ public class Sharders {
 		 */
 		@Override
 		public int shard(K object) {
-
-			return object.hashCode() % partitions;
+			int hash = object.hashCode();
+			int hashAbs = hash < 0 ? (hash == Integer.MIN_VALUE ? Integer.MAX_VALUE : -hash) : hash;
+			return hashAbs % partitions;
 		}
 	}
 }

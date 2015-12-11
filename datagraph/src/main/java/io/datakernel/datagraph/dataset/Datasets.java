@@ -20,6 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Predicate;
 import io.datakernel.datagraph.dataset.impl.*;
 import io.datakernel.datagraph.graph.DataGraph;
+import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.stream.processor.StreamJoin;
 import io.datakernel.stream.processor.StreamMap;
@@ -50,9 +51,9 @@ public final class Datasets {
 		};
 	}
 
-	public static <K, L, R, V> Dataset<V> join(SortedDataset<K, L> left, SortedDataset<K, R> right, StreamJoin.Joiner<K, L, R, V> joiner,
-	                                           Class<V> resultType) {
-		return new DatasetJoin<>(left, right, joiner, resultType);
+	public static <K, L, R, V> SortedDataset<K, V> join(SortedDataset<K, L> left, SortedDataset<K, R> right, StreamJoin.Joiner<K, L, R, V> joiner,
+	                                           Class<V> resultType, Function<V, K> keyFunction) {
+		return new DatasetJoin<>(left, right, joiner, resultType, keyFunction);
 	}
 
 	public static <I, O> Dataset<O> map(Dataset<I> dataset, StreamMap.Mapper<I, O> mapper, Class<O> resultType) {
@@ -92,6 +93,10 @@ public final class Datasets {
 
 	public static <K, I, O> Dataset<O> repartition_Reduce(LocallySortedDataset<K, I> dataset, StreamReducers.Reducer<K, I, O, ?> reducer, Class<O> resultType) {
 		return new DatasetRepartitionReduce<>(dataset, reducer, resultType);
+	}
+
+	public static <K, I, O> Dataset<O> repartition_Reduce(LocallySortedDataset<K, I> dataset, StreamReducers.Reducer<K, I, O, ?> reducer, Class<O> resultType, List<Partition> partitions) {
+		return new DatasetRepartitionReduce<>(dataset, reducer, resultType, partitions);
 	}
 
 	public static <K, T> SortedDataset<K, T> repartition_Sort(LocallySortedDataset<K, T> dataset) {
