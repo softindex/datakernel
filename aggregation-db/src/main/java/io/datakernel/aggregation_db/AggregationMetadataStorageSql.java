@@ -36,7 +36,6 @@ import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -155,7 +154,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 	public void saveNewChunks(DSLContext jooq, final int revisionId,
 	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
-		lockChunkTables(jooq);
+		getCubeLock(jooq);
 		try {
 			for (AggregationMetadata aggregationMetadata : newChunksWithMetadata.keySet()) {
 				for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
@@ -185,7 +184,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 				}
 			}
 		} finally {
-			unlockChunkTables(jooq);
+			releaseCubeLock(jooq);
 		}
 	}
 
@@ -327,12 +326,11 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 				.execute();
 	}
 
-	private void lockChunkTables(DSLContext jooq) {
-		jooq.execute("LOCK TABLES aggregation_db_chunk WRITE");
+	private void getCubeLock(DSLContext jooq) {
+		jooq.execute("SELECT GET_LOCK('cube_lock', 60)");
 	}
 
-	private void unlockChunkTables(DSLContext jooq) {
-		jooq.execute("UNLOCK TABLES");
+	private void releaseCubeLock(DSLContext jooq) {
+		jooq.execute("SELECT RELEASE_LOCK('cube_lock')");
 	}
-
 }
