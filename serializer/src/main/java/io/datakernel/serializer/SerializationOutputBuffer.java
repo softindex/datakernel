@@ -16,7 +16,6 @@
 
 package io.datakernel.serializer;
 
-import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -66,277 +65,114 @@ public final class SerializationOutputBuffer {
 	}
 
 	public void write(byte[] b) {
-		write(b, 0, b.length);
+		pos = SerializerUtils.write(b, buf, pos);
 	}
 
 	public void write(byte[] b, int off, int len) {
 		ensureSize(len);
-		System.arraycopy(b, off, buf, pos, len);
-		pos += len;
+		pos = SerializerUtils.write(b, off, buf, pos, len);
 	}
 
 	public void writeBoolean(boolean v) {
-		writeByte(v ? (byte) 1 : 0);
+		pos = SerializerUtils.writeBoolean(buf, pos, v);
 	}
 
 	public void writeByte(byte v) {
 		ensureSize(1);
-		buf[pos++] = v;
+		pos = SerializerUtils.writeByte(buf, pos, v);
 	}
 
 	public void writeChar(char v) {
 		ensureSize(2);
-		writeByte((byte) (v >>> 8));
-		writeByte((byte) (v));
+		pos = SerializerUtils.writeChar(buf, pos, v);
 	}
 
 	public void writeDouble(double v) {
-		writeLong(Double.doubleToLongBits(v));
+		pos = SerializerUtils.writeDouble(buf, pos, v);
 	}
 
 	public void writeFloat(float v) {
-		writeInt(Float.floatToIntBits(v));
+		pos = SerializerUtils.writeFloat(buf, pos, v);
 	}
 
 	public void writeInt(int v) {
 		ensureSize(4);
-		buf[pos] = (byte) (v >>> 24);
-		buf[pos + 1] = (byte) (v >>> 16);
-		buf[pos + 2] = (byte) (v >>> 8);
-		buf[pos + 3] = (byte) (v);
-		pos += 4;
+		pos = SerializerUtils.writeInt(buf, pos, v);
 	}
 
 	public void writeLong(long v) {
 		ensureSize(8);
-		int high = (int) (v >>> 32);
-		int low = (int) v;
-		buf[pos] = (byte) (high >>> 24);
-		buf[pos + 1] = (byte) (high >>> 16);
-		buf[pos + 2] = (byte) (high >>> 8);
-		buf[pos + 3] = (byte) high;
-		buf[pos + 4] = (byte) (low >>> 24);
-		buf[pos + 5] = (byte) (low >>> 16);
-		buf[pos + 6] = (byte) (low >>> 8);
-		buf[pos + 7] = (byte) low;
-		pos += 8;
+		pos = SerializerUtils.writeLong(buf, pos, v);
 	}
 
 	public void writeShort(short v) {
 		ensureSize(2);
-		buf[pos] = (byte) (v >>> 8);
-		buf[pos + 1] = (byte) (v);
-		pos += 2;
+		pos = SerializerUtils.writeShort(buf, pos, v);
 	}
 
 	public void writeVarInt(int v) {
 		ensureSize(5);
-		if ((v & ~0x7F) == 0) {
-			buf[pos] = (byte) v;
-			pos += 1;
-			return;
-		}
-		buf[pos] = (byte) ((v & 0x7F) | 0x80);
-		v >>>= 7;
-		if ((v & ~0x7F) == 0) {
-			buf[pos + 1] = (byte) v;
-			pos += 2;
-			return;
-		}
-		buf[pos + 1] = (byte) ((v & 0x7F) | 0x80);
-		v >>>= 7;
-		if ((v & ~0x7F) == 0) {
-			buf[pos + 2] = (byte) v;
-			pos += 3;
-			return;
-		}
-		buf[pos + 2] = (byte) ((v & 0x7F) | 0x80);
-		v >>>= 7;
-		if ((v & ~0x7F) == 0) {
-			buf[pos + 3] = (byte) v;
-			pos += 4;
-			return;
-		}
-		buf[pos + 3] = (byte) ((v & 0x7F) | 0x80);
-		v >>>= 7;
-		buf[pos + 4] = (byte) v;
-		pos += 5;
+		pos = SerializerUtils.writeVarInt(buf, pos, v);
 	}
 
 	public void writeVarLong(long v) {
 		ensureSize(9);
-		if ((v & ~0x7F) == 0) {
-			writeByte((byte) v);
-		} else {
-			writeByte((byte) ((v & 0x7F) | 0x80));
-			v >>>= 7;
-			if ((v & ~0x7F) == 0) {
-				writeByte((byte) v);
-			} else {
-				writeByte((byte) ((v & 0x7F) | 0x80));
-				v >>>= 7;
-				if ((v & ~0x7F) == 0) {
-					writeByte((byte) v);
-				} else {
-					writeByte((byte) ((v & 0x7F) | 0x80));
-					v >>>= 7;
-					if ((v & ~0x7F) == 0) {
-						writeByte((byte) v);
-					} else {
-						writeByte((byte) ((v & 0x7F) | 0x80));
-						v >>>= 7;
-						if ((v & ~0x7F) == 0) {
-							writeByte((byte) v);
-						} else {
-							writeByte((byte) ((v & 0x7F) | 0x80));
-							v >>>= 7;
-							if ((v & ~0x7F) == 0) {
-								writeByte((byte) v);
-							} else {
-								writeByte((byte) ((v & 0x7F) | 0x80));
-								v >>>= 7;
-
-								for (; ; ) {
-									if ((v & ~0x7FL) == 0) {
-										writeByte((byte) v);
-										return;
-									} else {
-										writeByte((byte) (((int) v & 0x7F) | 0x80));
-										v >>>= 7;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+		pos = SerializerUtils.writeVarLong(buf, pos, v);
 	}
 
 	public void writeIso88591(String s) {
 		int length = s.length();
-		writeVarInt(length);
 		ensureSize(length * 3);
-		for (int i = 0; i < length; i++) {
-			int c = s.charAt(i);
-			buf[pos++] = (byte) c;
-		}
+		pos = SerializerUtils.writeIso88591(buf, pos, s);
 	}
 
 	public void writeNullableIso88591(String s) {
-		if (s == null) {
-			writeByte((byte) 0);
-			return;
-		}
 		int length = s.length();
-		writeVarInt(length + 1);
 		ensureSize(length * 3);
-		for (int i = 0; i < length; i++) {
-			int c = s.charAt(i);
-			buf[pos++] = (byte) c;
-		}
+		pos = SerializerUtils.writeNullableIso88591(buf, pos, s);
 	}
 
 	public void writeJavaUTF8(String s) {
-		try {
-			writeWithLength(s.getBytes("UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
-
+		pos = SerializerUtils.writeJavaUTF8(buf, pos, s);
 	}
 
 	public void writeNullableJavaUTF8(String s) {
-		if (s == null) {
-			writeByte((byte) 0);
-			return;
-		}
-		try {
-			writeWithLengthNullable(s.getBytes("UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException();
-		}
+		pos = SerializerUtils.writeNullableJavaUTF8(buf, pos, s);
 	}
 
 	private void writeWithLengthNullable(byte[] bytes) {
-		writeVarInt(bytes.length + 1);
-		write(bytes);
+		pos = SerializerUtils.writeWithLengthNullable(buf, pos, bytes);
 	}
 
 	public void writeUTF8(String s) {
 		int length = s.length();
-		writeVarInt(length);
 		ensureSize(length * 3);
-		for (int i = 0; i < length; i++) {
-			int c = s.charAt(i);
-			if (c <= 0x007F) {
-				buf[pos++] = (byte) c;
-			} else {
-				writeUtfChar(c);
-			}
-		}
+		pos = SerializerUtils.writeUTF8(buf, pos, s);
 	}
 
 	public void writeNullableUTF8(String s) {
-		if (s == null) {
-			writeByte((byte) 0);
-			return;
-		}
 		int length = s.length();
-		writeVarInt(length + 1);
 		ensureSize(length * 3);
-		for (int i = 0; i < length; i++) {
-			int c = s.charAt(i);
-			if (c <= 0x007F) {
-				buf[pos++] = (byte) c;
-			} else {
-				writeUtfChar(c);
-			}
-		}
+		pos = SerializerUtils.writeNullableUTF8(buf, pos, s);
 	}
 
 	private void writeUtfChar(int c) {
-		if (c <= 0x07FF) {
-			buf[pos] = (byte) (0xC0 | c >> 6 & 0x1F);
-			buf[pos + 1] = (byte) (0x80 | c & 0x3F);
-			pos += 2;
-		} else {
-			buf[pos] = (byte) (0xE0 | c >> 12 & 0x0F);
-			buf[pos + 1] = (byte) (0x80 | c >> 6 & 0x3F);
-			buf[pos + 2] = (byte) (0x80 | c & 0x3F);
-			pos += 3;
-		}
+		pos = SerializerUtils.writeUtfChar(buf, pos, c);
 	}
 
 	public final void writeWithLength(byte[] bytes) {
-		writeVarInt(bytes.length);
-		write(bytes);
+		pos = SerializerUtils.writeWithLength(buf, pos, bytes);
 	}
 
 	public final void writeUTF16(String s) {
 		int length = s.length();
-		writeVarInt(length);
 		ensureSize(length * 2);
-		for (int i = 0; i < length; i++) {
-			char v = s.charAt(i);
-			writeByte((byte) (v >>> 8));
-			writeByte((byte) (v));
-		}
+		pos = SerializerUtils.writeUTF16(buf, pos, s);
 	}
 
 	public final void writeNullableUTF16(String s) {
-		if (s == null) {
-			writeByte((byte) 0);
-			return;
-		}
 		int length = s.length();
-		writeVarInt(length + 1);
-		ensureSize(length * 2);
-		for (int i = 0; i < length; i++) {
-			char v = s.charAt(i);
-			writeByte((byte) (v >>> 8));
-			writeByte((byte) (v));
-		}
+		pos = SerializerUtils.writeNullableUTF16(buf, pos, s);
 	}
 
 	@Override

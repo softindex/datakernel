@@ -19,7 +19,7 @@ package io.datakernel.serializer;
 import io.datakernel.asm.Annotations;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionLet;
+import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.annotations.*;
@@ -907,7 +907,7 @@ public final class SerializerBuilder {
 					asList(byte[].class, int.class, key.serializerGen.getRawType()),
 					value.expression);
 		}
-		ExpressionLet position = let(call(arg(0), "position"));
+		Variable position = let(call(arg(0), "position"));
 		asmFactory.method("serialize", sequence(version,
 						call(arg(0), "position", serializerGen.serialize(
 								call(arg(0), "array"), position,
