@@ -16,6 +16,7 @@
 
 package io.datakernel.service;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.util.Preconditions;
@@ -342,10 +343,16 @@ public class ServiceGraph {
 		stopCallback.await();
 	}
 
-	private ListenableFuture<Void> processNode(final ServiceGraphAction action, Map<Node, Set<Node>> dependency,
-	                                           final Node node, Map<Node, ListenableFuture<Void>> listenableFutureMap,
-	                                           IdentityHashMap<AsyncService, ListenableFuture<Void>> identityHashMap,
-	                                           Executor executor, final String processing, final String finish) {
+	synchronized private ListenableFuture<Void> processNode(final ServiceGraphAction action, Map<Node, Set<Node>> dependency,
+	                                                        final Node node, Map<Node, SettableFuture<Void>> listenableFutureMap,
+	                                                        IdentityHashMap<AsyncService, SettableFuture<Void>> identityHashMap,
+	                                                        Executor executor, final String processing, final String finish) {
+		// TODO (vsavhuk) forwards.get(node).size() == 1 optimization
+		List<ListenableFuture<Void>> listenableFutures = new ArrayList<>(dependency.get(node).size());
+		for (Node dependencyNode : dependency.get(node)) {
+			listenableFutures.add(processNode(action, dependency, dependencyNode, listenableFutureMap, identityHashMap, executor, processing, finish));
+		}
+
 		if (listenableFutureMap.containsKey(node)) {
 			return listenableFutureMap.get(node);
 		}
@@ -354,36 +361,10 @@ public class ServiceGraph {
 			return identityHashMap.get(node.getService());
 		}
 
-		if (!dependency.containsKey(node)) {
-			logger.info(processing + nodeToString(node));
-
-			final SettableFuture<Void> settableFuture = SettableFuture.create();
-			action.asyncAction(node, new AsyncServiceCallback() {
-				@Override
-				public void onComplete() {
-					logger.info(finish + nodeToString(node));
-					settableFuture.set(null);
-				}
-
-				@Override
-				public void onException(Exception exception) {
-					logger.error("error: " + nodeToString(node), exception);
-					settableFuture.setException(exception);
-				}
-			});
-			identityHashMap.put(node.getService(), settableFuture);
-			listenableFutureMap.put(node, settableFuture);
-
-			return settableFuture;
-		}
-
-		// TODO (vsavhuk) forwards.get(node).size() == 1 optimization
-		List<ListenableFuture<Void>> listenableFutures = new ArrayList<>(dependency.get(node).size());
-		for (Node dependencyNode : dependency.get(node)) {
-			listenableFutures.add(processNode(action, dependency, dependencyNode, listenableFutureMap, identityHashMap, executor, processing, finish));
-		}
-		final SettableFuture<Void> combineFuture = combineFuture(executor, listenableFutures);
 		final SettableFuture<Void> nodeFuture = SettableFuture.create();
+		final ListenableFuture<Void> combineFuture = combineFuture(executor, listenableFutures);
+		listenableFutureMap.put(node, nodeFuture);
+		identityHashMap.put(node.getService(), nodeFuture);
 
 		combineFuture.addListener(new Runnable() {
 			@Override
@@ -412,8 +393,7 @@ public class ServiceGraph {
 			}
 		}, executor);
 
-		identityHashMap.put(node.getService(), nodeFuture);
-		listenableFutureMap.put(node, nodeFuture);
+
 		return nodeFuture;
 	}
 
@@ -435,8 +415,8 @@ public class ServiceGraph {
 			@Override
 			public void run() {
 				Set<Node> nodesWithoutReverseDependencies = difference(vertices, backwards.keySet());
-				HashMap<Node, ListenableFuture<Void>> listenableFutureMap = new HashMap<>();
-				IdentityHashMap<AsyncService, ListenableFuture<Void>> identityHashMap = new IdentityHashMap<>();
+				HashMap<Node, SettableFuture<Void>> listenableFutureMap = new HashMap<>();
+				IdentityHashMap<AsyncService, SettableFuture<Void>> identityHashMap = new IdentityHashMap<>();
 				List<ListenableFuture<Void>> list = new ArrayList<>();
 
 				for (Node nodesWithoutReverseDependency : nodesWithoutReverseDependencies) {
@@ -457,7 +437,7 @@ public class ServiceGraph {
 					list.add(processNode(action, forwards, nodesWithoutReverseDependency, listenableFutureMap,
 							identityHashMap, executor, "starting ", "started "));
 				}
-				final SettableFuture<Void> combineFuture = combineFuture(executor, list);
+				final ListenableFuture<Void> combineFuture = combineFuture(executor, list);
 				combineFuture.addListener(new Runnable() {
 					@Override
 					public void run() {
@@ -483,8 +463,8 @@ public class ServiceGraph {
 			@Override
 			public void run() {
 				Set<Node> nodesWithoutDependencies = difference(vertices, forwards.keySet());
-				HashMap<Node, ListenableFuture<Void>> listenableFutureMap = new HashMap<>();
-				IdentityHashMap<AsyncService, ListenableFuture<Void>> identityHashMap = new IdentityHashMap<>();
+				HashMap<Node, SettableFuture<Void>> listenableFutureMap = new HashMap<>();
+				IdentityHashMap<AsyncService, SettableFuture<Void>> identityHashMap = new IdentityHashMap<>();
 				List<ListenableFuture<Void>> list = new ArrayList<>();
 
 				for (Node nodesWithoutReverseDependency : nodesWithoutDependencies) {
@@ -504,7 +484,7 @@ public class ServiceGraph {
 					list.add(processNode(action, backwards, nodesWithoutReverseDependency, listenableFutureMap,
 							identityHashMap, executor, "stopping ", "stopped "));
 				}
-				final SettableFuture<Void> combineFuture = combineFuture(executor, list);
+				final ListenableFuture<Void> combineFuture = combineFuture(executor, list);
 				combineFuture.addListener(new Runnable() {
 					@Override
 					public void run() {
@@ -762,7 +742,10 @@ public class ServiceGraph {
 		return identityHashMap.containsKey(asyncService);
 	}
 
-	private static SettableFuture<Void> combineFuture(Executor executor, List<ListenableFuture<Void>> futures) {
+	private static ListenableFuture<Void> combineFuture(Executor executor, List<ListenableFuture<Void>> futures) {
+		if (futures.size() == 0) {
+			return Futures.immediateFuture(null);
+		}
 		final SettableFuture<Void> settableFuture = SettableFuture.create();
 		final AtomicInteger atomicInteger = new AtomicInteger(futures.size());
 		for (ListenableFuture<Void> future : futures) {
