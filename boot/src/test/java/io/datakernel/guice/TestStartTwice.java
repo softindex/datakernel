@@ -34,11 +34,7 @@ public class TestStartTwice {
 
 	interface A extends AsyncService {}
 
-	interface B extends AsyncService {}
-
-	interface C extends AsyncService {}
-
-	static class ServiceImpl implements A, B, C {
+	static class ServiceImpl implements A {
 
 		@Override
 		public void start(AsyncServiceCallback callback) {
@@ -53,42 +49,27 @@ public class TestStartTwice {
 		}
 	}
 
-	private static ServiceImpl serviceImpl = new ServiceImpl();
-
 	static class TestModule extends AbstractModule {
 
 		@Override
 		protected void configure() {
 			install(new ServiceGraphModule()
 					.register(ServiceImpl.class, AsyncServiceAdapters.forAsyncService())
-					.register(A.class, AsyncServiceAdapters.forAsyncService())
-					.register(B.class, AsyncServiceAdapters.forAsyncService())
-					.register(C.class, AsyncServiceAdapters.forAsyncService()));
+					.register(A.class, AsyncServiceAdapters.forAsyncService()));
 		}
 
 		@Provides
 		@Singleton
-		ServiceImpl serviceImpl(A a, B b, C c) {
-			return serviceImpl;
+		ServiceImpl serviceImpl(A a) {
+			return (ServiceImpl) a;
 		}
 
 		@Provides
 		@Singleton
-		A createA(B b, C c) {
-			return serviceImpl;
+		A createA() {
+			return new ServiceImpl();
 		}
 
-		@Provides
-		@Singleton
-		B createB(C c) {
-			return serviceImpl;
-		}
-
-		@Provides
-		@Singleton
-		C createC() {
-			return serviceImpl;
-		}
 	}
 
 	@Test

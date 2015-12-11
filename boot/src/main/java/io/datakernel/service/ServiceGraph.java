@@ -16,16 +16,16 @@
 
 package io.datakernel.service;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.util.Preconditions;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.lang.System.currentTimeMillis;
 import static java.util.Collections.shuffle;
@@ -342,60 +342,202 @@ public class ServiceGraph {
 		stopCallback.await();
 	}
 
+	private ListenableFuture<Void> processNode(final ServiceGraphAction action, Map<Node, Set<Node>> dependency,
+	                                           final Node node, Map<Node, ListenableFuture<Void>> listenableFutureMap,
+	                                           IdentityHashMap<AsyncService, ListenableFuture<Void>> identityHashMap,
+	                                           Executor executor, final String processing, final String finish) {
+		if (listenableFutureMap.containsKey(node)) {
+			return listenableFutureMap.get(node);
+		}
+
+		if (identityHashMap.containsKey(node.getService())) {
+			return identityHashMap.get(node.getService());
+		}
+
+		if (!dependency.containsKey(node)) {
+			logger.info(processing + nodeToString(node));
+
+			final SettableFuture<Void> settableFuture = SettableFuture.create();
+			action.asyncAction(node, new AsyncServiceCallback() {
+				@Override
+				public void onComplete() {
+					logger.info(finish + nodeToString(node));
+					settableFuture.set(null);
+				}
+
+				@Override
+				public void onException(Exception exception) {
+					logger.error("error: " + nodeToString(node), exception);
+					settableFuture.setException(exception);
+				}
+			});
+			identityHashMap.put(node.getService(), settableFuture);
+			listenableFutureMap.put(node, settableFuture);
+
+			return settableFuture;
+		}
+
+		// TODO (vsavhuk) forwards.get(node).size() == 1 optimization
+		List<ListenableFuture<Void>> listenableFutures = new ArrayList<>(dependency.get(node).size());
+		for (Node dependencyNode : dependency.get(node)) {
+			listenableFutures.add(processNode(action, dependency, dependencyNode, listenableFutureMap, identityHashMap, executor, processing, finish));
+		}
+		final SettableFuture<Void> combineFuture = combineFuture(executor, listenableFutures);
+		final SettableFuture<Void> nodeFuture = SettableFuture.create();
+
+		combineFuture.addListener(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					combineFuture.get();
+					logger.info(processing + nodeToString(node));
+					action.asyncAction(node, new AsyncServiceCallback() {
+						@Override
+						public void onComplete() {
+							logger.info(finish + nodeToString(node));
+							nodeFuture.set(null);
+						}
+
+						@Override
+						public void onException(Exception exception) {
+							logger.error("error: " + nodeToString(node), exception);
+							nodeFuture.setException(exception);
+						}
+					});
+				} catch (InterruptedException | ExecutionException e) {
+					logger.error("error: " + nodeToString(node));
+					nodeFuture.setException(e);
+				}
+
+			}
+		}, executor);
+
+		identityHashMap.put(node.getService(), nodeFuture);
+		listenableFutureMap.put(node, nodeFuture);
+		return nodeFuture;
+	}
+
 	/**
 	 * Started services from the service graph
 	 */
-	synchronized public void start(AsyncServiceCallback callback) {
+	synchronized public void start(final AsyncServiceCallback callback) {
 		if (!started) {
 			onStart();
+			if (containsCircularDependencies()) {
+				callback.onException(new IllegalArgumentException("Contains circular Dependencies"));
+				return;
+			}
 			started = true;
 		}
-		final IdentityHashMap<AsyncService, Object> identityHashMap = new IdentityHashMap<>();
-		logger.info("Starting services...");
-		visitBackwardAsync(new ServiceGraphAction() {
+
+		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
+		executor.execute(new Runnable() {
 			@Override
-			public void asyncAction(final Node service, final AsyncServiceCallback callback) {
-				AsyncService serviceOrNull = service.getService();
-				if (serviceOrNull == null) {
-					callback.onComplete();
-					return;
-				}
+			public void run() {
+				Set<Node> nodesWithoutReverseDependencies = difference(vertices, backwards.keySet());
+				HashMap<Node, ListenableFuture<Void>> listenableFutureMap = new HashMap<>();
+				IdentityHashMap<AsyncService, ListenableFuture<Void>> identityHashMap = new IdentityHashMap<>();
+				List<ListenableFuture<Void>> list = new ArrayList<>();
 
-				if (containsKeyInIdentityHashMap(identityHashMap, serviceOrNull)) {
-					callback.onComplete();
-					return;
-				}
-				putInIdentityHashMap(identityHashMap, service.getService());
+				for (Node nodesWithoutReverseDependency : nodesWithoutReverseDependencies) {
+					ServiceGraphAction action = new ServiceGraphAction() {
 
-				serviceOrNull.start(callback);
+						@Override
+						public void asyncAction(Node service, AsyncServiceCallback serviceCallback) {
+							AsyncService serviceOrNull = service.getService();
+							if (serviceOrNull == null) {
+								logger.info("started: " + nodeToString(service));
+								serviceCallback.onComplete();
+								return;
+							}
+
+							serviceOrNull.start(serviceCallback);
+						}
+					};
+					list.add(processNode(action, forwards, nodesWithoutReverseDependency, listenableFutureMap,
+							identityHashMap, executor, "starting ", "started "));
+				}
+				final SettableFuture<Void> combineFuture = combineFuture(executor, list);
+				combineFuture.addListener(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							combineFuture.get();
+							callback.onComplete();
+						} catch (InterruptedException | ExecutionException e) {
+							callback.onException(e);
+						}
+					}
+				}, executor);
 			}
-		}, vertices, startedServices, failedServices, callback, identityHashMap, "started", "failed");
+		});
 	}
 
 	/**
 	 * Stops services from  the service graph
 	 */
 	synchronized public void stop(final AsyncServiceCallback callback) {
-		logger.info("Stopping running services: " + nodesToString(startedServices));
-		final IdentityHashMap<AsyncService, Object> identityHashMap = new IdentityHashMap<>();
-		visitForwardAsync(new ServiceGraphAction() {
+		logger.info("Stopping running services");
+		final ExecutorService executor = newSingleThreadExecutor(threadFactory);
+		executor.execute(new Runnable() {
 			@Override
-			public void asyncAction(final Node service, final AsyncServiceCallback callback) {
-				AsyncService serviceOrNull = service.getService();
-				if (serviceOrNull == null) {
-					callback.onComplete();
-					return;
-				}
+			public void run() {
+				Set<Node> nodesWithoutDependencies = difference(vertices, forwards.keySet());
+				HashMap<Node, ListenableFuture<Void>> listenableFutureMap = new HashMap<>();
+				IdentityHashMap<AsyncService, ListenableFuture<Void>> identityHashMap = new IdentityHashMap<>();
+				List<ListenableFuture<Void>> list = new ArrayList<>();
 
-				if (containsKeyInIdentityHashMap(identityHashMap, serviceOrNull)) {
-					callback.onComplete();
-					return;
-				}
-				putInIdentityHashMap(identityHashMap, serviceOrNull);
+				for (Node nodesWithoutReverseDependency : nodesWithoutDependencies) {
+					ServiceGraphAction action = new ServiceGraphAction() {
+						@Override
+						public void asyncAction(Node service, AsyncServiceCallback serviceCallback) {
+							AsyncService serviceOrNull = service.getService();
+							if (serviceOrNull == null) {
+								logger.info("stopped: " + nodeToString(service));
+								serviceCallback.onComplete();
+								return;
+							}
 
-				serviceOrNull.stop(callback);
+							serviceOrNull.stop(serviceCallback);
+						}
+					};
+					list.add(processNode(action, backwards, nodesWithoutReverseDependency, listenableFutureMap,
+							identityHashMap, executor, "stopping ", "stopped "));
+				}
+				final SettableFuture<Void> combineFuture = combineFuture(executor, list);
+				combineFuture.addListener(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							combineFuture.get();
+							callback.onComplete();
+						} catch (InterruptedException | ExecutionException e) {
+							callback.onException(e);
+						}
+					}
+				}, executor);
 			}
-		}, startedServices, difference(vertices, startedServices), new LinkedHashMap<Node, Throwable>(), callback, identityHashMap, "stopped", "failed");
+		});
+
+//		final IdentityHashMap<AsyncService, Object> identityHashMap = new IdentityHashMap<>();
+//		visitForwardAsync(new ServiceGraphAction() {
+//			@Override
+//			public void asyncAction(final Node service, final AsyncServiceCallback callback) {
+//				AsyncService serviceOrNull = service.getService();
+//				if (serviceOrNull == null) {
+//					callback.onComplete();
+//					return;
+//				}
+//
+//				if (containsKeyInIdentityHashMap(identityHashMap, serviceOrNull)) {
+//					callback.onComplete();
+//					return;
+//				}
+//				putInIdentityHashMap(identityHashMap, serviceOrNull);
+//
+//				serviceOrNull.stop(callback);
+//			}
+//		}, startedServices, difference(vertices, startedServices), new LinkedHashMap<Node, Throwable>(), callback, identityHashMap, "stopped", "failed");
 	}
 
 	private Set<Node> difference(Set<Node> main, Set<Node> other) {
@@ -568,6 +710,33 @@ public class ServiceGraph {
 		}
 	}
 
+	public boolean containsCircularDependencies() {
+		Preconditions.check(!started, "Already started");
+		Set<Node> visited = new LinkedHashSet<>();
+		List<Node> path = new ArrayList<>();
+		next:
+		while (true) {
+			for (Node node : path.isEmpty() ? vertices : forwards.get(path.get(path.size() - 1))) {
+				int loopIndex = path.indexOf(node);
+				if (loopIndex != -1) {
+					logger.warn("Found circular dependency, breaking: "
+							+ nodesToString(path.subList(loopIndex, path.size())));
+					return true;
+				}
+				if (!visited.contains(node)) {
+					visited.add(node);
+					path.add(node);
+					continue next;
+				}
+			}
+			if (path.isEmpty())
+				break;
+			path.remove(path.size() - 1);
+		}
+
+		return false;
+	}
+
 	protected String nodeToString(Node node) {
 		return node.toString();
 	}
@@ -591,6 +760,22 @@ public class ServiceGraph {
 
 	private static boolean containsKeyInIdentityHashMap(IdentityHashMap<AsyncService, Object> identityHashMap, AsyncService asyncService) {
 		return identityHashMap.containsKey(asyncService);
+	}
+
+	private static SettableFuture<Void> combineFuture(Executor executor, List<ListenableFuture<Void>> futures) {
+		final SettableFuture<Void> settableFuture = SettableFuture.create();
+		final AtomicInteger atomicInteger = new AtomicInteger(futures.size());
+		for (ListenableFuture<Void> future : futures) {
+			future.addListener(new Runnable() {
+				@Override
+				public void run() {
+					if (atomicInteger.decrementAndGet() == 0) {
+						settableFuture.set(null);
+					}
+				}
+			}, executor);
+		}
+		return settableFuture;
 	}
 
 	private static class LinkedForwardSet implements Set<Node> {
@@ -794,3 +979,54 @@ public class ServiceGraph {
 		}
 	}
 }
+
+
+/*
+final IdentityHashMap<AsyncService, ListenableFuture<Void>> identityHashMap = new IdentityHashMap<>();
+				final Map<AsyncService, SettableFuture<Void>> settableFutureMap = new HashMap<>();
+
+				nodesWithoutDependencies = difference(vertices, forwards.keySet());
+				nodesWithoutReverseDependencies = difference(vertices, backwards.keySet());
+
+				List<SettableFuture<Void>> list = new ArrayList<>();
+				for (Node nodesWithoutReverseDependency : nodesWithoutReverseDependencies) {
+					list.add(ensureFuture(settableFutureMap, nodesWithoutReverseDependency.getService()));
+				}
+				combineFuture(executor, list).addListener(new Runnable() {
+					@Override
+					public void run() {
+						callback.onComplete();
+					}
+				}, executor);
+
+				logger.info("Starting services...");
+				for (final Node node : forwards.keySet()) {
+					if (identityHashMap.containsKey(node.getService())) {
+//						ensureFuture(settableFutureMap, node.getService()).addListener(new Runnable() {
+//							@Override
+//							public void run() {
+//
+//							}
+//						}, executor);
+						continue;
+					}
+					Set<Node> nodes = forwards.get(node);
+
+					final SettableFuture<Void> nodeFuture = ensureFuture(settableFutureMap, node.getService());
+
+					List<SettableFuture<Void>> listDependencyFuture = new ArrayList<>(nodes.size());
+					for (Node forwardDependenceNode : nodes) {
+						listDependencyFuture.add(ensureFuture(settableFutureMap, forwardDependenceNode.getService()));
+					}
+					combineFuture(executor, listDependencyFuture).addListener(new Runnable() {
+						@Override
+						public void run() {
+							logger.info("started: " + nodeToString(node));
+							nodeFuture.set(null);
+						}
+					}, executor);
+				}
+
+				startNodesWithoutDependencies(settableFutureMap, identityHashMap);
+			}
+ */
