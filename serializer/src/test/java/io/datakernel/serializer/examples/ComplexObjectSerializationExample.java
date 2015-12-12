@@ -94,7 +94,7 @@ public class ComplexObjectSerializationExample {
 		public Map<Integer, String> mapOfNullableInt2NullableString;
 	}
 
-	private static <T> T serializeAndDeserialize(Class<?> typeToken, T testData1) {
+	private static <T> T serializeAndDeserialize(Class<T> typeToken, T testData1) {
 		BufferSerializer<T> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
 				.create(typeToken);

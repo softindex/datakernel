@@ -39,7 +39,6 @@ import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
-import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 import static org.junit.Assert.assertEquals;
 
 public class RpcBlockingTest {
@@ -63,17 +62,20 @@ public class RpcBlockingTest {
 
 		eventloop = new NioEventloop();
 
-		serverOne = RpcServer.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
+		serverOne = RpcServer.create(eventloop)
+				.messageTypes(HelloRequest.class, HelloResponse.class)
 				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplOne()))
 				.setListenPort(PORT_1);
 		serverOne.listen();
 
-		serverTwo = RpcServer.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
+		serverTwo = RpcServer.create(eventloop)
+				.messageTypes(HelloRequest.class, HelloResponse.class)
 				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplTwo()))
 				.setListenPort(PORT_2);
 		serverTwo.listen();
 
-		serverThree = RpcServer.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
+		serverThree = RpcServer.create(eventloop)
+				.messageTypes(HelloRequest.class, HelloResponse.class)
 				.on(HelloRequest.class, helloServiceRequestHandler(new HelloServiceImplThree()))
 				.setListenPort(PORT_3);
 		serverThree.listen();
@@ -104,7 +106,8 @@ public class RpcBlockingTest {
 			}
 		};
 
-		RpcClient client = RpcClient.create(eventloop, rpcSerializer(HelloRequest.class, HelloResponse.class))
+		RpcClient client = RpcClient.create(eventloop)
+				.messageTypes(HelloRequest.class, HelloResponse.class)
 				.strategy(
 						roundRobin(
 								server(address1),

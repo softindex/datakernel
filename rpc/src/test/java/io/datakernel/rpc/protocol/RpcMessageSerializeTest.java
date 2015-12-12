@@ -16,7 +16,6 @@
 
 package io.datakernel.rpc.protocol;
 
-import com.google.common.reflect.TypeToken;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
@@ -63,11 +62,11 @@ public class RpcMessageSerializeTest {
 
 	}
 
-	private static <T> T doTest(TypeToken<T> typeToken, T testData1) {
+	private static <T> T doTest(Class<T> type, T testData1) {
 		BufferSerializer<T> serializer = SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
 				.setExtraSubclasses("extraRpcMessageData", TestRpcMessageData.class, TestRpcMessageData2.class)
-				.create(typeToken.getRawType());
+				.create(type);
 		return doTest(testData1, serializer, serializer);
 	}
 
@@ -90,7 +89,7 @@ public class RpcMessageSerializeTest {
 		TestRpcMessageData messageData1 = new TestRpcMessageData("TestMessageData");
 		RpcMessage message1 = new RpcMessage(1, messageData1);
 
-		RpcMessage message2 = doTest(TypeToken.of(RpcMessage.class), message1);
+		RpcMessage message2 = doTest(RpcMessage.class, message1);
 		Assert.assertEquals(message1.getCookie(), message2.getCookie());
 		Assert.assertTrue(message2.getData() instanceof TestRpcMessageData);
 		TestRpcMessageData messageData2 = (TestRpcMessageData) message2.getData();

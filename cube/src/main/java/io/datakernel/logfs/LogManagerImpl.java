@@ -16,12 +16,9 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
 	public static final int DEFAULT_BUFFER_SIZE = LogStreamConsumer.DEFAULT_BUFFER_SIZE;
@@ -55,7 +52,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 
 	@Override
 	public LogStreamProducer<T> producer(String logPartition, LogFile logFile, long position,
-	                                  ResultCallback<LogPosition> positionCallback) {
+	                                     ResultCallback<LogPosition> positionCallback) {
 		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition, new LogPosition(logFile, position), positionCallback);
 	}
 

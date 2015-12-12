@@ -18,7 +18,6 @@ package io.datakernel.rpc.client.sender;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
-import io.datakernel.rpc.util.Predicate;
 
 import java.net.InetSocketAddress;
 import java.util.List;
@@ -28,11 +27,15 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcStrategyFirstValidResult implements RpcStrategy {
-	private static final Predicate<?> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
+	public interface ResultValidator<T> {
+		boolean isValidResult(T value);
+	}
+
+	private static final ResultValidator<?> DEFAULT_RESULT_VALIDATOR = new DefaultResultValidator<>();
 
 	private final RpcStrategyList list;
 
-	private Predicate<?> resultValidator;
+	private ResultValidator<?> resultValidator;
 	private Exception noValidResultException;
 
 	public RpcStrategyFirstValidResult(RpcStrategyList list) {
@@ -41,7 +44,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		this.noValidResultException = null;
 	}
 
-	public RpcStrategyFirstValidResult withResultValidator(Predicate<?> resultValidator) {
+	public RpcStrategyFirstValidResult withResultValidator(ResultValidator<?> resultValidator) {
 		this.resultValidator = resultValidator;
 		return this;
 	}
@@ -66,10 +69,10 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 	static final class Sender implements RpcSender {
 		private final RpcSender[] subSenders;
-		private final Predicate<?> resultValidator;
+		private final ResultValidator<?> resultValidator;
 		private final Exception noValidResultException;
 
-		public Sender(List<RpcSender> senders, Predicate<?> resultValidator,
+		public Sender(List<RpcSender> senders, ResultValidator<?> resultValidator,
 		              Exception noValidResultException) {
 			checkArgument(senders != null && senders.size() > 0);
 			this.subSenders = senders.toArray(new RpcSender[senders.size()]);
@@ -81,7 +84,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
 			FirstResultCallback<O> resultCallback
-					= new FirstResultCallback<>(callback, (Predicate<O>) resultValidator, subSenders.length, noValidResultException);
+					= new FirstResultCallback<>(callback, (ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
 			for (RpcSender sender : subSenders) {
 				sender.sendRequest(request, timeout, resultCallback);
 			}
@@ -90,7 +93,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 
 	private static final class FirstResultCallback<T> implements ResultCallback<T> {
 		private final ResultCallback<T> resultCallback;
-		private final Predicate<T> resultValidator;
+		private final ResultValidator<T> resultValidator;
 		private final Exception noValidResultException;
 		private int expectedCalls;
 		private T result;
@@ -98,7 +101,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		private boolean hasResult;
 		private boolean complete;
 
-		public FirstResultCallback(ResultCallback<T> resultCallback, Predicate<T> resultValidator, int expectedCalls,
+		public FirstResultCallback(ResultCallback<T> resultCallback, ResultValidator<T> resultValidator, int expectedCalls,
 		                           Exception noValidResultException) {
 			checkArgument(expectedCalls > 0);
 			this.expectedCalls = expectedCalls;
@@ -110,7 +113,7 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		@Override
 		public final void onResult(T result) {
 			--expectedCalls;
-			if (!hasResult && resultValidator.check(result)) {
+			if (!hasResult && resultValidator.isValidResult(result)) {
 				this.result = result;  // first valid result
 				this.hasResult = true;
 			}
@@ -154,10 +157,11 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 		}
 	}
 
-	private static final class DefaultResultValidator<T> implements Predicate<T> {
+	private static final class DefaultResultValidator<T> implements ResultValidator<T> {
 		@Override
-		public boolean check(T input) {
+		public boolean isValidResult(T input) {
 			return input != null;
 		}
 	}
+
 }

@@ -37,7 +37,7 @@ public class CodeGenSerializerGenHppcSetTest {
 		return serializer.deserialize(input);
 	}
 
-	private static <T, V> BufferSerializer<T> getBufferSerializer(Class<?> collectionType, Class<V> valueClass) {
+	private static <T, V> BufferSerializer<T> getBufferSerializer(Class<T> collectionType, Class<V> valueClass) {
 		return SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
 				.register(collectionType, SerializerGenHppcSet.serializerGenBuilder(collectionType, valueClass))

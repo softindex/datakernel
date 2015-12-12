@@ -31,8 +31,10 @@ import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategy;
+import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
-import io.datakernel.rpc.protocol.RpcSerializer;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,10 +44,7 @@ import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
 import static io.datakernel.async.AsyncCallbacks.postException;
@@ -65,7 +64,8 @@ public final class RpcClient implements NioService, RpcClientMBean {
 	private List<InetSocketAddress> addresses;
 	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 	private RpcProtocolFactory protocolFactory = streamProtocol();
-	private final RpcSerializer serializer;
+	private SerializerBuilder serializerBuilder;
+	private final Set<Class<?>> messageTypes = new LinkedHashSet<>();
 	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 	private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
 	private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
@@ -90,13 +90,26 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		}
 	};
 
-	private RpcClient(NioEventloop eventloop, RpcSerializer serializer) {
+	private RpcClient(NioEventloop eventloop) {
 		this.eventloop = eventloop;
-		this.serializer = serializer;
 	}
 
-	public static RpcClient create(final NioEventloop eventloop, final RpcSerializer serializerFactory) {
-		return new RpcClient(eventloop, serializerFactory);
+	public static RpcClient create(final NioEventloop eventloop) {
+		return new RpcClient(eventloop);
+	}
+
+	public RpcClient messageTypes(Class<?>... messageTypes) {
+		return messageTypes(Arrays.asList(messageTypes));
+	}
+
+	public RpcClient messageTypes(List<Class<?>> messageTypes) {
+		this.messageTypes.addAll(messageTypes);
+		return this;
+	}
+
+	public RpcClient serializerBuilder(SerializerBuilder serializerBuilder) {
+		this.serializerBuilder = serializerBuilder;
+		return this;
 	}
 
 	public RpcClient strategy(RpcStrategy requestSendingStrategy) {
@@ -184,6 +197,14 @@ public final class RpcClient implements NioService, RpcClientMBean {
 		callback.onComplete();
 	}
 
+	private BufferSerializer<RpcMessage> createSerializer() {
+		SerializerBuilder serializerBuilder = this.serializerBuilder != null ?
+				this.serializerBuilder :
+				SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
+		serializerBuilder.setExtraSubclasses("extraRpcMessageData", messageTypes);
+		return serializerBuilder.create(RpcMessage.class);
+	}
+
 	private void connect(final InetSocketAddress address) {
 		if (!running) {
 			return;
@@ -208,7 +229,7 @@ public final class RpcClient implements NioService, RpcClientMBean {
 					}
 				};
 				RpcClientConnection connection = new RpcClientConnectionImpl(eventloop, socketChannel,
-						serializer.createSerializer(), protocolFactory, statusListener);
+						createSerializer(), protocolFactory, statusListener);
 				connection.getSocketConnection().register();
 				successfulConnects++;
 				logger.info("Connection to {} established", address);

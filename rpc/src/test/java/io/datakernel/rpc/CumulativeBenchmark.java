@@ -23,11 +23,8 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcException;
-import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
-import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializationOutputBuffer;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.util.Stopwatch;
@@ -37,7 +34,6 @@ import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -61,7 +57,8 @@ public final class CumulativeBenchmark {
 	private final NioEventloop serverEventloop = new NioEventloop();
 	private final NioEventloop clientEventloop = new NioEventloop();
 
-	private final RpcServer server = RpcServer.create(serverEventloop, rpcSerializer(ValueMessage.class))
+	private final RpcServer server = RpcServer.create(serverEventloop)
+			.messageTypes(ValueMessage.class)
 			.protocol(streamProtocol(64 << 10, 64 << 10, true))
 			.on(ValueMessage.class, new RpcRequestHandler<ValueMessage>() {
 				private final ValueMessage currentSum = new ValueMessage(0);
@@ -78,7 +75,8 @@ public final class CumulativeBenchmark {
 			})
 			.setListenPort(SERVICE_PORT);
 
-	private final RpcClient client = RpcClient.create(clientEventloop, rpcSerializer(ValueMessage.class))
+	private final RpcClient client = RpcClient.create(clientEventloop)
+			.messageTypes(ValueMessage.class)
 			.protocol(streamProtocol(64 << 10, 64 << 10, true))
 			.strategy(server(new InetSocketAddress(SERVICE_PORT)));
 
@@ -106,20 +104,6 @@ public final class CumulativeBenchmark {
 		System.out.println("Requests at once   : " + requestsAtOnce);
 		System.out.println("Increment value    : " + incrementMessage.value);
 		System.out.println("Request timeout    : " + requestTimeout + " ms");
-		BufferSerializer<RpcMessage> serializer = rpcSerializer(ValueMessage.class).createSerializer();
-		int defaultBufferSize = 100;
-		SerializationOutputBuffer output;
-		while (true) {
-			try {
-				byte[] array = new byte[defaultBufferSize];
-				output = new SerializationOutputBuffer(array);
-				serializer.serialize(output, new RpcMessage(12345, incrementMessage));
-				break;
-			} catch (ArrayIndexOutOfBoundsException e) {
-				defaultBufferSize = defaultBufferSize * 2;
-			}
-		}
-		System.out.println("RpcMessage size    : " + output.position() + " bytes");
 	}
 
 	private void run() throws Exception {

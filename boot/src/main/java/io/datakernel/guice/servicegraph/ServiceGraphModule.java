@@ -57,6 +57,7 @@ public final class ServiceGraphModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
 	private final Executor executor;
+	private final IdentityHashMap<Object, AsyncService> services = new IdentityHashMap<>();
 
 	/**
 	 * Creates a new instance of ServiceGraphModule with default executor
@@ -213,9 +214,15 @@ public final class ServiceGraphModule extends AbstractModule {
 	@SuppressWarnings("unchecked")
 	private AsyncService getServiceFromNioScopeInstanceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
+		AsyncService asyncService = services.get(instance);
+		if (asyncService != null) {
+			return asyncService;
+		}
 		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
 		if (factoryForKey != null) {
-			return ((AsyncServiceAdapter<Object>) factoryForKey).toService(instance, executor);
+			asyncService = ((AsyncServiceAdapter<Object>) factoryForKey).toService(instance, executor);
+			services.put(instance, asyncService);
+			return asyncService;
 		}
 		Class<?> foundType = null;
 		for (Class<?> type : factoryMap.keySet()) {
@@ -226,8 +233,10 @@ public final class ServiceGraphModule extends AbstractModule {
 		if (foundType == null)
 			return null;
 		AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(foundType);
-		AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
-		return checkNotNull(service);
+		asyncService = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
+		checkNotNull(asyncService);
+		services.put(instance, asyncService);
+		return asyncService;
 	}
 
 	private ServiceGraph.Node nodeFromNioScope(KeyInPool keyInPool, Object instance) {

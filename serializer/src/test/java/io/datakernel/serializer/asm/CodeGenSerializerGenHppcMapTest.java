@@ -37,7 +37,7 @@ public class CodeGenSerializerGenHppcMapTest {
 		return serializer.deserialize(input);
 	}
 
-	private static <T, K, V> BufferSerializer<T> getBufferSerializer(Class<?> collectionType, Class<K> keyClass, Class<V> valueClass) {
+	private static <T, K, V> BufferSerializer<T> getBufferSerializer(Class<T> collectionType, Class<K> keyClass, Class<V> valueClass) {
 		return SerializerBuilder
 				.newDefaultInstance(ClassLoader.getSystemClassLoader())
 				.register(collectionType, SerializerGenHppcMap.serializerGenBuilder(collectionType, keyClass, valueClass))

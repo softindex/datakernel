@@ -20,7 +20,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
-import io.datakernel.rpc.protocol.RpcSerializer;
 import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
 
@@ -28,7 +27,6 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 
 /**
  * Here we construct and launch both server and client.
@@ -39,9 +37,8 @@ public class RpcExample {
 	public static void main(String[] args) throws IOException {
 		final NioEventloop eventloop = new NioEventloop();
 
-		RpcSerializer serializer = rpcSerializer(String.class);
-
-		final RpcServer server = RpcServer.create(eventloop, serializer)
+		final RpcServer server = RpcServer.create(eventloop)
+				.messageTypes(String.class)
 				.on(String.class, new RpcRequestHandler<String>() {
 					@Override
 					public void run(String request, ResultCallback<Object> callback) {
@@ -50,7 +47,8 @@ public class RpcExample {
 				})
 				.setListenPort(SERVICE_PORT);
 
-		final RpcClient client = RpcClient.create(eventloop, serializer)
+		final RpcClient client = RpcClient.create(eventloop)
+				.messageTypes(String.class)
 				.strategy(server(new InetSocketAddress(SERVICE_PORT)))
 				.connectTimeoutMillis(500);
 

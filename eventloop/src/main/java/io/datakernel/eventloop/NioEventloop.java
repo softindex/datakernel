@@ -46,6 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.jmx.MBeanUtils.register;
+import static io.datakernel.util.Preconditions.checkState;
 
 /**
  * It is internal class for asynchronous programming. NioEventloop represents infinite loop with only one
@@ -230,6 +231,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopMBea
 	 */
 	@Override
 	public void run() {
+		checkState(eventloopThread == null, "Event loop can be executed by single thread only");
 		eventloopThread = Thread.currentThread();
 		if (threadName != null)
 			eventloopThread.setName(threadName);

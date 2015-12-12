@@ -24,9 +24,10 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
-import io.datakernel.rpc.protocol.RpcSerializer;
 import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -39,7 +40,6 @@ import java.util.List;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
-import static io.datakernel.rpc.protocol.RpcSerializer.rpcSerializer;
 import static org.junit.Assert.assertEquals;
 
 public class RpcBinaryProtocolTest {
@@ -50,10 +50,6 @@ public class RpcBinaryProtocolTest {
 		void call(String request, ResultCallback<String> resultCallback);
 	}
 
-	private static RpcSerializer buildMessageSerializer() {
-		return rpcSerializer(String.class);
-	}
-
 	@Before
 	public void before() {
 		ByteBufPool.clear();
@@ -62,16 +58,16 @@ public class RpcBinaryProtocolTest {
 
 	@Test
 	public void test() throws Exception {
-		RpcSerializer serializer = buildMessageSerializer();
-
 		final String testMessage = "Test";
 
 		final NioEventloop eventloop = new NioEventloop();
 
-		final RpcClient client = RpcClient.create(eventloop, serializer)
+		final RpcClient client = RpcClient.create(eventloop)
+				.messageTypes(String.class)
 				.strategy(server(address));
 
-		final RpcServer server = RpcServer.create(eventloop, serializer)
+		final RpcServer server = RpcServer.create(eventloop)
+				.messageTypes(String.class)
 				.on(String.class, new RpcRequestHandler<String>() {
 					@Override
 					public void run(String request, ResultCallback<Object> callback) {
@@ -128,9 +124,12 @@ public class RpcBinaryProtocolTest {
 
 	@Test
 	public void testCompression() {
+		SerializerBuilder serializerBuilder = SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
+		serializerBuilder.setExtraSubclasses("extraRpcMessageData", String.class);
+		BufferSerializer<RpcMessage> serializer = serializerBuilder.create(RpcMessage.class);
+
 		int countRequests = 10;
 		NioEventloop eventloop = new NioEventloop();
-		RpcSerializer serializer = buildMessageSerializer();
 		int defaultPacketSize = 1 << 10;
 		int maxPacketSize = 1 << 16;
 
@@ -144,16 +143,16 @@ public class RpcBinaryProtocolTest {
 
 		StreamLZ4Compressor compressorClient = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorClient = new StreamLZ4Decompressor(eventloop);
-		StreamSerializer<RpcMessage> serializerClient = new StreamBinarySerializer<>(eventloop, serializer.createSerializer(),
+		StreamSerializer<RpcMessage> serializerClient = new StreamBinarySerializer<>(eventloop, serializer,
 				defaultPacketSize, maxPacketSize, 0, false);
-		StreamDeserializer<RpcMessage> deserializerClient = new StreamBinaryDeserializer<>(eventloop, serializer.createSerializer(), maxPacketSize);
+		StreamDeserializer<RpcMessage> deserializerClient = new StreamBinaryDeserializer<>(eventloop, serializer, maxPacketSize);
 
 		// server side
 		StreamLZ4Compressor compressorServer = StreamLZ4Compressor.fastCompressor(eventloop);
 		StreamLZ4Decompressor decompressorServer = new StreamLZ4Decompressor(eventloop);
-		StreamSerializer<RpcMessage> serializerServer = new StreamBinarySerializer<>(eventloop, serializer.createSerializer(),
+		StreamSerializer<RpcMessage> serializerServer = new StreamBinarySerializer<>(eventloop, serializer,
 				defaultPacketSize, maxPacketSize, 0, false);
-		StreamDeserializer<RpcMessage> deserializerServer = new StreamBinaryDeserializer<>(eventloop, serializer.createSerializer(), maxPacketSize);
+		StreamDeserializer<RpcMessage> deserializerServer = new StreamBinaryDeserializer<>(eventloop, serializer, maxPacketSize);
 
 		StreamConsumers.ToList<RpcMessage> results = new StreamConsumers.ToList<>(eventloop);
 

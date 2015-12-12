@@ -21,7 +21,6 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.rpc.client.RpcClientConnectionPool;
 import io.datakernel.rpc.client.sender.helper.RpcClientConnectionPoolStub;
 import io.datakernel.rpc.client.sender.helper.RpcSenderStub;
-import io.datakernel.rpc.util.Predicate;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
@@ -113,9 +112,9 @@ public class RpcStrategyFirstValidResultTest {
 		RpcStrategy strategy2 = new RequestSenderOnResultWithValueStrategy(validKey);
 		RpcStrategy strategy3 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3)
-				.withResultValidator(new Predicate<Integer>() {
+				.withResultValidator(new RpcStrategyFirstValidResult.ResultValidator<Integer>() {
 					@Override
-					public boolean check(Integer input) {
+					public boolean isValidResult(Integer input) {
 						return input == validKey;
 					}
 				})
@@ -136,9 +135,9 @@ public class RpcStrategyFirstValidResultTest {
 		RpcStrategy strategy2 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategy strategy3 = new RequestSenderOnResultWithValueStrategy(invalidKey);
 		RpcStrategyFirstValidResult firstValidResult = firstValidResult(strategy1, strategy2, strategy3)
-				.withResultValidator(new Predicate<Integer>() {
+				.withResultValidator(new RpcStrategyFirstValidResult.ResultValidator<Integer>() {
 					@Override
-					public boolean check(Integer input) {
+					public boolean isValidResult(Integer input) {
 						return input == validKey;
 					}
 				})

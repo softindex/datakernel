@@ -138,27 +138,32 @@ public final class AsyncServiceAdapters {
 	public static AsyncServiceAdapter<NioEventloop> forNioEventloop(final ThreadFactory threadFactory) {
 		return new AsyncServiceAdapter<NioEventloop>() {
 			@Override
-			public AsyncService toService(final NioEventloop node, final Executor executor) {
+			public AsyncService toService(final NioEventloop eventloop, final Executor executor) {
 				return new AsyncService() {
+					volatile AsyncServiceCallback stopCallback;
+
 					@Override
 					public void start(final AsyncServiceCallback callback) {
 						threadFactory.newThread(new Runnable() {
 							@Override
 							public void run() {
-								node.keepAlive(true);
+								eventloop.keepAlive(true);
 								callback.onComplete();
-								node.run();
+								eventloop.run();
+								if (stopCallback != null) {
+									stopCallback.onComplete();
+								}
 							}
 						}).start();
 					}
 
 					@Override
 					public void stop(final AsyncServiceCallback callback) {
-						node.postConcurrently(new Runnable() {
+						stopCallback = callback;
+						eventloop.postConcurrently(new Runnable() {
 							@Override
 							public void run() {
-								callback.onComplete();
-								node.keepAlive(false);
+								eventloop.keepAlive(false);
 							}
 						});
 					}

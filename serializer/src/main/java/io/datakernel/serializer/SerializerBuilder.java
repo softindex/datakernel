@@ -198,11 +198,11 @@ public final class SerializerBuilder {
 		return result;
 	}
 
-	public static <T> BufferSerializer<T> newDefaultSerializer(Class<?> type, ClassLoader classLoader) {
+	public static <T> BufferSerializer<T> newDefaultSerializer(Class<T> type, ClassLoader classLoader) {
 		return newDefaultInstance(new DefiningClassLoader(classLoader)).create(type);
 	}
 
-	public static <T> BufferSerializer<T> newDefaultSerializer(Class<?> type, DefiningClassLoader definingClassLoader) {
+	public static <T> BufferSerializer<T> newDefaultSerializer(Class<T> type, DefiningClassLoader definingClassLoader) {
 		return newDefaultInstance(definingClassLoader).create(type);
 	}
 
@@ -243,7 +243,7 @@ public final class SerializerBuilder {
 	 *
 	 * @return {@code SerializerGen} for the given type token
 	 */
-	public <T> BufferSerializer<T> create(Class<?> type) {
+	public <T> BufferSerializer<T> create(Class<T> type) {
 		SerializerGenBuilder.SerializerForType[] serializerForTypes = new SerializerGenBuilder.SerializerForType[0];
 		return create(type, serializerForTypes);
 	}
