@@ -73,8 +73,7 @@ public final class VarField implements Variable {
 		if (ctx.getThisType().equals(ownerType)) {
 			Class<?> fieldClass = ctx.getThisFields().get(field);
 			if (fieldClass == null) {
-				// TODO (vsavchuk) check
-				throw new RuntimeException(format("No such field \"%s\" in generated class %s. %s",
+				throw new RuntimeException(format("No field \"%s\" in generated class %s. %s",
 						field,
 						ctx.getThisType().getClassName(),
 						exceptionInGeneratedClass(ctx)));
@@ -125,8 +124,7 @@ public final class VarField implements Variable {
 			return;
 		}
 
-		// TODO (vsavchuk) check
-		throw new RuntimeException(format("Can`t find public field or setter for class %s for field \"%s\". %s ",
+		throw new RuntimeException(format("No public field or setter for class %s for field \"%s\". %s ",
 				ownerType.getClassName(),
 				field,
 				exceptionInGeneratedClass(ctx))
@@ -181,8 +179,7 @@ public final class VarField implements Variable {
 				}
 				return resultType;
 			} else {
-				// TODO (vsavchuk) check
-				throw new RuntimeException(format("Not such public field or getter for class %s for field \"%s\". %s",
+				throw new RuntimeException(format("No public field or getter for class %s for field \"%s\". %s",
 						ownerType.getClassName(),
 						field,
 						exceptionInGeneratedClass(ctx)));
@@ -224,8 +221,7 @@ public final class VarField implements Variable {
 			return resultType;
 		}
 
-		// TODO (vsavchuk) check
-		throw new RuntimeException(format("No such public field or getter for class %s for field \"%s\". %s",
+		throw new RuntimeException(format("No public field or getter for class %s for field \"%s\". %s",
 				ownerType.getClassName(),
 				field,
 				exceptionInGeneratedClass(ctx)));

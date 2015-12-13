@@ -47,9 +47,6 @@ public final class ExpressionConstant implements Expression {
 			return getType(String.class);
 		} else if (value instanceof Type) {
 			return (Type) value;
-		} else if (value instanceof Enum) {
-			// TODO (vsavchuk) ???
-			return getType(Enum.class);
 		} else {
 			return getType(Primitives.unwrap(value.getClass()));
 		}
@@ -80,10 +77,8 @@ public final class ExpressionConstant implements Expression {
 		} else if (value instanceof Type) {
 			g.push((Type) value);
 		} else if (value instanceof Enum) {
-			// TODO (vsavchuk) check enum logic
 			g.getStatic(type, ((Enum) value).name(), type);
 		} else {
-			// TODO (vsavchuk) check
 			throw new RuntimeException(format("%s is not primitive, wrapper, String, Type or Enum. %s",
 					value.getClass(),
 					exceptionInGeneratedClass(ctx))

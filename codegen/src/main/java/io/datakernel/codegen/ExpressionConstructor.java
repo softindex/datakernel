@@ -23,6 +23,7 @@ import java.lang.reflect.Constructor;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.codegen.Utils.argsToString;
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
 import static java.lang.String.format;
@@ -72,10 +73,9 @@ public final class ExpressionConstructor implements Expression {
 			g.invokeConstructor(getType(type), getMethod(constructor));
 			return getType(type);
 		} catch (NoSuchMethodException e) {
-			// TODO (vsavchuk) check
-			throw new RuntimeException(format("No such constructor %s.<init>(%s). %s",
+			throw new RuntimeException(format("No constructor %s.<init>(%s). %s",
 					type.getName(),
-					(fieldTypes.length != 0 ? Arrays.toString(fieldTypes): ""),
+					(fieldTypes.length != 0 ? argsToString(fieldTypes): ""),
 					exceptionInGeneratedClass(ctx)));
 		}
 	}

@@ -63,7 +63,6 @@ public class ExpressionNeg implements Expression {
 			case Type.DOUBLE:
 				return DOUBLE_TYPE;
 			default:
-				// TODO (vsavchuk) check
 				throw new RuntimeException(format("%s is not primitive. %s",
 						getJavaType(ctx.getClassLoader(), arg.type(ctx)),
 						exceptionInGeneratedClass(ctx))
@@ -102,7 +101,6 @@ public class ExpressionNeg implements Expression {
 			return INT_TYPE;
 		}
 
-		// TODO (vsavchuk) check
 		throw new RuntimeException(format("%s is not primitive. %s",
 				getJavaType(ctx.getClassLoader(), arg.type(ctx)),
 				exceptionInGeneratedClass(ctx))

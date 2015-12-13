@@ -88,7 +88,6 @@ public class ExpressionSwitchForKey implements Expression {
 		if (defaultExp != null) {
 			defaultExp.load(ctx);
 		} else {
-			// TODO (vsavchuk) check
 			g.throwException(getType(IllegalArgumentException.class),
 					format("Key is out of listKey range. %s",
 							exceptionInGeneratedClass(ctx)));

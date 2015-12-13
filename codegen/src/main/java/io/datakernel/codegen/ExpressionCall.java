@@ -81,11 +81,10 @@ public final class ExpressionCall implements Expression {
 			}
 
 		} catch (NoSuchMethodException e) {
-			// TODO (vsavchuk) check
-			throw new RuntimeException(format("No such method %s.%s(%s). %s",
+			throw new RuntimeException(format("No method %s.%s(%s). %s",
 					owner.type(ctx).getClassName(),
 					methodName,
-					(!argumentClasses.isEmpty() ? argumentClasses.toString() : ""),
+					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
 					exceptionInGeneratedClass(ctx)
 			));
 		}
@@ -142,11 +141,10 @@ public final class ExpressionCall implements Expression {
 					returnType, argumentTypes.toArray(new Type[]{})));
 
 		} catch (NoSuchMethodException e) {
-			// TODO (vsavchuk) check
-			throw new RuntimeException(format("No such method %s.%s(%s). %s",
+			throw new RuntimeException(format("No method %s.%s(%s). %s",
 					owner.type(ctx).getClassName(),
 					methodName,
-					(!argumentClasses.isEmpty() ? argumentClasses.toString() : ""),
+					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
 					exceptionInGeneratedClass(ctx)));
 		}
 		return returnType;

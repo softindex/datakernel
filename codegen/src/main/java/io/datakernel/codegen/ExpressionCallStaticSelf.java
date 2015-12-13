@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.codegen.Expressions.self;
+import static io.datakernel.codegen.Utils.argsToString;
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
 import static java.lang.String.format;
@@ -87,11 +88,10 @@ public class ExpressionCallStaticSelf implements Expression {
 				}
 			}
 		}
-		// TODO (vsavchuk) check
-		throw new RuntimeException(format("No such method %s.%s(%s). %s",
+		throw new RuntimeException(format("No method %s.%s(%s). %s",
 				owner.type(ctx).getClassName(),
 				methodName,
-				(!argumentTypes.isEmpty() ? argumentClasses(ctx, arguments) : ""),
+				(!argumentTypes.isEmpty() ? argsToString(argumentClasses(ctx, arguments)) : ""),
 				exceptionInGeneratedClass(ctx)));
 	}
 

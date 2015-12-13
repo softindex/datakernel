@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.codegen.Utils.argsToString;
 import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.getJavaType;
 import static java.lang.String.format;
@@ -57,11 +58,10 @@ public class ExpressionCallStatic implements Expression {
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
 		} catch (NoSuchMethodException e) {
-			// TODO (vsavchuk) check
-			throw new RuntimeException(format("No such static method %s.%s(%s). %s",
+			throw new RuntimeException(format("No static method %s.%s(%s). %s",
 					owner.getName(),
 					name,
-					(!argumentClasses.isEmpty() ? argumentClasses.toString() : ""),
+					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
 					exceptionInGeneratedClass(ctx)));
 		}
 
@@ -91,11 +91,10 @@ public class ExpressionCallStatic implements Expression {
 			Class<?> returnClass = method.getReturnType();
 			returnType = getType(returnClass);
 		} catch (NoSuchMethodException e) {
-			// TODO (vsavchuk) check
-			throw new RuntimeException(format("No such static method %s.%s(%s). %s",
+			throw new RuntimeException(format("No static method %s.%s(%s). %s",
 					owner.getName(),
 					name,
-					(!argumentClasses.isEmpty() ? argumentClasses.toString() : ""),
+					(!argumentClasses.isEmpty() ? argsToString(argumentClasses) : ""),
 					exceptionInGeneratedClass(ctx)));
 
 		}
