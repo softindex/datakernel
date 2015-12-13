@@ -26,6 +26,7 @@ import java.lang.reflect.Modifier;
 
 import static io.datakernel.codegen.Utils.*;
 import static java.lang.Character.toUpperCase;
+import static java.lang.String.format;
 import static java.lang.reflect.Modifier.isPublic;
 import static java.lang.reflect.Modifier.isStatic;
 import static org.objectweb.asm.Type.getType;
@@ -71,6 +72,12 @@ public final class VarField implements Variable {
 
 		if (ctx.getThisType().equals(ownerType)) {
 			Class<?> fieldClass = ctx.getThisFields().get(field);
+			if (fieldClass == null) {
+				throw new RuntimeException(format("No field \"%s\" in generated class %s. %s",
+						field,
+						ctx.getThisType().getClassName(),
+						exceptionInGeneratedClass(ctx)));
+			}
 			Type fieldType = getType(fieldClass);
 			cast(ctx, valueType, fieldType);
 			g.putField(ownerType, field, fieldType);
@@ -117,7 +124,11 @@ public final class VarField implements Variable {
 			return;
 		}
 
-		throw new IllegalArgumentException();
+		throw new RuntimeException(format("No public field or setter for class %s for field \"%s\". %s ",
+				ownerType.getClassName(),
+				field,
+				exceptionInGeneratedClass(ctx))
+		);
 	}
 
 	private static Method tryFindSetter(Class<?> argumentClass, String field, Class<?> valueClass) {
@@ -167,6 +178,11 @@ public final class VarField implements Variable {
 					g.getField(ownerType, field, resultType);
 				}
 				return resultType;
+			} else {
+				throw new RuntimeException(format("No public field or getter for class %s for field \"%s\". %s",
+						ownerType.getClassName(),
+						field,
+						exceptionInGeneratedClass(ctx)));
 			}
 		}
 
@@ -205,7 +221,10 @@ public final class VarField implements Variable {
 			return resultType;
 		}
 
-		throw new IllegalArgumentException();
+		throw new RuntimeException(format("No public field or getter for class %s for field \"%s\". %s",
+				ownerType.getClassName(),
+				field,
+				exceptionInGeneratedClass(ctx)));
 	}
 
 	@Override

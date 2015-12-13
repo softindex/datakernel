@@ -21,24 +21,28 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
+import static io.datakernel.codegen.Utils.exceptionInGeneratedClass;
 import static io.datakernel.codegen.Utils.newLocal;
+import static java.lang.String.format;
 import static org.objectweb.asm.Type.INT_TYPE;
 import static org.objectweb.asm.Type.getType;
 
 public class ExpressionSwitch implements Expression {
 	private final Expression nom;
+	private final Expression defaultExp;
 	private final List<Expression> list = new ArrayList<>();
-
-	ExpressionSwitch(Expression nom, Expression... args) {
-		this.nom = nom;
-		this.list.addAll(Arrays.asList(args));
-	}
 
 	ExpressionSwitch(Expression nom, List<Expression> list) {
 		this.nom = nom;
+		this.defaultExp = null;
+		this.list.addAll(list);
+	}
+
+	ExpressionSwitch(Expression nom, Expression defaultExp, List<Expression> list) {
+		this.nom = nom;
+		this.defaultExp = defaultExp;
 		this.list.addAll(list);
 	}
 
@@ -49,7 +53,6 @@ public class ExpressionSwitch implements Expression {
 		} else {
 			return getType(Object.class);
 		}
-
 	}
 
 	@Override
@@ -74,7 +77,14 @@ public class ExpressionSwitch implements Expression {
 			g.mark(labelNext);
 		}
 
-		g.throwException(getType(IllegalArgumentException.class), "");
+		if (defaultExp != null) {
+			defaultExp.load(ctx);
+		} else {
+			g.throwException(getType(IllegalArgumentException.class),
+					format("Key is out of list range. %s",
+							exceptionInGeneratedClass(ctx)
+					));
+		}
 		g.mark(labelExit);
 
 		return type(ctx);

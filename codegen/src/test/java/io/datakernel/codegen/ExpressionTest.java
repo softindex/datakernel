@@ -18,6 +18,9 @@ package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -322,9 +325,9 @@ public class ExpressionTest {
 				.newInstance();
 
 		assertTrue(testClass.negBoolean() == !z);
-		assertTrue(testClass.negShort() == -(int) s);
-		assertTrue(testClass.negByte() == -(int) b);
-		assertTrue(testClass.negChar() == -(int) c);
+		assertTrue(testClass.negShort() == -s);
+		assertTrue(testClass.negByte() == -b);
+		assertTrue(testClass.negChar() == -c);
 		assertTrue(testClass.negInt() == -i);
 		assertTrue(testClass.negLong() == -l);
 		assertTrue(testClass.negFloat() == -f);

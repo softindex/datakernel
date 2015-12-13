@@ -274,7 +274,7 @@ public class AsmBuilder<T> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC + ACC_STATIC + ACC_FINAL, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, type, staticFields, m.getArgumentTypes(), expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, type, staticFields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
 
 				Expression expression = expressionStaticMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());
@@ -282,7 +282,7 @@ public class AsmBuilder<T> {
 
 				g.endMethod();
 			} catch (Exception e) {
-				throw new RuntimeException(e);
+				throw new RuntimeException(e.getMessage());
 			}
 		}
 
@@ -290,7 +290,7 @@ public class AsmBuilder<T> {
 			try {
 				GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 
-				Context ctx = new Context(classLoader, g, classType, type, fields, m.getArgumentTypes(), expressionMap, expressionStaticMap);
+				Context ctx = new Context(classLoader, g, classType, type, fields, m.getArgumentTypes(), m, expressionMap, expressionStaticMap);
 
 				Expression expression = expressionMap.get(m);
 				loadAndCast(ctx, expression, m.getReturnType());
@@ -298,7 +298,7 @@ public class AsmBuilder<T> {
 
 				g.endMethod();
 			} catch (Exception e) {
-				throw new RuntimeException(e);
+				throw new RuntimeException(e.getMessage());
 			}
 		}
 		if (bytecodeSaveDir != null) {
