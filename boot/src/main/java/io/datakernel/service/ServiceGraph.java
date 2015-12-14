@@ -269,41 +269,47 @@ public class ServiceGraph {
 		combineFuture.addListener(new Runnable() {
 			@Override
 			public void run() {
-				try {
-					combineFuture.get();
-					processingNodes.add(node);
-					logger.info(processing + nodeToString(node));
-					logger.info("Processing node: " + nodesToString(processingNodes));
-					Stopwatch asyncActionTime = Stopwatch.createStarted();
-					final Stopwatch sw = Stopwatch.createStarted();
-					action.asyncAction(node, new AsyncServiceCallback() {
-						@Override
-						public void onComplete() {
-							processingTimes.put(node, sw.stop().elapsed(MILLISECONDS));
-							logger.info(finish + nodeToString(node) +
-									(sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
-							processingNodes.remove(node);
-							if (!processingNodes.isEmpty()) {
-								logger.info("Processing node: " + nodesToString(processingNodes));
+				synchronized (ServiceGraph.this) {
+					try {
+						combineFuture.get();
+						processingNodes.add(node);
+						logger.info(processing + nodeToString(node));
+						logger.info("Processing node: " + nodesToString(processingNodes));
+						Stopwatch asyncActionTime = Stopwatch.createStarted();
+						final Stopwatch sw = Stopwatch.createStarted();
+						action.asyncAction(node, new AsyncServiceCallback() {
+							@Override
+							public void onComplete() {
+								synchronized (ServiceGraph.this) {
+									processingTimes.put(node, sw.stop().elapsed(MILLISECONDS));
+									logger.info(finish + nodeToString(node) +
+											(sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
+									processingNodes.remove(node);
+									if (!processingNodes.isEmpty()) {
+										logger.info("Processing node: " + nodesToString(processingNodes));
+									}
+									nodeFuture.set(null);
+								}
 							}
-							nodeFuture.set(null);
-						}
 
-						@Override
-						public void onException(Exception exception) {
-							processingTimes.put(node, sw.stop().elapsed(MILLISECONDS));
-							logger.error("error: " + nodeToString(node), exception);
-							nodeFuture.setException(exception);
-						}
-					});
+							@Override
+							public void onException(Exception exception) {
+								synchronized (ServiceGraph.this) {
+									processingTimes.put(node, sw.stop().elapsed(MILLISECONDS));
+									logger.error("error: " + nodeToString(node), exception);
+									nodeFuture.setException(exception);
+								}
+							}
+						});
 
-					if (asyncActionTime.elapsed(TimeUnit.SECONDS) >= 1)
-						logger.info("action.asyncAction time for {} is {}", node, asyncActionTime);
-				} catch (InterruptedException | ExecutionException e) {
-					logger.error("error: " + nodeToString(node), e);
-					nodeFuture.setException(e);
+						if (asyncActionTime.elapsed(TimeUnit.SECONDS) >= 1)
+							logger.info("action.asyncAction time for {} is {}", node, asyncActionTime);
+					} catch (InterruptedException | ExecutionException e) {
+						logger.error("error: " + nodeToString(node), e);
+						nodeFuture.setException(e);
+					}
+
 				}
-
 			}
 		}, executor);
 
