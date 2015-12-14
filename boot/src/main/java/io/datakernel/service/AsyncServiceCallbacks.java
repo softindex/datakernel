@@ -16,11 +16,41 @@
 
 package io.datakernel.service;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 
 public final class AsyncServiceCallbacks {
 	private AsyncServiceCallbacks() {
+	}
+
+	public static AsyncServiceCallback ignoreCallback() {
+		return new AsyncServiceCallback() {
+			@Override
+			public void onComplete() {
+
+			}
+
+			@Override
+			public void onException(Exception exception) {
+
+			}
+		};
+	}
+
+	public static AsyncServiceCallback futureCallback(final SettableFuture<Void> settableFuture) {
+		return new AsyncServiceCallback() {
+			@Override
+			public void onComplete() {
+				settableFuture.set(null);
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				settableFuture.setException(exception);
+			}
+		};
 	}
 
 	public static BlockingServiceCallback withCountDownLatch() {
