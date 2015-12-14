@@ -108,6 +108,8 @@ public class ServiceGraph {
 
 	private final Map<Node, Set<Node>> backwards = new LinkedForwardMap();
 
+	private final Map<Object, AsyncService> services = new HashMap<>();
+
 	private boolean started;
 
 	public ServiceGraph() {
@@ -142,12 +144,29 @@ public class ServiceGraph {
 	public ServiceGraph add(Node service, Iterable<Node> dependencies) {
 		Preconditions.check(!started, "Already started");
 		vertices.add(service);
+		checkNode(service);
 		for (Node dependency : dependencies) {
+			checkNode(dependency);
 			vertices.add(dependency);
 			forwards.get(service).add(dependency);
 			backwards.get(dependency).add(service);
 		}
 		return this;
+	}
+
+	private void checkNode(Node node) {
+		Object key = node.getKey();
+		AsyncService service = node.getService();
+
+		if (!services.containsKey(key)) {
+			services.put(key, service);
+			return;
+		}
+
+		if (services.get(key) != service) {
+			logger.warn("Add same key {} with different AsyncService {}", key, service);
+		}
+
 	}
 
 	/**
@@ -372,7 +391,7 @@ public class ServiceGraph {
 
 				serviceOrNull.stop(serviceCallback);
 			}
-		}, difference(backwards.keySet(), forwards.keySet()), backwards, callback,  "stopping ", "stopped ");
+		}, difference(backwards.keySet(), forwards.keySet()), backwards, callback, "stopping ", "stopped ");
 	}
 
 	private void actionInThread(final ServiceGraphAction action, final Collection<Node> mainNodes,
