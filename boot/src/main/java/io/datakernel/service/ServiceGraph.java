@@ -90,7 +90,7 @@ public class ServiceGraph {
 	 * It represents the set of Node - services with keys and in this time it is set of vertices for
 	 * this service graph
 	 */
-	private final Set<Node> vertices = new LinkedHashSet<>();
+	private final Map<Node, AsyncService> vertices = new LinkedHashMap<>();
 
 	/**
 	 * This set used to represent edges between vertices. If N1 and N2 - nodes and between them
@@ -107,8 +107,6 @@ public class ServiceGraph {
 	 */
 
 	private final Map<Node, Set<Node>> backwards = new LinkedForwardMap();
-
-	private final Map<Object, AsyncService> services = new HashMap<>();
 
 	private boolean started;
 
@@ -143,11 +141,9 @@ public class ServiceGraph {
 	 */
 	public ServiceGraph add(Node service, Iterable<Node> dependencies) {
 		Preconditions.check(!started, "Already started");
-		vertices.add(service);
 		checkNode(service);
 		for (Node dependency : dependencies) {
 			checkNode(dependency);
-			vertices.add(dependency);
 			forwards.get(service).add(dependency);
 			backwards.get(dependency).add(service);
 		}
@@ -155,18 +151,16 @@ public class ServiceGraph {
 	}
 
 	private void checkNode(Node node) {
-		Object key = node.getKey();
 		AsyncService service = node.getService();
 
-		if (!services.containsKey(key)) {
-			services.put(key, service);
+		if (!vertices.containsKey(node)) {
+			vertices.put(node, service);
 			return;
 		}
 
-		if (services.get(key) != service) {
-			logger.warn("Add same key {} with different AsyncService {}", key, service);
+		if (vertices.get(node) != service) {
+			logger.warn("Ignore same node {} with different AsyncService {}", node, service);
 		}
-
 	}
 
 	/**
@@ -362,7 +356,7 @@ public class ServiceGraph {
 
 				serviceOrNull.start(serviceCallback);
 			}
-		}, difference(forwards.keySet(), backwards.keySet()), forwards, callback, "starting ", "started ");
+		}, difference(vertices.keySet(), backwards.keySet()), forwards, callback, "starting ", "started ");
 	}
 
 	/**
@@ -391,7 +385,7 @@ public class ServiceGraph {
 
 				serviceOrNull.stop(serviceCallback);
 			}
-		}, difference(backwards.keySet(), forwards.keySet()), backwards, callback, "stopping ", "stopped ");
+		}, difference(vertices.keySet(), forwards.keySet()), backwards, callback, "stopping ", "stopped ");
 	}
 
 	private void actionInThread(final ServiceGraphAction action, final Collection<Node> mainNodes,
@@ -417,7 +411,7 @@ public class ServiceGraph {
 					public void run() {
 						try {
 							combineFuture.get();
-							longestPath(processingTimes, vertices, forwards, backwards);
+							longestPath(processingTimes, vertices.keySet(), forwards, backwards);
 							callback.onComplete();
 							executor.shutdown();
 						} catch (InterruptedException | ExecutionException e) {
@@ -446,7 +440,7 @@ public class ServiceGraph {
 		StringBuilder sb = new StringBuilder();
 		Set<Node> visited = new LinkedHashSet<>();
 		List<Iterator<Node>> path = new ArrayList<>();
-		Iterable<Node> roots = difference(forwards.keySet(), backwards.keySet());
+		Iterable<Node> roots = difference(vertices.keySet(), backwards.keySet());
 		path.add(roots.iterator());
 		while (!path.isEmpty()) {
 			Iterator<Node> it = path.get(path.size() - 1);
@@ -506,7 +500,7 @@ public class ServiceGraph {
 	public void removeIntermediateNodes() {
 		Preconditions.check(!started, "Already started");
 		List<Node> toRemove = new ArrayList<>();
-		for (Node v : vertices) {
+		for (Node v : vertices.keySet()) {
 			if (v.getService() == null) {
 				toRemove.add(v);
 			}
@@ -527,7 +521,7 @@ public class ServiceGraph {
 		List<Node> path = new ArrayList<>();
 		next:
 		while (true) {
-			for (Node node : path.isEmpty() ? vertices : forwards.get(path.get(path.size() - 1))) {
+			for (Node node : path.isEmpty() ? vertices.keySet() : forwards.get(path.get(path.size() - 1))) {
 				int loopIndex = path.indexOf(node);
 				if (loopIndex != -1) {
 					logger.warn("Found circular dependency, breaking: "
@@ -555,7 +549,7 @@ public class ServiceGraph {
 		List<Node> path = new ArrayList<>();
 		next:
 		while (true) {
-			for (Node node : path.isEmpty() ? vertices : forwards.get(path.get(path.size() - 1))) {
+			for (Node node : path.isEmpty() ? vertices.keySet() : forwards.get(path.get(path.size() - 1))) {
 				int loopIndex = path.indexOf(node);
 				if (loopIndex != -1) {
 					logger.warn("Found circular dependency, breaking: "
