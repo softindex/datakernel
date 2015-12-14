@@ -28,7 +28,6 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.util.Collections.shuffle;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
@@ -255,7 +254,7 @@ public class ServiceGraph {
 		}
 
 		if (listenableFutureMap.containsKey(node)) {
-			return logAndReturnCachedFuture(listenableFutureMap.get(node), node, executor, processing, finish);
+			return listenableFutureMap.get(node);
 		}
 
 		if (identityHashMap.containsKey(node.getService())) {
@@ -276,12 +275,13 @@ public class ServiceGraph {
 					logger.info(processing + nodeToString(node));
 					logger.info("Processing node: " + nodesToString(processingNodes));
 					Stopwatch asyncActionTime = Stopwatch.createStarted();
-					final Stopwatch startProcessingTime = Stopwatch.createStarted();
+					final Stopwatch sw = Stopwatch.createStarted();
 					action.asyncAction(node, new AsyncServiceCallback() {
 						@Override
 						public void onComplete() {
-							processingTimes.put(node, startProcessingTime.stop().elapsed(MILLISECONDS));
-							logger.info(finish + nodeToString(node));
+							processingTimes.put(node, sw.stop().elapsed(MILLISECONDS));
+							logger.info(finish + nodeToString(node) +
+									(sw.elapsed(MILLISECONDS) >= 1L ? (" in " + sw) : ""));
 							processingNodes.remove(node);
 							if (!processingNodes.isEmpty()) {
 								logger.info("Processing node: " + nodesToString(processingNodes));
@@ -291,7 +291,7 @@ public class ServiceGraph {
 
 						@Override
 						public void onException(Exception exception) {
-							processingTimes.put(node, startProcessingTime.stop().elapsed(MILLISECONDS));
+							processingTimes.put(node, sw.stop().elapsed(MILLISECONDS));
 							logger.error("error: " + nodeToString(node), exception);
 							nodeFuture.setException(exception);
 						}
@@ -394,8 +394,10 @@ public class ServiceGraph {
 							combineFuture.get();
 							longestPath(processingTimes, vertices, forwards, backwards);
 							callback.onComplete();
+							executor.shutdown();
 						} catch (InterruptedException | ExecutionException e) {
 							callback.onException(e);
+							executor.shutdown();
 						}
 					}
 				}, executor);
@@ -419,7 +421,7 @@ public class ServiceGraph {
 		StringBuilder sb = new StringBuilder();
 		Set<Node> visited = new LinkedHashSet<>();
 		List<Iterator<Node>> path = new ArrayList<>();
-		Iterable<Node> roots = difference(vertices, (backwards.keySet()));
+		Iterable<Node> roots = difference(vertices, backwards.keySet());
 		path.add(roots.iterator());
 		while (!path.isEmpty()) {
 			Iterator<Node> it = path.get(path.size() - 1);
