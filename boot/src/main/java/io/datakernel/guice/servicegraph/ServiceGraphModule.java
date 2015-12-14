@@ -56,6 +56,8 @@ public final class ServiceGraphModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
+	private final IdentityHashMap<Object, AsyncService> services = new IdentityHashMap<>();
+
 	private final Executor executor;
 
 	/**
@@ -166,7 +168,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		@Override
 		public String toString() {
 			Annotation annotation = key.getAnnotation();
-			return key.getTypeLiteral() +
+			return key.getTypeLiteral() + " " + index +
 					(annotation != null ? " " + annotation : "");
 		}
 	}
@@ -213,9 +215,15 @@ public final class ServiceGraphModule extends AbstractModule {
 	@SuppressWarnings("unchecked")
 	private AsyncService getServiceFromNioScopeInstanceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
+		AsyncService asyncService = services.get(instance);
+		if (asyncService != null) {
+			return asyncService;
+		}
 		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
 		if (factoryForKey != null) {
-			return ((AsyncServiceAdapter<Object>) factoryForKey).toService(instance, executor);
+			asyncService = ((AsyncServiceAdapter<Object>) factoryForKey).toService(instance, executor);
+			services.put(instance, asyncService);
+			return asyncService;
 		}
 		Class<?> foundType = null;
 		for (Class<?> type : factoryMap.keySet()) {
@@ -226,8 +234,10 @@ public final class ServiceGraphModule extends AbstractModule {
 		if (foundType == null)
 			return null;
 		AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(foundType);
-		AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
-		return checkNotNull(service);
+		asyncService = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
+		checkNotNull(asyncService);
+		services.put(instance, asyncService);
+		return asyncService;
 	}
 
 	private ServiceGraph.Node nodeFromNioScope(KeyInPool keyInPool, Object instance) {
@@ -260,6 +270,9 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	@SuppressWarnings("unchecked")
 	private AsyncService getServiceOrNull(Key<?> key, Injector injector) {
+		if (services.containsKey(key)) {
+			return services.get(key);
+		}
 		Binding<?> binding = injector.getBinding(key);
 
 		if (!isSingleton(binding)) return null;
@@ -270,6 +283,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		if (factoryForKey != null) {
 			checkNotNull(object, "SingletonService object is not instantiated for " + key);
 			AsyncService service = ((AsyncServiceAdapter<Object>) factoryForKey).toService(object, executor);
+			services.put(key, service);
 			return checkNotNull(service);
 		}
 		if (object == null)
@@ -278,6 +292,7 @@ public final class ServiceGraphModule extends AbstractModule {
 			if (type.isAssignableFrom(object.getClass())) {
 				AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(type);
 				AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(object, executor);
+				services.put(key, service);
 				return checkNotNull(service);
 			}
 		}
@@ -285,7 +300,9 @@ public final class ServiceGraphModule extends AbstractModule {
 			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
 			for (Dependency<?> dependency : dependencies) {
 				if (dependency.getKey().equals(Key.get(NioWorkerScopeFactory.class))) {
-					return AsyncServices.immediateService();
+					AsyncService asyncService = AsyncServices.immediateService();
+					services.put(key, asyncService);
+					return asyncService;
 				}
 			}
 		}
@@ -375,14 +392,14 @@ public final class ServiceGraphModule extends AbstractModule {
 		for (Key<?> rootKey : rootKeys) {
 			injector.getInstance(rootKey);
 		}
-		return injector.getBinding(ServiceGraph.class).getProvider().get();
+		return injector.getInstance(ServiceGraph.class);
 	}
 
 	public static ServiceGraph getServiceGraph(Injector injector, Class<?>... rootClasses) {
 		for (Class<?> rootClass : rootClasses) {
 			injector.getInstance(rootClass);
 		}
-		return injector.getBinding(ServiceGraph.class).getProvider().get();
+		return injector.getInstance(ServiceGraph.class);
 	}
 
 	/**

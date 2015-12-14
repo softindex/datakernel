@@ -303,7 +303,7 @@ public class ServiceGraph {
 						});
 
 						if (asyncActionTime.elapsed(TimeUnit.SECONDS) >= 1)
-							logger.info("action.asyncAction time for {} is {}", node, asyncActionTime);
+							logger.info("action.asyncAction time for {} is {}", nodeToString(node), asyncActionTime);
 					} catch (InterruptedException | ExecutionException e) {
 						logger.error("error: " + nodeToString(node), e);
 						nodeFuture.setException(e);
@@ -343,7 +343,7 @@ public class ServiceGraph {
 
 				serviceOrNull.start(serviceCallback);
 			}
-		}, difference(vertices, backwards.keySet()), forwards, callback, "starting ", "started ");
+		}, difference(forwards.keySet(), backwards.keySet()), forwards, callback, "starting ", "started ");
 	}
 
 	/**
@@ -372,7 +372,7 @@ public class ServiceGraph {
 
 				serviceOrNull.stop(serviceCallback);
 			}
-		}, difference(vertices, forwards.keySet()), backwards, callback,  "stopping ", "stopped ");
+		}, difference(backwards.keySet(), forwards.keySet()), backwards, callback,  "stopping ", "stopped ");
 	}
 
 	private void actionInThread(final ServiceGraphAction action, final Collection<Node> mainNodes,
@@ -427,7 +427,7 @@ public class ServiceGraph {
 		StringBuilder sb = new StringBuilder();
 		Set<Node> visited = new LinkedHashSet<>();
 		List<Iterator<Node>> path = new ArrayList<>();
-		Iterable<Node> roots = difference(vertices, backwards.keySet());
+		Iterable<Node> roots = difference(forwards.keySet(), backwards.keySet());
 		path.add(roots.iterator());
 		while (!path.isEmpty()) {
 			Iterator<Node> it = path.get(path.size() - 1);
