@@ -56,8 +56,6 @@ public final class ServiceGraphModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
-	private final IdentityHashMap<Object, AsyncService> services = new IdentityHashMap<>();
-
 	private final Executor executor;
 	private final IdentityHashMap<Object, AsyncService> services = new IdentityHashMap<>();
 
