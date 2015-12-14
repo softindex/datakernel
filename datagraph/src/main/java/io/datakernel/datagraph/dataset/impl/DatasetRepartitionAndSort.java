@@ -19,6 +19,7 @@ package io.datakernel.datagraph.dataset.impl;
 import io.datakernel.datagraph.dataset.LocallySortedDataset;
 import io.datakernel.datagraph.dataset.SortedDataset;
 import io.datakernel.datagraph.graph.DataGraph;
+import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.StreamId;
 
 import java.util.List;
@@ -27,15 +28,20 @@ import static io.datakernel.datagraph.dataset.impl.DatasetUtils.repartitionAndSo
 
 public final class DatasetRepartitionAndSort<K, T> extends SortedDataset<K, T> {
 	private final LocallySortedDataset<K, T> input;
+	private final List<Partition> partitions;
 
 	public DatasetRepartitionAndSort(LocallySortedDataset<K, T> input) {
+		this(input, null);
+	}
+
+	public DatasetRepartitionAndSort(LocallySortedDataset<K, T> input, List<Partition> partitions) {
 		super(input.valueType(), input.keyComparator(), input.keyType(), input.keyFunction());
 		this.input = input;
+		this.partitions = partitions;
 	}
 
 	@Override
 	public List<StreamId> channels(DataGraph graph) {
-		return repartitionAndSort(graph, input, graph.getAvailablePartitions());
+		return repartitionAndSort(graph, input, partitions == null || partitions.isEmpty() ? graph.getAvailablePartitions() : partitions);
 	}
-
 }

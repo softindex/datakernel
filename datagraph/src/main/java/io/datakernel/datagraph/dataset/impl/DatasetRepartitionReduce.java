@@ -29,9 +29,7 @@ import static io.datakernel.datagraph.dataset.impl.DatasetUtils.repartitionAndRe
 
 public final class DatasetRepartitionReduce<K, I, O> extends Dataset<O> {
 	private final LocallySortedDataset<K, I> input;
-
 	private final StreamReducers.Reducer<K, I, O, ?> reducer;
-
 	private final List<Partition> partitions;
 
 	public DatasetRepartitionReduce(LocallySortedDataset<K, I> input, StreamReducers.Reducer<K, I, O, ?> reducer,
@@ -51,5 +49,4 @@ public final class DatasetRepartitionReduce<K, I, O> extends Dataset<O> {
 	public List<StreamId> channels(DataGraph graph) {
 		return repartitionAndReduce(graph, input, reducer, partitions == null || partitions.isEmpty() ? graph.getAvailablePartitions() : partitions);
 	}
-
 }

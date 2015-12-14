@@ -196,7 +196,6 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 		if (!socketReader.getProducerStatus().isOpen() && !socketWriter.getConsumerStatus().isOpen() && writeQueue.isEmpty()) {
 			logger.trace("done, closing {}", this);
 			close();
-			return;
 		}
 	}
 
@@ -229,6 +228,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 			} catch (IOException e) {
 				logger.error("shutdownOutput error {} for {}", e.toString(), this);
 			}
+			closeIfDone();
 		} else {
 			socketWriter.resume();
 		}

@@ -103,6 +103,10 @@ public final class Datasets {
 		return new DatasetRepartitionAndSort<>(dataset);
 	}
 
+	public static <K, T> SortedDataset<K, T> repartition_Sort(LocallySortedDataset<K, T> dataset, List<Partition> partitions) {
+		return new DatasetRepartitionAndSort<>(dataset, partitions);
+	}
+
 	public static <K, I, O, A> Dataset<O> sort_Reduce_Repartition_Reduce(Dataset<I> dataset, StreamReducers.ReducerToResult<K, I, O, A> reducer,
 	                                                                     Class<K> keyType, Function<I, K> inputKeyFunction, Comparator<K> keyComparator,
 	                                                                     Class<A> accumulatorType, Function<A, K> accumulatorKeyFunction,
