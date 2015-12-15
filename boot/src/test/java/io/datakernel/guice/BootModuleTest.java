@@ -34,7 +34,7 @@ public class BootModuleTest {
 	@Test
 	public void testStartStop() throws Exception {
 		Injector injector = Guice.createInjector(
-				BootModule.defaultBootModule()
+				BootModule.defaultInstance()
 						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
 							public AsyncService toService(TestGraph.S service, Executor executor) {
@@ -68,7 +68,7 @@ public class BootModuleTest {
 	@Test
 	public void testStartStopWithoutOverride() throws Exception {
 		Injector injector = Guice.createInjector(
-				BootModule.defaultBootModule()
+				BootModule.defaultInstance()
 						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
 							public AsyncService toService(TestGraph.S service, Executor executor) {

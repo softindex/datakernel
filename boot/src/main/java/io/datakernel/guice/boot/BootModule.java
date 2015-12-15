@@ -71,7 +71,7 @@ public final class BootModule extends AbstractModule {
 				new SynchronousQueue<Runnable>());
 	}
 
-	public static BootModule defaultBootModule() {
+	public static BootModule defaultInstance() {
 		BootModule bootModule = new BootModule();
 		bootModule.register(AsyncService.class, AsyncServiceAdapters.forAsyncService());
 		bootModule.register(Service.class, AsyncServiceAdapters.forBlockingService());
@@ -85,7 +85,7 @@ public final class BootModule extends AbstractModule {
 		return bootModule;
 	}
 
-	public static BootModule bootModuleWithoutAdapters() {
+	public static BootModule instanceWithoutAdapters() {
 		return new BootModule();
 	}
 

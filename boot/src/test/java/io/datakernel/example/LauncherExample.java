@@ -50,7 +50,7 @@ public class LauncherExample {
 		@Override
 		protected void configure() {
 			configs("launcher-example.properties");
-			modules(BootModule.defaultBootModule(),
+			modules(BootModule.defaultInstance(),
 					new LauncherExampleModule());
 		}
 
@@ -108,10 +108,10 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		List<AsyncHttpServer> workerHttpServers(WorkerThreadsPool nioWorkerScope,
+		List<AsyncHttpServer> workerHttpServers(WorkerThreadsPool workerThreadsPool,
 		                                        @WorkerThread Provider<AsyncHttpServer> itemProvider, Config config) {
 			int workers = ConfigConverters.ofInteger().get(config.getChild("workers"));
-			return nioWorkerScope.getPoolInstances(workers, itemProvider);
+			return workerThreadsPool.getPoolInstances(workers, itemProvider);
 		}
 	}
 }

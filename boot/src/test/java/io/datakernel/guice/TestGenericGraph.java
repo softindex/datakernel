@@ -46,7 +46,7 @@ public class TestGenericGraph {
 
 		@Override
 		protected void configure() {
-			install(BootModule.defaultBootModule()
+			install(BootModule.defaultInstance()
 					.register(Pojo.class, new AsyncServiceAdapter<Pojo>() {
 						@Override
 						public AsyncService toService(Pojo node, Executor executor) {
@@ -57,11 +57,11 @@ public class TestGenericGraph {
 
 		@Provides
 		@Singleton
-		Pojo<Integer> integerPojo(WorkerThreadsPool nioWorkerScope,
+		Pojo<Integer> integerPojo(WorkerThreadsPool workerThreadsPool,
 		                          @WorkerThread Provider<Pojo<String>> pojoProvider,
 		                          @WorkerThread("other") Provider<Pojo<String>> pojoProviderOther) {
-			List<Pojo<String>> list = nioWorkerScope.getPoolInstances(WORKERS, pojoProvider);
-			List<Pojo<String>> listOther = nioWorkerScope.getPoolInstances(WORKERS, pojoProviderOther);
+			List<Pojo<String>> list = workerThreadsPool.getPoolInstances(WORKERS, pojoProvider);
+			List<Pojo<String>> listOther = workerThreadsPool.getPoolInstances(WORKERS, pojoProviderOther);
 			return new Pojo<>(Integer.valueOf(listOther.get(0).getObject())
 					+ Integer.valueOf(list.get(0).getObject()));
 		}

@@ -53,7 +53,7 @@ public class TestStartTwice {
 
 		@Override
 		protected void configure() {
-			install(BootModule.defaultBootModule()
+			install(BootModule.defaultInstance()
 					.register(ServiceImpl.class, AsyncServiceAdapters.forAsyncService())
 					.register(A.class, AsyncServiceAdapters.forAsyncService()));
 		}

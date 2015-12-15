@@ -42,7 +42,7 @@ public class SimpleHttpLauncherExample {
 		@Override
 		protected void configure() {
 			configs("launcher-example.properties");
-			modules(BootModule.defaultBootModule(),
+			modules(BootModule.defaultInstance(),
 					new LauncherExampleModule());
 		}
 

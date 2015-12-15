@@ -53,7 +53,7 @@ public class WorkerThreadNameTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			install(BootModule.defaultBootModule()
+			install(BootModule.defaultInstance()
 					.register(Element4.class, new AsyncServiceAdapter<Element4>() {
 						@Override
 						public AsyncService toService(Element4 node, Executor executor) {
@@ -89,11 +89,11 @@ public class WorkerThreadNameTest {
 		@Provides
 		@Singleton
 		Element2 primaryNioServer(Element1 primaryEventloop,
-		                                  WorkerThreadsPool nioWorkerScope,
+		                                  WorkerThreadsPool workerThreadsPool,
 		                                  @WorkerThread("First") Provider<Element4> unusedStringProvider,
 		                                  @WorkerThread Provider<Element3> itemProvider) {
-			List<Element4> unusedList = nioWorkerScope.getPoolInstances(WORKERS, unusedStringProvider);
-			List<Element3> workerHttpServers = nioWorkerScope.getPoolInstances(WORKERS, itemProvider);
+			List<Element4> unusedList = workerThreadsPool.getPoolInstances(WORKERS, unusedStringProvider);
+			List<Element3> workerHttpServers = workerThreadsPool.getPoolInstances(WORKERS, itemProvider);
 			return new Element2();
 		}
 
