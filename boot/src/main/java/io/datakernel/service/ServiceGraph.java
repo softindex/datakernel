@@ -141,16 +141,30 @@ public class ServiceGraph {
 	 */
 	public ServiceGraph add(Node service, Iterable<Node> dependencies) {
 		Preconditions.check(!started, "Already started");
-		checkNode(service);
+		ensureNode(service, vertices);
 		for (Node dependency : dependencies) {
-			checkNode(dependency);
-			forwards.get(service).add(dependency);
-			backwards.get(dependency).add(service);
+			ensureNode(dependency, vertices);
+			ensureDependencyNode(service, dependency, forwards);
+			ensureDependencyNode(dependency, service, backwards);
 		}
 		return this;
 	}
 
-	private void checkNode(Node node) {
+	private void ensureDependencyNode(Node node, Node dependency, Map<Node, Set<Node>> dependencyMap) {
+		if (!dependencyMap.containsKey(node)) {
+			HashSet<Node> v = new HashSet<>();
+			v.add(dependency);
+			dependencyMap.put(node, v);
+			return;
+		}
+
+		Set<Node> nodes = dependencyMap.get(node);
+		if (!nodes.contains(dependency)) {
+			nodes.add(dependency);
+		}
+	}
+
+	private void ensureNode(Node node, Map<Node, AsyncService> vertices) {
 		AsyncService service = node.getService();
 
 		if (!vertices.containsKey(node)) {
@@ -159,7 +173,7 @@ public class ServiceGraph {
 		}
 
 		if (vertices.get(node) != service) {
-			logger.warn("Ignore same node {} with different AsyncService {}", node, service);
+			logger.warn("Ignore same node {} with different AsyncService {}", nodeToString(node), service);
 		}
 	}
 

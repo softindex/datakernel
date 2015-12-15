@@ -57,7 +57,8 @@ public final class ServiceGraphModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
 	private final Executor executor;
-	private final IdentityHashMap<Object, AsyncService> services = new IdentityHashMap<>();
+	private final IdentityHashMap<Object, AsyncService> workerThreadServices = new IdentityHashMap<>();
+	private final Map<Key<?>, AsyncService> singletonServices = new HashMap<>();
 
 	/**
 	 * Creates a new instance of ServiceGraphModule with default executor
@@ -214,14 +215,14 @@ public final class ServiceGraphModule extends AbstractModule {
 	@SuppressWarnings("unchecked")
 	private AsyncService getServiceFromNioScopeInstanceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
-		AsyncService asyncService = services.get(instance);
+		AsyncService asyncService = workerThreadServices.get(instance);
 		if (asyncService != null) {
 			return asyncService;
 		}
 		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
 		if (factoryForKey != null) {
 			asyncService = ((AsyncServiceAdapter<Object>) factoryForKey).toService(instance, executor);
-			services.put(instance, asyncService);
+			workerThreadServices.put(instance, asyncService);
 			return asyncService;
 		}
 		Class<?> foundType = null;
@@ -235,7 +236,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(foundType);
 		asyncService = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
 		checkNotNull(asyncService);
-		services.put(instance, asyncService);
+		workerThreadServices.put(instance, asyncService);
 		return asyncService;
 	}
 
@@ -269,8 +270,8 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	@SuppressWarnings("unchecked")
 	private AsyncService getServiceOrNull(Key<?> key, Injector injector) {
-		if (services.containsKey(key)) {
-			return services.get(key);
+		if (singletonServices.containsKey(key)) {
+			return singletonServices.get(key);
 		}
 		Binding<?> binding = injector.getBinding(key);
 
@@ -282,7 +283,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		if (factoryForKey != null) {
 			checkNotNull(object, "SingletonService object is not instantiated for " + key);
 			AsyncService service = ((AsyncServiceAdapter<Object>) factoryForKey).toService(object, executor);
-			services.put(key, service);
+			singletonServices.put(key, service);
 			return checkNotNull(service);
 		}
 		if (object == null)
@@ -291,7 +292,7 @@ public final class ServiceGraphModule extends AbstractModule {
 			if (type.isAssignableFrom(object.getClass())) {
 				AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(type);
 				AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(object, executor);
-				services.put(key, service);
+				singletonServices.put(key, service);
 				return checkNotNull(service);
 			}
 		}
@@ -300,7 +301,7 @@ public final class ServiceGraphModule extends AbstractModule {
 			for (Dependency<?> dependency : dependencies) {
 				if (dependency.getKey().equals(Key.get(NioWorkerScopeFactory.class))) {
 					AsyncService asyncService = AsyncServices.immediateService();
-					services.put(key, asyncService);
+					singletonServices.put(key, asyncService);
 					return asyncService;
 				}
 			}
