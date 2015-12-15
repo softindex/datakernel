@@ -17,11 +17,8 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
-import io.datakernel.guice.servicegraph.AsyncServiceAdapter;
-import io.datakernel.guice.servicegraph.ServiceGraphModule;
-import io.datakernel.guice.workers.NioWorkerModule;
-import io.datakernel.guice.workers.NioWorkerScopeFactory;
-import io.datakernel.guice.workers.WorkerThread;
+import io.datakernel.guice.boot.AsyncServiceAdapter;
+import io.datakernel.guice.boot.BootModule;
 import io.datakernel.service.AsyncService;
 import io.datakernel.service.AsyncServices;
 import io.datakernel.service.ServiceGraph;
@@ -49,8 +46,7 @@ public class TestGenericGraph {
 
 		@Override
 		protected void configure() {
-			install(new NioWorkerModule());
-			install(new ServiceGraphModule()
+			install(BootModule.defaultBootModule()
 					.register(Pojo.class, new AsyncServiceAdapter<Pojo>() {
 						@Override
 						public AsyncService toService(Pojo node, Executor executor) {
@@ -61,11 +57,11 @@ public class TestGenericGraph {
 
 		@Provides
 		@Singleton
-		Pojo<Integer> integerPojo(NioWorkerScopeFactory nioWorkerScope,
+		Pojo<Integer> integerPojo(WorkerThreadsPool nioWorkerScope,
 		                          @WorkerThread Provider<Pojo<String>> pojoProvider,
 		                          @WorkerThread("other") Provider<Pojo<String>> pojoProviderOther) {
-			List<Pojo<String>> list = nioWorkerScope.getList(WORKERS, pojoProvider);
-			List<Pojo<String>> listOther = nioWorkerScope.getList(WORKERS, pojoProviderOther);
+			List<Pojo<String>> list = nioWorkerScope.getPoolInstances(WORKERS, pojoProvider);
+			List<Pojo<String>> listOther = nioWorkerScope.getPoolInstances(WORKERS, pojoProviderOther);
 			return new Pojo<>(Integer.valueOf(listOther.get(0).getObject())
 					+ Integer.valueOf(list.get(0).getObject()));
 		}
@@ -86,8 +82,7 @@ public class TestGenericGraph {
 	@Test
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-		ServiceGraph serviceGraph =
-				ServiceGraphModule.getServiceGraph(injector, Key.get(new TypeLiteral<Pojo<Integer>>() {}));
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 
 		try {
 			serviceGraph.start();

@@ -17,8 +17,8 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
-import io.datakernel.guice.servicegraph.AsyncServiceAdapters;
-import io.datakernel.guice.servicegraph.ServiceGraphModule;
+import io.datakernel.guice.boot.AsyncServiceAdapters;
+import io.datakernel.guice.boot.BootModule;
 import io.datakernel.service.AsyncService;
 import io.datakernel.service.AsyncServiceCallback;
 import io.datakernel.service.ServiceGraph;
@@ -53,7 +53,7 @@ public class TestStartTwice {
 
 		@Override
 		protected void configure() {
-			install(new ServiceGraphModule()
+			install(BootModule.defaultBootModule()
 					.register(ServiceImpl.class, AsyncServiceAdapters.forAsyncService())
 					.register(A.class, AsyncServiceAdapters.forAsyncService()));
 		}
@@ -75,7 +75,7 @@ public class TestStartTwice {
 	@Test
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, ServiceImpl.class);
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 
 		try {
 			serviceGraph.start();

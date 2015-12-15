@@ -19,8 +19,8 @@ package io.datakernel.guice;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.guice.servicegraph.AsyncServiceAdapter;
-import io.datakernel.guice.servicegraph.ServiceGraphModule;
+import io.datakernel.guice.boot.AsyncServiceAdapter;
+import io.datakernel.guice.boot.BootModule;
 import io.datakernel.service.AsyncService;
 import io.datakernel.service.AsyncServiceCallbacks;
 import io.datakernel.service.AsyncServices;
@@ -29,12 +29,12 @@ import org.junit.Test;
 
 import java.util.concurrent.Executor;
 
-public class ServiceGraphModuleTest {
+public class BootModuleTest {
 
 	@Test
 	public void testStartStop() throws Exception {
 		Injector injector = Guice.createInjector(
-				new ServiceGraphModule()
+				BootModule.defaultBootModule()
 						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
 							public AsyncService toService(TestGraph.S service, Executor executor) {
@@ -68,7 +68,7 @@ public class ServiceGraphModuleTest {
 	@Test
 	public void testStartStopWithoutOverride() throws Exception {
 		Injector injector = Guice.createInjector(
-				new ServiceGraphModule()
+				BootModule.defaultBootModule()
 						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
 							public AsyncService toService(TestGraph.S service, Executor executor) {

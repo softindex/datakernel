@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.http;
+package io.datakernel.guice;
 
 import com.google.common.io.Closeables;
 import com.google.inject.*;
@@ -23,26 +23,29 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.PrimaryNioServer;
-import io.datakernel.guice.servicegraph.ServiceGraphModule;
-import io.datakernel.guice.workers.NioWorkerModule;
-import io.datakernel.guice.workers.NioWorkerScopeFactory;
-import io.datakernel.guice.workers.WorkerId;
-import io.datakernel.guice.workers.WorkerThread;
+import io.datakernel.guice.boot.BootModule;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.service.AsyncServiceCallbacks;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.ByteBufStrings;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
 
+import static com.google.common.io.ByteStreams.readFully;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.http.HttpServerTest.readAndAssert;
+import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
 
@@ -59,8 +62,7 @@ public class HelloWorldGuiceTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			install(new NioWorkerModule());
-			install(new ServiceGraphModule());
+			install(BootModule.defaultBootModule());
 		}
 
 		@Provides
@@ -72,9 +74,9 @@ public class HelloWorldGuiceTest {
 		@Provides
 		@Singleton
 		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,
-		                                  NioWorkerScopeFactory nioWorkerScope,
+		                                  WorkerThreadsPool nioWorkerScope,
 		                                  @WorkerThread Provider<AsyncHttpServer> itemProvider) {
-			List<AsyncHttpServer> workerHttpServers = nioWorkerScope.getList(WORKERS, itemProvider);
+			List<AsyncHttpServer> workerHttpServers = nioWorkerScope.getPoolInstances(WORKERS, itemProvider);
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
 			primaryNioServer.workerNioServers(workerHttpServers);
 			primaryNioServer.setListenPort(PORT);
@@ -106,7 +108,7 @@ public class HelloWorldGuiceTest {
 	@Test
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
 			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
@@ -140,9 +142,15 @@ public class HelloWorldGuiceTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
+	public static void readAndAssert(InputStream is, String expected) throws IOException {
+		byte[] bytes = new byte[expected.length()];
+		readFully(is, bytes);
+		Assert.assertEquals(expected, decodeAscii(bytes));
+	}
+
 	public static void main(String[] args) throws Exception {
 		Injector injector = Guice.createInjector(new TestModule());
-		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, PrimaryNioServer.class);
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try {
 			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
 			serviceGraph.start(callback);

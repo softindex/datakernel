@@ -14,17 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.workers;
+package io.datakernel.guice;
 
-import com.google.inject.AbstractModule;
+import com.google.inject.Provider;
 
-public final class NioWorkerModule extends AbstractModule {
-	@Override
-	protected void configure() {
-		NioWorkerScope nioWorkerScope = new NioWorkerScope();
-		bindScope(WorkerThread.class, nioWorkerScope);
-		bind(NioWorkerScope.class).toInstance(nioWorkerScope);
-		bind(NioWorkerScopeFactory.class).toInstance(nioWorkerScope);
-		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(nioWorkerScope.getNumberScopeProvider());
-	}
+import java.util.List;
+
+public interface WorkerThreadsPool {
+	<T> List<T> getPoolInstances(int workerThreadsCount, Provider<T> workerThreadInstanceProvider);
 }

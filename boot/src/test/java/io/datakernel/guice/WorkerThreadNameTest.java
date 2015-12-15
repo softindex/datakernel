@@ -18,12 +18,8 @@ package io.datakernel.guice;
 
 import com.google.inject.*;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.guice.servicegraph.AsyncServiceAdapter;
-import io.datakernel.guice.servicegraph.ServiceGraphModule;
-import io.datakernel.guice.workers.NioWorkerModule;
-import io.datakernel.guice.workers.NioWorkerScopeFactory;
-import io.datakernel.guice.workers.WorkerId;
-import io.datakernel.guice.workers.WorkerThread;
+import io.datakernel.guice.boot.AsyncServiceAdapter;
+import io.datakernel.guice.boot.BootModule;
 import io.datakernel.service.AsyncService;
 import io.datakernel.service.AsyncServices;
 import io.datakernel.service.ServiceGraph;
@@ -57,8 +53,7 @@ public class WorkerThreadNameTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			install(new NioWorkerModule());
-			install(new ServiceGraphModule()
+			install(BootModule.defaultBootModule()
 					.register(Element4.class, new AsyncServiceAdapter<Element4>() {
 						@Override
 						public AsyncService toService(Element4 node, Executor executor) {
@@ -94,11 +89,11 @@ public class WorkerThreadNameTest {
 		@Provides
 		@Singleton
 		Element2 primaryNioServer(Element1 primaryEventloop,
-		                                  NioWorkerScopeFactory nioWorkerScope,
+		                                  WorkerThreadsPool nioWorkerScope,
 		                                  @WorkerThread("First") Provider<Element4> unusedStringProvider,
 		                                  @WorkerThread Provider<Element3> itemProvider) {
-			List<Element4> unusedList = nioWorkerScope.getList(WORKERS, unusedStringProvider);
-			List<Element3> workerHttpServers = nioWorkerScope.getList(WORKERS, itemProvider);
+			List<Element4> unusedList = nioWorkerScope.getPoolInstances(WORKERS, unusedStringProvider);
+			List<Element3> workerHttpServers = nioWorkerScope.getPoolInstances(WORKERS, itemProvider);
 			return new Element2();
 		}
 
@@ -132,7 +127,7 @@ public class WorkerThreadNameTest {
 	@Test
 	public void test() throws Exception {
 		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
-		ServiceGraph serviceGraph = ServiceGraphModule.getServiceGraph(injector, Key.get(Element2.class));
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try {
 			serviceGraph.start();
 		} finally {

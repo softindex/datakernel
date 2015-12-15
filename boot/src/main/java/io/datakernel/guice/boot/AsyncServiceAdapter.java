@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.servicegraph;
+package io.datakernel.guice.boot;
 
 import io.datakernel.service.AsyncService;
 

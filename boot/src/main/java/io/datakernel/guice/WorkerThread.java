@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.workers;
+package io.datakernel.guice;
 
 import com.google.inject.BindingAnnotation;
 import com.google.inject.ScopeAnnotation;

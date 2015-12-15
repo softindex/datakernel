@@ -44,8 +44,6 @@ public abstract class Launcher {
 
 	private boolean useLockFile;
 
-	private boolean useProductionMode;
-
 	@Inject
 	protected Injector injector;
 
@@ -61,10 +59,6 @@ public abstract class Launcher {
 
 	protected void useLockFile() {
 		this.useLockFile = true;
-	}
-
-	protected void useProductionMode() {
-		this.useProductionMode = true;
 	}
 
 	protected void configs(String... config) {
@@ -140,8 +134,7 @@ public abstract class Launcher {
 			config = Config.union(configsList);
 			modules.add(new ConfigModule(config));
 		}
-		Stage stage = useProductionMode ? Stage.PRODUCTION : Stage.DEVELOPMENT;
-		Injector injector = Guice.createInjector(stage, modules);
+		Injector injector = Guice.createInjector(Stage.PRODUCTION, modules);
 		injector.injectMembers(this);
 	}
 

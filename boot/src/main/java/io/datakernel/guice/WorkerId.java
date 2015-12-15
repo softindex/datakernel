@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.workers;
+package io.datakernel.guice;
 
-import com.google.inject.Provider;
+import com.google.inject.BindingAnnotation;
 
-import java.util.List;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-public interface NioWorkerScopeFactory {
-	<T> List<T> getList(int size, Provider<T> itemProvider);
+import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+@BindingAnnotation
+@Target({PARAMETER, METHOD})
+@Retention(RUNTIME)
+public @interface WorkerId {
 }
