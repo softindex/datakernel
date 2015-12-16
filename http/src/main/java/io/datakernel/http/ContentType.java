@@ -55,7 +55,7 @@ public class ContentType {
 
 		@Override
 		int estimateSize() {
-			return super.estimateSize() + 60;
+			return super.estimateSize() + 20 + 30;
 		}
 
 		@Override
@@ -69,20 +69,20 @@ public class ContentType {
 		}
 
 		@Override
-		public ContentType specify(double q, Charset encoding) {
+		public ContentType setParameters(double q, Charset encoding) {
 			this.q = q;
 			this.encoding = encoding;
 			return this;
 		}
 
 		@Override
-		public ContentType specify(double q) {
+		public ContentType setQ(double q) {
 			this.q = q;
 			return this;
 		}
 
 		@Override
-		public ContentType specify(Charset encoding) {
+		public ContentType setCharsetEncoding(Charset encoding) {
 			this.encoding = encoding;
 			return this;
 		}
@@ -230,15 +230,15 @@ public class ContentType {
 		}
 	}
 
-	public ContentType specify(double q, Charset encoding) {
+	public ContentType setParameters(double q, Charset encoding) {
 		return new ContentTypeExt(this, q, encoding);
 	}
 
-	public ContentType specify(double q) {
+	public ContentType setQ(double q) {
 		return new ContentTypeExt(this, q);
 	}
 
-	public ContentType specify(Charset encoding) {
+	public ContentType setCharsetEncoding(Charset encoding) {
 		return new ContentTypeExt(this, encoding);
 	}
 
@@ -341,7 +341,7 @@ public class ContentType {
 				}
 			}
 			if (q != DEFAULT_Q || !charset.equals(DEFAULT_ENCODING)) {
-				type = type.specify(q, charset);
+				type = type.setParameters(q, charset);
 			}
 			pos++;
 			list.add(type);

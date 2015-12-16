@@ -31,8 +31,7 @@ import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
 import static io.datakernel.http.HttpHeader.CONNECTION;
-import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.http.HttpMethod.POST;
+import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -134,8 +133,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			throw new ServiceIllegalArgumentException("Unknown HTTP method");
 
 		request = HttpRequest.create(method);
-		if (method != GET && method != POST)
-			throw new ServiceIllegalArgumentException("Unsupported HTTP method: " + method);
 
 		int i;
 		for (i = 0; i != line.remaining(); i++) {
@@ -147,7 +144,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		request.url(HttpUri.ofPartialUrl(new String(headerChars, 0, i))); // TODO ?
 
-		if (method == GET) {
+		if (method == GET || method == DELETE) {
 			contentLength = 0;
 		}
 	}
@@ -176,7 +173,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	/**
 	 * This method is called after receiving every request. It handles it,
 	 * using servlet and sends a response back to the client.
-	 * <p>
+	 * <p/>
 	 * After sending a response, request and response will be recycled and you can not use it twice.
 	 *
 	 * @param bodyBuf the received message

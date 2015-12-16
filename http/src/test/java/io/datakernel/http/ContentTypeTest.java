@@ -71,7 +71,7 @@ public class ContentTypeTest {
 
 	@Test
 	public void testRenderWithParameters() {
-		List<ContentType> actual = Arrays.asList(PLAIN_TEXT, ANY_TEXT.specify(0.7, Charset.forName("UTF-8")));
+		List<ContentType> actual = Arrays.asList(PLAIN_TEXT, ANY_TEXT.setParameters(0.7, Charset.forName("UTF-8")));
 		String expected = "text/plain,text/*;q=0.7;charset=utf-8";
 		ByteBuf buf = ByteBuf.allocate(expected.length());
 		render(actual, buf);
@@ -82,8 +82,8 @@ public class ContentTypeTest {
 	@Test
 	public void testParseWithParameters() {
 		List<ContentType> expected = Arrays.asList(PLAIN_TEXT, MP3,
-				ANY_TEXT.specify(0.7, Charset.forName("UTF-8")),
-				OGG_VIDEO.specify(0.7, Charset.forName("ISO-8859-1")));
+				ANY_TEXT.setParameters(0.7, Charset.forName("UTF-8")),
+				OGG_VIDEO.setParameters(0.7, Charset.forName("ISO-8859-1")));
 		String string = "text/plain,audio/mp3,text/*; q=0.7; charset=utf-8,video/ogg; q=0.8";
 		ByteBuf buf = ByteBufStrings.wrapAscii(string);
 		List<ContentType> actual = new ArrayList<>();
