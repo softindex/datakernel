@@ -24,7 +24,9 @@ import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.FileLocker;
 import org.slf4j.Logger;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,7 +40,7 @@ public abstract class Launcher {
 
 	private Module[] modules;
 
-	private String[] configs;
+	private File[] configs;
 
 	private FileLocker fileLocker;
 
@@ -57,16 +59,46 @@ public abstract class Launcher {
 
 	protected Config config;
 
+	private File saveConfigFile;
+
 	protected void useLockFile() {
 		this.useLockFile = true;
 	}
 
+	protected void configs(File... files) {
+		this.configs = files;
+	}
+
 	protected void configs(String... config) {
-		this.configs = config;
+		File[] files = new File[config.length];
+		for (int i = 0; i < config.length; i++) {
+			files[i] = new File(config[i]);
+		}
+		this.configs = files;
+	}
+
+	protected void configs(Path... paths) {
+		File[] files = new File[paths.length];
+		for (int i = 0; i < paths.length; i++) {
+			files[i] = paths[i].toFile();
+		}
+		this.configs = files;
 	}
 
 	protected void modules(Module... modules) {
 		this.modules = modules;
+	}
+
+	public void saveConfig(Path path) {
+		saveConfigFile = path.toFile();
+	}
+
+	public void saveConfig(File file) {
+		saveConfigFile = file;
+	}
+
+	public void saveConfig(String string) {
+		saveConfigFile = new File(string);
 	}
 
 	protected abstract void configure();
@@ -116,21 +148,17 @@ public abstract class Launcher {
 	}
 
 	private void writeConfig() throws IOException {
-		if (configs == null || configs[0] == null)
+		if (saveConfigFile == null || configs == null || configs[0] == null)
 			return;
-		int pos = configs[0].lastIndexOf('.');
-		if (pos == -1) {
-			config.saveToPropertiesFile(configs[0] + "-all");
-			return;
-		}
-		config.saveToPropertiesFile(configs[0].substring(0, pos) + "-all" + configs[0].substring(pos));
+
+		config.saveToPropertiesFile(saveConfigFile);
 	}
 
 	protected void doWire() throws Exception {
 		List<Module> modules = new ArrayList<>(Arrays.asList(this.modules));
 		if (configs != null && configs.length != 0) {
 			List<Config> configsList = new ArrayList<>();
-			for (String config : configs) {
+			for (File config : configs) {
 				configsList.add(Config.ofProperties(config));
 			}
 			config = Config.union(configsList);

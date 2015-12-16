@@ -130,6 +130,8 @@ public class WorkerThreadNameTest {
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try {
 			serviceGraph.start();
+		} catch (Exception e) {
+			e.printStackTrace();
 		} finally {
 			serviceGraph.stop();
 		}
