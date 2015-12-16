@@ -30,8 +30,11 @@ import io.datakernel.stream.StreamProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
@@ -66,9 +69,17 @@ public final class SimpleFsServer implements FsServer {
 	}
 
 	public static FsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage, int port) {
+		return createInstance(eventloop, executor, storage, new InetSocketAddress(port));
+	}
+
+	public static FsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage, InetSocketAddress address) {
+		return createInstance(eventloop, executor, storage, Collections.singletonList(address));
+	}
+
+	public static FsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage, List<InetSocketAddress> adresses) {
 		RfsConfig config = RfsConfig.getDefaultConfig();
 		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, storage, config);
-		ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, config, port);
+		ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, config, adresses);
 		return createInstance(eventloop, fileSystem, protocol, config);
 	}
 

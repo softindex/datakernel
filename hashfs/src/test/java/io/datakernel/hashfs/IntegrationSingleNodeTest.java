@@ -45,6 +45,7 @@ import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -496,7 +497,7 @@ public class IntegrationSingleNodeTest {
 		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, serverStorage, config);
 		Logic logic = LogicImpl.createInstance(new RendezvousHashing(), local, Sets.newHashSet(local), config);
 		ClientProtocol clientProtocol1 = GsonClientProtocol.createInstance(eventloop, config);
-		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, config, local.getAddress().getPort());
+		ServerProtocol serverProtocol = GsonServerProtocol.createInstance(eventloop, config, Collections.singletonList(local.getAddress()));
 		return HashFsServer.createInstance(eventloop, fileSystem, logic, clientProtocol1, serverProtocol, config);
 	}
 }

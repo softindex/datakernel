@@ -34,7 +34,9 @@ import io.datakernel.stream.processor.StreamGsonDeserializer;
 import io.datakernel.stream.processor.StreamGsonSerializer;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
+import java.util.List;
 import java.util.Set;
 
 public final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> implements ServerProtocol {
@@ -53,14 +55,24 @@ public final class GsonServerProtocol extends AbstractNioServer<GsonServerProtoc
 		this.serializerFlushDelayMillis = serializerFlushDelayMillis;
 	}
 
+	public static ServerProtocol createInstance(NioEventloop eventloop, RfsConfig config, List<InetSocketAddress> addresses) {
+		return getServer(eventloop, config).setListenAddresses(addresses);
+	}
+
+	public static ServerProtocol createInstance(NioEventloop eventloop, RfsConfig config, InetSocketAddress address) {
+		return getServer(eventloop, config).setListenAddress(address);
+	}
+
 	public static ServerProtocol createInstance(NioEventloop eventloop, RfsConfig config, int port) {
-		GsonServerProtocol protocol = new GsonServerProtocol(eventloop,
+		return getServer(eventloop, config).setListenPort(port);
+	}
+
+	private static GsonServerProtocol getServer(NioEventloop eventloop, RfsConfig config) {
+		return new GsonServerProtocol(eventloop,
 				config.getDeserializerBufferSize(),
 				config.getSerializerBufferSize(),
 				config.getSerializerMaxMessageSize(),
 				config.getSerializerFlushDelayMillis());
-		protocol.setListenPort(port);
-		return protocol;
 	}
 
 	@Override

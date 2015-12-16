@@ -592,7 +592,7 @@ public class SimpleFsServerTest {
 
 	private static NioService createServer(NioEventloop eventloop, ExecutorService executor) {
 		FileSystem fileSystem = FileSystemImpl.createInstance(eventloop, executor, serverStorage, config);
-		ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, config, serverInfo.getAddress().getPort());
+		ServerProtocol protocol = GsonServerProtocol.createInstance(eventloop, config, Collections.singletonList(serverInfo.getAddress()));
 		return SimpleFsServer.createInstance(eventloop, fileSystem, protocol, config);
 	}
 
