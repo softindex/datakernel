@@ -89,6 +89,8 @@ public abstract class Launcher {
 				doStart();
 				logger.info("=== RUNNING APPLICATION");
 				doRun();
+			} catch (Exception e) {
+				logger.error(e.getMessage());
 			} finally {
 				logger.info("=== STOPPING APPLICATION");
 				doStop();
