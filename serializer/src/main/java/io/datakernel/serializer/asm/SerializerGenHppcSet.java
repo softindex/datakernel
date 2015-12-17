@@ -163,22 +163,28 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o)
-			return true;
-		if (o == null || getClass() != o.getClass())
-			return false;
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
 
 		SerializerGenHppcSet that = (SerializerGenHppcSet) o;
 
-		if (!valueSerializer.equals(that.valueSerializer))
-			return false;
+		if (nullable != that.nullable) return false;
+		if (setType != null ? !setType.equals(that.setType) : that.setType != null) return false;
+		if (hashSetType != null ? !hashSetType.equals(that.hashSetType) : that.hashSetType != null) return false;
+		if (iteratorType != null ? !iteratorType.equals(that.iteratorType) : that.iteratorType != null) return false;
+		if (valueType != null ? !valueType.equals(that.valueType) : that.valueType != null) return false;
+		return !(valueSerializer != null ? !valueSerializer.equals(that.valueSerializer) : that.valueSerializer != null);
 
-		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = 31 * valueSerializer.hashCode();
+		int result = setType != null ? setType.hashCode() : 0;
+		result = 31 * result + (hashSetType != null ? hashSetType.hashCode() : 0);
+		result = 31 * result + (iteratorType != null ? iteratorType.hashCode() : 0);
+		result = 31 * result + (valueType != null ? valueType.hashCode() : 0);
+		result = 31 * result + (valueSerializer != null ? valueSerializer.hashCode() : 0);
+		result = 31 * result + (nullable ? 1 : 0);
 		return result;
 	}
 

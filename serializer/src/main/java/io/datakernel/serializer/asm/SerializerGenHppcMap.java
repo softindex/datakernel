@@ -190,25 +190,33 @@ public final class SerializerGenHppcMap implements SerializerGen, NullableOptimi
 
 	@Override
 	public boolean equals(Object o) {
-		if (this == o)
-			return true;
-		if (o == null || getClass() != o.getClass())
-			return false;
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
 
 		SerializerGenHppcMap that = (SerializerGenHppcMap) o;
 
-		if (!keySerializer.equals(that.keySerializer))
+		if (nullable != that.nullable) return false;
+		if (mapType != null ? !mapType.equals(that.mapType) : that.mapType != null) return false;
+		if (hashMapType != null ? !hashMapType.equals(that.hashMapType) : that.hashMapType != null) return false;
+		if (iteratorType != null ? !iteratorType.equals(that.iteratorType) : that.iteratorType != null) return false;
+		if (keyType != null ? !keyType.equals(that.keyType) : that.keyType != null) return false;
+		if (valueType != null ? !valueType.equals(that.valueType) : that.valueType != null) return false;
+		if (keySerializer != null ? !keySerializer.equals(that.keySerializer) : that.keySerializer != null)
 			return false;
-		if (!valueSerializer.equals(that.valueSerializer))
-			return false;
+		return !(valueSerializer != null ? !valueSerializer.equals(that.valueSerializer) : that.valueSerializer != null);
 
-		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = keySerializer.hashCode();
-		result = 31 * result + valueSerializer.hashCode();
+		int result = mapType != null ? mapType.hashCode() : 0;
+		result = 31 * result + (hashMapType != null ? hashMapType.hashCode() : 0);
+		result = 31 * result + (iteratorType != null ? iteratorType.hashCode() : 0);
+		result = 31 * result + (keyType != null ? keyType.hashCode() : 0);
+		result = 31 * result + (valueType != null ? valueType.hashCode() : 0);
+		result = 31 * result + (keySerializer != null ? keySerializer.hashCode() : 0);
+		result = 31 * result + (valueSerializer != null ? valueSerializer.hashCode() : 0);
+		result = 31 * result + (nullable ? 1 : 0);
 		return result;
 	}
 

@@ -115,14 +115,16 @@ public final class SerializerGenList implements SerializerGen, NullableOptimizat
 
 		SerializerGenList that = (SerializerGenList) o;
 
-		if (!valueSerializer.equals(that.valueSerializer)) return false;
+		if (nullable != that.nullable) return false;
+		return !(valueSerializer != null ? !valueSerializer.equals(that.valueSerializer) : that.valueSerializer != null);
 
-		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		return valueSerializer.hashCode();
+		int result = valueSerializer != null ? valueSerializer.hashCode() : 0;
+		result = 31 * result + (nullable ? 1 : 0);
+		return result;
 	}
 
 	@Override

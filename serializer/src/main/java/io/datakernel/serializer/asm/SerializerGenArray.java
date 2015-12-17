@@ -159,15 +159,19 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 		SerializerGenArray that = (SerializerGenArray) o;
 
 		if (fixedSize != that.fixedSize) return false;
-		if (!valueSerializer.equals(that.valueSerializer)) return false;
+		if (nullable != that.nullable) return false;
+		if (valueSerializer != null ? !valueSerializer.equals(that.valueSerializer) : that.valueSerializer != null)
+			return false;
+		return !(type != null ? !type.equals(that.type) : that.type != null);
 
-		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = valueSerializer.hashCode();
+		int result = valueSerializer != null ? valueSerializer.hashCode() : 0;
 		result = 31 * result + fixedSize;
+		result = 31 * result + (type != null ? type.hashCode() : 0);
+		result = 31 * result + (nullable ? 1 : 0);
 		return result;
 	}
 

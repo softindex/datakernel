@@ -162,16 +162,18 @@ public final class SerializerGenMap implements SerializerGen, NullableOptimizati
 
 		SerializerGenMap that = (SerializerGenMap) o;
 
-		if (!keySerializer.equals(that.keySerializer)) return false;
-		if (!valueSerializer.equals(that.valueSerializer)) return false;
+		if (nullable != that.nullable) return false;
+		if (keySerializer != null ? !keySerializer.equals(that.keySerializer) : that.keySerializer != null)
+			return false;
+		return !(valueSerializer != null ? !valueSerializer.equals(that.valueSerializer) : that.valueSerializer != null);
 
-		return true;
 	}
 
 	@Override
 	public int hashCode() {
-		int result = keySerializer.hashCode();
-		result = 31 * result + valueSerializer.hashCode();
+		int result = keySerializer != null ? keySerializer.hashCode() : 0;
+		result = 31 * result + (valueSerializer != null ? valueSerializer.hashCode() : 0);
+		result = 31 * result + (nullable ? 1 : 0);
 		return result;
 	}
 

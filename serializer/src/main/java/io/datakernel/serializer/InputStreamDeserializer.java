@@ -78,7 +78,7 @@ public final class InputStreamDeserializer<T> implements BlockingObjectReader<T>
 		return buffer[pos++];
 	}
 
-	public int readSize() throws IOException {
+	private int readSize() throws IOException {
 		for (int offset = 0, result = 0; offset < 32; offset += 7) {
 			byte b = readByte();
 			result |= (b & 0x7f) << offset;

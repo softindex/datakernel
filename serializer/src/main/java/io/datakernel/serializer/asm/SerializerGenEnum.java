@@ -95,14 +95,18 @@ public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 
-//        SerializerGenEnum that = (SerializerGenEnum) o;
+		SerializerGenEnum that = (SerializerGenEnum) o;
 
-		return true;
+		if (nullable != that.nullable) return false;
+		return !(nameOfEnum != null ? !nameOfEnum.equals(that.nameOfEnum) : that.nameOfEnum != null);
+
 	}
 
 	@Override
 	public int hashCode() {
-		return 0;
+		int result = nameOfEnum != null ? nameOfEnum.hashCode() : 0;
+		result = 31 * result + (nullable ? 1 : 0);
+		return result;
 	}
 
 	@Override

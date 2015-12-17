@@ -122,4 +122,23 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 	public SerializerGen setNullable() {
 		return new SerializerGenByteBuffer(wrapped, true);
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		SerializerGenByteBuffer that = (SerializerGenByteBuffer) o;
+
+		if (wrapped != that.wrapped) return false;
+		return nullable == that.nullable;
+
+	}
+
+	@Override
+	public int hashCode() {
+		int result = (wrapped ? 1 : 0);
+		result = 31 * result + (nullable ? 1 : 0);
+		return result;
+	}
 }

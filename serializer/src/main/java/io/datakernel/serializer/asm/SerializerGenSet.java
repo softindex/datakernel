@@ -156,4 +156,23 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 	public SerializerGen setNullable() {
 		return new SerializerGenSet(valueSerializer, true);
 	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+
+		SerializerGenSet that = (SerializerGenSet) o;
+
+		if (nullable != that.nullable) return false;
+		return !(valueSerializer != null ? !valueSerializer.equals(that.valueSerializer) : that.valueSerializer != null);
+
+	}
+
+	@Override
+	public int hashCode() {
+		int result = valueSerializer != null ? valueSerializer.hashCode() : 0;
+		result = 31 * result + (nullable ? 1 : 0);
+		return result;
+	}
 }
