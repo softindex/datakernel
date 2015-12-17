@@ -492,19 +492,19 @@ public final class Expressions {
 		return new ExpressionSwitch(position, asList(expressions));
 	}
 
-	public static ExpressionSwitch switchForPosition(Expression position, Expression defaultExp, List<Expression> list) {
+	public static Expression switchForPosition(Expression position, Expression defaultExp, List<Expression> list) {
 		return new ExpressionSwitch(position, defaultExp, list);
 	}
 
-	public static ExpressionSwitch switchForPosition(Expression position, Expression defaultExp, Expression... expressions) {
+	public static Expression switchForPosition(Expression position, Expression defaultExp, Expression... expressions) {
 		return new ExpressionSwitch(position, defaultExp, asList(expressions));
 	}
 
-	public static ExpressionSwitchForKey switchForKey(Expression key, List<Expression> listKey, List<Expression> listValue) {
+	public static Expression switchForKey(Expression key, List<Expression> listKey, List<Expression> listValue) {
 		return new ExpressionSwitchForKey(key, listKey, listValue);
 	}
 
-	public static ExpressionSwitchForKey switchForKey(Expression key, Expression defaultExp, List<Expression> listKey, List<Expression> listValue) {
+	public static Expression switchForKey(Expression key, Expression defaultExp, List<Expression> listKey, List<Expression> listValue) {
 		return new ExpressionSwitchForKey(key, listKey, listValue);
 	}
 
