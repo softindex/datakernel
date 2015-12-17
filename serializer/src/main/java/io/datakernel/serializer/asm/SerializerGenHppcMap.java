@@ -20,6 +20,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.SerializerUtils;
 
@@ -31,7 +32,7 @@ import static io.datakernel.codegen.utils.Preconditions.check;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
-public final class SerializerGenHppcMap implements SerializerGen {
+public final class SerializerGenHppcMap implements SerializerGen, NullableOptimization {
 
 	private static Map<Class<?>, SerializerGen> primitiveSerializers = new HashMap<Class<?>, SerializerGen>() {{
 		put(byte.class, new SerializerGenByte());
@@ -87,13 +88,15 @@ public final class SerializerGenHppcMap implements SerializerGen {
 	private final Class<?> valueType;
 	private final SerializerGen keySerializer;
 	private final SerializerGen valueSerializer;
+	private final boolean nullable;
 
-	private SerializerGenHppcMap(Class<?> mapType, Class<?> keyType, Class<?> valueType, SerializerGen keySerializer, SerializerGen valueSerializer) {
+	private SerializerGenHppcMap(Class<?> mapType, Class<?> keyType, Class<?> valueType, SerializerGen keySerializer, SerializerGen valueSerializer, boolean nullable) {
 		this.mapType = mapType;
 		this.keyType = keyType;
 		this.valueType = valueType;
 		this.keySerializer = keySerializer;
 		this.valueSerializer = valueSerializer;
+		this.nullable = nullable;
 		try {
 			String prefix = toUpperCamel(keyType.getSimpleName()) + toUpperCamel(valueType.getSimpleName());
 			this.iteratorType = Class.forName("com.carrotsearch.hppc.cursors." + prefix + "Cursor");
@@ -101,6 +104,10 @@ public final class SerializerGenHppcMap implements SerializerGen {
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private SerializerGenHppcMap(Class<?> mapType, Class<?> keyType, Class<?> valueType, SerializerGen keySerializer, SerializerGen valueSerializer) {
+		this(mapType, keyType, valueType, keySerializer, valueSerializer, false);
 	}
 
 	@Override
@@ -126,20 +133,28 @@ public final class SerializerGenHppcMap implements SerializerGen {
 
 	@Override
 	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
-		Expression length = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, call(value, "size")));
-		return sequence(length, hppcMapForEach(iteratorType, value,
+		Expression size = call(value, "size");
+		Expression length = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? size : inc(size))));
+		Expression hppcMapForEach = hppcMapForEach(iteratorType, value,
 				new ForVar() {
 					@Override
-					public Expression forVar(Expression it) {
-						return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel));
-					}
+					public Expression forVar(Expression it) { return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel)); }
 				},
 				new ForVar() {
 					@Override
 					public Expression forVar(Expression it) {
 						return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));
 					}
-				}), off);
+				});
+
+		if (!nullable) {
+			return sequence(length, hppcMapForEach, off);
+		} else {
+			return choice(isNull(value),
+					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(length, hppcMapForEach, off));
+		}
+
 	}
 
 	@Override
@@ -154,7 +169,7 @@ public final class SerializerGenHppcMap implements SerializerGen {
 		final Expression map = let(constructor(hashMapType));
 		final Class<?> valueType = valueSerializer.getRawType();
 		final Class<?> keyType = keySerializer.getRawType();
-		return sequence(length, map, expressionFor(length, new ForVar() {
+		Expression expressionFor = expressionFor((!nullable ? length : dec(length)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return sequence(call(map, "put",
@@ -163,7 +178,14 @@ public final class SerializerGenHppcMap implements SerializerGen {
 						), voidExp()
 				);
 			}
-		}), map);
+		});
+		if (!nullable) {
+			return sequence(length, map, expressionFor, map);
+		} else {
+			return choice(cmpEq(length, value(0)),
+					nullRef(hashMapType),
+					sequence(length, map, expressionFor, map));
+		}
 	}
 
 	@Override
@@ -188,5 +210,10 @@ public final class SerializerGenHppcMap implements SerializerGen {
 		int result = keySerializer.hashCode();
 		result = 31 * result + valueSerializer.hashCode();
 		return result;
+	}
+
+	@Override
+	public SerializerGen setNullable() {
+		return new SerializerGenHppcMap(mapType, keyType, valueType, keySerializer, valueSerializer, true);
 	}
 }

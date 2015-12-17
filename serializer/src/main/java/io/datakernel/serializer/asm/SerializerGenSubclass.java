@@ -17,10 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.SerializerUtils;
 
@@ -33,7 +33,12 @@ import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 @SuppressWarnings("PointlessArithmeticExpression")
-public class SerializerGenSubclass implements SerializerGen {
+public class SerializerGenSubclass implements SerializerGen, NullableOptimization {
+	@Override
+	public SerializerGen setNullable() {
+		return new SerializerGenSubclass(dataType, subclassSerializers, true);
+	}
+
 	public static final class Builder {
 		private final Class<?> dataType;
 		private boolean nullable;
@@ -74,10 +79,6 @@ public class SerializerGenSubclass implements SerializerGen {
 		this.nullable = nullable;
 	}
 
-	public SerializerGenSubclass nullable(boolean nullable) {
-		return new SerializerGenSubclass(dataType, subclassSerializers, nullable);
-	}
-
 	@Override
 	public void getVersions(VersionsCollector versions) {
 		for (SerializerGen serializer : subclassSerializers.values()) {
@@ -101,7 +102,7 @@ public class SerializerGenSubclass implements SerializerGen {
 			return;
 		}
 
-		byte subClassN = (byte) (nullable ? 1 : 0);
+		byte subClassN = (byte) (!nullable ? 0 : 1);
 		List<Expression> listKey = new ArrayList<>();
 		List<Expression> listValue = new ArrayList<>();
 		for (Class<?> subclass : subclassSerializers.keySet()) {
@@ -145,7 +146,7 @@ public class SerializerGenSubclass implements SerializerGen {
 			list.add(cast(subclassSerializer.deserialize(subclassSerializer.getRawType(), version, staticMethods, compatibilityLevel), this.getRawType()));
 		}
 
-		ExpressionLet subClassN = let(call(arg(0), "readByte"));
+		Variable subClassN = let(call(arg(0), "readByte"));
 
 		staticMethods.registerStaticDeserializeMethod(this, version, cast(switchForPosition(subClassN, list), this.getRawType()));
 	}

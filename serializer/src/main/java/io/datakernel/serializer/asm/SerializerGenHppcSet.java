@@ -20,6 +20,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.SerializerUtils;
 
@@ -30,7 +31,7 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.check;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
-public class SerializerGenHppcSet implements SerializerGen {
+public class SerializerGenHppcSet implements SerializerGen, NullableOptimization {
 
 	private static Map<Class<?>, SerializerGen> primitiveSerializers = new HashMap<Class<?>, SerializerGen>() {{
 		put(byte.class, new SerializerGenByte());
@@ -72,11 +73,13 @@ public class SerializerGenHppcSet implements SerializerGen {
 	private final Class<?> iteratorType;
 	private final Class<?> valueType;
 	private final SerializerGen valueSerializer;
+	private final boolean nullable;
 
-	public SerializerGenHppcSet(Class<?> setType, Class<?> valueType, SerializerGen valueSerializer) {
+	public SerializerGenHppcSet(Class<?> setType, Class<?> valueType, SerializerGen valueSerializer, boolean nullable) {
 		this.setType = setType;
 		this.valueType = valueType;
 		this.valueSerializer = valueSerializer;
+		this.nullable = nullable;
 		try {
 			String prefix = toUpperCamel(valueType.getSimpleName());
 			this.iteratorType = Class.forName("com.carrotsearch.hppc.cursors." + prefix + "Cursor");
@@ -84,6 +87,10 @@ public class SerializerGenHppcSet implements SerializerGen {
 		} catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	public SerializerGenHppcSet(Class<?> setType, Class<?> valueType, SerializerGen valueSerializer) {
+		this(setType, valueType, valueSerializer, false);
 	}
 
 	@Override
@@ -108,13 +115,21 @@ public class SerializerGenHppcSet implements SerializerGen {
 
 	@Override
 	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
-		Expression length = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, call(value, "size")));
-		return sequence(length, hppcSetForEach(iteratorType, value, new ForVar() {
+		Expression length = call(value, "size");
+		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
+		Expression hppcSetForEach = hppcSetForEach(iteratorType, value, new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));
 			}
-		}), off);
+		});
+		if (!nullable) {
+			return sequence(writeLength, hppcSetForEach, off);
+		} else {
+			return choice(isNull(value),
+					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(writeLength, hppcSetForEach, off));
+		}
 	}
 
 	@Override
@@ -127,7 +142,7 @@ public class SerializerGenHppcSet implements SerializerGen {
 		final Class<?> valueType = valueSerializer.getRawType();
 		Expression length = let(call(arg(0), "readVarInt"));
 		final Expression set = let(constructor(hashSetType));
-		return sequence(set, expressionFor(length, new ForVar() {
+		Expression expressionFor = expressionFor((!nullable ? length : dec(length)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return sequence(
@@ -135,7 +150,15 @@ public class SerializerGenHppcSet implements SerializerGen {
 						voidExp()
 				);
 			}
-		}), set);
+		});
+
+		if (!nullable) {
+			return sequence(set, expressionFor, set);
+		} else {
+			return choice(cmpEq(length, value(0)),
+					nullRef(hashSetType),
+					sequence(set, expressionFor, set));
+		}
 	}
 
 	@Override
@@ -157,5 +180,10 @@ public class SerializerGenHppcSet implements SerializerGen {
 	public int hashCode() {
 		int result = 31 * valueSerializer.hashCode();
 		return result;
+	}
+
+	@Override
+	public SerializerGen setNullable() {
+		return new SerializerGenHppcSet(setType, valueType, valueSerializer, true);
 	}
 }

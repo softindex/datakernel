@@ -16,19 +16,9 @@
 
 package io.datakernel.serializer;
 
-public enum CompatibilityLevel {
-	/**
-	 * Provides basic version of serializer
-	 */
-	@Deprecated LEVEL_1,
+import io.datakernel.serializer.asm.SerializerGen;
 
-	/**
-	 * Provides string optimization for ISO8859-1 and UTF8
-	 */
-	@Deprecated LEVEL_2,
+public interface NullableOptimization {
 
-	/**
-	 * Includes previous optimization and provides nullable optimization for enum, subclass, array, map and list
-	 */
-	LEVEL_3
+	SerializerGen setNullable();
 }

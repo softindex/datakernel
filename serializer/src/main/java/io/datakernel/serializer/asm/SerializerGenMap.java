@@ -20,6 +20,7 @@ import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.SerializerUtils;
 
@@ -32,13 +33,19 @@ import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static org.objectweb.asm.Type.getType;
 
 @SuppressWarnings("PointlessArithmeticExpression")
-public final class SerializerGenMap implements SerializerGen {
+public final class SerializerGenMap implements SerializerGen, NullableOptimization {
 	private final SerializerGen keySerializer;
 	private final SerializerGen valueSerializer;
+	private final boolean nullable;
 
-	public SerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer) {
+	public SerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer, boolean nullable) {
 		this.keySerializer = checkNotNull(keySerializer);
 		this.valueSerializer = checkNotNull(valueSerializer);
+		this.nullable = nullable;
+	}
+
+	public SerializerGenMap(SerializerGen keySerializer, SerializerGen valueSerializer) {
+		this(keySerializer, valueSerializer, false);
 	}
 
 	@Override
@@ -64,19 +71,25 @@ public final class SerializerGenMap implements SerializerGen {
 
 	@Override
 	public Expression serialize(final Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
-		Expression length = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, length(value)));
+		Expression length = length(value);
+		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
+		Expression mapSerializer = mapForEach(value,
+				new ForVar() {
+					@Override
+					public Expression forVar(Expression it) {return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel));}
+				},
+				new ForVar() {
+					@Override
+					public Expression forVar(Expression it) {return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));}
+				});
 
-		return sequence(length, mapForEach(value,
-						new ForVar() {
-							@Override
-							public Expression forVar(Expression it) {return set(off, keySerializer.serialize(byteArray, off, cast(it, keySerializer.getRawType()), version, staticMethods, compatibilityLevel));}
-						},
-						new ForVar() {
-							@Override
-							public Expression forVar(Expression it) {return set(off, valueSerializer.serialize(byteArray, off, cast(it, valueSerializer.getRawType()), version, staticMethods, compatibilityLevel));}
-						}),
-				off
-		);
+		if (!nullable) {
+			return sequence(writeLength, mapSerializer, off);
+		} else {
+			return choice(isNull(value),
+					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(writeLength, mapSerializer, off));
+		}
 	}
 
 	@Override
@@ -98,8 +111,8 @@ public final class SerializerGenMap implements SerializerGen {
 
 	public Expression deserializeSimple(final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
-		final Expression local = let(constructor(LinkedHashMap.class, length));
-		Expression forEach = expressionFor(length, new ForVar() {
+		final Expression local = let(constructor(LinkedHashMap.class, (!nullable ? length : dec(length))));
+		Expression forEach = expressionFor((!nullable ? length : dec(length)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return sequence(call(local, "put",
@@ -108,22 +121,38 @@ public final class SerializerGenMap implements SerializerGen {
 				), voidExp());
 			}
 		});
-		return sequence(length, local, forEach, local);
+
+		if (!nullable) {
+			return sequence(length, local, forEach, local);
+		} else {
+			return choice(cmpEq(length, value(0)),
+					nullRef(LinkedHashMap.class),
+					sequence(local, forEach, local));
+		}
+
 	}
 
 	public Expression deserializeEnum(final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
-		final Expression localMap = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
-		Expression forEach = expressionFor(length, new ForVar() {
+
+		final Expression local = let(constructor(EnumMap.class, cast(value(getType(keySerializer.getRawType())), Class.class)));
+		Expression forEach = expressionFor((!nullable ? length : dec(length)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
-				return sequence(call(localMap, "put",
+				return sequence(call(local, "put",
 						cast(keySerializer.deserialize(keySerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class),
 						cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)
 				), voidExp());
 			}
 		});
-		return sequence(length, localMap, forEach, localMap);
+
+		if (!nullable) {
+			return sequence(length, local, forEach, local);
+		} else {
+			return choice(cmpEq(length, value(0)),
+					nullRef(EnumMap.class),
+					sequence(local, forEach, local));
+		}
 	}
 
 	@Override
@@ -144,5 +173,10 @@ public final class SerializerGenMap implements SerializerGen {
 		int result = keySerializer.hashCode();
 		result = 31 * result + valueSerializer.hashCode();
 		return result;
+	}
+
+	@Override
+	public SerializerGen setNullable() {
+		return new SerializerGenMap(keySerializer, valueSerializer, true);
 	}
 }

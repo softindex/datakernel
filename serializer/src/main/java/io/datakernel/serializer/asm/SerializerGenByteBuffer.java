@@ -17,8 +17,10 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
+import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.SerializerUtils;
 
@@ -26,8 +28,9 @@ import java.nio.ByteBuffer;
 
 import static io.datakernel.codegen.Expressions.*;
 
-public class SerializerGenByteBuffer implements SerializerGen {
+public class SerializerGenByteBuffer implements SerializerGen, NullableOptimization {
 	private final boolean wrapped;
+	private final boolean nullable;
 
 	public SerializerGenByteBuffer() {
 		this(false);
@@ -35,6 +38,12 @@ public class SerializerGenByteBuffer implements SerializerGen {
 
 	public SerializerGenByteBuffer(boolean wrapped) {
 		this.wrapped = wrapped;
+		this.nullable = false;
+	}
+
+	public SerializerGenByteBuffer(boolean wrapped, boolean nullable) {
+		this.wrapped = wrapped;
+		this.nullable = nullable;
 	}
 
 	@Override
@@ -62,9 +71,16 @@ public class SerializerGenByteBuffer implements SerializerGen {
 		Expression array = call(value, "array");
 		Expression position = call(value, "position");
 		Expression remaining = let(call(value, "remaining"));
-		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, remaining));
+		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? remaining : inc(remaining))));
+		ExpressionSequence write = sequence(writeLength, callStatic(SerializerUtils.class, "write", array, position, byteArray, off, remaining));
 
-		return sequence(writeLength, callStatic(SerializerUtils.class, "write", array, position, byteArray, off, remaining));
+		if (!nullable) {
+			return write;
+		} else {
+			return choice(isNull(value),
+					callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0)),
+					write);
+		}
 	}
 
 	@Override
@@ -77,14 +93,33 @@ public class SerializerGenByteBuffer implements SerializerGen {
 		Expression length = let(call(arg(0), "readVarInt"));
 
 		if (!wrapped) {
-			Expression array = let(newArray(byte[].class, length));
-			return sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array));
+			if (!nullable) {
+				Expression array = let(newArray(byte[].class, length));
+				return sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array));
+			} else {
+				Expression array = let(newArray(byte[].class, dec(length)));
+				return choice(cmpEq(length, value(0)),
+						nullRef(ByteBuffer.class),
+						sequence(length, call(arg(0), "read", array), callStatic(ByteBuffer.class, "wrap", array)));
+			}
 		} else {
 			Expression inputBuffer = call(arg(0), "array");
 			Expression position = let(call(arg(0), "position"));
-			Expression setPosition = call(arg(0), "position", add(position, length));
+			Expression setPosition = call(arg(0), "position", add(position, (!nullable ? length : dec(length))));
 
-			return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));
+			if (!nullable) {
+				return sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, length));
+			} else {
+				return choice(cmpEq(length, value(0)),
+						nullRef(ByteBuffer.class),
+						sequence(length, setPosition, callStatic(ByteBuffer.class, "wrap", inputBuffer, position, dec(length))));
+			}
+
 		}
+	}
+
+	@Override
+	public SerializerGen setNullable() {
+		return new SerializerGenByteBuffer(wrapped, true);
 	}
 }

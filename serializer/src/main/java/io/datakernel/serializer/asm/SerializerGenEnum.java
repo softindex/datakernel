@@ -17,9 +17,9 @@
 package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionLet;
 import io.datakernel.codegen.Variable;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.SerializerUtils;
 import org.objectweb.asm.Type;
@@ -27,7 +27,7 @@ import org.objectweb.asm.Type;
 import static io.datakernel.codegen.Expressions.*;
 
 @SuppressWarnings("StatementWithEmptyBody")
-public class SerializerGenEnum implements SerializerGen {
+public class SerializerGenEnum implements SerializerGen, NullableOptimization {
 	private final Class<?> nameOfEnum;
 	private final boolean nullable;
 
@@ -39,10 +39,6 @@ public class SerializerGenEnum implements SerializerGen {
 	public SerializerGenEnum(Class<?> c, boolean nullable) {
 		this.nameOfEnum = c;
 		this.nullable = nullable;
-	}
-
-	public SerializerGenEnum nullable(boolean nullable) {
-		return new SerializerGenEnum(nameOfEnum, nullable);
 	}
 
 	@Override
@@ -84,7 +80,7 @@ public class SerializerGenEnum implements SerializerGen {
 
 	@Override
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		ExpressionLet value = let(call(arg(0), "readByte"));
+		Variable value = let(call(arg(0), "readByte"));
 		if (!nullable) {
 			return getArrayItem(callStatic(nameOfEnum, "values"), value);
 		} else {
@@ -109,4 +105,8 @@ public class SerializerGenEnum implements SerializerGen {
 		return 0;
 	}
 
+	@Override
+	public SerializerGen setNullable() {
+		return new SerializerGenEnum(nameOfEnum, true);
+	}
 }

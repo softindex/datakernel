@@ -218,7 +218,7 @@ public final class SerializerUtils {
 		}
 	}
 
-	private static int writeWithLengthNullable(byte[] buf, int off, byte[] bytes) {
+	public static int writeWithLengthNullable(byte[] buf, int off, byte[] bytes) {
 		off = writeVarInt(buf, off, bytes.length + 1);
 		return write(bytes, buf, off);
 	}
@@ -256,7 +256,7 @@ public final class SerializerUtils {
 		return off;
 	}
 
-	private static int writeUtfChar(byte[] buf, int off, int c) {
+	public static int writeUtfChar(byte[] buf, int off, int c) {
 		if (c <= 0x07FF) {
 			buf[off] = (byte) (0xC0 | c >> 6 & 0x1F);
 			buf[off + 1] = (byte) (0x80 | c & 0x3F);

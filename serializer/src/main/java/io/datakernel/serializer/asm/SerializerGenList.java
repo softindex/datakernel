@@ -18,6 +18,7 @@ package io.datakernel.serializer.asm;
 
 import io.datakernel.codegen.*;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.SerializerUtils;
 
@@ -28,11 +29,18 @@ import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 
 @SuppressWarnings("PointlessArithmeticExpression")
-public final class SerializerGenList implements SerializerGen {
+public final class SerializerGenList implements SerializerGen, NullableOptimization {
 	private final SerializerGen valueSerializer;
+	private final boolean nullable;
 
 	public SerializerGenList(SerializerGen valueSerializer) {
 		this.valueSerializer = checkNotNull(valueSerializer);
+		this.nullable = false;
+	}
+
+	public SerializerGenList(SerializerGen valueSerializer, boolean nullable) {
+		this.valueSerializer = checkNotNull(valueSerializer);
+		this.nullable = nullable;
 	}
 
 	@Override
@@ -57,15 +65,21 @@ public final class SerializerGenList implements SerializerGen {
 
 	@Override
 	public Expression serialize(final Expression byteArray, final Variable off, final Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
-		Expression len = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, length(value)));
+		Expression length = length(value);
+		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression forEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return set(off, valueSerializer.serialize(byteArray, off, it, version, staticMethods, compatibilityLevel));
 			}
 		});
-
-		return sequence(len, forEach, off);
+		if (!nullable) {
+			return sequence(writeLength, forEach, off);
+		} else {
+			return choice(isNull(value),
+					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(writeLength, forEach, off));
+		}
 	}
 
 	@Override
@@ -76,15 +90,22 @@ public final class SerializerGenList implements SerializerGen {
 	@Override
 	public Expression deserialize(Class<?> targetType, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
-		final Expression array = let(Expressions.newArray(Object[].class, len));
-		Expression forEach = expressionFor(len, new ForVar() {
+		final Expression array = let(Expressions.newArray(Object[].class, (!nullable ? len : dec(len))));
+		Expression forEach = expressionFor((!nullable ? len : dec(len)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return setArrayItem(array, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel));
 			}
 		});
+		Expression asList = set((StoreDef) array, callStatic(Arrays.class, "asList", array));
 
-		return sequence(array, forEach, set((StoreDef) array, callStatic(Arrays.class, "asList", array)), array);
+		if (!nullable) {
+			return sequence(array, forEach, asList, array);
+		} else {
+			return choice(cmpEq(len, value(0)),
+					nullRef(List.class),
+					sequence(array, forEach, asList, array));
+		}
 	}
 
 	@Override
@@ -102,5 +123,10 @@ public final class SerializerGenList implements SerializerGen {
 	@Override
 	public int hashCode() {
 		return valueSerializer.hashCode();
+	}
+
+	@Override
+	public SerializerGen setNullable() {
+		return new SerializerGenList(valueSerializer, true);
 	}
 }

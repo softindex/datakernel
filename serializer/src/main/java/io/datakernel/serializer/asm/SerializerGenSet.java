@@ -21,6 +21,7 @@ import io.datakernel.codegen.ForVar;
 import io.datakernel.codegen.Variable;
 import io.datakernel.codegen.utils.Preconditions;
 import io.datakernel.serializer.CompatibilityLevel;
+import io.datakernel.serializer.NullableOptimization;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.SerializerUtils;
 
@@ -28,10 +29,19 @@ import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
 
-public class SerializerGenSet implements SerializerGen {
+public class SerializerGenSet implements SerializerGen, NullableOptimization {
 	private final SerializerGen valueSerializer;
+	private final boolean nullable;
 
-	public SerializerGenSet(SerializerGen valueSerializer) {this.valueSerializer = valueSerializer;}
+	public SerializerGenSet(SerializerGen valueSerializer) {
+		this.valueSerializer = valueSerializer;
+		this.nullable = false;
+	}
+
+	public SerializerGenSet(SerializerGen valueSerializer, boolean nullable) {
+		this.valueSerializer = valueSerializer;
+		this.nullable = nullable;
+	}
 
 	@Override
 	public void getVersions(VersionsCollector versions) {
@@ -55,16 +65,23 @@ public class SerializerGenSet implements SerializerGen {
 
 	@Override
 	public Expression serialize(Expression byteArray, final Variable off, Expression value, final int version, final SerializerBuilder.StaticMethods staticMethods, final CompatibilityLevel compatibilityLevel) {
-		return sequence(
-				set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, call(value, "size"))),
-				forEach(value, valueSerializer.getRawType(), new ForVar() {
-					@Override
-					public Expression forVar(Expression it) {
-						return set(off, valueSerializer.serialize(arg(0), arg(1), it, version, staticMethods, compatibilityLevel));
-					}
-				}),
-				off
-		);
+		Expression serializeEach = forEach(value, valueSerializer.getRawType(), new ForVar() {
+			@Override
+			public Expression forVar(Expression it) {
+				return set(off, valueSerializer.serialize(arg(0), arg(1), it, version, staticMethods, compatibilityLevel));
+			}
+		});
+
+		if (!nullable) {
+			return sequence(
+					set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, call(value, "size"))),
+					serializeEach, off);
+		} else {
+			return choice(isNull(value),
+					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
+					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))),
+							serializeEach, off));
+		}
 	}
 
 	@Override
@@ -89,8 +106,8 @@ public class SerializerGenSet implements SerializerGen {
 	                                      final SerializerBuilder.StaticMethods staticMethods,
 	                                      final CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
-		final Expression container = let(newArray(Object[].class, len));
-		Expression array = expressionFor(len, new ForVar() {
+		final Expression container = let(newArray(Object[].class, (!nullable ? len : dec(len))));
+		Expression array = expressionFor((!nullable ? len : dec(len)), new ForVar() {
 			@Override
 			public Expression forVar(Expression it) {
 				return setArrayItem(container, it, valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel));
@@ -98,23 +115,45 @@ public class SerializerGenSet implements SerializerGen {
 		});
 		Expression list = let(cast(callStatic(Arrays.class, "asList", container), Collection.class));
 		Expression enumSet = callStatic(EnumSet.class, "copyOf", list);
-		return sequence(len, container, array, list, enumSet);
+
+		if (!nullable) {
+			return sequence(len, container, array, list, enumSet);
+		} else {
+			return choice(cmpEq(len, value(0)),
+					nullRef(EnumSet.class),
+					sequence(container, array, list, enumSet));
+		}
 	}
+
 
 	private Expression deserializeSimpleSet(final int version,
 	                                        final SerializerBuilder.StaticMethods staticMethods,
 	                                        final CompatibilityLevel compatibilityLevel) {
 		Expression length = let(call(arg(0), "readVarInt"));
-		final Expression container = let(constructor(LinkedHashSet.class, length));
-		return sequence(length, container, expressionFor(length, new ForVar() {
-					@Override
-					public Expression forVar(Expression it) {
-						return sequence(
-								call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)),
-								voidExp()
-						);
-					}
-				}), container
-		);
+
+		final Expression container = let(constructor(LinkedHashSet.class, (!nullable ? length : dec(length))));
+		Expression deserializeEach = expressionFor((!nullable ? length : dec(length)), new ForVar() {
+			@Override
+			public Expression forVar(Expression it) {
+				return sequence(
+						call(container, "add", cast(valueSerializer.deserialize(valueSerializer.getRawType(), version, staticMethods, compatibilityLevel), Object.class)),
+						voidExp()
+				);
+			}
+		});
+		if (!nullable) {
+			return sequence(length, container, deserializeEach, container);
+		} else {
+			return choice(cmpEq(length, value(0)),
+					nullRef(LinkedHashSet.class),
+					sequence(container, deserializeEach, container)
+			);
+		}
+	}
+
+
+	@Override
+	public SerializerGen setNullable() {
+		return new SerializerGenSet(valueSerializer, true);
 	}
 }
