@@ -79,7 +79,7 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 		} else {
 			return choice(isNull(value),
 					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
-					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, add(call(value, "size"), value(1)))),
+					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, inc(call(value, "size")))),
 							serializeEach, off));
 		}
 	}
@@ -106,7 +106,6 @@ public class SerializerGenSet implements SerializerGen, NullableOptimization {
 	                                      final SerializerBuilder.StaticMethods staticMethods,
 	                                      final CompatibilityLevel compatibilityLevel) {
 		Expression len = let(call(arg(0), "readVarInt"));
-
 		final Expression container = let(newArray(Object[].class, (!nullable ? len : dec(len))));
 		Expression array = expressionFor((!nullable ? len : dec(len)), new ForVar() {
 			@Override

@@ -30,6 +30,7 @@ import java.util.List;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static org.objectweb.asm.Type.getType;
 
 @SuppressWarnings("PointlessArithmeticExpression")
 public class SerializerGenSubclass implements SerializerGen, NullableOptimization {
@@ -108,21 +109,21 @@ public class SerializerGenSubclass implements SerializerGen, NullableOptimizatio
 			SerializerGen subclassSerializer = subclassSerializers.get(subclass);
 			subclassSerializer.prepareSerializeStaticMethods(version, staticMethods, compatibilityLevel);
 
-			listKey.add(value(subclass.getName()));
+			listKey.add(cast(value(getType(subclass)), Object.class));
 			listValue.add(sequence(
 					set(arg(1), callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value(subClassN++))),
 					subclassSerializer.serialize(arg(0), arg(1), cast(arg(2), subclassSerializer.getRawType()), version, staticMethods, compatibilityLevel)
 			));
 		}
-		if (!nullable) {
+		if (nullable) {
 			staticMethods.registerStaticSerializeMethod(this, version,
-					switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue)
+					choice(isNotNull(arg(2)),
+							switchForKey(cast(call(cast(arg(2), Object.class), "getClass"), Object.class), listKey, listValue),
+							callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value((byte) 0)))
 			);
 		} else {
 			staticMethods.registerStaticSerializeMethod(this, version,
-					choice(isNotNull(arg(2)),
-							switchForKey(cast(call(call(cast(arg(2), Object.class), "getClass"), "getName"), Object.class), listKey, listValue),
-							callStatic(SerializerUtils.class, "writeByte", arg(0), arg(1), value((byte) 0)))
+					switchForKey(cast(call(cast(arg(2), Object.class), "getClass"), Object.class), listKey, listValue)
 			);
 		}
 	}

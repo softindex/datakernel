@@ -127,7 +127,7 @@ public class SerializerGenHppcSet implements SerializerGen, NullableOptimization
 			return sequence(writeLength, hppcSetForEach, off);
 		} else {
 			return choice(isNull(value),
-					set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))),
+					sequence(set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0))), off),
 					sequence(writeLength, hppcSetForEach, off));
 		}
 	}
