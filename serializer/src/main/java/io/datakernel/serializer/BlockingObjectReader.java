@@ -16,10 +16,9 @@
 
 package io.datakernel.serializer;
 
+import java.io.Closeable;
 import java.io.IOException;
 
-public interface ObjectReader<T> {
-	T read();
-
-	void close() throws IOException;
+public interface BlockingObjectReader<T> extends Closeable {
+	T read() throws IOException;
 }

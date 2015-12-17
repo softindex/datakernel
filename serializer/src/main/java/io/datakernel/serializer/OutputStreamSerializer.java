@@ -21,7 +21,7 @@ import java.io.OutputStream;
 
 import static java.lang.Math.max;
 
-public final class SerializeOutputStream<T> implements ObjectWriter<T> {
+public final class OutputStreamSerializer<T> implements BlockingObjectWriter<T> {
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 	public static final int DEFAULT_BUFFER_SIZE = 1 << 20;
 
@@ -43,11 +43,11 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 	private final int bufferSize;
 	private int estimatedMessageSize;
 
-	public SerializeOutputStream(OutputStream output, BufferSerializer<T> serializer, int maxMessageSize, boolean skipSerializationErrors) {
+	public OutputStreamSerializer(OutputStream output, BufferSerializer<T> serializer, int maxMessageSize, boolean skipSerializationErrors) {
 		this(output, serializer, maxMessageSize, DEFAULT_BUFFER_SIZE, skipSerializationErrors);
 	}
 
-	public SerializeOutputStream(OutputStream outputStream, BufferSerializer<T> serializer, int maxMessageSize, int bufferSize, boolean skipSerializationErrors) {
+	public OutputStreamSerializer(OutputStream outputStream, BufferSerializer<T> serializer, int maxMessageSize, int bufferSize, boolean skipSerializationErrors) {
 		this.serializer = serializer;
 		this.bufferSize = bufferSize;
 		this.outputStream = outputStream;
@@ -154,7 +154,7 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 		}
 	}
 
-	public void write() throws IOException {
+	private void write() throws IOException {
 		int size = outputBuffer.position();
 		if (size != 0) {
 			outputStream.write(outputBuffer.array(), 0, size);
@@ -164,6 +164,7 @@ public final class SerializeOutputStream<T> implements ObjectWriter<T> {
 
 	@Override
 	public void flush() throws IOException {
+		write();
 		outputStream.flush();
 	}
 

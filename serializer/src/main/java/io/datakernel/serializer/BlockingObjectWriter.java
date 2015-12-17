@@ -16,12 +16,11 @@
 
 package io.datakernel.serializer;
 
+import java.io.Closeable;
 import java.io.IOException;
 
-public interface ObjectWriter<T> {
+public interface BlockingObjectWriter<T> extends Closeable {
 	void write(T value) throws IOException;
 
 	void flush() throws IOException;
-
-	void close() throws IOException;
 }
