@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.util.Preconditions.checkArgument;
+
 public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationChunker.class);
 
@@ -74,6 +76,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			public InputConsumer(String aggregationId, List<String> keys, List<String> fields,
 			                     Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 			                     int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+				checkArgument(chunkSize > 0);
 				this.aggregationId = aggregationId;
 				this.keys = keys;
 				this.fields = fields;
@@ -82,14 +85,16 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				this.storage = storage;
 				this.metadataStorage = metadataStorage;
 				this.chunkSize = chunkSize;
-				this.pendingChunks = 1;
-				startNewChunk();
 			}
 
 			@Override
 			protected void onUpstreamEndOfStream() {
 				saveChunk();
-				outputProducer.sendEndOfStream();
+
+				if (outputProducer.getDownstream() != null) {
+					outputProducer.sendEndOfStream();
+				}
+
 				logger.trace("{}: downstream producer {} closed.", this, outputProducer);
 			}
 
@@ -107,16 +112,19 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 
 			@Override
 			public void onData(T item) {
-				if (first == null) {
+				if (outputProducer.getDownstream() == null) {
+					++pendingChunks;
+					startNewChunk();
+					first = item;
+				} else if (count == chunkSize) {
+					rotateChunk();
 					first = item;
 				}
-				last = item;
+
+				++count;
 
 				outputProducer.send(item);
-
-				if (count++ == chunkSize) {
-					rotateChunk();
-				}
+				last = item;
 			}
 
 			private void rotateChunk() {

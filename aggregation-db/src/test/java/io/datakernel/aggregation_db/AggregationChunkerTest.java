@@ -127,10 +127,11 @@ public class AggregationChunkerTest {
 		eventloop.run();
 
 		assertTrue(list.size() == 1);
-		assertTrue(list.get(0).size() == 2);
+		assertTrue(list.get(0).size() == 3);
 
-		assertEquals(map.get(1L), asList(new KeyValuePair(3, 4, 6), new KeyValuePair(3, 6, 7)));
-		assertEquals(map.get(2L), asList(new KeyValuePair(1, 2, 1)));
+		assertEquals(map.get(1L), asList(new KeyValuePair(3, 4, 6)));
+		assertEquals(map.get(2L), asList(new KeyValuePair(3, 6, 7)));
+		assertEquals(map.get(3L), asList(new KeyValuePair(1, 2, 1)));
 
 		assertEquals(StreamStatus.END_OF_STREAM, producer.getProducerStatus());
 		assertEquals(StreamStatus.END_OF_STREAM, aggregationChunker.getConsumerStatus());
