@@ -30,6 +30,7 @@ import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.ErrorIgnoringTransformer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -60,8 +61,9 @@ public class Aggregation {
 	private final AggregationMetadataStorage metadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final AggregationMetadata aggregationMetadata;
-	private final int aggregationChunkSize;
-	private final int sorterItemsInMemory;
+	private int aggregationChunkSize;
+	private int sorterItemsInMemory;
+	private boolean ignoreChunkReadingExceptions;
 
 	private final AggregationStructure structure;
 
@@ -356,7 +358,8 @@ public class Aggregation {
 		Class<?> resultClass = structure.createRecordClass(getKeys(), fields);
 
 		consolidatedProducer(getKeys(), fields, resultClass, null, chunksToConsolidate)
-				.streamTo(new AggregationChunker(eventloop, getId(), getKeys(), fields, resultClass, aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback));
+				.streamTo(new AggregationChunker(eventloop, getId(), getKeys(), fields, resultClass,
+						aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback));
 	}
 
 	private <T> StreamProducer<T> consolidatedProducer(List<String> keys, List<String> fields, Class<T> resultClass,
@@ -441,11 +444,17 @@ public class Aggregation {
 	                                             AggregationChunk chunk, Class<?> chunkRecordClass) {
 		StreamProducer chunkReader = aggregationChunkStorage.chunkReader(aggregationMetadata.getId(), aggregationMetadata.getKeys(),
 				chunk.getFields(), chunkRecordClass, chunk.getChunkId());
+		StreamProducer chunkProducer = chunkReader;
+		if (ignoreChunkReadingExceptions) {
+			ErrorIgnoringTransformer errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
+			chunkReader.streamTo(errorIgnoringTransformer.getInput());
+			chunkProducer = errorIgnoringTransformer.getOutput();
+		}
 		if (predicates == null)
-			return chunkReader;
+			return chunkProducer;
 		StreamFilter streamFilter = new StreamFilter<>(eventloop,
 				createPredicate(aggregationMetadata, chunk, chunkRecordClass, predicates));
-		chunkReader.streamTo(streamFilter.getInput());
+		chunkProducer.streamTo(streamFilter.getInput());
 		return streamFilter.getOutput();
 	}
 
@@ -564,6 +573,30 @@ public class Aggregation {
 				callback.onComplete();
 			}
 		});
+	}
+
+	public int getAggregationChunkSize() {
+		return aggregationChunkSize;
+	}
+
+	public void setAggregationChunkSize(int aggregationChunkSize) {
+		this.aggregationChunkSize = aggregationChunkSize;
+	}
+
+	public int getSorterItemsInMemory() {
+		return sorterItemsInMemory;
+	}
+
+	public void setSorterItemsInMemory(int sorterItemsInMemory) {
+		this.sorterItemsInMemory = sorterItemsInMemory;
+	}
+
+	public boolean isIgnoreChunkReadingExceptions() {
+		return ignoreChunkReadingExceptions;
+	}
+
+	public void setIgnoreChunkReadingExceptions(boolean ignoreChunkReadingExceptions) {
+		this.ignoreChunkReadingExceptions = ignoreChunkReadingExceptions;
 	}
 
 	@Override

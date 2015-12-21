@@ -54,7 +54,7 @@ import static java.util.Collections.sort;
  * Also provides functionality for managing aggregations.
  */
 @SuppressWarnings("unchecked")
-public final class Cube {
+public final class Cube implements CubeMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
 	private final Eventloop eventloop;
@@ -62,8 +62,9 @@ public final class Cube {
 	private final CubeMetadataStorage cubeMetadataStorage;
 	private final AggregationMetadataStorage aggregationMetadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
-	private final int aggregationChunkSize;
-	private final int sorterItemsInMemory;
+	private int aggregationChunkSize;
+	private int sorterItemsInMemory;
+	private boolean ignoreChunkReadingExceptions;
 
 	private final AggregationStructure structure;
 	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
@@ -501,5 +502,44 @@ public final class Cube {
 				.add("aggregations", aggregations)
 				.add("lastRevisionId", lastRevisionId)
 				.toString();
+	}
+
+	@Override
+	public void setIgnoreChunkReadingExceptions(boolean ignoreChunkReadingExceptions) {
+		this.ignoreChunkReadingExceptions = ignoreChunkReadingExceptions;
+		for (Aggregation aggregation : aggregations.values()) {
+			aggregation.setIgnoreChunkReadingExceptions(ignoreChunkReadingExceptions);
+		}
+	}
+
+	@Override
+	public boolean isIgnoreChunkReadingExceptions() {
+		return ignoreChunkReadingExceptions;
+	}
+
+	@Override
+	public void setChunkSize(int chunkSize) {
+		this.aggregationChunkSize = chunkSize;
+		for (Aggregation aggregation : aggregations.values()) {
+			aggregation.setAggregationChunkSize(chunkSize);
+		}
+	}
+
+	@Override
+	public int getChunkSize() {
+		return aggregationChunkSize;
+	}
+
+	@Override
+	public void setSorterItemsInMemory(int sorterItemsInMemory) {
+		this.sorterItemsInMemory = sorterItemsInMemory;
+		for (Aggregation aggregation : aggregations.values()) {
+			aggregation.setSorterItemsInMemory(sorterItemsInMemory);
+		}
+	}
+
+	@Override
+	public int getSorterItemsInMemory() {
+		return sorterItemsInMemory;
 	}
 }

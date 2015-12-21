@@ -40,7 +40,7 @@ public class ErrorIgnoringTransformer<T> extends AbstractStreamTransformer_1_1<T
 
 		@Override
 		protected void onError(Exception e) {
-			logger.info("Ignoring exception", e);
+			logger.warn("Ignoring exception", e);
 			outputProducer.sendEndOfStream();
 		}
 	}
