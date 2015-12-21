@@ -115,7 +115,7 @@ public class ContentType {
 	public static final ContentType EDI_X12 = register("application/EDI-X12");
 	public static final ContentType EDI_EDIFACT = register("application/EDIFACT");
 	public static final ContentType JSON = register("application/json").addExtensions("json");
-	public static final ContentType JAVASCRIPT_APP = register("application/javascript");
+	public static final ContentType JAVASCRIPT_APP = register("application/javascript").addExtensions("js");
 	public static final ContentType OCTET_STREAM = register("application/octet-stream").addExtensions("com", "exe", "bin");
 	public static final ContentType ZIP = register("application/zip").addExtensions("zip", "zipx");
 	public static final ContentType GZIP = register("application/gzip").addExtensions("gzip", "gz");
@@ -146,7 +146,7 @@ public class ContentType {
 	public static final ContentType RTF = register("text/rtf").addExtensions("rtf");
 	public static final ContentType XML = register("text/xml").addExtensions("xml");
 	public static final ContentType XHTML = register("text/xhtml+xml").addExtensions("xhtml");
-	public static final ContentType JAVASCRIPT_TXT = register("text/javascript").addExtensions("js");
+	public static final ContentType JAVASCRIPT_TXT = register("text/javascript");
 
 	public static final ContentType BMP = register("image/bmp").addExtensions("bmp");
 	public static final ContentType ICO = register("image/vnd.microsoft.icon").addExtensions("ico");
@@ -387,5 +387,14 @@ public class ContentType {
 			}
 		}
 		return pos;
+	}
+
+	// helpers
+	static boolean isText(ContentType ct) {
+		return ct.bytes.length > 5 && ct.bytes[0] == 't'
+				&& ct.bytes[1] == 'e'
+				&& ct.bytes[2] == 'x'
+				&& ct.bytes[3] == 't'
+				&& ct.bytes[4] == '/';
 	}
 }
