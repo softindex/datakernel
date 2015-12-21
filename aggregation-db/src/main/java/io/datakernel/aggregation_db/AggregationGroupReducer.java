@@ -28,7 +28,8 @@ import java.util.*;
 
 import static com.google.common.collect.Iterables.transform;
 
-public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
+public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>,
+		AggregationGroupReducerMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
 
 	private final AggregationChunkStorage storage;
@@ -177,5 +178,10 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	protected void onError(Exception e) {
 		logger.error("{}: upstream producer {} exception", this, upstreamProducer, e);
 		chunksCallback.onException(e);
+	}
+
+	@Override
+	public void flush() {
+		doNext();
 	}
 }
