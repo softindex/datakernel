@@ -82,14 +82,13 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields,
-	                                         Class<T> recordClass, long id, CompletionCallback callback) {
+	public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
 		chunkTypes.put(id, recordClass);
 		ArrayList<Object> list = new ArrayList<>();
 		lists.put(id, list);
 		StreamConsumers.ToList<Object> listConsumer = StreamConsumers.toList(eventloop, list);
 		listConsumer.setCompletionCallback(callback);
-		return  (StreamConsumer<T>) listConsumer;
+		producer.streamTo((StreamConsumer<T>) listConsumer);
 	}
 
 	@Override

@@ -27,6 +27,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.AsyncExecutors;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeMetadataStorage;
@@ -154,8 +155,10 @@ public class CubeExample {
 
 	/* Create AggregationChunkStorage, that controls saving and reading aggregated data chunks. */
 	private static AggregationChunkStorage getAggregationChunkStorage(NioEventloop eventloop, ExecutorService executor,
-	                                                                  AggregationStructure structure, Path aggregationsDir) {
-		return new LocalFsChunkStorage(eventloop, executor, structure, aggregationsDir);
+	                                                                  AggregationStructure structure,
+	                                                                  Path aggregationsDir) {
+		return new LocalFsChunkStorage(eventloop, executor, AsyncExecutors.sequentialExecutor(),
+				structure, aggregationsDir);
 	}
 
 	/* Instantiate LogManager, that serializes LogItem's and saves them as logs to LogFileSystem. */

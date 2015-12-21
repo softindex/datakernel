@@ -47,10 +47,9 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final List<AggregationChunk.NewChunk> chunks = new ArrayList<>();
 	private boolean saving;
 
-	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-	                               AggregationMetadata aggregationMetadata, List<String> fields,
-	                               Class<?> accumulatorClass,
-	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
+	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
+	                               AggregationMetadataStorage metadataStorage, AggregationMetadata aggregationMetadata,
+	                               Class<?> accumulatorClass, Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback, int chunkSize) {
 		super(eventloop);
 		this.storage = storage;
@@ -136,9 +135,9 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 					}
 				});
 
-				final StreamProducer<Object> producer = StreamProducers.ofIterable(eventloop, list);
+				final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 
-				StreamConsumer consumer = storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId, new CompletionCallback() {
+				storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId, producer, new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						saving = false;
@@ -156,8 +155,6 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 						closeWithError(e);
 					}
 				});
-
-				producer.streamTo(consumer);
 
 				AggregationGroupReducer.this.resume();
 			}

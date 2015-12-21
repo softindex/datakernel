@@ -27,6 +27,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.AsyncExecutors;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.NioEventloop;
@@ -126,8 +127,10 @@ public class CubeIntegrationTest {
 	}
 
 	private static AggregationChunkStorage getAggregationChunkStorage(NioEventloop eventloop, ExecutorService executor,
-	                                                                  AggregationStructure structure, Path aggregationsDir) {
-		return new LocalFsChunkStorage(eventloop, executor, structure, aggregationsDir);
+	                                                                  AggregationStructure structure,
+	                                                                  Path aggregationsDir) {
+		return new LocalFsChunkStorage(eventloop, executor, AsyncExecutors.sequentialExecutor(),
+				structure, aggregationsDir);
 	}
 
 	private static LogManager<LogItem> getLogManager(NioEventloop eventloop, ExecutorService executor,

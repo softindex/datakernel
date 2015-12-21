@@ -72,13 +72,13 @@ public class AggregationChunkerTest {
 			}
 
 			@Override
-			public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, CompletionCallback callback) {
+			public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
 				List<T> list = new ArrayList<>();
 				map.put(id, list);
 				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
-				return consumer;
+				producer.streamTo(consumer);
 			}
 
 			@Override
@@ -165,13 +165,13 @@ public class AggregationChunkerTest {
 			}
 
 			@Override
-			public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, CompletionCallback callback) {
+			public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
 				List<T> list = new ArrayList<>();
 				map.put(aggregationId, list);
 				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
-				return consumer;
+				producer.streamTo(consumer);
 			}
 
 			@Override
@@ -266,18 +266,18 @@ public class AggregationChunkerTest {
 			}
 
 			@Override
-			public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, CompletionCallback callback) {
+			public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
 				List<T> list = new ArrayList<>();
 				map.put(aggregationId, list);
 				if (id == 1) {
 					StreamConsumers.ToList<T> toList = StreamConsumers.toList(eventloop, list);
 					listConsumers.add(toList);
-					return toList;
+					producer.streamTo(toList);
 				} else {
 					StreamConsumers.ClosingWithError<T> consumer = StreamConsumers.closingWithError(eventloop, new Exception("Test Exception"));
 					consumer.setCompletionCallback(callback);
 					listConsumers.add(consumer);
-					return consumer;
+					producer.streamTo(consumer);
 				}
 			}
 

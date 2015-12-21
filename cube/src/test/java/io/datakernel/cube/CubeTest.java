@@ -27,6 +27,7 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.AsyncExecutors;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
@@ -196,7 +197,8 @@ public class CubeTest {
 		Path serverStorage = temporaryFolder.newFolder().toPath();
 		final NioService simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
-		AggregationChunkStorage storage = new SimpleFsAggregationStorage(eventloop, aggregationStructure, new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
+		AggregationChunkStorage storage = new SimpleFsChunkStorage(eventloop, aggregationStructure,
+				AsyncExecutors.sequentialExecutor(), new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
 
 		final int consumers = 2;
@@ -473,8 +475,8 @@ public class CubeTest {
 		ExecutorService executorService = newSingleThreadExecutor();
 		Path dir = temporaryFolder.newFolder().toPath();
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
-		AggregationChunkStorage storage = new LocalFsChunkStorage(eventloop, executorService, aggregationStructure,
-				dir);
+		AggregationChunkStorage storage = new LocalFsChunkStorage(eventloop, executorService,
+				AsyncExecutors.sequentialExecutor(), aggregationStructure, dir);
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
 				.streamTo(cube.consumer(DataItem1.class, DataItem1.DIMENSIONS, DataItem1.METRICS, new MyCommitCallback(cube)));

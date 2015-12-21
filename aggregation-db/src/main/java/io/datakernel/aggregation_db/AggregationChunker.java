@@ -19,10 +19,7 @@ package io.datakernel.aggregation_db;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamConsumerDecorator;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,7 +149,9 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				last = null;
 				count = 0;
 
-				StreamConsumer<T> consumer = storage.chunkWriter(aggregationId, keys, fields, recordClass, newId, new CompletionCallback() {
+				StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
+				outputProducer.streamTo(forwarder.getInput());
+				storage.chunkWriter(aggregationId, keys, fields, recordClass, newId, forwarder.getOutput(), new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						if (--pendingChunks == 0) {
@@ -167,8 +166,6 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 						closeWithError(exception);
 					}
 				});
-
-				outputProducer.streamTo(consumer);
 			}
 		}
 

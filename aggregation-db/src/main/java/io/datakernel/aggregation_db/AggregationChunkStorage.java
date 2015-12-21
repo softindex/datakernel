@@ -49,10 +49,10 @@ public interface AggregationChunkStorage {
 	 * @param fields        fields of chunk record
 	 * @param recordClass   class of chunk record
 	 * @param id            id of chunk
-	 * @return StreamConsumer, which will write records, streamed from wired producer.
+	 * @param producer      producer of records
 	 */
-	<T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
-	                                  long id, CompletionCallback callback);
+	<T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+	                     long id, StreamProducer<T> producer, CompletionCallback callback);
 
 	/**
 	 * Removes the chunk determined by {@code aggregationId} and {@code id}.

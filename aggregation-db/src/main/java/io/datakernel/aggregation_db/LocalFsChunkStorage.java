@@ -16,11 +16,12 @@
 
 package io.datakernel.aggregation_db;
 
+import io.datakernel.async.AsyncExecutor;
+import io.datakernel.async.AsyncTask;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -46,14 +47,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
+	private final AsyncExecutor asyncExecutor;
 	private final AggregationStructure structure;
-	private final int bufferSize;
 
 	private final Path dir;
-
-	public LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AggregationStructure structure, Path dir) {
-		this(eventloop, executorService, structure, dir, 128 * 1024);
-	}
 
 	/**
 	 * Constructs an aggregation storage, that runs in the specified event loop, performs blocking IO in the given executor,
@@ -62,15 +59,14 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	 * @param eventloop       event loop, in which aggregation storage is to run
 	 * @param executorService executor, where blocking IO operations are to be run
 	 * @param dir             directory where data is saved
-	 * @param bufferSize      size of the buffer
 	 */
-	public LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AggregationStructure structure,
-	                           Path dir, int bufferSize) {
+	public LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AsyncExecutor asyncExecutor,
+	                           AggregationStructure structure, Path dir) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
+		this.asyncExecutor = asyncExecutor;
 		this.structure = structure;
 		this.dir = dir;
-		this.bufferSize = bufferSize;
 	}
 
 	private Path path(long id) {
@@ -95,7 +91,8 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields,
+	                                         Class<T> recordClass, long id) {
 		logger.info("Reading chunk #" + id);
 		StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
 				path(id), 0L);
@@ -111,19 +108,23 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamConsumer<T> chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id,
-	                                         CompletionCallback callback) {
+	public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+	                            long id, final StreamProducer<T> producer, CompletionCallback callback) {
 		logger.info("Writing chunk #" + id);
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
-		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
-		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id));
+		final StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
+				StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
+		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+		final StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id));
 
-		serializer.getOutput().streamTo(compressor.getInput());
-		compressor.getOutput().streamTo(writer);
-
-		writer.setFlushCallback(callback);
-
-		return serializer.getInput();
+		asyncExecutor.submit(new AsyncTask() {
+			@Override
+			public void execute(CompletionCallback callback) {
+				producer.streamTo(serializer.getInput());
+				serializer.getOutput().streamTo(compressor.getInput());
+				compressor.getOutput().streamTo(writer);
+				writer.setFlushCallback(callback);
+			}
+		}, callback);
 	}
 }

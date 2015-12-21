@@ -58,6 +58,7 @@ public final class ParallelAsyncExecutor implements AsyncExecutor {
 		if (!taskQueue.isEmpty()) {
 			AsyncTask queuedTask = taskQueue.pollFirst();
 			CompletionCallback queuedCallback = callbackQueue.pollFirst();
+			++executing;
 			queuedTask.execute(getInternalCallback(queuedCallback));
 		}
 	}

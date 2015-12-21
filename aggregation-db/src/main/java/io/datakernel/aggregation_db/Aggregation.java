@@ -262,7 +262,7 @@ public class Aggregation {
 				inputFields, aggregationMetadata.getOutputFields());
 
 		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage,
-				metadataStorage, aggregationMetadata, inputFields, aggregationClass, keyFunction, aggregate,
+				metadataStorage, aggregationMetadata, aggregationClass, keyFunction, aggregate,
 				chunksCallback, aggregationChunkSize);
 	}
 

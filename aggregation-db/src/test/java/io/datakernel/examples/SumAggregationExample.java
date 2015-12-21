@@ -24,6 +24,7 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.aggregation_db.keytype.KeyTypeLong;
+import io.datakernel.async.AsyncExecutors;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -66,7 +67,7 @@ public class SumAggregationExample {
 
 		// local file system storage for data
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
-				aggregationStructure, Paths.get(DATA_PATH));
+				AsyncExecutors.sequentialExecutor(), aggregationStructure, Paths.get(DATA_PATH));
 
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, aggregationStructure, summationProcessorFactory);
