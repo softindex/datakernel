@@ -78,7 +78,7 @@ public class LogManagerTest {
 		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
 		NioEventloop eventloop = new NioEventloop(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
-		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, testDir);
+		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
 		LogManager<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.stringSerializer());
 		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("1", "2", "3").iterator())
 				.streamTo(logManager.consumer("p1"));
@@ -110,7 +110,7 @@ public class LogManagerTest {
 		final SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
 		final NioEventloop eventloop = new NioEventloop(timeProvider);
 
-		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, testDir);
+		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.stringSerializer());
 		final StreamSender<String> streamSender = new StreamSender<>(eventloop, false);
 		streamSender.streamTo(logManager.consumer(logPartition));

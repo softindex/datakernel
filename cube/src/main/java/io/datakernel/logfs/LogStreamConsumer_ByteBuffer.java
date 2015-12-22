@@ -126,17 +126,15 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 						}
 
 						currentLogFile = result;
-						StreamFileWriter currentConsumer = fileSystem.writer(streamId, currentLogFile);
 						ConsumerErrorIgnoring consumerErrorIgnoring = new ConsumerErrorIgnoring(eventloop);
+						fileSystem.write(streamId, currentLogFile, consumerErrorIgnoring.getOutput(), createCloseCompletionCallback());
 						outputProducer.streamTo(consumerErrorIgnoring.getInput());
-						consumerErrorIgnoring.getOutput().streamTo(currentConsumer);
-						currentConsumer.setFlushCallback(createCloseCompletionCallback());
 
 						if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-							currentConsumer.onProducerEndOfStream();
+							consumerErrorIgnoring.getInput().onProducerEndOfStream();
 						}
 						if (getConsumerStatus() == StreamStatus.CLOSED_WITH_ERROR) {
-							currentConsumer.onProducerError(getConsumerException());
+							consumerErrorIgnoring.getInput().onProducerError(getConsumerException());
 						}
 						if (newFile) {
 							newFile = false;

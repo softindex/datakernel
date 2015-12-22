@@ -16,7 +16,7 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -43,8 +43,8 @@ import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
 /**
  * Represents a file system for persisting logs. Stores files in a local file system.
  */
-public final class LogFileSystemImpl implements LogFileSystem {
-	private static final Logger logger = LoggerFactory.getLogger(LogFileSystemImpl.class);
+public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
+	private static final Logger logger = LoggerFactory.getLogger(LocalFsLogFileSystem.class);
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
@@ -58,78 +58,21 @@ public final class LogFileSystemImpl implements LogFileSystem {
 	 * @param executorService executor for blocking IO operations
 	 * @param dir             directory for storing log files
 	 */
-	public LogFileSystemImpl(Eventloop eventloop, ExecutorService executorService,
-	                         Path dir) {
+	public LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService,
+	                            Path dir) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.dir = dir;
 	}
 
-	public LogFileSystemImpl(Eventloop eventloop, ExecutorService executorService, Path dir, String logName) {
+	public LocalFsLogFileSystem(Eventloop eventloop, ExecutorService executorService, Path dir, String logName) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.dir = dir.resolve(logName);
 	}
 
-	private static final class PartitionAndFile {
-		private final String logPartition;
-		private final LogFile logFile;
-
-		private PartitionAndFile(String logPartition, LogFile logFile) {
-			this.logPartition = logPartition;
-			this.logFile = logFile;
-		}
-	}
-
-	private static PartitionAndFile parse(Path path) {
-		String s = path.getFileName().toString();
-		int index1 = s.indexOf('.');
-		if (index1 == -1)
-			return null;
-		String name = s.substring(0, index1);
-		if (name.isEmpty())
-			return null;
-		s = s.substring(index1 + 1);
-		if (!s.endsWith(".log"))
-			return null;
-		s = s.substring(0, s.length() - 4);
-		int n = 0;
-		int index2 = s.indexOf('-');
-		String logPartition;
-		if (index2 != -1) {
-			logPartition = s.substring(0, index2);
-			try {
-				n = Integer.parseInt(s.substring(index2 + 1));
-			} catch (NumberFormatException e) {
-				return null;
-			}
-		} else {
-			logPartition = s;
-		}
-		if (logPartition.isEmpty())
-			return null;
-		return new PartitionAndFile(logPartition, new LogFile(name, n));
-	}
-
 	private Path path(String logPartition, LogFile logFile) {
-		String filename = logFile.getName() + "." + logPartition + (logFile.getN() != 0 ? "-" + logFile.getN() : "") + ".log";
-		return dir.resolve(filename);
-	}
-
-	@Override
-	public void makeUniqueLogFile(String logPartition, final String logName, final ResultCallback<LogFile> callback) {
-		list(logPartition, new ForwardingResultCallback<List<LogFile>>(callback) {
-			@Override
-			public void onResult(List<LogFile> logFiles) {
-				int chunkN = 0;
-				for (LogFile logFile : logFiles) {
-					if (logFile.getName().equals(logName)) {
-						chunkN = Math.max(chunkN, logFile.getN() + 1);
-					}
-				}
-				callback.onResult(new LogFile(logName, chunkN));
-			}
-		});
+		return dir.resolve(fileName(logPartition, logFile));
 	}
 
 	@Override
@@ -150,7 +93,7 @@ public final class LogFileSystemImpl implements LogFileSystem {
 
 						@Override
 						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-							PartitionAndFile partitionAndFile = parse(file);
+							PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
 							if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
 								entries.add(partitionAndFile.logFile);
 							}
@@ -186,13 +129,18 @@ public final class LogFileSystemImpl implements LogFileSystem {
 	}
 
 	@Override
-	public StreamFileReader reader(String logPartition, LogFile logFile, long positionFrom) {
-		return StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024, path(logPartition, logFile), positionFrom);
+	public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer,
+	                 ResultCallback<Long> positionCallback) {
+		StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
+				path(logPartition, logFile), startPosition);
+		reader.setPositionCallback(positionCallback);
+		reader.streamTo(consumer);
 	}
 
 	@Override
-	public StreamFileWriter writer(String logPartition, LogFile logFile) {
-		return StreamFileWriter.createFile(eventloop, executorService, path(logPartition, logFile));
+	public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(logPartition, logFile));
+		writer.setFlushCallback(callback);
+		producer.streamTo(writer);
 	}
-
 }

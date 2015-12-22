@@ -164,7 +164,7 @@ public class CubeExample {
 	/* Instantiate LogManager, that serializes LogItem's and saves them as logs to LogFileSystem. */
 	private static LogManager<LogItem> getLogManager(NioEventloop eventloop, ExecutorService executor,
 	                                                 DefiningClassLoader classLoader, Path logsDir) {
-		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, logsDir);
+		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, logsDir);
 		BufferSerializer<LogItem> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(classLoader)
 				.create(LogItem.class);

@@ -51,9 +51,17 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	}
 
 	@Override
-	public LogStreamProducer<T> producer(String logPartition, LogFile logFile, long position,
+	public LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
 	                                     ResultCallback<LogPosition> positionCallback) {
-		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition, new LogPosition(logFile, position), positionCallback);
+		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition,
+				new LogPosition(startLogFile, startPosition), null, positionCallback);
 	}
 
+	@Override
+	public LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
+	                                     LogFile endLogFile, ResultCallback<LogPosition> positionCallback) {
+		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition,
+				new LogPosition(startLogFile, startPosition), endLogFile,
+				positionCallback);
+	}
 }

@@ -27,7 +27,7 @@ import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.logfs.LogFileSystemImpl;
+import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
 import io.datakernel.logfs.LogToCubeRunner;
@@ -92,7 +92,7 @@ public class LogToCubeTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Path dir = temporaryFolder.newFolder().toPath();
 		deleteRecursivelyQuietly(dir);
-		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, dir);
+		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, dir);
 		BufferSerializer<TestPubRequest> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(classLoader)
 				.create(TestPubRequest.class);
