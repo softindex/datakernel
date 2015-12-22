@@ -22,6 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.AbstractStreamProducer;
+import io.datakernel.stream.StreamStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +51,8 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	protected long length;
 
 	protected boolean pendingAsyncOperation;
+
+	private ResultCallback<Long> positionCallback;
 
 	public StreamFileReader(Eventloop eventloop, ExecutorService executor,
 	                        int bufferSize,
@@ -107,6 +110,18 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		return new StreamFileReader(eventloop, executor, bufferSize, path, position, Long.MAX_VALUE);
 	}
 
+	public void setPositionCallback(ResultCallback<Long> positionCallback) {
+		if (getProducerStatus().isOpen()) {
+			this.positionCallback = positionCallback;
+		} else {
+			if (getProducerStatus() == StreamStatus.END_OF_STREAM) {
+				positionCallback.onResult(position);
+			} else {
+				positionCallback.onException(getProducerException());
+			}
+		}
+	}
+
 	protected void doFlush() {
 		if (getProducerStatus().isClosed() || asyncFile == null)
 			return;
@@ -132,6 +147,10 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					buf.recycle();
 					doCleanup();
 					sendEndOfStream();
+
+					if (positionCallback != null)
+						positionCallback.onResult(position);
+
 					return;
 				} else {
 					position += result;
@@ -149,6 +168,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 				buf.recycle();
 				doCleanup();
 				closeWithError(e);
+
+				if (positionCallback != null)
+					positionCallback.onException(e);
 			}
 		});
 	}
@@ -191,6 +213,9 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			@Override
 			public void onException(Exception exception) {
 				closeWithError(exception);
+
+				if (positionCallback != null)
+					positionCallback.onException(exception);
 			}
 		});
 	}
