@@ -279,15 +279,15 @@ public final class SimpleFsServer implements NioService {
 		return fileSystem.exists(fileName);
 	}
 
-	StreamProducer<ByteBuf> download(final String fileName) {
-		logger.info("Received command to download file: {}", fileName);
+	StreamProducer<ByteBuf> download(String fileName, long startPosition) {
+		logger.info("Received command to download file: {}, start position: {}", fileName, startPosition);
 
 		if (serverStatus != RUNNING) {
 			logger.info("Can't perform operation. Server is down!");
 			return StreamProducers.closingWithError(eventloop, SERVER_IS_DOWN_EXCEPTION);
 		}
 
-		return fileSystem.get(fileName);
+		return fileSystem.get(fileName, startPosition);
 	}
 
 	void delete(String fileName, CompletionCallback callback) {

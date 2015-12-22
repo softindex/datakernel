@@ -135,7 +135,7 @@ public class CubeIntegrationTest {
 
 	private static LogManager<LogItem> getLogManager(NioEventloop eventloop, ExecutorService executor,
 	                                                 DefiningClassLoader classLoader, Path logsDir) {
-		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, logsDir);
+		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, logsDir);
 		BufferSerializer<LogItem> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(classLoader)
 				.create(LogItem.class);

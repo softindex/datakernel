@@ -16,6 +16,7 @@
 
 package io.datakernel.simplefs;
 
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
@@ -109,7 +110,12 @@ public final class SimpleFsClient {
 	}
 
 	public void download(String fileName, StreamConsumer<ByteBuf> consumer) {
-		protocol.download(serverAddress, fileName, consumer, ignoreCompletionCallback());
+		protocol.download(serverAddress, fileName, 0, consumer,
+				AsyncCallbacks.<Long>ignoreResultCallback(), ignoreCompletionCallback());
+	}
+
+	public void download(String fileName, long startPosition, StreamConsumer<ByteBuf> consumer, ResultCallback<Long> sizeCallback) {
+		protocol.download(serverAddress, fileName, startPosition, consumer, sizeCallback, ignoreCompletionCallback());
 	}
 
 	public void list(final ResultCallback<List<String>> callback) {

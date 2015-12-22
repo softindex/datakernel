@@ -22,7 +22,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
-import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Decompressor;
@@ -35,9 +34,10 @@ import java.util.List;
 public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	private final String logPartition;
 	private final LogPosition startPosition;
+	private final LogFile endFile;
 	private LogFile currentLogFile;
 	private StreamLZ4Decompressor currentDecompressor;
-	private StreamFileReader currentReader;
+	private long currentPosition;
 	private LogFileSystem fileSystem;
 	private BufferSerializer<T> serializer;
 	private final ResultCallback<LogPosition> positionCallback;
@@ -45,10 +45,12 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	private final Eventloop eventloop;
 
 	public LogStreamProducer(final Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                         String logPartition, LogPosition startPosition, ResultCallback<LogPosition> positionCallback) {
+	                         String logPartition, LogPosition startPosition, LogFile endFile,
+	                         ResultCallback<LogPosition> positionCallback) {
 		this.eventloop = eventloop;
 		this.logPartition = logPartition;
 		this.startPosition = startPosition;
+		this.endFile = endFile;
 		this.fileSystem = fileSystem;
 		this.serializer = serializer;
 		this.positionCallback = positionCallback;
@@ -67,23 +69,27 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 		});
 	}
 
+	private boolean readFile(LogFile logFile) {
+		if (startPosition.getLogFile() != null && logFile.compareTo(startPosition.getLogFile()) < 0)
+			return false;
+
+		if (endFile != null && logFile.compareTo(endFile) > 0)
+			return false;
+
+		return true;
+	}
+
 	private StreamProducer<T> producerForList(List<LogFile> logFiles) {
-		List<LogFile> logFilesToRead;
-		if (startPosition.getLogFile() != null) {
-			logFilesToRead = new ArrayList<>(logFiles.size());
-			for (LogFile logFile : logFiles) {
-				if (logFile.compareTo(startPosition.getLogFile()) >= 0) {
-					logFilesToRead.add(logFile);
-				}
-			}
-		} else {
-			logFilesToRead = logFiles;
+		List<LogFile> logFilesToRead = new ArrayList<>(logFiles.size());
+		for (LogFile logFile : logFiles) {
+			if (readFile(logFile))
+				logFilesToRead.add(logFile);
 		}
 		Collections.sort(logFilesToRead);
 		final Iterator<LogFile> it = logFilesToRead.iterator();
 		return StreamProducers.concat(eventloop, new AsyncIterator<StreamProducer<T>>() {
 			@Override
-			public void next(IteratorCallback<StreamProducer<T>> callback) {
+			public void next(final IteratorCallback<StreamProducer<T>> callback) {
 				if (!it.hasNext()) {
 					callback.onEnd();
 					if (positionCallback != null) {
@@ -95,12 +101,24 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				boolean first = currentLogFile == null;
 				currentLogFile = it.next();
 
-				currentReader = fileSystem.reader(logPartition, currentLogFile, first ? startPosition.getPosition() : 0L);
 				currentDecompressor = new StreamLZ4Decompressor(eventloop);
+
+				fileSystem.read(logPartition, currentLogFile, first ? startPosition.getPosition() : 0L,
+						currentDecompressor.getInput(), new ResultCallback<Long>() {
+							@Override
+							public void onResult(Long position) {
+								currentPosition = position;
+							}
+
+							@Override
+							public void onException(Exception exception) {
+								callback.onException(exception);
+							}
+						});
+
 				StreamBinaryDeserializer<T> currentDeserializer = new StreamBinaryDeserializer<>(eventloop, serializer, StreamBinarySerializer.MAX_SIZE);
 				ErrorIgnoringTransformer<T> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
 
-				currentReader.streamTo(currentDecompressor.getInput());
 				currentDecompressor.getOutput().streamTo(currentDeserializer.getInput());
 				currentDeserializer.getOutput().streamTo(errorIgnoringTransformer.getInput());
 
@@ -114,6 +132,6 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	}
 
 	public LogPosition getLogPosition() {
-		return currentLogFile == null ? startPosition : new LogPosition(currentLogFile, currentReader.getPosition());
+		return currentLogFile == null ? startPosition : new LogPosition(currentLogFile, currentPosition);
 	}
 }

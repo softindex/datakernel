@@ -16,7 +16,11 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 
@@ -26,13 +30,12 @@ import java.util.List;
  * Represents a file system where logs are persisted.
  */
 public interface LogFileSystem {
-
 	void makeUniqueLogFile(String logPartition, String logName, ResultCallback<LogFile> callback);
 
 	void list(String logPartition, ResultCallback<List<LogFile>> callback);
 
-	StreamFileReader reader(String logPartition, LogFile logFile, long positionFrom);
+	void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer,
+	          ResultCallback<Long> positionCallback);
 
-	StreamFileWriter writer(String logPartition, LogFile logFile);
-
+	void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 }

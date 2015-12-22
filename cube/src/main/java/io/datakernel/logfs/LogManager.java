@@ -34,11 +34,14 @@ public interface LogManager<T> {
 	 * Creates a {@code StreamProducer} that streams items, contained in a given partition and file, starting at the specified position.
 	 *
 	 * @param logPartition     name of log partition
-	 * @param logFile          log file
-	 * @param position         position
+	 * @param startLogFile          log file
+	 * @param startPosition         position
 	 * @param positionCallback callback which is called once streaming is done. Final read position is passed to callback.
 	 * @return StreamProducer, which will stream read items to its wired consumer.
 	 */
-	LogStreamProducer<T> producer(String logPartition, LogFile logFile, long position,
-	                           ResultCallback<LogPosition> positionCallback);
+	LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
+	                              ResultCallback<LogPosition> positionCallback);
+
+	LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
+	                              LogFile endLogFile, ResultCallback<LogPosition> positionCallback);
 }

@@ -164,10 +164,9 @@ final class GsonServerProtocol extends AbstractNioServer<GsonServerProtocol> {
 					messaging.shutdown();
 				} else {
 					messaging.sendMessage(new FsResponse.Ready(size));
-					messaging.write(server.download(item.filePath), ignoreCompletionCallback());
+					messaging.write(server.download(item.filePath, item.startPosition), ignoreCompletionCallback());
 					messaging.shutdownWriter();
 				}
-
 			}
 		};
 	}
