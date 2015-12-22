@@ -16,24 +16,22 @@
 
 package io.datakernel.uikernel;
 
-import com.google.gson.Gson;
+import io.datakernel.async.ResultCallback;
 
 import java.util.List;
 
-public final class DeleteResponse {
-	private List<String> errors;
+public interface GridModelManager<E extends HasId<T>, T> {
+	void read(T id, ReadSettings settings, ResultCallback<E> callback);
 
-	public DeleteResponse() {
-	}
+	void read(ReadSettings settings, ResultCallback<ReadResponse<E, T>> callback);
 
-	public DeleteResponse(List<String> errors) {
-		this.errors = errors;
-	}
+	void create(E object, ResultCallback<CreateResponse<T>> callback);
 
-	String toJson(Gson gson) {
-		if (errors != null) {
-			return gson.toJson(errors);
-		}
-		return null;
-	}
+	void update(List<E> list, ResultCallback<UpdateResponse<E, T>> callback);
+
+	void delete(T id, ResultCallback<DeleteResponse> callback);
+
+	Class<E> getType();
+
+	Class<T> getIdType();
 }

@@ -16,9 +16,11 @@
 
 package io.datakernel.uikernel;
 
+import com.google.gson.Gson;
+
 import java.util.*;
 
-public class ReadSettings {
+public final class ReadSettings {
 	private List<String> fields = new ArrayList<>();
 	private int offset = 0;
 	private int limit = Integer.MAX_VALUE;
@@ -26,51 +28,9 @@ public class ReadSettings {
 	private Map<String, String> sort = new HashMap<>();
 	private Set<Integer> extra = new HashSet<>();
 
-	public static ReadSettings get(Map<String, String> parameters) {
-		ReadSettings settings = new ReadSettings();
-		String fs = parameters.get("fields");
-		if (fs != null) {
-			settings.fields.addAll(Arrays.asList(fs.substring(2, fs.length() - 2).split("\",\"")));
-		}
-		String offset = parameters.get("offset");
-		if (offset != null) {
-			settings.offset = Integer.valueOf(offset);
-		}
-		String limit = parameters.get("limit");
-		if (limit != null) {
-			settings.limit = Integer.valueOf(limit);
-		}
-		String filters = parameters.get("filters");
-		if (filters != null) {
-			filters = filters.replace("\"", "").replace("{", "").replace("}", "");
-			String[] arr = filters.split(",");
-			for (String s : arr) {
-				String[] ss = s.split(":");
-				settings.filters.put(ss[0], ss.length > 1 ? ss[1] : null);
-			}
-		}
-		String sort = parameters.get("sort");
-		if (sort != null) {
-			sort = sort.replace("],[", "\t");
-			String[] sorts = sort.split("\t");
-			for (String s : sorts) {
-				s = s.replace("\"", "").replace("[", "").replace("]", "");
-				String[] ss = s.split(",");
-				settings.sort.put(ss[0], ss[1]);
-			}
-		}
-		String extra = parameters.get("extra");
-		if (extra != null) {
-			extra = extra.replace("[", "").replace("]", "");
-			String[] es = extra.split(",");
-			for (String e : es) {
-				if (!e.isEmpty()) {
-					e = e.replace("\"", "");
-					settings.extra.add(Integer.valueOf(e));
-				}
-			}
-		}
-		return settings;
+	public static ReadSettings parse(Gson gson, String json) {
+		json = "{" + json.replace("&", ",") + "}";
+		return gson.fromJson(json, ReadSettings.class);
 	}
 
 	public List<String> getFields() {

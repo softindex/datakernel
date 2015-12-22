@@ -16,27 +16,53 @@
 
 package io.datakernel.uikernel;
 
-import java.util.LinkedHashMap;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class UpdateResponse {
-	private List<List<Object>> changes;
-	private Object errors;
+@SuppressWarnings("unused")
+public final class UpdateResponse<E extends HasId<T>, T> {
+	private final List<E> changes;
+	private final Map<T, Map<String, List<String>>> errors = new HashMap<>();
 
-	public UpdateResponse(List<List<Object>> changes) {
+	public UpdateResponse(List<E> changes) {
 		this.changes = changes;
 	}
 
-	public UpdateResponse(List<List<Object>> changes, Object errors) {
+	public UpdateResponse(List<E> changes, Map<T, Map<String, List<String>>> errors) {
 		this.changes = changes;
-		this.errors = errors;
+		this.errors.putAll(errors);
 	}
 
-	Map<String, Object> toMap() {
-		Map<String, Object> map = new LinkedHashMap<>();
-		if (changes != null) map.put("changes", changes);
-		if (errors != null) map.put("errors", errors);
-		return map;
+	public void addErrors(Map<T, Map<String, List<String>>> errors) {
+		this.errors.putAll(errors);
+	}
+
+	String toJson(Gson gson, Class<E> type, Class<T> idType) {
+		JsonObject root = new JsonObject();
+
+		JsonArray chang = new JsonArray();
+		for (E record : changes) {
+			JsonArray arr = new JsonArray();
+			arr.add(gson.toJsonTree(record.getId(), idType));
+			arr.add(gson.toJsonTree(record, type));
+			chang.add(arr);
+		}
+		root.add("changes", chang);
+
+		JsonArray errs = new JsonArray();
+		for (Map.Entry<T, Map<String, List<String>>> entry : errors.entrySet()) {
+			JsonArray arr = new JsonArray();
+			arr.add(gson.toJsonTree(entry.getKey(), idType));
+			arr.add(gson.toJsonTree(entry.getValue()));
+			errs.add(arr);
+		}
+		root.add("errors", errs);
+
+		return gson.toJson(root);
 	}
 }

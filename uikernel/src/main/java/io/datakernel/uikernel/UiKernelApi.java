@@ -27,36 +27,37 @@ import io.datakernel.util.ByteBufStrings;
 
 import java.nio.charset.Charset;
 import java.util.List;
-import java.util.Map;
 
 import static io.datakernel.http.HttpMethod.DELETE;
 import static io.datakernel.http.HttpMethod.PUT;
+import static io.datakernel.uikernel.Utils.decodeUtf8Query;
+import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
 
 @SuppressWarnings("unused")
-public class UiKernelApi {
+public final class UiKernelApi {
 	private static final ContentType JSON_UTF8 = ContentType.JSON.setCharsetEncoding(Charset.forName("UTF-8"));
 
-	public static AsyncHttpServlet getApiServlet(Controller controller, Gson gson) {
+	public static <E extends HasId<T>, T> AsyncHttpServlet getApiServlet(GridModelManager controller, Gson gson) {
 		MiddlewareServlet main = new MiddlewareServlet();
-		main.get("/:table", getAll(controller, gson));
-		main.get("/:table/:id", get(controller, gson));
-		main.post("/:table", create(controller, gson));
-		main.use("/:table", PUT, update(controller, gson));
-		main.use("/:table/:id", DELETE, delete(controller, gson));
+		main.get("/", getAll(controller, gson));
+		main.get("/:id", get(controller, gson));
+		main.post("/", create(controller, gson));
+		main.use("/", PUT, update(controller, gson));
+		main.use("/:id", DELETE, delete(controller, gson));
 		return main;
 	}
 
-	private static AsyncHttpServlet getAll(final Controller controller, final Gson gson) {
+	private static <E extends HasId<T>, T> AsyncHttpServlet getAll(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
-					String tableName = req.getUrlParameter("table");
-					ReadSettings settings = ReadSettings.get(req.getParameters());
-					controller.read(tableName, settings, new ResultCallback<ReadResponse>() {
+					String query = decodeUtf8Query(req.getUrl().getQuery());
+					ReadSettings settings = ReadSettings.parse(gson, query);
+					controller.read(settings, new ResultCallback<ReadResponse<E, T>>() {
 						@Override
-						public void onResult(ReadResponse model) {
-							String json = Utils.render(gson, model);
+						public void onResult(ReadResponse<E, T> response) {
+							String json = response.toJson(gson, controller.getType(), controller.getIdType());
 							callback.onResult(HttpResponse.create()
 									.setContentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(json)));
@@ -74,18 +75,18 @@ public class UiKernelApi {
 		};
 	}
 
-	private static AsyncHttpServlet get(final Controller controller, final Gson gson) {
+	private static <E extends HasId<T>, T> AsyncHttpServlet get(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
-					String tableName = req.getUrlParameter("table");
-					ReadSettings settings = ReadSettings.get(req.getParameters());
-					Integer id = Integer.valueOf(req.getUrlParameter("id"));
-					controller.read(tableName, settings, id, new ResultCallback<Map<String, Object>>() {
+					String query = decodeUtf8Query(req.getUrl().getQuery());
+					ReadSettings settings = ReadSettings.parse(gson, query);
+					T id = gson.fromJson(req.getUrlParameter("id"), controller.getIdType());
+					controller.read(id, settings, new ResultCallback<E>() {
 						@Override
-						public void onResult(Map<String, Object> obj) {
-							String json = Utils.render(gson, obj);
+						public void onResult(E obj) {
+							String json = gson.toJson(obj, controller.getType());
 							callback.onResult(HttpResponse.create()
 									.setContentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(json)));
@@ -103,18 +104,17 @@ public class UiKernelApi {
 		};
 	}
 
-	private static AsyncHttpServlet create(final Controller controller, final Gson gson) {
+	private static <E extends HasId<T>, T> AsyncHttpServlet create(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
-					String tableName = req.getUrlParameter("table");
 					String json = ByteBufStrings.decodeUTF8(req.getBody());
-					Map<String, Object> map = Utils.parseAsObject(gson, json);
-					controller.create(tableName, map, new ResultCallback<CreateResponse>() {
+					E obj = gson.fromJson(json, controller.getType());
+					controller.create(obj, new ResultCallback<CreateResponse<T>>() {
 						@Override
-						public void onResult(CreateResponse response) {
-							String json = Utils.render(gson, response.toMap());
+						public void onResult(CreateResponse<T> response) {
+							String json = response.toJson(gson, controller.getIdType());
 							HttpResponse res = HttpResponse.create()
 									.setContentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(json));
@@ -133,45 +133,46 @@ public class UiKernelApi {
 		};
 	}
 
-	private static AsyncHttpServlet update(final Controller controller, final Gson gson) {
-		return new AsyncHttpServlet() {
-			@Override
-			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
-				String json = ByteBufStrings.decodeUTF8(req.getBody());
-				String tableName = req.getUrlParameter("table");
-				List<List<Object>> list = Utils.parseRecordsArray(gson, json);
-				controller.update(tableName, list, new ResultCallback<UpdateResponse>() {
-					@Override
-					public void onResult(UpdateResponse result) {
-						String json = Utils.render(gson, result.toMap());
-						callback.onResult(HttpResponse.create()
-								.setContentType(JSON_UTF8)
-								.body(ByteBufStrings.wrapUTF8(json)));
-					}
-
-					@Override
-					public void onException(Exception e) {
-						callback.onResult(HttpResponse.create(500));
-					}
-				});
-			}
-		};
-	}
-
-	private static AsyncHttpServlet delete(final Controller controller, final Gson gson) {
+	private static <E extends HasId<T>, T> AsyncHttpServlet update(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
-					String tableName = req.getUrlParameter("table");
-					Integer id = Integer.valueOf(req.getUrlParameter("id"));
-					controller.delete(tableName, id, new ResultCallback<DeleteResponse>() {
+					String json = ByteBufStrings.decodeUTF8(req.getBody());
+					List<E> list = deserializeUpdateRequest(gson, json, controller.getType(), controller.getIdType());
+					controller.update(list, new ResultCallback<UpdateResponse<E, T>>() {
+						@Override
+						public void onResult(UpdateResponse<E, T> result) {
+							String json = result.toJson(gson, controller.getType(), controller.getIdType());
+							callback.onResult(HttpResponse.create()
+									.setContentType(JSON_UTF8)
+									.body(ByteBufStrings.wrapUTF8(json)));
+						}
+
+						@Override
+						public void onException(Exception e) {
+							callback.onResult(HttpResponse.create(500));
+						}
+					});
+				} catch (Exception e) {
+					callback.onResult(HttpResponse.create(400));
+				}
+			}
+		};
+	}
+
+	private static <E extends HasId<T>, T> AsyncHttpServlet delete(final GridModelManager<E, T> controller, final Gson gson) {
+		return new AsyncHttpServlet() {
+			@Override
+			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
+				try {
+					T id = gson.fromJson(req.getUrlParameter("id"), controller.getIdType());
+					controller.delete(id, new ResultCallback<DeleteResponse>() {
 						@Override
 						public void onResult(DeleteResponse response) {
 							HttpResponse res = HttpResponse.create();
-							Map<String, Object> map = response.toMap();
-							if (map != null) {
-								String json = Utils.render(gson, map);
+							String json = response.toJson(gson);
+							if (json != null) {
 								res.setContentType(JSON_UTF8)
 										.body(ByteBufStrings.wrapUTF8(json));
 							}

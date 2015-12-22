@@ -16,19 +16,8 @@
 
 package io.datakernel.uikernel;
 
-import io.datakernel.async.ResultCallback;
+public interface HasId<T> {
+	T getId();
 
-import java.util.List;
-import java.util.Map;
-
-public interface Controller {
-	void read(String tableName, ReadSettings settings, ResultCallback<ReadResponse> callback);
-
-	void read(String tableName, ReadSettings settings, Integer id, ResultCallback<Map<String, Object>> callback);
-
-	void create(String tableName, Map<String, Object> map, ResultCallback<CreateResponse> callback);
-
-	void update(String tableName, List<List<Object>> list, ResultCallback<UpdateResponse> callback);
-
-	void delete(String tableName, Integer id, ResultCallback<DeleteResponse> callback);
+	void setId(T e);
 }

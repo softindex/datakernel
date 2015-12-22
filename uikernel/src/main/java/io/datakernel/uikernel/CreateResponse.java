@@ -16,30 +16,34 @@
 
 package io.datakernel.uikernel;
 
-import java.util.LinkedHashMap;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
+import java.util.List;
 import java.util.Map;
 
-public class CreateResponse {
-	private Object data;
-	private Object errors;
+@SuppressWarnings("unused")
+public final class CreateResponse<T> {
+	private T id;
+	private Map<String, List<String>> errors;
 
-	public CreateResponse(Object data) {
-		this.data = data;
+	public CreateResponse(T id) {
+		this.id = id;
 	}
 
-	public CreateResponse(Object data, Object errors) {
-		this.data = data;
+	public CreateResponse(T id, Map<String, List<String>> errors) {
+		this.id = id;
 		this.errors = errors;
 	}
 
-	public void setErrors(Object errors) {
+	public void setErrors(Map<String, List<String>> errors) {
 		this.errors = errors;
 	}
 
-	Map<String, Object> toMap() {
-		Map<String, Object> map = new LinkedHashMap<>();
-		if (data != null) map.put("data", data);
-		if (errors != null) map.put("errors", errors);
-		return map;
+	String toJson(Gson gson, Class<T> idType) {
+		JsonObject root = new JsonObject();
+		if (id != null) root.add("data", gson.toJsonTree(id, idType));
+		if (errors != null) root.add("errors", gson.toJsonTree(errors));
+		return gson.toJson(root);
 	}
 }
