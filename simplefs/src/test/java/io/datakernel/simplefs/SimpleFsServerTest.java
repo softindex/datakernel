@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
@@ -276,6 +277,20 @@ public class SimpleFsServerTest {
 	}
 
 	@Test
+	public void testDownloadWithPositions() throws Exception {
+		String fileContent = "file1";
+		String requestedFile = "file1.txt";
+		String resultFile = "file1_downloaded.txt";
+		int startPosition = 2;
+
+		ResultCallbackFuture<Long> sizeFuture = new ResultCallbackFuture<>();
+		download(requestedFile, startPosition, sizeFuture, resultFile);
+
+		assertEquals(fileContent.length(), sizeFuture.get().longValue());
+		assertEquals(fileContent.substring(startPosition), new String(Files.readAllBytes(clientStorage.resolve(resultFile))));
+	}
+
+	@Test
 	public void testDownloadLong() throws Exception {
 		final String requestedFile = "this/is/not/empty/directory/file1.txt";
 		String resultFile = "file1_downloaded.txt";
@@ -528,7 +543,12 @@ public class SimpleFsServerTest {
 		executor.shutdownNow();
 	}
 
-	private void download(final String requestedFile, String resultFile) {
+	private void download(String requestedFile, String resultFile) {
+		download(requestedFile, 0, AsyncCallbacks.<Long>ignoreResultCallback(), resultFile);
+	}
+
+	private void download(final String requestedFile, final long startPosition, final ResultCallback<Long> sizeCallback,
+	                      String resultFile) {
 		ExecutorService executor = newCachedThreadPool();
 		NioEventloop eventloop = new NioEventloop();
 		final NioService server = createServer(eventloop, executor);
@@ -550,7 +570,7 @@ public class SimpleFsServerTest {
 						server.stop(ignoreCompletionCallback());
 					}
 				});
-				client.download(requestedFile, consumer);
+				client.download(requestedFile, startPosition, consumer, sizeCallback);
 			}
 
 			@Override
