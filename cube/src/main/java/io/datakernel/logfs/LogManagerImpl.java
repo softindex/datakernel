@@ -16,13 +16,22 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
+import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
+
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
+	public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 	public static final int DEFAULT_BUFFER_SIZE = LogStreamConsumer.DEFAULT_BUFFER_SIZE;
 	public static final int DEFAULT_FLUSH_DELAY = LogStreamConsumer.DEFAULT_FLUSH_DELAY;
+
 	private final Eventloop eventloop;
 	private final LogFileSystem fileSystem;
 	private final BufferSerializer<T> serializer;
@@ -46,8 +55,15 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	}
 
 	@Override
-	public LogStreamConsumer<T> consumer(String streamId) {
-		return new LogStreamConsumer<>(eventloop, fileSystem, serializer, streamId, bufferSize, flushDelayMillis);
+	public LogStreamConsumer<T> consumer(String logPartition) {
+		return consumer(logPartition, ignoreCompletionCallback());
+	}
+
+	@Override
+	public LogStreamConsumer<T> consumer(String logPartition, CompletionCallback callback) {
+		LogStreamConsumer<T> logStreamConsumer = new LogStreamConsumer<>(eventloop, fileSystem, serializer, logPartition, bufferSize, flushDelayMillis);
+		logStreamConsumer.setCompletionCallback(callback);
+		return logStreamConsumer;
 	}
 
 	@Override
@@ -63,5 +79,12 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition,
 				new LogPosition(startLogFile, startPosition), endLogFile,
 				positionCallback);
+	}
+
+	@Override
+	public LogStreamProducer<T> producer(String logPartition, long startTimestamp, long endTimestamp) {
+		return producer(logPartition, new LogFile(DATE_TIME_FORMATTER.print(startTimestamp), 0), 0,
+				new LogFile(DATE_TIME_FORMATTER.print(endTimestamp), 0),
+				AsyncCallbacks.<LogPosition>ignoreResultCallback());
 	}
 }

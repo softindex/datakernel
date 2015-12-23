@@ -25,7 +25,6 @@ import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamConsumerDecorator;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamStatus;
-import io.datakernel.stream.file.StreamFileWriter;
 import org.joda.time.format.DateTimeFormatter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,8 +33,8 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 	private static final Logger logger = LoggerFactory.getLogger(LogStreamConsumer_ByteBuffer.class);
 	private final StreamWriteLog streamWriteLog;
 
-	public LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String streamId) {
-		this.streamWriteLog = new StreamWriteLog(eventloop, datetimeFormat, fileSystem, streamId);
+	public LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String logPartition) {
+		this.streamWriteLog = new StreamWriteLog(eventloop, datetimeFormat, fileSystem, logPartition);
 		setActualConsumer(streamWriteLog.getInput());
 	}
 
@@ -51,15 +50,15 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 		private InputConsumer inputConsumer;
 		private OutputProducer outputProducer;
 
-		protected StreamWriteLog(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String streamId) {
+		protected StreamWriteLog(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String logPartition) {
 			super(eventloop);
 			outputProducer = new OutputProducer();
-			inputConsumer = new InputConsumer(datetimeFormat, fileSystem, streamId);
+			inputConsumer = new InputConsumer(datetimeFormat, fileSystem, logPartition);
 		}
 
 		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBuf> {
 			private static final long ONE_HOUR = 60 * 60 * 1000L;
-			private final String streamId;
+			private final String logPartition;
 
 			private long currentHour = -1;
 			private LogFile currentLogFile;
@@ -73,8 +72,8 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 
 			private CompletionCallback callback;
 
-			public InputConsumer(DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String streamId) {
-				this.streamId = streamId;
+			public InputConsumer(DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String logPartition) {
+				this.logPartition = logPartition;
 				this.datetimeFormat = datetimeFormat;
 				this.fileSystem = fileSystem;
 			}
@@ -115,7 +114,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 
 			private void createWriteStream(final String newChunkName) {
 				createFile = true;
-				fileSystem.makeUniqueLogFile(streamId, newChunkName, new ResultCallback<LogFile>() {
+				fileSystem.makeUniqueLogFile(logPartition, newChunkName, new ResultCallback<LogFile>() {
 					@Override
 					public void onResult(LogFile result) {
 						createFile = false;
@@ -127,7 +126,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 
 						currentLogFile = result;
 						ConsumerErrorIgnoring consumerErrorIgnoring = new ConsumerErrorIgnoring(eventloop);
-						fileSystem.write(streamId, currentLogFile, consumerErrorIgnoring.getOutput(), createCloseCompletionCallback());
+						fileSystem.write(logPartition, currentLogFile, consumerErrorIgnoring.getOutput(), createCloseCompletionCallback());
 						outputProducer.streamTo(consumerErrorIgnoring.getInput());
 
 						if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
@@ -146,7 +145,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 					public void onException(Exception exception) {
 						createFile = false;
 						logger.error("{}: creating new unique log file with name {} and stream id {} failed.",
-								LogStreamConsumer_ByteBuffer.this, newChunkName, streamId);
+								LogStreamConsumer_ByteBuffer.this, newChunkName, logPartition);
 
 						eventloop.schedule(1000L, new Runnable() {
 							@Override
