@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unused")
-public final class UpdateResponse<E extends HasId<T>, T> {
+public final class UpdateResponse<E extends AbstractRecord<T>, T> {
 	private final List<E> changes;
 	private final Map<T, Map<String, List<String>>> errors = new HashMap<>();
 

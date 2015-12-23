@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Utils {
-	public static <E extends HasId<T>, T> List<E> deserializeUpdateRequest(Gson gson, String json, Class<E> type, Class<T> idType) {
+	public static <E extends AbstractRecord<T>, T> List<E> deserializeUpdateRequest(Gson gson, String json, Class<E> type, Class<T> idType) {
 		List<E> result = new ArrayList<>();
 		JsonArray root = gson.fromJson(json, JsonArray.class);
 		for (JsonElement element : root) {

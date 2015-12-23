@@ -55,8 +55,8 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 		if (type == null) {
 			type = ContentType.getByExt(trail);
 		}
-		if (ContentType.isText(type)) {
-			type.setCharsetEncoding(DEFAULT_TXT_ENCODING);
+		if (type != null && ContentType.isText(type)) {
+			type = type.setCharsetEncoding(DEFAULT_TXT_ENCODING);
 		}
 		return type == null ? ContentType.ANY : type;
 	}

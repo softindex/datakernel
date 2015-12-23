@@ -16,8 +16,8 @@
 
 package io.datakernel.uikernel;
 
-public interface HasId<T> {
-	T getId();
+public abstract class AbstractRecord<T> {
+	public abstract T getId();
 
-	void setId(T e);
+	public abstract void setId(T e);
 }

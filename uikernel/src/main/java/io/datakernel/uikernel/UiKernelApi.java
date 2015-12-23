@@ -33,11 +33,14 @@ import static io.datakernel.http.HttpMethod.PUT;
 import static io.datakernel.uikernel.Utils.decodeUtf8Query;
 import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
 
+/**
+ * Rest API for UiKernel Module
+ */
 @SuppressWarnings("unused")
-public final class UiKernelApi {
-	private static final ContentType JSON_UTF8 = ContentType.JSON.setCharsetEncoding(Charset.forName("UTF-8"));
+public class UiKernelApi {
+	private final ContentType JSON_UTF8 = ContentType.JSON.setCharsetEncoding(Charset.forName("UTF-8"));
 
-	public static <E extends HasId<T>, T> AsyncHttpServlet getApiServlet(GridModelManager controller, Gson gson) {
+	public <E extends AbstractRecord<T>, T> AsyncHttpServlet createApi(GridModelManager controller, Gson gson) {
 		MiddlewareServlet main = new MiddlewareServlet();
 		main.get("/", getAll(controller, gson));
 		main.get("/:id", get(controller, gson));
@@ -47,7 +50,7 @@ public final class UiKernelApi {
 		return main;
 	}
 
-	private static <E extends HasId<T>, T> AsyncHttpServlet getAll(final GridModelManager<E, T> controller, final Gson gson) {
+	private <E extends AbstractRecord<T>, T> AsyncHttpServlet getAll(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
@@ -65,7 +68,7 @@ public final class UiKernelApi {
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(500));
+							callback.onResult(HttpResponse.create(404));
 						}
 					});
 				} catch (Exception e) {
@@ -75,7 +78,7 @@ public final class UiKernelApi {
 		};
 	}
 
-	private static <E extends HasId<T>, T> AsyncHttpServlet get(final GridModelManager<E, T> controller, final Gson gson) {
+	private <E extends AbstractRecord<T>, T> AsyncHttpServlet get(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
@@ -94,7 +97,7 @@ public final class UiKernelApi {
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(500));
+							callback.onResult(HttpResponse.create(404));
 						}
 					});
 				} catch (NumberFormatException e) {
@@ -104,7 +107,7 @@ public final class UiKernelApi {
 		};
 	}
 
-	private static <E extends HasId<T>, T> AsyncHttpServlet create(final GridModelManager<E, T> controller, final Gson gson) {
+	private <E extends AbstractRecord<T>, T> AsyncHttpServlet create(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
@@ -123,7 +126,7 @@ public final class UiKernelApi {
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(500));
+							callback.onResult(HttpResponse.create(404));
 						}
 					});
 				} catch (Exception e) {
@@ -133,7 +136,7 @@ public final class UiKernelApi {
 		};
 	}
 
-	private static <E extends HasId<T>, T> AsyncHttpServlet update(final GridModelManager<E, T> controller, final Gson gson) {
+	private <E extends AbstractRecord<T>, T> AsyncHttpServlet update(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
@@ -151,7 +154,7 @@ public final class UiKernelApi {
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(500));
+							callback.onResult(HttpResponse.create(404));
 						}
 					});
 				} catch (Exception e) {
@@ -161,7 +164,7 @@ public final class UiKernelApi {
 		};
 	}
 
-	private static <E extends HasId<T>, T> AsyncHttpServlet delete(final GridModelManager<E, T> controller, final Gson gson) {
+	private <E extends AbstractRecord<T>, T> AsyncHttpServlet delete(final GridModelManager<E, T> controller, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
@@ -181,7 +184,7 @@ public final class UiKernelApi {
 
 						@Override
 						public void onException(Exception e) {
-							callback.onResult(HttpResponse.create(500));
+							callback.onResult(HttpResponse.create(404));
 						}
 					});
 				} catch (Exception e) {

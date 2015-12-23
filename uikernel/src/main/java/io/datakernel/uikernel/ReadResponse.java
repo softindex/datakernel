@@ -23,7 +23,7 @@ import com.google.gson.JsonObject;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public final class ReadResponse<E extends HasId<T>, T> {
+public final class ReadResponse<E extends AbstractRecord<T>, T> {
 	private final List<E> records;
 	private List<E> extra;
 	private E totals;

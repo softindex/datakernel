@@ -20,7 +20,7 @@ import io.datakernel.async.ResultCallback;
 
 import java.util.List;
 
-public interface GridModelManager<E extends HasId<T>, T> {
+public interface GridModelManager<E extends AbstractRecord<T>, T> {
 	void read(T id, ReadSettings settings, ResultCallback<E> callback);
 
 	void read(ReadSettings settings, ResultCallback<ReadResponse<E, T>> callback);
