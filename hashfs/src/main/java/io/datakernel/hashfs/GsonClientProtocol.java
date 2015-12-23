@@ -148,9 +148,8 @@ final class GsonClientProtocol implements ClientProtocol {
 	}
 
 	@Override
-	public void download(InetSocketAddress address, String fileName, StreamConsumer<ByteBuf> consumer,
-	                     CompletionCallback callback) {
-		connect(address, defineDownload(fileName, consumer, callback));
+	public void download(InetSocketAddress address, String fileName, long startPosition, StreamConsumer<ByteBuf> consumer, ResultCallback<Long> sizeCallback, CompletionCallback callback) {
+		connect(address, defineDownload(fileName, startPosition, consumer, sizeCallback, callback));
 	}
 
 	@Override
@@ -236,7 +235,9 @@ final class GsonClientProtocol implements ClientProtocol {
 		};
 	}
 
-	protected ConnectCallback defineDownload(final String fileName, final StreamConsumer<ByteBuf> consumer,
+	protected ConnectCallback defineDownload(final String fileName, final long startPosition,
+	                                         final StreamConsumer<ByteBuf> consumer,
+	                                         final ResultCallback<Long> sizeCallback,
 	                                         final CompletionCallback callback) {
 		return new ConnectCallback() {
 			@Override
@@ -245,14 +246,15 @@ final class GsonClientProtocol implements ClientProtocol {
 						.addStarter(new MessagingStarter<FsCommand>() {
 							@Override
 							public void onStart(Messaging<FsCommand> messaging) {
-								FsCommand commandDownload = new FsCommand.Download(fileName);
+								FsCommand commandDownload = new FsCommand.Download(fileName, startPosition);
 								messaging.sendMessage(commandDownload);
 							}
 						})
 						.addHandler(FsResponse.Ready.class, new MessagingHandler<FsResponse.Ready, FsCommand>() {
 							@Override
 							public void onMessage(FsResponse.Ready item, Messaging<FsCommand> messaging) {
-								Util.CounterTransformer counter = new Util.CounterTransformer(eventloop, item.size);
+								sizeCallback.onResult(item.size);
+								Util.CounterTransformer counter = new Util.CounterTransformer(eventloop, item.size - startPosition);
 								messaging.read().streamTo(counter.getInput());
 								counter.getOutput().streamTo(consumer);
 								callback.onComplete();

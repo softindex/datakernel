@@ -3,16 +3,16 @@ package io.datakernel.logfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.simplefs.SimpleFsClient;
+import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
 
-public final class SimpleFsLogFileSystem extends AbstractRemoteLogFileSystem {
-	private final SimpleFsClient client;
+public final class HashFsLogFileSystem extends AbstractRemoteLogFileSystem {
+	private final HashFsClient client;
 
-	public SimpleFsLogFileSystem(SimpleFsClient client, String logName) {
+	public HashFsLogFileSystem(HashFsClient client, String logName) {
 		super(logName);
 		this.client = client;
 	}
@@ -33,8 +33,7 @@ public final class SimpleFsLogFileSystem extends AbstractRemoteLogFileSystem {
 	}
 
 	@Override
-	public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer,
-	                 ResultCallback<Long> positionCallback) {
+	public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer, ResultCallback<Long> positionCallback) {
 		client.download(path(logPartition, logFile), startPosition, consumer, positionCallback);
 	}
 

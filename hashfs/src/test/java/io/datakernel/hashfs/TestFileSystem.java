@@ -141,7 +141,7 @@ public class TestFileSystem {
 
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("d.txt"));
 
-		fs.get("2/b/d.txt").streamTo(consumer);
+		fs.get("2/b/d.txt", 0).streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdown();
@@ -167,7 +167,7 @@ public class TestFileSystem {
 				assertTrue(e.getClass() == NoSuchFileException.class);
 			}
 		});
-		fs.get("2/b/no_file.txt").streamTo(consumer);
+		fs.get("2/b/no_file.txt", 0).streamTo(consumer);
 
 		eventloop.run();
 		executor.shutdown();

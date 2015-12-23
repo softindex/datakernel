@@ -16,6 +16,7 @@
 
 package io.datakernel.hashfs;
 
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -162,11 +163,17 @@ public class HashFsClient implements FsClient {
 
 	@Override
 	public void download(final String sourceFileName, final StreamConsumer<ByteBuf> consumer) {
+		download(sourceFileName, 0, consumer, AsyncCallbacks.<Long>ignoreResultCallback());
+	}
+
+	@Override
+	public void download(final String sourceFileName, final long startPosition, final StreamConsumer<ByteBuf> consumer,
+	                     final ResultCallback<Long> sizeCallback) {
 		getAliveServers(new ResultCallback<List<ServerInfo>>() {
 			@Override
 			public void onResult(List<ServerInfo> result) {
 				List<ServerInfo> candidates = hashing.sortServers(sourceFileName, result);
-				download(sourceFileName, 0, candidates, consumer);
+				download(sourceFileName, startPosition, 0, candidates, consumer, sizeCallback);
 			}
 
 			@Override
@@ -233,11 +240,12 @@ public class HashFsClient implements FsClient {
 		});
 	}
 
-	private void download(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
-	                      final StreamConsumer<ByteBuf> consumer) {
+	private void download(final String fileName, final long startPosition, final int currentAttempt,
+	                      final List<ServerInfo> candidates, final StreamConsumer<ByteBuf> consumer,
+	                      final ResultCallback<Long> sizeCallback) {
 		final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.download(server.getAddress(), fileName, forwarder.getInput(), new CompletionCallback() {
+		protocol.download(server.getAddress(), fileName, startPosition, forwarder.getInput(), sizeCallback, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				forwarder.getOutput().streamTo(consumer);
@@ -250,7 +258,7 @@ public class HashFsClient implements FsClient {
 					schedule(attempt, new Runnable() {
 						@Override
 						public void run() {
-							download(fileName, attempt, candidates, consumer);
+							download(fileName, startPosition, attempt, candidates, consumer, sizeCallback);
 						}
 					});
 				} else {

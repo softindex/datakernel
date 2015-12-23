@@ -359,7 +359,8 @@ public class HashFsServer implements Commands, FsServer, NioService {
 	}
 
 	@Override
-	public void download(final String fileName, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
+	public void download(final String fileName, long startPosition,
+	                     StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback) {
 		logger.info("Received request for file download {}", fileName);
 
 		if (state != State.RUNNING) {
@@ -370,7 +371,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 
 		if (logic.canDownload(fileName)) {
 			logic.onDownloadStart(fileName);
-			StreamProducer<ByteBuf> producer = fileSystem.get(fileName);
+			StreamProducer<ByteBuf> producer = fileSystem.get(fileName, startPosition);
 			producer.streamTo(consumer);
 			callback.onResult(new CompletionCallback() {
 				@Override
@@ -471,7 +472,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 	@Override
 	public void replicate(final ServerInfo server, final String fileName) {
 		logger.info("Received command to replicate file {} to server {}", fileName, server);
-		StreamProducer<ByteBuf> producer = fileSystem.get(fileName);
+		StreamProducer<ByteBuf> producer = fileSystem.get(fileName, 0);
 		logic.onReplicationStart(fileName);
 		clientProtocol.upload(server.getAddress(), fileName, producer, new CompletionCallback() {
 			@Override

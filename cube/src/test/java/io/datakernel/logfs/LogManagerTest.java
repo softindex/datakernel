@@ -74,35 +74,6 @@ public class LogManagerTest {
 	}
 
 	@Test
-	public void testConsumer() throws Exception {
-		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
-		NioEventloop eventloop = new NioEventloop(timeProvider);
-		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
-		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
-		LogManager<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.stringSerializer());
-		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("1", "2", "3").iterator())
-				.streamTo(logManager.consumer("p1"));
-		eventloop.run();
-		timeProvider.setTime(new LocalDateTime("1970-01-01T00:50:00").toDateTime(DateTimeZone.UTC).getMillis());
-		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("4", "5", "6").iterator())
-				.streamTo(logManager.consumer("p1"));
-		eventloop.run();
-		timeProvider.setTime(new LocalDateTime("1970-01-01T01:50:00").toDateTime(DateTimeZone.UTC).getMillis());
-		new StreamProducers.OfIterator<>(eventloop, Arrays.asList("7", "8", "9").iterator())
-				.streamTo(logManager.consumer("p1"));
-		eventloop.run();
-
-		StreamProducer<String> p1 = logManager.producer("p1", new LogFile("1970-01-01_00", 1), 0L, null);
-		StreamConsumers.ToList<String> consumerToList = new StreamConsumers.ToList<>(eventloop);
-		p1.streamTo(consumerToList);
-		eventloop.run();
-		System.out.println(consumerToList.getList());
-//		System.out.println(p1.getLogPosition());
-
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
-	}
-
-	@Test
 	public void test() throws Exception {
 		final LocalDate testDate = new LocalDate(0);
 		final String logPartition = "testLog";

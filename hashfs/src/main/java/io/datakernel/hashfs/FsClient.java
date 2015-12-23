@@ -29,6 +29,8 @@ public interface FsClient {
 
 	void download(String sourceFileName, StreamConsumer<ByteBuf> consumer);
 
+	void download(String sourceFileName, long startPosition, StreamConsumer<ByteBuf> consumer, ResultCallback<Long> sizeCallback);
+
 	void list(ResultCallback<List<String>> callback);
 
 	void delete(String fileName, CompletionCallback callback);

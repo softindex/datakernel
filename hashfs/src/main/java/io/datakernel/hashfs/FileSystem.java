@@ -33,7 +33,7 @@ interface FileSystem {
 
 	void commitTmp(String fileName, CompletionCallback callback);
 
-	StreamProducer<ByteBuf> get(String fileName);
+	StreamProducer<ByteBuf> get(String fileName, long startPosition);
 
 	void delete(String fileName, CompletionCallback callback);
 

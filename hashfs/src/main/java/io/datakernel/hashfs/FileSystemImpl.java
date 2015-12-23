@@ -193,10 +193,10 @@ final class FileSystemImpl implements FileSystem, NioService {
 	}
 
 	@Override
-	public StreamProducer<ByteBuf> get(String fileName) {
+	public StreamProducer<ByteBuf> get(String fileName, long startPosition) {
 		logger.trace("Streaming file {}", fileName);
 		Path destination = fileStorage.resolve(fileName);
-		return StreamFileReader.readFileFully(eventloop, executor, bufferSize, destination);
+		return StreamFileReader.readFileFrom(eventloop, executor, bufferSize, destination, startPosition);
 	}
 
 	@Override

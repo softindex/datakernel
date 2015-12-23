@@ -90,18 +90,18 @@ abstract class FsCommand {
 	}
 
 	static class Download extends FsCommand {
-
 		public final String filePath;
+		public final long startPosition;
 
-		public Download(String filePath) {
+		public Download(String filePath, long startPosition) {
 			this.filePath = filePath;
+			this.startPosition = startPosition;
 		}
 
 		@Override
 		public String toString() {
-			return "Delete{filepath=\'" + filePath + "\'}";
+			return "Delete{filepath=\'" + filePath + "\',startPosition=" + startPosition + "}";
 		}
-
 	}
 
 	static class List extends FsCommand {
