@@ -28,6 +28,11 @@
             <artifactId>simplefs</artifactId>
             <version>${version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.datakernel</groupId>
+            <artifactId>hashfs</artifactId>
+            <version>${version}</version>
+        </dependency>
 
         <dependency>
             <groupId>joda-time</groupId>
