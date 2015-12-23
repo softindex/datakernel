@@ -18,6 +18,7 @@ package io.datakernel.launcher;
 
 import com.google.inject.*;
 import io.datakernel.config.Config;
+import io.datakernel.guice.Args;
 import io.datakernel.guice.ConfigModule;
 import io.datakernel.guice.ShutdownNotification;
 import io.datakernel.service.ServiceGraph;
@@ -156,6 +157,15 @@ public abstract class Launcher {
 
 	protected void doWire() throws Exception {
 		List<Module> modules = new ArrayList<>(Arrays.asList(this.modules));
+
+		// adding Launcher's internal module
+		modules.add(new AbstractModule() {
+			@Override
+			protected void configure() {
+				bind(String[].class).annotatedWith(Args.class).toInstance(args);
+			}
+		});
+
 		if (configs != null && configs.length != 0) {
 			List<Config> configsList = new ArrayList<>();
 			for (File config : configs) {
