@@ -20,6 +20,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
@@ -232,13 +233,18 @@ public class IntegrationSingleNodeTest {
 	}
 
 	@Test
-	public void testDownload() throws IOException {
+	public void testDownload() throws Exception {
+		String dFileContents = "Local d.txt";
+		final int startPosition = 5;
+		final ResultCallbackFuture<Long> sizeFuture = new ResultCallbackFuture<>();
+
 		NioEventloop eventloop = new NioEventloop();
 		ExecutorService executor = newCachedThreadPool();
 
 		final NioService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
+		final StreamFileWriter consumerD = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("d_downloaded.txt"), true);
 		final StreamFileWriter consumerG = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("g_downloaded.txt"), true);
 		final StreamFileWriter consumerE = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("e_downloaded.txt"), true);
 		final StreamFileWriter consumerF = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("f_downloaded.txt"), true);
@@ -268,6 +274,7 @@ public class IntegrationSingleNodeTest {
 		server.start(new CompletionCallback() {
 			@Override
 			public void onComplete() {
+				client.download("d.txt", startPosition, consumerD, sizeFuture);
 				client.download("this/g.txt", consumerG);
 				client.download("e.txt", consumerE);
 				client.download("f.txt", consumerF);
@@ -282,6 +289,8 @@ public class IntegrationSingleNodeTest {
 		eventloop.run();
 		executor.shutdownNow();
 
+		assertEquals(dFileContents.length(), sizeFuture.get().longValue());
+		assertEquals(dFileContents.substring(startPosition), new String(Files.readAllBytes(clientStorage.resolve("d_downloaded.txt"))));
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("g_downloaded.txt").toFile(), serverStorage.resolve("this/g.txt").toFile()));
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("e_downloaded.txt").toFile(), serverStorage.resolve("e.txt").toFile()));
 		assertTrue(com.google.common.io.Files.equal(clientStorage.resolve("f_downloaded.txt").toFile(), serverStorage.resolve("f.txt").toFile()));

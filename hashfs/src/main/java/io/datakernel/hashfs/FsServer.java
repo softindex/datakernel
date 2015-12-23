@@ -29,7 +29,7 @@ interface FsServer {
 
 	void commit(String fileName, boolean success, CompletionCallback callback);
 
-	void download(String fileName, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback);
+	void download(String fileName, long startPosition, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback);
 
 	void delete(String fileName, CompletionCallback callback);
 

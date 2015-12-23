@@ -163,7 +163,7 @@ final class GsonServerProtocol extends ServerProtocol {
 				} else {
 					final StreamForwarder<ByteBuf> forwarder = new StreamForwarder<>(eventloop);
 					messaging.sendMessage(new FsResponse.Ready(size));
-					server.download(item.filePath, forwarder.getInput(), new ResultCallback<CompletionCallback>() {
+					server.download(item.filePath, item.startPosition, forwarder.getInput(), new ResultCallback<CompletionCallback>() {
 						@Override
 						public void onResult(final CompletionCallback callback) {
 							messaging.write(forwarder.getOutput(), callback);

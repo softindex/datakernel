@@ -28,7 +28,7 @@ import java.util.Set;
 interface ClientProtocol {
 	void upload(InetSocketAddress address, String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	void download(InetSocketAddress address, String fileName, StreamConsumer<ByteBuf> consumer, CompletionCallback callback);
+	void download(InetSocketAddress address, String fileName, long startPosition, StreamConsumer<ByteBuf> consumer, ResultCallback<Long> sizeCallback, CompletionCallback callback);
 
 	void delete(InetSocketAddress address, String fileName, CompletionCallback callback);
 
