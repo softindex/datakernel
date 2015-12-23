@@ -55,6 +55,7 @@ import java.util.concurrent.Executors;
 import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
 import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.logfs.LogManagerImpl.DEFAULT_FILE_SWITCH_PERIOD;
 import static org.junit.Assert.assertEquals;
 
 public class LogStreamConsumer_ByteBufferTest {
@@ -126,7 +127,8 @@ public class LogStreamConsumer_ByteBufferTest {
 			}
 		};
 		LogStreamConsumer_ByteBuffer logStreamConsumerByteBuffer =
-				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
+				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
+						fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 
 		producer.streamTo(logStreamConsumerByteBuffer);
@@ -192,7 +194,8 @@ public class LogStreamConsumer_ByteBufferTest {
 			}
 		};
 		LogStreamConsumer_ByteBuffer logStreamConsumerByteBuffer =
-				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, streamId);
+				new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD,
+						fileSystem, streamId);
 		logStreamConsumerByteBuffer.setCompletionCallback(completionCallback);
 
 		producer.streamTo(logStreamConsumerByteBuffer);

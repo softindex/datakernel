@@ -22,34 +22,25 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumerDecorator;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import io.datakernel.stream.processor.StreamLZ4Compressor;
-
-import static io.datakernel.logfs.LogManagerImpl.DATE_TIME_FORMATTER;
+import org.joda.time.format.DateTimeFormatter;
 
 public class LogStreamConsumer<T> extends StreamConsumerDecorator<T> {
 	public static final int DEFAULT_BUFFER_SIZE = 1024 * 1024;
 	public static final int DEFAULT_FLUSH_DELAY = 1000; // 1 second
 
-	private final StreamBinarySerializer<T> streamBinarySerializer;
 	private final LogStreamConsumer_ByteBuffer logStreamConsumer_byteBuffer;
 
-	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer, String logPartition) {
-		this(eventloop, fileSystem, serializer, logPartition, DEFAULT_BUFFER_SIZE);
-	}
-
 	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                         String logPartition, int bufferSize) {
-		this(eventloop, fileSystem, serializer, logPartition, bufferSize, DEFAULT_FLUSH_DELAY);
-	}
-
-	public LogStreamConsumer(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
-	                         String logPartition, int bufferSize, int flushDelayMillis) {
-		this.streamBinarySerializer = new StreamBinarySerializer<>(eventloop, serializer, bufferSize, StreamBinarySerializer.MAX_SIZE, flushDelayMillis, false);
+	                         String logPartition, DateTimeFormatter dateTimeFormatter, long fileSwitchPeriod,
+	                         int bufferSize, int flushDelayMillis) {
+		StreamBinarySerializer<T> streamBinarySerializer = new StreamBinarySerializer<>(eventloop, serializer, bufferSize, StreamBinarySerializer.MAX_SIZE, flushDelayMillis, false);
 		StreamLZ4Compressor streamCompressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		logStreamConsumer_byteBuffer = new LogStreamConsumer_ByteBuffer(eventloop, DATE_TIME_FORMATTER, fileSystem, logPartition);
+		logStreamConsumer_byteBuffer = new LogStreamConsumer_ByteBuffer(eventloop, dateTimeFormatter, fileSwitchPeriod,
+				fileSystem, logPartition);
 
 		logStreamConsumer_byteBuffer.setTag(logPartition);
 		streamCompressor.setTag(logPartition);
-		this.streamBinarySerializer.setTag(logPartition);
+		streamBinarySerializer.setTag(logPartition);
 
 		setActualConsumer(streamBinarySerializer.getInput());
 		streamBinarySerializer.getOutput().streamTo(streamCompressor.getInput());

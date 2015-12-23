@@ -21,6 +21,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.util.Preconditions;
 import org.joda.time.DateTimeZone;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
@@ -28,20 +29,31 @@ import org.joda.time.format.DateTimeFormatter;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
-	public static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
+	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH-mm-ss").withZone(DateTimeZone.UTC);
+	public static final DateTimeFormatter HOURS_ONLY_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
+	public static final long DEFAULT_FILE_SWITCH_PERIOD = 60 * 60 * 1000L; // 1 hour
 	public static final int DEFAULT_BUFFER_SIZE = LogStreamConsumer.DEFAULT_BUFFER_SIZE;
 	public static final int DEFAULT_FLUSH_DELAY = LogStreamConsumer.DEFAULT_FLUSH_DELAY;
 
 	private final Eventloop eventloop;
 	private final LogFileSystem fileSystem;
 	private final BufferSerializer<T> serializer;
+	private final DateTimeFormatter dateTimeFormatter;
+	private final long fileSwitchPeriod;
 	private int bufferSize = DEFAULT_BUFFER_SIZE;
 	private int flushDelayMillis = DEFAULT_FLUSH_DELAY;
 
 	public LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer) {
+		this(eventloop, fileSystem, serializer, DEFAULT_DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD);
+	}
+
+	public LogManagerImpl(Eventloop eventloop, LogFileSystem fileSystem, BufferSerializer<T> serializer,
+	                      DateTimeFormatter dateTimeFormatter, long fileSwitchPeriod) {
 		this.eventloop = eventloop;
 		this.fileSystem = fileSystem;
 		this.serializer = serializer;
+		this.dateTimeFormatter = dateTimeFormatter;
+		this.fileSwitchPeriod = fileSwitchPeriod;
 	}
 
 	public LogManagerImpl<T> fileSystemBufferSize(int bufferSize) {
@@ -56,12 +68,15 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 
 	@Override
 	public LogStreamConsumer<T> consumer(String logPartition) {
+		validateLogPartition(logPartition);
 		return consumer(logPartition, ignoreCompletionCallback());
 	}
 
 	@Override
 	public LogStreamConsumer<T> consumer(String logPartition, CompletionCallback callback) {
-		LogStreamConsumer<T> logStreamConsumer = new LogStreamConsumer<>(eventloop, fileSystem, serializer, logPartition, bufferSize, flushDelayMillis);
+		validateLogPartition(logPartition);
+		LogStreamConsumer<T> logStreamConsumer = new LogStreamConsumer<>(eventloop, fileSystem, serializer,
+				logPartition, dateTimeFormatter, fileSwitchPeriod, bufferSize, flushDelayMillis);
 		logStreamConsumer.setCompletionCallback(callback);
 		return logStreamConsumer;
 	}
@@ -69,6 +84,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	@Override
 	public LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
 	                                     ResultCallback<LogPosition> positionCallback) {
+		validateLogPartition(logPartition);
 		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition,
 				new LogPosition(startLogFile, startPosition), null, positionCallback);
 	}
@@ -76,6 +92,7 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 	@Override
 	public LogStreamProducer<T> producer(String logPartition, LogFile startLogFile, long startPosition,
 	                                     LogFile endLogFile, ResultCallback<LogPosition> positionCallback) {
+		validateLogPartition(logPartition);
 		return new LogStreamProducer<>(eventloop, fileSystem, serializer, logPartition,
 				new LogPosition(startLogFile, startPosition), endLogFile,
 				positionCallback);
@@ -83,8 +100,17 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 
 	@Override
 	public LogStreamProducer<T> producer(String logPartition, long startTimestamp, long endTimestamp) {
-		return producer(logPartition, new LogFile(DATE_TIME_FORMATTER.print(startTimestamp), 0), 0,
-				new LogFile(DATE_TIME_FORMATTER.print(endTimestamp), 0),
+		validateLogPartition(logPartition);
+		return producer(logPartition, new LogFile(dateTimeFormatter.print(startTimestamp), 0), 0,
+				new LogFile(dateTimeFormatter.print(endTimestamp), 0),
 				AsyncCallbacks.<LogPosition>ignoreResultCallback());
+	}
+
+	private static void validateLogPartition(String logPartition) {
+		Preconditions.checkArgument(!logPartition.contains("-"), "Using dash (-) in log partition name is not allowed");
+	}
+
+	public DateTimeFormatter getDateTimeFormatter() {
+		return dateTimeFormatter;
 	}
 }

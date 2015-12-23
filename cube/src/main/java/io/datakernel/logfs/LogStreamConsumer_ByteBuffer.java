@@ -33,8 +33,9 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 	private static final Logger logger = LoggerFactory.getLogger(LogStreamConsumer_ByteBuffer.class);
 	private final StreamWriteLog streamWriteLog;
 
-	public LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String logPartition) {
-		this.streamWriteLog = new StreamWriteLog(eventloop, datetimeFormat, fileSystem, logPartition);
+	public LogStreamConsumer_ByteBuffer(Eventloop eventloop, DateTimeFormatter datetimeFormat, long fileSwitchPeriod,
+	                                    LogFileSystem fileSystem, String logPartition) {
+		this.streamWriteLog = new StreamWriteLog(eventloop, datetimeFormat, fileSwitchPeriod, fileSystem, logPartition);
 		setActualConsumer(streamWriteLog.getInput());
 	}
 
@@ -50,20 +51,21 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 		private InputConsumer inputConsumer;
 		private OutputProducer outputProducer;
 
-		protected StreamWriteLog(Eventloop eventloop, DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String logPartition) {
+		protected StreamWriteLog(Eventloop eventloop, DateTimeFormatter datetimeFormat, long fileSwitchPeriod,
+		                         LogFileSystem fileSystem, String logPartition) {
 			super(eventloop);
 			outputProducer = new OutputProducer();
-			inputConsumer = new InputConsumer(datetimeFormat, fileSystem, logPartition);
+			inputConsumer = new InputConsumer(datetimeFormat, fileSwitchPeriod, fileSystem, logPartition);
 		}
 
 		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<ByteBuf> {
-			private static final long ONE_HOUR = 60 * 60 * 1000L;
 			private final String logPartition;
 
-			private long currentHour = -1;
+			private long currentPeriod = -1;
 			private LogFile currentLogFile;
 
 			private final DateTimeFormatter datetimeFormat;
+			private final long fileSwitchPeriod;
 			private final LogFileSystem fileSystem;
 			private boolean createFile;
 			private boolean newFile;
@@ -72,9 +74,11 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 
 			private CompletionCallback callback;
 
-			public InputConsumer(DateTimeFormatter datetimeFormat, LogFileSystem fileSystem, String logPartition) {
+			public InputConsumer(DateTimeFormatter datetimeFormat, long fileSwitchPeriod,
+			                     LogFileSystem fileSystem, String logPartition) {
 				this.logPartition = logPartition;
 				this.datetimeFormat = datetimeFormat;
+				this.fileSwitchPeriod = fileSwitchPeriod;
 				this.fileSystem = fileSystem;
 			}
 
@@ -99,12 +103,12 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 			@Override
 			public void onData(ByteBuf buf) {
 				long timestamp = eventloop.currentTimeMillis();
-				long newHour = timestamp / ONE_HOUR;
+				long newPeriod = timestamp / fileSwitchPeriod;
 				outputProducer.send(buf);
 
-				if (newHour != currentHour && createFile) newFile = true;
-				if (newHour != currentHour && !createFile) {
-					currentHour = newHour;
+				if (newPeriod != currentPeriod && createFile) newFile = true;
+				if (newPeriod != currentPeriod && !createFile) {
+					currentPeriod = newPeriod;
 					String chunkName = datetimeFormat.print(timestamp);
 					if (currentLogFile == null || !chunkName.equals(currentLogFile.getName())) {
 						createWriteStream(chunkName);
@@ -137,7 +141,7 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 						}
 						if (newFile) {
 							newFile = false;
-							checkHour();
+							checkPeriod();
 						}
 					}
 
@@ -157,10 +161,10 @@ public final class LogStreamConsumer_ByteBuffer extends StreamConsumerDecorator<
 				});
 			}
 
-			private void checkHour() {
+			private void checkPeriod() {
 				long timestamp = eventloop.currentTimeMillis();
 
-				currentHour = timestamp / ONE_HOUR;
+				currentPeriod = timestamp / fileSwitchPeriod;
 				String chunkName = datetimeFormat.print(timestamp);
 				if (currentLogFile == null || !chunkName.equals(currentLogFile.getName())) {
 					createWriteStream(chunkName);
