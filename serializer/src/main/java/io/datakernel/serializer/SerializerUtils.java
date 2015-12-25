@@ -23,15 +23,11 @@ public final class SerializerUtils {
 
 	}
 
-	protected static void ensureSize(int size) {
-	}
-
 	public static int write(byte[] from, byte[] to, int offTo) {
 		return write(from, 0, to, offTo, from.length);
 	}
 
 	public static int write(byte[] from, int offFrom, byte[] to, int offTo, int len) {
-		ensureSize(len);
 		System.arraycopy(from, offFrom, to, offTo, len);
 		return offTo + len;
 	}
@@ -41,13 +37,11 @@ public final class SerializerUtils {
 	}
 
 	public static int writeByte(byte[] buf, int off, byte v) {
-		ensureSize(1);
 		buf[off] = v;
 		return off + 1;
 	}
 
 	public static int writeChar(byte[] buf, int off, char v) {
-		ensureSize(2);
 		writeByte(buf, off, (byte) (v >>> 8));
 		writeByte(buf, off + 1, (byte) (v));
 		return off + 2;
@@ -62,7 +56,6 @@ public final class SerializerUtils {
 	}
 
 	public static int writeInt(byte[] buf, int off, int v) {
-		ensureSize(4);
 		buf[off] = (byte) (v >>> 24);
 		buf[off + 1] = (byte) (v >>> 16);
 		buf[off + 2] = (byte) (v >>> 8);
@@ -71,7 +64,6 @@ public final class SerializerUtils {
 	}
 
 	public static int writeLong(byte[] buf, int off, long v) {
-		ensureSize(8);
 		int high = (int) (v >>> 32);
 		int low = (int) v;
 		buf[off] = (byte) (high >>> 24);
@@ -86,14 +78,12 @@ public final class SerializerUtils {
 	}
 
 	public static int writeShort(byte[] buf, int off, short v) {
-		ensureSize(2);
 		buf[off] = (byte) (v >>> 8);
 		buf[off + 1] = (byte) (v);
 		return off + 2;
 	}
 
 	public static int writeVarInt(byte[] buf, int off, int v) {
-		ensureSize(5);
 		if ((v & ~0x7F) == 0) {
 			buf[off] = (byte) v;
 			return off + 1;
@@ -123,7 +113,6 @@ public final class SerializerUtils {
 	}
 
 	public static int writeVarLong(byte[] buf, int off, long v) {
-		ensureSize(9);
 		if ((v & ~0x7F) == 0) {
 			return writeByte(buf, off, (byte) v);
 		} else {
@@ -176,7 +165,6 @@ public final class SerializerUtils {
 	public static int writeIso88591(byte[] buf, int off, String s) {
 		int length = s.length();
 		off = writeVarInt(buf, off, length);
-		ensureSize(length * 3);
 		for (int i = 0; i < length; i++) {
 			int c = s.charAt(i);
 			buf[off++] = (byte) c;
@@ -190,7 +178,6 @@ public final class SerializerUtils {
 		}
 		int length = s.length();
 		off = writeVarInt(buf, off, length + 1);
-		ensureSize(length * 3);
 		for (int i = 0; i < length; i++) {
 			int c = s.charAt(i);
 			buf[off++] = (byte) c;
@@ -226,7 +213,6 @@ public final class SerializerUtils {
 	public static int writeUTF8(byte[] buf, int off, String s) {
 		int length = s.length();
 		off = writeVarInt(buf, off, length);
-		ensureSize(length * 3);
 		for (int i = 0; i < length; i++) {
 			int c = s.charAt(i);
 			if (c <= 0x007F) {
@@ -244,7 +230,6 @@ public final class SerializerUtils {
 		}
 		int length = s.length();
 		off = writeVarInt(buf, off, length + 1);
-		ensureSize(length * 3);
 		for (int i = 0; i < length; i++) {
 			int c = s.charAt(i);
 			if (c <= 0x007F) {
@@ -277,7 +262,6 @@ public final class SerializerUtils {
 	public static int writeUTF16(byte[] buf, int off, String s) {
 		int length = s.length();
 		off = writeVarInt(buf, off, length);
-		ensureSize(length * 2);
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
 			off = writeByte(buf, off, (byte) (v >>> 8));
@@ -292,7 +276,6 @@ public final class SerializerUtils {
 		}
 		int length = s.length();
 		off = writeVarInt(buf, off, length + 1);
-		ensureSize(length * 2);
 		for (int i = 0; i < length; i++) {
 			char v = s.charAt(i);
 			off = writeByte(buf, off, (byte) (v >>> 8));

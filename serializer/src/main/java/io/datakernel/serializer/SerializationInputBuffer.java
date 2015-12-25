@@ -176,7 +176,7 @@ public final class SerializationInputBuffer {
 		return doReadIso88591(length - 1);
 	}
 
-	public String doReadIso88591(int length) {
+	private String doReadIso88591(int length) {
 		if (length == 0)
 			return "";
 		if (length > remaining())
@@ -271,7 +271,7 @@ public final class SerializationInputBuffer {
 		return doReadJavaUTF8(length - 1);
 	}
 
-	public String doReadJavaUTF8(int length) {
+	private String doReadJavaUTF8(int length) {
 		if (length == 0)
 			return "";
 		if (length > remaining())

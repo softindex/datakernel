@@ -61,15 +61,11 @@ public final class SerializationOutputBuffer {
 		return buf.length - pos;
 	}
 
-	protected void ensureSize(int size) {
-	}
-
 	public void write(byte[] b) {
 		pos = SerializerUtils.write(b, buf, pos);
 	}
 
 	public void write(byte[] b, int off, int len) {
-		ensureSize(len);
 		pos = SerializerUtils.write(b, off, buf, pos, len);
 	}
 
@@ -78,12 +74,10 @@ public final class SerializationOutputBuffer {
 	}
 
 	public void writeByte(byte v) {
-		ensureSize(1);
 		pos = SerializerUtils.writeByte(buf, pos, v);
 	}
 
 	public void writeChar(char v) {
-		ensureSize(2);
 		pos = SerializerUtils.writeChar(buf, pos, v);
 	}
 
@@ -96,39 +90,31 @@ public final class SerializationOutputBuffer {
 	}
 
 	public void writeInt(int v) {
-		ensureSize(4);
 		pos = SerializerUtils.writeInt(buf, pos, v);
 	}
 
 	public void writeLong(long v) {
-		ensureSize(8);
 		pos = SerializerUtils.writeLong(buf, pos, v);
 	}
 
 	public void writeShort(short v) {
-		ensureSize(2);
 		pos = SerializerUtils.writeShort(buf, pos, v);
 	}
 
 	public void writeVarInt(int v) {
-		ensureSize(5);
 		pos = SerializerUtils.writeVarInt(buf, pos, v);
 	}
 
 	public void writeVarLong(long v) {
-		ensureSize(9);
 		pos = SerializerUtils.writeVarLong(buf, pos, v);
 	}
 
 	public void writeIso88591(String s) {
-		int length = s.length();
-		ensureSize(length * 3);
 		pos = SerializerUtils.writeIso88591(buf, pos, s);
 	}
 
 	public void writeNullableIso88591(String s) {
 		int length = s.length();
-		ensureSize(length * 3);
 		pos = SerializerUtils.writeNullableIso88591(buf, pos, s);
 	}
 
@@ -145,14 +131,10 @@ public final class SerializationOutputBuffer {
 	}
 
 	public void writeUTF8(String s) {
-		int length = s.length();
-		ensureSize(length * 3);
 		pos = SerializerUtils.writeUTF8(buf, pos, s);
 	}
 
 	public void writeNullableUTF8(String s) {
-		int length = s.length();
-		ensureSize(length * 3);
 		pos = SerializerUtils.writeNullableUTF8(buf, pos, s);
 	}
 
@@ -165,13 +147,10 @@ public final class SerializationOutputBuffer {
 	}
 
 	public final void writeUTF16(String s) {
-		int length = s.length();
-		ensureSize(length * 2);
 		pos = SerializerUtils.writeUTF16(buf, pos, s);
 	}
 
 	public final void writeNullableUTF16(String s) {
-		int length = s.length();
 		pos = SerializerUtils.writeNullableUTF16(buf, pos, s);
 	}
 
