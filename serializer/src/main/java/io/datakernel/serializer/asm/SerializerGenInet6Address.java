@@ -52,7 +52,7 @@ public class SerializerGenInet6Address implements SerializerGen {
 
 	@Override
 	public Expression serialize(Expression byteArray, Variable off, Expression value, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
-		return callStatic(SerializerUtils.class, "write", call(cast(value, getRawType()), "getAddress"), byteArray, off);
+		return callStatic(SerializerUtils.class, "write", byteArray, off, call(cast(value, getRawType()), "getAddress"));
 	}
 
 	@Override

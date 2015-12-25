@@ -72,7 +72,7 @@ public class SerializerGenByteBuffer implements SerializerGen, NullableOptimizat
 		Expression position = call(value, "position");
 		Expression remaining = let(call(value, "remaining"));
 		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? remaining : inc(remaining))));
-		ExpressionSequence write = sequence(writeLength, callStatic(SerializerUtils.class, "write", array, position, byteArray, off, remaining));
+		ExpressionSequence write = sequence(writeLength, callStatic(SerializerUtils.class, "write", byteArray, off, array, position, remaining));
 
 		if (!nullable) {
 			return write;

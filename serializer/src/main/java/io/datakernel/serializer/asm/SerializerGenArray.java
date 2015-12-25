@@ -86,7 +86,7 @@ public final class SerializerGenArray implements SerializerGen, NullableOptimiza
 				? value(fixedSize)
 				: length(castedValue));
 
-		Expression writeBytes = callStatic(SerializerUtils.class, "write", castedValue, byteArray, off);
+		Expression writeBytes = callStatic(SerializerUtils.class, "write", byteArray, off, castedValue);
 		Expression writeZero = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, value(0)));
 		Expression writeLength = set(off, callStatic(SerializerUtils.class, "writeVarInt", byteArray, off, (!nullable ? length : inc(length))));
 		Expression expressionFor = expressionFor(length, new ForVar() {

@@ -20,16 +20,15 @@ import java.io.UnsupportedEncodingException;
 
 public final class SerializerUtils {
 	private SerializerUtils() {
-
 	}
 
-	public static int write(byte[] from, byte[] to, int offTo) {
-		return write(from, 0, to, offTo, from.length);
+	public static int write(byte[] buf, int off, byte[] bytes) {
+		return write(buf, off, bytes, 0, bytes.length);
 	}
 
-	public static int write(byte[] from, int offFrom, byte[] to, int offTo, int len) {
-		System.arraycopy(from, offFrom, to, offTo, len);
-		return offTo + len;
+	public static int write(byte[] buf, int off, byte[] bytes, int bytesOff, int len) {
+		System.arraycopy(bytes, bytesOff, buf, off, len);
+		return off + len;
 	}
 
 	public static int writeBoolean(byte[] buf, int off, boolean v) {
@@ -41,18 +40,10 @@ public final class SerializerUtils {
 		return off + 1;
 	}
 
-	public static int writeChar(byte[] buf, int off, char v) {
-		writeByte(buf, off, (byte) (v >>> 8));
-		writeByte(buf, off + 1, (byte) (v));
+	public static int writeShort(byte[] buf, int off, short v) {
+		buf[off] = (byte) (v >>> 8);
+		buf[off + 1] = (byte) (v);
 		return off + 2;
-	}
-
-	public static int writeDouble(byte[] buf, int off, double v) {
-		return writeLong(buf, off, Double.doubleToLongBits(v));
-	}
-
-	public static int writeFloat(byte[] buf, int off, float v) {
-		return writeInt(buf, off, Float.floatToIntBits(v));
 	}
 
 	public static int writeInt(byte[] buf, int off, int v) {
@@ -75,12 +66,6 @@ public final class SerializerUtils {
 		buf[off + 6] = (byte) (low >>> 8);
 		buf[off + 7] = (byte) low;
 		return off + 8;
-	}
-
-	public static int writeShort(byte[] buf, int off, short v) {
-		buf[off] = (byte) (v >>> 8);
-		buf[off + 1] = (byte) (v);
-		return off + 2;
 	}
 
 	public static int writeVarInt(byte[] buf, int off, int v) {
@@ -162,6 +147,20 @@ public final class SerializerUtils {
 		return off;
 	}
 
+	public static int writeFloat(byte[] buf, int off, float v) {
+		return writeInt(buf, off, Float.floatToIntBits(v));
+	}
+
+	public static int writeDouble(byte[] buf, int off, double v) {
+		return writeLong(buf, off, Double.doubleToLongBits(v));
+	}
+
+	public static int writeChar(byte[] buf, int off, char v) {
+		writeByte(buf, off, (byte) (v >>> 8));
+		writeByte(buf, off + 1, (byte) (v));
+		return off + 2;
+	}
+
 	public static int writeIso88591(byte[] buf, int off, String s) {
 		int length = s.length();
 		off = writeVarInt(buf, off, length);
@@ -172,7 +171,7 @@ public final class SerializerUtils {
 		return off;
 	}
 
-	public static int writeNullableIso88591(byte[] buf, int off, String s) {
+	public static int writeIso88591Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
 		}
@@ -187,30 +186,29 @@ public final class SerializerUtils {
 
 	public static int writeJavaUTF8(byte[] buf, int off, String s) {
 		try {
-			return writeWithLength(buf, off, s.getBytes("UTF-8"));
+			byte[] bytes = s.getBytes("UTF-8");
+			off = writeVarInt(buf, off, bytes.length);
+			return write(buf, off, bytes);
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException();
 		}
 
 	}
 
-	public static int writeNullableJavaUTF8(byte[] buf, int off, String s) {
+	public static int writeJavaUTF8Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
 		}
 		try {
-			return writeWithLengthNullable(buf, off, s.getBytes("UTF-8"));
+			byte[] bytes = s.getBytes("UTF-8");
+			off = writeVarInt(buf, off, bytes.length + 1);
+			return write(buf, off, bytes);
 		} catch (UnsupportedEncodingException e) {
 			throw new RuntimeException();
 		}
 	}
 
-	public static int writeWithLengthNullable(byte[] buf, int off, byte[] bytes) {
-		off = writeVarInt(buf, off, bytes.length + 1);
-		return write(bytes, buf, off);
-	}
-
-	public static int writeUTF8(byte[] buf, int off, String s) {
+	public static int writeCustomUTF8(byte[] buf, int off, String s) {
 		int length = s.length();
 		off = writeVarInt(buf, off, length);
 		for (int i = 0; i < length; i++) {
@@ -224,7 +222,7 @@ public final class SerializerUtils {
 		return off;
 	}
 
-	public static int writeNullableUTF8(byte[] buf, int off, String s) {
+	public static int writeCustomUTF8Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
 		}
@@ -241,7 +239,7 @@ public final class SerializerUtils {
 		return off;
 	}
 
-	public static int writeUtfChar(byte[] buf, int off, int c) {
+	private static int writeUtfChar(byte[] buf, int off, int c) {
 		if (c <= 0x07FF) {
 			buf[off] = (byte) (0xC0 | c >> 6 & 0x1F);
 			buf[off + 1] = (byte) (0x80 | c & 0x3F);
@@ -252,11 +250,6 @@ public final class SerializerUtils {
 			buf[off + 2] = (byte) (0x80 | c & 0x3F);
 			return off + 3;
 		}
-	}
-
-	public static int writeWithLength(byte[] buf, int off, byte[] bytes) {
-		off = writeVarInt(buf, off, bytes.length);
-		return write(bytes, buf, off);
 	}
 
 	public static int writeUTF16(byte[] buf, int off, String s) {
@@ -270,7 +263,7 @@ public final class SerializerUtils {
 		return off;
 	}
 
-	public static int writeNullableUTF16(byte[] buf, int off, String s) {
+	public static int writeUTF16Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
 		}

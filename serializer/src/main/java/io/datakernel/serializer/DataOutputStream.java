@@ -154,12 +154,12 @@ public final class DataOutputStream implements Closeable {
 
 	public void write(byte[] b) throws IOException {
 		ensureSize(b.length);
-		pos = SerializerUtils.write(b, buf, pos);
+		pos = SerializerUtils.write(buf, pos, b);
 	}
 
 	public void write(byte[] b, int off, int len) throws IOException {
 		ensureSize(len);
-		pos = SerializerUtils.write(b, off, buf, pos, len);
+		pos = SerializerUtils.write(buf, pos, b, off, len);
 	}
 
 	public void writeBoolean(boolean v) throws IOException {

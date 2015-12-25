@@ -96,24 +96,24 @@ public class SerializerGenString implements SerializerGen {
 
 		if (format == StringFormat.UTF16) {
 			if (nullable)
-				list.add(callStatic(SerializerUtils.class, "writeNullableUTF16", byteArray, off, expression));
+				list.add(callStatic(SerializerUtils.class, "writeUTF16Nullable", byteArray, off, expression));
 			else
 				list.add(callStatic(SerializerUtils.class, "writeUTF16", byteArray, off, expression));
 		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				list.add(callStatic(SerializerUtils.class, "writeNullableIso88591", byteArray, off, expression));
+				list.add(callStatic(SerializerUtils.class, "writeIso88591Nullable", byteArray, off, expression));
 			else
 				list.add(callStatic(SerializerUtils.class, "writeIso88591", byteArray, off, expression));
 		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				list.add(callStatic(SerializerUtils.class, "writeNullableJavaUTF8", byteArray, off, expression));
+				list.add(callStatic(SerializerUtils.class, "writeJavaUTF8Nullable", byteArray, off, expression));
 			else
 				list.add(callStatic(SerializerUtils.class, "writeJavaUTF8", byteArray, off, expression));
 		} else {
 			if (nullable)
-				list.add(callStatic(SerializerUtils.class, "writeNullableUTF8", byteArray, off, expression));
+				list.add(callStatic(SerializerUtils.class, "writeCustomUTF8Nullable", byteArray, off, expression));
 			else
-				list.add(callStatic(SerializerUtils.class, "writeUTF8", byteArray, off, expression));
+				list.add(callStatic(SerializerUtils.class, "writeCustomUTF8", byteArray, off, expression));
 		}
 
 		return sequence(list);
