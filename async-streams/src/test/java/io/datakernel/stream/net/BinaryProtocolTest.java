@@ -132,8 +132,8 @@ public class BinaryProtocolTest {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
-						new StreamBinaryDeserializer<>(eventloop, stringSerializer(), 10),
-						new StreamBinarySerializer<>(eventloop, stringSerializer(), 2, 10, 0, false))
+						new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
+						new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
 						.addHandler(String.class, new MessagingHandler<String, String>() {
 							@Override
 							public void onMessage(String item, Messaging<String> messaging) {
@@ -163,8 +163,8 @@ public class BinaryProtocolTest {
 					@Override
 					public void onConnect(SocketChannel socketChannel) {
 						SocketConnection connection = new StreamMessagingConnection<>(eventloop, socketChannel,
-								new StreamBinaryDeserializer<>(eventloop, stringSerializer(), 10),
-								new StreamBinarySerializer<>(eventloop, stringSerializer(), 2, 10, 0, false))
+								new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
+								new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
 								.addStarter(new MessagingStarter<String>() {
 									@Override
 									public void onStart(Messaging<String> messaging) {
@@ -206,8 +206,8 @@ public class BinaryProtocolTest {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
-						new StreamBinaryDeserializer<>(eventloop, stringSerializer(), 10),
-						new StreamBinarySerializer<>(eventloop, stringSerializer(), 2, 10, 0, false))
+						new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
+						new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
 						.addHandler(String.class, new MessagingHandler<String, String>() {
 							@Override
 							public void onMessage(String item, Messaging<String> messaging) {
@@ -229,8 +229,8 @@ public class BinaryProtocolTest {
 					@Override
 					public void onConnect(SocketChannel socketChannel) {
 						SocketConnection connection = new StreamMessagingConnection<>(eventloop, socketChannel,
-								new StreamBinaryDeserializer<>(eventloop, stringSerializer(), 10),
-								new StreamBinarySerializer<>(eventloop, stringSerializer(), 2, 10, 0, false))
+								new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
+								new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
 								.addStarter(new MessagingStarter<String>() {
 									@Override
 									public void onStart(Messaging<String> messaging) {
@@ -288,8 +288,8 @@ public class BinaryProtocolTest {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
-						new StreamBinaryDeserializer<>(eventloop, stringSerializer(), 10),
-						new StreamBinarySerializer<>(eventloop, stringSerializer(), 2, 10, 0, false))
+						new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
+						new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
 						.addHandler(String.class, new MessagingHandler<String, String>() {
 							@Override
 							public void onMessage(String item, final Messaging<String> messaging) {
@@ -324,8 +324,8 @@ public class BinaryProtocolTest {
 					@Override
 					public void onConnect(SocketChannel socketChannel) {
 						SocketConnection connection = new StreamMessagingConnection<>(eventloop, socketChannel,
-								new StreamBinaryDeserializer<>(eventloop, stringSerializer(), 10),
-								new StreamBinarySerializer<>(eventloop, stringSerializer(), 2, 10, 0, false))
+								new StreamBinaryDeserializer<>(eventloop, utf8Serializer(), 10),
+								new StreamBinarySerializer<>(eventloop, utf8Serializer(), 2, 10, 0, false))
 								.addStarter(new MessagingStarter<String>() {
 									@Override
 									public void onStart(Messaging<String> messaging) {

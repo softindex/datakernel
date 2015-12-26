@@ -25,7 +25,7 @@ import java.io.IOException;
 
 import static io.datakernel.serializer.DataOutputStream.MAX_SIZE_127;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
-import static io.datakernel.serializer.asm.BufferSerializers.stringSerializer;
+import static io.datakernel.serializer.asm.BufferSerializers.utf8Serializer;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -61,7 +61,7 @@ public class SerializeStreamTest {
 
 		String[] strings = new String[]{"test1-string", "test2-int", "test3-t", "test4-str"};
 		for (String string : strings) {
-			dataOutputStream.serialize(stringSerializer(), string, MAX_SIZE_127);
+			dataOutputStream.serialize(utf8Serializer(), string, MAX_SIZE_127);
 		}
 		dataOutputStream.close();
 
@@ -69,7 +69,7 @@ public class SerializeStreamTest {
 		DataInputStream dataInputStream = new DataInputStream(byteInputStream, 3);
 
 		for (String string : strings) {
-			assertEquals(string, dataInputStream.deserialize(stringSerializer()));
+			assertEquals(string, dataInputStream.deserialize(utf8Serializer()));
 		}
 		assertTrue(dataInputStream.isEndOfStream());
 	}

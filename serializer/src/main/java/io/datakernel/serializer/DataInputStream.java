@@ -49,18 +49,6 @@ public final class DataInputStream implements Closeable {
 		this.inputStream = inputStream;
 	}
 
-	private void ensureReadSize(int size) {
-		if (buf.length - pos >= size) {
-			return;
-		}
-		byte[] newBuffer = buf.length >= size ? buf : new byte[Math.max(buf.length, size + size / 2)];
-		System.arraycopy(buf, pos, newBuffer, 0, limit - pos);
-		buf = newBuffer;
-		limit -= pos;
-		pos = 0;
-		inputBuffer.set(buf, 0);
-	}
-
 	public byte[] getBuffer() {
 		return buf;
 	}
@@ -71,6 +59,18 @@ public final class DataInputStream implements Closeable {
 
 	public int getLimit() {
 		return limit;
+	}
+
+	private void ensureReadSize(int size) {
+		if (buf.length - pos >= size) {
+			return;
+		}
+		byte[] newBuffer = buf.length >= size ? buf : new byte[Math.max(buf.length, size + size / 2)];
+		System.arraycopy(buf, pos, newBuffer, 0, limit - pos);
+		buf = newBuffer;
+		limit -= pos;
+		pos = 0;
+		inputBuffer.set(buf, 0);
 	}
 
 	private void doEnsureRead(int size) throws IOException {
@@ -183,8 +183,7 @@ public final class DataInputStream implements Closeable {
 
 	public short readShort() throws IOException {
 		ensureRead(2);
-		short result = (short) (((buf[pos] & 0xFF) << 8)
-				| ((buf[pos + 1] & 0xFF)));
+		short result = (short) (((buf[pos] & 0xFF) << 8) | ((buf[pos + 1] & 0xFF)));
 		pos += 2;
 		return result;
 	}
@@ -264,7 +263,10 @@ public final class DataInputStream implements Closeable {
 	}
 
 	public char readChar() throws IOException {
-		return (char) readShort();
+		ensureRead(2);
+		char c = (char) (((buf[pos] & 0xFF) << 8) | ((buf[pos + 1] & 0xFF)));
+		pos += 2;
+		return c;
 	}
 
 	public String readUTF8() throws IOException {

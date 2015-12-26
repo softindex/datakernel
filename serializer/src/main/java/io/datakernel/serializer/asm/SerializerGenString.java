@@ -129,24 +129,24 @@ public class SerializerGenString implements SerializerGen {
 	public Expression deserialize(Class<?> targetType, int version, SerializerBuilder.StaticMethods staticMethods, CompatibilityLevel compatibilityLevel) {
 		if (format == StringFormat.UTF16) {
 			if (nullable)
-				return call(arg(0), "readNullableUTF16");
+				return call(arg(0), "readUTF16Nullable");
 			else
 				return call(arg(0), "readUTF16");
 		} else if (format == StringFormat.ISO_8859_1 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				return call(arg(0), "readNullableIso88591");
+				return call(arg(0), "readIso88591Nullable");
 			else
 				return call(arg(0), "readIso88591");
 		} else if (format == StringFormat.UTF8 && compatibilityLevel != CompatibilityLevel.LEVEL_1) {
 			if (nullable)
-				return call(arg(0), "readNullableJavaUTF8");
+				return call(arg(0), "readJavaUTF8Nullable");
 			else
 				return call(arg(0), "readJavaUTF8");
 		} else {
 			if (nullable)
-				return call(arg(0), "readNullableUTF8");
+				return call(arg(0), "readCustomUTF8Nullable");
 			else
-				return call(arg(0), "readUTF8");
+				return call(arg(0), "readCustomUTF8");
 		}
 	}
 

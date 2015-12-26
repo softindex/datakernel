@@ -208,6 +208,7 @@ public final class SerializerUtils {
 		}
 	}
 
+	@Deprecated
 	public static int writeCustomUTF8(byte[] buf, int off, String s) {
 		int length = s.length();
 		off = writeVarInt(buf, off, length);
@@ -222,6 +223,7 @@ public final class SerializerUtils {
 		return off;
 	}
 
+	@Deprecated
 	public static int writeCustomUTF8Nullable(byte[] buf, int off, String s) {
 		if (s == null) {
 			return writeByte(buf, off, (byte) 0);
@@ -239,6 +241,7 @@ public final class SerializerUtils {
 		return off;
 	}
 
+	@Deprecated
 	private static int writeUtfChar(byte[] buf, int off, int c) {
 		if (c <= 0x07FF) {
 			buf[off] = (byte) (0xC0 | c >> 6 & 0x1F);

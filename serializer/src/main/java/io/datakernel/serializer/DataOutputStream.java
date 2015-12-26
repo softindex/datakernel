@@ -21,7 +21,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 public final class DataOutputStream implements Closeable {
-	private static final SerializeSizeException MAX_SIZE_EXCEPTION = new SerializeSizeException();
+	private static final SerializeException SIZE_EXCEPTION = new SerializeException("Message size of out range");
 	public static final int DEFAULT_BUFFER_SIZE = 65536;
 
 	public static final int MAX_SIZE_127 = 1; // (1 << (1 * 7)) - 1
@@ -92,11 +92,11 @@ public final class DataOutputStream implements Closeable {
 		outputStream.close();
 	}
 
-	private static int headerSize(int value) {
-		if ((value & 0xffffffff << 7) == 0) return 1;
-		if ((value & 0xffffffff << 14) == 0) return 2;
-		assert (value & 0xffffffff << 21) == 0;
-		return 3;
+	public static int headerSize(int maxMessageSize) {
+		if ((maxMessageSize & 0xffffffff << 7) == 0) return 1;
+		if ((maxMessageSize & 0xffffffff << 14) == 0) return 2;
+		if ((maxMessageSize & 0xffffffff << 21) == 0) return 3;
+		throw new IllegalArgumentException();
 	}
 
 	private static void writeSize(byte[] buf, int pos, int size, int headerSize) {
@@ -141,7 +141,7 @@ public final class DataOutputStream implements Closeable {
 		int positionEnd = outputBuffer.position();
 		int messageSize = positionEnd - positionItem;
 		if (messageSize >= 1 << headerSize * 7) {
-			throw MAX_SIZE_EXCEPTION;
+			throw SIZE_EXCEPTION;
 		}
 		writeSize(buf, positionBegin, messageSize, headerSize);
 		pos = positionEnd;

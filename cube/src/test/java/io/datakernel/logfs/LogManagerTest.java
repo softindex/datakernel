@@ -20,13 +20,9 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.StreamSender;
 import io.datakernel.time.SettableCurrentTimeProvider;
-import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
-import org.joda.time.LocalDateTime;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -43,7 +39,6 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -82,7 +77,7 @@ public class LogManagerTest {
 		final NioEventloop eventloop = new NioEventloop(timeProvider);
 
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
-		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.stringSerializer());
+		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.utf8Serializer());
 		final StreamSender<String> streamSender = new StreamSender<>(eventloop, false);
 		streamSender.streamTo(logManager.consumer(logPartition));
 

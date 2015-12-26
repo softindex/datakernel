@@ -85,10 +85,9 @@ public final class SerializationInputBuffer {
 	}
 
 	public char readChar() {
-		int ch1 = readByte();
-		int ch2 = readByte();
-		int code = (ch1 << 8) + (ch2 & 0xFF);
-		return (char) code;
+		char c = (char) (((buf[pos] & 0xFF) << 8) | ((buf[pos + 1] & 0xFF)));
+		pos += 2;
+		return c;
 	}
 
 	public double readDouble() {
@@ -169,7 +168,7 @@ public final class SerializationInputBuffer {
 		return doReadIso88591(length);
 	}
 
-	public String readNullableIso88591() {
+	public String readIso88591Nullable() {
 		int length = readVarInt();
 		if (length == 0)
 			return null;
@@ -190,19 +189,22 @@ public final class SerializationInputBuffer {
 		return new String(chars, 0, length);
 	}
 
-	public String readUTF8() {
+	@Deprecated
+	public String readCustomUTF8() {
 		int length = readVarInt();
-		return doReadUTF8(length);
+		return doReadCustomUTF8(length);
 	}
 
-	public String readNullableUTF8() {
+	@Deprecated
+	public String readCustomUTF8Nullable() {
 		int length = readVarInt();
 		if (length == 0)
 			return null;
-		return doReadUTF8(length - 1);
+		return doReadCustomUTF8(length - 1);
 	}
 
-	private String doReadUTF8(int length) {
+	@Deprecated
+	private String doReadCustomUTF8(int length) {
 		if (length == 0)
 			return "";
 		if (length > remaining())
@@ -226,7 +228,7 @@ public final class SerializationInputBuffer {
 		return doReadUTF16(length);
 	}
 
-	public String readNullableUTF16() {
+	public String readUTF16Nullable() {
 		int length = readVarInt();
 		if (length == 0) {
 			return null;
@@ -263,7 +265,7 @@ public final class SerializationInputBuffer {
 		return doReadJavaUTF8(length);
 	}
 
-	public String readNullableJavaUTF8() {
+	public String readJavaUTF8Nullable() {
 		int length = readVarInt();
 		if (length == 0) {
 			return null;

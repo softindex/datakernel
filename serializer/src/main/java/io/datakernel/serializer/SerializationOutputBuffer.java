@@ -113,8 +113,7 @@ public final class SerializationOutputBuffer {
 		pos = SerializerUtils.writeIso88591(buf, pos, s);
 	}
 
-	public void writeNullableIso88591(String s) {
-		int length = s.length();
+	public void writeIso88591Nullable(String s) {
 		pos = SerializerUtils.writeIso88591Nullable(buf, pos, s);
 	}
 
@@ -122,15 +121,17 @@ public final class SerializationOutputBuffer {
 		pos = SerializerUtils.writeJavaUTF8(buf, pos, s);
 	}
 
-	public void writeNullableJavaUTF8(String s) {
+	public void writeJavaUTF8Nullable(String s) {
 		pos = SerializerUtils.writeJavaUTF8Nullable(buf, pos, s);
 	}
 
-	public void writeUTF8(String s) {
+	@Deprecated
+	public void writeCustomUTF8(String s) {
 		pos = SerializerUtils.writeCustomUTF8(buf, pos, s);
 	}
 
-	public void writeNullableUTF8(String s) {
+	@Deprecated
+	public void writeCustomUTF8Nullable(String s) {
 		pos = SerializerUtils.writeCustomUTF8Nullable(buf, pos, s);
 	}
 
@@ -138,7 +139,7 @@ public final class SerializationOutputBuffer {
 		pos = SerializerUtils.writeUTF16(buf, pos, s);
 	}
 
-	public final void writeNullableUTF16(String s) {
+	public final void writeUTF16Nullable(String s) {
 		pos = SerializerUtils.writeUTF16Nullable(buf, pos, s);
 	}
 

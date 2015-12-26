@@ -174,15 +174,15 @@ public final class BufferSerializers {
 		}
 	};
 
-	private static final BufferSerializer<String> UTF8_SERIALIZER = new BufferSerializer<String>() {
+	private static final BufferSerializer<String> JAVA_UTF8_SERIALIZER = new BufferSerializer<String>() {
 		@Override
 		public void serialize(SerializationOutputBuffer output, String item) {
-			output.writeUTF8(item);
+			output.writeJavaUTF8(item);
 		}
 
 		@Override
 		public String deserialize(SerializationInputBuffer input) {
-			return input.readUTF8();
+			return input.readJavaUTF8();
 		}
 	};
 
@@ -262,12 +262,9 @@ public final class BufferSerializers {
 		return CHAR_SERIALIZER;
 	}
 
-	public static BufferSerializer<String> stringSerializer() {
-		return UTF8_SERIALIZER;
-	}
-
+	@Deprecated
 	public static BufferSerializer<String> utf8Serializer() {
-		return UTF8_SERIALIZER;
+		return JAVA_UTF8_SERIALIZER;
 	}
 
 	public static BufferSerializer<String> utf16Serializer() {
