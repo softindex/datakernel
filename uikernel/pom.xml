@@ -14,7 +14,7 @@
 
     <name>DataKernel: UiKernel</name>
     <description>
-        Module that allows DataKernel framework interact with UiKernel.
+        Integration with UIKernel.io JS frontend library: JSON serializers, grid model, basic servlets.
     </description>
 
     <dependencies>

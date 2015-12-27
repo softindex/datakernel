@@ -23,15 +23,15 @@ import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unused")
-public final class CreateResponse<T> {
-	private T id;
+public final class CreateResponse<K> {
+	private K id;
 	private Map<String, List<String>> errors;
 
-	public CreateResponse(T id) {
+	public CreateResponse(K id) {
 		this.id = id;
 	}
 
-	public CreateResponse(T id, Map<String, List<String>> errors) {
+	public CreateResponse(K id, Map<String, List<String>> errors) {
 		this.id = id;
 		this.errors = errors;
 	}
@@ -40,10 +40,10 @@ public final class CreateResponse<T> {
 		this.errors = errors;
 	}
 
-	String toJson(Gson gson, Class<T> idType) {
-		JsonObject root = new JsonObject();
-		if (id != null) root.add("data", gson.toJsonTree(id, idType));
-		if (errors != null) root.add("errors", gson.toJsonTree(errors));
-		return gson.toJson(root);
+	JsonObject toJson(Gson gson, Class<K> idType) {
+		JsonObject result = new JsonObject();
+		if (id != null) result.add("data", gson.toJsonTree(id, idType));
+		if (errors != null) result.add("errors", gson.toJsonTree(errors));
+		return result;
 	}
 }

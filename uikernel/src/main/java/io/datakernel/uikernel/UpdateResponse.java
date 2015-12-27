@@ -25,44 +25,44 @@ import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("unused")
-public final class UpdateResponse<E extends AbstractRecord<T>, T> {
-	private final List<E> changes;
-	private final Map<T, Map<String, List<String>>> errors = new HashMap<>();
+public final class UpdateResponse<K, R extends AbstractRecord<K>> {
+	private final List<R> changes;
+	private final Map<K, Map<String, List<String>>> errors = new HashMap<>();
 
-	public UpdateResponse(List<E> changes) {
+	public UpdateResponse(List<R> changes) {
 		this.changes = changes;
 	}
 
-	public UpdateResponse(List<E> changes, Map<T, Map<String, List<String>>> errors) {
+	public UpdateResponse(List<R> changes, Map<K, Map<String, List<String>>> errors) {
 		this.changes = changes;
 		this.errors.putAll(errors);
 	}
 
-	public void addErrors(Map<T, Map<String, List<String>>> errors) {
+	public void addErrors(Map<K, Map<String, List<String>>> errors) {
 		this.errors.putAll(errors);
 	}
 
-	String toJson(Gson gson, Class<E> type, Class<T> idType) {
-		JsonObject root = new JsonObject();
+	JsonObject toJson(Gson gson, Class<R> type, Class<K> idType) {
+		JsonObject result = new JsonObject();
 
-		JsonArray chang = new JsonArray();
-		for (E record : changes) {
+		JsonArray change = new JsonArray();
+		for (R record : changes) {
 			JsonArray arr = new JsonArray();
 			arr.add(gson.toJsonTree(record.getId(), idType));
 			arr.add(gson.toJsonTree(record, type));
-			chang.add(arr);
+			change.add(arr);
 		}
-		root.add("changes", chang);
+		result.add("changes", change);
 
 		JsonArray errs = new JsonArray();
-		for (Map.Entry<T, Map<String, List<String>>> entry : errors.entrySet()) {
+		for (Map.Entry<K, Map<String, List<String>>> entry : errors.entrySet()) {
 			JsonArray arr = new JsonArray();
 			arr.add(gson.toJsonTree(entry.getKey(), idType));
 			arr.add(gson.toJsonTree(entry.getValue()));
 			errs.add(arr);
 		}
-		root.add("errors", errs);
+		result.add("errors", errs);
 
-		return gson.toJson(root);
+		return result;
 	}
 }

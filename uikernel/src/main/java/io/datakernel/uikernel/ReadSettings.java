@@ -24,10 +24,11 @@ public final class ReadSettings {
 	private List<String> fields = new ArrayList<>();
 	private int offset = 0;
 	private int limit = Integer.MAX_VALUE;
-	private Map<String, String> filters = new HashMap<>();
-	private Map<String, String> sort = new HashMap<>();
-	private Set<Integer> extra = new HashSet<>();
+	private Map<String, String> filters = new HashMap<>(); // TODO (arashev): use LinkedHashMap
+	private Map<String, String> sort = new HashMap<>(); // TODO (arashev): use LinkedHashMap, replace with ASC/DESC enum
+	private Set<Integer> extra = new HashSet<>(); // TODO (arashev): use LinkedHashSet
 
+	// TODO (arashev): write unit tests with UTF8 strings containing '&' and ',' characters, fix escaping
 	public static ReadSettings parse(Gson gson, String json) {
 		json = "{" + json.replace("&", ",") + "}";
 		return gson.fromJson(json, ReadSettings.class);

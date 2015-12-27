@@ -16,13 +16,13 @@
 
 package io.datakernel.uikernel;
 
-import com.google.gson.Gson;
-
 import java.util.List;
 
 public final class DeleteResponse {
+	// TODO (arashev): avoid using nulls, use Collections.emptyList instead here and in similar classes
 	private List<String> errors;
 
+	// TODO (arashev): use properly named static factory methods instead, here and in similar classes. Constructors must be private. There must be helper static methods for single error, multiple errors etc.
 	public DeleteResponse() {
 	}
 
@@ -30,10 +30,12 @@ public final class DeleteResponse {
 		this.errors = errors;
 	}
 
-	String toJson(Gson gson) {
-		if (errors != null) {
-			return gson.toJson(errors);
-		}
-		return null;
+	public boolean hasErrors() {
+		return errors != null && !errors.isEmpty();
 	}
+
+	public List<String> getErrors() {
+		return errors;
+	}
+
 }

@@ -36,7 +36,7 @@ public class StaticServletExample {
 
 		System.out.println(resources);
 
-		main.setDefault(StaticServlets.BaseStaticServlet.create(eventloop, newCachedThreadPool(), resources));
+		main.setDefault(StaticServletForFiles.create(eventloop, newCachedThreadPool(), resources));
 
 		AsyncHttpServer staticFileServer = new AsyncHttpServer(eventloop, main);
 		staticFileServer.setListenPort(SERVER_PORT);

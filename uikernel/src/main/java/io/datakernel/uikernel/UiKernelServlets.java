@@ -17,17 +17,17 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.util.ByteBufStrings;
 
-import java.nio.charset.Charset;
 import java.util.List;
 
+import static io.datakernel.http.ContentType.JSON_UTF8;
 import static io.datakernel.http.HttpMethod.DELETE;
 import static io.datakernel.http.HttpMethod.PUT;
 import static io.datakernel.uikernel.Utils.decodeUtf8Query;
@@ -37,33 +37,32 @@ import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
  * Rest API for UiKernel Module
  */
 @SuppressWarnings("unused")
-public class UiKernelApi {
-	private final ContentType JSON_UTF8 = ContentType.JSON.setCharsetEncoding(Charset.forName("UTF-8"));
+public class UiKernelServlets {
 
-	public <E extends AbstractRecord<T>, T> AsyncHttpServlet createApi(GridModelManager controller, Gson gson) {
+	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel model, Gson gson) {
 		MiddlewareServlet main = new MiddlewareServlet();
-		main.get("/", getAll(controller, gson));
-		main.get("/:id", get(controller, gson));
-		main.post("/", create(controller, gson));
-		main.use("/", PUT, update(controller, gson));
-		main.use("/:id", DELETE, delete(controller, gson));
+		main.get("/", read(model, gson));
+		main.get("/:id", get(model, gson));
+		main.post("/", create(model, gson));
+		main.use("/", PUT, update(model, gson));
+		main.use("/:id", DELETE, delete(model, gson));
 		return main;
 	}
 
-	private <E extends AbstractRecord<T>, T> AsyncHttpServlet getAll(final GridModelManager<E, T> controller, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet read(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
 					String query = decodeUtf8Query(req.getUrl().getQuery());
 					ReadSettings settings = ReadSettings.parse(gson, query);
-					controller.read(settings, new ResultCallback<ReadResponse<E, T>>() {
+					model.read(settings, new ResultCallback<ReadResponse<K, R>>() {
 						@Override
-						public void onResult(ReadResponse<E, T> response) {
-							String json = response.toJson(gson, controller.getType(), controller.getIdType());
+						public void onResult(ReadResponse<K, R> response) {
+							JsonObject json = response.toJson(gson, model.getRecordType(), model.getIdType());
 							callback.onResult(HttpResponse.create()
 									.setContentType(JSON_UTF8)
-									.body(ByteBufStrings.wrapUTF8(json)));
+									.body(ByteBufStrings.wrapUTF8(gson.toJson(json))));
 						}
 
 						@Override
@@ -78,18 +77,18 @@ public class UiKernelApi {
 		};
 	}
 
-	private <E extends AbstractRecord<T>, T> AsyncHttpServlet get(final GridModelManager<E, T> controller, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet get(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
 					String query = decodeUtf8Query(req.getUrl().getQuery());
 					ReadSettings settings = ReadSettings.parse(gson, query);
-					T id = gson.fromJson(req.getUrlParameter("id"), controller.getIdType());
-					controller.read(id, settings, new ResultCallback<E>() {
+					K id = gson.fromJson(req.getUrlParameter("id"), model.getIdType());
+					model.read(id, settings, new ResultCallback<R>() {
 						@Override
-						public void onResult(E obj) {
-							String json = gson.toJson(obj, controller.getType());
+						public void onResult(R obj) {
+							String json = gson.toJson(obj, model.getRecordType());
 							callback.onResult(HttpResponse.create()
 									.setContentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(json)));
@@ -107,20 +106,20 @@ public class UiKernelApi {
 		};
 	}
 
-	private <E extends AbstractRecord<T>, T> AsyncHttpServlet create(final GridModelManager<E, T> controller, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet create(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
 					String json = ByteBufStrings.decodeUTF8(req.getBody());
-					E obj = gson.fromJson(json, controller.getType());
-					controller.create(obj, new ResultCallback<CreateResponse<T>>() {
+					R obj = gson.fromJson(json, model.getRecordType());
+					model.create(obj, new ResultCallback<CreateResponse<K>>() {
 						@Override
-						public void onResult(CreateResponse<T> response) {
-							String json = response.toJson(gson, controller.getIdType());
+						public void onResult(CreateResponse<K> response) {
+							JsonObject json = response.toJson(gson, model.getIdType());
 							HttpResponse res = HttpResponse.create()
 									.setContentType(JSON_UTF8)
-									.body(ByteBufStrings.wrapUTF8(json));
+									.body(ByteBufStrings.wrapUTF8(gson.toJson(json)));
 							callback.onResult(res);
 						}
 
@@ -136,20 +135,20 @@ public class UiKernelApi {
 		};
 	}
 
-	private <E extends AbstractRecord<T>, T> AsyncHttpServlet update(final GridModelManager<E, T> controller, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet update(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
 					String json = ByteBufStrings.decodeUTF8(req.getBody());
-					List<E> list = deserializeUpdateRequest(gson, json, controller.getType(), controller.getIdType());
-					controller.update(list, new ResultCallback<UpdateResponse<E, T>>() {
+					List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
+					model.update(list, new ResultCallback<UpdateResponse<K, R>>() {
 						@Override
-						public void onResult(UpdateResponse<E, T> result) {
-							String json = result.toJson(gson, controller.getType(), controller.getIdType());
+						public void onResult(UpdateResponse<K, R> result) {
+							JsonObject json = result.toJson(gson, model.getRecordType(), model.getIdType());
 							callback.onResult(HttpResponse.create()
 									.setContentType(JSON_UTF8)
-									.body(ByteBufStrings.wrapUTF8(json)));
+									.body(ByteBufStrings.wrapUTF8(gson.toJson(json))));
 						}
 
 						@Override
@@ -164,18 +163,18 @@ public class UiKernelApi {
 		};
 	}
 
-	private <E extends AbstractRecord<T>, T> AsyncHttpServlet delete(final GridModelManager<E, T> controller, final Gson gson) {
+	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet delete(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest req, final ResultCallback<HttpResponse> callback) {
 				try {
-					T id = gson.fromJson(req.getUrlParameter("id"), controller.getIdType());
-					controller.delete(id, new ResultCallback<DeleteResponse>() {
+					K id = gson.fromJson(req.getUrlParameter("id"), model.getIdType());
+					model.delete(id, new ResultCallback<DeleteResponse>() {
 						@Override
 						public void onResult(DeleteResponse response) {
 							HttpResponse res = HttpResponse.create();
-							String json = response.toJson(gson);
-							if (json != null) {
+							if (response.hasErrors()) {
+								String json = gson.toJson(response.getErrors());
 								res.setContentType(JSON_UTF8)
 										.body(ByteBufStrings.wrapUTF8(json));
 							}

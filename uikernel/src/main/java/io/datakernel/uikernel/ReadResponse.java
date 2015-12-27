@@ -23,55 +23,60 @@ import com.google.gson.JsonObject;
 import java.util.List;
 
 @SuppressWarnings("unused")
-public final class ReadResponse<E extends AbstractRecord<T>, T> {
-	private final List<E> records;
-	private List<E> extra;
-	private E totals;
+public final class ReadResponse<K, R extends AbstractRecord<K>> {
+	private final List<R> records;
 	private final int count;
+	private List<R> extra;
+	private R totals;
 
-	public ReadResponse(List<E> records, int count) {
-		this(records, null, null, count);
+	public ReadResponse(List<R> records, int count) {
+		this(records, count, null, null);
 	}
 
-	public ReadResponse(List<E> records, List<E> extra, E totals, int count) {
+	public ReadResponse(List<R> records, int count, List<R> extra, R totals) {
+		// TODO (arashev): add preconditions and null checks, here and in other similar classes
 		this.records = records;
-		this.extra = extra;
-		this.totals = totals;
 		this.count = count;
-	}
-
-	public void setExtra(List<E> extra) {
 		this.extra = extra;
-	}
-
-	public void setTotals(E totals) {
 		this.totals = totals;
 	}
 
-	String toJson(Gson gson, Class<E> type, Class<T> idType) {
-		JsonObject root = new JsonObject();
+	public void setExtra(List<R> extra) {
+		this.extra = extra;
+	}
+
+	public void setTotals(R totals) {
+		this.totals = totals;
+	}
+
+	JsonObject toJson(Gson gson, Class<R> type, Class<K> idType) {
+		JsonObject result = new JsonObject();
 
 		JsonArray recs = new JsonArray();
-		for (E record : records) {
+		for (R record : records) {
 			JsonArray arr = new JsonArray();
 			arr.add(gson.toJsonTree(record.getId(), idType));
 			arr.add(gson.toJsonTree(record, type));
 			recs.add(arr);
 		}
-		root.add("records", recs);
+		result.add("records", recs);
 
-		JsonArray extras = new JsonArray();
-		for (E record : extra) {
-			JsonArray arr = new JsonArray();
-			arr.add(gson.toJsonTree(record.getId(), idType));
-			arr.add(gson.toJsonTree(record, type));
-			extras.add(arr);
+		if (extra != null) {
+			JsonArray extras = new JsonArray();
+			for (R record : extra) {
+				JsonArray arr = new JsonArray();
+				arr.add(gson.toJsonTree(record.getId(), idType));
+				arr.add(gson.toJsonTree(record, type));
+				extras.add(arr);
+			}
+			result.add("extra", extras);
 		}
-		root.add("extra", extras);
 
-		root.add("total", gson.toJsonTree(totals, type));
+		if (totals != null) {
+			result.add("total", gson.toJsonTree(totals, type));
+		}
 
-		root.add("count", gson.toJsonTree(count));
-		return gson.toJson(root);
+		result.add("count", gson.toJsonTree(count));
+		return result;
 	}
 }

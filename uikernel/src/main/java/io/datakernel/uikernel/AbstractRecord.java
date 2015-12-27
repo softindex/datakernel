@@ -16,8 +16,14 @@
 
 package io.datakernel.uikernel;
 
-public abstract class AbstractRecord<T> {
-	public abstract T getId();
+public abstract class AbstractRecord<K> {
+	private K id;
 
-	public abstract void setId(T e);
+	public final K getId() {
+		return id;
+	}
+
+	public final void setId(K id) {
+		this.id = id;
+	}
 }
