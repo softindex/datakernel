@@ -370,12 +370,6 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 		Object value = result.get(0).getValue(0);
 
-		if (value instanceof Long && ((Long) value) == 0)
-			return false;
-
-		if (value instanceof Integer && ((Integer) value) == 0)
-			return false;
-
-		return true;
+		return (value instanceof Long && ((Long) value) == 1) || (value instanceof Integer && ((Integer) value) == 1);
 	}
 }
