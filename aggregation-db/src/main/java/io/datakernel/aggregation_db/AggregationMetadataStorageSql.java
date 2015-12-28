@@ -25,17 +25,18 @@ import com.google.common.collect.Multimap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
-import io.datakernel.aggregation_db.sql.tables.AggregationDbRevision;
 import io.datakernel.aggregation_db.sql.tables.records.AggregationDbChunkRecord;
 import io.datakernel.aggregation_db.sql.tables.records.AggregationDbStructureRecord;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.jooq.*;
+import org.jooq.exception.DataAccessException;
 import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
@@ -43,30 +44,39 @@ import java.util.concurrent.ExecutorService;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
+import static io.datakernel.aggregation_db.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbStructure.AGGREGATION_DB_STRUCTURE;
 import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static org.jooq.impl.DSL.currentTimestamp;
-import static org.jooq.impl.DSL.field;
-import static org.jooq.impl.DSL.nullif;
 
 public class AggregationMetadataStorageSql implements AggregationMetadataStorage {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationMetadataStorageSql.class);
 
+	private static final String LOCK_NAME = "cube_lock";
+	private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 180;
+
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final Configuration jooqConfiguration;
+	private final int lockTimeoutSeconds;
 
 	public AggregationMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration) {
+		this(eventloop, executor, jooqConfiguration, DEFAULT_LOCK_TIMEOUT_SECONDS);
+	}
+
+	public AggregationMetadataStorageSql(Eventloop eventloop, ExecutorService executor, Configuration jooqConfiguration,
+	                                     int lockTimeoutSeconds) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.jooqConfiguration = jooqConfiguration;
+		this.lockTimeoutSeconds = lockTimeoutSeconds;
 	}
 
 	public void truncateTables(DSLContext jooq) {
 		jooq.truncate(AGGREGATION_DB_CHUNK).execute();
 		jooq.truncate(AGGREGATION_DB_STRUCTURE).execute();
-		jooq.truncate(AggregationDbRevision.AGGREGATION_DB_REVISION).execute();
+		jooq.truncate(AGGREGATION_DB_REVISION).execute();
 	}
 
 	public void truncateTables() {
@@ -75,9 +85,9 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 	public int nextRevisionId(DSLContext jooq) {
 		return jooq
-				.insertInto(AggregationDbRevision.AGGREGATION_DB_REVISION)
+				.insertInto(AGGREGATION_DB_REVISION)
 				.defaultValues()
-				.returning(AggregationDbRevision.AGGREGATION_DB_REVISION.ID)
+				.returning(AGGREGATION_DB_REVISION.ID)
 				.fetchOne()
 				.getId();
 	}
@@ -154,37 +164,32 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 	public void saveNewChunks(DSLContext jooq, final int revisionId,
 	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
-		getCubeLock(jooq);
-		try {
-			for (AggregationMetadata aggregationMetadata : newChunksWithMetadata.keySet()) {
-				for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
-					AggregationChunk chunk = createChunk(revisionId, newChunk);
-					AggregationDbChunkRecord record = new AggregationDbChunkRecord();
-					record.setAggregationId(aggregationMetadata.getId());
-					record.setRevisionId(chunk.getRevisionId());
-					record.setKeys(Joiner.on(' ').join(aggregationMetadata.getKeys()));
-					record.setFields(Joiner.on(' ').join(chunk.getFields()));
-					record.setCount(chunk.getCount());
+		for (AggregationMetadata aggregationMetadata : newChunksWithMetadata.keySet()) {
+			for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
+				AggregationChunk chunk = createChunk(revisionId, newChunk);
+				AggregationDbChunkRecord record = new AggregationDbChunkRecord();
+				record.setAggregationId(aggregationMetadata.getId());
+				record.setRevisionId(chunk.getRevisionId());
+				record.setKeys(Joiner.on(' ').join(aggregationMetadata.getKeys()));
+				record.setFields(Joiner.on(' ').join(chunk.getFields()));
+				record.setCount(chunk.getCount());
 
-					Map<Field<?>, Object> fields = new LinkedHashMap<>();
-					int size = record.size();
-					for (int i = 1; i < size; i++) {
-						Object value = record.getValue(i);
-						if (value != null) {
-							fields.put(record.field(i), value);
-						}
+				Map<Field<?>, Object> fields = new LinkedHashMap<>();
+				int size = record.size();
+				for (int i = 1; i < size; i++) {
+					Object value = record.getValue(i);
+					if (value != null) {
+						fields.put(record.field(i), value);
 					}
-
-					for (int d = 0; d < aggregationMetadata.getKeys().size(); d++) {
-						fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min"), chunk.getMinPrimaryKey().values().get(d).toString());
-						fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max"), chunk.getMaxPrimaryKey().values().get(d).toString());
-					}
-
-					jooq.update(AGGREGATION_DB_CHUNK).set(fields).where(AGGREGATION_DB_CHUNK.ID.equal(chunk.getChunkId())).execute();
 				}
+
+				for (int d = 0; d < aggregationMetadata.getKeys().size(); d++) {
+					fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min"), chunk.getMinPrimaryKey().values().get(d).toString());
+					fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max"), chunk.getMaxPrimaryKey().values().get(d).toString());
+				}
+
+				jooq.update(AGGREGATION_DB_CHUNK).set(fields).where(AGGREGATION_DB_CHUNK.ID.equal(chunk.getChunkId())).execute();
 			}
-		} finally {
-			releaseCubeLock(jooq);
 		}
 	}
 
@@ -193,7 +198,16 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		callConcurrently(eventloop, executor, false, new Callable<LoadedChunks>() {
 			@Override
 			public LoadedChunks call() {
-				return loadChunks(DSL.using(jooqConfiguration), aggregation, lastRevisionId);
+				Connection connection = jooqConfiguration.connectionProvider().acquire();
+				Configuration configurationWithConnection = jooqConfiguration.derive(connection);
+				DSLContext jooq = DSL.using(configurationWithConnection);
+				try {
+					getCubeLock(jooq);
+					return loadChunks(jooq, aggregation, lastRevisionId);
+				} finally {
+					releaseCubeLock(jooq);
+					jooqConfiguration.connectionProvider().release(connection);
+				}
 			}
 		}, callback);
 	}
@@ -268,38 +282,46 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		runConcurrently(eventloop, executor, false, new Runnable() {
 			@Override
 			public void run() {
-				saveConsolidatedChunks(DSL.using(jooqConfiguration), aggregationMetadata, originalChunks, consolidatedChunks);
+				saveConsolidatedChunks(aggregationMetadata, originalChunks, consolidatedChunks);
 			}
 		}, callback);
 	}
 
-	public void saveConsolidatedChunks(DSLContext jooq,
-	                                   final AggregationMetadata aggregationMetadata,
+	public void saveConsolidatedChunks(final AggregationMetadata aggregationMetadata,
 	                                   final List<AggregationChunk> originalChunks,
 	                                   final List<AggregationChunk.NewChunk> consolidatedChunks) {
-		jooq.transaction(new TransactionalRunnable() {
-			@Override
-			public void run(Configuration jooqConfiguration) throws Exception {
-				DSLContext jooq = DSL.using(jooqConfiguration);
+		final Connection connection = jooqConfiguration.connectionProvider().acquire();
+		final Configuration configurationWithConnection = jooqConfiguration.derive(connection);
+		DSLContext jooq = DSL.using(configurationWithConnection);
+		try {
+			getCubeLock(jooq);
+			jooq.transaction(new TransactionalRunnable() {
+				@Override
+				public void run(Configuration jooqConfiguration) throws Exception {
+					DSLContext jooq = DSL.using(configurationWithConnection);
 
-				final int revisionId = nextRevisionId(jooq);
+					final int revisionId = nextRevisionId(jooq);
 
-				jooq.update(AGGREGATION_DB_CHUNK)
-						.set(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID, revisionId)
-						.set(AGGREGATION_DB_CHUNK.CONSOLIDATION_COMPLETED, currentTimestamp())
-						.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(originalChunks, new Function<AggregationChunk, Long>() {
-							@Override
-							public Long apply(AggregationChunk chunk) {
-								return chunk.getChunkId();
-							}
-						}))))
-						.execute();
+					jooq.update(AGGREGATION_DB_CHUNK)
+							.set(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID, revisionId)
+							.set(AGGREGATION_DB_CHUNK.CONSOLIDATION_COMPLETED, currentTimestamp())
+							.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(originalChunks, new Function<AggregationChunk, Long>() {
+								@Override
+								public Long apply(AggregationChunk chunk) {
+									return chunk.getChunkId();
+								}
+							}))))
+							.execute();
 
-				saveNewChunks(jooq, revisionId, ImmutableMultimap.<AggregationMetadata, AggregationChunk.NewChunk>builder()
-						.putAll(aggregationMetadata, consolidatedChunks)
-						.build());
-			}
-		});
+					saveNewChunks(jooq, revisionId, ImmutableMultimap.<AggregationMetadata, AggregationChunk.NewChunk>builder()
+							.putAll(aggregationMetadata, consolidatedChunks)
+							.build());
+				}
+			});
+		} finally {
+			releaseCubeLock(jooq);
+			jooqConfiguration.connectionProvider().release(connection);
+		}
 	}
 
 	@Override
@@ -326,11 +348,34 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 				.execute();
 	}
 
-	private void getCubeLock(DSLContext jooq) {
-		jooq.execute("SELECT GET_LOCK('cube_lock', 60)");
+	public void getCubeLock(DSLContext jooq) {
+		Result<Record> result = jooq.fetch("SELECT GET_LOCK('" + LOCK_NAME + "', " + lockTimeoutSeconds + ")");
+		if (!isValidLockingResult(result))
+			throw new DataAccessException("Obtaining lock '" + LOCK_NAME + "' failed");
 	}
 
-	private void releaseCubeLock(DSLContext jooq) {
-		jooq.execute("SELECT RELEASE_LOCK('cube_lock')");
+	public void releaseCubeLock(DSLContext jooq) {
+		try {
+			Result<Record> result = jooq.fetch("SELECT RELEASE_LOCK('" + LOCK_NAME + "')");
+			if (!isValidLockingResult(result))
+				logger.error("Releasing lock '" + LOCK_NAME + "' did not complete correctly");
+		} catch (Exception ignored) {
+			// reported by jOOQ
+		}
+	}
+
+	private static boolean isValidLockingResult(Result<Record> result) {
+		if (result.get(0) == null || result.get(0).getValue(0) == null)
+			return false;
+
+		Object value = result.get(0).getValue(0);
+
+		if (value instanceof Long && ((Long) value) == 0)
+			return false;
+
+		if (value instanceof Integer && ((Integer) value) == 0)
+			return false;
+
+		return true;
 	}
 }
