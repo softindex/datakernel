@@ -131,10 +131,12 @@ public class HttpThrottlingServer {
 		final NioEventloop eventloop = new NioEventloop();
 
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
-		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-		eventloop.registerMBean(mbeanServer, WOW, NIO);
-		ByteBufPool.registerMBean(mbeanServer);
-		register(mbeanServer, MBeanFormat.name(WOW, NIO, ThrottlingController.class), eventloop.throttlingController);
+
+		// TODO(vmykhalko): reimplement jmx logic
+//		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+//		eventloop.registerMBean(mbeanServer, WOW, NIO);
+//		ByteBufPool.registerMBean(mbeanServer);
+//		register(mbeanServer, MBeanFormat.name(WOW, NIO, ThrottlingController.class), eventloop.throttlingController);
 		server.start();
 
 		eventloop.run();

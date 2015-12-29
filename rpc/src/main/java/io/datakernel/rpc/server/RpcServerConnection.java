@@ -20,7 +20,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.LastExceptionCounter;
-import io.datakernel.jmx.StatsCounter;
+import io.datakernel.jmx.ValuesCounter;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;
@@ -41,6 +41,9 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 		void onClosed();
 	}
 
+	private static final double STATS_COUNTER_WINDOW = 10.0;  // 10 seconds
+	private static final double STATS_COUNTER_PRECISION = 0.1;  // 0.1 seconds
+
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 	private final NioEventloop eventloop;
 	private final RpcProtocol protocol;
@@ -50,7 +53,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	// JMX
 	private final LastExceptionCounter lastRemoteException = new LastExceptionCounter("RemoteException");
 	private final LastExceptionCounter lastInternalException = new LastExceptionCounter("InternalException");
-	private final StatsCounter timeExecution = new StatsCounter();
+	private final ValuesCounter timeExecution;
 	private int successfulResponses = 0;
 	private int errorResponses = 0;
 	private boolean monitoring;
@@ -63,6 +66,9 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, true);
 		this.handlers = handlers;
 		this.statusListener = statusListener;
+
+		// JMX
+		this.timeExecution = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
 	}
 
 	public void apply(Object request, ResultCallback<Object> callback) {
@@ -111,7 +117,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 				if (startTime == 0)
 					return;
 				int value = (int) (System.currentTimeMillis() - startTime);
-				timeExecution.add(value);
+				timeExecution.recordValue(value);
 			}
 		});
 	}
@@ -199,12 +205,12 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	}
 
 	@Override
-	public CompositeData getLastResponseException() {
+	public CompositeData getLastResponseException() throws OpenDataException {
 		return lastRemoteException.compositeData();
 	}
 
 	@Override
-	public CompositeData getLastInternalException() {
+	public CompositeData getLastInternalException() throws OpenDataException {
 		return lastInternalException.compositeData();
 	}
 }

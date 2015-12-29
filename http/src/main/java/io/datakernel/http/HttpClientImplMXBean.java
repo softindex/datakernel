@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.jmx.DynamicStatsCounter;
+import io.datakernel.jmx.ValuesCounter;
 
 public interface HttpClientImplMXBean {
 
@@ -30,7 +30,7 @@ public interface HttpClientImplMXBean {
 
 	String getTimeCheckExpiredMicrosStats();
 
-	DynamicStatsCounter getExpiredConnectionsStats(); // MXBean
+	ValuesCounter getExpiredConnectionsStats(); // MXBean
 
 	int getConnectionsCount();
 

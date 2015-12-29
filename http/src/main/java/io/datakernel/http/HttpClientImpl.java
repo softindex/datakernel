@@ -25,9 +25,8 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.http.ExposedLinkedList.Node;
-import io.datakernel.jmx.DynamicStatsCounter;
+import io.datakernel.jmx.ValuesCounter;
 import io.datakernel.jmx.MBeanFormat;
-import io.datakernel.jmx.StatsCounter;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +54,8 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	private static final Logger logger = LoggerFactory.getLogger(HttpClientImpl.class);
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
+	private static final double STATS_COUNTER_WINDOW = 10.0;  // 10 seconds
+	private static final double STATS_COUNTER_PRECISION = 0.1;  // 0.1 seconds
 
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final BindException BIND_EXCEPTION = new BindException();
@@ -76,8 +77,8 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	private int countPendingSocketConnect;
 
 	//JMX
-	private final StatsCounter timeCheckExpired = new StatsCounter();
-	private final DynamicStatsCounter expiredConnections = new DynamicStatsCounter(1 << 10);
+	private final ValuesCounter timeCheckExpired;
+	private final ValuesCounter expiredConnections;
 	private boolean monitoring;
 
 	private int inetAddressIdx = 0;
@@ -110,6 +111,10 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
+
+		// JMX
+		this.timeCheckExpired = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.expiredConnections = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
 	}
 
 	public HttpClientImpl setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
@@ -161,10 +166,10 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 				connection.close();
 				count++;
 			}
-			expiredConnections.add(count);
+			expiredConnections.recordValue(count);
 		} finally {
 			if (stopwatch != null)
-				timeCheckExpired.add((int) stopwatch.elapsed(TimeUnit.MICROSECONDS));
+				timeCheckExpired.recordValue((int) stopwatch.elapsed(TimeUnit.MICROSECONDS));
 		}
 		return count;
 	}
@@ -464,7 +469,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 
 	@Override
 	public int getTimeCheckExpiredMicros() {
-		return timeCheckExpired.getLast();
+		return (int)timeCheckExpired.getLastValue();
 	}
 
 	@Override
@@ -508,7 +513,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	}
 
 	@Override
-	public DynamicStatsCounter getExpiredConnectionsStats() {
+	public ValuesCounter getExpiredConnectionsStats() {
 		return expiredConnections;
 	}
 

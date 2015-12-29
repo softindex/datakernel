@@ -21,5 +21,12 @@ import io.datakernel.rpc.client.sender.RpcSender;
 import java.net.InetSocketAddress;
 
 public interface RpcClientConnectionPool {
-	RpcSender get(InetSocketAddress key);
+
+	/**
+	 * Returns connection for specified address or null if there is no such connection
+	 *
+	 * @param address address
+	 * @return connection for specified address or null if there is no such connection
+	 */
+	RpcSender get(InetSocketAddress address);
 }

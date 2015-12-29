@@ -26,9 +26,7 @@ import java.nio.channels.SocketChannel;
 
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class PingPongSocketConnectionTest {
 	public static final int PORT = 9921;

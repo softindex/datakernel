@@ -64,8 +64,8 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	private ServerSocketChannel[] serverSocketChannels;
 
 	// JMX
-	private static final ExceptionMarker PREPARE_SOCKET_MARKER = NioEventloopStats.exceptionMarker(PrimaryNioServer.class, "PrepareSocketException");
-	private static final ExceptionMarker CLOSE_MARKER = NioEventloopStats.exceptionMarker(PrimaryNioServer.class, "CloseException");
+	private static final ExceptionMarker PREPARE_SOCKET_MARKER = new ExceptionMarker(PrimaryNioServer.class, "PrepareSocketException");
+	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(PrimaryNioServer.class, "CloseException");
 	protected long totalAccepts;
 
 	public AbstractNioServer(NioEventloop eventloop) {

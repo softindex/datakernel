@@ -20,8 +20,6 @@ import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.util.Preconditions.check;
 import static java.util.concurrent.TimeUnit.*;
-import static java.util.concurrent.TimeUnit.MICROSECONDS;
-import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 public class Stopwatch {
 	private boolean isRunning;

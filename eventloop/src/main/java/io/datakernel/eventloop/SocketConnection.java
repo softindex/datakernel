@@ -24,8 +24,6 @@ import java.nio.channels.Channel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
 
-import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
-
 /**
  * Common abstract class, which represents any kind of connection.
  */
@@ -46,10 +44,10 @@ public abstract class SocketConnection {
 	protected long writeTime;
 
 	// JMX
-	private static final ExceptionMarker INTERNAL_MARKER = exceptionMarker(SocketConnection.class, "InternalException");
-	private static final ExceptionMarker READ_MARKER = exceptionMarker(SocketConnection.class, "ReadException");
-	private static final ExceptionMarker WRITE_MARKER = exceptionMarker(SocketConnection.class, "WriteException");
-	private static final ExceptionMarker CLOSE_MARKER = exceptionMarker(SocketConnection.class, "CloseException");
+	private static final ExceptionMarker INTERNAL_MARKER = new ExceptionMarker(SocketConnection.class, "InternalException");
+	private static final ExceptionMarker READ_MARKER = new ExceptionMarker(SocketConnection.class, "ReadException");
+	private static final ExceptionMarker WRITE_MARKER = new ExceptionMarker(SocketConnection.class, "WriteException");
+	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(SocketConnection.class, "CloseException");
 
 	protected SocketConnection(NioEventloop eventloop) {
 		this.eventloop = eventloop;

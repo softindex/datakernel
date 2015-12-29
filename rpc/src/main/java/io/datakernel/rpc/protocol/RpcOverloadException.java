@@ -14,24 +14,13 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop;
+package io.datakernel.rpc.protocol;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
+public class RpcOverloadException extends Exception {
+	public RpcOverloadException() {
+	}
 
-public interface NioEventloopMBean {
-	long getLastActivityAgoMillis();
-
-	int getConcurrentOperationsCount();
-
-	int getConcurrentRunnables();
-
-	int getLocalRunnables();
-
-	int getScheduledRunnables();
-
-	CompositeData getThrottlingControllerState() throws OpenDataException;
-
-	String getThreadName();
-
+	public RpcOverloadException(String message) {
+		super(message);
+	}
 }

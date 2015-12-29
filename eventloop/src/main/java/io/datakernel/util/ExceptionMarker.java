@@ -17,7 +17,43 @@
 package io.datakernel.util;
 
 import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
-public interface ExceptionMarker {
-	Marker getMarker();
+import java.util.Arrays;
+
+public final class ExceptionMarker {
+	private final Class<?> clazz;
+	private final Marker marker;
+
+	public ExceptionMarker(Class<?> clazz, String name) {
+		this.clazz = clazz;
+		this.marker = MarkerFactory.getMarker(name);
+	}
+
+	public Marker getMarker() {
+		return marker;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		ExceptionMarker that = (ExceptionMarker) o;
+		return equal(this.clazz, that.clazz) &&
+				equal(this.marker, that.marker);
+	}
+
+	private static boolean equal(Object a, Object b) {
+		return a == b || (a != null && a.equals(b));
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(new Object[]{clazz, marker});
+	}
+
+	@Override
+	public String toString() {
+		return clazz.getName() + "." + marker.getName();
+	}
 }

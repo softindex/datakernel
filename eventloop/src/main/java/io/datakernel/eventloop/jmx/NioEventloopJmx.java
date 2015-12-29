@@ -14,12 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client;
+package io.datakernel.eventloop.jmx;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
+public interface NioEventloopJmx {
 
-public interface RpcClientMBean {
 	void startMonitoring();
 
 	void stopMonitoring();
@@ -28,28 +26,12 @@ public interface RpcClientMBean {
 
 	void resetStats();
 
-	String getAddresses();
+	void resetStats(double smoothingWindow, double smoothingPrecision);
 
-	int getConnectionsCount();
-
-	CompositeData[] getConnections() throws OpenDataException;
-
-	long getTotalSuccessfulRequests();
-
-	long getTotalPendingRequests();
-
-	long getTotalRejectedRequests();
-
-	long getTotalFailedRequests();
-
-	long getTotalExpiredRequests();
-
-	int getSuccessfulConnects();
-
-	int getFailedConnects();
-
-	int getClosedConnects();
-
-	CompositeData getLastException();
-
+	/**
+	 * Operation is supposed to be thread-safe
+	 *
+	 * @return stats set
+	 */
+	NioEventloopStatsSet getStatsSet();
 }

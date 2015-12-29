@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
-import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
 import static io.datakernel.http.HttpHeader.*;
 import static io.datakernel.util.ByteBufStrings.*;
 
@@ -78,7 +77,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 
 	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
 	protected ExposedLinkedList.Node<AbstractHttpConnection> connectionsListNode;
-	private static final ExceptionMarker INTERNAL_MARKER = exceptionMarker(AbstractHttpConnection.class, "InternalException");
+	private static final ExceptionMarker INTERNAL_MARKER = new ExceptionMarker(AbstractHttpConnection.class, "InternalException");
 
 	/**
 	 * Creates a new instance of AbstractHttpConnection

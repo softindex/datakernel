@@ -18,6 +18,9 @@ package io.datakernel.eventloop;
 
 import io.datakernel.time.CurrentTimeProvider;
 
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+
 /**
  * An event loop receives tasks  and processes all tasks in the event thread.
  * It will start an exclusive event thread to process all events.
@@ -43,11 +46,20 @@ public interface Eventloop extends CurrentTimeProvider {
 	void postLater(Runnable runnable);
 
 	/**
-	 * Adds the event from other thread
+	 * Adds the event from another thread
 	 *
 	 * @param runnable runnable for event
 	 */
 	void postConcurrently(Runnable runnable);
+
+	/**
+	 * Adds {@code callable} from another thread
+	 *
+	 * @param callable callable
+	 * @param <V>      type of result
+	 * @return {@link Future} which can be used to retrieve result
+	 */
+	<V> Future<V> postConcurrently(final Callable<V> callable);
 
 	/**
 	 * Adds the event which will be executed after certain time

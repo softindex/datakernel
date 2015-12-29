@@ -14,29 +14,34 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.server;
+package io.datakernel.rpc.client.jmx;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
+import java.net.InetSocketAddress;
+import java.util.List;
+import java.util.Map;
 
-public interface RpcServerConnectionMBean {
+/**
+ * Implementations are supposed to be thread-safe
+ */
+public interface RpcJmxClient {
+
 	void startMonitoring();
 
 	void stopMonitoring();
 
-	boolean isMonitoring();
-
 	void reset();
 
-	CompositeData getConnectionDetails() throws OpenDataException;
+	void reset(double smoothingWindow, double smoothingPrecision);
 
-	int getSuccessfulResponses();
+	RpcJmxRequestsStatsSet getGeneralRequestsStats();
 
-	int getErrorResponses();
+	Map<Class<?>, RpcJmxRequestsStatsSet> getRequestsStatsPerClass();
 
-	String getTimeExecutionMillis();
+	Map<InetSocketAddress, RpcJmxConnectsStatsSet> getConnectsStatsPerAddress();
 
-	CompositeData getLastResponseException() throws OpenDataException;
+	Map<InetSocketAddress, RpcJmxRequestsStatsSet> getRequestStatsPerAddress();
 
-	CompositeData getLastInternalException() throws OpenDataException;
+	int getActiveConnectionsCount();
+
+	List<InetSocketAddress> getAddresses();
 }

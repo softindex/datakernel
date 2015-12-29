@@ -23,6 +23,7 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.jmx.LastExceptionCounter;
+import io.datakernel.util.ExceptionMarker;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,7 +37,6 @@ import java.util.Random;
 import static com.google.common.io.ByteStreams.readFully;
 import static com.google.common.io.ByteStreams.toByteArray;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioEventloopStats.exceptionMarker;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;
@@ -262,9 +262,9 @@ public class HttpServerTest {
 		}
 		server.closeFuture().await();
 		thread.join();
-		LastExceptionCounter exceptionCounter = eventloop.getExceptionCounter(exceptionMarker(SocketConnection.class, "InternalException"));
+		LastExceptionCounter exceptionCounter = eventloop.getExceptionCounter(new ExceptionMarker(SocketConnection.class, "InternalException"));
 		assertNotNull(exceptionCounter);
-		String[] exception = exceptionCounter.getException();
+		String[] exception = exceptionCounter.getFormattedException();
 		assertTrue(exception != null && exception.length > 0);
 		assertTrue(exception[0], exception[0].contains("Too big HttpMessage"));
 	}

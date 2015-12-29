@@ -14,24 +14,20 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.sender.helper;
+package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.rpc.client.RpcClientConnection;
-import io.datakernel.rpc.client.sender.RpcSender;
-import io.datakernel.rpc.protocol.RpcMessage;
+/**
+ * Not thread-safe
+ */
+public interface RpcJmxClientConnection {
 
-public final class RpcSenderStub implements RpcSender {
-	private int sends;
+	void startMonitoring();
 
-	public int getSendsNumber() {
-		return sends;
-	}
+	void stopMonitoring();
 
-	@Override
-	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-		sends++;
-	}
+	void reset();
+
+	void reset(double smoothingWindow, double smoothingPrecision);
+
+	RpcJmxRequestsStatsSet getRequestStats();
 }
