@@ -27,15 +27,25 @@ import java.util.Comparator;
  */
 public abstract class KeyType implements Comparator<Object> {
 	protected final Class<?> dataType;
+	private final Object restrictedValue;
 
 	public KeyType(Class<?> dataType) {
+		this(dataType, null);
+	}
+
+	public KeyType(Class<?> dataType, Object restrictedValue) {
 		this.dataType = dataType;
+		this.restrictedValue = restrictedValue;
 	}
 
 	public abstract SerializerGen serializerGen();
 
 	public Class<?> getDataType() {
 		return dataType;
+	}
+
+	public Object getRestrictedValue() {
+		return restrictedValue;
 	}
 
 	public abstract JsonPrimitive toJson(Object value);

@@ -26,7 +26,7 @@ import java.net.InetAddress;
 public class CachedDnsLookupResult {
 	private final String domainName;
 	private final InetAddress[] ips;
-	private final Long expirationSecond;
+	private final long expirationSecond;
 	private final ResponseErrorCode errorCode;
 	private final Short type;
 
@@ -83,7 +83,7 @@ public class CachedDnsLookupResult {
 		return errorCode == ResponseErrorCode.NO_ERROR;
 	}
 
-	public Long getExpirationSecond() {
+	public long getExpirationSecond() {
 		return expirationSecond;
 	}
 

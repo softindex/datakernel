@@ -23,7 +23,11 @@ import io.datakernel.serializer.asm.SerializerGenLong;
 
 public class KeyTypeLong extends KeyType implements KeyTypeEnumerable {
 	public KeyTypeLong() {
-		super(long.class);
+		this(null);
+	}
+
+	public KeyTypeLong(Object restrictedValue) {
+		super(long.class, restrictedValue);
 	}
 
 	@Override

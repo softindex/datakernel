@@ -147,7 +147,8 @@ final class FileSystemImpl implements FileSystem, NioService {
 			callback.onException(e);
 			return;
 		}
-		StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, tmpPath, true);
+		StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, tmpPath, true, true);
+		diskWrite.setFlushCallback(callback);
 		producer.streamTo(diskWrite);
 		diskWrite.setFlushCallback(callback);
 	}

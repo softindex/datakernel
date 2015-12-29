@@ -30,4 +30,10 @@ public interface NativeDnsResolverMBean {
 	String[] getSuccessfullyResolvedDomainNames();
 
 	String[] getDomainNamesOfFailedRequests();
+
+	void emptyCache();
+
+	void setMaxTtlMillis(long maxTtlMillis);
+
+	long getMaxTtlMillis();
 }

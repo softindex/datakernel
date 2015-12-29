@@ -26,12 +26,19 @@ public class KeyTypeString extends KeyType {
 	private final StringFormat format;
 
 	public KeyTypeString() {
-		super(String.class);
-		format = null;
+		this(null);
+	}
+
+	public KeyTypeString(Object restrictedValue) {
+		this(null, restrictedValue);
 	}
 
 	public KeyTypeString(StringFormat format) {
-		super(String.class);
+		this(format, null);
+	}
+
+	public KeyTypeString(StringFormat format, Object restrictedValue) {
+		super(String.class, restrictedValue);
 		this.format = format;
 	}
 
