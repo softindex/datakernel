@@ -48,6 +48,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	private final Path path;
 	private final OpenOption[] options;
 	private final boolean removeFileOnException;
+	private final boolean forceOnClose;
 
 	private final ArrayDeque<ByteBuf> queue = new ArrayDeque<>();
 	private AsyncFile asyncFile;
@@ -74,11 +75,17 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	public StreamFileWriter(Eventloop eventloop, ExecutorService executor,
 	                        Path path, OpenOption[] options, boolean removeFileOnException) {
+		this(eventloop, executor, path, options, removeFileOnException, false);
+	}
+
+	public StreamFileWriter(Eventloop eventloop, ExecutorService executor,
+	                        Path path, OpenOption[] options, boolean removeFileOnException, boolean forceOnClose) {
 		super(eventloop);
 		this.executor = checkNotNull(executor);
 		this.path = path;
 		this.options = options;
 		this.removeFileOnException = removeFileOnException;
+		this.forceOnClose = forceOnClose;
 	}
 
 	public void setFlushCallback(CompletionCallback flushCallback) {
@@ -119,7 +126,14 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	public static StreamFileWriter createFile(Eventloop eventloop, ExecutorService executor,
 	                                          Path path, boolean removeFileOnException) {
-		return new StreamFileWriter(eventloop, executor, path, new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING}, removeFileOnException);
+		return new StreamFileWriter(eventloop, executor, path, new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING},
+				removeFileOnException);
+	}
+
+	public static StreamFileWriter createFile(Eventloop eventloop, ExecutorService executor,
+	                                          Path path, boolean removeFileOnException, boolean forceOnClose) {
+		return new StreamFileWriter(eventloop, executor, path, new OpenOption[]{WRITE, CREATE, TRUNCATE_EXISTING},
+				removeFileOnException, forceOnClose);
 	}
 
 	@Override
@@ -255,7 +269,11 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	private void doCleanup(CompletionCallback callback) {
 		if (asyncFile != null) {
-			asyncFile.close(callback);
+			if (forceOnClose)
+				asyncFile.forceAndClose(callback);
+			else
+				asyncFile.close(callback);
+
 			asyncFile = null;
 		}
 

@@ -195,7 +195,7 @@ public class StreamFileReaderWriterTest {
 		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
 
 		StreamFileWriter writer = new StreamFileWriter(eventloop, executor, Paths.get(tempFile.getAbsolutePath()),
-				new OpenOption[]{WRITE, TRUNCATE_EXISTING}, false);
+				new OpenOption[]{WRITE, TRUNCATE_EXISTING}, false, true);
 
 		producer.streamTo(writer);
 		eventloop.run();

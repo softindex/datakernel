@@ -116,7 +116,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer, StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id));
+		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id), false, true);
 
 		serializer.getOutput().streamTo(compressor.getInput());
 		compressor.getOutput().streamTo(writer);

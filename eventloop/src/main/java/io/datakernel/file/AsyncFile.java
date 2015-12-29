@@ -450,6 +450,16 @@ public final class AsyncFile implements File {
 		});
 	}
 
+	public void forceAndClose(CompletionCallback callback) {
+		runConcurrently(eventloop, executor, false, new RunnableWithException() {
+			@Override
+			public void runWithException() throws Exception {
+				channel.force(true);
+				channel.close();
+			}
+		}, callback);
+	}
+
 	/**
 	 * Closes the channel
 	 *
