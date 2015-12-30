@@ -159,10 +159,11 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		}, callback);
 	}
 
-	public void saveNewChunks(DSLContext jooq,
+	public int saveNewChunks(DSLContext jooq,
 	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
 		int revisionId = nextRevisionId(jooq);
 		saveNewChunks(jooq, revisionId, newChunksWithMetadata);
+		return revisionId;
 	}
 
 	public void saveNewChunks(DSLContext jooq, final int revisionId,

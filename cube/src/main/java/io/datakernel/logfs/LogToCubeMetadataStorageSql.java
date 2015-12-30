@@ -23,10 +23,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.CubeMetadataStorageSql;
 import io.datakernel.cube.sql.tables.records.AggregationDbLogRecord;
 import io.datakernel.eventloop.Eventloop;
-import org.jooq.Configuration;
-import org.jooq.DSLContext;
-import org.jooq.Result;
-import org.jooq.TransactionalRunnable;
+import org.jooq.*;
 import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static io.datakernel.cube.sql.tables.AggregationDbLog.AGGREGATION_DB_LOG;
+import static org.jooq.impl.DSL.max;
 
 /**
  * Stores cube and logs metadata in relational database.
@@ -90,9 +88,23 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 
 	private Map<String, LogPosition> loadLogPositions(DSLContext jooq,
 	                                                  String log, List<String> partitions) {
-		Result<AggregationDbLogRecord> logRecords = jooq.selectFrom(AGGREGATION_DB_LOG)
+		Result<Record1<Integer>> revisionRecords = jooq
+				.select(max(AGGREGATION_DB_LOG.REVISION_ID))
+				.from(AGGREGATION_DB_LOG)
 				.where(AGGREGATION_DB_LOG.LOG.eq(log))
 				.and(AGGREGATION_DB_LOG.PARTITION.in(partitions))
+				.groupBy(AGGREGATION_DB_LOG.LOG, AGGREGATION_DB_LOG.PARTITION)
+				.fetch();
+
+		List<Integer> revisions = revisionRecords.map(new RecordMapper<Record1<Integer>, Integer>() {
+			@Override
+			public Integer map(Record1<Integer> revisionRecord) {
+				return revisionRecord.value1();
+			}
+		});
+
+		Result<AggregationDbLogRecord> logRecords = jooq.selectFrom(AGGREGATION_DB_LOG)
+				.where(AGGREGATION_DB_LOG.REVISION_ID.in(revisions))
 				.fetch();
 
 		Map<String, LogPosition> logPositionMap = new LinkedHashMap<>();
@@ -107,6 +119,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 							new LogFile(logRecord.getFile(), logRecord.getFileIndex()),
 							logRecord.getPosition()));
 		}
+
 		return logPositionMap;
 	}
 
@@ -137,6 +150,9 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	private void saveCommit(final String log, Map<String, LogPosition> oldPositions,
 	                        final Map<String, LogPosition> newPositions,
 	                        final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
+		if (newChunks.isEmpty())
+			return;
+
 		final Connection connection = jooqConfiguration.connectionProvider().acquire();
 		final Configuration configurationWithConnection = jooqConfiguration.derive(connection);
 		DSLContext jooq = DSL.using(configurationWithConnection);
@@ -147,6 +163,8 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 				public void run(Configuration configuration) throws Exception {
 					DSLContext jooq = DSL.using(configurationWithConnection);
 
+					int revisionId = aggregationMetadataStorage.saveNewChunks(jooq, newChunks);
+
 					for (String partition : newPositions.keySet()) {
 						LogPosition logPosition = newPositions.get(partition);
 						logger.info("Finished reading logs at position {}", logPosition);
@@ -155,20 +173,12 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 							continue;
 
 						jooq.insertInto(AGGREGATION_DB_LOG)
-								.set(new AggregationDbLogRecord(
-										log,
-										partition,
+								.set(new AggregationDbLogRecord(revisionId, log, partition,
 										logPosition.getLogFile().getName(),
 										logPosition.getLogFile().getN(),
 										logPosition.getPosition()))
-								.onDuplicateKeyUpdate()
-								.set(AGGREGATION_DB_LOG.FILE, logPosition.getLogFile().getName())
-								.set(AGGREGATION_DB_LOG.FILE_INDEX, logPosition.getLogFile().getN())
-								.set(AGGREGATION_DB_LOG.POSITION, logPosition.getPosition())
 								.execute();
 					}
-
-					aggregationMetadataStorage.saveNewChunks(jooq, newChunks);
 				}
 			});
 		} finally {
