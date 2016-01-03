@@ -42,7 +42,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private ResultCallback<HttpResponse> callback;
 	private AsyncCancellable cancellable;
 	private HttpResponse response;
-	private final HttpClientImpl httpClient;
+	private final AsyncHttpClient httpClient;
 	protected ExposedLinkedList.Node<HttpClientConnection> ipConnectionListNode;
 
 	/**
@@ -52,7 +52,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param socketChannel channel for this connection
 	 * @param httpClient    client which will handle this connection
 	 */
-	public HttpClientConnection(NioEventloop eventloop, SocketChannel socketChannel, HttpClientImpl httpClient, char[] headerChars, int maxHttpMessageSize) {
+	public HttpClientConnection(NioEventloop eventloop, SocketChannel socketChannel, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, socketChannel, httpClient.connectionsList, headerChars, maxHttpMessageSize);
 		this.httpClient = httpClient;
 	}

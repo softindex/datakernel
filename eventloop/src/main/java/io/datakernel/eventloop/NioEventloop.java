@@ -18,9 +18,8 @@ package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.eventloop.jmx.NioEventloopJmx;
-import io.datakernel.eventloop.jmx.NioEventloopStatsSet;
-import io.datakernel.jmx.LastExceptionCounter;
+import io.datakernel.eventloop.jmx.NioEventloopStats;
+import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -37,7 +36,10 @@ import java.net.SocketAddress;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -51,7 +53,7 @@ import static java.util.Arrays.asList;
  * because it is implementation of {@link Runnable}. Working of this eventloop will be ended, when it has
  * not selected keys and its queues with tasks are empty.
  */
-public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx {
+public final class NioEventloop implements Eventloop, Runnable {
 	private static final Logger logger = LoggerFactory.getLogger(NioEventloop.class);
 
 	private static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
@@ -123,9 +125,6 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 	private int lastSelectedKeys;
 
 	// JMX
-	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0; // 10 seconds
-	private static final double DEFAULT_SMOOTHING_PRECISION = 0.1; // 0.1 seconds
-
 	private static final ExceptionMarker ACCEPT_MARKER = new ExceptionMarker(NioEventloop.class, "AcceptException");
 	private static final ExceptionMarker CONNECT_MARKER = new ExceptionMarker(NioEventloop.class, "ConnectException");
 	private static final ExceptionMarker CONNECT_TIMEOUT_MARKER = new ExceptionMarker(NioEventloop.class, "ConnectTimeout");
@@ -137,12 +136,15 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 	private static final ExceptionMarker SCHEDULED_TASK_MARKER = new ExceptionMarker(NioEventloop.class, "ScheduledTaskException");
 	private static final ExceptionMarker UNCHECKED_MARKER = new ExceptionMarker(NioEventloop.class, "UncheckedException");
 
+	// TODO (vmykhalko): remove and implement with dedicated methods and maps
 	private final Collection<ExceptionMarker> severeExceptionsMarkers =
 			new HashSet<>(asList(LOCAL_TASK_MARKER, CONCURRENT_TASK_MARKER, SCHEDULED_TASK_MARKER, UNCHECKED_MARKER));
 
-	private final NioEventloopStatsSet statsSet;
+	private final NioEventloopStats stats;
 
 	private boolean monitoring;
+
+	private volatile double smoothingWindow = 10.0;
 
 	/**
 	 * Creates a new instance of Eventloop with default instance of ByteBufPool
@@ -159,7 +161,9 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 	public NioEventloop(CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		refreshTimestampAndGet();
-		this.statsSet = new NioEventloopStatsSet(DEFAULT_SMOOTHING_WINDOW, DEFAULT_SMOOTHING_PRECISION, this);
+
+		this.stats = new NioEventloopStats();
+		scheduleRefreshStats();
 	}
 
 	private void openSelector() {
@@ -257,7 +261,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 				executeBackgroundTasks();
 				executeLocalTasks();
 			} catch (Exception e) {
-				updateExceptionCounter(UNCHECKED_MARKER, e, selector);
+				updateExceptionStats(UNCHECKED_MARKER, e, selector);
 				logger.error("Exception in dispatch loop", e);
 			}
 		}
@@ -278,14 +282,14 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 			if (throttlingController != null) {
 				throttlingController.updateStats(lastSelectedKeys, (int) businessLogicTime);
 			}
-			statsSet.updateBusinessLogicTime(timeBeforeSelectorSelect, businessLogicTime);
+			stats.updateBusinessLogicTime(timeBeforeSelectorSelect, businessLogicTime);
 		}
 	}
 
 	private void updateSelectorSelectTimeStats() {
 		timeAfterSelectorSelect = refreshTimestampAndGet();
 		long selectorSelectTime = timeAfterSelectorSelect - timeBeforeSelectorSelect;
-		statsSet.updateSelectorSelectTime(selectorSelectTime);
+		stats.updateSelectorSelectTime(selectorSelectTime);
 	}
 
 	private long getSelectTimeout() {
@@ -325,7 +329,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 			throttlingController.calculateThrottling(lastSelectedKeys);
 		}
 
-		Stopwatch sw = isMonitoring() ? Stopwatch.createStarted() : null;
+		Stopwatch sw = monitoring ? Stopwatch.createStarted() : null;
 
 		Iterator<SelectionKey> iterator = selectedKeys.iterator();
 		while (iterator.hasNext()) {
@@ -358,8 +362,8 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 				}
 			}
 		}
-		statsSet.updateSelectedKeysTimeStats(sw);
-		statsSet.updateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys);
+		stats.updateSelectedKeysTimeStats(sw);
+		stats.updateSelectedKeysStats(lastSelectedKeys, invalidKeys, acceptKeys, connectKeys, readKeys, writeKeys);
 	}
 
 	/**
@@ -368,8 +372,8 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 	private void executeLocalTasks() {
 		int newRunnables = 0;
 
-		Stopwatch swTotal = isMonitoring() ? Stopwatch.createStarted() : null;
-		Stopwatch sw = isMonitoring() ? Stopwatch.createUnstarted() : null;
+		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
+		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		while (true) {
 			Runnable item = localTasks.poll();
@@ -385,16 +389,16 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 			try {
 				item.run();
 				if (sw != null)
-					statsSet.updateLocalTaskDuration(item, sw);
+					stats.updateLocalTaskDuration(item, sw);
 			} catch (Throwable e) {
 				if (sw != null)
-					statsSet.updateLocalTaskDuration(item, sw);
-				updateExceptionCounter(LOCAL_TASK_MARKER, e, item);
+					stats.updateLocalTaskDuration(item, sw);
+				updateExceptionStats(LOCAL_TASK_MARKER, e, item);
 				logger.error(LOCAL_TASK_MARKER.getMarker(), "Exception thrown while execution Local-task", e);
 			}
 			newRunnables++;
 		}
-		statsSet.updateLocalTasksStats(newRunnables, swTotal);
+		stats.updateLocalTasksStats(newRunnables, swTotal);
 	}
 
 	/**
@@ -403,8 +407,8 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 	private void executeConcurrentTasks() {
 		int newRunnables = 0;
 
-		Stopwatch swTotal = isMonitoring() ? Stopwatch.createStarted() : null;
-		Stopwatch sw = isMonitoring() ? Stopwatch.createUnstarted() : null;
+		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
+		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		while (true) {
 			Runnable runnable = concurrentTasks.poll();
@@ -420,16 +424,16 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 			try {
 				runnable.run();
 				if (sw != null)
-					statsSet.updateConcurrentTaskDuration(runnable, sw);
+					stats.updateConcurrentTaskDuration(runnable, sw);
 			} catch (Throwable e) {
 				if (sw != null)
-					statsSet.updateConcurrentTaskDuration(runnable, sw);
-				updateExceptionCounter(CONCURRENT_TASK_MARKER, e, runnable);
+					stats.updateConcurrentTaskDuration(runnable, sw);
+				updateExceptionStats(CONCURRENT_TASK_MARKER, e, runnable);
 				logger.error(CONCURRENT_TASK_MARKER.getMarker(), "Exception in concurrent task {}", runnable, e);
 			}
 			newRunnables++;
 		}
-		statsSet.updateConcurrentTasksStats(newRunnables, swTotal);
+		stats.updateConcurrentTasksStats(newRunnables, swTotal);
 	}
 
 	/**
@@ -445,8 +449,8 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 
 	private void executeScheduledTasks(PriorityQueue<ScheduledRunnable> taskQueue) {
 		int newRunnables = 0;
-		Stopwatch swTotal = isMonitoring() ? Stopwatch.createStarted() : null;
-		Stopwatch sw = isMonitoring() ? Stopwatch.createUnstarted() : null;
+		Stopwatch swTotal = monitoring ? Stopwatch.createStarted() : null;
+		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		for (; ; ) {
 			ScheduledRunnable peeked = taskQueue.peek();
@@ -472,17 +476,17 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 				runnable.run();
 				polled.complete();
 				if (sw != null)
-					statsSet.updateScheduledTaskDuration(runnable, sw);
+					stats.updateScheduledTaskDuration(runnable, sw);
 			} catch (Throwable e) {
 				if (sw != null)
-					statsSet.updateScheduledTaskDuration(runnable, sw);
-				updateExceptionCounter(SCHEDULED_TASK_MARKER, e, polled);
+					stats.updateScheduledTaskDuration(runnable, sw);
+				updateExceptionStats(SCHEDULED_TASK_MARKER, e, polled);
 				logger.error(SCHEDULED_TASK_MARKER.getMarker(), "Exception in Scheduled-task {}", runnable, e);
 			}
 
 			newRunnables++;
 		}
-		statsSet.updateScheduledTasksStats(newRunnables, swTotal);
+		stats.updateScheduledTasksStats(newRunnables, swTotal);
 	}
 
 	/**
@@ -510,7 +514,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 			} catch (ClosedChannelException e) {
 				break;
 			} catch (Exception e) {
-				updateExceptionCounter(ACCEPT_MARKER, e, channel);
+				updateExceptionStats(ACCEPT_MARKER, e, channel);
 				logger.error(ACCEPT_MARKER.getMarker(), "Could not finish accept to {}", channel, e.toString());
 				break;
 			}
@@ -518,7 +522,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 			try {
 				acceptCallback.onAccept(socketChannel);
 			} catch (Exception e) {
-				updateExceptionCounter(ACCEPT_MARKER, e, acceptCallback);
+				updateExceptionStats(ACCEPT_MARKER, e, acceptCallback);
 				logger.error(ACCEPT_MARKER.getMarker(), "onAccept exception {}", socketChannel, e);
 				closeQuietly(socketChannel);
 			}
@@ -539,7 +543,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 				return;
 			connectCallback.onConnect(socketChannel);
 		} catch (Exception e) {
-			updateExceptionCounter(CONNECT_MARKER, e, connectCallback);
+			updateExceptionStats(CONNECT_MARKER, e, connectCallback);
 			logger.warn(CONNECT_MARKER.getMarker(), "Could not finish connect to {}", socketChannel, e);
 			key.cancel();
 			closeQuietly(socketChannel);
@@ -558,7 +562,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 		try {
 			connection.onReadReady();
 		} catch (Throwable e) {
-			updateExceptionCounter(READ_MARKER, e, connection);
+			updateExceptionStats(READ_MARKER, e, connection);
 			logger.error(READ_MARKER.getMarker(), "Could not finish read to {}", connection, e);
 		}
 	}
@@ -574,7 +578,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 		try {
 			connection.onWriteReady();
 		} catch (Throwable e) {
-			updateExceptionCounter(WRITE_MARKER, e, connection);
+			updateExceptionStats(WRITE_MARKER, e, connection);
 			logger.error(WRITE_MARKER.getMarker(), "Could not finish write to {}", connection);
 		}
 	}
@@ -585,7 +589,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 		try {
 			closeable.close();
 		} catch (Exception e) {
-			updateExceptionCounter(CLOSE_MARKER, e, closeable);
+			updateExceptionStats(CLOSE_MARKER, e, closeable);
 			if (logger.isWarnEnabled())
 				logger.warn(CLOSE_MARKER.getMarker(), "Exception thrown while closing {}", closeable, e.toString());
 		}
@@ -612,7 +616,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 			return serverChannel;
 		} catch (IOException e) {
 			closeQuietly(serverChannel);
-			updateExceptionCounter(ACCEPT_MARKER, e, address);
+			updateExceptionStats(ACCEPT_MARKER, e, address);
 			logger.warn(ACCEPT_MARKER.getMarker(), "Listen error for {}", address, e);
 			throw e;
 		}
@@ -681,7 +685,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 					timeoutConnectCallback(socketChannel, timeout, connectCallback));
 		} catch (IOException e) {
 			closeQuietly(socketChannel);
-			updateExceptionCounter(CONNECT_MARKER, e, address);
+			updateExceptionStats(CONNECT_MARKER, e, address);
 			logger.warn(CONNECT_MARKER.getMarker(), "Connect error for {}", address, e);
 			connectCallback.onException(e);
 		}
@@ -701,7 +705,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 			private final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, new Runnable() {
 				@Override
 				public void run() {
-					updateExceptionCounter(CONNECT_TIMEOUT_MARKER, CONNECT_TIMEOUT, socketChannel.toString());
+					updateExceptionStats(CONNECT_TIMEOUT_MARKER, CONNECT_TIMEOUT, socketChannel.toString());
 					logger.warn(CONNECT_TIMEOUT_MARKER.getMarker(), "Connection timed out for {}", socketChannel, CONNECT_TIMEOUT);
 					closeQuietly(socketChannel);
 					connectCallback.onException(CONNECT_TIMEOUT);
@@ -792,7 +796,7 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 	 * @return {@code Future}, which can be used to retrieve result
 	 */
 	@Override
-	public <V> Future<V> postConcurrently(final Callable<V> callable) {
+	public <V> Future<V> postAsFuture(final Callable<V> callable) {
 		final ResultCallbackFuture<V> future = new ResultCallbackFuture<>();
 		postConcurrently(new Runnable() {
 			@Override
@@ -808,6 +812,29 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 
 				if (throwedException == null) {
 					future.onResult(result);
+				} else {
+					future.onException(throwedException);
+				}
+			}
+		});
+		return future;
+	}
+
+	public Future<Void> postAsFuture(final Runnable runnable) {
+		final ResultCallbackFuture<Void> future = new ResultCallbackFuture<>();
+		postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				Exception throwedException = null;
+
+				try {
+					runnable.run();
+				} catch (Exception e) {
+					throwedException = e;
+				}
+
+				if (throwedException == null) {
+					future.onResult(null);
 				} else {
 					future.onException(throwedException);
 				}
@@ -907,61 +934,49 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 
 	// JMX
 
-	@Override
+	private void scheduleRefreshStats() {
+		scheduleBackground(currentTimeMillis() + 200L, new Runnable() {
+			@Override
+			public void run() {
+				long timestamp = currentTimeMillis();
+				stats.refreshStats(timestamp, smoothingWindow);
+				scheduleRefreshStats();
+			}
+		});
+	}
+
 	public void startMonitoring() {
 		this.monitoring = true;
 	}
 
-	@Override
 	public void stopMonitoring() {
 		this.monitoring = false;
 	}
 
-	@Override
-	public boolean isMonitoring() {
-		return monitoring;
-	}
-
-	@Override
 	public void resetStats() {
-		statsSet.resetStats();
+		stats.resetStats();
 	}
 
-	@Override
-	public void resetStats(double smoothingWindow, double smoothingPrecision) {
-		statsSet.resetStats(smoothingWindow, smoothingPrecision);
+	public void setSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
 	}
 
-	/**
-	 * Thread-safe operation
-	 *
-	 * @return stats set
-	 */
-	@Override
-	public NioEventloopStatsSet getStatsSet() {
-		try {
-			return postConcurrently(new Callable<NioEventloopStatsSet>() {
-				@Override
-				public NioEventloopStatsSet call() throws Exception {
-					return statsSet;
-				}
-			}).get();
-		} catch (InterruptedException | ExecutionException e) {
-			throw new RuntimeException(e);
-		}
+	public NioEventloopStats getStats() {
+		return stats;
 	}
 
-	public LastExceptionCounter getExceptionCounter(ExceptionMarker marker) {
-		return statsSet.getExceptionCounter(marker);
+	public ExceptionStats getExceptionStats(ExceptionMarker marker) {
+		return stats.getExceptionStats(marker);
 	}
 
-	public void updateExceptionCounter(ExceptionMarker marker, Throwable e, Object o) {
+	// TODO (vmykhalko): consider removing
+	public void updateExceptionStats(ExceptionMarker marker, Throwable e, Object o) {
 		assert inEventloopThread();
 
 		long timestamp = currentTimeMillis();
-		statsSet.updateExceptionCounter(marker, e, o, timestamp);
+		stats.updateExceptionStats(marker, e, o, timestamp);
 		if (isExceptionSevere(marker)) {
-			statsSet.updateSevereExceptionCounter(e, o, timestamp);
+			stats.updateSevereExceptionStats(e, o, timestamp);
 		}
 	}
 
@@ -969,9 +984,10 @@ public final class NioEventloop implements Eventloop, Runnable, NioEventloopJmx 
 		return severeExceptionsMarkers.contains(marker);
 	}
 
-	public void resetExceptionCounter(ExceptionMarker marker) {
+	// TODO (vmykhalko): consider removing
+	public void resetExceptionStats(ExceptionMarker marker) {
 		assert inEventloopThread();
-		statsSet.resetExceptionCounter(marker);
+		stats.resetExceptionStats(marker);
 	}
 
 	public String getThreadName() {

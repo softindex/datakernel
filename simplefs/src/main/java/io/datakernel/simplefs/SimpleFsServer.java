@@ -61,21 +61,22 @@ public final class SimpleFsServer implements NioService {
 			return this;
 		}
 
-		public Builder specifyListenAddress(InetSocketAddress address) {
+		public Builder setListenAddress(InetSocketAddress address) {
 			this.addresses.add(address);
 			return this;
 		}
 
-		public Builder specifyListenAddresses(List<InetSocketAddress> addresses) {
+		public Builder setListenAddresses(List<InetSocketAddress> addresses) {
 			this.addresses.addAll(addresses);
 			return this;
 		}
 
-		public Builder specifyListenPort(int port) {
+		public Builder setListenPort(int port) {
 			this.addresses.add(new InetSocketAddress(port));
 			return this;
 		}
 
+		// TODO (arashev): make sure tmpStorage and storage are unrelated directories, not parent-child
 		public Builder setTmpStorage(Path tmpStorage) {
 			fsBuilder.setTmpStorage(tmpStorage);
 			return this;
@@ -151,21 +152,21 @@ public final class SimpleFsServer implements NioService {
 	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
 	                                            List<InetSocketAddress> addresses) {
 		return buildInstance(eventloop, executor, storage)
-				.specifyListenAddresses(addresses)
+				.setListenAddresses(addresses)
 				.build();
 	}
 
 	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
 	                                            InetSocketAddress address) {
 		return buildInstance(eventloop, executor, storage)
-				.specifyListenAddress(address)
+				.setListenAddress(address)
 				.build();
 	}
 
 	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
 	                                            int port) {
 		return buildInstance(eventloop, executor, storage)
-				.specifyListenPort(port)
+				.setListenPort(port)
 				.build();
 	}
 
@@ -189,7 +190,7 @@ public final class SimpleFsServer implements NioService {
 
 		try {
 			protocol.listen();
-			fileSystem.ensureInfrastructure();
+			fileSystem.initDirectories();
 			serverStatus = RUNNING;
 			callback.onComplete();
 		} catch (IOException e) {

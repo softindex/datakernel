@@ -19,7 +19,7 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.jmx.LastExceptionCounter;
+import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.ExceptionMarker;
@@ -162,6 +162,10 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 		onClose();
 	}
 
+	protected boolean isRunning() {
+		return running;
+	}
+
 	public CompletionCallbackFuture listenFuture() {
 		return AsyncCallbacks.listenFuture(this);
 	}
@@ -196,7 +200,7 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 		try {
 			closeable.close();
 		} catch (Exception e) {
-			eventloop.updateExceptionCounter(CLOSE_MARKER, e, closeable);
+			eventloop.updateExceptionStats(CLOSE_MARKER, e, closeable);
 			if (logger.isWarnEnabled()) {
 				logger.warn(CLOSE_MARKER.getMarker(), "Exception thrown while closing {}", closeable, e);
 			}
@@ -215,7 +219,7 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 		try {
 			socketSettings.applySettings(socketChannel);
 		} catch (IOException e) {
-			eventloop.updateExceptionCounter(PREPARE_SOCKET_MARKER, e, socketChannel);
+			eventloop.updateExceptionStats(PREPARE_SOCKET_MARKER, e, socketChannel);
 			if (logger.isErrorEnabled()) {
 				logger.error(PREPARE_SOCKET_MARKER.getMarker(), "Exception thrown while apply settings socket {}", socketChannel, e);
 			}
@@ -253,8 +257,8 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	@Override
 	public void resetStats() {
 		totalAccepts = 0;
-		eventloop.resetExceptionCounter(PREPARE_SOCKET_MARKER);
-		eventloop.resetExceptionCounter(CLOSE_MARKER);
+		eventloop.resetExceptionStats(PREPARE_SOCKET_MARKER); // TODO (vmykhalko): refactor
+		eventloop.resetExceptionStats(CLOSE_MARKER);
 	}
 
 	@Override
@@ -264,13 +268,13 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 
 	@Override
 	public CompositeData getLastPrepareSocketException() throws OpenDataException {
-		LastExceptionCounter exceptionCounter = eventloop.getExceptionCounter(PREPARE_SOCKET_MARKER);
+		ExceptionStats exceptionCounter = eventloop.getExceptionStats(PREPARE_SOCKET_MARKER);
 		return (exceptionCounter == null) ? null : exceptionCounter.compositeData();
 	}
 
 	@Override
 	public CompositeData getLastCloseException() throws OpenDataException {
-		LastExceptionCounter exceptionCounter = eventloop.getExceptionCounter(CLOSE_MARKER);
+		ExceptionStats exceptionCounter = eventloop.getExceptionStats(CLOSE_MARKER);
 		return (exceptionCounter == null) ? null : exceptionCounter.compositeData();
 	}
 

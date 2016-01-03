@@ -256,7 +256,7 @@ public class LogFsTest {
 
 	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {
 		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage)
-				.specifyListenAddress(address)
+				.setListenAddress(address)
 				.build();
 	}
 

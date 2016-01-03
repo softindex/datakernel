@@ -23,6 +23,8 @@ import javax.management.openmbean.OpenDataException;
 
 public interface RpcServerMBean extends AbstractNioServerMBean {
 
+	void setSmoothingWindow(double smoothingWindow);
+
 	void startMonitoring();
 
 	void stopMonitoring();

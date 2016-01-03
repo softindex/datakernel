@@ -20,8 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.rpc.client.jmx.RpcJmxClientConnection;
-import io.datakernel.rpc.client.jmx.RpcJmxRequestsStatsSet;
+import io.datakernel.rpc.client.jmx.RpcRequestsStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -37,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJmxClientConnection {
+public final class RpcClientConnection implements RpcConnection, RpcSender {
 	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
 
 	interface StatusListener {
@@ -95,11 +94,8 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJ
 	private boolean closing;
 
 	// JMX
-	private static final double DEFAULT_SMOOTING_WINDOW = 10.0;    // 10 seconds
-	private static final double DEFAULT_SMOOTHING_PRECISION = 0.1; // 0.1 second
-
 	private boolean monitoring;
-	private RpcJmxRequestsStatsSet requestsStatsSet;
+	private RpcRequestsStats requestsStats;
 
 	public RpcClientConnection(NioEventloop eventloop, SocketChannel socketChannel,
 	                               BufferSerializer<RpcMessage> messageSerializer,
@@ -110,8 +106,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJ
 
 		// JMX
 		this.monitoring = false;
-		this.requestsStatsSet =
-				new RpcJmxRequestsStatsSet(DEFAULT_SMOOTING_WINDOW, DEFAULT_SMOOTHING_PRECISION, eventloop);
+		this.requestsStats = new RpcRequestsStats();
 	}
 
 	@Override
@@ -119,12 +114,12 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJ
 		assert eventloop.inEventloopThread();
 
 		// jmx
-		requestsStatsSet.getTotalRequests().recordEvent();
+		requestsStats.getTotalRequests().recordEvent();
 
 		if (!(request instanceof RpcMandatoryData) && protocol.isOverloaded()) {
 
 			// jmx
-			requestsStatsSet.getRejectedRequests().recordEvent();
+			requestsStats.getRejectedRequests().recordEvent();
 
 			if (logger.isWarnEnabled())
 				logger.warn(OVERLOAD_EXCEPTION.getMessage());
@@ -210,7 +205,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJ
 			return;
 
 		// jmx
-		requestsStatsSet.getExpiredRequests().recordEvent();
+		requestsStats.getExpiredRequests().recordEvent();
 
 		returnTimeout(callback, new RpcTimeoutException("Timeout (" + timeoutCookie.getElapsedTime() + "/" + timeoutCookie.getTimeoutMillis()
 				+ " ms) for server response for request ID " + timeoutCookie.getCookie()));
@@ -300,12 +295,14 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJ
 
 	// JMX
 
-	@Override
+	public void refreshStats(long timestamp, double smoothingWindow) {
+		requestsStats.refreshStats(timestamp, smoothingWindow);
+	}
+
 	public void startMonitoring() {
 		monitoring = true;
 	}
 
-	@Override
 	public void stopMonitoring() {
 		monitoring = false;
 	}
@@ -314,19 +311,12 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJ
 		return monitoring;
 	}
 
-	@Override
-	public void reset() {
-		requestsStatsSet.reset();
+	public void resetStats() {
+		requestsStats.resetStats();
 	}
 
-	@Override
-	public void reset(double smoothingWindow, double smoothingPrecision) {
-		requestsStatsSet.reset(smoothingWindow, smoothingPrecision);
-	}
-
-	@Override
-	public RpcJmxRequestsStatsSet getRequestStats() {
-		return requestsStatsSet;
+	public RpcRequestsStats getRequestStats() {
+		return requestsStats;
 	}
 
 	private final class JmxConnectionMonitoringResultCallback<T> implements ResultCallback<T> {
@@ -342,8 +332,8 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJ
 		@Override
 		public void onResult(T result) {
 			if (isMonitoring()) {
-				requestsStatsSet.getSuccessfulRequests().recordEvent();
-				requestsStatsSet.getResponseTimeStats().recordValue(timeElapsed());
+				requestsStats.getSuccessfulRequests().recordEvent();
+				requestsStats.getResponseTime().recordValue(timeElapsed());
 			}
 			callback.onResult(result);
 		}
@@ -352,12 +342,12 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, RpcJ
 		public void onException(Exception exception) {
 			if (isMonitoring()) {
 				if (exception instanceof RpcRemoteException) {
-					requestsStatsSet.getFailedRequests().recordEvent();
-					requestsStatsSet.getResponseTimeStats().recordValue(timeElapsed());
+					requestsStats.getFailedRequests().recordEvent();
+					requestsStats.getResponseTime().recordValue(timeElapsed());
 
 					long timestamp = eventloop.currentTimeMillis();
 					// TODO(vmykhalko): maybe there should be something more informative instead of null (as causedObject)?
-					requestsStatsSet.getLastServerExceptionCounter().update(exception, null, timestamp);
+					requestsStats.getServerExceptions().update(exception, null, timestamp);
 				}
 			}
 			callback.onException(exception);

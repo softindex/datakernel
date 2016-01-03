@@ -18,8 +18,8 @@ package io.datakernel.examples;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.HttpClientImpl;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
@@ -36,7 +36,7 @@ public class ProxyServerExample {
 
 	/* Creates a simple proxy server, which redirects all requests to REDIRECT_ADDRESS. */
 	public static AsyncHttpServer createProxyHttpServer(final NioEventloop primaryEventloop,
-	                                                    final HttpClientImpl httpClient) {
+	                                                    final AsyncHttpClient httpClient) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {

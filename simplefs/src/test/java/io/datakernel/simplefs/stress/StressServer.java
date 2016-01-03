@@ -37,7 +37,7 @@ public class StressServer {
 	private static final NioEventloop eventloop = new NioEventloop();
 
 	public static NioService server = SimpleFsServer.buildInstance(eventloop, executor, STORAGE_PATH)
-			.specifyListenPort(PORT)
+			.setListenPort(PORT)
 			.build();
 
 	public static void main(String[] args) throws IOException {

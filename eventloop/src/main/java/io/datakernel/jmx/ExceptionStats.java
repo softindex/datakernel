@@ -24,41 +24,51 @@ import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
 
-public final class LastExceptionCounter {
+public final class ExceptionStats {
 	private final Marker marker;
 	private Throwable throwable;
 	private Object causeObject;
 	private long timestamp;
-	private int total;
+	private int count;
 
-	public LastExceptionCounter(String name) {
+	public ExceptionStats(String name) {
 		this(MarkerFactory.getMarker(name));
 	}
 
-	public LastExceptionCounter(Marker marker) {
+	public ExceptionStats(Marker marker) {
 		this.marker = marker;
 	}
 
 	public void update(Throwable throwable, Object causeObject, long timestamp) {
-		this.total++;
+		this.count++;
 		this.throwable = throwable;
 		this.causeObject = causeObject;
 		this.timestamp = timestamp;
 	}
 
-	public void reset() {
-		this.total = 0;
+	public void resetStats() {
+		this.count = 0;
 		this.throwable = null;
 		this.causeObject = null;
 		this.timestamp = 0;
 	}
 
+	public void add(ExceptionStats counter) {
+		this.count += counter.count;
+		if (counter.timestamp > this.timestamp) {
+			this.throwable = counter.throwable;
+			this.causeObject = counter.causeObject;
+			this.timestamp = counter.timestamp;
+		}
+	}
+
+
 	public Marker getMarker() {
 		return marker;
 	}
 
-	public int getTotal() {
-		return total;
+	public int getCount() {
+		return count;
 	}
 
 	public String getCauseObject() {
@@ -81,7 +91,7 @@ public final class LastExceptionCounter {
 	}
 
 	public CompositeData compositeData() throws OpenDataException {
-		if (total == 0 || throwable == null) {
+		if (count == 0 || throwable == null) {
 			return null;
 		}
 		return CompositeDataBuilder.builder(marker.getName())
@@ -90,65 +100,9 @@ public final class LastExceptionCounter {
 				.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), getFormattedException())
 				.add("CauseObject", SimpleType.STRING, getCauseObject())
 				.add("Timestamp", SimpleType.STRING, getExceptionTimestamp())
-				.add("Total", SimpleType.INTEGER, total)
+				.add("Total", SimpleType.INTEGER, count)
 				.build();
 	}
 
-	public static Accumulator accumulator() {
-		return new Accumulator();
-	}
 
-	public static final class Accumulator {
-		private static final String COMPOSITE_DATE_NAME = "Last Exception Accumulator";
-
-		private Throwable throwable;
-		private Object causeObject;
-		private long timestamp;
-		private int total;
-
-		private Accumulator() {
-			this.throwable = null;
-			this.causeObject = null;
-			this.timestamp = 0L;
-			this.total = 0;
-		}
-
-		public void add(LastExceptionCounter counter) {
-			this.total += counter.total;
-			if (counter.timestamp > this.timestamp) {
-				this.throwable = counter.throwable;
-				this.causeObject = counter.causeObject;
-				this.timestamp = counter.timestamp;
-			}
-		}
-
-		public Throwable getLastException() {
-			return throwable;
-		}
-
-		public Object getCauseObject() {
-			return causeObject;
-		}
-
-		public long getExceptionTimestamp() {
-			return timestamp;
-		}
-
-		public int getTotalExceptions() {
-			return total;
-		}
-
-		public CompositeData compositeData() throws OpenDataException {
-			if (total == 0 || throwable == null) {
-				return null;
-			}
-			return CompositeDataBuilder.builder(COMPOSITE_DATE_NAME)
-					.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
-					.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), MBeanFormat.formatException(throwable))
-					.add("CauseObject", SimpleType.STRING, causeObject != null ? causeObject.toString() : "")
-					.add("Timestamp", SimpleType.STRING, MBeanFormat.formatPeriodAgo(timestamp))
-					.add("Total", SimpleType.INTEGER, total)
-					.build();
-		}
-	}
 }

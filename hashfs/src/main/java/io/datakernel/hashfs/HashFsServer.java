@@ -45,7 +45,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 
 		private final GsonClientProtocol.Builder clientBuilder;
 		private final GsonServerProtocol.Builder serverBuilder;
-		private final FileSystemImpl.Builder fsBuilder;
+		private final FileSystem.Builder fsBuilder;
 		private final LogicImpl.Builder logicBuilder;
 		private final List<InetSocketAddress> addresses = new ArrayList<>();
 
@@ -61,7 +61,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 			this.eventloop = eventloop;
 			this.clientBuilder = GsonClientProtocol.buildInstance(eventloop);
 			this.serverBuilder = GsonServerProtocol.buildInstance(eventloop);
-			this.fsBuilder = FileSystemImpl.buildInstance(eventloop, executor, storage);
+			this.fsBuilder = FileSystem.buildInstance(eventloop, executor, storage);
 			this.logicBuilder = LogicImpl.buildInstance(myId, bootstrap);
 			addresses.add(myId.getAddress());
 		}
@@ -70,17 +70,17 @@ public class HashFsServer implements Commands, FsServer, NioService {
 			this.logic = logic;
 		}
 
-		public Builder specifyListenAddress(InetSocketAddress address) {
+		public Builder setListenAddress(InetSocketAddress address) {
 			this.addresses.add(address);
 			return this;
 		}
 
-		public Builder specifyListenAddresses(List<InetSocketAddress> addresses) {
+		public Builder setListenAddresses(List<InetSocketAddress> addresses) {
 			this.addresses.addAll(addresses);
 			return this;
 		}
 
-		public Builder specifyListenPort(int port) {
+		public Builder setListenPort(int port) {
 			this.addresses.add(new InetSocketAddress(port));
 			return this;
 		}
@@ -255,7 +255,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 	@Override
 	public void start(final CompletionCallback callback) {
 		try {
-			fileSystem.ensureInfrastructure();
+			fileSystem.initDirectories();
 			serverProtocol.listen();
 			logic.start(new CompletionCallback() {
 				@Override

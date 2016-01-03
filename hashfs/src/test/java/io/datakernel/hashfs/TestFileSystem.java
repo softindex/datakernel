@@ -92,8 +92,8 @@ public class TestFileSystem {
 
 	@Test
 	public void testUpload() throws IOException {
-		FileSystemImpl fs = FileSystemImpl.buildInstance(eventloop, executor, storage).build();
-		fs.start(ignoreCompletionCallback());
+		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		fs.initDirectories();
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
 		fs.saveToTmp("1/c.txt", producer, ignoreCompletionCallback());
@@ -114,8 +114,8 @@ public class TestFileSystem {
 
 	@Test
 	public void testUploadFailed() throws IOException {
-		FileSystemImpl fs = FileSystemImpl.buildInstance(eventloop, executor, storage).build();
-		fs.start(ignoreCompletionCallback());
+		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		fs.initDirectories();
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
 		fs.saveToTmp("1/c.txt", producer, ignoreCompletionCallback());
@@ -135,9 +135,9 @@ public class TestFileSystem {
 
 	@Test
 	public void testGet() throws IOException {
-		FileSystemImpl fs = FileSystemImpl.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
 
-		fs.start(ignoreCompletionCallback());
+		fs.initDirectories();
 
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("d.txt"));
 
@@ -151,9 +151,9 @@ public class TestFileSystem {
 
 	@Test
 	public void testGetFailed() throws Exception {
-		FileSystemImpl fs = FileSystemImpl.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
 
-		fs.start(ignoreCompletionCallback());
+		fs.initDirectories();
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("no_file.txt"));
 
 		consumer.setFlushCallback(new CompletionCallback() {
@@ -177,9 +177,9 @@ public class TestFileSystem {
 
 	@Test
 	public void testDeleteFile() throws IOException {
-		FileSystemImpl fs = FileSystemImpl.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
 
-		fs.start(ignoreCompletionCallback());
+		fs.initDirectories();
 		assertTrue(Files.exists(storage.resolve("2/3/a.txt")));
 		fs.delete("2/3/a.txt", ignoreCompletionCallback());
 		assertFalse(Files.exists(storage.resolve("2/3/a.txt")));
@@ -189,9 +189,9 @@ public class TestFileSystem {
 
 	@Test
 	public void testDeleteFailed() throws IOException {
-		FileSystemImpl fs = FileSystemImpl.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
 
-		fs.start(ignoreCompletionCallback());
+		fs.initDirectories();
 		fs.delete("2/3/z.txt", new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -208,9 +208,9 @@ public class TestFileSystem {
 
 	@Test
 	public void testListFiles() throws IOException {
-		FileSystemImpl fs = FileSystemImpl.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
 
-		fs.start(ignoreCompletionCallback());
+		fs.initDirectories();
 		final Set<String> expected = new HashSet<>();
 		expected.addAll(Arrays.asList("1/a.txt", "1/b.txt", "2/3/a.txt", "2/b/d.txt", "2/b/e.txt"));
 		fs.list(new ResultCallback<Set<String>>() {

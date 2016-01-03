@@ -24,18 +24,14 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
-import io.datakernel.rpc.client.jmx.RpcJmxClient;
-import io.datakernel.rpc.client.jmx.RpcJmxClientConnection;
-import io.datakernel.rpc.client.jmx.RpcJmxConnectsStatsSet;
-import io.datakernel.rpc.client.jmx.RpcJmxRequestsStatsSet;
+import io.datakernel.rpc.client.jmx.RpcConnectsStats;
+import io.datakernel.rpc.client.jmx.RpcRequestsStats;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategy;
-import io.datakernel.rpc.protocol.RpcMessage;
-import io.datakernel.rpc.protocol.RpcProtocolFactory;
+import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
-import io.datakernel.rpc.protocol.*;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,12 +39,6 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
@@ -57,7 +47,7 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class RpcClient implements NioService, RpcJmxClient {
+public final class RpcClient implements NioService {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
@@ -80,20 +70,6 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	private CompletionCallback startCallback;
 	private boolean running;
 
-	// JMX
-	private static final double DEFAULT_SMOOTING_WINDOW = 10.0;    // 10 seconds
-	private static final double DEFAULT_SMOOTHING_PRECISION = 0.1; // 0.1 second
-
-	private boolean monitoring;
-
-	private double smoothingWindow = DEFAULT_SMOOTING_WINDOW;
-	private double smoothingPrecision = DEFAULT_SMOOTHING_PRECISION;
-
-	private final RpcJmxRequestsStatsSet generalRequestsStats;
-	private final RpcJmxConnectsStatsSet generalConnectsStats;
-	private final Map<Class<?>, RpcJmxRequestsStatsSet> requestStatsPerClass;
-	private final Map<InetSocketAddress, RpcJmxConnectsStatsSet> connectsStatsPerAddress;
-
 	private final RpcClientConnectionPool pool = new RpcClientConnectionPool() {
 		@Override
 		public RpcClientConnection get(InetSocketAddress address) {
@@ -101,12 +77,22 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		}
 	};
 
+	// JMX
+
+	private boolean monitoring;
+	private volatile double smoothingWindow = 10.0;
+
+	private final RpcRequestsStats generalRequestsStats;
+	private final RpcConnectsStats generalConnectsStats;
+	private final Map<Class<?>, RpcRequestsStats> requestStatsPerClass;
+	private final Map<InetSocketAddress, RpcConnectsStats> connectsStatsPerAddress;
+
 	private RpcClient(NioEventloop eventloop) {
 		this.eventloop = eventloop;
 
 		// JMX
-		this.generalRequestsStats = new RpcJmxRequestsStatsSet(smoothingWindow, smoothingPrecision, eventloop);
-		this.generalConnectsStats = new RpcJmxConnectsStatsSet(smoothingWindow, smoothingPrecision, eventloop);
+		this.generalRequestsStats = new RpcRequestsStats();
+		this.generalConnectsStats = new RpcConnectsStats();
 		this.requestStatsPerClass = new HashMap<>();
 		this.connectsStatsPerAddress = new HashMap<>(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
 	}
@@ -138,8 +124,7 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		// jmx
 		for (InetSocketAddress address : this.addresses) {
 			if (!connectsStatsPerAddress.containsKey(address)) {
-				connectsStatsPerAddress.put(address,
-						new RpcJmxConnectsStatsSet(smoothingWindow, smoothingPrecision, eventloop));
+				connectsStatsPerAddress.put(address, new RpcConnectsStats());
 			}
 		}
 
@@ -205,6 +190,8 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		for (InetSocketAddress address : addresses) {
 			connect(address);
 		}
+
+		scheduleRefreshStats();
 	}
 
 	public void stop() {
@@ -303,8 +290,7 @@ public final class RpcClient implements NioService, RpcJmxClient {
 
 		// jmx
 		if (isMonitoring()) {
-			if (connection instanceof RpcJmxClientConnection)
-				((RpcJmxClientConnection) connection).startMonitoring();
+			connection.startMonitoring();
 		}
 		RpcSender sender = strategy.createSender(pool);
 		requestSender = sender != null ? sender : new Sender();
@@ -329,7 +315,7 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		generalRequestsStats.getTotalRequests().recordEvent();
 		if (isMonitoring()) {
 			Class<?> requestClass = request.getClass();
-			ensureRequestStatsSetPerClass(requestClass).getTotalRequests().recordEvent();
+			ensureRequestStatsPerClass(requestClass).getTotalRequests().recordEvent();
 			requestCallback = new JmxMonitoringResultCallback<>(requestClass, callback);
 		}
 
@@ -366,19 +352,42 @@ public final class RpcClient implements NioService, RpcJmxClient {
 
 	// JMX
 
+	private void scheduleRefreshStats() {
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
+			@Override
+			public void run() {
+				if (!running)
+					return;
+				long timestamp = eventloop.currentTimeMillis();
+				double smoothingWindow = RpcClient.this.smoothingWindow;
+				generalRequestsStats.refreshStats(timestamp, smoothingWindow);
+				generalConnectsStats.refreshStats(timestamp, smoothingWindow);
+				for (RpcRequestsStats stats : requestStatsPerClass.values()) {
+					stats.refreshStats(timestamp, smoothingWindow);
+				}
+				for (RpcConnectsStats stats : connectsStatsPerAddress.values()) {
+					stats.refreshStats(timestamp, smoothingWindow);
+				}
+				for (RpcClientConnection connection : connections.values()) {
+					connection.refreshStats(timestamp, smoothingWindow);
+				}
+				scheduleRefreshStats();
+			}
+		});
+	}
+
 	/**
 	 * Thread-safe operation
 	 */
-	@Override
 	public void startMonitoring() {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
 				RpcClient.this.monitoring = true;
 				for (InetSocketAddress address : addresses) {
-					RpcSender connection = pool.get(address);
-					if (connection != null && connection instanceof RpcJmxClientConnection) {
-						((RpcJmxClientConnection) (connection)).startMonitoring();
+					RpcClientConnection connection = connections.get(address);
+					if (connection != null) {
+						connection.startMonitoring();
 					}
 				}
 			}
@@ -388,16 +397,15 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	/**
 	 * Thread-safe operation
 	 */
-	@Override
 	public void stopMonitoring() {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
 				RpcClient.this.monitoring = false;
 				for (InetSocketAddress address : addresses) {
-					RpcSender connection = pool.get(address);
-					if (connection != null && connection instanceof RpcJmxClientConnection) {
-						((RpcJmxClientConnection) (connection)).stopMonitoring();
+					RpcClientConnection connection = connections.get(address);
+					if (connection != null) {
+						connection.stopMonitoring();
 					}
 				}
 			}
@@ -411,12 +419,24 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	/**
 	 * Thread-safe operation
 	 */
-	@Override
-	public void reset() {
+	public void resetStats() {
 		eventloop.postConcurrently(new Runnable() {
 			@Override
 			public void run() {
-				resetStats(smoothingWindow, smoothingPrecision);
+				generalRequestsStats.resetStats();
+				for (InetSocketAddress address : connectsStatsPerAddress.keySet()) {
+					connectsStatsPerAddress.get(address).reset();
+				}
+				for (Class<?> requestClass : requestStatsPerClass.keySet()) {
+					requestStatsPerClass.get(requestClass).resetStats();
+				}
+
+				for (InetSocketAddress address : addresses) {
+					RpcClientConnection connection = connections.get(address);
+					if (connection != null) {
+						connection.resetStats();
+					}
+				}
 			}
 		});
 	}
@@ -424,155 +444,63 @@ public final class RpcClient implements NioService, RpcJmxClient {
 	/**
 	 * Thread-safe operation
 	 */
-	@Override
-	public void reset(final double smoothingWindow, final double smoothingPrecision) {
-		eventloop.postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				RpcClient.this.smoothingWindow = smoothingWindow;
-				RpcClient.this.smoothingPrecision = smoothingPrecision;
-				resetStats(smoothingWindow, smoothingPrecision);
-			}
-		});
+	public void setSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
 	}
 
-	private void resetStats(double smoothingWindow, double smoothingPrecision) {
-		generalRequestsStats.reset(smoothingWindow, smoothingPrecision);
-		for (InetSocketAddress address : connectsStatsPerAddress.keySet()) {
-			connectsStatsPerAddress.get(address).reset(smoothingWindow, smoothingPrecision);
-		}
-		for (Class<?> requestClass : requestStatsPerClass.keySet()) {
-			requestStatsPerClass.get(requestClass).reset(smoothingWindow, smoothingPrecision);
-		}
+	/**
+	 * Thread-safe operation
+	 */
+	public RpcRequestsStats getGeneralRequestsStats() {
+		return generalRequestsStats;
+	}
+
+	/**
+	 * Thread-safe operation
+	 */
+	public Map<Class<?>, RpcRequestsStats> getRequestsStatsPerClass() {
+		return requestStatsPerClass;
+	}
+
+	/**
+	 * Thread-safe operation
+	 */
+	public Map<InetSocketAddress, RpcConnectsStats> getConnectsStatsPerAddress() {
+		return connectsStatsPerAddress;
+	}
+
+	/**
+	 * Thread-safe operation
+	 */
+	public Map<InetSocketAddress, RpcRequestsStats> getRequestStatsPerAddress() {
+		Map<InetSocketAddress, RpcRequestsStats> requestStatsPerAddress = new HashMap<>();
 		for (InetSocketAddress address : addresses) {
-			RpcSender connection = pool.get(address);
-			if (connection != null && connection instanceof RpcJmxClientConnection) {
-				((RpcJmxClientConnection) (connection)).reset(smoothingWindow, smoothingPrecision);
+			RpcClientConnection connection = connections.get(address);
+			if (connection != null) {
+				RpcRequestsStats stats = connection.getRequestStats();
+				requestStatsPerAddress.put(address, stats);
 			}
 		}
+		return requestStatsPerAddress;
 	}
 
 	/**
 	 * Thread-safe operation
 	 */
-	@Override
-	public RpcJmxRequestsStatsSet getGeneralRequestsStats() {
-		try {
-			return eventloop.postConcurrently(new Callable<RpcJmxRequestsStatsSet>() {
-				@Override
-				public RpcJmxRequestsStatsSet call() throws Exception {
-					return generalRequestsStats;
-				}
-			}).get();
-		} catch (InterruptedException | ExecutionException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * Thread-safe operation
-	 */
-	@Override
-	public Map<Class<?>, RpcJmxRequestsStatsSet> getRequestsStatsPerClass() {
-		try {
-			return eventloop.postConcurrently(new Callable<Map<Class<?>, RpcJmxRequestsStatsSet>>() {
-				@Override
-				public Map<Class<?>, RpcJmxRequestsStatsSet> call() throws Exception {
-					return requestStatsPerClass;
-				}
-			}).get();
-		} catch (InterruptedException | ExecutionException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * Thread-safe operation
-	 */
-	@Override
-	public Map<InetSocketAddress, RpcJmxConnectsStatsSet> getConnectsStatsPerAddress() {
-		try {
-			return eventloop.postConcurrently(new Callable<Map<InetSocketAddress, RpcJmxConnectsStatsSet>>() {
-				@Override
-				public Map<InetSocketAddress, RpcJmxConnectsStatsSet> call() throws Exception {
-					return connectsStatsPerAddress;
-				}
-			}).get();
-		} catch (InterruptedException | ExecutionException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * Thread-safe operation
-	 */
-	@Override
-	public Map<InetSocketAddress, RpcJmxRequestsStatsSet> getRequestStatsPerAddress() {
-		try {
-			return eventloop.postConcurrently(new Callable<Map<InetSocketAddress, RpcJmxRequestsStatsSet>>() {
-				@Override
-				public Map<InetSocketAddress, RpcJmxRequestsStatsSet> call() throws Exception {
-					Map<InetSocketAddress, RpcJmxRequestsStatsSet> requestStatsPerAddress = new HashMap<>();
-					for (InetSocketAddress address : addresses) {
-						RpcSender connection = pool.get(address);
-						if (connection != null && connection instanceof RpcJmxClientConnection) {
-							RpcJmxRequestsStatsSet stats = ((RpcJmxClientConnection) (connection)).getRequestStats();
-							requestStatsPerAddress.put(address, stats);
-						}
-					}
-					return requestStatsPerAddress;
-				}
-			}).get();
-		} catch (InterruptedException | ExecutionException e) {
-			throw new RuntimeException(e);
-		}
-	}
-
-	/**
-	 * Thread-safe operation
-	 */
-	@Override
 	public int getActiveConnectionsCount() {
-		try {
-			return eventloop.postConcurrently(new Callable<Integer>() {
-				@Override
-				public Integer call() throws Exception {
-					int activeConnectionsCount = 0;
-					for (InetSocketAddress address : addresses) {
-						RpcSender connection = pool.get(address);
-						if (connection != null) {
-							++activeConnectionsCount;
-						}
-					}
-					return activeConnectionsCount;
-				}
-			}).get();
-		} catch (InterruptedException | ExecutionException e) {
-			throw new RuntimeException(e);
-		}
+		return connections.size();
 	}
 
 	/**
 	 * Thread-safe operation
 	 */
-	@Override
 	public List<InetSocketAddress> getAddresses() {
-		try {
-			return eventloop.postConcurrently(new Callable<List<InetSocketAddress>>() {
-				@Override
-				public List<InetSocketAddress> call() throws Exception {
-					return new ArrayList<>(addresses);
-				}
-			}).get();
-		} catch (InterruptedException | ExecutionException e) {
-			throw new RuntimeException(e);
-		}
+		return new ArrayList<>(addresses);
 	}
 
-	private RpcJmxRequestsStatsSet ensureRequestStatsSetPerClass(Class<?> requestClass) {
+	private RpcRequestsStats ensureRequestStatsPerClass(Class<?> requestClass) {
 		if (!requestStatsPerClass.containsKey(requestClass)) {
-			requestStatsPerClass.put(requestClass,
-					new RpcJmxRequestsStatsSet(smoothingWindow, smoothingPrecision, eventloop));
+			requestStatsPerClass.put(requestClass, new RpcRequestsStats());
 		}
 		return requestStatsPerClass.get(requestClass);
 	}
@@ -593,7 +521,7 @@ public final class RpcClient implements NioService, RpcJmxClient {
 		public void onResult(T result) {
 			if (isMonitoring()) {
 				generalRequestsStats.getSuccessfulRequests().recordEvent();
-				ensureRequestStatsSetPerClass(requestClass).getSuccessfulRequests().recordEvent();
+				ensureRequestStatsPerClass(requestClass).getSuccessfulRequests().recordEvent();
 				updateResponseTime(requestClass, timeElapsed());
 			}
 			callback.onResult(result);
@@ -604,28 +532,28 @@ public final class RpcClient implements NioService, RpcJmxClient {
 			if (isMonitoring()) {
 				if (exception instanceof RpcTimeoutException) {
 					generalRequestsStats.getExpiredRequests().recordEvent();
-					ensureRequestStatsSetPerClass(requestClass).getExpiredRequests().recordEvent();
+					ensureRequestStatsPerClass(requestClass).getExpiredRequests().recordEvent();
 				} else if (exception instanceof RpcOverloadException) {
 					generalRequestsStats.getRejectedRequests().recordEvent();
-					ensureRequestStatsSetPerClass(requestClass).getRejectedRequests().recordEvent();
+					ensureRequestStatsPerClass(requestClass).getRejectedRequests().recordEvent();
 				} else if (exception instanceof RpcRemoteException) {
 					generalRequestsStats.getFailedRequests().recordEvent();
-					ensureRequestStatsSetPerClass(requestClass).getFailedRequests().recordEvent();
+					ensureRequestStatsPerClass(requestClass).getFailedRequests().recordEvent();
 					updateResponseTime(requestClass, timeElapsed());
 
 					long timestamp = eventloop.currentTimeMillis();
 					// TODO(vmykhalko): maybe there should be something more informative instead of null (as causedObject)?
-					generalRequestsStats.getLastServerExceptionCounter().update(exception, null, timestamp);
-					ensureRequestStatsSetPerClass(requestClass)
-							.getLastServerExceptionCounter().update(exception, null, timestamp);
+					generalRequestsStats.getServerExceptions().update(exception, null, timestamp);
+					ensureRequestStatsPerClass(requestClass)
+							.getServerExceptions().update(exception, null, timestamp);
 				}
 			}
 			callback.onException(exception);
 		}
 
 		private void updateResponseTime(Class<?> requestClass, int responseTime) {
-			generalRequestsStats.getResponseTimeStats().recordValue(responseTime);
-			ensureRequestStatsSetPerClass(requestClass).getResponseTimeStats().recordValue(responseTime);
+			generalRequestsStats.getResponseTime().recordValue(responseTime);
+			ensureRequestStatsPerClass(requestClass).getResponseTime().recordValue(responseTime);
 		}
 
 		private int timeElapsed() {

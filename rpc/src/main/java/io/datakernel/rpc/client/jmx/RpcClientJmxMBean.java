@@ -19,7 +19,7 @@ package io.datakernel.rpc.client.jmx;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 
-public interface RpcJmxStatsManagerMBean {
+public interface RpcClientJmxMBean {
 
 	void startMonitoring();
 
@@ -29,7 +29,7 @@ public interface RpcJmxStatsManagerMBean {
 
 	void resetStats();
 
-	void resetStats(double smoothingWindow, double smoothingPrecision);
+	void setSmoothingWindow(double smoothingWindow);
 
 	// TODO(vmykhalko): is such functionality needed?
 //	void resetStats(double shortTermWindow, double shortTermPrecision, double longTermWindow, double longTermPrecision);

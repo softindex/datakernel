@@ -14,29 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.server;
+package io.datakernel.jmx;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
+import io.datakernel.time.CurrentTimeProvider;
 
-public interface RpcServerConnectionMBean {
-	void startMonitoring();
+// TODO (vmykhalko)
+public class RatioStats {
+	public RatioStats(double window, long refreshPeriodMillis, CurrentTimeProvider currentTimeProvider) {
+	}
 
-	void stopMonitoring();
+	public void incNumerator() {
+	}
 
-	boolean isMonitoring();
+	public void incDenominator() {
+	}
 
-	void reset();
-
-	CompositeData getConnectionDetails() throws OpenDataException;
-
-	int getSuccessfulResponses();
-
-	int getErrorResponses();
-
-	String getTimeExecutionMillis();
-
-	CompositeData getLastResponseException() throws OpenDataException;
-
-	CompositeData getLastInternalException() throws OpenDataException;
+	public void reset() {
+	}
 }

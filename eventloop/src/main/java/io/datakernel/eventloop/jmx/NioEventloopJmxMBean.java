@@ -19,7 +19,7 @@ package io.datakernel.eventloop.jmx;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 
-public interface NioEventloopJmxStatsManagerMBean {
+public interface NioEventloopJmxMBean {
 
 	void startMonitoring();
 
@@ -29,7 +29,7 @@ public interface NioEventloopJmxStatsManagerMBean {
 
 	void resetStats();
 
-	void resetStats(double smoothingWindow, double smoothingPrecision);
+	void setSmoothingWindow(double smoothingWindow);
 
 	// keys stats
 	long getKeysStats_SelectedKeys();

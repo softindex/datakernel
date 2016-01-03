@@ -22,8 +22,8 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.HttpClientImpl;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 
@@ -51,7 +51,7 @@ public class HttpClientExample {
 		final AsyncHttpServer httpServer = HttpServerExample.helloWorldServer(eventloop, PORT);
 
 		// Create the client
-		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
+		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 						3_000L, InetAddresses.forString("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();

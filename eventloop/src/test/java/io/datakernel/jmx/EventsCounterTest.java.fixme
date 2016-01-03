@@ -31,11 +31,11 @@ public class EventsCounterTest {
 
 	@Test
 	public void counterShouldUpdatesRateDependingOnPrecision() throws InterruptedException {
-		double precision_1_inSeconds = 1.0;
-		double precision_2_inSeconds = 2.0;
+		long refreshPeriod_1 = 1000;
+		long refreshPeriod_2 = 2000;
 		int oneSecondInMillis = 1000;
-		EventsCounter eventsCounter_1 = new EventsCounter(0.1, precision_1_inSeconds, MANUAL_TIME_PROVIDER);
-		EventsCounter eventsCounter_2 = new EventsCounter(0.1, precision_2_inSeconds, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter_1 = new EventsCounter(0.1, refreshPeriod_1, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter_2 = new EventsCounter(0.1, refreshPeriod_2, MANUAL_TIME_PROVIDER);
 
 		// init time recording
 		eventsCounter_1.recordEvents(0);
@@ -64,7 +64,7 @@ public class EventsCounterTest {
 
 	@Test
 	public void ifRateIsConstantCounterShouldApproximateThatRateAfterEnoughTimePassed() throws InterruptedException {
-		EventsCounter eventsCounter = new EventsCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter = new EventsCounter(0.1, 10, MANUAL_TIME_PROVIDER);
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
@@ -82,7 +82,7 @@ public class EventsCounterTest {
 
 	@Test
 	public void counterShouldResetRateAfterResetMethodCall() {
-		EventsCounter eventsCounter = new EventsCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter = new EventsCounter(0.1, 10, MANUAL_TIME_PROVIDER);
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
@@ -105,7 +105,7 @@ public class EventsCounterTest {
 
 	@Test
 	public void counterShouldProperlyCountAllEvents() {
-		EventsCounter eventsCounter = new EventsCounter(0.1, 0.01, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter = new EventsCounter(0.1, 10, MANUAL_TIME_PROVIDER);
 		int events = 100;
 		double rate = 20.0;
 		double period = 1.0 / rate;
@@ -122,7 +122,7 @@ public class EventsCounterTest {
 
 	@Test
 	public void example() {
-		EventsCounter eventsCounter = new EventsCounter(1.0, 0.1, MANUAL_TIME_PROVIDER);
+		EventsCounter eventsCounter = new EventsCounter(1.0, 10, MANUAL_TIME_PROVIDER);
 		int events = 1000;
 		int minPeriod = 100;
 		int maxPeriod = 500;

@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 final class FileSystem {
+	// TODO (arashev): remove builder, configure directly in SimpleFs/HashFs server instead
 	public static final class Builder {
 		private final NioEventloop eventLoop;
 		private final ExecutorService executor;
@@ -88,8 +89,8 @@ final class FileSystem {
 	private final String inProgressExtension;
 	private final int bufferSize;
 
-	private final ExecutorService executor;
 	private final NioEventloop eventloop;
+	private final ExecutorService executor;
 
 	private final Path fileStorage;
 	private final Path tmpStorage;
@@ -113,17 +114,6 @@ final class FileSystem {
 		return new Builder(eventloop, executor, storage);
 	}
 
-	void ensureInfrastructure() throws IOException {
-		if (!Files.exists(fileStorage)) {
-			Files.createDirectories(fileStorage);
-		}
-		if (Files.exists(tmpStorage)) {
-			cleanFolder(tmpStorage);
-		} else {
-			Files.createDirectories(tmpStorage);
-		}
-	}
-
 	public void saveToTmp(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
 		logger.trace("Saving to temporary dir {}", fileName);
 		Path tmpPath;
@@ -136,6 +126,7 @@ final class FileSystem {
 		StreamFileWriter diskWrite = StreamFileWriter.createFile(eventloop, executor, tmpPath, true, true);
 		diskWrite.setFlushCallback(callback);
 		producer.streamTo(diskWrite);
+		diskWrite.setFlushCallback(callback);
 	}
 
 	public void commitTmp(String fileName, CompletionCallback callback) {
@@ -186,7 +177,7 @@ final class FileSystem {
 		logger.trace("Deleting file {}", fileName);
 		Path path = fileStorage.resolve(fileName);
 		try {
-			deleteFile(path);
+			deleteFile(path); // TODO (arashev): why recursive? just delete single file
 			callback.onComplete();
 		} catch (IOException e) {
 			logger.error("Can't delete file {}", fileName, e);
@@ -206,8 +197,8 @@ final class FileSystem {
 		}
 	}
 
-	public long exists(String fileName) {
-		File file = fileStorage.resolve(fileName).toFile();
+	public long exists(String filePath) {
+		File file = fileStorage.resolve(filePath).toFile();
 		if (!file.exists() || file.isDirectory()) {
 			return -1;
 		}
@@ -284,11 +275,17 @@ final class FileSystem {
 		}
 	}
 
-	private void cleanFolder(Path container) throws IOException {
-		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(container)) {
+	public void initDirectories() throws IOException {
+		Files.createDirectories(fileStorage);
+		Files.createDirectories(tmpStorage);
+		cleanDirectory(tmpStorage);
+	}
+
+	private void cleanDirectory(Path directory) throws IOException {
+		try (DirectoryStream<Path> directoryStream = Files.newDirectoryStream(directory)) {
 			for (Path path : directoryStream) {
 				if (Files.isDirectory(path) && path.iterator().hasNext()) {
-					cleanFolder(path);
+					cleanDirectory(path);
 				}
 				Files.delete(path);
 			}

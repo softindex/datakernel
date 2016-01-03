@@ -59,7 +59,7 @@ public interface Eventloop extends CurrentTimeProvider {
 	 * @param <V>      type of result
 	 * @return {@link Future} which can be used to retrieve result
 	 */
-	<V> Future<V> postConcurrently(final Callable<V> callable);
+	<V> Future<V> postAsFuture(final Callable<V> callable);
 
 	/**
 	 * Adds the event which will be executed after certain time

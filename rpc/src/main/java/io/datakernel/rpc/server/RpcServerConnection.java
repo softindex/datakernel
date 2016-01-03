@@ -19,8 +19,8 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.LastExceptionCounter;
-import io.datakernel.jmx.ValuesCounter;
+import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;
@@ -33,16 +33,13 @@ import java.util.Map;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class RpcServerConnection implements RpcConnection, RpcServerConnectionMBean {
+public final class RpcServerConnection implements RpcConnection {
 
 	public interface StatusListener {
 		void onOpen(RpcServerConnection connection);
 
 		void onClosed();
 	}
-
-	private static final double STATS_COUNTER_WINDOW = 10.0;  // 10 seconds
-	private static final double STATS_COUNTER_PRECISION = 0.1;  // 0.1 seconds
 
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 	private final NioEventloop eventloop;
@@ -51,9 +48,9 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	private final StatusListener statusListener;
 
 	// JMX
-	private final LastExceptionCounter lastRemoteException = new LastExceptionCounter("RemoteException");
-	private final LastExceptionCounter lastInternalException = new LastExceptionCounter("InternalException");
-	private final ValuesCounter timeExecution;
+	private final ExceptionStats lastRemoteException = new ExceptionStats("RemoteException");
+	private final ExceptionStats lastInternalException = new ExceptionStats("InternalException");
+	private final ValueStats timeExecution;
 	private int successfulResponses = 0;
 	private int errorResponses = 0;
 	private boolean monitoring;
@@ -68,7 +65,7 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 		this.statusListener = statusListener;
 
 		// JMX
-		this.timeExecution = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeExecution = new ValueStats();
 	}
 
 	public void apply(Object request, ResultCallback<Object> callback) {
@@ -157,59 +154,54 @@ public final class RpcServerConnection implements RpcConnection, RpcServerConnec
 	}
 
 	// JMX
-	@Override
+
 	public void startMonitoring() {
 		monitoring = true;
 		protocol.startMonitoring();
 	}
 
-	@Override
 	public void stopMonitoring() {
 		monitoring = false;
 		protocol.stopMonitoring();
 	}
 
-	@Override
 	public boolean isMonitoring() {
 		return monitoring;
 	}
 
-	@Override
-	public void reset() {
-		lastRemoteException.reset();
-		lastInternalException.reset();
+	public void resetStats() {
+		lastRemoteException.resetStats();
+		lastInternalException.resetStats();
 		successfulResponses = 0;
 		errorResponses = 0;
-		timeExecution.reset();
+		timeExecution.resetStats();
 		protocol.reset();
 	}
 
-	@Override
+	public void refreshStats(long timestamp, double smoothingWindow) {
+		timeExecution.refreshStats(timestamp, smoothingWindow);
+	}
+
 	public CompositeData getConnectionDetails() throws OpenDataException {
 		return protocol.getConnectionDetails();
 	}
 
-	@Override
 	public int getSuccessfulResponses() {
 		return successfulResponses;
 	}
 
-	@Override
 	public int getErrorResponses() {
 		return errorResponses;
 	}
 
-	@Override
 	public String getTimeExecutionMillis() {
 		return timeExecution.toString();
 	}
 
-	@Override
 	public CompositeData getLastResponseException() throws OpenDataException {
 		return lastRemoteException.compositeData();
 	}
 
-	@Override
 	public CompositeData getLastInternalException() throws OpenDataException {
 		return lastInternalException.compositeData();
 	}

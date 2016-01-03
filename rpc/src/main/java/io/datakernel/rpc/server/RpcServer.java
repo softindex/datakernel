@@ -51,6 +51,10 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 
 	private final Map<SocketChannel, RpcServerConnection> connections = new HashMap<>();
 
+	// JMX
+	private boolean monitoring;
+	private volatile double smoothingWindow = 10.0;
+
 	private RpcServer(NioEventloop eventloop) {
 		super(eventloop);
 		serverSocketSettings(DEFAULT_SERVER_SOCKET_SETTINGS);
@@ -129,9 +133,6 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 		}
 	}
 
-	// JMX
-	private boolean monitoring;
-
 	public void add(SocketChannel socketChannel, RpcServerConnection connection) {
 		if (logger.isInfoEnabled())
 			logger.info("Client connected on {}", socketChannel);
@@ -142,6 +143,33 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 		if (logger.isInfoEnabled())
 			logger.info("Client disconnected on {}", socketChannel);
 		connections.remove(socketChannel);
+	}
+
+	@Override
+	protected void onListen() {
+		scheduleRefreshStats();
+	}
+
+	// JMX
+
+	private void scheduleRefreshStats() {
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
+			@Override
+			public void run() {
+				if (!isRunning())
+					return;
+				long timestamp = eventloop.currentTimeMillis();
+				for (RpcServerConnection connection : connections.values()) {
+					connection.refreshStats(timestamp, smoothingWindow);
+				}
+				scheduleRefreshStats();
+			}
+		});
+	}
+
+	@Override
+	public void setSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
 	}
 
 	@Override
@@ -168,7 +196,7 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 	@Override
 	public void resetStats() {
 		for (RpcServerConnection connection : connections.values()) {
-			connection.reset();
+			connection.resetStats();
 		}
 	}
 

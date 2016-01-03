@@ -143,7 +143,7 @@ public class HttpTolerantApplicationTest {
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			NioEventloop eventloop = new NioEventloop();
-			final HttpClientImpl httpClient = new HttpClientImpl(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
+			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
 					InetAddresses.forString("8.8.8.8")));
 
 			httpClient.getHttpResultAsync(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {

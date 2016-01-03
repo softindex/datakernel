@@ -141,7 +141,7 @@ public final class HttpRequestsGenerator {
 	}
 
 	private final NioEventloop eventloop;
-	private final HttpClientAsync client;
+	private final AsyncHttpClient client;
 	private final GeneratorOptions options;
 	private final CompletionCallback completionCallback;
 
@@ -156,7 +156,7 @@ public final class HttpRequestsGenerator {
 
 		this.eventloop = checkNotNull(eventloop);
 		this.options = checkNotNull(options);
-		this.client = new HttpClientImpl(eventloop,
+		this.client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 						3_000L, InetAddresses.forString("8.8.8.8")));
 		this.completionCallback = checkNotNull(completionCallback);

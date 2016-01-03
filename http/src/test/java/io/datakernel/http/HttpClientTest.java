@@ -50,7 +50,7 @@ public class HttpClientTest {
 		final NioEventloop eventloop = new NioEventloop();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
+		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
@@ -97,7 +97,7 @@ public class HttpClientTest {
 		});
 		httpServer.setListenPort(PORT);
 
-		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
+		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
@@ -133,7 +133,7 @@ public class HttpClientTest {
 		final int TIMEOUT = 1;
 		final NioEventloop eventloop = new NioEventloop();
 
-		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
+		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
@@ -166,7 +166,7 @@ public class HttpClientTest {
 		final NioEventloop eventloop = new NioEventloop();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
-		final HttpClientImpl httpClient = new HttpClientImpl(eventloop,
+		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 

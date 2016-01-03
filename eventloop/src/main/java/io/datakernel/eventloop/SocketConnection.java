@@ -113,19 +113,19 @@ public abstract class SocketConnection {
 
 	protected void onInternalException(Exception e) {
 		logger.error("onInternalException in {}", this, e);
-		eventloop.updateExceptionCounter(INTERNAL_MARKER, e, this);
+		eventloop.updateExceptionStats(INTERNAL_MARKER, e, this);
 		close();
 	}
 
 	protected void onReadException(Exception e) {
 		logger.warn("onReadException in {} : {}", this, e.toString());
-		eventloop.updateExceptionCounter(READ_MARKER, e, this);
+		eventloop.updateExceptionStats(READ_MARKER, e, this);
 		close();
 	}
 
 	protected void onWriteException(Exception e) {
 		logger.warn("onWriteException in {} : {}", this, e.toString());
-		eventloop.updateExceptionCounter(WRITE_MARKER, e, this);
+		eventloop.updateExceptionStats(WRITE_MARKER, e, this);
 		close();
 	}
 
@@ -171,7 +171,7 @@ public abstract class SocketConnection {
 			onClosed();
 		} catch (Throwable e) {
 			logger.error("onClosed() error in {}", this, e);
-			eventloop.updateExceptionCounter(CLOSE_MARKER, e, toString());
+			eventloop.updateExceptionStats(CLOSE_MARKER, e, toString());
 		}
 	}
 
@@ -183,7 +183,7 @@ public abstract class SocketConnection {
 			channel.close();
 		} catch (Throwable e) {
 			logger.error("close error in {} : {}", this, e.toString());
-			eventloop.updateExceptionCounter(CLOSE_MARKER, e, toString());
+			eventloop.updateExceptionStats(CLOSE_MARKER, e, toString());
 		}
 	}
 

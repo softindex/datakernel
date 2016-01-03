@@ -22,7 +22,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.jmx.LastExceptionCounter;
+import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.util.ExceptionMarker;
 import org.junit.Assert;
 import org.junit.Before;
@@ -262,7 +262,7 @@ public class HttpServerTest {
 		}
 		server.closeFuture().await();
 		thread.join();
-		LastExceptionCounter exceptionCounter = eventloop.getExceptionCounter(new ExceptionMarker(SocketConnection.class, "InternalException"));
+		ExceptionStats exceptionCounter = eventloop.getExceptionStats(new ExceptionMarker(SocketConnection.class, "InternalException"));
 		assertNotNull(exceptionCounter);
 		String[] exception = exceptionCounter.getFormattedException();
 		assertTrue(exception != null && exception.length > 0);

@@ -618,7 +618,7 @@ public class SimpleFsServerTest {
 
 	private static NioService createServer(NioEventloop eventloop, ExecutorService executor) {
 		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage)
-				.specifyListenAddress(address)
+				.setListenAddress(address)
 				.build();
 	}
 

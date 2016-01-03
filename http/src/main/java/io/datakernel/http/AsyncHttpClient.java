@@ -25,8 +25,8 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioService;
 import io.datakernel.http.ExposedLinkedList.Node;
-import io.datakernel.jmx.ValuesCounter;
 import io.datakernel.jmx.MBeanFormat;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,12 +50,10 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientImplMXBean {
-	private static final Logger logger = LoggerFactory.getLogger(HttpClientImpl.class);
+public class AsyncHttpClient implements NioService {
+	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
-	private static final double STATS_COUNTER_WINDOW = 10.0;  // 10 seconds
-	private static final double STATS_COUNTER_PRECISION = 0.1;  // 0.1 seconds
 
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final BindException BIND_EXCEPTION = new BindException();
@@ -76,10 +74,13 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	private int countPendingSocketConnect;
 
-	//JMX
-	private final ValuesCounter timeCheckExpired;
-	private final ValuesCounter expiredConnections;
+	private boolean running;
+
+	// JMX
+	private final ValueStats timeCheckExpired;
+	private final ValueStats expiredConnections;
 	private boolean monitoring;
+	private volatile double smoothingWindow = 10.0;
 
 	private int inetAddressIdx = 0;
 
@@ -89,7 +90,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	 * @param eventloop eventloop in which will handle this connection
 	 * @param dnsClient DNS client for resolving IP addresses for the specified host names
 	 */
-	public HttpClientImpl(NioEventloop eventloop, DnsClient dnsClient) {
+	public AsyncHttpClient(NioEventloop eventloop, DnsClient dnsClient) {
 		this(eventloop, dnsClient, defaultSocketSettings());
 	}
 
@@ -100,7 +101,7 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	 * @param dnsClient      DNS client for resolving IP addresses for the specified host names
 	 * @param socketSettings settings for creating socket
 	 */
-	public HttpClientImpl(NioEventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
+	public AsyncHttpClient(NioEventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
 		this.dnsClient = dnsClient;
 		this.socketSettings = checkNotNull(socketSettings);
@@ -113,21 +114,21 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		this.headerChars = chars;
 
 		// JMX
-		this.timeCheckExpired = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.expiredConnections = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeCheckExpired = new ValueStats();
+		this.expiredConnections = new ValueStats();
 	}
 
-	public HttpClientImpl setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
+	public AsyncHttpClient setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
 		this.bindExceptionBlockTimeout = bindExceptionBlockTimeout;
 		return this;
 	}
 
-	public HttpClientImpl setBlockLocalAddresses(boolean blockLocalAddresses) {
+	public AsyncHttpClient setBlockLocalAddresses(boolean blockLocalAddresses) {
 		this.blockLocalAddresses = blockLocalAddresses;
 		return this;
 	}
 
-	public HttpClientImpl setMaxHttpMessageSize(int size) {
+	public AsyncHttpClient setMaxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
 		return this;
 	}
@@ -245,7 +246,6 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	 * @param timeout  time which client will wait result
 	 * @param callback callback for handling result
 	 */
-	@Override
 	public void getHttpResultAsync(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
 		checkNotNull(request);
 		assert eventloop.inEventloopThread();
@@ -431,6 +431,9 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	@Override
 	public void start(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
+		checkState(!running);
+		running = true;
+		scheduleRefreshStats();
 		callback.onComplete();
 	}
 
@@ -443,7 +446,10 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	@Override
 	public void stop(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
-		close();
+		if (running) {
+			running = false;
+			close();
+		}
 		callback.onComplete();
 	}
 
@@ -452,32 +458,42 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 	}
 
 	// JMX
-	@Override
-	public void resetStats() {
-		timeCheckExpired.reset();
+
+	private void scheduleRefreshStats() {
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
+			@Override
+			public void run() {
+				if (!running)
+					return;
+				double smoothingWindow = AsyncHttpClient.this.smoothingWindow;
+				long timestamp = eventloop.currentTimeMillis();
+				timeCheckExpired.refreshStats(timestamp, smoothingWindow);
+				expiredConnections.refreshStats(timestamp, smoothingWindow);
+				scheduleRefreshStats();
+			}
+		});
 	}
 
-	@Override
+	public void resetStats() {
+		timeCheckExpired.resetStats();
+	}
+
 	public void startMonitoring() {
 		monitoring = true;
 	}
 
-	@Override
 	public void stopMonitoring() {
 		monitoring = false;
 	}
 
-	@Override
 	public int getTimeCheckExpiredMicros() {
-		return (int)timeCheckExpired.getLastValue();
+		return (int) timeCheckExpired.getLastValue();
 	}
 
-	@Override
 	public String getTimeCheckExpiredMicrosStats() {
 		return timeCheckExpired.toString();
 	}
 
-	@Override
 	public String[] getAddressConnections() {
 		if (ipConnectionLists.isEmpty())
 			return null;
@@ -491,12 +507,10 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		return result.toArray(new String[result.size()]);
 	}
 
-	@Override
 	public int getConnectionsCount() {
 		return connectionsList.size();
 	}
 
-	@Override
 	public String[] getConnections() {
 		Joiner joiner = Joiner.on(',');
 		List<String> info = new ArrayList<>();
@@ -512,17 +526,14 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		return info.toArray(new String[info.size()]);
 	}
 
-	@Override
-	public ValuesCounter getExpiredConnectionsStats() {
+	public ValueStats getExpiredConnectionsStats() {
 		return expiredConnections;
 	}
 
-	@Override
 	public int getPendingConnectsCount() {
 		return countPendingSocketConnect;
 	}
 
-	@Override
 	public String[] getAddressPendingConnects() {
 		if (addressPendingConnects.isEmpty())
 			return null;
@@ -534,7 +545,6 @@ public class HttpClientImpl implements HttpClientAsync, NioService, HttpClientIm
 		return result.toArray(new String[result.size()]);
 	}
 
-	@Override
 	public String[] getBindExceptionBlockedHosts() {
 		if (bindExceptionBlockedHosts.isEmpty())
 			return null;

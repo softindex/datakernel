@@ -51,7 +51,7 @@ public class SimpleProxyServerTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	public static AsyncHttpServer proxyHttpServer(final NioEventloop primaryEventloop, final HttpClientImpl httpClient) {
+	public static AsyncHttpServer proxyHttpServer(final NioEventloop primaryEventloop, final AsyncHttpClient httpClient) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
@@ -99,7 +99,7 @@ public class SimpleProxyServerTest {
 		echoServerThread.start();
 
 		NioEventloop eventloop2 = new NioEventloop();
-		HttpClientImpl httpClient = new HttpClientImpl(eventloop2,
+		AsyncHttpClient httpClient = new AsyncHttpClient(eventloop2,
 				new NativeDnsResolver(eventloop2, new DatagramSocketSettings(), 3_000L, InetAddresses.forString("8.8.8.8")));
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);

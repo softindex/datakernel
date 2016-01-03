@@ -24,7 +24,7 @@ import java.util.Random;
 import static java.lang.Math.sqrt;
 import static org.junit.Assert.assertEquals;
 
-public class ValuesCounterTest {
+public class ValueCounterTest {
 
 	private static final ManualTimeProvider MANUAL_TIME_PROVIDER = new ManualTimeProvider(0);
 	private static final int ONE_SECOND_IN_MILLIS = 1000;
@@ -33,25 +33,25 @@ public class ValuesCounterTest {
 	@Test
 	public void dynamicAverageAtLimitShouldBeSameAsInputInCaseOfConstantData() {
 		double window = 10.0;
-		double precision = 0.1;
-		ValuesCounter valuesCounter = new ValuesCounter(window, precision, MANUAL_TIME_PROVIDER);
+		long refreshPeriod = 100;
+		ValueCounter valueCounter = new ValueCounter(window, refreshPeriod, MANUAL_TIME_PROVIDER);
 		int inputValue = 5;
 		int iterations = 1000;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(ONE_SECOND_IN_MILLIS);
-			valuesCounter.recordValue(inputValue);
+			valueCounter.recordValue(inputValue);
 		}
 
 		double acceptableError = 10E-5;
-		assertEquals(inputValue, valuesCounter.getSmoothedAverage(), acceptableError);
+		assertEquals(inputValue, valueCounter.getSmoothedAverage(), acceptableError);
 	}
 
 	@Test
 	public void itShouldReturnProperStandardDeviationAtLimit() {
 		double window = 100.0;
-		double precision = 0.1;
-		ValuesCounter counter = new ValuesCounter(window, precision, MANUAL_TIME_PROVIDER);
+		long refreshPeriod = 100;
+		ValueCounter counter = new ValueCounter(window, refreshPeriod, MANUAL_TIME_PROVIDER);
 		int iterations = 10000;
 		int minValue = 0;
 		int maxValue = 10;
@@ -71,19 +71,19 @@ public class ValuesCounterTest {
 	@Test
 	public void itShouldResetStatsAfterResetMethodCall() {
 		double window = 10.0;
-		double precision = 0.1;
-		ValuesCounter valuesCounter = new ValuesCounter(window, precision, MANUAL_TIME_PROVIDER);
+		long refreshPeriod = 100;
+		ValueCounter valueCounter = new ValueCounter(window, refreshPeriod, MANUAL_TIME_PROVIDER);
 		int inputValue = 5;
 		int iterations = 1000;
 
 		for (int i = 0; i < iterations; i++) {
 			MANUAL_TIME_PROVIDER.upgradeTime(ONE_SECOND_IN_MILLIS);
-			valuesCounter.recordValue(inputValue);
+			valueCounter.recordValue(inputValue);
 		}
 
-		double avgBeforeReset = valuesCounter.getSmoothedAverage();
-		valuesCounter.reset();
-		double avgAfterReset = valuesCounter.getSmoothedAverage();
+		double avgBeforeReset = valueCounter.getSmoothedAverage();
+		valueCounter.reset();
+		double avgAfterReset = valueCounter.getSmoothedAverage();
 
 		double acceptableError = 10E-5;
 		assertEquals(inputValue, avgBeforeReset, acceptableError);

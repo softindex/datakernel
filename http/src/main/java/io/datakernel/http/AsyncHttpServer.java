@@ -24,8 +24,8 @@ import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.jmx.ValuesCounter;
 import io.datakernel.jmx.MBeanFormat;
+import io.datakernel.jmx.ValueStats;
 
 import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
@@ -39,8 +39,6 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
  * from clients on this address. A HttpServer is supported  {@link AsyncHttpServlet} that completes all responses asynchronously.
  */
 public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> implements AsyncHttpServerMBean {
-	private static final double STATS_COUNTER_WINDOW = 10.0;  // 10 seconds
-	private static final double STATS_COUNTER_PRECISION = 0.1;  // 0.1 seconds
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
@@ -54,9 +52,10 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	//JMX
-	private final ValuesCounter timeCheckExpired;
-	private final ValuesCounter expiredConnections;
+	private final ValueStats timeCheckExpired;
+	private final ValueStats expiredConnections;
 	private boolean monitoring;
+	private volatile double smoothingWindow = 10.0;
 
 	/**
 	 * Creates new instance of AsyncHttpServer
@@ -76,9 +75,10 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 		this.headerChars = chars;
 
 		// JMX
-		this.timeCheckExpired = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
-		this.expiredConnections = new ValuesCounter(STATS_COUNTER_WINDOW, STATS_COUNTER_PRECISION, eventloop);
+		this.timeCheckExpired = new ValueStats();
+		this.expiredConnections = new ValueStats();
 	}
+
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
@@ -165,7 +165,27 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 		}
 	}
 
+	@Override
+	protected void onListen() {
+		scheduleRefreshStats();
+	}
+
 	// JMX
+
+	private void scheduleRefreshStats() {
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
+			@Override
+			public void run() {
+				if (!isRunning())
+					return;
+				long timestamp = eventloop.currentTimeMillis();
+				timeCheckExpired.refreshStats(timestamp, smoothingWindow);
+				expiredConnections.refreshStats(timestamp, smoothingWindow);
+				scheduleRefreshStats();
+			}
+		});
+	}
+
 	@Override
 	public void startMonitoring() {
 		monitoring = true;
@@ -178,7 +198,7 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 
 	@Override
 	public void resetStats() {
-		timeCheckExpired.reset();
+		timeCheckExpired.resetStats();
 	}
 
 	@Override

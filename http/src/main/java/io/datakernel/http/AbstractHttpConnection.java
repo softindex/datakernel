@@ -343,7 +343,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	protected void onInternalException(Exception e) {
 		if (e.getClass() == IOException.class) {
 			logger.warn("onInternalException in {}: {}", this, e.toString());
-			eventloop.updateExceptionCounter(INTERNAL_MARKER, e, this);
+			eventloop.updateExceptionStats(INTERNAL_MARKER, e, this);
 			close();
 			return;
 		}
