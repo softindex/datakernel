@@ -72,7 +72,7 @@ public class LogFsTest {
 		String logPartition = "p1";
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, path);
 		LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
-				BufferSerializers.utf8Serializer(), HOURS_ONLY_DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD);
+				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
 		timeProvider.setTime(0); // 00:00
@@ -130,7 +130,7 @@ public class LogFsTest {
 
 		LogFileSystem fileSystem = new SimpleFsLogFileSystem(client, logName);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
-				BufferSerializers.utf8Serializer(), HOURS_ONLY_DATE_TIME_FORMATTER, DEFAULT_FILE_SWITCH_PERIOD);
+				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
 		CompletionCallback stopCallback = new SimpleCompletionCallback() {
@@ -192,7 +192,7 @@ public class LogFsTest {
 
 		LogFileSystem fileSystem = new HashFsLogFileSystem(client, logName);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
-				BufferSerializers.utf8Serializer(), DEFAULT_DATE_TIME_FORMATTER, 10 * 60 * 1000);
+				BufferSerializers.utf16Serializer(), DETAILED_DATE_TIME_FORMATTER, 10 * 60 * 1000);
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
 		CompletionCallback stopCallback = new SimpleCompletionCallback() {

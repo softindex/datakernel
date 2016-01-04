@@ -77,7 +77,7 @@ public class LogManagerTest {
 		final NioEventloop eventloop = new NioEventloop(timeProvider);
 
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
-		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.utf8Serializer());
+		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.utf16Serializer());
 		final StreamSender<String> streamSender = new StreamSender<>(eventloop, false);
 		streamSender.streamTo(logManager.consumer(logPartition));
 

@@ -29,8 +29,8 @@ import org.joda.time.format.DateTimeFormatter;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 public final class LogManagerImpl<T> implements LogManager<T> {
-	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH-mm-ss").withZone(DateTimeZone.UTC);
-	public static final DateTimeFormatter HOURS_ONLY_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
+	public static final DateTimeFormatter DEFAULT_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
+	public static final DateTimeFormatter DETAILED_DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH-mm-ss").withZone(DateTimeZone.UTC);
 	public static final long DEFAULT_FILE_SWITCH_PERIOD = 60 * 60 * 1000L; // 1 hour
 	public static final int DEFAULT_BUFFER_SIZE = LogStreamConsumer.DEFAULT_BUFFER_SIZE;
 	public static final int DEFAULT_FLUSH_DELAY = LogStreamConsumer.DEFAULT_FLUSH_DELAY;
