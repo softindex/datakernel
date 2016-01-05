@@ -228,44 +228,44 @@ public final class NioEventloopStats extends AbstractCompositeStats<NioEventloop
 		scheduledTasksTime.refreshStats(timestamp, window);
 	}
 
-	public void add(NioEventloopStats statsSet) {
-		selectorSelectTime.add(statsSet.selectorSelectTime);
-		businessLogicTime.add(statsSet.businessLogicTime);
-		selectedKeys.add(statsSet.selectedKeys);
-		invalidKeys.add(statsSet.invalidKeys);
-		acceptKeys.add(statsSet.acceptKeys);
-		connectKeys.add(statsSet.connectKeys);
-		readKeys.add(statsSet.readKeys);
-		writeKeys.add(statsSet.writeKeys);
-		localTasks.add(statsSet.localTasks);
-		concurrentTasks.add(statsSet.concurrentTasks);
-		scheduledTasks.add(statsSet.scheduledTasks);
+	public void add(NioEventloopStats anotherStats) {
+		selectorSelectTime.add(anotherStats.selectorSelectTime);
+		businessLogicTime.add(anotherStats.businessLogicTime);
+		selectedKeys.add(anotherStats.selectedKeys);
+		invalidKeys.add(anotherStats.invalidKeys);
+		acceptKeys.add(anotherStats.acceptKeys);
+		connectKeys.add(anotherStats.connectKeys);
+		readKeys.add(anotherStats.readKeys);
+		writeKeys.add(anotherStats.writeKeys);
+		localTasks.add(anotherStats.localTasks);
+		concurrentTasks.add(anotherStats.concurrentTasks);
+		scheduledTasks.add(anotherStats.scheduledTasks);
 
-		localTaskDuration.add(statsSet.localTaskDuration);
-		concurrentTaskDuration.add(statsSet.concurrentTaskDuration);
-		scheduledTaskDuration.add(statsSet.scheduledTaskDuration);
+		localTaskDuration.add(anotherStats.localTaskDuration);
+		concurrentTaskDuration.add(anotherStats.concurrentTaskDuration);
+		scheduledTaskDuration.add(anotherStats.scheduledTaskDuration);
 
-		selectedKeysTime.add(statsSet.selectedKeysTime);
-		localTasksTime.add(statsSet.localTasksTime);
-		concurrentTasksTime.add(statsSet.concurrentTasksTime);
-		scheduledTasksTime.add(statsSet.scheduledTasksTime);
+		selectedKeysTime.add(anotherStats.selectedKeysTime);
+		localTasksTime.add(anotherStats.localTasksTime);
+		concurrentTasksTime.add(anotherStats.concurrentTasksTime);
+		scheduledTasksTime.add(anotherStats.scheduledTasksTime);
 
-		for (ExceptionMarker marker : statsSet.exceptions.keySet()) {
+		for (ExceptionMarker marker : anotherStats.exceptions.keySet()) {
 			ExceptionStats stats = exceptions.get(marker);
 			if (stats == null) {
 				stats = new ExceptionStats(marker.getMarker());
 				exceptions.put(marker, stats);
 			}
-			stats.add(statsSet.exceptions.get(marker));
+			stats.add(anotherStats.exceptions.get(marker));
 		}
 
-		for (Class<? extends Throwable> exceptionType : statsSet.severeExceptions.keySet()) {
+		for (Class<? extends Throwable> exceptionType : anotherStats.severeExceptions.keySet()) {
 			ExceptionStats stats = severeExceptions.get(exceptionType);
 			if (stats == null) {
 				stats = new ExceptionStats(exceptionType.getName()); // TODO (vmykhalko): change signature?
 				severeExceptions.put(exceptionType, stats);
 			}
-			stats.add(statsSet.severeExceptions.get(exceptionType));
+			stats.add(anotherStats.severeExceptions.get(exceptionType));
 		}
 	}
 

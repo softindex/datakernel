@@ -27,13 +27,17 @@ import static java.lang.Math.log;
  * Class is supposed to work in single thread
  */
 public final class EventStats implements JmxStats<EventStats> {
+	private boolean computationStarted;
 	private long lastTimestampMillis;
 	private int lastCount;
 
 	private long totalCount;
 
-	private double smoothedTime;
-	private double smoothedCount;
+//	private double smoothedTime;
+//	private double smoothedCount;
+	private double smoothedPeriod;
+
+//	private int addedEventStatsCount;
 
 	/**
 	 * Creates {@link EventStats} with specified parameters and rate = 0
@@ -46,9 +50,12 @@ public final class EventStats implements JmxStats<EventStats> {
 	 */
 	public void resetStats() {
 		lastCount = 0;
-		smoothedTime = 0;
+//		smoothedTime = 0;
 		totalCount = 0;
 		lastTimestampMillis = 0;
+		smoothedPeriod = 0;
+		computationStarted = false;
+//		addedEventStatsCount = 0;
 	}
 
 	/**
@@ -69,19 +76,38 @@ public final class EventStats implements JmxStats<EventStats> {
 
 	@Override
 	public void refreshStats(long timestamp, double smoothingWindow) {
-		if (lastTimestampMillis != 0L) {
-			long timeElapsedMillis = timestamp - lastTimestampMillis;
+		// TODO(vmykhalko): refactor this method (tests are already written)
+		if (computationStarted) {
+			if (lastCount > 0) {
+				long timeElapsedMillis = timestamp - lastTimestampMillis;
 
-			double windowE = smoothingWindow * 1000.0 / log(2);
-			double weight = exp(-timeElapsedMillis / windowE);
+				double windowE = smoothingWindow * 1000.0 / log(2);
+				double weight = exp(-timeElapsedMillis / windowE);
 
-			smoothedTime = timeElapsedMillis + smoothedTime * weight;
-			smoothedCount = lastCount + smoothedCount * weight;
+				smoothedPeriod = (1 - weight) * (timeElapsedMillis / (double) lastCount) + smoothedPeriod * weight;
+
+				lastTimestampMillis = timestamp;
+				totalCount += lastCount;
+				lastCount = 0;
+			} else {
+				// ignore update
+			}
+		} else {
+			if (lastTimestampMillis != 0L) {
+				if (lastCount > 0) {
+					smoothedPeriod = (timestamp - lastTimestampMillis) / (double) lastCount;
+					lastTimestampMillis = timestamp;
+					totalCount += lastCount;
+					lastCount = 0;
+					computationStarted = true;
+				} else {
+					// ignore update
+				}
+			}
+			lastTimestampMillis = timestamp;
+			totalCount += lastCount;
+			lastCount = 0;
 		}
-
-		lastTimestampMillis = timestamp;
-		totalCount += lastCount;
-		lastCount = 0;
 	}
 
 	@Override
@@ -90,10 +116,12 @@ public final class EventStats implements JmxStats<EventStats> {
 	}
 
 	@Override
-	public void add(EventStats counter) {
-		totalCount += counter.totalCount;
-		smoothedCount += counter.smoothedCount;
-		smoothedTime += counter.smoothedTime;
+
+	public void add(EventStats anotherStats) {
+		// TODO(vmykhalko): revisit / test this code
+		totalCount += anotherStats.totalCount;
+		smoothedPeriod = (1.0 / (getSmoothedRate() + anotherStats.getSmoothedRate())) * 1000;
+		computationStarted = true;
 	}
 
 	/**
@@ -104,7 +132,7 @@ public final class EventStats implements JmxStats<EventStats> {
 	 * @return smoothed value of rate in events per second
 	 */
 	public double getSmoothedRate() {
-		return smoothedTime != 0 ? smoothedCount / smoothedTime : 0;
+		return computationStarted ? 1.0 / (smoothedPeriod / 1000.0) : 0.0;
 	}
 
 	/**
@@ -118,7 +146,7 @@ public final class EventStats implements JmxStats<EventStats> {
 
 	@Override
 	public String toString() {
-		return String.format("total: %d   smoothedRate: %.3f   smoothedMinRate: %.4f   smoothedMaxRate: %.4f",
+		return String.format("total: %d   smoothedRate: %.3f",
 				getTotalCount(), getSmoothedRate());
 	}
 }

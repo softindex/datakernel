@@ -155,8 +155,8 @@ public final class ValueStats implements JmxStats<ValueStats> {
 			smoothedMax = counter.smoothedMax;
 		}
 
-		totalSum += lastSum;
-		totalCount += lastCount;
+		totalSum += counter.totalSum;
+		totalCount += counter.totalCount;
 		if (counter.totalMin < totalMin) {
 			totalMin = counter.totalMin;
 		}
@@ -185,20 +185,28 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	}
 
 	/**
-	 * Returns dynamic average of added values
+	 * Returns smoothed average of added values
 	 *
-	 * @return dynamic average of added values
+	 * @return smoothed average of added values
 	 */
 	public double getSmoothedAverage() {
+		if (totalCount == 0) {
+			return 0.0;
+		}
+
 		return smoothedSum / smoothedCount;
 	}
 
 	/**
-	 * Returns dynamic standard deviation
+	 * Returns smoothed standard deviation
 	 *
-	 * @return dynamic standard deviation
+	 * @return smoothed standard deviation
 	 */
 	public double getSmoothedStandardDeviation() {
+		if (totalCount == 0) {
+			return 0.0;
+		}
+
 		double avg = smoothedSum / smoothedCount;
 		double variance = smoothedSqr / smoothedCount - avg * avg;
 		if (variance < 0.0)
@@ -207,18 +215,18 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	}
 
 	/**
-	 * Returns dynamic min of added values
+	 * Returns smoothed min of added values
 	 *
-	 * @return dynamic min of added values
+	 * @return smoothed min of added values
 	 */
 	public double getSmoothedMin() {
 		return smoothedMin;
 	}
 
 	/**
-	 * Returns dynamic max of added values
+	 * Returns smoothed max of added values
 	 *
-	 * @return dynamic max of added values
+	 * @return smoothed max of added values
 	 */
 	public double getSmoothedMax() {
 		return smoothedMax;
@@ -243,15 +251,14 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	}
 
 	public double getAverage() {
-		return totalSum / totalCount;
+		return totalCount != 0L ? totalSum / (double) totalCount : 0.0;
 	}
 
-	// TODO (vmykhalko): add all available statistics and format properly
 	@Override
 	public String toString() {
-		return String.format("%.2f±%.3f   min: %d   max: %d   last: %d   smoothedMin: %.2f   smoothedMax: %.2f",
+		return String.format("%.2f±%.3f   min: %d   max: %d   last: %d   avg: %.2f   smoothedMin: %.2f   smoothedMax: %.2f",
 				getSmoothedAverage(), getSmoothedStandardDeviation(), getTotalMin(), getTotalMax(), getLastValue(),
-				getSmoothedMin(), getSmoothedMax());
+				getAverage(), getSmoothedMin(), getSmoothedMax());
 	}
 
 }
