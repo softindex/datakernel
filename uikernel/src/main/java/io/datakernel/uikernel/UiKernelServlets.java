@@ -19,15 +19,13 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.*;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.util.ByteBufStrings;
 
+import java.nio.charset.Charset;
 import java.util.List;
 
-import static io.datakernel.http.ContentType.JSON_UTF8;
 import static io.datakernel.http.HttpMethod.DELETE;
 import static io.datakernel.http.HttpMethod.PUT;
 import static io.datakernel.uikernel.Utils.decodeUtf8Query;
@@ -38,6 +36,7 @@ import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
  */
 @SuppressWarnings("unused")
 public class UiKernelServlets {
+	public static final ContentType JSON_UTF8 = ContentType.of(MediaType.JSON, Charset.forName("UTF-8"));
 
 	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel model, Gson gson) {
 		MiddlewareServlet main = new MiddlewareServlet();
@@ -90,7 +89,7 @@ public class UiKernelServlets {
 						public void onResult(R obj) {
 							String json = gson.toJson(obj, model.getRecordType());
 							callback.onResult(HttpResponse.create()
-									.setContentType(JSON_UTF8)
+//									.setContentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(json)));
 						}
 

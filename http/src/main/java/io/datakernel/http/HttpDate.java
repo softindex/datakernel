@@ -20,7 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 
 import static io.datakernel.util.ByteBufStrings.*;
 
-// <[RFC2616], Section 3.3.1>
+// <[RFC2616], Section 3.3.1> case-sensitive
 final class HttpDate {
 	private static final int HOUR_SECONDS = (60 * 60);
 	private static final int DAY_SECONDS = 24 * HOUR_SECONDS;
@@ -63,11 +63,11 @@ final class HttpDate {
 
 	private HttpDate() {}
 
-	public static long parse(ByteBuf buf) {
+	static long parse(ByteBuf buf) {
 		return parse(buf.array(), buf.position());
 	}
 
-	public static long parse(byte[] bytes, int start) {
+	static long parse(byte[] bytes, int start) {
 		int day = decodeDecimal(bytes, start + 5, 2);
 
 		int month = -1;
@@ -94,7 +94,7 @@ final class HttpDate {
 
 		timestamp += yearsLeft * YEAR_SECONDS;
 		if (yearsLeft > 2) {
-			// 1972 was a leap year and we assume this code to be deprecated or fixed before year 2100
+			// 1972 was a leap year and this code is assumed to be either deprecated or fixed before year 2100
 			timestamp += DAY_SECONDS;
 		}
 
@@ -111,12 +111,12 @@ final class HttpDate {
 		return timestamp;
 	}
 
-	public static void render(long timestamp, ByteBuf buf) {
+	static void render(long timestamp, ByteBuf buf) {
 		int pos = render(timestamp, buf.array(), buf.position());
 		buf.position(pos);
 	}
 
-	public static int render(long timestamp, byte[] bytes, int pos) {
+	static int render(long timestamp, byte[] bytes, int pos) {
 		long secondsFrom1970 = timestamp / 1000L;
 
 		int fourYears = (int) (secondsFrom1970 / FOUR_YEAR_SECONDS);

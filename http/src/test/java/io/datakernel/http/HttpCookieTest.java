@@ -93,7 +93,7 @@ public class HttpCookieTest {
 		String expected = "name1=\"value1\"; name2=\"value2\"; name3";
 
 		ByteBuf buf = ByteBuf.allocate(expected.length());
-		HttpCookie.render(Arrays.asList(cookie1, cookie2, cookie3), buf);
+		HttpCookie.renderSimple(Arrays.asList(cookie1, cookie2, cookie3), buf);
 		buf.flip();
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

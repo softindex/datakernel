@@ -35,11 +35,11 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 		if (pos != -1) {
 			path = path.substring(pos + 1);
 		}
-		ContentType type = ContentType.getByExt(path);
-		if (type != null && ContentType.isText(type)) {
-			type = type.setCharsetEncoding(DEFAULT_TXT_ENCODING);
+		ContentType type = ContentType.of(MediaType.getByExt(path));
+		if (type.getMediaType().isText()) {
+			type = type.setCharset(DEFAULT_TXT_ENCODING);
 		}
-		return type == null ? ContentType.ANY : type;
+		return type == null ? ContentType.of(MediaType.ANY) : type;
 	}
 
 	protected abstract void doServeAsync(String name, ForwardingResultCallback<ByteBuf> callback);

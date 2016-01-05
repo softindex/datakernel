@@ -31,41 +31,12 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 
 /**
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
-	public static class Pair<E> {
-		private E value;
-		private double quot;
-
-		public Pair(E value) {
-			this.value = value;
-		}
-
-		public Pair(E value, double quot) {
-			this.value = value;
-			this.quot = quot;
-		}
-
-		public E getValue() {
-			return value;
-		}
-
-		public void setValue(E value) {
-			this.value = value;
-		}
-
-		public double getQuot() {
-			return quot;
-		}
-
-		public void setQuot(double quot) {
-			this.quot = quot;
-		}
-	}
-
 	private static final Splitter splitCookies = Splitter.on("; ");
 	private static final Splitter splitComma = Splitter.on(',').trimResults();
 	private static final Splitter querySplitter = Splitter.on('&');
@@ -77,11 +48,23 @@ public final class HttpUtils {
 		return df;
 	}
 
-	public static int skipSpaces(byte[] bytes, int pos, int end) {
+	public static int skipSpaces(byte[] bytes, int pos, int length) {
+		int end = pos + length;
 		while (pos < end && bytes[pos] == ' ') {
 			pos++;
 		}
 		return pos;
+	}
+
+	static int parseQ(byte[] bytes, int pos, int length) {
+		if (bytes[pos] == '1') {
+			return 100;
+		} else {
+			length = length > 4 ? 2 : length - 2;
+			int q = decodeDecimal(bytes, pos + 2, length);
+			if (length == 1) q *= 10;
+			return q;
+		}
 	}
 
 	/**
@@ -169,9 +152,7 @@ public final class HttpUtils {
 	 */
 	public static boolean checkCookie(HttpRequest request, String cookieName, String cookieValue) {
 		HttpCookie cookie = getCookie(request, cookieName);
-		if (cookie == null)
-			return false;
-		return cookie.getValue().equals(cookieValue);
+		return cookie != null && cookie.getValue().equals(cookieValue);
 	}
 
 	public static String cookiesToString(Collection<HttpCookie> cookies) {

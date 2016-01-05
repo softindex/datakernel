@@ -21,14 +21,13 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.util.ByteBufStrings;
 
-import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
 import static io.datakernel.http.HttpHeader.*;
-import static io.datakernel.util.ByteBufStrings.*;
+import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.util.ByteBufStrings.putDecimal;
 
 /**
  * It represents the HTTP result with which server response in client {@link HttpRequest}. It must ave only
@@ -109,51 +108,43 @@ public final class HttpResponse extends HttpMessage {
 
 	public HttpResponse setAge(int value) {
 		assert !recycled;
-		setHeader(HttpHeader.AGE, value);
+		setHeader(ofDecimal(AGE, value));
 		return this;
 	}
 
-	public HttpResponse setContentType(ContentType contentType) {
+	public HttpResponse setContentLength(int value) {
 		assert !recycled;
-		addContentTypeHeader(CONTENT_TYPE, contentType);
+		setHeader(ofDecimal(CONTENT_LENGTH, value));
 		return this;
 	}
 
-	public HttpResponse setContentType(List<ContentType> contentTypes) {
+	public HttpResponse setContentType(ContentType value) {
 		assert !recycled;
-		addContentTypeHeader(CONTENT_TYPE, contentTypes);
+		setHeader(ofContentType(HttpHeader.CONTENT_TYPE, value));
 		return this;
 	}
 
 	public HttpResponse setDate(Date value) {
 		assert !recycled;
-		setHeader(HttpHeader.DATE, value);
+		setHeader(ofDate(HttpHeader.DATE, value));
 		return this;
 	}
 
 	public HttpResponse setExpires(Date value) {
 		assert !recycled;
-		setHeader(HttpHeader.EXPIRES, value);
+		setHeader(ofDate(HttpHeader.EXPIRES, value));
 		return this;
 	}
 
 	public HttpResponse setLastModified(Date value) {
 		assert !recycled;
-		setHeader(HttpHeader.LAST_MODIFIED, value);
+		setHeader(ofDate(HttpHeader.LAST_MODIFIED, value));
 		return this;
 	}
 
-	public HttpResponse setCookie(HttpCookie cookie) {
+	public HttpResponse setCookie(List<HttpCookie> values) {
 		assert !recycled;
-		addCookieHeader(HttpHeader.SET_COOKIE, cookie);
-		return this;
-	}
-
-	public HttpResponse setCookie(Collection<HttpCookie> cookies) {
-		assert !recycled;
-		for (HttpCookie cookie : cookies) {
-			addCookieHeader(HttpHeader.SET_COOKIE, cookie);
-		}
+		addHeader(ofSetCookies(HttpHeader.SET_COOKIE, values));
 		return this;
 	}
 
@@ -165,39 +156,35 @@ public final class HttpResponse extends HttpMessage {
 
 	public int getAge() {
 		assert !recycled;
-		String value = getHeaderString(HttpHeader.AGE);
-		if (value != null && !value.equals("")) {
-			return decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
-		}
-		return -1;
+		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(AGE);
+		if (header != null)
+			return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
+		return 0;
 	}
 
 	public Date getExpires() {
 		assert !recycled;
-		String value = getHeaderString(HttpHeader.EXPIRES);
-		if (value != null && !value.equals("")) {
-			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-			return new Date(timestamp);
-		}
+		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(EXPIRES);
+		if (header != null)
+			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
 	}
 
 	public Date getLastModified() {
 		assert !recycled;
-		String value = getHeaderString(HttpHeader.LAST_MODIFIED);
-		if (value != null && !value.equals("")) {
-			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-			return new Date(timestamp);
-		}
+		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(LAST_MODIFIED);
+		if (header != null)
+			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
 	}
 
 	public List<HttpCookie> getCookies() {
 		assert !recycled;
 		List<HttpCookie> cookie = new ArrayList<>();
-		List<String> headers = getHeaderStrings(SET_COOKIE);
-		for (String header : headers) {
-			HttpCookie.parse(header, cookie);
+		List<Value> headers = getHeaders(SET_COOKIE);
+		for (Value header : headers) {
+			ValueOfBytes value = (ValueOfBytes) header;
+			HttpCookie.parse(value.array, value.offset, value.offset + value.size, cookie);
 		}
 		return cookie;
 	}

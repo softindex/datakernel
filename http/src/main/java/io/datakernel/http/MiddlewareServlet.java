@@ -116,7 +116,7 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 		}
 	}
 
-	private boolean tryServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	protected boolean tryServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();

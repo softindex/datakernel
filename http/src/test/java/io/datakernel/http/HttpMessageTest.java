@@ -22,7 +22,10 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
-import static io.datakernel.http.HttpHeader.headerOfString;
+import java.util.Arrays;
+import java.util.Collections;
+
+import static io.datakernel.http.HttpHeader.of;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
@@ -52,10 +55,10 @@ public class HttpMessageTest {
 		assertHttpResponseEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
 				"Error 502", HttpResponse.create(502).body("Error 502".getBytes(Charsets.UTF_8)));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).setCookie(new HttpCookie("cookie1", "value1")));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"\r\nSet-Cookie: cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).setCookie(new HttpCookie("cookie1", "value1")).setCookie(new HttpCookie("cookie2", "value2")));
-		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"\r\nSet-Cookie: cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
+				HttpResponse.create(200).setCookie(Collections.singletonList(new HttpCookie("cookie1", "value1"))));
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
+				HttpResponse.create(200).setCookie(Arrays.asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.create(200).setCookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 	}
 
@@ -88,8 +91,8 @@ public class HttpMessageTest {
 	@Test
 	public void testMultiHeaders() {
 		HttpResponse h = HttpResponse.create(200);
-		HttpHeader h1 = headerOfString("h1");
-		HttpHeader h2 = headerOfString("h2");
+		HttpHeader h1 = of("h1");
+		HttpHeader h2 = of("h2");
 
 		assertTrue(h.getHeaders().isEmpty());
 		assertNull(getHeaderValue(h, h1));

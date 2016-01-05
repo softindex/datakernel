@@ -17,77 +17,88 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
-import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.http.ContentType.*;
+import static io.datakernel.http.HttpUtils.parseQ;
+import static io.datakernel.util.ByteBufStrings.*;
+import static java.nio.charset.Charset.forName;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class ContentTypeTest {
 	@Test
-	public void testParse() {
-		String string = "text/plain, image/bmp,application/ogg";
-		List<ContentType> expected = Arrays.asList(PLAIN_TEXT, BMP, OGG_APP);
-		List<ContentType> actual = new ArrayList<>();
-		parse(ByteBufStrings.encodeAscii(string), 0, string.length(), actual);
-		assertEquals(expected, actual);
+	public void testMediaType() {
+		byte[] mediaType = encodeAscii("application/json");
+		int hash = hashCodeLowerCaseAscii(mediaType);
+		MediaType actual = MediaType.parse(mediaType, 0, mediaType.length, hash);
+		assertTrue(MediaType.JSON == actual);
 	}
 
 	@Test
-	public void testCaseInsensitive() {
-		ContentType ct1 = getByName("APPLICATION/JSON");
-		ContentType ct2 = JSON;
-		assertEquals(ct1, ct2);
-
-		ct1 = getByName("TEXT/PLAIN");
-		ct2 = getByName("text/plain"); // ContentType.PLAIN_TEXT
-		assertEquals(ct1, ct2);
-
-		ct1 = getByName("*/*");
-		ct2 = ANY;
-		assertEquals(ct1, ct2);
+	public void testContentTypeParse() {
+		byte[] contentType = encodeAscii("text/plain;param=value; url-form=www;CHARSET=UTF-8; a=v");
+		ContentType actual = ContentType.parse(contentType, 0, contentType.length);
+		assertTrue(MediaType.PLAIN_TEXT == actual.getMediaType());
+		assertTrue(forName("UTF-8") == actual.getCharset());
 	}
 
 	@Test
-	public void testRender() {
-		String expected = "text/plain,image/bmp,application/ogg";
-		List<ContentType> types = Arrays.asList(PLAIN_TEXT, BMP, OGG_APP);
+	public void testQParser() {
+		byte[] num = encodeAscii("0.12313");
+		int q = parseQ(num, 0, num.length);
+		assertEquals(12, q);
+
+		num = encodeAscii("1.0");
+		q = parseQ(num, 0, num.length);
+		assertEquals(100, q);
+	}
+
+	@Test
+	public void testAcceptContentType() {
+		byte[] acceptCts = encodeAscii("text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+		List<AcceptContentType> list = AcceptContentType.parse(acceptCts, 0, acceptCts.length);
+		assertEquals(5, list.size());
+		assertEquals(80, list.get(4).getQ());
+		assertTrue(MediaType.ANY == list.get(4).getMime());
+	}
+
+	@Test
+	public void testRenderMime() {
+		String expected = "application/json";
 		ByteBuf buf = ByteBuf.allocate(expected.length());
-		render(types, buf);
-		assertEquals(expected, ByteBufStrings.decodeAscii(buf.array()));
-	}
-
-	@Test
-	public void testGetExt() {
-		ContentType expected = HTML;
-		ContentType actual = getByExt("html");
-		assertEquals(expected, actual);
-	}
-
-	@Test
-	public void testRenderWithParameters() {
-		List<ContentType> actual = Arrays.asList(PLAIN_TEXT, ANY_TEXT.setParameters(0.7, Charset.forName("UTF-8")));
-		String expected = "text/plain,text/*;q=0.7;charset=utf-8";
-		ByteBuf buf = ByteBuf.allocate(expected.length());
-		render(actual, buf);
+		MediaType.JSON.render(buf);
 		buf.flip();
-		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
+		String actual = decodeAscii(buf);
+		assertEquals(expected, actual);
 	}
 
 	@Test
-	public void testParseWithParameters() {
-		List<ContentType> expected = Arrays.asList(PLAIN_TEXT, MP3,
-				ANY_TEXT.setParameters(0.7, Charset.forName("UTF-8")),
-				OGG_VIDEO.setParameters(0.7, Charset.forName("ISO-8859-1")));
-		String string = "text/plain,audio/mp3,text/*; q=0.7; charset=utf-8,video/ogg; q=0.8";
-		ByteBuf buf = ByteBufStrings.wrapAscii(string);
-		List<ContentType> actual = new ArrayList<>();
-		parse(buf, actual);
-		assertEquals(expected.size(), actual.size());
+	public void testRenderContentType() {
+		String expected = "text/html; charset=utf-8";
+		ByteBuf buf = ByteBuf.allocate(expected.length());
+		ContentType type = ContentType.of(MediaType.HTML, HttpCharset.UTF_8);
+		type.render(buf);
+		buf.flip();
+		String actual = decodeAscii(buf);
+		assertEquals(expected, actual);
+	}
+
+	@Test
+	public void testRenderAcceptContentType() {
+		String expected = "text/html, application/xhtml+xml, application/xml; q=0.9, image/webp, */*; q=0.8";
+		ByteBuf buf = ByteBuf.allocate(expected.length());
+		List<AcceptContentType> acts = new ArrayList<>();
+		acts.add(AcceptContentType.of(MediaType.HTML));
+		acts.add(AcceptContentType.of(MediaType.XHTML_APP));
+		acts.add(AcceptContentType.of(MediaType.XML_APP, 90));
+		acts.add(AcceptContentType.of(MediaType.WEBP));
+		acts.add(AcceptContentType.of(MediaType.ANY, 80));
+		AcceptContentType.render(acts, buf);
+		buf.flip();
+		String actual = decodeAscii(buf);
+		assertEquals(expected, actual);
 	}
 }

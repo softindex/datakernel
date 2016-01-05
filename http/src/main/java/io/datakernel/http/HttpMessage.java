@@ -19,10 +19,11 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 
-import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
-import static io.datakernel.http.HttpHeader.CONTENT_TYPE;
+import static io.datakernel.http.HttpHeader.*;
 import static io.datakernel.util.ByteBufStrings.*;
 
 /**
@@ -41,18 +42,6 @@ public abstract class HttpMessage {
 	public List<HttpHeader.Value> getHeaders() {
 		assert !recycled;
 		return headers;
-	}
-
-	// common header setters
-	protected void setHeaders(Collection<HttpHeader.Value> headers) {
-		assert !recycled;
-		assert Collections.disjoint(this.headers, headers) : "Duplicate headers: " + this.headers + " : " + headers;
-		this.headers.addAll(headers);
-	}
-
-	protected void addHeaders(Collection<HttpHeader.Value> headers) {
-		assert !recycled;
-		this.headers.addAll(headers);
 	}
 
 	/**
@@ -120,61 +109,6 @@ public abstract class HttpMessage {
 		addHeader(HttpHeader.ofString(header, string));
 	}
 
-	// special header setters
-	protected void addCookieHeader(HttpHeader header, HttpCookie cookie) {
-		assert !recycled;
-		addHeader(HttpHeader.ofCookie(header, cookie));
-	}
-
-	protected void addCookieHeader(HttpHeader header, List<HttpCookie> cookies) {
-		assert !recycled;
-		addHeader(HttpHeader.ofCookies(header, cookies));
-	}
-
-	protected void addContentTypeHeader(HttpHeader header, List<ContentType> type) {
-		assert !recycled;
-		addHeader(HttpHeader.ofContentType(header, type));
-	}
-
-	protected void addContentTypeHeader(HttpHeader header, ContentType type) {
-		assert !recycled;
-		addHeader(HttpHeader.ofContentType(header, Collections.singletonList(type)));
-	}
-
-	protected void addCharsetHeader(HttpHeader header, Charset charset) {
-		assert !recycled;
-		addHeader(HttpHeader.ofCharsets(header, Collections.singletonList(new HttpUtils.Pair<>(charset))));
-	}
-
-	protected void addCharsetRawHeader(HttpHeader header, List<Charset> charsets) {
-		assert !recycled;
-		List<HttpUtils.Pair<Charset>> ch = new ArrayList<>();
-		for (Charset charset : charsets) {
-			ch.add(new HttpUtils.Pair<>(charset));
-		}
-		addHeader(HttpHeader.ofCharsets(header, ch));
-	}
-
-	protected void addCharsetPairHeader(HttpHeader header, List<HttpUtils.Pair<Charset>> charsets) {
-		assert !recycled;
-		addHeader(HttpHeader.ofCharsets(header, charsets));
-	}
-
-	protected void setHeader(HttpHeader header, int value) {
-		assert !recycled;
-		setHeader(HttpHeader.ofDecimal(header, value));
-	}
-
-	protected void addHeader(HttpHeader header, int value) {
-		assert !recycled;
-		addHeader(HttpHeader.ofDecimal(header, value));
-	}
-
-	protected void setHeader(HttpHeader header, Date value) {
-		assert !recycled;
-		setHeader(HttpHeader.ofDate(header, value));
-	}
-
 	protected void setBody(ByteBuf body) {
 		assert !recycled;
 		if (this.body != null)
@@ -187,33 +121,28 @@ public abstract class HttpMessage {
 		return body;
 	}
 
-	// specs
+	// getters
 	public int getContentLength() {
 		assert !recycled;
-		String value = getHeaderString(HttpHeader.CONTENT_LENGTH);
-		if (value == null || value.equals("")) {
-			return -1;
-		}
-		return ByteBufStrings.decodeDecimal(value.getBytes(Charset.forName("ISO-8859-1")), 0, value.length());
+		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(CONTENT_LENGTH);
+		if (header != null)
+			return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
+		return 0;
 	}
 
-	public List<ContentType> getContentType() {
+	public ContentType getContentType() {
 		assert !recycled;
-		List<ContentType> cts = new ArrayList<>();
-		List<String> headers = getHeaderStrings(CONTENT_TYPE);
-		for (String header : headers) {
-			ContentType.parse(header, cts);
-		}
-		return cts;
+		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(CONTENT_TYPE);
+		if (header != null)
+			return ContentType.parse(header.array, header.offset, header.size);
+		return null;
 	}
 
 	public Date getDate() {
 		assert !recycled;
-		String value = getHeaderString(HttpHeader.DATE);
-		if (value != null && !value.equals("")) {
-			long timestamp = HttpDate.parse(ByteBufStrings.encodeAscii(value), 0);
-			return new Date(timestamp);
-		}
+		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(DATE);
+		if (header != null)
+			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
 	}
 
@@ -295,17 +224,9 @@ public abstract class HttpMessage {
 	}
 
 	public final HttpHeader.Value getHeader(HttpHeader header) {
-		if (header instanceof HttpHeader.HttpCustomHeader) {
-			HttpHeader.HttpCustomHeader httpCustomHeader = (HttpHeader.HttpCustomHeader) header;
-			for (HttpHeader.Value headerValue : headers) {
-				if (httpCustomHeader.equals(headerValue.getKey()))
-					return headerValue;
-			}
-		} else {
-			for (HttpHeader.Value headerValue : headers) {
-				if (header == headerValue.getKey())
-					return headerValue;
-			}
+		for (HttpHeader.Value headerValue : headers) {
+			if (header.equals(headerValue.getKey()))
+				return headerValue;
 		}
 		return null;
 	}
@@ -317,35 +238,21 @@ public abstract class HttpMessage {
 
 	public final List<HttpHeader.Value> getHeaders(HttpHeader header) {
 		List<HttpHeader.Value> result = new ArrayList<>();
-		if (header instanceof HttpHeader.HttpCustomHeader) {
-			HttpHeader.HttpCustomHeader httpCustomHeader = (HttpHeader.HttpCustomHeader) header;
-			for (HttpHeader.Value headerValue : headers) {
-				if (httpCustomHeader.equals(headerValue.getKey()))
-					result.add(headerValue);
-			}
-		} else {
-			for (HttpHeader.Value headerValue : headers) {
-				if (header == headerValue.getKey())
-					result.add(headerValue);
-			}
+		for (HttpHeader.Value headerValue : headers) {
+			if (header.equals(headerValue.getKey()))
+				result.add(headerValue);
 		}
 		return result;
 	}
 
 	public final List<String> getHeaderStrings(HttpHeader header) {
 		List<String> result = new ArrayList<>();
-		if (header instanceof HttpHeader.HttpCustomHeader) {
-			HttpHeader.HttpCustomHeader httpCustomHeader = (HttpHeader.HttpCustomHeader) header;
-			for (HttpHeader.Value headerValue : headers) {
-				if (httpCustomHeader.equals(headerValue.getKey()))
-					result.add(headerValue.toString());
-			}
-		} else {
-			for (HttpHeader.Value headerValue : headers) {
-				if (header == headerValue.getKey())
-					result.add(headerValue.toString());
-			}
+
+		for (HttpHeader.Value headerValue : headers) {
+			if (header.equals(headerValue.getKey()))
+				result.add(headerValue.toString());
 		}
+
 		return result;
 	}
 }

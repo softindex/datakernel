@@ -58,9 +58,12 @@ public class HttpClientExample {
 
 		httpServer.listen();
 
-		// Create POST request with body and send it
-		httpClient.getHttpResultAsync(HttpRequest.post("http://127.0.0.1:" + PORT)
-				.body(ByteBuf.wrap(encodeAscii(CLIENT_NAME))), 1000, new ResultCallback<HttpResponse>() {
+		// Create POST request with body
+		HttpRequest request = HttpRequest.post("http://127.0.0.1:" + PORT)
+				.body(ByteBuf.wrap(encodeAscii(CLIENT_NAME)));
+
+		// Sending previously formed request
+		httpClient.getHttpResultAsync(request, 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				resultObserver.onResult(decodeAscii(result.getBody()));

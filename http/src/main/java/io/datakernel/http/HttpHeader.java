@@ -18,134 +18,107 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 
-import java.nio.charset.Charset;
 import java.util.Date;
 import java.util.List;
 
 import static io.datakernel.util.ByteBufStrings.*;
 
 @SuppressWarnings("unused")
-public class HttpHeader {
-	private static final int HEADERS_SLOTS = 512;
-	private static final int MAX_PROBINGS = 2;
-
-	private static final HttpHeader[] HEADERS = new HttpHeader[HEADERS_SLOTS];
-
-	public static final HttpHeader CACHE_CONTROL = register("Cache-Control");
-	public static final HttpHeader CONTENT_LENGTH = register("Content-Length");
-	public static final HttpHeader CONTENT_TYPE = register("Content-Type");
-	public static final HttpHeader DATE = register("Date");
-	public static final HttpHeader PRAGMA = register("Pragma");
-	public static final HttpHeader VIA = register("Via");
-	public static final HttpHeader WARNING = register("Warning");
-	public static final HttpHeader ACCEPT = register("Accept");
-	public static final HttpHeader ACCEPT_CHARSET = register("Accept-Charset");
-	public static final HttpHeader ACCEPT_ENCODING = register("Accept-Encoding");
-	public static final HttpHeader ACCEPT_LANGUAGE = register("Accept-Language");
-	public static final HttpHeader ACCESS_CONTROL_REQUEST_HEADERS = register("Access-Control-Request-Headers");
-	public static final HttpHeader ACCESS_CONTROL_REQUEST_METHOD = register("Access-Control-Request-Method");
-	public static final HttpHeader AUTHORIZATION = register("Authorization");
-	public static final HttpHeader CONNECTION = register("Connection");
-	public static final HttpHeader COOKIE = register("Cookie");
-	public static final HttpHeader EXPECT = register("Expect");
-	public static final HttpHeader FROM = register("From");
-	public static final HttpHeader FOLLOW_ONLY_WHEN_PRERENDER_SHOWN = register("Follow-Only-When-Prerender-Shown");
-	public static final HttpHeader HOST = register("Host");
-	public static final HttpHeader IF_MATCH = register("If-Match");
-	public static final HttpHeader IF_MODIFIED_SINCE = register("If-Modified-Since");
-	public static final HttpHeader IF_NONE_MATCH = register("If-None-Match");
-	public static final HttpHeader IF_RANGE = register("If-Range");
-	public static final HttpHeader IF_UNMODIFIED_SINCE = register("If-Unmodified-Since");
-	public static final HttpHeader LAST_EVENT_ID = register("Last-Event-ID");
-	public static final HttpHeader MAX_FORWARDS = register("Max-Forwards");
-	public static final HttpHeader ORIGIN = register("Origin");
-	public static final HttpHeader PROXY_AUTHORIZATION = register("Proxy-Authorization");
-	public static final HttpHeader RANGE = register("Range");
-	public static final HttpHeader REFERER = register("Referer");
-	public static final HttpHeader TE = register("TE");
-	public static final HttpHeader UPGRADE = register("Upgrade");
-	public static final HttpHeader USER_AGENT = register("User-Agent");
-	public static final HttpHeader ACCEPT_RANGES = register("Accept-Ranges");
-	public static final HttpHeader ACCESS_CONTROL_ALLOW_HEADERS = register("Access-Control-Allow-Headers");
-	public static final HttpHeader ACCESS_CONTROL_ALLOW_METHODS = register("Access-Control-Allow-Methods");
-	public static final HttpHeader ACCESS_CONTROL_ALLOW_ORIGIN = register("Access-Control-Allow-Origin");
-	public static final HttpHeader ACCESS_CONTROL_ALLOW_CREDENTIALS = register("Access-Control-Allow-Credentials");
-	public static final HttpHeader ACCESS_CONTROL_EXPOSE_HEADERS = register("Access-Control-Expose-Headers");
-	public static final HttpHeader ACCESS_CONTROL_MAX_AGE = register("Access-Control-Max-Age");
-	public static final HttpHeader AGE = register("Age");
-	public static final HttpHeader ALLOW = register("Allow");
-	public static final HttpHeader CONTENT_DISPOSITION = register("Content-Disposition");
-	public static final HttpHeader CONTENT_ENCODING = register("Content-Encoding");
-	public static final HttpHeader CONTENT_LANGUAGE = register("Content-Language");
-	public static final HttpHeader CONTENT_LOCATION = register("Content-Location");
-	public static final HttpHeader CONTENT_MD5 = register("Content-MD5");
-	public static final HttpHeader CONTENT_RANGE = register("Content-Range");
-	public static final HttpHeader CONTENT_SECURITY_POLICY = register("Content-Security-Policy");
-	public static final HttpHeader CONTENT_SECURITY_POLICY_REPORT_ONLY = register("Content-Security-Policy-Report-Only");
-	public static final HttpHeader ETAG = register("ETag");
-	public static final HttpHeader EXPIRES = register("Expires");
-	public static final HttpHeader LAST_MODIFIED = register("Last-Modified");
-	public static final HttpHeader LINK = register("Link");
-	public static final HttpHeader LOCATION = register("Location");
-	public static final HttpHeader P3P = register("P3P");
-	public static final HttpHeader PROXY_AUTHENTICATE = register("Proxy-Authenticate");
-	public static final HttpHeader REFRESH = register("Refresh");
-	public static final HttpHeader RETRY_AFTER = register("Retry-After");
-	public static final HttpHeader SERVER = register("Server");
-	public static final HttpHeader SET_COOKIE = register("Set-Cookie");
-	public static final HttpHeader SET_COOKIE2 = register("Set-Cookie2");
-	public static final HttpHeader STRICT_TRANSPORT_SECURITY = register("Strict-Transport-Security");
-	public static final HttpHeader TIMING_ALLOW_ORIGIN = register("Timing-Allow-Origin");
-	public static final HttpHeader TRAILER = register("Trailer");
-	public static final HttpHeader TRANSFER_ENCODING = register("Transfer-Encoding");
-	public static final HttpHeader VARY = register("Vary");
-	public static final HttpHeader WWW_AUTHENTICATE = register("WWW-Authenticate");
-	public static final HttpHeader DNT = register("DNT");
-	public static final HttpHeader X_CONTENT_TYPE_OPTIONS = register("X-Content-Type-Options");
-	public static final HttpHeader X_DO_NOT_TRACK = register("X-Do-Not-Track");
-	public static final HttpHeader X_FORWARDED_FOR = register("X-Forwarded-For");
-	public static final HttpHeader X_FORWARDED_PROTO = register("X-Forwarded-Proto");
-	public static final HttpHeader X_FRAME_OPTIONS = register("X-Frame-Options");
-	public static final HttpHeader X_POWERED_BY = register("X-Powered-By");
-	public static final HttpHeader PUBLIC_KEY_PINS = register("Public-Key-Pins");
-	public static final HttpHeader PUBLIC_KEY_PINS_REPORT_ONLY = register("Public-Key-Pins-Report-Only");
-	public static final HttpHeader X_REQUESTED_WITH = register("X-Requested-With");
-	public static final HttpHeader X_USER_IP = register("X-User-IP");
-	public static final HttpHeader X_XSS_PROTECTION = register("X-XSS-Protection");
-
-	public static final HttpHeader X_REAL_IP = register("X-Real-IP");
-
-	private static HttpHeader register(String name) {
-		byte[] bytes = encodeAscii(name);
-
-		byte[] lowerCaseBytes = new byte[bytes.length];
-		int lowerCaseHashCode = 1;
-		for (int i = 0; i < bytes.length; i++) {
-			byte b = bytes[i];
-			if (b >= 'A' && b <= 'Z')
-				b += 'a' - 'A';
-			lowerCaseBytes[i] = b;
-			lowerCaseHashCode = lowerCaseHashCode * 31 + b;
+public final class HttpHeader extends CaseInsensitiveTokenMap.Token {
+	private static final CaseInsensitiveTokenMap<HttpHeader> headers = new CaseInsensitiveTokenMap<HttpHeader>(512, 2, HttpHeader.class) {
+		@Override
+		protected HttpHeader create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode) {
+			return new HttpHeader(bytes, offset, length, lowerCaseBytes, lowerCaseHashCode);
 		}
-		HttpHeader httpHeader = new HttpHeader(bytes, 0, bytes.length, lowerCaseBytes, lowerCaseHashCode);
+	};
 
-		assert Integer.bitCount(HEADERS.length) == 1;
-		for (int p = 0; p < MAX_PROBINGS; p++) {
-			int slot = (lowerCaseHashCode + p) & (HEADERS.length - 1);
-			if (HEADERS[slot] == null) {
-				HEADERS[slot] = httpHeader;
-				return httpHeader;
-			}
-		}
-		throw new IllegalArgumentException("HttpHeader hash collision, try to increase HEADERS size");
-	}
+	public static final HttpHeader CACHE_CONTROL = headers.register("Cache-Control");
+	public static final HttpHeader CONTENT_LENGTH = headers.register("Content-Length");
+	public static final HttpHeader CONTENT_TYPE = headers.register("Content-Type");
+	public static final HttpHeader DATE = headers.register("Date");
+	public static final HttpHeader PRAGMA = headers.register("Pragma");
+	public static final HttpHeader VIA = headers.register("Via");
+	public static final HttpHeader WARNING = headers.register("Warning");
+	public static final HttpHeader ACCEPT = headers.register("Accept");
+	public static final HttpHeader ACCEPT_CHARSET = headers.register("Accept-Charset");
+	public static final HttpHeader ACCEPT_ENCODING = headers.register("Accept-Encoding");
+	public static final HttpHeader ACCEPT_LANGUAGE = headers.register("Accept-Language");
+	public static final HttpHeader ACCESS_CONTROL_REQUEST_HEADERS = headers.register("Access-Control-Request-Headers");
+	public static final HttpHeader ACCESS_CONTROL_REQUEST_METHOD = headers.register("Access-Control-Request-Method");
+	public static final HttpHeader AUTHORIZATION = headers.register("Authorization");
+	public static final HttpHeader CONNECTION = headers.register("Connection");
+	public static final HttpHeader COOKIE = headers.register("Cookie");
+	public static final HttpHeader EXPECT = headers.register("Expect");
+	public static final HttpHeader FROM = headers.register("From");
+	public static final HttpHeader FOLLOW_ONLY_WHEN_PRERENDER_SHOWN = headers.register("Follow-Only-When-Prerender-Shown");
+	public static final HttpHeader HOST = headers.register("Host");
+	public static final HttpHeader IF_MATCH = headers.register("If-Match");
+	public static final HttpHeader IF_MODIFIED_SINCE = headers.register("If-Modified-Since");
+	public static final HttpHeader IF_NONE_MATCH = headers.register("If-None-Match");
+	public static final HttpHeader IF_RANGE = headers.register("If-Range");
+	public static final HttpHeader IF_UNMODIFIED_SINCE = headers.register("If-Unmodified-Since");
+	public static final HttpHeader LAST_EVENT_ID = headers.register("Last-Event-ID");
+	public static final HttpHeader MAX_FORWARDS = headers.register("Max-Forwards");
+	public static final HttpHeader ORIGIN = headers.register("Origin");
+	public static final HttpHeader PROXY_AUTHORIZATION = headers.register("Proxy-Authorization");
+	public static final HttpHeader RANGE = headers.register("Range");
+	public static final HttpHeader REFERER = headers.register("Referer");
+	public static final HttpHeader TE = headers.register("TE");
+	public static final HttpHeader UPGRADE = headers.register("Upgrade");
+	public static final HttpHeader USER_AGENT = headers.register("User-Agent");
+	public static final HttpHeader ACCEPT_RANGES = headers.register("Accept-Ranges");
+	public static final HttpHeader ACCESS_CONTROL_ALLOW_HEADERS = headers.register("Access-Control-Allow-Headers");
+	public static final HttpHeader ACCESS_CONTROL_ALLOW_METHODS = headers.register("Access-Control-Allow-Methods");
+	public static final HttpHeader ACCESS_CONTROL_ALLOW_ORIGIN = headers.register("Access-Control-Allow-Origin");
+	public static final HttpHeader ACCESS_CONTROL_ALLOW_CREDENTIALS = headers.register("Access-Control-Allow-Credentials");
+	public static final HttpHeader ACCESS_CONTROL_EXPOSE_HEADERS = headers.register("Access-Control-Expose-Headers");
+	public static final HttpHeader ACCESS_CONTROL_MAX_AGE = headers.register("Access-Control-Max-Age");
+	public static final HttpHeader AGE = headers.register("Age");
+	public static final HttpHeader ALLOW = headers.register("Allow");
+	public static final HttpHeader CONTENT_DISPOSITION = headers.register("Content-Disposition");
+	public static final HttpHeader CONTENT_ENCODING = headers.register("Content-Encoding");
+	public static final HttpHeader CONTENT_LANGUAGE = headers.register("Content-Language");
+	public static final HttpHeader CONTENT_LOCATION = headers.register("Content-Location");
+	public static final HttpHeader CONTENT_MD5 = headers.register("Content-MD5");
+	public static final HttpHeader CONTENT_RANGE = headers.register("Content-Range");
+	public static final HttpHeader CONTENT_SECURITY_POLICY = headers.register("Content-Security-Policy");
+	public static final HttpHeader CONTENT_SECURITY_POLICY_REPORT_ONLY = headers.register("Content-Security-Policy-Report-Only");
+	public static final HttpHeader ETAG = headers.register("ETag");
+	public static final HttpHeader EXPIRES = headers.register("Expires");
+	public static final HttpHeader LAST_MODIFIED = headers.register("Last-Modified");
+	public static final HttpHeader LINK = headers.register("Link");
+	public static final HttpHeader LOCATION = headers.register("Location");
+	public static final HttpHeader P3P = headers.register("P3P");
+	public static final HttpHeader PROXY_AUTHENTICATE = headers.register("Proxy-Authenticate");
+	public static final HttpHeader REFRESH = headers.register("Refresh");
+	public static final HttpHeader RETRY_AFTER = headers.register("Retry-After");
+	public static final HttpHeader SERVER = headers.register("Server");
+	public static final HttpHeader SET_COOKIE = headers.register("Set-Cookie");
+	public static final HttpHeader SET_COOKIE2 = headers.register("Set-Cookie2");
+	public static final HttpHeader STRICT_TRANSPORT_SECURITY = headers.register("Strict-Transport-Security");
+	public static final HttpHeader TIMING_ALLOW_ORIGIN = headers.register("Timing-Allow-Origin");
+	public static final HttpHeader TRAILER = headers.register("Trailer");
+	public static final HttpHeader TRANSFER_ENCODING = headers.register("Transfer-Encoding");
+	public static final HttpHeader VARY = headers.register("Vary");
+	public static final HttpHeader WWW_AUTHENTICATE = headers.register("WWW-Authenticate");
+	public static final HttpHeader DNT = headers.register("DNT");
+	public static final HttpHeader X_CONTENT_TYPE_OPTIONS = headers.register("X-Content-Type-Options");
+	public static final HttpHeader X_DO_NOT_TRACK = headers.register("X-Do-Not-Track");
+	public static final HttpHeader X_FORWARDED_FOR = headers.register("X-Forwarded-For");
+	public static final HttpHeader X_FORWARDED_PROTO = headers.register("X-Forwarded-Proto");
+	public static final HttpHeader X_FRAME_OPTIONS = headers.register("X-Frame-Options");
+	public static final HttpHeader X_POWERED_BY = headers.register("X-Powered-By");
+	public static final HttpHeader PUBLIC_KEY_PINS = headers.register("Public-Key-Pins");
+	public static final HttpHeader PUBLIC_KEY_PINS_REPORT_ONLY = headers.register("Public-Key-Pins-Report-Only");
+	public static final HttpHeader X_REQUESTED_WITH = headers.register("X-Requested-With");
+	public static final HttpHeader X_USER_IP = headers.register("X-User-IP");
+	public static final HttpHeader X_XSS_PROTECTION = headers.register("X-XSS-Protection");
+
+	public static final HttpHeader X_REAL_IP = headers.register("X-Real-IP");
 
 	protected final byte[] bytes;
 	protected final int offset;
 	protected final int length;
-
-	protected final byte[] lowerCaseBytes;
-	protected final int lowerCaseHashCode;
 
 	private HttpHeader(byte[] bytes, int offset, int length,
 	                   byte[] lowerCaseBytes, int lowerCaseHashCode) {
@@ -157,52 +130,39 @@ public class HttpHeader {
 	}
 
 	static HttpHeader parseHeader(byte[] array, int offset, int length, int lowerCaseHashCode) {
-		for (int p = 0; p < MAX_PROBINGS; p++) {
-			int slot = (lowerCaseHashCode + p) & (HEADERS.length - 1);
-			HttpHeader header = HEADERS[slot];
-			if (header == null)
-				break;
-			if (header.lowerCaseHashCode == lowerCaseHashCode && equalsLowerCaseAscii(header.lowerCaseBytes, array, offset, length)) {
-				return header;
-			}
-		}
-		return new HttpCustomHeader(array, offset, length, lowerCaseHashCode);
+		return headers.get(array, offset, length, lowerCaseHashCode);
 	}
 
-	public static HttpHeader headerOfString(String string) {
+	public static HttpHeader of(String string) {
 		byte[] array = encodeAscii(string);
-		return parseHeader(array, 0, array.length, hashCodeLowerCaseAscii(array));
-	}
-
-	protected static final class HttpCustomHeader extends HttpHeader {
-		private HttpCustomHeader(byte[] array, int offset, int length, int lowerCaseHashCode) {
-			super(array, offset, length, null, lowerCaseHashCode);
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (o == null || !(o instanceof HttpCustomHeader))
-				return false;
-			HttpCustomHeader that = (HttpCustomHeader) o;
-
-			if (length != that.length) return false;
-			for (int i = 0; i < length; i++) {
-				byte thisChar = this.bytes[offset + i];
-				byte thatChar = that.bytes[that.offset + i];
-				if (thisChar >= 'A' && thisChar <= 'Z')
-					thisChar += 'a' - 'A';
-				if (thatChar >= 'A' && thatChar <= 'Z')
-					thatChar += 'a' - 'A';
-				if (thisChar != thatChar)
-					return false;
-			}
-			return true;
-		}
+		return headers.get(array, 0, array.length, hashCodeLowerCaseAscii(array));
 	}
 
 	@Override
 	public int hashCode() {
 		return lowerCaseHashCode;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+
+		if (o == null || !(o instanceof HttpHeader))
+			return false;
+		HttpHeader that = (HttpHeader) o;
+
+		if (length != that.length) return false;
+		for (int i = 0; i < length; i++) {
+			byte thisChar = this.bytes[offset + i];
+			byte thatChar = that.bytes[that.offset + i];
+			if (thisChar >= 'A' && thisChar <= 'Z')
+				thisChar += 'a' - 'A';
+			if (thatChar >= 'A' && thatChar <= 'Z')
+				thatChar += 'a' - 'A';
+			if (thisChar != thatChar)
+				return false;
+		}
+		return true;
 	}
 
 	public int size() {
@@ -218,6 +178,7 @@ public class HttpHeader {
 		buf.put(bytes, offset, length);
 	}
 
+	// helpers
 	static Value asBytes(HttpHeader key, byte[] array, int offset, int size) {
 		return new ValueOfBytes(key, array, offset, size);
 	}
@@ -238,24 +199,28 @@ public class HttpHeader {
 		return new ValueOfString(key, string);
 	}
 
-	static Value ofCharsets(HttpHeader key, List<HttpUtils.Pair<Charset>> charsets) {
+	static Value ofCharsets(HttpHeader key, List<AcceptCharset> charsets) {
 		return new ValueOfCharsets(key, charsets);
 	}
 
 	static Value ofCookies(HttpHeader key, List<HttpCookie> cookies) {
-		return new ValueOfCookies(key, cookies);
+		return new ValueOfSimpleCookies(key, cookies);
 	}
 
-	static Value ofCookie(HttpHeader key, HttpCookie cookie) {
-		return new ValueOfCookie(key, cookie);
+	static Value ofSetCookies(HttpHeader key, List<HttpCookie> cookies) {
+		return new ValueOfFullCookies(key, cookies);
 	}
 
 	static Value ofDate(HttpHeader key, Date date) {
 		return new ValueOfDate(key, date);
 	}
 
-	static Value ofContentType(HttpHeader key, List<ContentType> type) {
-		return new ValueOfContentTypes(key, type);
+	static Value ofAcceptContentTypes(HttpHeader key, List<AcceptContentType> type) {
+		return new ValueOfAcceptContentTypes(key, type);
+	}
+
+	static Value ofContentType(HttpHeader key, ContentType type) {
+		return new ValueOfContentType(key, type);
 	}
 
 	static abstract class Value {
@@ -274,10 +239,29 @@ public class HttpHeader {
 		}
 	}
 
-	private static final class ValueOfContentTypes extends Value {
-		private final List<ContentType> types;
+	private static final class ValueOfContentType extends Value {
+		private ContentType type;
 
-		public ValueOfContentTypes(HttpHeader key, List<ContentType> types) {
+		public ValueOfContentType(HttpHeader key, ContentType type) {
+			super(key);
+			this.type = type;
+		}
+
+		@Override
+		public int estimateSize() {
+			return type.estimateSize();
+		}
+
+		@Override
+		public void writeTo(ByteBuf buf) {
+			type.render(buf);
+		}
+	}
+
+	private static final class ValueOfAcceptContentTypes extends Value {
+		private final List<AcceptContentType> types;
+
+		public ValueOfAcceptContentTypes(HttpHeader key, List<AcceptContentType> types) {
 			super(key);
 			this.types = types;
 		}
@@ -285,7 +269,7 @@ public class HttpHeader {
 		@Override
 		public int estimateSize() {
 			int size = 0;
-			for (ContentType type : types) {
+			for (AcceptContentType type : types) {
 				size += type.estimateSize() + 2;
 			}
 			return size;
@@ -293,14 +277,14 @@ public class HttpHeader {
 
 		@Override
 		public void writeTo(ByteBuf buf) {
-			ContentType.render(types, buf);
+			AcceptContentType.render(types, buf);
 		}
 	}
 
-	private static final class ValueOfCookies extends Value {
+	private static final class ValueOfSimpleCookies extends Value {
 		private final List<HttpCookie> cookies;
 
-		public ValueOfCookies(HttpHeader key, List<HttpCookie> cookies) {
+		public ValueOfSimpleCookies(HttpHeader key, List<HttpCookie> cookies) {
 			super(key);
 			this.cookies = cookies;
 		}
@@ -317,52 +301,58 @@ public class HttpHeader {
 
 		@Override
 		public void writeTo(ByteBuf buf) {
-			HttpCookie.render(cookies, buf);
+			HttpCookie.renderSimple(cookies, buf);
 		}
 	}
 
-	private static final class ValueOfCookie extends Value {
-		private final HttpCookie cookie;
+	private static final class ValueOfFullCookies extends Value {
+		private final List<HttpCookie> cookies;
 
-		public ValueOfCookie(HttpHeader key, HttpCookie cookie) {
+		public ValueOfFullCookies(HttpHeader key, List<HttpCookie> cookies) {
 			super(key);
-			this.cookie = cookie;
+			this.cookies = cookies;
 		}
 
 		@Override
 		public int estimateSize() {
 			int size = 0;
-			size += cookie.getName().length();
-			size += cookie.getValue() == null ? 0 : cookie.getValue().length();
-			size += cookie.getDomain() == null ? 0 : cookie.getDomain().length() + 10;
-			size += cookie.getPath() == null ? 0 : cookie.getPath().length() + 6;
-			size += cookie.getExtension() == null ? 0 : cookie.getExtension().length();
-			size += 100;
+			for (HttpCookie cookie : cookies) {
+				size += cookie.getName().length();
+				size += cookie.getValue() == null ? 0 : cookie.getValue().length();
+				size += cookie.getDomain() == null ? 0 : cookie.getDomain().length() + 10;
+				size += cookie.getPath() == null ? 0 : cookie.getPath().length() + 6;
+				size += cookie.getExtension() == null ? 0 : cookie.getExtension().length();
+				size += 102;
+			}
 			return size;
 		}
 
 		@Override
 		public void writeTo(ByteBuf buf) {
-			cookie.renderFull(buf);
+			HttpCookie.renderFull(cookies, buf);
 		}
 	}
 
 	private static final class ValueOfCharsets extends Value {
-		private final List<HttpUtils.Pair<Charset>> charsets;
+		private final List<AcceptCharset> charsets;
 
-		public ValueOfCharsets(HttpHeader key, List<HttpUtils.Pair<Charset>> charsets) {
+		public ValueOfCharsets(HttpHeader key, List<AcceptCharset> charsets) {
 			super(key);
 			this.charsets = charsets;
 		}
 
 		@Override
 		public int estimateSize() {
-			return charsets.size() * 40;
+			int size = 0;
+			for (AcceptCharset charset : charsets) {
+				size += charset.estimateSize() + 2;
+			}
+			return size;
 		}
 
 		@Override
 		public void writeTo(ByteBuf buf) {
-			CharsetUtils.render(charsets, buf);
+//			HttpCharset.renderSimple(charsets, buf);
 		}
 	}
 
@@ -385,10 +375,10 @@ public class HttpHeader {
 		}
 	}
 
-	private static final class ValueOfBytes extends Value {
-		private final byte[] array;
-		private final int offset;
-		private final int size;
+	static final class ValueOfBytes extends Value {
+		final byte[] array;
+		final int offset;
+		final int size;
 
 		private ValueOfBytes(HttpHeader key, byte[] array, int offset, int size) {
 			super(key);
