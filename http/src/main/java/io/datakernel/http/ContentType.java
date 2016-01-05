@@ -25,7 +25,7 @@ import static io.datakernel.http.HttpUtils.skipSpaces;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 @SuppressWarnings("unused")
-public class ContentType {
+public final class ContentType {
 	private static final byte[] CHARSET_KEY = encodeAscii("charset");
 
 	private final MediaType type;

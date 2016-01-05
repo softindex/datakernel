@@ -26,7 +26,7 @@ import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
-public class AcceptContentType {
+public final class AcceptContentType {
 	private static final byte[] Q_KEY = encodeAscii("q");
 	public static final int DEFAULT_Q = 100;
 

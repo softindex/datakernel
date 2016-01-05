@@ -30,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 
-public class StaticServletForResources extends StaticServlet {
+public final class StaticServletForResources extends StaticServlet {
 	private final NioEventloop eventloop;
 	private final ExecutorService executor;
 	private final URL root;
