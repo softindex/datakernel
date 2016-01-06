@@ -54,11 +54,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
+import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
-public class CubeIntegrationTest {
+public class CubeMeasureRemovalTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -68,24 +71,40 @@ public class CubeIntegrationTest {
 	private static final List<String> LOG_PARTITIONS = asList(LOG_PARTITION_NAME);
 	private static final String LOG_NAME = "testlog";
 
+	private static final Map<String, KeyType> KEYS = ImmutableMap.<String, KeyType>builder()
+			.put("date", new KeyTypeDate())
+			.put("advertiser", new KeyTypeInt())
+			.put("campaign", new KeyTypeInt())
+			.put("banner", new KeyTypeInt())
+			.build();
+
+	private static final Map<String, String> CHILD_PARENT_RELATIONSHIPS = ImmutableMap.<String, String>builder()
+			.put("campaign", "advertiser")
+			.put("banner", "campaign")
+			.build();
+
 	private static AggregationStructure getStructure(DefiningClassLoader classLoader) {
 		return new AggregationStructure(classLoader,
-				ImmutableMap.<String, KeyType>builder()
-						.put("date", new KeyTypeDate())
-						.put("advertiser", new KeyTypeInt())
-						.put("campaign", new KeyTypeInt())
-						.put("banner", new KeyTypeInt())
-						.build(),
+				KEYS,
 				ImmutableMap.<String, FieldType>builder()
 						.put("impressions", new FieldTypeLong())
 						.put("clicks", new FieldTypeLong())
 						.put("conversions", new FieldTypeLong())
 						.put("revenue", new FieldTypeDouble())
 						.build(),
-				ImmutableMap.<String, String>builder()
-						.put("campaign", "advertiser")
-						.put("banner", "campaign")
-						.build());
+				CHILD_PARENT_RELATIONSHIPS);
+	}
+
+	private static AggregationStructure getNewStructure(DefiningClassLoader classLoader) {
+		return new AggregationStructure(classLoader,
+				KEYS,
+				ImmutableMap.<String, FieldType>builder()
+						.put("impressions", new FieldTypeLong())
+						.put("clicks", new FieldTypeLong())
+						.put("conversions", new FieldTypeLong())
+						.put("revenue", new FieldTypeDouble().setRemoved(true))
+						.build(),
+				CHILD_PARENT_RELATIONSHIPS);
 	}
 
 	private static Cube getCube(NioEventloop eventloop, DefiningClassLoader classLoader,
@@ -97,6 +116,19 @@ public class CubeIntegrationTest {
 		cube.addAggregation(new AggregationMetadata("detailed", LogItem.DIMENSIONS, LogItem.MEASURES));
 		cube.addAggregation(new AggregationMetadata("date", asList("date"), LogItem.MEASURES));
 		cube.addAggregation(new AggregationMetadata("advertiser", asList("advertiser"), LogItem.MEASURES));
+		return cube;
+	}
+
+	private static Cube getNewCube(NioEventloop eventloop, DefiningClassLoader classLoader,
+	                               CubeMetadataStorage cubeMetadataStorage,
+	                               AggregationMetadataStorage aggregationMetadataStorage,
+	                               AggregationChunkStorage aggregationChunkStorage,
+	                               AggregationStructure cubeStructure) {
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
+		// "revenue" measure is removed
+		cube.addAggregation(new AggregationMetadata("detailed", LogItem.DIMENSIONS, asList("impressions", "clicks", "conversions")));
+		cube.addAggregation(new AggregationMetadata("date", asList("date"), asList("impressions", "clicks", "conversions")));
+		cube.addAggregation(new AggregationMetadata("advertiser", asList("advertiser"), asList("impressions", "clicks", "conversions")));
 		return cube;
 	}
 
@@ -181,7 +213,25 @@ public class CubeIntegrationTest {
 		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
-		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
+		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		eventloop.run();
+
+		List<AggregationChunk> chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
+		assertEquals(1, chunks.size());
+		assertTrue(chunks.get(0).getFields().contains("revenue"));
+
+
+		// Initialize cube with new structure (removed measure)
+		structure = getNewStructure(classLoader);
+		aggregationChunkStorage = getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
+		cube = getNewCube(eventloop, classLoader, logToCubeMetadataStorage, aggregationMetadataStorage,
+				aggregationChunkStorage, structure);
+		logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
+				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
+
+
+		// Save and aggregate logs
+		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
 		producerOfRandomLogItems = new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems2.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
@@ -189,35 +239,29 @@ public class CubeIntegrationTest {
 		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
-		List<LogItem> listOfRandomLogItems3 = LogItem.getListOfRandomLogItems(50);
-		producerOfRandomLogItems = new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems3.iterator());
-		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
-		eventloop.run();
-
-		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
-		eventloop.run();
-
-
-		// Load metadata
 		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
+		chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
+		assertEquals(2, chunks.size());
+		assertTrue(chunks.get(0).getFields().contains("revenue"));
+		assertFalse(chunks.get(1).getFields().contains("revenue"));
+
+
+		// Aggregate manually
+		HashMap<Integer, Long> map = new HashMap<>();
+		aggregateToMap(map, listOfRandomLogItems);
+		aggregateToMap(map, listOfRandomLogItems2);
 
 		AggregationQuery query = new AggregationQuery().keys("date").fields("clicks");
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
 		eventloop.run();
-
-
-		// Aggregate manually
-		Map<Integer, Long> map = new HashMap<>();
-		aggregateToMap(map, listOfRandomLogItems);
-		aggregateToMap(map, listOfRandomLogItems2);
-		aggregateToMap(map, listOfRandomLogItems3);
+		List<LogItem> queryResultBeforeConsolidation = queryResultConsumer.getList();
 
 
 		// Check query results
-		for (LogItem logItem : queryResultConsumer.getList()) {
+		for (LogItem logItem : queryResultBeforeConsolidation) {
 			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
 		}
 
@@ -229,34 +273,28 @@ public class CubeIntegrationTest {
 		boolean consolidated = callback.isDone() ? callback.get() : false;
 		assertEquals(true, consolidated);
 
-
-		// Load metadata
 		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
+		chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
+		assertEquals(1, chunks.size());
+		assertFalse(chunks.get(0).getFields().contains("revenue"));
+
 
 		// Query
+		query = new AggregationQuery().keys("date").fields("clicks");
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
 		eventloop.run();
+		List<LogItem> queryResultAfterConsolidation = queryResultConsumer.getList();
 
 
-		// Check query results
-		for (LogItem logItem : queryResultConsumer.getList()) {
-			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
+		// Check that query results before and after consolidation match
+		assertEquals(queryResultBeforeConsolidation.size(), queryResultAfterConsolidation.size());
+		for (int i = 0; i < queryResultBeforeConsolidation.size(); ++i) {
+			assertEquals(queryResultBeforeConsolidation.get(i).date, queryResultAfterConsolidation.get(i).date);
+			assertEquals(queryResultBeforeConsolidation.get(i).clicks, queryResultAfterConsolidation.get(i).clicks);
 		}
-
-
-		// Check files in aggregations directory
-		Set<String> actualChunkFileNames = new TreeSet<>();
-		for (File file : aggregationsDir.toFile().listFiles()) {
-			actualChunkFileNames.add(file.getName());
-		}
-		Set<String> expectedChunkFileNames = new TreeSet<>();
-		for (int i = 1; i <= 12; ++i) {
-			expectedChunkFileNames.add(i + ".log");
-		}
-		assertEquals(expectedChunkFileNames, actualChunkFileNames);
 	}
 
 	private void aggregateToMap(Map<Integer, Long> map, List<LogItem> logItems) {

@@ -185,7 +185,6 @@ public class AggregationMetadata {
 	}
 
 	public void addToIndex(AggregationChunk chunk) {
-		checkArgument(outputFields.containsAll(chunk.getFields()));
 		for (int size = 0; size <= keys.size(); size++) {
 			RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
 
