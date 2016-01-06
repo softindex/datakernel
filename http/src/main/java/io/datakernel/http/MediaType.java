@@ -44,7 +44,7 @@ public final class MediaType extends CaseInsensitiveTokenMap.Token {
 	public static final MediaType EDI_X12 = mediaTypes.register("application/EDI-X12");
 	public static final MediaType EDI_EDIFACT = mediaTypes.register("application/EDIFACT");
 	public static final MediaType JSON = mediaTypes.register("application/json").addExtensions("json");
-	public static final MediaType JAVASCRIPT_APP = mediaTypes.register("application/javascript").addExtensions("js");
+	public static final MediaType JAVASCRIPT = mediaTypes.register("application/javascript").addExtensions("js");
 	public static final MediaType OCTET_STREAM = mediaTypes.register("application/octet-stream").addExtensions("com", "exe", "bin");
 	public static final MediaType ZIP = mediaTypes.register("application/zip").addExtensions("zip", "zipx");
 	public static final MediaType GZIP = mediaTypes.register("application/gzip").addExtensions("gzip", "gz");
@@ -75,6 +75,7 @@ public final class MediaType extends CaseInsensitiveTokenMap.Token {
 	public static final MediaType RTF = mediaTypes.register("text/rtf").addExtensions("rtf");
 	public static final MediaType XML = mediaTypes.register("text/xml").addExtensions("xml");
 	public static final MediaType XHTML = mediaTypes.register("text/xhtml+xml").addExtensions("xhtml");
+	@Deprecated
 	public static final MediaType JAVASCRIPT_TXT = mediaTypes.register("text/javascript");
 
 	public static final MediaType BMP = mediaTypes.register("image/bmp").addExtensions("bmp");

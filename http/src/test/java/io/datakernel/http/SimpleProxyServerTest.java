@@ -55,7 +55,7 @@ public class SimpleProxyServerTest {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				httpClient.getHttpResultAsync(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
+				httpClient.execute(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
 					@Override
 					public void onResult(final HttpResponse result) {
 						HttpResponse res = HttpResponse.create(result.getCode());

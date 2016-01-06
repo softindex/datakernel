@@ -209,7 +209,7 @@ public final class HttpRequestsGenerator {
 				long elapsed = (scheduleTimeMillis == 0) ? 1 : eventloop.currentTimeMillis() - scheduleTimeMillis;
 				int requests = (int) ((requestsPerInterval * elapsed) / intervalMillis);
 				for (int i = 0; i < requests; i++)
-					client.getHttpResultAsync(HttpRequest.get(options.getUrl()), options.timeoutResponse(), callback);
+					client.execute(HttpRequest.get(options.getUrl()), options.timeoutResponse(), callback);
 
 				sentRequests += requests;
 				if (sentRequests % options.requestsPerSecond() == 0)

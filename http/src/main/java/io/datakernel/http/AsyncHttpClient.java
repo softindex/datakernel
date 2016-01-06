@@ -246,7 +246,7 @@ public class AsyncHttpClient implements NioService {
 	 * @param timeout  time which client will wait result
 	 * @param callback callback for handling result
 	 */
-	public void getHttpResultAsync(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
+	public void execute(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
 		checkNotNull(request);
 		assert eventloop.inEventloopThread();
 

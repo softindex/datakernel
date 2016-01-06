@@ -56,7 +56,7 @@ public class HttpClientTest {
 
 		httpServer.listen();
 
-		httpClient.getHttpResultAsync(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {
+		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(final HttpResponse result) {
 				resultObserver.onResult(decodeUTF8(result.getBody()));
@@ -103,7 +103,7 @@ public class HttpClientTest {
 
 		httpServer.listen();
 
-		httpClient.getHttpResultAsync(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				resultObserver.onResult(decodeUTF8(result.getBody()));
@@ -137,7 +137,7 @@ public class HttpClientTest {
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
-		httpClient.getHttpResultAsync(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.execute(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				resultObserver.onResult(decodeUTF8(result.getBody()));
@@ -173,7 +173,7 @@ public class HttpClientTest {
 		httpServer.listen();
 
 		httpClient.setMaxHttpMessageSize(12);
-		httpClient.getHttpResultAsync(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				resultObserver.onResult(decodeUTF8(result.getBody()));

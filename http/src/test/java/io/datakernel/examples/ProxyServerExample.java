@@ -40,7 +40,7 @@ public class ProxyServerExample {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
-				httpClient.getHttpResultAsync(HttpRequest.get(REDIRECT_ADDRESS + request.getUrl().getPath()), 1000,
+				httpClient.execute(HttpRequest.get(REDIRECT_ADDRESS + request.getUrl().getPath()), 1000,
 						new ResultCallback<HttpResponse>() {
 							@Override
 							public void onResult(final HttpResponse result) {

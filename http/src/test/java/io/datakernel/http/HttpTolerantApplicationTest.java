@@ -146,7 +146,7 @@ public class HttpTolerantApplicationTest {
 			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
 					InetAddresses.forString("8.8.8.8")));
 
-			httpClient.getHttpResultAsync(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
+			httpClient.execute(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
 				@Override
 				public void onResult(HttpResponse response) {
 					resultObserver.onResult(response.getHeaderString(HttpHeader.CONTENT_TYPE));

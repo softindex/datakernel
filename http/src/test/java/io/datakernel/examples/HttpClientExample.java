@@ -63,7 +63,7 @@ public class HttpClientExample {
 				.body(ByteBuf.wrap(encodeAscii(CLIENT_NAME)));
 
 		// Sending previously formed request
-		httpClient.getHttpResultAsync(request, 1000, new ResultCallback<HttpResponse>() {
+		httpClient.execute(request, 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				resultObserver.onResult(decodeAscii(result.getBody()));
