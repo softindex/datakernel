@@ -16,11 +16,12 @@
 
 package io.datakernel.rpc.client.jmx;
 
+import io.datakernel.jmx.AbstractCompositeStats;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.ValueStats;
 
-public final class RpcRequestsStats {
+public final class RpcRequestsStats extends AbstractCompositeStats<RpcRequestsStats> {
 	private static final String LAST_SERVER_EXCEPTION_COUNTER_NAME = "Server exception";
 
 	private final EventStats totalRequests = new EventStats();

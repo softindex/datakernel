@@ -17,6 +17,7 @@
 package io.datakernel.eventloop.jmx;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.jmx.AbstractCompositeStats;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.ValueStats;
@@ -27,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public final class NioEventloopStats {
+public final class NioEventloopStats extends AbstractCompositeStats<NioEventloopStats> {
 
 	private static final class DurationRunnable {
 		private Runnable runnable;

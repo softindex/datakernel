@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import java.util.SortedMap;
+
 import static java.lang.Math.*;
 
 /**
@@ -23,7 +25,7 @@ import static java.lang.Math.*;
  * <p>
  * Class is supposed to work in single thread
  */
-public final class ValueStats {
+public final class ValueStats implements JmxStats<ValueStats> {
 
 	private long lastTimestampMillis;
 
@@ -86,6 +88,7 @@ public final class ValueStats {
 		lastCount++;
 	}
 
+	@Override
 	public void refreshStats(long timestamp, double smoothingWindow) {
 		if (lastCount == 0)
 			return;
@@ -137,6 +140,7 @@ public final class ValueStats {
 		lastMax = Integer.MIN_VALUE;
 	}
 
+	@Override
 	public void add(ValueStats counter) {
 		if (counter.lastTimestampMillis == 0L)
 			return;
@@ -164,6 +168,11 @@ public final class ValueStats {
 			lastTimestampMillis = counter.lastTimestampMillis;
 			lastValue = counter.lastValue;
 		}
+	}
+
+	@Override
+	public SortedMap<String, TypeAndValue> getAttributes() {
+		throw new UnsupportedOperationException(); // TODO (vmykhalko)
 	}
 
 	/**

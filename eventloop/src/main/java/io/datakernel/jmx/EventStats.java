@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx;
 
+import java.util.SortedMap;
+
 import static java.lang.Math.exp;
 import static java.lang.Math.log;
 
@@ -24,7 +26,7 @@ import static java.lang.Math.log;
  * <p>
  * Class is supposed to work in single thread
  */
-public final class EventStats {
+public final class EventStats implements JmxStats<EventStats> {
 	private long lastTimestampMillis;
 	private int lastCount;
 
@@ -65,6 +67,7 @@ public final class EventStats {
 		lastCount += events;
 	}
 
+	@Override
 	public void refreshStats(long timestamp, double smoothingWindow) {
 		if (lastTimestampMillis != 0L) {
 			long timeElapsedMillis = timestamp - lastTimestampMillis;
@@ -81,6 +84,12 @@ public final class EventStats {
 		lastCount = 0;
 	}
 
+	@Override
+	public SortedMap<String, TypeAndValue> getAttributes() {
+		throw new UnsupportedOperationException(); // TODO (vmykhalko)
+	}
+
+	@Override
 	public void add(EventStats counter) {
 		totalCount += counter.totalCount;
 		smoothedCount += counter.smoothedCount;

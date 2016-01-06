@@ -16,10 +16,10 @@
 
 package io.datakernel.rpc.client.jmx;
 
+import io.datakernel.jmx.AbstractCompositeStats;
 import io.datakernel.jmx.EventStats;
 
-// TODO (vmykhalko): remove this class, use RatioCounter instead, without closedConnects
-public final class RpcConnectsStats {
+public final class RpcConnectsStats extends AbstractCompositeStats<RpcConnectsStats> {
 	private final EventStats successfulConnects = new EventStats();
 	private final EventStats failedConnects = new EventStats();
 	private final EventStats closedConnects = new EventStats();
