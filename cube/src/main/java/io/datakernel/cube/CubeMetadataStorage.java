@@ -16,25 +16,34 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation_db.Aggregation;
+import io.datakernel.aggregation_db.AggregationMetadata;
+import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Manages persistence of cube metadata.
  */
 public interface CubeMetadataStorage {
 	/**
-	 * Loads aggregations metadata from metadata storage to specified cube asynchronously.
+	 * Loads aggregations metadata from metadata storage.
 	 *
-	 * @param cube     cube where retrieved aggregations metadata is to be saved
-	 * @param callback callback which is called once loading is complete
+	 * @param structure          aggregation structure
+	 * @param callback           callback which is called once loading is complete
 	 */
-	void loadAggregations(Cube cube, CompletionCallback callback);
+	void loadAggregations(AggregationStructure structure, ResultCallback<List<AggregationMetadata>> callback);
 
 	/**
-	 * Saves aggregations metadata from the specified cube to metadata storage asynchronously.
+	 * Saves specified aggregations.
 	 *
-	 * @param cube     cube whose aggregations metadata is to be saved
-	 * @param callback callback which is called once saving is complete
+	 * @param structure    aggregation structure
+	 * @param aggregations aggregations to save
+	 * @param callback     callback which is called once saving is complete
 	 */
-	void saveAggregations(Cube cube, CompletionCallback callback);
+	void saveAggregations(AggregationStructure structure, Collection<Aggregation> aggregations,
+	                      CompletionCallback callback);
 }

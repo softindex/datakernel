@@ -39,7 +39,7 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 	}
 
 	private Object parseKey(String key, JsonElement value) {
-		KeyType keyType = structure.getKeyType(key); // TODO (dtkachenko): implement and test exceptions handling
+		KeyType keyType = structure.getKeyType(key);
 		return keyType.fromJson(value);
 	}
 

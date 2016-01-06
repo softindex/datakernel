@@ -17,9 +17,7 @@
 package io.datakernel.cube;
 
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationMetadata;
-import io.datakernel.aggregation_db.AggregationMetadataStorageStub;
+import io.datakernel.aggregation_db.*;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.logfs.LogPosition;
@@ -29,6 +27,7 @@ import java.util.*;
 
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Maps.filterKeys;
+import static java.util.Collections.singletonList;
 
 public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStorage {
 	private Map<String, Map<String, LogPosition>> positions = new LinkedHashMap<>();
@@ -67,18 +66,17 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 		for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
 			AggregationMetadata aggregation = entry.getKey();
 			AggregationChunk.NewChunk newChunk = entry.getValue();
-//			TODO (dtkachenko)
-//			aggregation.addToIndex(AggregationChunk.createCommitChunk(cube.getLastRevisionId(), newChunk));
-			aggregationStorage.saveChunks(aggregation, Arrays.asList(newChunk), callback);
+			aggregationStorage.saveChunks(aggregation, singletonList(newChunk), callback);
 		}
 	}
 
 	@Override
-	public void loadAggregations(Cube cube, CompletionCallback callback) {
+	public void loadAggregations(AggregationStructure structure, ResultCallback<List<AggregationMetadata>> callback) {
+
 	}
 
 	@Override
-	public void saveAggregations(Cube cube, CompletionCallback callback) {
+	public void saveAggregations(AggregationStructure structure, Collection<Aggregation> aggregations, CompletionCallback callback) {
 
 	}
 }

@@ -21,7 +21,6 @@ import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
-import io.datakernel.aggregation_db.CommitCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
@@ -58,12 +57,12 @@ public final class LogCommitTransaction<T> {
 		this.callback = callback;
 	}
 
-	public CommitCallback addCommitCallback() {
+	public ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> addCommitCallback() {
 		commitCallbacks++;
 		logger.trace("Added commit callback. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);
-		return new CommitCallback() {
+		return new ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>>() {
 			@Override
-			public void onCommit(Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks) {
+			public void onResult(Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks) {
 				newChunks.putAll(resultChunks);
 				commitCallbacks--;
 				logger.trace("Commit callback onCommit called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);

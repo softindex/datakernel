@@ -23,19 +23,25 @@ import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.Aggregation;
 import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.aggregation_db.AggregationQuery;
+import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.aggregation_db.sql.tables.records.AggregationDbStructureRecord;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.jooq.Configuration;
 import org.jooq.DSLContext;
 import org.jooq.Result;
 import org.jooq.impl.DSL;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbStructure.AGGREGATION_DB_STRUCTURE;
+import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 
 /**
@@ -60,44 +66,46 @@ public final class CubeMetadataStorageSql implements CubeMetadataStorage {
 		this.jooqConfiguration = jooqConfiguration;
 	}
 
-	private void loadAggregations(DSLContext jooq, Cube cube) {
+	private List<AggregationMetadata> loadAggregations(DSLContext jooq, AggregationStructure structure) {
 		Result<AggregationDbStructureRecord> records = jooq
 				.selectFrom(AGGREGATION_DB_STRUCTURE)
-				.where(AGGREGATION_DB_STRUCTURE.ID.notIn(cube.getAggregations().keySet()))
 				.fetch();
 
 		Splitter splitter = Splitter.on(' ').omitEmptyStrings();
 		Gson gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
+				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(structure))
 				.create();
 
+		List<AggregationMetadata> aggregationMetadatas = newArrayList();
 		for (AggregationDbStructureRecord record : records) {
 			AggregationMetadata aggregationMetadata = new AggregationMetadata(record.getId(),
 					newArrayList(splitter.split(record.getKeys())),
 					newArrayList(splitter.split(record.getInputfields())),
 					newArrayList(splitter.split(record.getOutputfields())),
 					gson.fromJson(record.getPredicates(), AggregationQuery.QueryPredicates.class));
-			cube.addAggregation(aggregationMetadata);
+			aggregationMetadatas.add(aggregationMetadata);
 		}
+
+		return aggregationMetadatas;
 	}
 
-	// TODO (dtkachenko): return loaded aggregations metadatas
 	@Override
-	public void loadAggregations(final Cube cube, CompletionCallback callback) {
-		runConcurrently(eventloop, executor, false, new Runnable() {
+	public void loadAggregations(final AggregationStructure structure,
+	                             ResultCallback<List<AggregationMetadata>> callback) {
+		callConcurrently(eventloop, executor, false, new Callable<List<AggregationMetadata>>() {
 			@Override
-			public void run() {
-				loadAggregations(DSL.using(jooqConfiguration), cube);
+			public List<AggregationMetadata> call() throws Exception {
+				return loadAggregations(DSL.using(jooqConfiguration), structure);
 			}
 		}, callback);
 	}
 
-	private void saveAggregations(DSLContext jooq, Cube cube) {
+	private void saveAggregations(DSLContext jooq, AggregationStructure structure, Collection<Aggregation> aggregations) {
 		Joiner joiner = Joiner.on(' ');
 		Gson gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
+				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(structure))
 				.create();
-		for (Aggregation aggregation : cube.getAggregations().values()) {
+		for (Aggregation aggregation : aggregations) {
 			jooq.insertInto(AGGREGATION_DB_STRUCTURE)
 					.set(new AggregationDbStructureRecord(
 							aggregation.getId(),
@@ -110,13 +118,13 @@ public final class CubeMetadataStorageSql implements CubeMetadataStorage {
 		}
 	}
 
-	// TODO (dtkachenko): save list of exlicitely provided list of aggregations metadatas
 	@Override
-	public void saveAggregations(final Cube cube, CompletionCallback callback) {
+	public void saveAggregations(final AggregationStructure structure,
+	                             final Collection<Aggregation> aggregations, CompletionCallback callback) {
 		runConcurrently(eventloop, executor, false, new Runnable() {
 			@Override
 			public void run() {
-				saveAggregations(DSL.using(jooqConfiguration), cube);
+				saveAggregations(DSL.using(jooqConfiguration), structure, aggregations);
 			}
 		}, callback);
 	}

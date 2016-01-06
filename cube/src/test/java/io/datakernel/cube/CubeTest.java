@@ -26,9 +26,7 @@ import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.AsyncExecutors;
-import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.*;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
@@ -523,13 +521,15 @@ public class CubeTest {
 				.streamTo(cube.consumer(DataItem2.class, DataItem2.DIMENSIONS, DataItem2.METRICS, new MyCommitCallback(cube)));
 		eventloop.run();
 
-		cube.consolidate(100, AsyncCallbacks.<Boolean>ignoreResultCallback());// TODO (dtkachenko) new MyConsolidateCallback(cube));
-
+		ResultCallbackFuture<Boolean> future = new ResultCallbackFuture<>();
+		cube.consolidate(100, future);
 		eventloop.run();
+		assertEquals(true, future.get());
 
-		cube.consolidate(100, AsyncCallbacks.<Boolean>ignoreResultCallback()); // cube.consolidate(new MyConsolidateCallback(cube));
-
+		future = new ResultCallbackFuture<>();
+		cube.consolidate(100, future);
 		eventloop.run();
+		assertEquals(true, future.get());
 
 		StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		cube.query(DataItemResult.class,
@@ -549,7 +549,7 @@ public class CubeTest {
 		assertEquals(expected, actual);
 	}
 
-	public static class MyCommitCallback implements CommitCallback {
+	public static class MyCommitCallback implements ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> {
 		private final Cube cube;
 		private final CompletionCallback callback;
 
@@ -563,7 +563,7 @@ public class CubeTest {
 		}
 
 		@Override
-		public void onCommit(Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
+		public void onResult(Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
 			cube.incrementLastRevisionId();
 			for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
 				AggregationMetadata aggregation = entry.getKey();
@@ -583,35 +583,4 @@ public class CubeTest {
 				callback.onException(exception);
 		}
 	}
-
-/*
-	private static class MyConsolidateCallback implements ConsolidateCallback {
-		private final Cube cube;
-
-		public MyConsolidateCallback(Cube cube) {
-			this.cube = cube;
-		}
-
-		@Override
-		public void onConsolidate(AggregationMetadata aggregationMetadata, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks) {
-			cube.incrementLastRevisionId();
-			for (AggregationChunk originalChunk : originalChunks) {
-				aggregationMetadata.removeFromIndex(originalChunk);
-			}
-			for (AggregationChunk.NewChunk consolidatedChunk : consolidatedChunks) {
-				aggregationMetadata.addToIndex(AggregationChunk.createConsolidateChunk(cube.getLastRevisionId(), originalChunks, consolidatedChunk));
-			}
-		}
-
-		@Override
-		public void onNothingToConsolidate() {
-			logger.trace("Nothing to consolidate in cube {}.", cube);
-		}
-
-		@Override
-		public void onException(Exception exception) {
-			logger.error("Exception thrown while performing cube {} consolidation.", cube);
-		}
-	}
-*/
 }

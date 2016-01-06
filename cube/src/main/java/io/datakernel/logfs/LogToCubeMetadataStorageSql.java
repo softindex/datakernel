@@ -16,23 +16,10 @@
 
 package io.datakernel.logfs;
 
-import static io.datakernel.async.AsyncCallbacks.*;
-import static io.datakernel.cube.sql.tables.AggregationDbLog.AGGREGATION_DB_LOG;
-
-import java.sql.Connection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.AggregationChunk;
-import io.datakernel.aggregation_db.AggregationMetadata;
-import io.datakernel.aggregation_db.AggregationMetadataStorageSql;
+import io.datakernel.aggregation_db.*;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeMetadataStorageSql;
 import io.datakernel.cube.sql.tables.records.AggregationDbLogRecord;
 import io.datakernel.eventloop.Eventloop;
@@ -43,6 +30,18 @@ import org.jooq.TransactionalRunnable;
 import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.sql.Connection;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+
+import static io.datakernel.async.AsyncCallbacks.callConcurrently;
+import static io.datakernel.async.AsyncCallbacks.runConcurrently;
+import static io.datakernel.cube.sql.tables.AggregationDbLog.AGGREGATION_DB_LOG;
 
 /**
  * Stores cube and logs metadata in relational database.
@@ -179,13 +178,13 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	}
 
 	@Override
-	public void loadAggregations(Cube cube, CompletionCallback callback) {
-		cubeMetadataStorage.loadAggregations(cube, callback);
+	public void loadAggregations(AggregationStructure structure, ResultCallback<List<AggregationMetadata>> callback) {
+		cubeMetadataStorage.loadAggregations(structure, callback);
 	}
 
 	@Override
-	public void saveAggregations(Cube cube, CompletionCallback callback) {
-		cubeMetadataStorage.saveAggregations(cube, callback);
+	public void saveAggregations(AggregationStructure structure, Collection<Aggregation> aggregations,
+	                             CompletionCallback callback) {
+		cubeMetadataStorage.saveAggregations(structure, aggregations, callback);
 	}
-
 }

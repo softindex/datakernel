@@ -54,7 +54,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 
 	@Override
 	public void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
-
+		callback.onComplete();
 	}
 
 	@Override
@@ -71,7 +71,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 
 	@Override
 	public void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
-
+		callback.onComplete();
 	}
 
 }

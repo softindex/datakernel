@@ -77,14 +77,15 @@ public final class Cube implements CubeMBean {
 	 * Instantiates a cube with the specified structure, that runs in a given event loop,
 	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
 	 * and uses the specified parameters.
-	 * @param eventloop                            event loop, in which the cube is to run
-	 * @param classLoader                          class loader for defining dynamic classes
-	 * @param cubeMetadataStorage                  storage for persisting cube metadata
-	 * @param aggregationMetadataStorage           storage for aggregations metadata
-	 * @param aggregationChunkStorage              storage for data chunks
-	 * @param structure                            structure of a cube
-	 * @param aggregationChunkSize                 maximum size of aggregation chunk
-	 * @param sorterItemsInMemory                  maximum number of records that can stay in memory while sorting
+	 *
+	 * @param eventloop                  event loop, in which the cube is to run
+	 * @param classLoader                class loader for defining dynamic classes
+	 * @param cubeMetadataStorage        storage for persisting cube metadata
+	 * @param aggregationMetadataStorage storage for aggregations metadata
+	 * @param aggregationChunkStorage    storage for data chunks
+	 * @param structure                  structure of a cube
+	 * @param aggregationChunkSize       maximum size of aggregation chunk
+	 * @param sorterItemsInMemory        maximum number of records that can stay in memory while sorting
 	 */
 	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
 	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
@@ -161,7 +162,7 @@ public final class Cube implements CubeMBean {
 	}
 
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> dimensions, List<String> measures,
-	                                      final CommitCallback callback) {
+	                                      ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> callback) {
 		return consumer(inputClass, dimensions, measures, null, callback);
 	}
 
@@ -199,7 +200,7 @@ public final class Cube implements CubeMBean {
 	 */
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> dimensions, List<String> measures,
 	                                      AggregationQuery.QueryPredicates predicates,
-	                                      final CommitCallback callback) {
+	                                      final ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> callback) {
 		logger.trace("Started building StreamConsumer for populating cube {}.", this);
 
 		final StreamSplitter<T> streamSplitter = new StreamSplitter<>(eventloop);
@@ -224,7 +225,7 @@ public final class Cube implements CubeMBean {
 							resultChunks.putAll(aggregation.getAggregationMetadata(), chunks);
 							++aggregationsDone[0];
 							if (aggregationsDone[0] == streamSplitterOutputs[0]) {
-								callback.onCommit(resultChunks);
+								callback.onResult(resultChunks);
 							}
 						}
 					});
@@ -363,11 +364,20 @@ public final class Cube implements CubeMBean {
 	 * @param callback callback which is called when saving to metadata storage is completed
 	 */
 	public void saveAggregations(CompletionCallback callback) {
-		cubeMetadataStorage.saveAggregations(this, callback);
+		cubeMetadataStorage.saveAggregations(structure, aggregations.values(), callback);
 	}
 
-	public void loadAggregations(CompletionCallback callback) {
-		cubeMetadataStorage.loadAggregations(this, callback);
+	public void loadAggregations(final CompletionCallback callback) {
+		cubeMetadataStorage.loadAggregations(structure,
+				new ForwardingResultCallback<List<AggregationMetadata>>(callback) {
+					@Override
+					public void onResult(List<AggregationMetadata> result) {
+						for (AggregationMetadata aggregationMetadata : result) {
+							addAggregation(aggregationMetadata);
+						}
+						callback.onComplete();
+					}
+				});
 	}
 
 	public void loadChunks(CompletionCallback callback) {
