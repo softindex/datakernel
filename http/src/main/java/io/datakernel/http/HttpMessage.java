@@ -23,7 +23,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
-import static io.datakernel.http.HttpHeader.*;
+import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.ByteBufStrings.*;
 
 /**
@@ -32,14 +32,14 @@ import static io.datakernel.util.ByteBufStrings.*;
 public abstract class HttpMessage {
 	protected boolean recycled;
 
-	private final ArrayList<HttpHeader.Value> headers = new ArrayList<>();
+	private final ArrayList<HttpHeaders.Value> headers = new ArrayList<>();
 	private ArrayList<ByteBuf> headerBufs;
 	protected ByteBuf body;
 
 	protected HttpMessage() {
 	}
 
-	public List<HttpHeader.Value> getHeaders() {
+	public List<HttpHeaders.Value> getHeaders() {
 		assert !recycled;
 		return headers;
 	}
@@ -50,7 +50,7 @@ public abstract class HttpMessage {
 	 *
 	 * @param value value of this header
 	 */
-	protected void setHeader(HttpHeader.Value value) {
+	protected void setHeader(HttpHeaders.Value value) {
 		assert !recycled;
 		assert getHeader(value.getKey()) == null : "Duplicate header: " + value.getKey();
 		headers.add(value);
@@ -62,14 +62,14 @@ public abstract class HttpMessage {
 	 *
 	 * @param value value of this header
 	 */
-	protected void addHeader(HttpHeader.Value value) {
+	protected void addHeader(HttpHeaders.Value value) {
 		assert !recycled;
 		headers.add(value);
 	}
 
 	protected void setHeader(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		setHeader(HttpHeader.asBytes(header, value.array(), value.position(), value.remaining()));
+		setHeader(HttpHeaders.asBytes(header, value.array(), value.position(), value.remaining()));
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
 				headerBufs = new ArrayList<>(4);
@@ -80,7 +80,7 @@ public abstract class HttpMessage {
 
 	protected void addHeader(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		addHeader(HttpHeader.asBytes(header, value.array(), value.position(), value.remaining()));
+		addHeader(HttpHeaders.asBytes(header, value.array(), value.position(), value.remaining()));
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
 				headerBufs = new ArrayList<>(4);
@@ -91,22 +91,22 @@ public abstract class HttpMessage {
 
 	protected void setHeader(HttpHeader header, byte[] value) {
 		assert !recycled;
-		setHeader(HttpHeader.asBytes(header, value, 0, value.length));
+		setHeader(HttpHeaders.asBytes(header, value, 0, value.length));
 	}
 
 	protected void addHeader(HttpHeader header, byte[] value) {
 		assert !recycled;
-		addHeader(HttpHeader.asBytes(header, value, 0, value.length));
+		addHeader(HttpHeaders.asBytes(header, value, 0, value.length));
 	}
 
 	protected void setHeader(HttpHeader header, String string) {
 		assert !recycled;
-		setHeader(HttpHeader.ofString(header, string));
+		setHeader(HttpHeaders.ofString(header, string));
 	}
 
 	protected void addHeader(HttpHeader header, String string) {
 		assert !recycled;
-		addHeader(HttpHeader.ofString(header, string));
+		addHeader(HttpHeaders.ofString(header, string));
 	}
 
 	protected void setBody(ByteBuf body) {
@@ -116,15 +116,10 @@ public abstract class HttpMessage {
 		this.body = body;
 	}
 
-	public ByteBuf getBody() {
-		assert !recycled;
-		return body;
-	}
-
 	// getters
 	public int getContentLength() {
 		assert !recycled;
-		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(CONTENT_LENGTH);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(CONTENT_LENGTH);
 		if (header != null)
 			return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
 		return 0;
@@ -132,7 +127,7 @@ public abstract class HttpMessage {
 
 	public ContentType getContentType() {
 		assert !recycled;
-		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(CONTENT_TYPE);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(CONTENT_TYPE);
 		if (header != null)
 			return ContentType.parse(header.array, header.offset, header.size);
 		return null;
@@ -140,9 +135,11 @@ public abstract class HttpMessage {
 
 	public Date getDate() {
 		assert !recycled;
-		HttpHeader.ValueOfBytes header = (HttpHeader.ValueOfBytes) getHeader(DATE);
-		if (header != null)
-			return new Date(HttpDate.parse(header.array, header.offset));
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(DATE);
+		if (header != null) {
+			long date = HttpDate.parse(header.array, header.offset);
+			return new Date(date);
+		}
 		return null;
 	}
 
@@ -156,6 +153,21 @@ public abstract class HttpMessage {
 		ByteBuf buf = body;
 		body = null;
 		return buf;
+	}
+
+	public ByteBuf getBody() {
+		assert !recycled;
+		return body;
+	}
+
+	public String getBodyAscii() {
+		assert !recycled;
+		return decodeAscii(body);
+	}
+
+	public String getBodyUtf8() {
+		assert !recycled;
+		return decodeUTF8(body);
 	}
 
 	/**
@@ -183,7 +195,7 @@ public abstract class HttpMessage {
 	 */
 	protected void writeHeaders(ByteBuf buf) {
 		assert !recycled;
-		for (HttpHeader.Value entry : this.headers) {
+		for (HttpHeaders.Value entry : this.headers) {
 			HttpHeader header = entry.getKey();
 
 			buf.set(0, CR);
@@ -213,7 +225,7 @@ public abstract class HttpMessage {
 	protected int estimateSize(int firstLineSize) {
 		assert !recycled;
 		int size = firstLineSize;
-		for (HttpHeader.Value entry : this.headers) {
+		for (HttpHeaders.Value entry : this.headers) {
 			HttpHeader header = entry.getKey();
 			size += 2 + header.size() + 2 + entry.estimateSize(); // CR,LF,header,": ",value
 		}
@@ -223,8 +235,8 @@ public abstract class HttpMessage {
 		return size;
 	}
 
-	public final HttpHeader.Value getHeader(HttpHeader header) {
-		for (HttpHeader.Value headerValue : headers) {
+	public final HttpHeaders.Value getHeader(HttpHeader header) {
+		for (HttpHeaders.Value headerValue : headers) {
 			if (header.equals(headerValue.getKey()))
 				return headerValue;
 		}
@@ -232,13 +244,13 @@ public abstract class HttpMessage {
 	}
 
 	public final String getHeaderString(HttpHeader header) {
-		HttpHeader.Value result = getHeader(header);
+		HttpHeaders.Value result = getHeader(header);
 		return result == null ? null : result.toString();
 	}
 
-	public final List<HttpHeader.Value> getHeaders(HttpHeader header) {
-		List<HttpHeader.Value> result = new ArrayList<>();
-		for (HttpHeader.Value headerValue : headers) {
+	public final List<HttpHeaders.Value> getHeaders(HttpHeader header) {
+		List<HttpHeaders.Value> result = new ArrayList<>();
+		for (HttpHeaders.Value headerValue : headers) {
 			if (header.equals(headerValue.getKey()))
 				result.add(headerValue);
 		}
@@ -248,7 +260,7 @@ public abstract class HttpMessage {
 	public final List<String> getHeaderStrings(HttpHeader header) {
 		List<String> result = new ArrayList<>();
 
-		for (HttpHeader.Value headerValue : headers) {
+		for (HttpHeaders.Value headerValue : headers) {
 			if (header.equals(headerValue.getKey()))
 				result.add(headerValue.toString());
 		}

@@ -35,6 +35,7 @@ public final class StaticServletForResources extends StaticServlet {
 	private final ExecutorService executor;
 	private final URL root;
 	private static final byte[] ERROR_BYTES = new byte[]{};
+	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	private static final IOException ERROR = new IOException("Resource loading error");
 	private final ConcurrentHashMap<String, byte[]> cache = new ConcurrentHashMap<>();
 

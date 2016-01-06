@@ -22,9 +22,10 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.http.server.AsyncHttpServlet;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 
 public abstract class StaticServlet implements AsyncHttpServlet {
-	public static final Charset DEFAULT_TXT_ENCODING = Charset.forName("UTF-8");
+	public static final Charset DEFAULT_TXT_ENCODING = StandardCharsets.UTF_8;
 	public static final String DEFAULT_INDEX_FILE_NAME = "index.html"; // response for get request asking for root
 
 	protected StaticServlet() {
@@ -35,11 +36,17 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 		if (pos != -1) {
 			path = path.substring(pos + 1);
 		}
-		ContentType type = ContentType.of(MediaType.getByExt(path));
-		if (type.getMediaType().isText()) {
-			type = type.setCharset(DEFAULT_TXT_ENCODING);
+		MediaType mime = MediaTypes.getByExtension(path);
+		if (mime == null) {
+			mime = MediaTypes.OCTET_STREAM;
 		}
-		return type == null ? ContentType.of(MediaType.ANY) : type;
+		ContentType type;
+		if (mime.isTextType()) {
+			type = ContentType.of(mime, DEFAULT_TXT_ENCODING);
+		} else {
+			type = ContentType.of(mime);
+		}
+		return type;
 	}
 
 	protected abstract void doServeAsync(String name, ForwardingResultCallback<ByteBuf> callback);
@@ -47,7 +54,7 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
 		return HttpResponse.create(200)
 				.body(buf)
-				.setContentType(getContentType(path));
+				.contentType(getContentType(path));
 	}
 
 	@Override
@@ -64,7 +71,7 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 		doServeAsync(path, new ForwardingResultCallback<ByteBuf>(callback) {
 			@Override
 			public void onResult(ByteBuf buf) {
-				callback.onResult(createHttpResponse(buf, finalPath));
+				callback.onResult(createHttpResponse(buf, finalPath).contentType(type));
 			}
 		});
 	}

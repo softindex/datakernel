@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import static io.datakernel.util.ByteBufStrings.*;
 
 // <[RFC2616], Section 3.3.1> case-sensitive
+// Can't parse dates earlier than 1970
 final class HttpDate {
 	private static final int HOUR_SECONDS = (60 * 60);
 	private static final int DAY_SECONDS = 24 * HOUR_SECONDS;
@@ -63,10 +64,6 @@ final class HttpDate {
 
 	private HttpDate() {}
 
-	static long parse(ByteBuf buf) {
-		return parse(buf.array(), buf.position());
-	}
-
 	static long parse(byte[] bytes, int start) {
 		int day = decodeDecimal(bytes, start + 5, 2);
 
@@ -90,7 +87,11 @@ final class HttpDate {
 
 		year = year - 1970;
 		int yearsLeft = year % 4;
-		long timestamp = ((year - yearsLeft) / 4) * FOUR_YEAR_SECONDS;
+		long timestamp = 0;
+		int fy = (year - yearsLeft) / 4;
+		for (int i = 0; i < fy; i++) {
+			timestamp += FOUR_YEAR_SECONDS;
+		}
 
 		timestamp += yearsLeft * YEAR_SECONDS;
 		if (yearsLeft > 2) {
@@ -99,15 +100,16 @@ final class HttpDate {
 		}
 
 		for (int i = 0; i < month; i++) {
-			timestamp += DAY_SECONDS * days[i];
+			timestamp += (DAY_SECONDS * days[i]);
 		}
 
 		for (int i = 1; i < day; i++) {
 			timestamp += DAY_SECONDS;
 		}
 
-		timestamp += 60 * hour + minutes + seconds;
+		timestamp += ((60 * hour + minutes) * 60) + seconds;
 		timestamp *= 1_000l;
+
 		return timestamp;
 	}
 
@@ -197,6 +199,7 @@ final class HttpDate {
 		bytes[pos++] = ' ';
 
 		System.arraycopy(GMT, 0, bytes, pos, GMT.length);
+
 		return pos + 3;
 	}
 

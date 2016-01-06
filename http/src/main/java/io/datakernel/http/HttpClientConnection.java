@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeoutException;
 
-import static io.datakernel.http.HttpHeader.CONNECTION;
+import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 
@@ -37,7 +37,7 @@ import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final Exception CLOSED_CONNECTION = new IOException("Connection is closed");
-	private static final HttpHeader.Value CONNECTION_KEEP_ALIVE = HttpHeader.asBytes(CONNECTION, "keep-alive");
+	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
 	private AsyncCancellable cancellable;

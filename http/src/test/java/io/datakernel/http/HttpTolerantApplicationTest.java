@@ -149,7 +149,7 @@ public class HttpTolerantApplicationTest {
 			httpClient.execute(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
 				@Override
 				public void onResult(HttpResponse response) {
-					resultObserver.onResult(response.getHeaderString(HttpHeader.CONTENT_TYPE));
+					resultObserver.onResult(response.getHeaderString(HttpHeaders.CONTENT_TYPE));
 					httpClient.close();
 				}
 

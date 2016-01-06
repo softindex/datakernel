@@ -25,7 +25,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static io.datakernel.http.HttpHeader.of;
+import static io.datakernel.http.HttpHeaders.parse;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
@@ -55,11 +55,11 @@ public class HttpMessageTest {
 		assertHttpResponseEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
 				"Error 502", HttpResponse.create(502).body("Error 502".getBytes(Charsets.UTF_8)));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).setCookie(Collections.singletonList(new HttpCookie("cookie1", "value1"))));
+				HttpResponse.create(200).serverCookie(Collections.singletonList(new HttpCookie("cookie1", "value1"))));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).setCookie(Arrays.asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+				HttpResponse.create(200).serverCookie(Arrays.asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",
-				HttpResponse.create(200).setCookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+				HttpResponse.create(200).serverCookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 	}
 
 	@Test
@@ -71,9 +71,9 @@ public class HttpMessageTest {
 		assertHttpRequestEquals("CONNECT /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 0\r\n\r\n",
 				HttpRequest.create(HttpMethod.CONNECT).url("http://test.com/index.html"));
 		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"\r\n\r\n",
-				HttpRequest.get("http://test.com/index.html").cookie(new HttpCookie("cookie1", "value1")));
+				HttpRequest.get("http://test.com/index.html").clientCookies(new HttpCookie("cookie1", "value1")));
 		assertHttpRequestEquals("GET /index.html HTTP/1.1\r\nHost: test.com\r\nCookie: cookie1=\"value1\"; cookie2=\"value2\"\r\n\r\n",
-				HttpRequest.get("http://test.com/index.html").cookie(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
+				HttpRequest.get("http://test.com/index.html").clientCookies(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 
 		HttpRequest request = HttpRequest.post("http://test.com/index.html");
 		ByteBuf buf = ByteBufPool.allocate(100);
@@ -91,8 +91,8 @@ public class HttpMessageTest {
 	@Test
 	public void testMultiHeaders() {
 		HttpResponse h = HttpResponse.create(200);
-		HttpHeader h1 = of("h1");
-		HttpHeader h2 = of("h2");
+		HttpHeader h1 = parse("h1");
+		HttpHeader h2 = parse("h2");
 
 		assertTrue(h.getHeaders().isEmpty());
 		assertNull(getHeaderValue(h, h1));

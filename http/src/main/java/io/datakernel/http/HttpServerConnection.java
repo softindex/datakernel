@@ -30,7 +30,7 @@ import java.net.InetAddress;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 
-import static io.datakernel.http.HttpHeader.CONNECTION;
+import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -41,7 +41,7 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final Logger logger = LoggerFactory.getLogger(HttpServerConnection.class);
 	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
-	private static final HttpHeader.Value CONNECTION_KEEP_ALIVE = HttpHeader.asBytes(CONNECTION, "keep-alive");
+	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private static final int HEADERS_SLOTS = 256;
 	private static final int MAX_PROBINGS = 2;

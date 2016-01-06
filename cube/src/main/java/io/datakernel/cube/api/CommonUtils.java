@@ -25,9 +25,9 @@ import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.http.ContentType;
-import io.datakernel.http.HttpHeader;
+import io.datakernel.http.HttpHeaders;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.http.MediaType;
+import io.datakernel.http.MediaTypes;
 import io.datakernel.stream.StreamConsumers;
 
 import java.lang.reflect.Type;
@@ -61,9 +61,9 @@ class CommonUtils {
 
 	public static HttpResponse createResponse(String body) {
 		return HttpResponse.create()
-				.setContentType(ContentType.of(MediaType.HTML))
+				.contentType(ContentType.of(MediaTypes.HTML))
 				.body(wrapUTF8(body))
-				.header(HttpHeader.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+				.header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 	}
 
 	public static HttpResponse response500(Exception exception) {

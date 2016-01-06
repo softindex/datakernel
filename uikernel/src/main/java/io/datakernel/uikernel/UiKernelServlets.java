@@ -36,7 +36,7 @@ import static io.datakernel.uikernel.Utils.deserializeUpdateRequest;
  */
 @SuppressWarnings("unused")
 public class UiKernelServlets {
-	public static final ContentType JSON_UTF8 = ContentType.of(MediaType.JSON, Charset.forName("UTF-8"));
+	public static final ContentType JSON_UTF8 = ContentType.of(MediaTypes.JSON, Charset.forName("UTF-8"));
 
 	public static <K, R extends AbstractRecord<K>> MiddlewareServlet apiServlet(GridModel model, Gson gson) {
 		MiddlewareServlet main = new MiddlewareServlet();
@@ -60,7 +60,7 @@ public class UiKernelServlets {
 						public void onResult(ReadResponse<K, R> response) {
 							JsonObject json = response.toJson(gson, model.getRecordType(), model.getIdType());
 							callback.onResult(HttpResponse.create()
-									.setContentType(JSON_UTF8)
+									.contentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(gson.toJson(json))));
 						}
 
@@ -89,7 +89,7 @@ public class UiKernelServlets {
 						public void onResult(R obj) {
 							String json = gson.toJson(obj, model.getRecordType());
 							callback.onResult(HttpResponse.create()
-//									.setContentType(JSON_UTF8)
+									.contentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(json)));
 						}
 
@@ -117,7 +117,7 @@ public class UiKernelServlets {
 						public void onResult(CreateResponse<K> response) {
 							JsonObject json = response.toJson(gson, model.getIdType());
 							HttpResponse res = HttpResponse.create()
-									.setContentType(JSON_UTF8)
+									.contentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(gson.toJson(json)));
 							callback.onResult(res);
 						}
@@ -146,7 +146,7 @@ public class UiKernelServlets {
 						public void onResult(UpdateResponse<K, R> result) {
 							JsonObject json = result.toJson(gson, model.getRecordType(), model.getIdType());
 							callback.onResult(HttpResponse.create()
-									.setContentType(JSON_UTF8)
+									.contentType(JSON_UTF8)
 									.body(ByteBufStrings.wrapUTF8(gson.toJson(json))));
 						}
 
@@ -174,7 +174,7 @@ public class UiKernelServlets {
 							HttpResponse res = HttpResponse.create();
 							if (response.hasErrors()) {
 								String json = gson.toJson(response.getErrors());
-								res.setContentType(JSON_UTF8)
+								res.contentType(JSON_UTF8)
 										.body(ByteBufStrings.wrapUTF8(json));
 							}
 							callback.onResult(res);

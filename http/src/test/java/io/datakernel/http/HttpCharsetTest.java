@@ -20,6 +20,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import org.junit.Test;
 
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,7 +36,7 @@ public class HttpCharsetTest {
 		String expected = "utf-8";
 		HttpCharset charset = HttpCharset.UTF_8;
 		byte[] container = new byte[5];
-		int pos = charset.render(container, 0);
+		int pos = HttpCharset.render(charset, container, 0);
 		assertEquals(5, pos);
 		assertEquals(expected, new String(container));
 	}
@@ -52,7 +53,7 @@ public class HttpCharsetTest {
 	public void testConverters() {
 		HttpCharset expected = HttpCharset.US_ASCII;
 		Charset charset = expected.toJavaCharset();
-		HttpCharset actual = HttpCharset.toHttpCharset(charset);
+		HttpCharset actual = HttpCharset.of(charset);
 		assertTrue(expected == actual);
 	}
 
@@ -62,17 +63,16 @@ public class HttpCharsetTest {
 		List<AcceptCharset> charsets = AcceptCharset.parse(bytes, 0, bytes.length);
 		assertEquals(2, charsets.size());
 		assertTrue(forName("ISO-8859-5") == charsets.get(0).getCharset());
-		assertTrue(forName("UNICODE") == charsets.get(1).getCharset());
 		assertEquals(80, charsets.get(1).getQ());
 	}
 
 	@Test
 	public void testRenderAcceptCharset() {
-		String expected = "iso-8859-5, unicode-1-1; q=0.8";
+		String expected = "iso-8859-1, UTF-16; q=0.8";
 		ByteBuf buf = ByteBuf.allocate(expected.length());
 		List<AcceptCharset> chs = new ArrayList<>();
-		chs.add(AcceptCharset.of(forName("ISO-8859-5")));
-		chs.add(AcceptCharset.of(forName("UNICODE"), 80));
+		chs.add(AcceptCharset.of(StandardCharsets.ISO_8859_1));
+		chs.add(AcceptCharset.of(StandardCharsets.UTF_16, 80));
 		AcceptCharset.render(chs, buf);
 		buf.flip();
 		String actual = decodeAscii(buf);

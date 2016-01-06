@@ -20,6 +20,7 @@ import org.junit.Test;
 
 import java.nio.charset.Charset;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.TimeZone;
 
@@ -28,11 +29,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class HttpDateTest {
+
 	@Test
 	public void testRender() {
 		GregorianCalendar calendar = new GregorianCalendar(2015, JANUARY, 1);
 		calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
-		long timestamp = calendar.getTimeInMillis();
+		long timestamp = calendar.getTime().getTime();
 		byte[] bytes = new byte[29];
 		int end = HttpDate.render(timestamp, bytes, 0);
 		assertEquals(29, end);
@@ -44,10 +46,18 @@ public class HttpDateTest {
 		String date = "Thu, 01 Jan 2015 00:00:00 GMT";
 		long actual = HttpDate.parse(date.getBytes(Charset.forName("ISO-8859-1")), 0);
 
-		GregorianCalendar calendar = new GregorianCalendar(2015, JANUARY, 1);
-		calendar.setTimeZone(TimeZone.getTimeZone("GMT"));
-		long expected = calendar.getTimeInMillis();
+		GregorianCalendar calendar = new GregorianCalendar(2015, JANUARY, 1, 2, 0);
+		long expected = calendar.getTime().getTime();
 
 		assertEquals(actual, expected);
+	}
+
+	@Test
+	public void testFull() {
+		long timestamp = 4073580000000l;
+		byte[] bytes = new byte[29];
+		HttpDate.render(timestamp, bytes, 0);
+		Date actual = new Date(HttpDate.parse(bytes, 0));
+		assertEquals(4073580000000l, actual.getTime());
 	}
 }

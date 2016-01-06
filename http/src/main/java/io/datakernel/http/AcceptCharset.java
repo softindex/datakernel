@@ -26,10 +26,11 @@ import java.util.List;
 import static io.datakernel.http.HttpUtils.parseQ;
 import static io.datakernel.http.HttpUtils.skipSpaces;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
 
 public final class AcceptCharset {
+	public static final int DEFAULT_Q = 100;
 	private static final byte[] Q_KEY = encodeAscii("q");
-	private static final int DEFAULT_Q = 100;
 
 	private HttpCharset charset;
 	private int q;
@@ -43,20 +44,20 @@ public final class AcceptCharset {
 		this(charset, DEFAULT_Q);
 	}
 
-	public static AcceptCharset of(Charset charset, int q) {
-		return new AcceptCharset(HttpCharset.toHttpCharset(charset), q);
-	}
-
 	public static AcceptCharset of(Charset charset) {
-		return new AcceptCharset(HttpCharset.toHttpCharset(charset));
+		return new AcceptCharset(HttpCharset.of(charset));
 	}
 
-	private static AcceptCharset of(HttpCharset charset, int q) {
-		return new AcceptCharset(charset, q);
+	public static AcceptCharset of(Charset charset, int q) {
+		return new AcceptCharset(HttpCharset.of(charset), q);
 	}
 
 	private static AcceptCharset of(HttpCharset charset) {
 		return new AcceptCharset(charset);
+	}
+
+	private static AcceptCharset of(HttpCharset charset, int q) {
+		return new AcceptCharset(charset, q);
 	}
 
 	public Charset getCharset() {
@@ -73,46 +74,45 @@ public final class AcceptCharset {
 		return chs;
 	}
 
-	static void parse(byte[] bytes, int pos, int len, List<AcceptCharset> container) {
+	static void parse(byte[] bytes, int pos, int len, List<AcceptCharset> list) {
 		int end = pos + len;
 
 		while (pos < end) {
 			// parsing charset
-			pos = skipSpaces(bytes, pos, len);
+			pos = skipSpaces(bytes, pos, end);
 			int start = pos;
 			while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
 				pos++;
 			}
 			HttpCharset charset = HttpCharset.parse(bytes, start, pos - start);
 
-			if (pos < end && bytes[pos] == ',') {
-				pos++;
-				pos = skipSpaces(bytes, pos, len);
-				container.add(AcceptCharset.of(charset));
-				continue;
-			}
-
-			// parsing parameters if any (interested in 'q' only)
-			pos++;
-			int q = DEFAULT_Q;
 			if (pos < end) {
-				pos = skipSpaces(bytes, pos, len);
-				start = pos;
-				while (pos < end && bytes[pos] != ',') {
-					if (bytes[pos] == '=' && ByteBufStrings.equalsLowerCaseAscii(Q_KEY, bytes, start, pos - start)) {
-						pos++;
-						start = pos;
-						while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
-							pos++;
+				if (bytes[pos++] == ',') {
+					list.add(AcceptCharset.of(charset));
+				} else {
+					int q = DEFAULT_Q;
+					pos = skipSpaces(bytes, pos, end);
+					start = pos;
+					while (pos < end && bytes[pos] != ',') {
+						if (bytes[pos] == '=' && equalsLowerCaseAscii(Q_KEY, bytes, start, pos - start)) {
+							start = ++pos;
+							while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
+								pos++;
+							}
+							q = parseQ(bytes, start, pos - start);
+							pos--;
+						} else if (bytes[pos] == ';') {
+							pos = skipSpaces(bytes, pos + 1, end);
+							start = pos;
 						}
-						q = parseQ(bytes, start, pos - start);
-					} else if ((bytes[pos] == ';' || bytes[pos] == ',') && pos + 1 < end) {
-						start = skipSpaces(bytes, pos + 1, len);
+						pos++;
 					}
+					list.add(AcceptCharset.of(charset, q));
 					pos++;
 				}
+			} else {
+				list.add(AcceptCharset.of(charset));
 			}
-			container.add(AcceptCharset.of(charset, q));
 		}
 	}
 
@@ -124,7 +124,7 @@ public final class AcceptCharset {
 	static int render(List<AcceptCharset> charsets, byte[] bytes, int pos) {
 		for (int i = 0; i < charsets.size(); i++) {
 			AcceptCharset charset = charsets.get(i);
-			pos += charset.charset.render(bytes, pos);
+			pos += HttpCharset.render(charset.charset, bytes, pos);
 			if (charset.q != DEFAULT_Q) {
 				bytes[pos++] = ';';
 				bytes[pos++] = ' ';
@@ -145,7 +145,7 @@ public final class AcceptCharset {
 	}
 
 	int estimateSize() {
-		return charset.estimateSize() + 10;
+		return charset.size() + 10;
 	}
 
 	@Override

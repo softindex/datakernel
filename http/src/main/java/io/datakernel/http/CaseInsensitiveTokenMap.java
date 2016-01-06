@@ -73,7 +73,7 @@ abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> 
 				return t;
 			}
 		}
-		return create(bytes, offset, length, null, lowerCaseHashCode);
+		return null;
 	}
 
 	protected abstract T create(byte[] bytes, int offset, int length, byte[] lowerCaseBytes, int lowerCaseHashCode);

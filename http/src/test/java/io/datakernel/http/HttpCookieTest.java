@@ -29,7 +29,6 @@ import static org.junit.Assert.*;
 
 public class HttpCookieTest {
 
-	@Ignore
 	@Test
 	public void testParser() {
 		String cookieString = "name1=\"value1\"; expires=Thu, 01 Jan 2015 00:00:00 GMT; Secure; name2=value2; HttpOnly";
@@ -52,7 +51,6 @@ public class HttpCookieTest {
 		assertTrue(cookie2.getValue().equals("value2"));
 		assertFalse(cookie2.isSecure());
 		assertTrue(cookie2.isHttpOnly());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
@@ -75,7 +73,6 @@ public class HttpCookieTest {
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 	}
 
-	@Ignore
 	@Test
 	public void testRenderMany() {
 		Date date = new Date(987654321098l); // "Thu, 19 Apr 2001 04:25:21 GMT";
@@ -96,6 +93,5 @@ public class HttpCookieTest {
 		HttpCookie.renderSimple(Arrays.asList(cookie1, cookie2, cookie3), buf);
 		buf.flip();
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 }

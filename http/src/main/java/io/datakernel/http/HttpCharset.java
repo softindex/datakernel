@@ -16,18 +16,17 @@
 
 package io.datakernel.http;
 
-import io.datakernel.util.ByteBufStrings;
-
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.util.ByteBufStrings.decodeAscii;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.util.ByteBufStrings.*;
 import static java.nio.charset.Charset.forName;
 
 // maximum of 40 characters, us-ascii, see rfc2978,
 // http://www.iana.org/assignments/character-sets/character-sets.txt
+// case insensitive
 final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 	private final static CaseInsensitiveTokenMap<HttpCharset> charsets = new CaseInsensitiveTokenMap<HttpCharset>(256, 2, HttpCharset.class) {
 		@Override
@@ -35,12 +34,11 @@ final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 			return new HttpCharset(bytes, offset, length, lowerCaseBytes, lowerCaseHashCode);
 		}
 	};
-	private final static Map<Charset, HttpCharset> lookup = new HashMap<>();
+	private final static Map<Charset, HttpCharset> java2http = new HashMap<>();
 
-	public static final HttpCharset UTF_8 = charsets.register("utf-8").addCharset(forName("UTF-8"));
-	public static final HttpCharset US_ASCII = charsets.register("us-ascii").addCharset(forName("US-ASCII"));
-	public static final HttpCharset ISO_8859_5 = charsets.register("iso-8859-5").addCharset(forName("ISO-8859-5"));
-	public static final HttpCharset UNICODE_1_1 = charsets.register("unicode-1-1").addCharset(forName("UNICODE"));
+	public static final HttpCharset UTF_8 = charsets.register("utf-8").addCharset(StandardCharsets.UTF_8);
+	public static final HttpCharset US_ASCII = charsets.register("us-ascii").addCharset(StandardCharsets.US_ASCII);
+	public static final HttpCharset LATIN_1 = charsets.register("iso-8859-1").addCharset(StandardCharsets.ISO_8859_1);
 
 	private final byte[] bytes;
 	private final int offset;
@@ -55,41 +53,46 @@ final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 		this.lowerCaseHashCode = lowerCaseHashCode;
 	}
 
-	static HttpCharset parse(byte[] bytes, int pos, int length) {
-		return charsets.get(bytes, pos, length, ByteBufStrings.hashCodeLowerCaseAscii(bytes, pos, length));
+	static HttpCharset of(Charset charset) {
+		HttpCharset hCharset = java2http.get(charset);
+		if (hCharset != null) {
+			return hCharset;
+		} else {
+			byte[] bytes = encodeAscii(charset.name());
+			return parse(bytes, 0, bytes.length);
+		}
 	}
 
-	int render(byte[] container, int pos) {
-		System.arraycopy(bytes, offset, container, pos, length);
-		return length;
+	static HttpCharset parse(byte[] bytes, int pos, int length) {
+		int hash = hashCodeLowerCaseAscii(bytes, pos, length);
+		HttpCharset charset = charsets.get(bytes, pos, length, hash);
+		if (charset == null) {
+			charset = new HttpCharset(bytes, pos, length, null, hash);
+		}
+		return charset;
+	}
+
+	static int render(HttpCharset charset, byte[] container, int pos) {
+		System.arraycopy(charset.bytes, charset.offset, container, pos, charset.length);
+		return charset.length;
 	}
 
 	private HttpCharset addCharset(Charset charset) {
 		this.javaCharset = charset;
-		lookup.put(charset, this);
+		java2http.put(charset, this);
 		return this;
-	}
-
-	static HttpCharset toHttpCharset(Charset jCharset) {
-		HttpCharset hCharset = lookup.get(jCharset);
-		if (hCharset != null) {
-			return hCharset;
-		} else {
-			byte[] bytes = encodeAscii(jCharset.name());
-			int hash = ByteBufStrings.hashCodeLowerCaseAscii(bytes);
-			return charsets.get(bytes, 0, bytes.length, hash);
-		}
 	}
 
 	Charset toJavaCharset() {
 		if (javaCharset != null) {
 			return javaCharset;
 		} else {
-			return forName(decodeAscii(bytes, offset, length));
+			javaCharset = forName(decodeAscii(bytes, offset, length));
+			return javaCharset;
 		}
 	}
 
-	int estimateSize() {
+	int size() {
 		return length;
 	}
 
