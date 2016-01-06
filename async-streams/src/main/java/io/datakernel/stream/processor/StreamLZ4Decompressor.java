@@ -118,6 +118,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				}
 
 				if (header.finished) {
+					inputStreamPosition += HEADER_LENGTH; // end-of-stream block size
 					break;
 				}
 

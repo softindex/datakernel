@@ -129,11 +129,9 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	}
 
 	@Override
-	public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer,
-	                 ResultCallback<Long> positionCallback) {
+	public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer) {
 		StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
 				path(logPartition, logFile), startPosition);
-		reader.setPositionCallback(positionCallback);
 		reader.streamTo(consumer);
 	}
 

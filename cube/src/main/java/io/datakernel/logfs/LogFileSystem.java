@@ -34,8 +34,7 @@ public interface LogFileSystem {
 
 	void list(String logPartition, ResultCallback<List<LogFile>> callback);
 
-	void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer,
-	          ResultCallback<Long> positionCallback);
+	void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer);
 
 	void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 }

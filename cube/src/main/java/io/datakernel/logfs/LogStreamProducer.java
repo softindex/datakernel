@@ -37,7 +37,6 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	private final LogFile endFile;
 	private LogFile currentLogFile;
 	private StreamLZ4Decompressor currentDecompressor;
-	private long currentPosition;
 	private LogFileSystem fileSystem;
 	private BufferSerializer<T> serializer;
 	private final ResultCallback<LogPosition> positionCallback;
@@ -104,19 +103,10 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				currentDecompressor = new StreamLZ4Decompressor(eventloop);
 
 				fileSystem.read(logPartition, currentLogFile, first ? startPosition.getPosition() : 0L,
-						currentDecompressor.getInput(), new ResultCallback<Long>() {
-							@Override
-							public void onResult(Long position) {
-								currentPosition = position;
-							}
+						currentDecompressor.getInput());
 
-							@Override
-							public void onException(Exception exception) {
-								callback.onException(exception);
-							}
-						});
-
-				StreamBinaryDeserializer<T> currentDeserializer = new StreamBinaryDeserializer<>(eventloop, serializer, StreamBinarySerializer.MAX_SIZE);
+				StreamBinaryDeserializer<T> currentDeserializer = new StreamBinaryDeserializer<>(eventloop, serializer,
+						StreamBinarySerializer.MAX_SIZE);
 				ErrorIgnoringTransformer<T> errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
 
 				currentDecompressor.getOutput().streamTo(currentDeserializer.getInput());
@@ -132,6 +122,7 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	}
 
 	public LogPosition getLogPosition() {
-		return currentLogFile == null ? startPosition : new LogPosition(currentLogFile, currentPosition);
+		return currentLogFile == null ? startPosition :
+				new LogPosition(currentLogFile, currentDecompressor.getInputStreamPosition());
 	}
 }

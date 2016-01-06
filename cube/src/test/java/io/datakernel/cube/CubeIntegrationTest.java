@@ -149,6 +149,7 @@ public class CubeIntegrationTest {
 	}
 
 	@Ignore
+	@SuppressWarnings("ConstantConditions")
 	@Test
 	public void test() throws Exception {
 		ExecutorService executor = Executors.newCachedThreadPool();
@@ -176,7 +177,7 @@ public class CubeIntegrationTest {
 		eventloop.run();
 
 
-		// Save logs
+		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
 		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems = new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
@@ -198,8 +199,6 @@ public class CubeIntegrationTest {
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-
-		// Aggregate logs
 		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
