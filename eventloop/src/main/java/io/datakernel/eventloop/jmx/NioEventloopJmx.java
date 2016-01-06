@@ -310,11 +310,11 @@ public final class NioEventloopJmx implements NioEventloopJmxMBean {
 		Map<ExceptionMarker, ExceptionStats> exceptions = collectAllStats().getExceptions();
 		for (ExceptionMarker marker : exceptions.keySet()) {
 			ExceptionStats stats = exceptions.get(marker);
-			Throwable lastException = stats.getLastException();
+//			Throwable lastException = stats.getLastException();
 			CompositeData compositeData = CompositeDataBuilder.builder(EXCEPTION_COMPOSITE_DATE_NAME)
 					.add(EXCEPTION_MARKER_KEY, SimpleType.STRING, marker.getMarker().toString())
 					.add(LAST_EXCEPTION_KEY, SimpleType.STRING,
-							lastException != null ? lastException.toString() : "")
+							stats.getLastException())
 					.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
 							Integer.toString(stats.getCount())) // TODO (vmykhalko): check this
 					.build();

@@ -86,8 +86,8 @@ public final class ExceptionStats {
 		return MBeanFormat.formatException(throwable);
 	}
 
-	public Throwable getLastException() {
-		return throwable;
+	public String getLastException() {
+		return throwable != null ? throwable.toString() : "";
 	}
 
 	public CompositeData compositeData() throws OpenDataException {

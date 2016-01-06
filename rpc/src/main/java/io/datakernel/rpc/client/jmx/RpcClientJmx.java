@@ -136,7 +136,7 @@ public final class RpcClientJmx implements RpcClientJmxMBean {
 
 			if (requestsStatsSet != null) {
 				ExceptionStats exceptionStats = requestsStatsSet.getServerExceptions();
-				Throwable lastException = exceptionStats.getLastException();
+//				Throwable lastException = exceptionStats.getLastException();
 				builder = builder
 						.add(TOTAL_REQUESTS_KEY, SimpleType.STRING,
 								requestsStatsSet.getTotalRequests().toString())
@@ -151,7 +151,7 @@ public final class RpcClientJmx implements RpcClientJmxMBean {
 						.add(RESPONSE_TIME_KEY, SimpleType.STRING,
 								requestsStatsSet.getResponseTime().toString())
 						.add(LAST_SERVER_EXCEPTION_KEY, SimpleType.STRING,
-								lastException != null ? lastException.toString() : "")
+								exceptionStats.getLastException())
 						.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
 								Integer.toString(exceptionStats.getCount()));
 			}
@@ -178,7 +178,7 @@ public final class RpcClientJmx implements RpcClientJmxMBean {
 		for (Class<?> requestClass : classToGatheredStats.keySet()) {
 			RpcRequestsStats requestStats = classToGatheredStats.get(requestClass);
 			ExceptionStats exceptionStats = requestStats.getServerExceptions();
-			Throwable lastException = exceptionStats.getLastException();
+//			Throwable lastException = exceptionStats.getLastException();
 			CompositeData compositeData = CompositeDataBuilder.builder(REQUEST_CLASS_COMPOSITE_DATA_NAME)
 					.add(REQUEST_CLASS_KEY, SimpleType.STRING,
 							requestClass.getName())
@@ -195,7 +195,7 @@ public final class RpcClientJmx implements RpcClientJmxMBean {
 					.add(RESPONSE_TIME_KEY, SimpleType.STRING,
 							requestStats.getResponseTime().toString())
 					.add(LAST_SERVER_EXCEPTION_KEY, SimpleType.STRING,
-							lastException != null ? lastException.toString() : "")
+							exceptionStats.getLastException())
 					.add(TOTAL_EXCEPTIONS_KEY, SimpleType.STRING,
 							Integer.toString(exceptionStats.getCount()))
 					.build();
@@ -322,9 +322,9 @@ public final class RpcClientJmx implements RpcClientJmxMBean {
 
 	@Override
 	public String getExceptionStats_LastServerException() {
-		Throwable lastException =
-				collectGeneralRequestsStatsFromAllClients().getServerExceptions().getLastException();
-		return lastException != null ? lastException.toString() : "";
+//		Throwable lastException =
+		return collectGeneralRequestsStatsFromAllClients().getServerExceptions().getLastException();
+//		return lastException != null ? lastException.toString() : "";
 	}
 
 	@Override
