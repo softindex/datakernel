@@ -49,4 +49,6 @@ public interface LogManager<T> {
 	                              LogFile endLogFile, ResultCallback<LogPosition> positionCallback);
 
 	LogStreamProducer<T> producer(String logPartition, long startTimestamp, long endTimestamp);
+
+	LogStreamProducer<T> producer(String logPartition, String startLogFileName, String endLogFileName);
 }

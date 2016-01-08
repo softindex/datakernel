@@ -106,6 +106,13 @@ public final class LogManagerImpl<T> implements LogManager<T> {
 				AsyncCallbacks.<LogPosition>ignoreResultCallback());
 	}
 
+	@Override
+	public LogStreamProducer<T> producer(String logPartition, String startLogFileName, String endLogFileName) {
+		validateLogPartition(logPartition);
+		return producer(logPartition, new LogFile(startLogFileName, 0), 0, new LogFile(endLogFileName, 0),
+				AsyncCallbacks.<LogPosition>ignoreResultCallback());
+	}
+
 	private static void validateLogPartition(String logPartition) {
 		Preconditions.checkArgument(!logPartition.contains("-"), "Using dash (-) in log partition name is not allowed");
 	}
