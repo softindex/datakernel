@@ -127,7 +127,8 @@ public class AggregationStructure {
 	}
 
 	public boolean containsOutputField(String field) {
-		return outputFields.containsKey(field);
+		FieldType fieldType = outputFields.get(field);
+		return fieldType != null && !fieldType.isRemoved();
 	}
 
 	public Class<?> createKeyClass(List<String> keys) {

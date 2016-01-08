@@ -25,6 +25,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import io.datakernel.aggregation_db.*;
+import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
@@ -348,7 +349,8 @@ public final class Cube implements CubeMBean {
 			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getOutputFields()))));
 		}
 
-		checkArgument(queryMeasures.isEmpty());
+		if (!queryMeasures.isEmpty())
+			throw new QueryException("Could not find suitable aggregation(s)");
 
 		final StreamProducer<T> orderedResultStream = getOrderedResultStream(query, resultClass, streamReducer,
 				query.getResultKeys(), query.getResultFields());
