@@ -22,7 +22,7 @@ import static java.lang.Math.*;
 
 /**
  * Counts added values and computes dynamic average using exponential smoothing algorithm
- * <p>
+ * <p/>
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxStats<ValueStats> {

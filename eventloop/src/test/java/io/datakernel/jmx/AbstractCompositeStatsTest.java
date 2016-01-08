@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Test;
 
 import javax.management.openmbean.SimpleType;
@@ -42,19 +43,19 @@ public class AbstractCompositeStatsTest {
 		String attribute_3_name = iterator.next();
 		String attribute_4_name = iterator.next();
 
-		assertEquals("CompositeStatsStub_counterOne_count", attribute_1_name);
+		assertEquals("counterOne_count", attribute_1_name);
 		assertEquals(SimpleType.INTEGER, attributes.get(attribute_1_name).getType());
 		assertEquals(1, attributes.get(attribute_1_name).getValue());
 
-		assertEquals("CompositeStatsStub_counterOne_sum", attribute_2_name);
+		assertEquals("counterOne_sum", attribute_2_name);
 		assertEquals(SimpleType.LONG, attributes.get(attribute_2_name).getType());
 		assertEquals(15L, attributes.get(attribute_2_name).getValue());
 
-		assertEquals("CompositeStatsStub_counterTwo_count", attribute_3_name);
+		assertEquals("counterTwo_count", attribute_3_name);
 		assertEquals(SimpleType.INTEGER, attributes.get(attribute_3_name).getType());
 		assertEquals(1, attributes.get(attribute_3_name).getValue());
 
-		assertEquals("CompositeStatsStub_counterTwo_sum", attribute_4_name);
+		assertEquals("counterTwo_sum", attribute_4_name);
 		assertEquals(SimpleType.LONG, attributes.get(attribute_4_name).getType());
 		assertEquals(147L, attributes.get(attribute_4_name).getValue());
 	}
@@ -76,23 +77,20 @@ public class AbstractCompositeStatsTest {
 		SortedMap<String, JmxStats.TypeAndValue> attributes = accumulator.getAttributes();
 		assertEquals(4, attributes.size());
 
-		String attribute_1_name = "CompositeStatsStub_counterOne_count";
-		String attribute_2_name = "CompositeStatsStub_counterOne_sum";
-		String attribute_3_name = "CompositeStatsStub_counterTwo_count";
-		String attribute_4_name = "CompositeStatsStub_counterTwo_sum";
+		String attribute_1_name = "counterOne_count";
+		String attribute_2_name = "counterOne_sum";
+		String attribute_3_name = "counterTwo_count";
+		String attribute_4_name = "counterTwo_sum";
 
 		assertEquals(SimpleType.INTEGER, attributes.get(attribute_1_name).getType());
 		assertEquals(2, attributes.get(attribute_1_name).getValue());
 
-		assertEquals("CompositeStatsStub_counterOne_sum", attribute_2_name);
 		assertEquals(SimpleType.LONG, attributes.get(attribute_2_name).getType());
 		assertEquals(15L + 33L, attributes.get(attribute_2_name).getValue());
 
-		assertEquals("CompositeStatsStub_counterTwo_count", attribute_3_name);
 		assertEquals(SimpleType.INTEGER, attributes.get(attribute_3_name).getType());
 		assertEquals(2, attributes.get(attribute_3_name).getValue());
 
-		assertEquals("CompositeStatsStub_counterTwo_sum", attribute_4_name);
 		assertEquals(SimpleType.LONG, attributes.get(attribute_4_name).getType());
 		assertEquals(147L + 271L, attributes.get(attribute_4_name).getValue());
 	}
@@ -117,7 +115,7 @@ public class AbstractCompositeStatsTest {
 		assertEquals(window, compositeStatsStub.getCounterTwo().getLastSmoothingWindow(), acceptableError);
 	}
 
-	public static class CompositeStatsStub extends AbstractCompositeStats {
+	public static class CompositeStatsStub extends AbstractCompositeStats<CompositeStatsStub> {
 		private JmxStatsStub counterOne = new JmxStatsStub();
 		private JmxStatsStub counterTwo = new JmxStatsStub();
 
@@ -127,54 +125,6 @@ public class AbstractCompositeStatsTest {
 
 		public JmxStatsStub getCounterTwo() {
 			return counterTwo;
-		}
-	}
-	
-	public static class JmxStatsStub implements JmxStats<JmxStatsStub> {
-
-		private long sum = 0L;
-		private int count = 0;
-
-		private long lastTimestamp = 0L;
-		private double lastSmoothingWindow = 0.0;
-		private int refreshStatsInvocations = 0;
-
-		public void recordValue(long value) {
-			sum += value;
-			++count;
-		}
-
-		public long getLastTimestamp() {
-			return lastTimestamp;
-		}
-
-		public double getLastSmoothingWindow() {
-			return lastSmoothingWindow;
-		}
-
-		public int getRefreshStatsInvocations() {
-			return refreshStatsInvocations;
-		}
-
-		@Override
-		public void add(JmxStatsStub stats) {
-			this.sum += stats.sum;
-			this.count += stats.count;
-		}
-
-		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			lastTimestamp = timestamp;
-			lastSmoothingWindow = smoothingWindow;
-			++refreshStatsInvocations;
-		}
-
-		@Override
-		public SortedMap<String, TypeAndValue> getAttributes() {
-			SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
-			attributes.put("sum", new TypeAndValue(SimpleType.LONG, sum));
-			attributes.put("count", new TypeAndValue(SimpleType.INTEGER, count));
-			return attributes;
 		}
 	}
 }

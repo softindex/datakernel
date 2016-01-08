@@ -62,7 +62,6 @@ public final class ExceptionStats {
 		}
 	}
 
-
 	public Marker getMarker() {
 		return marker;
 	}
@@ -103,6 +102,5 @@ public final class ExceptionStats {
 				.add("Total", SimpleType.INTEGER, count)
 				.build();
 	}
-
 
 }
