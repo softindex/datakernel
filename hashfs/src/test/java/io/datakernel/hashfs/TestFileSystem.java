@@ -50,11 +50,13 @@ public class TestFileSystem {
 	private NioEventloop eventloop = new NioEventloop();
 	private ExecutorService executor = newCachedThreadPool();
 	private Path storage;
+	private Path tmp;
 	private Path client;
 
 	@Before
 	public void setup() throws IOException {
 		storage = Paths.get(tmpFolder.newFolder("storage").toURI());
+		tmp = Paths.get(tmpFolder.newFolder("tmp").toURI());
 		client = Paths.get(tmpFolder.newFolder("client").toURI());
 
 		Files.createDirectories(storage);
@@ -92,7 +94,7 @@ public class TestFileSystem {
 
 	@Test
 	public void testUpload() throws IOException {
-		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 		fs.initDirectories();
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
@@ -100,7 +102,7 @@ public class TestFileSystem {
 
 		eventloop.run();
 
-		assertTrue(com.google.common.io.Files.equal(client.resolve("c.txt").toFile(), storage.resolve("tmp/1/c.txt.partial").toFile()));
+		assertTrue(com.google.common.io.Files.equal(client.resolve("c.txt").toFile(), tmp.resolve("1/c.txt.partial").toFile()));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 
 		fs.commitTmp("1/c.txt", ignoreCompletionCallback());
@@ -114,7 +116,7 @@ public class TestFileSystem {
 
 	@Test
 	public void testUploadFailed() throws IOException {
-		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 		fs.initDirectories();
 
 		StreamFileReader producer = StreamFileReader.readFileFully(eventloop, executor, 1024, client.resolve("c.txt"));
@@ -122,20 +124,19 @@ public class TestFileSystem {
 
 		eventloop.run();
 
-		assertTrue(com.google.common.io.Files.equal(client.resolve("c.txt").toFile(), storage.resolve("tmp/1/c.txt.partial").toFile()));
+		assertTrue(com.google.common.io.Files.equal(client.resolve("c.txt").toFile(), tmp.resolve("1/c.txt.partial").toFile()));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 
 		// Failed on client side --> decide to cancel upload
 		fs.deleteTmp("1/c.txt", ignoreCompletionCallback());
 
 		assertFalse(Files.exists(storage.resolve("tmp/1/c.txt.partial")));
-		assertTrue(Files.exists(storage.resolve("tmp")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testGet() throws IOException {
-		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 
 		fs.initDirectories();
 
@@ -151,7 +152,7 @@ public class TestFileSystem {
 
 	@Test
 	public void testGetFailed() throws Exception {
-		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 
 		fs.initDirectories();
 		StreamFileWriter consumer = StreamFileWriter.createFile(eventloop, executor, client.resolve("no_file.txt"));
@@ -177,19 +178,18 @@ public class TestFileSystem {
 
 	@Test
 	public void testDeleteFile() throws IOException {
-		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 
 		fs.initDirectories();
 		assertTrue(Files.exists(storage.resolve("2/3/a.txt")));
 		fs.delete("2/3/a.txt", ignoreCompletionCallback());
 		assertFalse(Files.exists(storage.resolve("2/3/a.txt")));
-		assertFalse(Files.exists(storage.resolve("2/3")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
 	@Test
 	public void testDeleteFailed() throws IOException {
-		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 
 		fs.initDirectories();
 		fs.delete("2/3/z.txt", new CompletionCallback() {
@@ -208,7 +208,7 @@ public class TestFileSystem {
 
 	@Test
 	public void testListFiles() throws IOException {
-		FileSystem fs = FileSystem.buildInstance(eventloop, executor, storage).build();
+		FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmp);
 
 		fs.initDirectories();
 		final Set<String> expected = new HashSet<>();

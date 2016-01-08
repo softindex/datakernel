@@ -43,7 +43,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.logfs.LogManagerImpl.*;
+import static io.datakernel.logfs.LogManagerImpl.DETAILED_DATE_TIME_FORMATTER;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
@@ -55,13 +55,15 @@ public class LogFsTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 	private Path path;
+	private Path tmpPath;
 	private SettableCurrentTimeProvider timeProvider;
 	private ExecutorService executor;
 	private NioEventloop eventloop;
 
 	@Before
 	public void setUp() throws Exception {
-		path = temporaryFolder.newFolder().toPath();
+		path = temporaryFolder.newFolder("storage").toPath();
+		tmpPath = temporaryFolder.newFolder("tmp").toPath();
 		timeProvider = new SettableCurrentTimeProvider();
 		executor = Executors.newCachedThreadPool();
 		eventloop = new NioEventloop(timeProvider);
@@ -125,7 +127,7 @@ public class LogFsTest {
 	public void testSimpleFs() throws Exception {
 		String logName = "log";
 		InetSocketAddress address = new InetSocketAddress(33333);
-		final SimpleFsServer server = createServer(address, path);
+		final SimpleFsServer server = createServer(address, path, tmpPath);
 		SimpleFsClient client = createClient(address);
 
 		LogFileSystem fileSystem = new SimpleFsLogFileSystem(client, logName);
@@ -254,16 +256,17 @@ public class LogFsTest {
 		startFuture.get();
 	}
 
-	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {
-		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage)
+	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage, Path tmpStorage) {
+		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage, tmpStorage)
 				.setListenAddress(address)
 				.build();
 	}
 
 	private HashFsServer createServer(ServerInfo serverInfo, List<ServerInfo> servers, Path serverStorage) {
-		return HashFsServer.buildInstance(eventloop, executor, serverStorage, serverInfo, new HashSet<>(servers))
+		return HashFsServer.buildInstance(eventloop, executor, serverStorage, tmpPath, serverInfo, new HashSet<>(servers))
 				.build();
 	}
+
 	private HashFsClient createClient(List<ServerInfo> servers) {
 		return HashFsClient.buildInstance(eventloop, servers)
 				.setMaxRetryAttempts(1)

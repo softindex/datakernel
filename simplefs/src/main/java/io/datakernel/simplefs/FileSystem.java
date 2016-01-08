@@ -36,53 +36,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 final class FileSystem {
-	// TODO (arashev): remove builder, configure directly in SimpleFs/HashFs server instead
-	public static final class Builder {
-		private final NioEventloop eventLoop;
-		private final ExecutorService executor;
-		private final Path storage;
-		private Path tmpStorage;
-
-		private String inProgressExtension = DEFAULT_IN_PROGRESS_EXTENSION;
-		private String tmpDirectoryName = DEFAULT_TMP_FOLDER_NAME;
-		private int readerBufferSize = DEFAULT_READER_BUFFER_SIZE;
-
-		private Builder(NioEventloop eventLoop, ExecutorService executor, Path storage) {
-			this.eventLoop = eventLoop;
-			this.executor = executor;
-			this.storage = storage;
-		}
-
-		public Builder setInProgressExtension(String inProgressExtension) {
-			this.inProgressExtension = inProgressExtension;
-			return this;
-		}
-
-		public Builder setTmpDirectoryName(String tmpDirectoryName) {
-			this.tmpDirectoryName = tmpDirectoryName;
-			return this;
-		}
-
-		public Builder setReaderBufferSize(int readerBufferSize) {
-			this.readerBufferSize = readerBufferSize;
-			return this;
-		}
-
-		public Builder setTmpStorage(Path tmpStorage) {
-			this.tmpStorage = tmpStorage;
-			return this;
-		}
-
-		public FileSystem build() {
-			if (tmpStorage == null) {
-				tmpStorage = storage.resolve(tmpDirectoryName);
-			}
-			return new FileSystem(eventLoop, executor, storage, tmpStorage, readerBufferSize, inProgressExtension);
-		}
-	}
-
 	public static final String DEFAULT_IN_PROGRESS_EXTENSION = ".partial";
-	public static final String DEFAULT_TMP_FOLDER_NAME = "tmp";
 	public static final int DEFAULT_READER_BUFFER_SIZE = 256 * 1024;
 
 	private static final Logger logger = LoggerFactory.getLogger(FileSystem.class);
@@ -106,12 +60,14 @@ final class FileSystem {
 		this.inProgressExtension = inProgressExtension;
 	}
 
-	public static FileSystem createInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
-		return buildInstance(eventloop, executor, storage).build();
+	public static FileSystem newInstance(NioEventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
+		return new FileSystem(eventloop, executor, storage, tmpStorage, DEFAULT_READER_BUFFER_SIZE, DEFAULT_IN_PROGRESS_EXTENSION);
 	}
 
-	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
-		return new Builder(eventloop, executor, storage);
+	public static FileSystem newInstance(NioEventloop eventloop, ExecutorService executor,
+	                                     Path storage, Path tmpStorage, int bufferSize,
+	                                     String inProgressExtension) {
+		return new FileSystem(eventloop, executor, storage, tmpStorage, bufferSize, inProgressExtension);
 	}
 
 	public void saveToTmp(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
@@ -177,7 +133,7 @@ final class FileSystem {
 		logger.trace("Deleting file {}", fileName);
 		Path path = fileStorage.resolve(fileName);
 		try {
-			deleteFile(path); // TODO (arashev): why recursive? just delete single file
+			Files.delete(path);
 			callback.onComplete();
 		} catch (IOException e) {
 			logger.error("Can't delete file {}", fileName, e);

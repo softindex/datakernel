@@ -26,7 +26,10 @@ import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.async.*;
+import io.datakernel.async.AsyncExecutors;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
@@ -152,9 +155,9 @@ public class CubeTest {
 
 	private static final int LISTEN_PORT = 45578;
 
-	private NioService prepareServer(NioEventloop eventloop, Path serverStorage) throws IOException {
+	private NioService prepareServer(NioEventloop eventloop, Path serverStorage, Path tmpStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage,
+		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage, tmpStorage,
 				Lists.newArrayList(new InetSocketAddress(LISTEN_PORT)));
 
 		fileServer.start(new CompletionCallback() {
@@ -192,8 +195,9 @@ public class CubeTest {
 
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 
-		Path serverStorage = temporaryFolder.newFolder().toPath();
-		final NioService simpleFsServer1 = prepareServer(eventloop, serverStorage);
+		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
+		Path tmpStorage = temporaryFolder.newFolder("tmp").toPath();
+		final NioService simpleFsServer1 = prepareServer(eventloop, serverStorage, tmpStorage);
 
 		AggregationChunkStorage storage = new SimpleFsChunkStorage(eventloop, aggregationStructure,
 				AsyncExecutors.sequentialExecutor(), new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
@@ -224,7 +228,7 @@ public class CubeTest {
 
 		eventloop.run();
 
-		final NioService simpleFsServer2 = prepareServer(eventloop, serverStorage);
+		final NioService simpleFsServer2 = prepareServer(eventloop, serverStorage, tmpStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		final AggregationQuery query = new AggregationQuery()
 				.keys("key1", "key2")

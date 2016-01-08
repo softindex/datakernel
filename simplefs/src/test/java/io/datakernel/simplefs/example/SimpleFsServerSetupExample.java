@@ -38,14 +38,15 @@ public class SimpleFsServerSetupExample {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServerSetupExample.class);
 
 	public static final int SERVER_PORT = 6732;
-	private static final Path SERVER_STORAGE_PATH = Paths.get("./");
+	private static final Path SERVER_STORAGE_PATH = Paths.get("./storage");
+	private static final Path TMP_STORAGE_PATH = Paths.get("./tmp");
 
 	public static void main(String[] args) throws IOException {
 		NioEventloop eventloop = new NioEventloop();
 		ExecutorService executor = newCachedThreadPool();
 
 		// Configuring and creating server
-		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, SERVER_STORAGE_PATH, SERVER_PORT);
+		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, SERVER_STORAGE_PATH, TMP_STORAGE_PATH, SERVER_PORT);
 
 		// Starting listening to port
 		fileServer.start(new CompletionCallback() {

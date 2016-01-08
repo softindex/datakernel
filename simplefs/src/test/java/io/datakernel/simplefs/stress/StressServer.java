@@ -31,12 +31,13 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
 	private static final Path STORAGE_PATH = Paths.get("./test/server_storage");
+	private static final Path TMP_PATH = Paths.get("./test/tmp");
 	public static final int PORT = 5560;
 
 	private static final ExecutorService executor = newCachedThreadPool();
 	private static final NioEventloop eventloop = new NioEventloop();
 
-	public static NioService server = SimpleFsServer.buildInstance(eventloop, executor, STORAGE_PATH)
+	public static NioService server = SimpleFsServer.buildInstance(eventloop, executor, STORAGE_PATH, TMP_PATH)
 			.setListenPort(PORT)
 			.build();
 

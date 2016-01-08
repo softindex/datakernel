@@ -49,7 +49,8 @@ public class ServerSetupExample {
 		// Starting servers
 		for (ServerInfo server : bootstrap) {
 			Path serverStorage = Paths.get("./test/server_storage_" + server.getServerId());
-			HashFsServer.buildInstance(eventloop, newCachedThreadPool(), serverStorage, server, bootstrap)
+			Path tmpStorage = Paths.get("./test/tmp_" + server.getServerId());
+			HashFsServer.buildInstance(eventloop, newCachedThreadPool(), serverStorage, tmpStorage, server, bootstrap)
 					.build()
 					.start(ignoreCompletionCallback());
 		}

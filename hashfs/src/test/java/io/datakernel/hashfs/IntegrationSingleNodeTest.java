@@ -56,6 +56,7 @@ public class IntegrationSingleNodeTest {
 
 	private ServerInfo local = new ServerInfo(0, new InetSocketAddress("127.0.0.1", 4455), 1.0);
 	private static Path serverStorage;
+	private static Path tmp;
 	private static Path clientStorage;
 
 	@ClassRule
@@ -64,6 +65,7 @@ public class IntegrationSingleNodeTest {
 	@BeforeClass
 	public static void setup() throws IOException {
 		clientStorage = Paths.get(temporaryFolder.newFolder("client_storage").toURI());
+		tmp = Paths.get(temporaryFolder.newFolder("tmp").toURI());
 		serverStorage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
 
 		Files.createDirectories(clientStorage);
@@ -494,7 +496,7 @@ public class IntegrationSingleNodeTest {
 	}
 
 	private NioService getServer(NioEventloop eventloop, ExecutorService executor) {
-		return HashFsServer.buildInstance(eventloop, executor, serverStorage, local, Sets.newHashSet(local))
+		return HashFsServer.buildInstance(eventloop, executor, serverStorage, tmp, local, Sets.newHashSet(local))
 				.build();
 	}
 }

@@ -40,19 +40,33 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.RUNNING;
 import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.SHUTDOWN;
 
+@SuppressWarnings("unused")
 public final class SimpleFsServer implements NioService {
 	public static final class Builder {
-		private final NioEventloop eventloop;
-		private final FileSystem.Builder fsBuilder;
 		private final GsonServerProtocol.Builder protocolBuilder;
+		private final NioEventloop eventloop;
 
 		private final List<InetSocketAddress> addresses = new ArrayList<>();
 
 		private long approveWaitTime = DEFAULT_APPROVE_WAIT_TIME;
 
-		public Builder(NioEventloop eventloop, ExecutorService executor, Path storage) {
+		private ExecutorService executor;
+		private Path storage;
+		private Path tmpStorage;
+
+		private int readerBufferSize = FileSystem.DEFAULT_READER_BUFFER_SIZE;
+		private String inProgressExtension = FileSystem.DEFAULT_IN_PROGRESS_EXTENSION;
+
+		public Builder(NioEventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
 			this.eventloop = eventloop;
-			fsBuilder = FileSystem.buildInstance(eventloop, executor, storage);
+			this.executor = executor;
+
+			if (storage.startsWith(tmpStorage) || tmpStorage.startsWith(storage)) {
+				throw new IllegalStateException("TmpStorage and storage must not be related directories(parent-child like)");
+			}
+
+			this.storage = storage;
+			this.tmpStorage = tmpStorage;
 			protocolBuilder = GsonServerProtocol.buildInstance(eventloop);
 		}
 
@@ -76,24 +90,13 @@ public final class SimpleFsServer implements NioService {
 			return this;
 		}
 
-		// TODO (arashev): make sure tmpStorage and storage are unrelated directories, not parent-child
-		public Builder setTmpStorage(Path tmpStorage) {
-			fsBuilder.setTmpStorage(tmpStorage);
-			return this;
-		}
-
 		public Builder setInProgressExtension(String inProgressExtension) {
-			fsBuilder.setInProgressExtension(inProgressExtension);
+			this.inProgressExtension = inProgressExtension;
 			return this;
 		}
 
 		public Builder setReaderBufferSize(int readerBufferSize) {
-			fsBuilder.setReaderBufferSize(readerBufferSize);
-			return this;
-		}
-
-		public Builder setTmpDirectoryName(String tmpDirectoryName) {
-			fsBuilder.setTmpDirectoryName(tmpDirectoryName);
+			this.readerBufferSize = readerBufferSize;
 			return this;
 		}
 
@@ -118,7 +121,8 @@ public final class SimpleFsServer implements NioService {
 		}
 
 		public SimpleFsServer build() {
-			FileSystem fs = fsBuilder.build();
+			FileSystem fs = FileSystem.newInstance(eventloop, executor, storage, tmpStorage,
+					readerBufferSize, inProgressExtension);
 			GsonServerProtocol protocol = protocolBuilder.build();
 			SimpleFsServer server = new SimpleFsServer(eventloop, fs, protocol, approveWaitTime);
 			protocol.wireServer(server);
@@ -128,6 +132,7 @@ public final class SimpleFsServer implements NioService {
 	}
 
 	public static final long DEFAULT_APPROVE_WAIT_TIME = 10 * 100;
+	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	public static final Exception SERVER_IS_DOWN_EXCEPTION = new Exception("Server is down");
 
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServer.class);
@@ -150,28 +155,28 @@ public final class SimpleFsServer implements NioService {
 	}
 
 	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
-	                                            List<InetSocketAddress> addresses) {
-		return buildInstance(eventloop, executor, storage)
+	                                            Path tmpStorage, List<InetSocketAddress> addresses) {
+		return buildInstance(eventloop, executor, storage, tmpStorage)
 				.setListenAddresses(addresses)
 				.build();
 	}
 
 	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
-	                                            InetSocketAddress address) {
-		return buildInstance(eventloop, executor, storage)
+	                                            Path tmpStorage, InetSocketAddress address) {
+		return buildInstance(eventloop, executor, storage, tmpStorage)
 				.setListenAddress(address)
 				.build();
 	}
 
 	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
-	                                            int port) {
-		return buildInstance(eventloop, executor, storage)
+	                                            Path tmpStorage, int port) {
+		return buildInstance(eventloop, executor, storage, tmpStorage)
 				.setListenPort(port)
 				.build();
 	}
 
-	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor, Path storage) {
-		return new Builder(eventloop, executor, storage);
+	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
+		return new Builder(eventloop, executor, storage, tmpStorage);
 	}
 
 	@Override

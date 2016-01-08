@@ -59,11 +59,13 @@ public class SimpleFsServerTest {
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 	private static Path clientStorage;
 	private static Path serverStorage;
+	private static Path tmpStorage;
 
 	@Before
 	public void before() throws IOException {
 		clientStorage = Paths.get(temporaryFolder.newFolder("client_storage").toURI());
 		serverStorage = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
+		tmpStorage = Paths.get(temporaryFolder.newFolder("tmp").toURI());
 
 		Files.createDirectories(clientStorage);
 		Files.createDirectories(serverStorage);
@@ -92,8 +94,7 @@ public class SimpleFsServerTest {
 		Path differentStorage = container.resolve("another/path/in/file/system");
 		Path differentTmpStorage = container.resolve("path/for/tmp/files");
 
-		SimpleFsServer server = SimpleFsServer.buildInstance(eventloop, executor, differentStorage)
-				.setTmpStorage(differentTmpStorage)
+		SimpleFsServer server = SimpleFsServer.buildInstance(eventloop, executor, differentStorage, differentTmpStorage)
 				.build();
 
 		server.start(ignoreCompletionCallback());
@@ -419,7 +420,6 @@ public class SimpleFsServerTest {
 		deleteFile(requestedFile);
 
 		assertFalse(Files.exists(serverStorage.resolve(requestedFile)));
-		assertFalse(Files.exists(serverStorage.resolve("this")));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
@@ -501,6 +501,14 @@ public class SimpleFsServerTest {
 		Collections.sort(expected);
 		assertEquals(expected, actual);
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@Test(expected = IllegalStateException.class)
+	public void testPaths() throws Exception {
+		Path storage = Paths.get(temporaryFolder.newFolder("st").toURI());
+		Path badTmp = storage.resolve("/tmp");
+
+		SimpleFsServer server = SimpleFsServer.createInstance(new NioEventloop(), newCachedThreadPool(), storage, badTmp, 1234);
 	}
 
 	private static void createFile(Path container, String fileName, String text) throws IOException {
@@ -617,7 +625,7 @@ public class SimpleFsServerTest {
 	}
 
 	private static NioService createServer(NioEventloop eventloop, ExecutorService executor) {
-		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage)
+		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage, tmpStorage)
 				.setListenAddress(address)
 				.build();
 	}

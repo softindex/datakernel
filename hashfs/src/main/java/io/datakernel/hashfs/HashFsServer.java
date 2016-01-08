@@ -45,7 +45,6 @@ public class HashFsServer implements Commands, FsServer, NioService {
 
 		private final GsonClientProtocol.Builder clientBuilder;
 		private final GsonServerProtocol.Builder serverBuilder;
-		private final FileSystem.Builder fsBuilder;
 		private final LogicImpl.Builder logicBuilder;
 		private final List<InetSocketAddress> addresses = new ArrayList<>();
 
@@ -53,15 +52,29 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		private long mapUpdateTimeout = DEFAULT_MAP_UPDATE_TIMEOUT;
 		private ClientProtocol clientProtocol;
 		private ServerProtocol serverProtocol;
-		private FileSystem fileSystem;
 		private Logic logic;
 
+		private FileSystem fileSystem;
+		private ExecutorService executor;
+		private Path storage;
+		private Path tmpStorage;
+
+		private int readerBufferSize = FileSystem.DEFAULT_READER_BUFFER_SIZE;
+		private String inProgressExtension = FileSystem.DEFAULT_IN_PROGRESS_EXTENSION;
+
 		private Builder(NioEventloop eventloop, ExecutorService executor,
-		                Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
+		                Path storage, Path tmpStorage, ServerInfo myId, Set<ServerInfo> bootstrap) {
 			this.eventloop = eventloop;
 			this.clientBuilder = GsonClientProtocol.buildInstance(eventloop);
 			this.serverBuilder = GsonServerProtocol.buildInstance(eventloop);
-			this.fsBuilder = FileSystem.buildInstance(eventloop, executor, storage);
+			this.executor = executor;
+
+			if (storage.startsWith(tmpStorage) || tmpStorage.startsWith(storage)) {
+				throw new IllegalStateException("TmpStorage and storage must not be related directories(parent-child like)");
+			}
+
+			this.storage = storage;
+			this.tmpStorage = tmpStorage;
 			this.logicBuilder = LogicImpl.buildInstance(myId, bootstrap);
 			addresses.add(myId.getAddress());
 		}
@@ -151,22 +164,12 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		}
 
 		public Builder setInProgressExtension(String inProgressExtension) {
-			fsBuilder.setInProgressExtension(inProgressExtension);
-			return this;
-		}
-
-		public Builder setTmpStorage(Path tmpStorage) {
-			fsBuilder.setTmpStorage(tmpStorage);
+			this.inProgressExtension = inProgressExtension;
 			return this;
 		}
 
 		public Builder setReaderBufferSize(int readerBufferSize) {
-			fsBuilder.setReaderBufferSize(readerBufferSize);
-			return this;
-		}
-
-		public Builder setTmpDirectoryName(String tmpDirectoryName) {
-			fsBuilder.setTmpDirectoryName(tmpDirectoryName);
+			this.readerBufferSize = readerBufferSize;
 			return this;
 		}
 
@@ -198,7 +201,8 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		public HashFsServer build() {
 			ClientProtocol cp = clientProtocol == null ? clientBuilder.build() : clientProtocol;
 			ServerProtocol sp = serverProtocol == null ? serverBuilder.build() : serverProtocol;
-			FileSystem fs = fileSystem == null ? fsBuilder.build() : fileSystem;
+			FileSystem fs = fileSystem != null ? fileSystem : FileSystem.newInstance(eventloop, executor, storage, tmpStorage,
+					readerBufferSize, inProgressExtension);
 			Logic l = logic == null ? logicBuilder.build() : logic;
 
 			sp.setListenAddresses(addresses);
@@ -238,13 +242,13 @@ public class HashFsServer implements Commands, FsServer, NioService {
 	}
 
 	public static HashFsServer createInstance(NioEventloop eventloop, ExecutorService executor,
-	                                          Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
-		return buildInstance(eventloop, executor, storage, myId, bootstrap).build();
+	                                          Path storage, Path tmpStorage, ServerInfo myId, Set<ServerInfo> bootstrap) {
+		return buildInstance(eventloop, executor, storage, tmpStorage, myId, bootstrap).build();
 	}
 
 	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor,
-	                                    Path storage, ServerInfo myId, Set<ServerInfo> bootstrap) {
-		return new Builder(eventloop, executor, storage, myId, bootstrap);
+	                                    Path storage, Path tmpStorage, ServerInfo myId, Set<ServerInfo> bootstrap) {
+		return new Builder(eventloop, executor, storage, tmpStorage, myId, bootstrap);
 	}
 
 	@Override
