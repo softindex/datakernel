@@ -30,7 +30,14 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 @SuppressWarnings("unused")
 public final class ReadSettings<K> {
 	public enum SortOrder {
-		ASCENDING, DESCENDING
+		ASCENDING, DESCENDING;
+
+		static SortOrder of(String value) {
+			if (value.equals("asc"))
+				return ASCENDING;
+			else
+				return DESCENDING;
+		}
 	}
 
 	private static final int DEFAULT_OFFSET = 0;
@@ -100,7 +107,8 @@ public final class ReadSettings<K> {
 			for (JsonElement element : array) {
 				JsonArray arr = element.getAsJsonArray();
 				key = arr.get(0).getAsString();
-				value = gson.fromJson(arr.get(1), SortOrder.class);
+
+				value = SortOrder.of(arr.get(1).getAsString());
 				sort.put(key, value);
 			}
 			sort = Collections.unmodifiableMap(sort);

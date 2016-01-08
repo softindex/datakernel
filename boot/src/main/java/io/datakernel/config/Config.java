@@ -17,6 +17,7 @@
 package io.datakernel.config;
 
 import io.datakernel.util.Splitter;
+import org.slf4j.Logger;
 
 import java.io.*;
 import java.util.*;
@@ -24,8 +25,11 @@ import java.util.Map.Entry;
 
 import static io.datakernel.util.Preconditions.*;
 import static java.util.Arrays.asList;
+import static org.slf4j.LoggerFactory.getLogger;
 
 public final class Config {
+	private static final Logger logger = getLogger(Config.class);
+
 	private static final Splitter SPLITTER = Splitter.on('.');
 
 	private final Map<String, Config> children = new LinkedHashMap<>();
@@ -50,6 +54,7 @@ public final class Config {
 		for (String key : properties.stringPropertyNames()) {
 			Config entry = root.ensureChild(key);
 			entry.value = properties.getProperty(key);
+			logger.trace("Property {} is added", key);
 		}
 		return root;
 	}
@@ -59,6 +64,7 @@ public final class Config {
 		try (InputStream fis = new FileInputStream(propertiesFile)) {
 			properties.load(fis);
 		} catch (Exception e) {
+			logger.error("Cannot load required property: {}", e.getMessage());
 			throw new RuntimeException(e);
 		}
 		return ofProperties(properties);
@@ -70,8 +76,14 @@ public final class Config {
 
 	public static Config ofProperties(String propertiesFile, boolean optional) {
 		final File file = new File(propertiesFile);
-		if (!file.exists() && optional)
+		return ofProperties(file, optional);
+	}
+
+	public static Config ofProperties(File file, boolean optional) {
+		if (!file.exists() && optional) {
+			logger.trace("Optional property file {} does not exist", file.getName());
 			return new Config(null);
+		}
 		return ofProperties(file);
 	}
 
@@ -91,8 +103,9 @@ public final class Config {
 
 		for (Config config : configs) {
 			if (config.value != null) {
-				if (result.value != null)
+				if (result.value != null) {
 					throw new IllegalStateException("Multiple values for " + config.getKey());
+				}
 				result.value = config.value;
 			}
 			for (String key : config.children.keySet()) {

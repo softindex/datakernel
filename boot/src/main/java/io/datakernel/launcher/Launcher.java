@@ -43,6 +43,8 @@ public abstract class Launcher {
 
 	private File[] configs;
 
+	private File[] optionalConfigs;
+
 	private FileLocker fileLocker;
 
 	private boolean useLockFile;
@@ -71,19 +73,39 @@ public abstract class Launcher {
 	}
 
 	protected void configs(String... config) {
-		File[] files = new File[config.length];
-		for (int i = 0; i < config.length; i++) {
-			files[i] = new File(config[i]);
-		}
-		this.configs = files;
+		this.configs = strings2files(config);
 	}
 
 	protected void configs(Path... paths) {
+		this.configs = paths2Files(paths);
+	}
+
+	protected void optionalConfigs(File... files) {
+		this.optionalConfigs = files;
+	}
+
+	protected void optionalConfigs(String... config) {
+		this.optionalConfigs = strings2files(config);
+	}
+
+	protected void optionalConfigs(Path... paths) {
+		this.optionalConfigs = paths2Files(paths);
+	}
+
+	private File[] paths2Files(Path[] paths) {
 		File[] files = new File[paths.length];
 		for (int i = 0; i < paths.length; i++) {
 			files[i] = paths[i].toFile();
 		}
-		this.configs = files;
+		return files;
+	}
+
+	private File[] strings2files(String... strings) {
+		File[] files = new File[strings.length];
+		for (int i = 0; i < strings.length; i++) {
+			files[i] = new File(strings[i]);
+		}
+		return files;
 	}
 
 	protected void modules(Module... modules) {
@@ -166,16 +188,25 @@ public abstract class Launcher {
 			}
 		});
 
-		if (configs != null && configs.length != 0) {
-			List<Config> configsList = new ArrayList<>();
-			for (File config : configs) {
-				configsList.add(Config.ofProperties(config));
-			}
+		List<Config> configsList = new ArrayList<>();
+		loadConfigs(configs, configsList, false);
+		loadConfigs(optionalConfigs, configsList, true);
+
+		if (configsList.size() > 0) {
 			config = Config.union(configsList);
 			modules.add(new ConfigModule(config));
 		}
+
 		Injector injector = Guice.createInjector(Stage.PRODUCTION, modules);
 		injector.injectMembers(this);
+	}
+
+	private void loadConfigs(File[] sources, List<Config> container, boolean optional) {
+		if (sources != null && sources.length != 0) {
+			for (File config : sources) {
+				container.add(Config.ofProperties(config, optional));
+			}
+		}
 	}
 
 	protected void doStart() throws Exception {
