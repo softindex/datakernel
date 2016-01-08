@@ -49,16 +49,17 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.collect.Lists.newArrayList;
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
 public class CubeMeasureRemovalTest {
@@ -102,7 +103,7 @@ public class CubeMeasureRemovalTest {
 						.put("impressions", new FieldTypeLong())
 						.put("clicks", new FieldTypeLong())
 						.put("conversions", new FieldTypeLong())
-						.put("revenue", new FieldTypeDouble().setRemoved(true))
+						.put("revenue", new FieldTypeDouble())
 						.build(),
 				CHILD_PARENT_RELATIONSHIPS);
 	}
@@ -112,7 +113,8 @@ public class CubeMeasureRemovalTest {
 	                            AggregationMetadataStorage aggregationMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage,
+				aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
 		cube.addAggregation(new AggregationMetadata("detailed", LogItem.DIMENSIONS, LogItem.MEASURES));
 		cube.addAggregation(new AggregationMetadata("date", asList("date"), LogItem.MEASURES));
 		cube.addAggregation(new AggregationMetadata("advertiser", asList("advertiser"), LogItem.MEASURES));
@@ -124,11 +126,14 @@ public class CubeMeasureRemovalTest {
 	                               AggregationMetadataStorage aggregationMetadataStorage,
 	                               AggregationChunkStorage aggregationChunkStorage,
 	                               AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
-		// "revenue" measure is removed
-		cube.addAggregation(new AggregationMetadata("detailed", LogItem.DIMENSIONS, asList("impressions", "clicks", "conversions")));
-		cube.addAggregation(new AggregationMetadata("date", asList("date"), asList("impressions", "clicks", "conversions")));
-		cube.addAggregation(new AggregationMetadata("advertiser", asList("advertiser"), asList("impressions", "clicks", "conversions")));
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage,
+				aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
+		cube.addAggregation(new AggregationMetadata("detailed", LogItem.DIMENSIONS,
+				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
+		cube.addAggregation(new AggregationMetadata("date", asList("date"),
+				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
+		cube.addAggregation(new AggregationMetadata("advertiser", asList("advertiser"),
+				asList("impressions", "clicks", "conversions", "revenue")));
 		return cube;
 	}
 
@@ -247,6 +252,11 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 		assertFalse(chunks.get(1).getFields().contains("revenue"));
 
+		chunks = newArrayList(cube.getAggregations().get("advertiser").getChunks().values());
+		assertEquals(2, chunks.size());
+		assertTrue(chunks.get(0).getFields().contains("revenue"));
+		assertTrue(chunks.get(1).getFields().contains("revenue"));
+
 
 		// Aggregate manually
 		HashMap<Integer, Long> map = new HashMap<>();
@@ -279,6 +289,10 @@ public class CubeMeasureRemovalTest {
 		chunks = newArrayList(cube.getAggregations().get("date").getChunks().values());
 		assertEquals(1, chunks.size());
 		assertFalse(chunks.get(0).getFields().contains("revenue"));
+
+		chunks = newArrayList(cube.getAggregations().get("advertiser").getChunks().values());
+		assertEquals(1, chunks.size());
+		assertTrue(chunks.get(0).getFields().contains("revenue"));
 
 
 		// Query

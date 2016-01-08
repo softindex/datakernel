@@ -23,16 +23,6 @@ import io.datakernel.serializer.asm.SerializerGen;
  */
 public abstract class FieldType {
 	private final Class<?> dataType;
-	private boolean removed;
-
-	public FieldType setRemoved(boolean removed) {
-		this.removed = removed;
-		return this;
-	}
-
-	public boolean isRemoved() {
-		return removed;
-	}
 
 	@Override
 	public String toString() {

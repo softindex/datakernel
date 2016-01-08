@@ -355,7 +355,7 @@ public class Aggregation {
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
 			for (String field : chunk.getFields()) {
-				if (!fields.contains(field) && !structure.getOutputFieldType(field).isRemoved()) {
+				if (!fields.contains(field) && aggregationMetadata.getOutputFields().contains(field)) {
 					fields.add(field);
 				}
 			}
