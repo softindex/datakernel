@@ -20,29 +20,30 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("unused")
+import static io.datakernel.uikernel.Utils.checkNotNull;
+
 public final class UpdateResponse<K, R extends AbstractRecord<K>> {
 	private final List<R> changes;
-	private final Map<K, Map<String, List<String>>> errors = new HashMap<>();
+	private final Map<K, Map<String, List<String>>> errors;
 
-	public UpdateResponse(List<R> changes) {
-		this.changes = changes;
+	private UpdateResponse(List<R> changes, Map<K, Map<String, List<String>>> errors) {
+		this.changes = checkNotNull(changes, "Changes cannot be null in UpdateResponse");
+		this.errors = checkNotNull(errors, "Errors cannot be null in UpdateResponse");
 	}
 
-	public UpdateResponse(List<R> changes, Map<K, Map<String, List<String>>> errors) {
-		this.changes = changes;
-		this.errors.putAll(errors);
+	public static <K, R extends AbstractRecord<K>> UpdateResponse<K, R> of(List<R> changes) {
+		return new UpdateResponse<>(changes, Collections.<K, Map<String, List<String>>>emptyMap());
 	}
 
-	public void addErrors(Map<K, Map<String, List<String>>> errors) {
-		this.errors.putAll(errors);
+	public static <K, R extends AbstractRecord<K>> UpdateResponse<K, R> of(List<R> changes, Map<K, Map<String, List<String>>> errors) {
+		return new UpdateResponse<>(changes, errors);
 	}
 
-	JsonObject toJson(Gson gson, Class<R> type, Class<K> idType) {
+	String toJson(Gson gson, Class<R> type, Class<K> idType) {
 		JsonObject result = new JsonObject();
 
 		JsonArray change = new JsonArray();
@@ -63,6 +64,6 @@ public final class UpdateResponse<K, R extends AbstractRecord<K>> {
 		}
 		result.add("errors", errs);
 
-		return result;
+		return gson.toJson(result);
 	}
 }

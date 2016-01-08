@@ -17,7 +17,7 @@
 package io.datakernel.uikernel;
 
 public abstract class AbstractRecord<K> {
-	private K id;
+	protected K id;
 
 	public final K getId() {
 		return id;

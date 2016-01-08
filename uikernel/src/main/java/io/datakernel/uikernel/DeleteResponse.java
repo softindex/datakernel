@@ -16,26 +16,47 @@
 
 package io.datakernel.uikernel;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
+import static io.datakernel.uikernel.Utils.checkNotNull;
+
 public final class DeleteResponse {
-	// TODO (arashev): avoid using nulls, use Collections.emptyList instead here and in similar classes
-	private List<String> errors;
+	private static final DeleteResponse OK = new DeleteResponse(Collections.<String>emptyList());
 
-	// TODO (arashev): use properly named static factory methods instead, here and in similar classes. Constructors must be private. There must be helper static methods for single error, multiple errors etc.
-	public DeleteResponse() {
+	private final List<String> errors;
+
+	private DeleteResponse(List<String> errors) {
+		this.errors = checkNotNull(errors, "Errors in DeleteResponse cannot be null;");
 	}
 
-	public DeleteResponse(List<String> errors) {
-		this.errors = errors;
+	public static DeleteResponse ok() {
+		return OK;
 	}
 
-	public boolean hasErrors() {
-		return errors != null && !errors.isEmpty();
+	public static DeleteResponse of(String... errors) {
+		return new DeleteResponse(Arrays.asList(errors));
 	}
 
-	public List<String> getErrors() {
+	public static DeleteResponse of(List<String> errors) {
+		return new DeleteResponse(errors);
+	}
+
+	boolean hasErrors() {
+		return !errors.isEmpty();
+	}
+
+	List<String> getErrors() {
 		return errors;
 	}
 
+	JsonObject toJson(Gson gson) {
+		JsonObject result = new JsonObject();
+		result.add("errors", gson.toJsonTree(errors));
+		return result;
+	}
 }

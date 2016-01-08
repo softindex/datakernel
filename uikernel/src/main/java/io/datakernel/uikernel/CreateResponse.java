@@ -19,31 +19,33 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-@SuppressWarnings("unused")
+import static io.datakernel.uikernel.Utils.checkNotNull;
+
 public final class CreateResponse<K> {
-	private K id;
-	private Map<String, List<String>> errors;
+	private final K id;
+	private final Map<String, List<String>> errors;
 
-	public CreateResponse(K id) {
-		this.id = id;
+	private CreateResponse(K id, Map<String, List<String>> errors) {
+		this.id = checkNotNull(id, "Id cannot be null in CreateResponse");
+		this.errors = checkNotNull(errors, "Errors cannot be null in CreateResponse");
 	}
 
-	public CreateResponse(K id, Map<String, List<String>> errors) {
-		this.id = id;
-		this.errors = errors;
+	public static <K> CreateResponse<K> of(K id) {
+		return new CreateResponse<>(id, Collections.<String, List<String>>emptyMap());
 	}
 
-	public void setErrors(Map<String, List<String>> errors) {
-		this.errors = errors;
+	public static <K> CreateResponse<K> of(K id, Map<String, List<String>> errors) {
+		return new CreateResponse<>(id, errors);
 	}
 
-	JsonObject toJson(Gson gson, Class<K> idType) {
+	String toJson(Gson gson, Class<K> idType) {
 		JsonObject result = new JsonObject();
-		if (id != null) result.add("data", gson.toJsonTree(id, idType));
-		if (errors != null) result.add("errors", gson.toJsonTree(errors));
-		return result;
+		result.add("data", gson.toJsonTree(id, idType));
+		result.add("errors", gson.toJsonTree(errors));
+		return gson.toJson(result);
 	}
 }

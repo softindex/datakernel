@@ -20,36 +20,37 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
+import java.util.Collections;
 import java.util.List;
 
-@SuppressWarnings("unused")
+import static io.datakernel.uikernel.Utils.checkNotNull;
+
 public final class ReadResponse<K, R extends AbstractRecord<K>> {
 	private final List<R> records;
 	private final int count;
 	private List<R> extra;
 	private R totals;
 
-	public ReadResponse(List<R> records, int count) {
-		this(records, count, null, null);
-	}
-
-	public ReadResponse(List<R> records, int count, List<R> extra, R totals) {
-		// TODO (arashev): add preconditions and null checks, here and in other similar classes
-		this.records = records;
+	private ReadResponse(List<R> records, int count, List<R> extra, R totals) {
+		this.records = checkNotNull(records, "Records cannot be null in ReadResponse");
 		this.count = count;
-		this.extra = extra;
+		this.extra = checkNotNull(extra, "Extras cannot be null in ReadResponse");
 		this.totals = totals;
 	}
 
-	public void setExtra(List<R> extra) {
-		this.extra = extra;
+	public static <K, R extends AbstractRecord<K>> ReadResponse<K, R> of(List<R> records, int count) {
+		return new ReadResponse<>(records, count, Collections.<R>emptyList(), null);
 	}
 
-	public void setTotals(R totals) {
-		this.totals = totals;
+	public static <K, R extends AbstractRecord<K>> ReadResponse<K, R> of(List<R> records, int count, List<R> extra) {
+		return new ReadResponse<>(records, count, extra, null);
 	}
 
-	JsonObject toJson(Gson gson, Class<R> type, Class<K> idType) {
+	public static <K, R extends AbstractRecord<K>> ReadResponse<K, R> of(List<R> records, int count, List<R> extra, R totals) {
+		return new ReadResponse<>(records, count, extra, totals);
+	}
+
+	String toJson(Gson gson, Class<R> type, Class<K> idType) {
 		JsonObject result = new JsonObject();
 
 		JsonArray recs = new JsonArray();
@@ -61,22 +62,20 @@ public final class ReadResponse<K, R extends AbstractRecord<K>> {
 		}
 		result.add("records", recs);
 
-		if (extra != null) {
-			JsonArray extras = new JsonArray();
-			for (R record : extra) {
-				JsonArray arr = new JsonArray();
-				arr.add(gson.toJsonTree(record.getId(), idType));
-				arr.add(gson.toJsonTree(record, type));
-				extras.add(arr);
-			}
-			result.add("extra", extras);
+		JsonArray extras = new JsonArray();
+		for (R record : extra) {
+			JsonArray arr = new JsonArray();
+			arr.add(gson.toJsonTree(record.getId(), idType));
+			arr.add(gson.toJsonTree(record, type));
+			extras.add(arr);
 		}
+		result.add("extra", extras);
 
 		if (totals != null) {
 			result.add("total", gson.toJsonTree(totals, type));
 		}
 
 		result.add("count", gson.toJsonTree(count));
-		return result;
+		return gson.toJson(result);
 	}
 }
