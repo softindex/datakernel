@@ -16,7 +16,6 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.time.CurrentTimeProvider;
 import org.junit.Test;
 
 import java.util.Random;

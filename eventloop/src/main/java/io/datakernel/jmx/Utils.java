@@ -45,19 +45,29 @@ public class Utils {
 
 	public static SortedMap<String, JmxStats<?>> fetchNameToJmxStats(Object objectWithJmxStats) {
 		SortedMap<String, JmxStats<?>> attributeToJmxStats = new TreeMap<>();
+		SortedMap<String, Method> attributeToGetter = fetchNameToJmxStatsGetter(objectWithJmxStats);
+		for (String attrName : attributeToGetter.keySet()) {
+			Method getter = attributeToGetter.get(attrName);
+			JmxStats<?> currentJmxStats;
+			try {
+				currentJmxStats = (JmxStats<?>) getter.invoke(objectWithJmxStats);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				throw new RuntimeException(e);
+			}
+			attributeToJmxStats.put(attrName, currentJmxStats);
+		}
+		return attributeToJmxStats;
+	}
+
+	public static SortedMap<String, Method> fetchNameToJmxStatsGetter(Object objectWithJmxStats) {
+		SortedMap<String, Method> attributeToJmxStatsGetter = new TreeMap<>();
 		Method[] methods = objectWithJmxStats.getClass().getMethods();
 		for (Method method : methods) {
 			if (isGetterOfJmxStats(method)) {
 				String currentJmxStatsName = extractFieldNameFromGetter(method);
-				JmxStats<?> currentJmxStats;
-				try {
-					currentJmxStats = (JmxStats<?>) method.invoke(objectWithJmxStats);
-				} catch (IllegalAccessException | InvocationTargetException e) {
-					throw new RuntimeException(e);
-				}
-				attributeToJmxStats.put(currentJmxStatsName, currentJmxStats);
+				attributeToJmxStatsGetter.put(currentJmxStatsName, method);
 			}
 		}
-		return attributeToJmxStats;
+		return attributeToJmxStatsGetter;
 	}
 }

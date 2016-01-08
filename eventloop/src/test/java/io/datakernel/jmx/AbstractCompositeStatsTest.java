@@ -22,7 +22,6 @@ import org.junit.Test;
 import javax.management.openmbean.SimpleType;
 import java.util.Iterator;
 import java.util.SortedMap;
-import java.util.TreeMap;
 
 import static org.junit.Assert.assertEquals;
 
