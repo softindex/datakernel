@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice;
+package io.datakernel.boot;
 
 import com.google.inject.BindingAnnotation;
 

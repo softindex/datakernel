@@ -17,11 +17,7 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
-import io.datakernel.guice.boot.AsyncServiceAdapters;
-import io.datakernel.guice.boot.BootModule;
-import io.datakernel.service.AsyncService;
-import io.datakernel.service.AsyncServiceCallback;
-import io.datakernel.service.ServiceGraph;
+import io.datakernel.boot.*;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;

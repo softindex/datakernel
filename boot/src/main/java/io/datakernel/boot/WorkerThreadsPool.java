@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.boot;
 
-public interface AsyncServiceCallback {
+import com.google.inject.Provider;
 
-	void onComplete();
+import java.util.List;
 
-	void onException(Exception exception);
+public interface WorkerThreadsPool {
+	<T> List<T> getPoolInstances(int workerThreadsCount, Provider<T> workerThreadInstanceProvider);
 }

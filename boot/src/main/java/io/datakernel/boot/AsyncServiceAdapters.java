@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.boot;
+package io.datakernel.boot;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.service.AsyncService;
-import io.datakernel.service.AsyncServiceCallback;
-import io.datakernel.service.Service;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;

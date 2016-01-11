@@ -17,11 +17,8 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
+import io.datakernel.boot.*;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.guice.boot.AsyncServiceAdapter;
-import io.datakernel.guice.boot.BootModule;
-import io.datakernel.service.AsyncService;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.TestServices;
 import org.junit.Before;
 import org.junit.Test;

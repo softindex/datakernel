@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.boot;
+package io.datakernel.boot;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
@@ -29,13 +29,6 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
-import io.datakernel.guice.WorkerId;
-import io.datakernel.guice.WorkerThread;
-import io.datakernel.guice.WorkerThreadsPool;
-import io.datakernel.service.AsyncService;
-import io.datakernel.service.AsyncServiceCallback;
-import io.datakernel.service.Service;
-import io.datakernel.service.ServiceGraph;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;

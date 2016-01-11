@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.boot;
 
 /**
- * It is service which blocks thread during operations start and stop.
+ * Service which starts and stops asynchronously and does not block thread while start/stop methods are running.
  */
-public interface Service {
-	void start() throws Exception;
+public interface AsyncService {
+	void start(AsyncServiceCallback callback);
 
-	void stop() throws Exception;
+	void stop(AsyncServiceCallback callback);
 
-	boolean isRunning();
 }
+

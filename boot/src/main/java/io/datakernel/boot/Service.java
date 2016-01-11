@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice;
+package io.datakernel.boot;
 
-import com.google.inject.Provider;
+/**
+ * It is service which blocks thread during operations start and stop.
+ */
+public interface Service {
+	void start() throws Exception;
 
-import java.util.List;
+	void stop() throws Exception;
 
-public interface WorkerThreadsPool {
-	<T> List<T> getPoolInstances(int workerThreadsCount, Provider<T> workerThreadInstanceProvider);
+	boolean isRunning();
 }

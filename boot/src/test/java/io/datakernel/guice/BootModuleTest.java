@@ -19,10 +19,10 @@ package io.datakernel.guice;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.guice.boot.AsyncServiceAdapter;
-import io.datakernel.guice.boot.BootModule;
-import io.datakernel.service.AsyncService;
-import io.datakernel.service.ServiceGraph;
+import io.datakernel.boot.AsyncService;
+import io.datakernel.boot.AsyncServiceAdapter;
+import io.datakernel.boot.BootModule;
+import io.datakernel.boot.ServiceGraph;
 import io.datakernel.service.TestServices;
 import org.junit.Test;
 

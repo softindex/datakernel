@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice.boot;
-
-import io.datakernel.service.AsyncService;
+package io.datakernel.boot;
 
 import java.util.concurrent.Executor;
 

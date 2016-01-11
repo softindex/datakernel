@@ -16,6 +16,9 @@
 
 package io.datakernel.service;
 
+import io.datakernel.boot.AsyncService;
+import io.datakernel.boot.AsyncServiceCallback;
+
 public final class TestServices {
 	private TestServices() {
 	}
