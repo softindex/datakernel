@@ -32,7 +32,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-public class JmxWrapperTest {
+public class DynamicMBeanFactoryTest {
 	private static final String GROUPED_STATS_COUNTER_ONE_COUNT = "groupedStats_counterOne_count";
 	private static final String GROUPED_STATS_COUNTER_ONE_SUM = "groupedStats_counterOne_sum";
 	private static final String GROUPED_STATS_COUNTER_TWO_COUNT = "groupedStats_counterTwo_count";
@@ -54,11 +54,11 @@ public class JmxWrapperTest {
 			ALL_ATTRIBUTE_NAMES_LIST.toArray(new String[ALL_ATTRIBUTE_NAMES_LIST.size()]);
 
 	@Test
-	public void itShouldCollectAllJmxStatsFromMonitorableAndWriteThemToMBeanInfo() {
+	public void itShouldCollectAllJmxStatsFromMonitorableAndWriteThemToMBeanInfo() throws Exception {
 		MonitorableStub monitorable = new MonitorableStub();
-		JmxWrapper wrapper = JmxWrapper.wrap(monitorable);
+		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
 
-		MBeanInfo mBeanInfo = wrapper.getMBeanInfo();
+		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanAttributeInfo[] mBeanAttributeInfos = mBeanInfo.getAttributes();
 		List<String> attributeNames = new ArrayList<>();
 		for (MBeanAttributeInfo mBeanAttributeInfo : mBeanAttributeInfos) {
@@ -71,20 +71,20 @@ public class JmxWrapperTest {
 	}
 
 	@Test
-	public void itShouldFetchSingleAttributeValueCorrectly() throws MBeanException, AttributeNotFoundException, ReflectionException {
+	public void itShouldFetchSingleAttributeValueCorrectly() throws Exception {
 		MonitorableStub monitorable = new MonitorableStub();
 		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
 		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
 		monitorable.getSimpleStats().recordValue(51L);
-		JmxWrapper wrapper = JmxWrapper.wrap(monitorable);
+		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
 
 		// check init values of attributes
-		assertEquals(1, (int) wrapper.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
-		assertEquals(23L, (long) wrapper.getAttribute(GROUPED_STATS_COUNTER_ONE_SUM));
-		assertEquals(1, (int) wrapper.getAttribute(GROUPED_STATS_COUNTER_TWO_COUNT));
-		assertEquals(35L, (long) wrapper.getAttribute(GROUPED_STATS_COUNTER_TWO_SUM));
-		assertEquals(1, (int) wrapper.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(51L, (long) wrapper.getAttribute(SIMPLE_STATS_SUM));
+		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
+		assertEquals(23L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_SUM));
+		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_COUNT));
+		assertEquals(35L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_SUM));
+		assertEquals(1, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
+		assertEquals(51L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
 
 		// modify monitorable object
 		monitorable.getGroupedStats().getCounterOne().recordValue(102L);
@@ -92,31 +92,31 @@ public class JmxWrapperTest {
 		monitorable.getSimpleStats().recordValue(207L);
 
 		// check modified values of attributes
-		assertEquals(2, (int) wrapper.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
-		assertEquals(23L + 102L, (long) wrapper.getAttribute(GROUPED_STATS_COUNTER_ONE_SUM));
-		assertEquals(1, (int) wrapper.getAttribute(GROUPED_STATS_COUNTER_TWO_COUNT));
-		assertEquals(35L, (long) wrapper.getAttribute(GROUPED_STATS_COUNTER_TWO_SUM));
-		assertEquals(2, (int) wrapper.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(51L + 207L, (long) wrapper.getAttribute(SIMPLE_STATS_SUM));
+		assertEquals(2, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
+		assertEquals(23L + 102L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_SUM));
+		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_COUNT));
+		assertEquals(35L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_SUM));
+		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
+		assertEquals(51L + 207L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
 	}
 
 	@Test
-	public void itShouldFetchBunchOfAttributeValuesCorrectly() {
+	public void itShouldFetchBunchOfAttributeValuesCorrectly() throws Exception {
 		MonitorableStub monitorable = new MonitorableStub();
 		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
 		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
 		monitorable.getSimpleStats().recordValue(51L);
-		JmxWrapper wrapper = JmxWrapper.wrap(monitorable);
+		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
 
 		// check fetching all attributes
 		AttributeList expectedAttributeList =
 				createAttributeList(ALL_ATTRIBUTE_NAMES_ARRAY, new Object[]{1, 23L, 1, 35L, 1, 51L});
-		assertEquals(expectedAttributeList, wrapper.getAttributes(ALL_ATTRIBUTE_NAMES_ARRAY));
+		assertEquals(expectedAttributeList, mbean.getAttributes(ALL_ATTRIBUTE_NAMES_ARRAY));
 
 		// check fetching subset of attributes
 		String[] subsetOfNames = new String[]{SIMPLE_STATS_SUM, SIMPLE_STATS_COUNT, GROUPED_STATS_COUNTER_ONE_SUM};
 		expectedAttributeList = createAttributeList(subsetOfNames, new Object[]{51L, 1, 23L});
-		assertEquals(expectedAttributeList, wrapper.getAttributes(subsetOfNames));
+		assertEquals(expectedAttributeList, mbean.getAttributes(subsetOfNames));
 
 		// modify monitorable object
 		monitorable.getGroupedStats().getCounterOne().recordValue(102L);
@@ -126,19 +126,19 @@ public class JmxWrapperTest {
 		// check fetching all attributes after modification
 		expectedAttributeList =
 				createAttributeList(ALL_ATTRIBUTE_NAMES_ARRAY, new Object[]{2, 23L + 102L, 1, 35L, 2, 51L + 207L});
-		assertEquals(expectedAttributeList, wrapper.getAttributes(ALL_ATTRIBUTE_NAMES_ARRAY));
+		assertEquals(expectedAttributeList, mbean.getAttributes(ALL_ATTRIBUTE_NAMES_ARRAY));
 
 		// check fetching subset of attributes after modification
 		expectedAttributeList = createAttributeList(subsetOfNames, new Object[]{51L + 207L, 2, 23L + 102L});
-		assertEquals(expectedAttributeList, wrapper.getAttributes(subsetOfNames));
+		assertEquals(expectedAttributeList, mbean.getAttributes(subsetOfNames));
 	}
 
 	@Test
-	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() {
+	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		JmxWrapper wrapper = JmxWrapper.wrap(monitorable);
+		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
 
-		MBeanInfo mBeanInfo = wrapper.getMBeanInfo();
+		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanOperationInfo[] operations = mBeanInfo.getOperations();
 		Map<String, MBeanOperationInfo> nameToOperation = new HashMap<>();
 		for (MBeanOperationInfo operation : operations) {
@@ -165,17 +165,17 @@ public class JmxWrapperTest {
 	}
 
 	@Test
-	public void itShouldInvokeAnnotanedOperationsThroughDynamicMBeanInterface() throws ReflectionException, MBeanException {
+	public void itShouldInvokeAnnotanedOperationsThroughDynamicMBeanInterface() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		JmxWrapper wrapper = JmxWrapper.wrap(monitorable);
+		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
 
-		wrapper.invoke("increment", null, null);
-		wrapper.invoke("increment", null, null);
+		mbean.invoke("increment", null, null);
+		mbean.invoke("increment", null, null);
 
-		wrapper.invoke("addInfo", new Object[]{"data1"}, new String[]{String.class.getName()});
-		wrapper.invoke("addInfo", new Object[]{"data2"}, new String[]{String.class.getName()});
+		mbean.invoke("addInfo", new Object[]{"data1"}, new String[]{String.class.getName()});
+		mbean.invoke("addInfo", new Object[]{"data2"}, new String[]{String.class.getName()});
 
-		wrapper.invoke("multiplyAndAdd", new Object[]{120, 150}, new String[]{"long", "long"});
+		mbean.invoke("multiplyAndAdd", new Object[]{120, 150}, new String[]{"long", "long"});
 
 		assertEquals(monitorable.getCount(), 2);
 		assertEquals(monitorable.getInfo(), "data1data2");
@@ -183,6 +183,58 @@ public class JmxWrapperTest {
 	}
 
 	// TODO(vmykhalko): add test for methods with same names but different signatures
+
+	@Test
+	public void itShouldAccumulateJmxStatsValuesFromSeveralMonitorable() throws Exception {
+		MonitorableStub monitorable_1 = new MonitorableStub();
+		MonitorableStub monitorable_2 = new MonitorableStub();
+		monitorable_1.getSimpleStats().recordValue(23L);
+		monitorable_2.getSimpleStats().recordValue(78L);
+
+		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable_1, monitorable_2);
+
+		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
+		assertEquals(23L + 78L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
+
+		monitorable_1.getSimpleStats().recordValue(198L);
+		monitorable_2.getSimpleStats().recordValue(201L);
+		monitorable_2.getSimpleStats().recordValue(352L);
+
+		assertEquals(5, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
+		assertEquals(23L + 78L + 198L + 201L + 352L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
+	}
+
+	@Test
+	public void itShouldBroadcastOperationCallToAllMonitorables() throws Exception {
+		MonitorableStubWithOperations monitorable_1 = new MonitorableStubWithOperations();
+		MonitorableStubWithOperations monitorable_2 = new MonitorableStubWithOperations();
+		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable_1, monitorable_2);
+
+		// set manually init value for second monitorable to be different from first
+		monitorable_2.inc();
+		monitorable_2.inc();
+		monitorable_2.inc();
+		monitorable_2.addInfo("second");
+		monitorable_2.multiplyAndAdd(10, 15);
+
+		mbean.invoke("increment", null, null);
+		mbean.invoke("increment", null, null);
+
+		mbean.invoke("addInfo", new Object[]{"data1"}, new String[]{String.class.getName()});
+		mbean.invoke("addInfo", new Object[]{"data2"}, new String[]{String.class.getName()});
+
+		mbean.invoke("multiplyAndAdd", new Object[]{120, 150}, new String[]{"long", "long"});
+
+		// check first monitorable
+		assertEquals(monitorable_1.getCount(), 2);
+		assertEquals(monitorable_1.getInfo(), "data1data2");
+		assertEquals(monitorable_1.getSum(), 120 * 150);
+
+		// check second monitorable
+		assertEquals(monitorable_2.getCount(), 2 + 3);
+		assertEquals(monitorable_2.getInfo(), "second" + "data1data2");
+		assertEquals(monitorable_2.getSum(), 10 * 15 + 120 * 150);
+	}
 
 	// helpers
 	public static AttributeList createAttributeList(String[] names, Object[] values) {
@@ -194,11 +246,6 @@ public class JmxWrapperTest {
 		}
 		return attrList;
 	}
-
-//	@Test
-//	public void test() {
-//		System.out.println(SimpleType.INTEGER.getTypeName());
-//	}
 
 	public static class MonitorableStub implements JmxMonitorable {
 		CompositeStatsStub groupedStats = new CompositeStatsStub();
