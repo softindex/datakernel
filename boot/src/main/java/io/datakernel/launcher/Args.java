@@ -14,8 +14,18 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice;
+package io.datakernel.launcher;
 
-public interface ShutdownNotificationMBean {
-	void requestShutdown();
+import com.google.inject.BindingAnnotation;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.FIELD, ElementType.PARAMETER})
+@BindingAnnotation
+public @interface Args {
+
 }

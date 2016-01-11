@@ -18,9 +18,7 @@ package io.datakernel.launcher;
 
 import com.google.inject.*;
 import io.datakernel.config.Config;
-import io.datakernel.guice.Args;
-import io.datakernel.guice.ConfigModule;
-import io.datakernel.guice.ShutdownNotification;
+import io.datakernel.config.ConfigModule;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.FileLocker;
 import org.slf4j.Logger;
@@ -210,13 +208,13 @@ public abstract class Launcher {
 	}
 
 	protected void doStart() throws Exception {
-		serviceGraph.start();
+		serviceGraph.startFuture().get();
 	}
 
 	abstract protected void doRun() throws Exception;
 
 	protected void doStop() throws Exception {
-		serviceGraph.stop();
+		serviceGraph.stopFuture().get();
 	}
 
 	protected final void awaitShutdown() throws InterruptedException {

@@ -21,8 +21,8 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.guice.boot.AsyncServiceAdapter;
 import io.datakernel.guice.boot.BootModule;
 import io.datakernel.service.AsyncService;
-import io.datakernel.service.AsyncServices;
 import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.TestServices;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -57,25 +57,25 @@ public class WorkerThreadNameTest {
 					.register(Element4.class, new AsyncServiceAdapter<Element4>() {
 						@Override
 						public AsyncService toService(Element4 node, Executor executor) {
-							return AsyncServices.immediateService();
+							return TestServices.immediateService();
 						}
 					})
 					.register(Element1.class, new AsyncServiceAdapter<Element1>() {
 						@Override
 						public AsyncService toService(Element1 node, Executor executor) {
-							return AsyncServices.immediateService();
+							return TestServices.immediateService();
 						}
 					})
 					.register(Element2.class, new AsyncServiceAdapter<Element2>() {
 						@Override
 						public AsyncService toService(Element2 node, Executor executor) {
-							return AsyncServices.immediateService();
+							return TestServices.immediateService();
 						}
 					})
 					.register(Element3.class, new AsyncServiceAdapter<Element3>() {
 						@Override
 						public AsyncService toService(Element3 node, Executor executor) {
-							return AsyncServices.immediateService();
+							return TestServices.immediateService();
 						}
 					}));
 		}
@@ -129,11 +129,9 @@ public class WorkerThreadNameTest {
 		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try {
-			serviceGraph.start();
-		} catch (Exception e) {
-			e.printStackTrace();
+			serviceGraph.startFuture().get();
 		} finally {
-			serviceGraph.stop();
+			serviceGraph.stopFuture().get();
 		}
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

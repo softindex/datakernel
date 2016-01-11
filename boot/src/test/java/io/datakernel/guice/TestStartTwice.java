@@ -78,11 +78,9 @@ public class TestStartTwice {
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 
 		try {
-			serviceGraph.start();
-		} catch (Exception e) {
-			e.printStackTrace();
+			serviceGraph.startFuture().get();
 		} finally {
-			serviceGraph.stop();
+			serviceGraph.stopFuture().get();
 		}
 
 		assertEquals(countStart.get(), 1);

@@ -14,11 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.launcher;
 
-public interface FunctionCallback<F> {
-	void apply(F input, AsyncServiceCallback callback);
-
-	@Override
-	boolean equals(Object object);
+public interface ShutdownNotificationMBean {
+	void requestShutdown();
 }

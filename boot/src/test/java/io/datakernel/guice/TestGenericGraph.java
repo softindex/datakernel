@@ -20,8 +20,8 @@ import com.google.inject.*;
 import io.datakernel.guice.boot.AsyncServiceAdapter;
 import io.datakernel.guice.boot.BootModule;
 import io.datakernel.service.AsyncService;
-import io.datakernel.service.AsyncServices;
 import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.TestServices;
 import org.junit.Test;
 
 import java.util.List;
@@ -50,7 +50,7 @@ public class TestGenericGraph {
 					.register(Pojo.class, new AsyncServiceAdapter<Pojo>() {
 						@Override
 						public AsyncService toService(Pojo node, Executor executor) {
-							return AsyncServices.immediateService();
+							return TestServices.immediateService();
 						}
 					}));
 		}
@@ -85,13 +85,11 @@ public class TestGenericGraph {
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 
 		try {
-			serviceGraph.start();
-		} catch (Exception e) {
-			e.printStackTrace();
+			serviceGraph.startFuture().get();
 		} finally {
 			Integer integer = injector.getInstance(Key.get(new TypeLiteral<Pojo<Integer>>() {})).getObject();
 			assertEquals(integer.intValue(), 579);
-			serviceGraph.stop();
+			serviceGraph.stopFuture().get();
 		}
 	}
 }

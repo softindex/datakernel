@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice;
+package io.datakernel.config;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.name.Names;
-import io.datakernel.config.Config;
 
 import java.io.File;
 import java.lang.annotation.Annotation;

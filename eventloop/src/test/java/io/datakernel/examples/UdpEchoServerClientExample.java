@@ -87,25 +87,20 @@ public class UdpEchoServerClientExample {
 	}
 
 	/* Run server and client in an event loop. */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		NioEventloop eventloop = new NioEventloop();
 
-		try {
-			// server
-			DatagramChannel serverChannel = createDatagramChannel(defaultDatagramSocketSettings(),
-					SERVER_ADDRESS, null);
-			EchoServerUdpConnection serverConnection = new EchoServerUdpConnection(eventloop, serverChannel);
-			serverConnection.register();
+		DatagramChannel serverChannel = createDatagramChannel(defaultDatagramSocketSettings(),
+				SERVER_ADDRESS, null);
+		EchoServerUdpConnection serverConnection = new EchoServerUdpConnection(eventloop, serverChannel);
+		serverConnection.register();
 
-			// client
-			DatagramChannel clientChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
-			ClientUdpConnection clientConnection = new ClientUdpConnection(eventloop, clientChannel);
-			clientConnection.register();
+		// client
+		DatagramChannel clientChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
+		ClientUdpConnection clientConnection = new ClientUdpConnection(eventloop, clientChannel);
+		clientConnection.register();
 
-			clientConnection.send(new UdpPacket(ByteBuf.wrap(bytesToSend), SERVER_ADDRESS));
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		clientConnection.send(new UdpPacket(ByteBuf.wrap(bytesToSend), SERVER_ADDRESS));
 
 		eventloop.run();
 	}

@@ -18,11 +18,14 @@ package io.datakernel.guice.boot;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.*;
 import com.google.inject.internal.MoreTypes;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.Dependency;
 import com.google.inject.spi.HasDependencies;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
@@ -30,7 +33,7 @@ import io.datakernel.guice.WorkerId;
 import io.datakernel.guice.WorkerThread;
 import io.datakernel.guice.WorkerThreadsPool;
 import io.datakernel.service.AsyncService;
-import io.datakernel.service.AsyncServices;
+import io.datakernel.service.AsyncServiceCallback;
 import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraph;
 import org.slf4j.Logger;
@@ -38,12 +41,12 @@ import org.slf4j.Logger;
 import javax.sql.DataSource;
 import java.io.Closeable;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.*;
 import static com.google.common.collect.Sets.*;
 import static org.slf4j.LoggerFactory.getLogger;
 
@@ -56,14 +59,14 @@ public final class BootModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
-	private final IdentityHashMap<Object, AsyncService> workerThreadServices = new IdentityHashMap<>();
-	private final Map<Key<?>, AsyncService> singletonServices = new HashMap<>();
+	private final IdentityHashMap<Object, CountingServiceAdapter> services = new IdentityHashMap<>();
+//	private final Map<Key<?>, AsyncService> singletonServices = new HashMap<>();
 
 	private final Executor executor;
 
-	private List<Map<Key<?>, Object>> pool;
-	private Map<Key<?>, List<BootModule.KeyInPool>> mapKeys;
-	private int currentPool = -1;
+	private Map<Key<?>, Object>[] pool;
+	@Nullable
+	private Integer currentPoolId;
 
 	private BootModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
@@ -87,6 +90,53 @@ public final class BootModule extends AbstractModule {
 
 	public static BootModule instanceWithoutAdapters() {
 		return new BootModule();
+	}
+
+	private static boolean isSingleton(Binding<?> binding) {
+		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
+			public Boolean visitNoScoping() {
+				return false;
+			}
+
+			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
+				return visitedAnnotation.equals(Singleton.class);
+			}
+
+			public Boolean visitScope(Scope visitedScope) {
+				return visitedScope.equals(Scopes.SINGLETON);
+			}
+
+			public Boolean visitEagerSingleton() {
+				return true;
+			}
+		});
+	}
+
+	private static String prettyPrintAnnotation(Annotation annotation) {
+		StringBuilder sb = new StringBuilder();
+		Method[] methods = annotation.annotationType().getDeclaredMethods();
+		boolean first = true;
+		if (methods.length != 0) {
+			for (Method m : methods) {
+				try {
+					Object value = m.invoke(annotation);
+					String attribute = (value instanceof String ? "\"" + value + "\"" : value.toString());
+					String methodName = m.getName();
+					if ("value".equals(methodName) && first) {
+						if ((value instanceof String) && !((String) value).isEmpty()) {
+							sb.append((first ? "" : ",") + attribute);
+							first = false;
+						}
+					} else {
+						sb.append((first ? "" : ",") + methodName + "=" + attribute);
+						first = false;
+					}
+				} catch (Exception ignored) {
+				}
+			}
+		}
+		String simpleName = annotation.annotationType().getSimpleName();
+		return "@" + ("NamedImpl".equals(simpleName) ? "Named" : simpleName) + (first ? "" : "(" + sb.toString() + ")");
 	}
 
 	/**
@@ -139,214 +189,108 @@ public final class BootModule extends AbstractModule {
 		return this;
 	}
 
-	private interface AddDependence {
-		void add(Key<?> dependencyKey);
-	}
-
-	private void processDependencies(ServiceGraph.Node serviceNode, Key<?> key, Injector injector, ServiceGraph graph,
-	                                 AddDependence addDependence) {
-		Binding<?> binding = injector.getBinding(key);
-		if (binding instanceof HasDependencies) {
-			Set<Key<?>> dependenciesForKey = new HashSet<>();
-			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
-			Set<Key<?>> removedDependenciesForKey = newHashSet(removedDependencies.get(key));
-			for (Dependency<?> dependency : dependencies) {
-				Key<?> dependencyKey = dependency.getKey();
-				dependenciesForKey.add(dependencyKey);
-				if (removedDependenciesForKey.contains(dependencyKey)) {
-					removedDependenciesForKey.remove(dependencyKey);
-					continue;
-				}
-
-				addDependence.add(dependencyKey);
-
-				ServiceGraph.Node dependencyNode = nodeFromService(dependencyKey, injector);
-				graph.add(serviceNode, dependencyNode);
-
-				if (!removedDependenciesForKey.isEmpty()) {
-					logger.warn("Unused removed dependencies for {} : {}", key, removedDependenciesForKey);
-				}
-			}
-			if (!intersection(dependenciesForKey, addedDependencies.get(key)).isEmpty()) {
-				logger.warn("Duplicate added dependencies for {} : {}", key, intersection(dependenciesForKey, addedDependencies.get(key)));
-			}
-
-			for (Key<?> dependencyKey : difference(addedDependencies.get(key), dependenciesForKey)) {
-				ServiceGraph.Node dependencyNode = nodeFromService(dependencyKey, injector);
-				graph.add(serviceNode, dependencyNode);
-			}
-		}
-	}
-
 	@SuppressWarnings("unchecked")
-	private AsyncService getServiceFromNioScopeInstanceOrNull(Key<?> key, Object instance) {
+	private ServiceGraph.Service getServiceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
-		AsyncService asyncService = workerThreadServices.get(instance);
-		if (asyncService != null) {
-			return asyncService;
+		CountingServiceAdapter service = services.get(instance);
+		if (service != null) {
+			return service;
 		}
-		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
-		if (factoryForKey != null) {
-			asyncService = ((AsyncServiceAdapter<Object>) factoryForKey).toService(instance, executor);
-			workerThreadServices.put(instance, asyncService);
-			return asyncService;
-		}
-		Class<?> foundType = null;
-		for (Class<?> type : factoryMap.keySet()) {
-			if (type.isAssignableFrom(instance.getClass())) {
-				foundType = type;
-			}
-		}
-		if (foundType == null)
-			return null;
-		AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(foundType);
-		asyncService = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
-		checkNotNull(asyncService);
-		workerThreadServices.put(instance, asyncService);
-		return asyncService;
-	}
-
-	private ServiceGraph.Node nodeFromNioScope(KeyInPool keyInPool, Object instance) {
-		return new ServiceGraph.Node(keyInPool, getServiceFromNioScopeInstanceOrNull(keyInPool.key, instance));
-	}
-
-	private ServiceGraph.Node nodeFromNioScope(Key<?> key, int poolIndex, Object instance) {
-		return nodeFromNioScope(new KeyInPool(key, poolIndex), instance);
-	}
-
-	private boolean isSingleton(Binding<?> binding) {
-		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
-			public Boolean visitNoScoping() {
-				return false;
-			}
-
-			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
-				return visitedAnnotation.equals(Singleton.class);
-			}
-
-			public Boolean visitScope(Scope visitedScope) {
-				return visitedScope.equals(Scopes.SINGLETON);
-			}
-
-			public Boolean visitEagerSingleton() {
-				return true;
-			}
-		});
-	}
-
-	@SuppressWarnings("unchecked")
-	private AsyncService getServiceOrNull(Key<?> key, Injector injector) {
-		if (singletonServices.containsKey(key)) {
-			return singletonServices.get(key);
-		}
-		Binding<?> binding = injector.getBinding(key);
-
-		if (!isSingleton(binding)) return null;
-
-		Object object = injector.getInstance(key);
-
-		AsyncServiceAdapter<?> factoryForKey = keys.get(key);
-		if (factoryForKey != null) {
-			checkNotNull(object, "SingletonService object is not instantiated for " + key);
-			AsyncService service = ((AsyncServiceAdapter<Object>) factoryForKey).toService(object, executor);
-			singletonServices.put(key, service);
-			return checkNotNull(service);
-		}
-		if (object == null)
-			return null;
-		for (Class<?> type : factoryMap.keySet()) {
-			if (type.isAssignableFrom(object.getClass())) {
-				AsyncServiceAdapter<?> asyncServiceAdapter = factoryMap.get(type);
-				AsyncService service = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(object, executor);
-				singletonServices.put(key, service);
-				return checkNotNull(service);
-			}
-		}
-		if (binding instanceof HasDependencies) {
-			Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
-			for (Dependency<?> dependency : dependencies) {
-				if (dependency.getKey().equals(Key.get(WorkerThreadsPool.class))) {
-					AsyncService asyncService = AsyncServices.immediateService();
-					singletonServices.put(key, asyncService);
-					return asyncService;
+		AsyncServiceAdapter<?> asyncServiceAdapter = keys.get(key);
+		if (asyncServiceAdapter == null) {
+			Class<?> foundType = null;
+			for (Class<?> type : factoryMap.keySet()) {
+				if (type.isAssignableFrom(instance.getClass())) {
+					foundType = type;
 				}
 			}
+			if (foundType != null) {
+				asyncServiceAdapter = factoryMap.get(foundType);
+			}
+		}
+		if (asyncServiceAdapter != null) {
+			AsyncService asyncService = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
+			service = new CountingServiceAdapter(asyncService);
+			services.put(instance, service);
+			return service;
 		}
 		return null;
 	}
 
-	private ServiceGraph.Node nodeFromService(Key<?> key, Injector injector) {
-		return new ServiceGraph.Node(key, getServiceOrNull(key, injector));
-	}
-
-	private void createGuiceGraph(final Injector injector, final NioWorkerScope nioNioWorkerScope, final ServiceGraph graph) {
+	private void createGuiceGraph(final Injector injector, final ServiceGraph graph) {
 		if (!difference(keys.keySet(), injector.getAllBindings().keySet()).isEmpty()) {
 			logger.warn("Unused keys : {}", keys.keySet());
 		}
 
-		for (final Key<?> key : injector.getAllBindings().keySet()) {
-			final ServiceGraph.Node serviceNode = nodeFromService(key, injector);
-
-			graph.add(serviceNode);
-			processDependencies(serviceNode, key, injector, graph, new AddDependence() {
-				@Override
-				public void add(Key<?> dependencyKey) {
-					final List<Map<Key<?>, Object>> pool = nioNioWorkerScope.getPool();
-					final Map<Key<?>, List<KeyInPool>> mapKeys = nioNioWorkerScope.getMapKeys();
-
-					if (dependencyKey.equals(Key.get(WorkerThreadsPool.class))) {
-						Set<Dependency<?>> dependencies = ((HasDependencies) injector.getBinding(key)).getDependencies();
-						for (Dependency<?> dependency : dependencies) {
-							Key<?> dependencyForKey = dependency.getKey();
-
-							if (dependencyForKey.getAnnotationType() != null
-									&& dependencyForKey.getTypeLiteral().getRawType().equals(Provider.class)
-									&& dependencyForKey.getAnnotationType().equals(WorkerThread.class)) {
-
-								Type actualType = ((MoreTypes.ParameterizedTypeImpl)
-										dependencyForKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
-
-								if (!mapKeys.containsKey(Key.get(actualType, dependencyForKey.getAnnotation()))) {
-									logger.warn("Not found "
-											+ Key.get(actualType, dependencyForKey.getAnnotation())
-											+ " in nio worker pool");
-									continue;
-								}
-								for (KeyInPool actualKeyInPool : mapKeys.get(Key.get(actualType, dependencyForKey.getAnnotation()))) {
-									ServiceGraph.Node dependencyNode = nodeFromNioScope(actualKeyInPool,
-											pool.get(actualKeyInPool.index).get(actualKeyInPool.key));
-									graph.add(serviceNode, dependencyNode);
-								}
-							}
-						}
-					}
-				}
-			});
+		for (final Binding<?> binding : injector.getAllBindings().values()) {
+			if (!isSingleton(binding) || binding.getKey().getTypeLiteral().getRawType() == ServiceGraph.class)
+				continue;
+			final Key<?> key = binding.getKey();
+			Object instance = injector.getInstance(key);
+			ServiceGraph.Service service = getServiceOrNull(key, instance);
+			ServiceGraphKey serviceGraphKey = new ServiceGraphKey(key);
+			graph.add(serviceGraphKey, service);
+			processDependencies(serviceGraphKey, key, injector, graph);
 		}
 
-		for (int poolIndex = 0; poolIndex < nioNioWorkerScope.getPool().size(); poolIndex++) {
-			Map<Key<?>, Object> nioScopeMap = nioNioWorkerScope.getPool().get(poolIndex);
-			createNioScopeGraph(nioScopeMap, injector, graph, poolIndex);
+		for (int workerThreadId = 0; workerThreadId < (pool == null ? 0 : pool.length); workerThreadId++) {
+			for (Map.Entry<Key<?>, Object> entry : pool[workerThreadId].entrySet()) {
+				Key<?> key = entry.getKey();
+				Object instance = entry.getValue();
+				ServiceGraph.Service service = getServiceOrNull(key, instance);
+				ServiceGraphKey serviceGraphKey = new ServiceGraphKey(key, workerThreadId);
+				graph.add(serviceGraphKey, service);
+				processDependencies(serviceGraphKey, key, injector, graph);
+			}
 		}
 	}
 
-	private void createNioScopeGraph(final Map<Key<?>, Object> map, Injector injector, final ServiceGraph graph, final int poolIndex) {
-		for (Key<?> key : map.keySet()) {
-			Object nioScopeObject = map.get(key);
-			final ServiceGraph.Node serviceNode = nodeFromNioScope(key, poolIndex, nioScopeObject);
+	private void processDependencies(ServiceGraphKey serviceGraphKey, Key<?> key, Injector injector, ServiceGraph graph) {
+		Binding<?> binding = injector.getBinding(key);
+		if (!(binding instanceof HasDependencies))
+			return;
 
-			graph.add(serviceNode);
-			processDependencies(serviceNode, key, injector, graph, new AddDependence() {
+		Set<Key<?>> dependenciesForKey = new HashSet<>();
+		Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
 
-				@Override
-				public void add(Key<?> dependencyKey) {
-					if (map.containsKey(dependencyKey)) {
-						Object nioScopeDependencyObject = map.get(dependencyKey);
-						ServiceGraph.Node dependencyNode = nodeFromNioScope(dependencyKey, poolIndex, nioScopeDependencyObject);
-						graph.add(serviceNode, dependencyNode);
+		boolean dependsOnPool = false;
+		for (Dependency<?> dependency : dependencies) {
+			Key<?> dependencyKey = dependency.getKey();
+			dependenciesForKey.add(dependencyKey);
+			if (dependencyKey.getTypeLiteral().getRawType() == WorkerThreadsPool.class) {
+				dependsOnPool = true;
+			}
+		}
+
+		if (!difference(removedDependencies.get(key), dependenciesForKey).isEmpty()) {
+			logger.warn("Unused removed dependencies for {} : {}", key, difference(removedDependencies.get(key), dependenciesForKey));
+		}
+
+		if (!intersection(dependenciesForKey, addedDependencies.get(key)).isEmpty()) {
+			logger.warn("Unused added dependencies for {} : {}", key, intersection(dependenciesForKey, addedDependencies.get(key)));
+		}
+
+		for (Key<?> dependencyKey : union(difference(dependenciesForKey, removedDependencies.get(key)), addedDependencies.get(key))) {
+			if (dependsOnPool && dependencyKey.getTypeLiteral().getRawType() == Provider.class &&
+					dependencyKey.getAnnotationType() == WorkerThread.class) {
+				Type actualType = ((MoreTypes.ParameterizedTypeImpl)
+						dependencyKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
+				Key<?> actualKey = Key.get(actualType, dependencyKey.getAnnotation());
+				for (int i = 0; i < pool.length; i++) {
+					if (!pool[i].containsKey(actualKey)) {
+						logger.warn("Not found " + actualKey + " in nio worker pool " + i);
 					}
+					graph.add(serviceGraphKey, new ServiceGraphKey(actualKey, i));
 				}
-			});
+				continue;
+			}
+
+			if (dependencyKey.getAnnotationType() == WorkerThread.class) {
+				checkArgument(serviceGraphKey.workerThreadId != null, "Can only add dependency to " + dependencyKey + " from within WorkerThread, key: " + serviceGraphKey.key);
+				graph.add(serviceGraphKey, new ServiceGraphKey(dependencyKey, serviceGraphKey.workerThreadId));
+			} else {
+				graph.add(serviceGraphKey, new ServiceGraphKey(dependencyKey));
+			}
 		}
 	}
 
@@ -354,9 +298,13 @@ public final class BootModule extends AbstractModule {
 	protected void configure() {
 		NioWorkerScope nioNioWorkerScope = new NioWorkerScope();
 		bindScope(WorkerThread.class, nioNioWorkerScope);
-		bind(NioWorkerScope.class).toInstance(nioNioWorkerScope);
 		bind(WorkerThreadsPool.class).toInstance(nioNioWorkerScope);
-		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(nioNioWorkerScope.getNumberScopeProvider());
+		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
+			@Override
+			public Integer get() {
+				return currentPoolId;
+			}
+		});
 	}
 
 	/**
@@ -367,29 +315,109 @@ public final class BootModule extends AbstractModule {
 	 */
 	@Provides
 	@Singleton
-	ServiceGraph serviceGraph(final Injector injector, final NioWorkerScope nioNioWorkerScope) {
-		return new ServiceGraph() {
-			@Override
-			protected void onStart() {
-				createGuiceGraph(injector, nioNioWorkerScope, this);
-				logger.debug("Dependencies graph: \n" + this);
-				removeIntermediateNodes();
-				breakCircularDependencies();
-				logger.info("Services graph: \n" + this);
-			}
+	ServiceGraph serviceGraph(final Injector injector) {
+		ServiceGraph serviceGraph = ServiceGraph.create();
+		createGuiceGraph(injector, serviceGraph);
+		serviceGraph.removeIntermediateNodes();
+		logger.info("Services graph: \n" + serviceGraph);
+		return serviceGraph;
+	}
 
-			@Override
-			protected String nodeToString(Node node) {
-				Object key = node.getKey();
-				if (key instanceof Key) {
-					Key<?> guiceKey = (Key<?>) key;
-					Annotation annotation = guiceKey.getAnnotation();
-					return guiceKey.getTypeLiteral() +
-							(annotation != null ? " " + annotation : "");
-				}
-				return super.nodeToString(node);
+	private static class CountingServiceAdapter implements ServiceGraph.Service {
+		private final AsyncService asyncService;
+		private int startCount;
+		private SettableFuture<?> startFuture;
+		private SettableFuture<?> stopFuture;
+
+		private CountingServiceAdapter(AsyncService asyncService) {
+			this.asyncService = asyncService;
+		}
+
+		@Override
+		synchronized public ListenableFuture<?> start() {
+			checkState(stopFuture == null);
+			startCount++;
+			if (startFuture == null) {
+				startFuture = SettableFuture.create();
+				asyncService.start(new AsyncServiceCallback() {
+					@Override
+					public void onComplete() {
+						startFuture.set(null);
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						startFuture.setException(exception);
+					}
+				});
 			}
-		};
+			return startFuture;
+		}
+
+		@Override
+		synchronized public ListenableFuture<?> stop() {
+			checkState(startFuture != null);
+			if (stopFuture == null) {
+				stopFuture = SettableFuture.create();
+				asyncService.stop(new AsyncServiceCallback() {
+					@Override
+					public void onComplete() {
+						stopFuture.set(null);
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						stopFuture.setException(exception);
+					}
+				});
+			}
+			return stopFuture;
+		}
+	}
+
+	private static class ServiceGraphKey {
+		private final Key<?> key;
+		@Nullable
+		private final Integer workerThreadId;
+
+		public ServiceGraphKey(Key<?> key, int workerThreadId) {
+			checkArgument(workerThreadId >= 0);
+			this.key = checkNotNull(key);
+			this.workerThreadId = workerThreadId;
+		}
+
+		public ServiceGraphKey(Key<?> key) {
+			this.key = key;
+			this.workerThreadId = null;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+
+			ServiceGraphKey that = (ServiceGraphKey) o;
+
+			if (!key.equals(that.key)) return false;
+			return workerThreadId != null ? workerThreadId.equals(that.workerThreadId) : that.workerThreadId == null;
+
+		}
+
+		@Override
+		public int hashCode() {
+			int result = key.hashCode();
+			result = 31 * result + (workerThreadId != null ? workerThreadId.hashCode() : 0);
+			return result;
+		}
+
+		@Override
+		public String toString() {
+			Annotation annotation = key.getAnnotation();
+
+			return key.getTypeLiteral() +
+					(annotation != null ? " " + prettyPrintAnnotation(annotation) : "") +
+					(workerThreadId != null ? " [" + workerThreadId + "]" : "");
+		}
 	}
 
 	private final class NioWorkerScope implements Scope, WorkerThreadsPool {
@@ -399,134 +427,57 @@ public final class BootModule extends AbstractModule {
 				@Override
 				public T get() {
 					checkScope(key);
-					Map<Key<?>, Object> scopedObjects = pool.get(currentPool);
+					Map<Key<?>, Object> keyToInstance = pool[currentPoolId];
 					@SuppressWarnings("unchecked")
-					T current = (T) scopedObjects.get(key);
-					if (current == null && !scopedObjects.containsKey(key)) {
-						current = unscoped.get();
-						checkNioSingleton(key, current);
-						scopedObjects.put(key, current);
-						if (!mapKeys.containsKey(key))
-							mapKeys.put(key, new ArrayList<BootModule.KeyInPool>());
-						mapKeys.get(key).add(new BootModule.KeyInPool(key, currentPool));
+					T instance = (T) keyToInstance.get(key);
+					if (instance == null && !keyToInstance.containsKey(key)) {
+						instance = unscoped.get();
+						checkNioSingleton(key, instance);
+						keyToInstance.put(key, instance);
 					}
-					return current;
+					return instance;
 				}
 			};
 		}
 
-		private final Provider<Integer> numberProvider = new Provider<Integer>() {
-			@Override
-			public Integer get() {
-				return getCurrentPool();
-			}
-		};
-
-		private int getCurrentPool() {
-			return currentPool;
-		}
-
-		public Provider<Integer> getNumberScopeProvider() {
-			return numberProvider;
-		}
-
-		private List<Map<Key<?>, Object>> initPool(int size) {
-			checkArgument(size > 0, "size must be positive value, got %s", size);
-			List<Map<Key<?>, Object>> pool = new ArrayList<>(size);
-			for (int i = 0; i < size; i++) {
-				pool.add(new HashMap<Key<?>, Object>());
-			}
-			return pool;
-		}
-
 		private <T> void checkScope(Key<T> key) {
-			if (currentPool < 0 || currentPool > pool.size())
+			if (currentPoolId < 0 || currentPoolId > pool.length)
+				// TODO (vsavchuk): try to simplify, use to Key.toString instead
 				throw new RuntimeException("Could not bind " + ((key.getAnnotation() == null) ? "" :
 						"@" + key.getAnnotation() + " ") + key.getTypeLiteral() + " in NioPoolScope.");
 		}
 
 		private <T> void checkNioSingleton(Key<T> key, T object) {
-			for (int i = 0; i < pool.size(); i++) {
-				if (i == currentPool) continue;
-				Map<Key<?>, Object> scopedObjects = pool.get(i);
+			for (int i = 0; i < pool.length; i++) {
+				if (i == currentPoolId) continue;
+				Map<Key<?>, Object> scopedObjects = pool[i];
 				Object o = scopedObjects.get(key);
 				if (o != null && o == object)
+					// TODO (vsavchuk): use Key in error message, fix error message
 					throw new IllegalStateException("Provider must returns NioSingleton object of " + object.getClass());
 			}
 		}
 
 		@Override
 		public <T> List<T> getPoolInstances(int size, Provider<T> itemProvider) {
+			checkArgument(size > 0, "Pool size must be positive value, got %s", size);
 			if (pool == null) {
-				pool = initPool(size);
-				mapKeys = new HashMap<>();
-			} else {
-				if (pool.size() != size) {
-					throw new IllegalArgumentException("Pool cannot have different size: old size = " + pool.size() + ", new size: " + size);
+				pool = new HashMap[size];
+				for (int i = 0; i < size; i++) {
+					pool[i] = new HashMap<>();
 				}
 			}
+			checkArgument(pool.length == size, "Pool cannot have different size: old size = %s, new size: %s", pool.length, size);
 
-			int safeCurrentPool = currentPool;
-			if (pool == null)
-				throw new IllegalStateException("Scope is not initialized");
-			List<T> result = new ArrayList<>(pool.size());
-			for (int i = 0; i < pool.size(); i++) {
-				currentPool = i;
+			Integer originalPoolId = currentPoolId;
+			List<T> result = new ArrayList<>(size);
+			for (int i = 0; i < pool.length; i++) {
+				currentPoolId = i;
 				result.add(itemProvider.get());
 			}
-			currentPool = safeCurrentPool;
+			currentPoolId = originalPoolId;
 			return result;
 		}
 
-		private List<Map<Key<?>, Object>> getPool() {
-			if (pool == null)
-				return Collections.emptyList();
-			else
-				return pool;
-		}
-
-		private Map<Key<?>, List<BootModule.KeyInPool>> getMapKeys() {
-			if (mapKeys == null) {
-				return Collections.emptyMap();
-			} else {
-				return mapKeys;
-			}
-		}
-	}
-
-	private static class KeyInPool {
-		private final Key<?> key;
-		private final int index;
-
-		public KeyInPool(Key<?> key, int index) {
-			this.key = key;
-			this.index = index;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-
-			KeyInPool keyInPool = (KeyInPool) o;
-
-			if (index != keyInPool.index) return false;
-			return !(key != null ? !key.equals(keyInPool.key) : keyInPool.key != null);
-
-		}
-
-		@Override
-		public int hashCode() {
-			int result = key != null ? key.hashCode() : 0;
-			result = 31 * result + index;
-			return result;
-		}
-
-		@Override
-		public String toString() {
-			Annotation annotation = key.getAnnotation();
-			return key.getTypeLiteral() + " " + index +
-					(annotation != null ? " " + annotation : "");
-		}
 	}
 }

@@ -18,68 +18,58 @@ package io.datakernel.service;
 
 import org.junit.Test;
 
+import java.util.concurrent.ExecutionException;
+
+import static io.datakernel.service.TestServiceGraphServices.immediateFailedService;
+import static io.datakernel.service.TestServiceGraphServices.immediateService;
+
 public class ServiceGraphTest {
-
-	private static ServiceGraph.Node stringNode(String s) {
-		return new ServiceGraph.Node(s, AsyncServices.immediateService());
-	}
-
-	private static ServiceGraph.Node badStringNode(String s) {
-		return new ServiceGraph.Node(s, AsyncServices.immediateFailedService(new RuntimeException("Can't process service: " + s)));
-	}
 
 	@Test
 	public void testStart() throws Exception {
-		ServiceGraph graph = new ServiceGraph();
-		graph.add(stringNode("x"), stringNode("a"), stringNode("b"), stringNode("c"));
-		graph.add(stringNode("y"), stringNode("c"));
-		graph.add(stringNode("z"), stringNode("y"), stringNode("x"));
+		ServiceGraph graph = ServiceGraph.create();
+		graph.add("x", immediateService(), "a", "b", "c");
+		graph.add("y", immediateService(), "c");
+		graph.add("z", immediateService(), "y", "x");
+		System.out.println(graph);
 
 		try {
-			graph.start();
-		} catch (Exception e) {
-			e.printStackTrace();
+			graph.startFuture().get();
 		} finally {
-			graph.stop();
+			graph.stopFuture().get();
 		}
 	}
 
-	@Test
+	@Test(expected = IllegalStateException.class)
 	public void testWithCircularDependencies() throws Exception {
-		ServiceGraph graph = new ServiceGraph() {
-			@Override
-			protected void onStart() {
-				breakCircularDependencies();
-			}
-		};
-		graph.add(stringNode("x"), stringNode("a"), stringNode("b"), stringNode("c"));
-		graph.add(stringNode("y"), stringNode("c"));
-		graph.add(stringNode("z"), stringNode("y"), stringNode("x"));
-		graph.add(new ServiceGraph.Node("t1", null), new ServiceGraph.Node("t2", AsyncServices.immediateService()));
-		graph.add(new ServiceGraph.Node("t2", AsyncServices.immediateService()), new ServiceGraph.Node("t1", null));
+		ServiceGraph graph = ServiceGraph.create();
+		graph.add("x", immediateService(), "a", "b", "c");
+		graph.add("y", immediateService(), "c");
+		graph.add("z", immediateService(), "y", "x");
+		graph.add("t1", "t2");
+		graph.add("t2", immediateService(), "t1");
+		System.out.println(graph);
 
 		try {
-			graph.start();
-		} catch (Exception e) {
-			e.printStackTrace();
+			graph.startFuture().get();
 		} finally {
-			graph.stop();
+			graph.stopFuture().get();
 		}
 	}
 
-	@Test
+	@Test(expected = ExecutionException.class)
 	public void testBadNode() throws Exception {
-		ServiceGraph graph = new ServiceGraph();
-		graph.add(stringNode("x"), badStringNode("a"), stringNode("b"), stringNode("c"));
-		graph.add(stringNode("y"), stringNode("c"));
-		graph.add(stringNode("z"), stringNode("y"), stringNode("x"));
+		ServiceGraph graph = ServiceGraph.create();
+		graph.add("a", immediateFailedService(new Exception()));
+		graph.add("x", immediateService(), "a", "b", "c");
+		graph.add("y", immediateService(), "c");
+		graph.add("z", immediateService(), "y", "x");
+		System.out.println(graph);
 
 		try {
-			graph.start();
-		} catch (Exception e) {
-			e.printStackTrace();
+			graph.startFuture().get();
 		} finally {
-			graph.stop();
+			graph.stopFuture().get();
 		}
 	}
 }

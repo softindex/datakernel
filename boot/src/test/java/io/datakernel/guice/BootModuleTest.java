@@ -22,9 +22,8 @@ import com.google.inject.Key;
 import io.datakernel.guice.boot.AsyncServiceAdapter;
 import io.datakernel.guice.boot.BootModule;
 import io.datakernel.service.AsyncService;
-import io.datakernel.service.AsyncServiceCallbacks;
-import io.datakernel.service.AsyncServices;
 import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.TestServices;
 import org.junit.Test;
 
 import java.util.concurrent.Executor;
@@ -38,7 +37,7 @@ public class BootModuleTest {
 						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
 							public AsyncService toService(TestGraph.S service, Executor executor) {
-								return AsyncServices.immediateService();
+								return TestServices.immediateService();
 							}
 						})
 						.addDependency(Key.get(TestGraph.S6.class), Key.get(TestGraph.S4.class))
@@ -56,13 +55,9 @@ public class BootModuleTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		AsyncServiceCallbacks.BlockingServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
-		serviceGraph.start(startCallback);
-		startCallback.await();
+		serviceGraph.startFuture().get();
 
-		AsyncServiceCallbacks.BlockingServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
-		serviceGraph.stop(stopCallback);
-		stopCallback.await();
+		serviceGraph.stopFuture().get();
 	}
 
 	@Test
@@ -72,12 +67,12 @@ public class BootModuleTest {
 						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
 							@Override
 							public AsyncService toService(TestGraph.S service, Executor executor) {
-								return AsyncServices.immediateService();
+								return TestServices.immediateService();
 							}
 						})
 				, new TestGraph.Module());
-		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		injector.getInstance(TestGraph.O5.class);
+		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		TestGraph.S1 s1 = injector.getInstance(TestGraph.S1.class);
 		TestGraph.S2 s2 = injector.getInstance(TestGraph.S2.class);
 		TestGraph.S3 s3 = injector.getInstance(TestGraph.S3.class);
@@ -85,13 +80,9 @@ public class BootModuleTest {
 		TestGraph.S5 s5 = injector.getInstance(TestGraph.S5.class);
 		TestGraph.S6 s6 = injector.getInstance(TestGraph.S6.class);
 
-		AsyncServiceCallbacks.BlockingServiceCallback startCallback = AsyncServiceCallbacks.withCountDownLatch();
-		serviceGraph.start(startCallback);
-		startCallback.await();
+		serviceGraph.startFuture().get();
 
-		AsyncServiceCallbacks.BlockingServiceCallback stopCallback = AsyncServiceCallbacks.withCountDownLatch();
-		serviceGraph.stop(stopCallback);
-		stopCallback.await();
+		serviceGraph.stopFuture().get();
 	}
 
 }

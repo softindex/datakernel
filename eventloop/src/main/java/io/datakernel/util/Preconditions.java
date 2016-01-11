@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+// TODO (vmykhalko): check its usage and consider alternative implementations (to avoid collisions)
 public final class Preconditions {
 	private Preconditions() {}
 

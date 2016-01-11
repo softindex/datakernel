@@ -16,11 +16,8 @@
 
 package io.datakernel.service;
 
-import java.util.Arrays;
-import java.util.List;
-
-public final class AsyncServices {
-	private AsyncServices() {
+public final class TestServices {
+	private TestServices() {
 	}
 
 	public static AsyncService immediateService() {
@@ -51,19 +48,4 @@ public final class AsyncServices {
 		};
 	}
 
-	public static AsyncService parallelService(AsyncService... callbacks) {
-		return new ParallelService(Arrays.asList(callbacks));
-	}
-
-	public static AsyncService parallelService(List<? extends AsyncService> callbacks) {
-		return new ParallelService(callbacks);
-	}
-
-	public static AsyncService sequentialService(AsyncService... callbacks) {
-		return new SequentialService(Arrays.asList(callbacks));
-	}
-
-	public static AsyncService sequentialService(List<? extends AsyncService> callbacks) {
-		return new SequentialService(callbacks);
-	}
 }

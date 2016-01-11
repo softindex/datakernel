@@ -14,18 +14,22 @@
  * limitations under the License.
  */
 
-package io.datakernel.guice;
+package io.datakernel.launcher;
 
-import com.google.inject.BindingAnnotation;
+import com.google.inject.Singleton;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.concurrent.CountDownLatch;
 
-@Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.PARAMETER})
-@BindingAnnotation
-public @interface Args {
+@Singleton
+public final class ShutdownNotification implements ShutdownNotificationMBean {
+	private final CountDownLatch latch = new CountDownLatch(1);
 
+	public void await() throws InterruptedException {
+		latch.await();
+	}
+
+	@Override
+	public void requestShutdown() {
+		latch.countDown();
+	}
 }

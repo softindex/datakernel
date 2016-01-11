@@ -28,7 +28,6 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.service.AsyncServiceCallbacks;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Assert;
@@ -111,9 +110,7 @@ public class HelloWorldGuiceTest {
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
-			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
-			serviceGraph.start(callback);
-			callback.await();
+			serviceGraph.startFuture().get();
 
 			socket0.connect(new InetSocketAddress(PORT));
 			socket1.connect(new InetSocketAddress(PORT));
@@ -132,9 +129,7 @@ public class HelloWorldGuiceTest {
 				readAndAssert(socket1.getInputStream(), "HTTP/1.1 200 OK\r\nConnection: keep-alive\r\nContent-Length: 29\r\n\r\nHello world: worker server #1");
 			}
 		} finally {
-			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
-			serviceGraph.stop(callback);
-			callback.await();
+			serviceGraph.stopFuture().get();
 			Closeables.close(socket0, true);
 			Closeables.close(socket1, true);
 		}
@@ -152,17 +147,13 @@ public class HelloWorldGuiceTest {
 		Injector injector = Guice.createInjector(new TestModule());
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try {
-			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
-			serviceGraph.start(callback);
-			callback.await();
+			serviceGraph.startFuture().get();
 
 			System.out.println("Server started, press enter to stop it.");
 			BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 			br.readLine();
 		} finally {
-			AsyncServiceCallbacks.BlockingServiceCallback callback = AsyncServiceCallbacks.withCountDownLatch();
-			serviceGraph.stop(callback);
-			callback.await();
+			serviceGraph.stopFuture().get();
 		}
 	}
 
