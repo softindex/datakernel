@@ -17,16 +17,20 @@
 package io.datakernel.jmx;
 
 import com.sun.glass.ui.EventLoop;
+import io.datakernel.jmx.annotation.JmxNamedParameter;
+import io.datakernel.jmx.annotation.JmxOperation;
 import io.datakernel.jmx.helper.JmxStatsStub;
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
 import org.junit.Test;
 
 import javax.management.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
 
 public class JmxWrapperTest {
 	private static final String GROUPED_STATS_COUNTER_ONE_COUNT = "groupedStats_counterOne_count";
@@ -129,6 +133,57 @@ public class JmxWrapperTest {
 		assertEquals(expectedAttributeList, wrapper.getAttributes(subsetOfNames));
 	}
 
+	@Test
+	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() {
+		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
+		JmxWrapper wrapper = JmxWrapper.wrap(monitorable);
+
+		MBeanInfo mBeanInfo = wrapper.getMBeanInfo();
+		MBeanOperationInfo[] operations = mBeanInfo.getOperations();
+		Map<String, MBeanOperationInfo> nameToOperation = new HashMap<>();
+		for (MBeanOperationInfo operation : operations) {
+			nameToOperation.put(operation.getName(), operation);
+		}
+
+		assertThat(nameToOperation, hasKey("increment"));
+		assertThat(nameToOperation, hasKey("addInfo"));
+		assertThat(nameToOperation, hasKey("multiplyAndAdd"));
+
+		MBeanOperationInfo incrementOperation = nameToOperation.get("increment");
+		MBeanOperationInfo addInfoOperation = nameToOperation.get("addInfo");
+		MBeanOperationInfo multiplyAndAddOperation = nameToOperation.get("multiplyAndAdd");
+
+		assertThat(incrementOperation, hasReturnType("void"));
+
+		assertThat(addInfoOperation, hasParameter("information", String.class.getName()));
+		assertThat(addInfoOperation, hasReturnType("void"));
+
+		// parameter names are not annotated
+		assertThat(multiplyAndAddOperation, hasParameter("arg0", "long"));
+		assertThat(multiplyAndAddOperation, hasParameter("arg1", "long"));
+		assertThat(multiplyAndAddOperation, hasReturnType("void"));
+	}
+
+	@Test
+	public void itShouldInvokeAnnotanedOperationsThroughDynamicMBeanInterface() throws ReflectionException, MBeanException {
+		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
+		JmxWrapper wrapper = JmxWrapper.wrap(monitorable);
+
+		wrapper.invoke("increment", null, null);
+		wrapper.invoke("increment", null, null);
+
+		wrapper.invoke("addInfo", new Object[]{"data1"}, new String[]{String.class.getName()});
+		wrapper.invoke("addInfo", new Object[]{"data2"}, new String[]{String.class.getName()});
+
+		wrapper.invoke("multiplyAndAdd", new Object[]{120, 150}, new String[]{"long", "long"});
+
+		assertEquals(monitorable.getCount(), 2);
+		assertEquals(monitorable.getInfo(), "data1data2");
+		assertEquals(monitorable.getSum(), 120 * 150);
+	}
+
+	// TODO(vmykhalko): add test for methods with same names but different signatures
+
 	// helpers
 	public static AttributeList createAttributeList(String[] names, Object[] values) {
 		assert values.length == names.length;
@@ -174,6 +229,106 @@ public class JmxWrapperTest {
 		public JmxStatsStub getCounterTwo() {
 			return counterTwo;
 		}
+	}
+
+	public static class MonitorableStubWithOperations implements JmxMonitorable {
+
+		private int count = 0;
+		private String info = "";
+		private long sum = 0;
+
+		public int getCount() {
+			return count;
+		}
+
+		public String getInfo() {
+			return info;
+		}
+
+		public long getSum() {
+			return sum;
+		}
+
+		@JmxOperation(name = "increment")
+		public void inc() {
+			count++;
+		}
+
+		@JmxOperation
+		public void addInfo(@JmxNamedParameter("information") String info) {
+			this.info += info;
+		}
+
+		@JmxOperation
+		public void multiplyAndAdd(long valueOne, long valueTwo) {
+			sum += valueOne * valueTwo;
+		}
+
+		@Override
+		public EventLoop getEventloop() {
+			return null;
+		}
+	}
+
+	// custom matchers
+	public static <T> Matcher<Map<T, ?>> hasKey(final T key) {
+		return new BaseMatcher<Map<T, ?>>() {
+
+			@Override
+			public void describeTo(Description description) {
+				description.appendText("has key \"" + key.toString() + "\"");
+			}
+
+			@Override
+			public boolean matches(Object item) {
+				if (item == null) {
+					return false;
+				}
+				Map<T, ?> map = (Map<T, ?>) item;
+				return map.containsKey(key);
+			}
+		};
+	}
+
+	public static Matcher<MBeanOperationInfo> hasParameter(final String name, final String type) {
+		return new BaseMatcher<MBeanOperationInfo>() {
+			@Override
+			public boolean matches(Object item) {
+				if (item == null) {
+					return false;
+				}
+				MBeanOperationInfo operation = (MBeanOperationInfo) item;
+				for (MBeanParameterInfo param : operation.getSignature()) {
+					if (param.getName().equals(name) && param.getType().equals(type)) {
+						return true;
+					}
+				}
+				return false;
+			}
+
+			@Override
+			public void describeTo(Description description) {
+				description.appendText("has parameter with name \"" + name + "\" and type \"" + type + "\"");
+			}
+		};
+	}
+
+	public static Matcher<MBeanOperationInfo> hasReturnType(final String type) {
+		return new BaseMatcher<MBeanOperationInfo>() {
+			@Override
+			public boolean matches(Object item) {
+				if (item == null) {
+					return false;
+				}
+				MBeanOperationInfo operation = (MBeanOperationInfo) item;
+				return operation.getReturnType().equals(type);
+			}
+
+			@Override
+			public void describeTo(Description description) {
+				description.appendText("has return type " + type);
+			}
+		};
 	}
 
 }
