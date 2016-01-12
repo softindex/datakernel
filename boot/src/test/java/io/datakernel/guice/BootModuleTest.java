@@ -19,11 +19,11 @@ package io.datakernel.guice;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.boot.AsyncService;
-import io.datakernel.boot.AsyncServiceAdapter;
 import io.datakernel.boot.BootModule;
+import io.datakernel.boot.Service;
+import io.datakernel.boot.ServiceAdapter;
 import io.datakernel.boot.ServiceGraph;
-import io.datakernel.service.TestServices;
+import io.datakernel.service.TestServiceGraphServices;
 import org.junit.Test;
 
 import java.util.concurrent.Executor;
@@ -34,10 +34,10 @@ public class BootModuleTest {
 	public void testStartStop() throws Exception {
 		Injector injector = Guice.createInjector(
 				BootModule.defaultInstance()
-						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
+						.register(TestGraph.S.class, new ServiceAdapter<TestGraph.S>() {
 							@Override
-							public AsyncService toService(TestGraph.S service, Executor executor) {
-								return TestServices.immediateService();
+							public Service toService(TestGraph.S instance, Executor executor) {
+								return TestServiceGraphServices.immediateService();
 							}
 						})
 						.addDependency(Key.get(TestGraph.S6.class), Key.get(TestGraph.S4.class))
@@ -64,10 +64,10 @@ public class BootModuleTest {
 	public void testStartStopWithoutOverride() throws Exception {
 		Injector injector = Guice.createInjector(
 				BootModule.defaultInstance()
-						.register(TestGraph.S.class, new AsyncServiceAdapter<TestGraph.S>() {
+						.register(TestGraph.S.class, new ServiceAdapter<TestGraph.S>() {
 							@Override
-							public AsyncService toService(TestGraph.S service, Executor executor) {
-								return TestServices.immediateService();
+							public Service toService(TestGraph.S instance, Executor executor) {
+								return TestServiceGraphServices.immediateService();
 							}
 						})
 				, new TestGraph.Module());

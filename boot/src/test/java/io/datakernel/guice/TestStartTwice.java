@@ -16,8 +16,12 @@
 
 package io.datakernel.guice;
 
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.*;
-import io.datakernel.boot.*;
+import io.datakernel.boot.BootModule;
+import io.datakernel.boot.Service;
+import io.datakernel.boot.ServiceGraph;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -28,20 +32,19 @@ public class TestStartTwice {
 	private static AtomicInteger countStart = new AtomicInteger(0);
 	private static AtomicInteger countStop = new AtomicInteger(0);
 
-	interface A extends AsyncService {}
+	interface A extends Service {}
 
 	static class ServiceImpl implements A {
-
 		@Override
-		public void start(AsyncServiceCallback callback) {
+		public ListenableFuture<?> start() {
 			countStart.incrementAndGet();
-			callback.onComplete();
+			return Futures.immediateFuture(null);
 		}
 
 		@Override
-		public void stop(AsyncServiceCallback callback) {
+		public ListenableFuture<?> stop() {
 			countStop.incrementAndGet();
-			callback.onComplete();
+			return Futures.immediateFuture(null);
 		}
 	}
 
@@ -49,9 +52,7 @@ public class TestStartTwice {
 
 		@Override
 		protected void configure() {
-			install(BootModule.defaultInstance()
-					.register(ServiceImpl.class, AsyncServiceAdapters.forAsyncService())
-					.register(A.class, AsyncServiceAdapters.forAsyncService()));
+			install(BootModule.defaultInstance());
 		}
 
 		@Provides

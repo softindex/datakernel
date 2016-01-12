@@ -375,12 +375,6 @@ public final class ServiceGraph {
 		return sb.append("]").toString();
 	}
 
-	public interface Service {
-		ListenableFuture<?> start();
-
-		ListenableFuture<?> stop();
-	}
-
 	private static class LongestPath {
 		private final long totalTime;
 		private final long time;

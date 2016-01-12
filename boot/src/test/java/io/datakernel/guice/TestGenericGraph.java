@@ -18,7 +18,7 @@ package io.datakernel.guice;
 
 import com.google.inject.*;
 import io.datakernel.boot.*;
-import io.datakernel.service.TestServices;
+import io.datakernel.service.TestServiceGraphServices;
 import org.junit.Test;
 
 import java.util.List;
@@ -44,10 +44,10 @@ public class TestGenericGraph {
 		@Override
 		protected void configure() {
 			install(BootModule.defaultInstance()
-					.register(Pojo.class, new AsyncServiceAdapter<Pojo>() {
+					.register(Pojo.class, new ServiceAdapter<Pojo>() {
 						@Override
-						public AsyncService toService(Pojo node, Executor executor) {
-							return TestServices.immediateService();
+						public Service toService(Pojo instance, Executor executor) {
+							return TestServiceGraphServices.immediateService();
 						}
 					}));
 		}

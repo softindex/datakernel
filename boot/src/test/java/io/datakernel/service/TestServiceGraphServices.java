@@ -18,14 +18,14 @@ package io.datakernel.service;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.datakernel.boot.ServiceGraph;
+import io.datakernel.boot.Service;
 
 public final class TestServiceGraphServices {
 	private TestServiceGraphServices() {
 	}
 
-	public static ServiceGraph.Service immediateService() {
-		return new ServiceGraph.Service() {
+	public static Service immediateService() {
+		return new Service() {
 			@Override
 			public ListenableFuture<?> start() {
 				return Futures.immediateFuture(null);
@@ -38,8 +38,8 @@ public final class TestServiceGraphServices {
 		};
 	}
 
-	public static ServiceGraph.Service immediateFailedService(final Exception e) {
-		return new ServiceGraph.Service() {
+	public static Service immediateFailedService(final Exception e) {
+		return new Service() {
 			@Override
 			public ListenableFuture<?> start() {
 				return Futures.immediateFailedFuture(e);

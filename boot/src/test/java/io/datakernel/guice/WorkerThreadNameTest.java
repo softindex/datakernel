@@ -19,7 +19,7 @@ package io.datakernel.guice;
 import com.google.inject.*;
 import io.datakernel.boot.*;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.service.TestServices;
+import io.datakernel.service.TestServiceGraphServices;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,28 +51,28 @@ public class WorkerThreadNameTest {
 		@Override
 		protected void configure() {
 			install(BootModule.defaultInstance()
-					.register(Element4.class, new AsyncServiceAdapter<Element4>() {
+					.register(Element4.class, new ServiceAdapter<Element4>() {
 						@Override
-						public AsyncService toService(Element4 node, Executor executor) {
-							return TestServices.immediateService();
+						public Service toService(Element4 instance, Executor executor) {
+							return TestServiceGraphServices.immediateService();
 						}
 					})
-					.register(Element1.class, new AsyncServiceAdapter<Element1>() {
+					.register(Element1.class, new ServiceAdapter<Element1>() {
 						@Override
-						public AsyncService toService(Element1 node, Executor executor) {
-							return TestServices.immediateService();
+						public Service toService(Element1 instance, Executor executor) {
+							return TestServiceGraphServices.immediateService();
 						}
 					})
-					.register(Element2.class, new AsyncServiceAdapter<Element2>() {
+					.register(Element2.class, new ServiceAdapter<Element2>() {
 						@Override
-						public AsyncService toService(Element2 node, Executor executor) {
-							return TestServices.immediateService();
+						public Service toService(Element2 instance, Executor executor) {
+							return TestServiceGraphServices.immediateService();
 						}
 					})
-					.register(Element3.class, new AsyncServiceAdapter<Element3>() {
+					.register(Element3.class, new ServiceAdapter<Element3>() {
 						@Override
-						public AsyncService toService(Element3 node, Executor executor) {
-							return TestServices.immediateService();
+						public Service toService(Element3 instance, Executor executor) {
+							return TestServiceGraphServices.immediateService();
 						}
 					}));
 		}

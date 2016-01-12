@@ -16,20 +16,8 @@
 
 package io.datakernel.boot;
 
-import java.util.concurrent.Executor;
+public interface BlockingService {
+	void start() throws Exception;
 
-/**
- * Adapter which Creates a new ConcurrentServices from other instances for working with ServiceGraph
- *
- * @param <V> type of service from which you need create ConcurrentService
- */
-public interface AsyncServiceAdapter<V> {
-	/**
-	 * Wraps instances so that it will be ConcurrentService.
-	 *
-	 * @param node     instance from which will be created ConcurrentService
-	 * @param executor object that executes submitted Runnable tasks
-	 * @return new instance of  ConcurrentService
-	 */
-	AsyncService toService(V node, Executor executor);
+	void stop() throws Exception;
 }

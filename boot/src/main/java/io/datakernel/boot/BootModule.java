@@ -19,7 +19,6 @@ package io.datakernel.boot;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
 import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.*;
 import com.google.inject.internal.MoreTypes;
 import com.google.inject.spi.BindingScopingVisitor;
@@ -46,13 +45,13 @@ import static org.slf4j.LoggerFactory.getLogger;
 public final class BootModule extends AbstractModule {
 	private static final Logger logger = getLogger(BootModule.class);
 
-	private final Map<Class<?>, AsyncServiceAdapter<?>> factoryMap = new LinkedHashMap<>();
-	private final Map<Key<?>, AsyncServiceAdapter<?>> keys = new LinkedHashMap<>();
+	private final Map<Class<?>, ServiceAdapter<?>> factoryMap = new LinkedHashMap<>();
+	private final Map<Key<?>, ServiceAdapter<?>> keys = new LinkedHashMap<>();
 
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
-	private final IdentityHashMap<Object, CountingServiceAdapter> services = new IdentityHashMap<>();
+	private final IdentityHashMap<Object, CachedService> services = new IdentityHashMap<>();
 //	private final Map<Key<?>, AsyncService> singletonServices = new HashMap<>();
 
 	private final Executor executor;
@@ -69,15 +68,15 @@ public final class BootModule extends AbstractModule {
 
 	public static BootModule defaultInstance() {
 		BootModule bootModule = new BootModule();
-		bootModule.register(AsyncService.class, AsyncServiceAdapters.forAsyncService());
-		bootModule.register(Service.class, AsyncServiceAdapters.forBlockingService());
-		bootModule.register(Closeable.class, AsyncServiceAdapters.forCloseable());
-		bootModule.register(ExecutorService.class, AsyncServiceAdapters.forExecutorService());
-		bootModule.register(Timer.class, AsyncServiceAdapters.forTimer());
-		bootModule.register(DataSource.class, AsyncServiceAdapters.forDataSource());
-		bootModule.register(NioService.class, AsyncServiceAdapters.forNioService());
-		bootModule.register(NioServer.class, AsyncServiceAdapters.forNioServer());
-		bootModule.register(NioEventloop.class, AsyncServiceAdapters.forNioEventloop());
+		bootModule.register(Service.class, ServiceAdapters.forService());
+		bootModule.register(BlockingService.class, ServiceAdapters.forBlockingService());
+		bootModule.register(Closeable.class, ServiceAdapters.forCloseable());
+		bootModule.register(ExecutorService.class, ServiceAdapters.forExecutorService());
+		bootModule.register(Timer.class, ServiceAdapters.forTimer());
+		bootModule.register(DataSource.class, ServiceAdapters.forDataSource());
+		bootModule.register(NioService.class, ServiceAdapters.forNioService());
+		bootModule.register(NioServer.class, ServiceAdapters.forNioServer());
+		bootModule.register(NioEventloop.class, ServiceAdapters.forNioEventloop());
 		return bootModule;
 	}
 
@@ -140,7 +139,7 @@ public final class BootModule extends AbstractModule {
 	 * @param factory value to be associated with the specified type
 	 * @return ServiceGraphModule with change
 	 */
-	public <T> BootModule register(Class<? extends T> type, AsyncServiceAdapter<T> factory) {
+	public <T> BootModule register(Class<? extends T> type, ServiceAdapter<T> factory) {
 		factoryMap.put(type, factory);
 		return this;
 	}
@@ -153,7 +152,7 @@ public final class BootModule extends AbstractModule {
 	 * @param <T>     type of service
 	 * @return ServiceGraphModule with change
 	 */
-	public <T> BootModule registerForSpecificKey(Key<T> key, AsyncServiceAdapter<T> factory) {
+	public <T> BootModule registerForSpecificKey(Key<T> key, ServiceAdapter<T> factory) {
 		keys.put(key, factory);
 		return this;
 	}
@@ -183,14 +182,14 @@ public final class BootModule extends AbstractModule {
 	}
 
 	@SuppressWarnings("unchecked")
-	private ServiceGraph.Service getServiceOrNull(Key<?> key, Object instance) {
+	private Service getServiceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
-		CountingServiceAdapter service = services.get(instance);
+		CachedService service = services.get(instance);
 		if (service != null) {
 			return service;
 		}
-		AsyncServiceAdapter<?> asyncServiceAdapter = keys.get(key);
-		if (asyncServiceAdapter == null) {
+		ServiceAdapter<?> serviceAdapter = keys.get(key);
+		if (serviceAdapter == null) {
 			Class<?> foundType = null;
 			for (Class<?> type : factoryMap.keySet()) {
 				if (type.isAssignableFrom(instance.getClass())) {
@@ -198,12 +197,12 @@ public final class BootModule extends AbstractModule {
 				}
 			}
 			if (foundType != null) {
-				asyncServiceAdapter = factoryMap.get(foundType);
+				serviceAdapter = factoryMap.get(foundType);
 			}
 		}
-		if (asyncServiceAdapter != null) {
-			AsyncService asyncService = ((AsyncServiceAdapter<Object>) asyncServiceAdapter).toService(instance, executor);
-			service = new CountingServiceAdapter(asyncService);
+		if (serviceAdapter != null) {
+			Service asyncService = ((ServiceAdapter<Object>) serviceAdapter).toService(instance, executor);
+			service = new CachedService(asyncService);
 			services.put(instance, service);
 			return service;
 		}
@@ -220,7 +219,7 @@ public final class BootModule extends AbstractModule {
 				continue;
 			final Key<?> key = binding.getKey();
 			Object instance = injector.getInstance(key);
-			ServiceGraph.Service service = getServiceOrNull(key, instance);
+			Service service = getServiceOrNull(key, instance);
 			ServiceGraphKey serviceGraphKey = new ServiceGraphKey(key);
 			graph.add(serviceGraphKey, service);
 			processDependencies(serviceGraphKey, key, injector, graph);
@@ -230,7 +229,7 @@ public final class BootModule extends AbstractModule {
 			for (Map.Entry<Key<?>, Object> entry : pool[workerThreadId].entrySet()) {
 				Key<?> key = entry.getKey();
 				Object instance = entry.getValue();
-				ServiceGraph.Service service = getServiceOrNull(key, instance);
+				Service service = getServiceOrNull(key, instance);
 				ServiceGraphKey serviceGraphKey = new ServiceGraphKey(key, workerThreadId);
 				graph.add(serviceGraphKey, service);
 				processDependencies(serviceGraphKey, key, injector, graph);
@@ -316,33 +315,20 @@ public final class BootModule extends AbstractModule {
 		return serviceGraph;
 	}
 
-	private static class CountingServiceAdapter implements ServiceGraph.Service {
-		private final AsyncService asyncService;
-		private int startCount;
-		private SettableFuture<?> startFuture;
-		private SettableFuture<?> stopFuture;
+	private static class CachedService implements Service {
+		private final Service service;
+		private ListenableFuture<?> startFuture;
+		private ListenableFuture<?> stopFuture;
 
-		private CountingServiceAdapter(AsyncService asyncService) {
-			this.asyncService = asyncService;
+		private CachedService(Service service) {
+			this.service = service;
 		}
 
 		@Override
 		synchronized public ListenableFuture<?> start() {
 			checkState(stopFuture == null);
-			startCount++;
 			if (startFuture == null) {
-				startFuture = SettableFuture.create();
-				asyncService.start(new AsyncServiceCallback() {
-					@Override
-					public void onComplete() {
-						startFuture.set(null);
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						startFuture.setException(exception);
-					}
-				});
+				startFuture = service.start();
 			}
 			return startFuture;
 		}
@@ -351,18 +337,7 @@ public final class BootModule extends AbstractModule {
 		synchronized public ListenableFuture<?> stop() {
 			checkState(startFuture != null);
 			if (stopFuture == null) {
-				stopFuture = SettableFuture.create();
-				asyncService.stop(new AsyncServiceCallback() {
-					@Override
-					public void onComplete() {
-						stopFuture.set(null);
-					}
-
-					@Override
-					public void onException(Exception exception) {
-						stopFuture.setException(exception);
-					}
-				});
+				stopFuture = service.stop();
 			}
 			return stopFuture;
 		}

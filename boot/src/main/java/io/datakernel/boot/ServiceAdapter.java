@@ -16,13 +16,20 @@
 
 package io.datakernel.boot;
 
+import java.util.concurrent.Executor;
+
 /**
- * Service which starts and stops asynchronously and does not block thread while start/stop methods are running.
+ * Adapter which Creates a new ConcurrentServices from other instances for working with ServiceGraph
+ *
+ * @param <V> type of service from which you need create ConcurrentService
  */
-public interface AsyncService {
-	void start(AsyncServiceCallback callback);
-
-	void stop(AsyncServiceCallback callback);
-
+public interface ServiceAdapter<V> {
+	/**
+	 * Wraps instances so that it will be ConcurrentService.
+	 *
+	 * @param instance     instance from which will be created ConcurrentService
+	 * @param executor object that executes submitted Runnable tasks
+	 * @return new instance of  ConcurrentService
+	 */
+	Service toService(V instance, Executor executor);
 }
-

@@ -16,13 +16,13 @@
 
 package io.datakernel.boot;
 
+import com.google.common.util.concurrent.ListenableFuture;
+
 /**
  * It is service which blocks thread during operations start and stop.
  */
 public interface Service {
-	void start() throws Exception;
+	ListenableFuture<?> start();
 
-	void stop() throws Exception;
-
-	boolean isRunning();
+	ListenableFuture<?> stop();
 }
