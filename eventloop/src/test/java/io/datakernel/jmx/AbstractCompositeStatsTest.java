@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.helper.JmxStatsStub;
+import io.datakernel.jmx.helper.CompositeStatsStub;
 import org.junit.Test;
 
 import javax.management.openmbean.SimpleType;
@@ -112,18 +112,5 @@ public class AbstractCompositeStatsTest {
 		assertEquals(1, compositeStatsStub.getCounterTwo().getRefreshStatsInvocations());
 		assertEquals(timestamp, compositeStatsStub.getCounterTwo().getLastTimestamp());
 		assertEquals(window, compositeStatsStub.getCounterTwo().getLastSmoothingWindow(), acceptableError);
-	}
-
-	public static class CompositeStatsStub extends AbstractCompositeStats<CompositeStatsStub> {
-		private JmxStatsStub counterOne = new JmxStatsStub();
-		private JmxStatsStub counterTwo = new JmxStatsStub();
-
-		public JmxStatsStub getCounterOne() {
-			return counterOne;
-		}
-
-		public JmxStatsStub getCounterTwo() {
-			return counterTwo;
-		}
 	}
 }

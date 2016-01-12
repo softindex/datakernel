@@ -16,8 +16,9 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.annotation.JmxNamedParameter;
+import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.jmx.annotation.JmxOperation;
+import io.datakernel.jmx.annotation.JmxParameter;
 
 import javax.management.*;
 import java.lang.annotation.Annotation;
@@ -44,26 +45,27 @@ public final class DynamicMBeanFactory {
 
 	}
 
-	public static DynamicMBean createFor(JmxMonitorable... monitorables) throws Exception {
+	public static DynamicMBean createFor(Object... monitorables) throws Exception {
 		checkNotNull(monitorables);
 		checkArgument(monitorables.length > 0);
 		checkArgument(!arrayContainsNullValues(monitorables), "monitorable can not be null");
 		checkArgument(allObjectsAreOfSameType(asList(monitorables)));
+		checkArgument(allObjectsAreAnnotatedWithJmxMBean(asList(monitorables)));
 
 		// all objects are of same type, so we can extract info from any of them
-		JmxMonitorable first = monitorables[0];
+		Object first = monitorables[0];
 		MBeanInfo mBeanInfo = composeMBeanInfo(first);
 		Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType = fetchNameToJmxStatsType(first);
 
 		List<JmxMonitorableWrapper> wrappers = new ArrayList<>();
-		for (JmxMonitorable monitorable : monitorables) {
+		for (Object monitorable : monitorables) {
 			wrappers.add(createWrapper(monitorable));
 		}
 
 		return new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType);
 	}
 
-	private static MBeanAttributeInfo[] extractAttributesInfo(JmxMonitorable monitorable) {
+	private static MBeanAttributeInfo[] extractAttributesInfo(Object monitorable) {
 		List<MBeanAttributeInfo> attributes = new ArrayList<>();
 		Map<String, JmxStats<?>> nameToJmxStats = fetchNameToJmxStats(monitorable);
 		for (String statsName : nameToJmxStats.keySet()) {
@@ -81,7 +83,7 @@ public final class DynamicMBeanFactory {
 		return attributes.toArray(new MBeanAttributeInfo[attributes.size()]);
 	}
 
-	private static MBeanOperationInfo[] extractOperationsInfo(JmxMonitorable monitorable) {
+	private static MBeanOperationInfo[] extractOperationsInfo(Object monitorable) {
 		// TODO(vmykhalko): refactor this method
 		List<MBeanOperationInfo> operations = new ArrayList<>();
 		Method[] methods = monitorable.getClass().getMethods();
@@ -103,7 +105,7 @@ public final class DynamicMBeanFactory {
 				for (int i = 0; i < paramTypes.length; i++) {
 					String paramName = String.format("arg%d", i);
 					Class<?> paramType = paramTypes[i];
-					JmxNamedParameter nameAnnotation = findJmxNamedParameterAnnotation(paramAnnotations[i]);
+					JmxParameter nameAnnotation = findJmxNamedParameterAnnotation(paramAnnotations[i]);
 					if (nameAnnotation != null) {
 						paramName = nameAnnotation.value();
 					}
@@ -119,10 +121,10 @@ public final class DynamicMBeanFactory {
 		return operations.toArray(new MBeanOperationInfo[operations.size()]);
 	}
 
-	private static JmxNamedParameter findJmxNamedParameterAnnotation(Annotation[] annotations) {
+	private static JmxParameter findJmxNamedParameterAnnotation(Annotation[] annotations) {
 		for (Annotation annotation : annotations) {
-			if (annotation.annotationType().equals(JmxNamedParameter.class)) {
-				return (JmxNamedParameter) annotation;
+			if (annotation.annotationType().equals(JmxParameter.class)) {
+				return (JmxParameter) annotation;
 			}
 		}
 		return null;
@@ -148,7 +150,16 @@ public final class DynamicMBeanFactory {
 		return true;
 	}
 
-	private static MBeanInfo composeMBeanInfo(JmxMonitorable monitorable) {
+	private static boolean allObjectsAreAnnotatedWithJmxMBean(List<?> objects) {
+		for (Object object : objects) {
+			if (!object.getClass().isAnnotationPresent(JmxMBean.class)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private static MBeanInfo composeMBeanInfo(Object monitorable) {
 		String monitorableName = "";
 		String monitorableDescription = "";
 		MBeanAttributeInfo[] attributes = extractAttributesInfo(monitorable);
@@ -163,7 +174,7 @@ public final class DynamicMBeanFactory {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static Map<String, Class<? extends JmxStats<?>>> fetchNameToJmxStatsType(JmxMonitorable monitorable) throws InvocationTargetException, IllegalAccessException {
+	private static Map<String, Class<? extends JmxStats<?>>> fetchNameToJmxStatsType(Object monitorable) throws InvocationTargetException, IllegalAccessException {
 		Map<String, Method> nameToGetter = fetchNameToJmxStatsGetter(monitorable);
 		Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType = new HashMap<>();
 		for (String name : nameToGetter.keySet()) {
@@ -174,14 +185,14 @@ public final class DynamicMBeanFactory {
 		return nameToJmxStatsType;
 	}
 
-	private static JmxMonitorableWrapper createWrapper(JmxMonitorable monitorable) {
+	private static JmxMonitorableWrapper createWrapper(Object monitorable) {
 		Map<String, Method> attributeGetters = fetchNameToJmxStatsGetter(monitorable);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(monitorable);
 		return new JmxMonitorableWrapper(monitorable, attributeGetters, opkeyToMethod);
 	}
 
 	// TODO(vmykhalko): refactor this method (it has common code with  extractOperationsInfo()
-	private static Map<OperationKey, Method> fetchOpkeyToMethod(JmxMonitorable monitorable) {
+	private static Map<OperationKey, Method> fetchOpkeyToMethod(Object monitorable) {
 		Map<OperationKey, Method> opkeyToMethod = new HashMap<>();
 		Method[] methods = monitorable.getClass().getMethods();
 		for (Method method : methods) {
@@ -332,11 +343,11 @@ public final class DynamicMBeanFactory {
 	}
 
 	private static final class JmxMonitorableWrapper {
-		private final JmxMonitorable monitorable;
+		private final Object monitorable;
 		private final Map<String, Method> attributeGetters;
 		private final Map<OperationKey, Method> operationKeyToMethod;
 
-		public JmxMonitorableWrapper(JmxMonitorable monitorable, Map<String, Method> attributeGetters,
+		public JmxMonitorableWrapper(Object monitorable, Map<String, Method> attributeGetters,
 		                             Map<OperationKey, Method> operationKeyToMethod) {
 			this.monitorable = monitorable;
 			this.attributeGetters = attributeGetters;

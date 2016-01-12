@@ -23,6 +23,6 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface JmxNamedParameter {
+public @interface JmxParameter {
 	String value();
 }

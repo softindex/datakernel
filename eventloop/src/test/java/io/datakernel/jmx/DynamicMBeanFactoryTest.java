@@ -16,9 +16,10 @@
 
 package io.datakernel.jmx;
 
-import com.sun.glass.ui.EventLoop;
-import io.datakernel.jmx.annotation.JmxNamedParameter;
+import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.jmx.annotation.JmxOperation;
+import io.datakernel.jmx.annotation.JmxParameter;
+import io.datakernel.jmx.helper.CompositeStatsStub;
 import io.datakernel.jmx.helper.JmxStatsStub;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -68,6 +69,12 @@ public class DynamicMBeanFactoryTest {
 
 		List<String> expectedAttributeNames = ALL_ATTRIBUTE_NAMES_LIST;
 		assertEquals(expectedAttributeNames, attributeNames);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void itShouldThrowExceptionWhenClassForCreatingDynamicMBeanIsNotAnnotated() throws Exception {
+		NotAnnotatedService notAnnotated = new NotAnnotatedService();
+		DynamicMBean mbean = DynamicMBeanFactory.createFor(notAnnotated);
 	}
 
 	@Test
@@ -247,14 +254,10 @@ public class DynamicMBeanFactoryTest {
 		return attrList;
 	}
 
-	public static class MonitorableStub implements JmxMonitorable {
+	@JmxMBean
+	public static class MonitorableStub {
 		CompositeStatsStub groupedStats = new CompositeStatsStub();
 		JmxStatsStub simpleStats = new JmxStatsStub();
-
-		@Override
-		public EventLoop getEventloop() {
-			return null;
-		}
 
 		public CompositeStatsStub getGroupedStats() {
 			return groupedStats;
@@ -265,21 +268,8 @@ public class DynamicMBeanFactoryTest {
 		}
 	}
 
-	public static class CompositeStatsStub extends AbstractCompositeStats<CompositeStatsStub> {
-		private JmxStatsStub counterOne = new JmxStatsStub();
-		private JmxStatsStub counterTwo = new JmxStatsStub();
-
-		public JmxStatsStub getCounterOne() {
-			return counterOne;
-		}
-
-		public JmxStatsStub getCounterTwo() {
-			return counterTwo;
-		}
-	}
-
-	public static class MonitorableStubWithOperations implements JmxMonitorable {
-
+	@JmxMBean
+	public static class MonitorableStubWithOperations {
 		private int count = 0;
 		private String info = "";
 		private long sum = 0;
@@ -302,7 +292,7 @@ public class DynamicMBeanFactoryTest {
 		}
 
 		@JmxOperation
-		public void addInfo(@JmxNamedParameter("information") String info) {
+		public void addInfo(@JmxParameter("information") String info) {
 			this.info += info;
 		}
 
@@ -310,10 +300,18 @@ public class DynamicMBeanFactoryTest {
 		public void multiplyAndAdd(long valueOne, long valueTwo) {
 			sum += valueOne * valueTwo;
 		}
+	}
 
-		@Override
-		public EventLoop getEventloop() {
-			return null;
+	public static class NotAnnotatedService {
+		private int count = 0;
+
+		public int getCount() {
+			return count;
+		}
+
+		@JmxOperation
+		public void inc() {
+			count++;
 		}
 	}
 
