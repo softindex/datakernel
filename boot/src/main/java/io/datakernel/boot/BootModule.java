@@ -52,7 +52,6 @@ public final class BootModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
 	private final IdentityHashMap<Object, CachedService> services = new IdentityHashMap<>();
-//	private final Map<Key<?>, AsyncService> singletonServices = new HashMap<>();
 
 	private final Executor executor;
 
@@ -115,12 +114,12 @@ public final class BootModule extends AbstractModule {
 					String attribute = (value instanceof String ? "\"" + value + "\"" : value.toString());
 					String methodName = m.getName();
 					if ("value".equals(methodName) && first) {
-						if ((value instanceof String) && !((String) value).isEmpty()) {
-							sb.append((first ? "" : ",") + attribute);
+						if (!(value instanceof String) || !((String) value).isEmpty()) {
+							sb.append(attribute);
 							first = false;
 						}
 					} else {
-						sb.append((first ? "" : ",") + methodName + "=" + attribute);
+						sb.append(first ? "" : ",").append(methodName).append("=").append(attribute);
 						first = false;
 					}
 				} catch (Exception ignored) {
