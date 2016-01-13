@@ -33,7 +33,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-public class DynamicMBeanFactoryTest {
+public class JmxMBeansTest {
 	private static final String GROUPED_STATS_COUNTER_ONE_COUNT = "groupedStats_counterOne_count";
 	private static final String GROUPED_STATS_COUNTER_ONE_SUM = "groupedStats_counterOne_sum";
 	private static final String GROUPED_STATS_COUNTER_TWO_COUNT = "groupedStats_counterTwo_count";
@@ -57,7 +57,7 @@ public class DynamicMBeanFactoryTest {
 	@Test
 	public void itShouldCollectAllJmxStatsFromMonitorableAndWriteThemToMBeanInfo() throws Exception {
 		MonitorableStub monitorable = new MonitorableStub();
-		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanAttributeInfo[] mBeanAttributeInfos = mBeanInfo.getAttributes();
@@ -74,7 +74,7 @@ public class DynamicMBeanFactoryTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void itShouldThrowExceptionWhenClassForCreatingDynamicMBeanIsNotAnnotated() throws Exception {
 		NotAnnotatedService notAnnotated = new NotAnnotatedService();
-		DynamicMBean mbean = DynamicMBeanFactory.createFor(notAnnotated);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(notAnnotated);
 	}
 
 	@Test
@@ -83,7 +83,7 @@ public class DynamicMBeanFactoryTest {
 		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
 		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
 		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
 
 		// check init values of attributes
 		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
@@ -113,7 +113,7 @@ public class DynamicMBeanFactoryTest {
 		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
 		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
 		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
 
 		// check fetching all attributes
 		AttributeList expectedAttributeList =
@@ -143,7 +143,7 @@ public class DynamicMBeanFactoryTest {
 	@Test
 	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanOperationInfo[] operations = mBeanInfo.getOperations();
@@ -174,7 +174,7 @@ public class DynamicMBeanFactoryTest {
 	@Test
 	public void itShouldInvokeAnnotanedOperationsThroughDynamicMBeanInterface() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
 
 		mbean.invoke("increment", null, null);
 		mbean.invoke("increment", null, null);
@@ -198,7 +198,7 @@ public class DynamicMBeanFactoryTest {
 		monitorable_1.getSimpleStats().recordValue(23L);
 		monitorable_2.getSimpleStats().recordValue(78L);
 
-		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable_1, monitorable_2);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable_1, monitorable_2);
 
 		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
 		assertEquals(23L + 78L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
@@ -215,7 +215,7 @@ public class DynamicMBeanFactoryTest {
 	public void itShouldBroadcastOperationCallToAllMonitorables() throws Exception {
 		MonitorableStubWithOperations monitorable_1 = new MonitorableStubWithOperations();
 		MonitorableStubWithOperations monitorable_2 = new MonitorableStubWithOperations();
-		DynamicMBean mbean = DynamicMBeanFactory.createFor(monitorable_1, monitorable_2);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable_1, monitorable_2);
 
 		// set manually init value for second monitorable to be different from first
 		monitorable_2.inc();
