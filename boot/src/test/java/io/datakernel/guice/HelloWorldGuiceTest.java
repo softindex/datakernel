@@ -60,6 +60,7 @@ public class HelloWorldGuiceTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
+			bind(Integer.class).annotatedWith(WorkerThreadsPoolSize.class).toInstance(WORKERS);
 			install(BootModule.defaultInstance());
 		}
 
@@ -71,10 +72,8 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
-		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop,
-		                                  WorkerThreadsPool workerThreadsPool,
-		                                  @WorkerThread Provider<AsyncHttpServer> itemProvider) {
-			List<AsyncHttpServer> workerHttpServers = workerThreadsPool.getPoolInstances(WORKERS, itemProvider);
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerThreadsPool workerThreadsPool) {
+			List<AsyncHttpServer> workerHttpServers = workerThreadsPool.getPoolInstances(AsyncHttpServer.class);
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
 			primaryNioServer.workerNioServers(workerHttpServers);
 			primaryNioServer.setListenPort(PORT);

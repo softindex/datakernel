@@ -16,10 +16,16 @@
 
 package io.datakernel.boot;
 
-import com.google.common.util.concurrent.ListenableFuture;
+import com.google.inject.BindingAnnotation;
 
-public interface Service {
-	ListenableFuture<?> start();
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-	ListenableFuture<?> stop();
+import static java.lang.annotation.ElementType.*;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
+
+@BindingAnnotation
+@Target({PARAMETER, METHOD, FIELD})
+@Retention(RUNTIME)
+public @interface WorkerThreadsPoolSize {
 }

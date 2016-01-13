@@ -17,14 +17,10 @@
 package io.datakernel.example;
 
 import com.google.inject.AbstractModule;
-import com.google.inject.Provider;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.boot.BootModule;
-import io.datakernel.boot.WorkerId;
-import io.datakernel.boot.WorkerThread;
-import io.datakernel.boot.WorkerThreadsPool;
+import io.datakernel.boot.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -35,8 +31,6 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.launcher.Launcher;
-
-import java.util.List;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -61,9 +55,14 @@ public class LauncherExample {
 	}
 
 	public static class LauncherExampleModule extends AbstractModule {
-
 		@Override
 		protected void configure() {
+		}
+
+		@Provides
+		@WorkerThreadsPoolSize
+		Integer poolSize(Config config) {
+			return config.get(ConfigConverters.ofInteger(), "workers", 4);
 		}
 
 		@Provides
@@ -74,11 +73,11 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, List<AsyncHttpServer> workerHttpServers,
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerThreadsPool workerThreadsPool,
 		                                  Config config) {
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
-			primaryNioServer.workerNioServers(workerHttpServers);
-			int port = ConfigConverters.ofInteger().get(config.getChild("port"));
+			primaryNioServer.workerNioServers(workerThreadsPool.getPoolInstances(AsyncHttpServer.class));
+			int port = config.get(ConfigConverters.ofInteger(), "port", 5577);
 			primaryNioServer.setListenPort(port);
 			return primaryNioServer;
 		}
@@ -93,7 +92,7 @@ public class LauncherExample {
 		@WorkerThread
 		AsyncHttpServer workerHttpServer(@WorkerThread NioEventloop eventloop, @WorkerId final int workerId,
 		                                 Config config) {
-			final String responseMessage = ConfigConverters.ofString().get(config.getChild("responseMessage"));
+			final String responseMessage = config.get(ConfigConverters.ofString(), "responseMessage", "Hello, World!");
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request,
@@ -106,12 +105,5 @@ public class LauncherExample {
 			});
 		}
 
-		@Provides
-		@Singleton
-		List<AsyncHttpServer> workerHttpServers(WorkerThreadsPool workerThreadsPool,
-		                                        @WorkerThread Provider<AsyncHttpServer> itemProvider, Config config) {
-			int workers = ConfigConverters.ofInteger().get(config.getChild("workers"));
-			return workerThreadsPool.getPoolInstances(workers, itemProvider);
-		}
 	}
 }

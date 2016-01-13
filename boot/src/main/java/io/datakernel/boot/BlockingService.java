@@ -16,6 +16,9 @@
 
 package io.datakernel.boot;
 
+/**
+ * It is service which blocks thread during operations start and stop.
+ */
 public interface BlockingService {
 	void start() throws Exception;
 

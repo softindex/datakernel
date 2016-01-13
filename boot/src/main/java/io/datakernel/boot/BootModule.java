@@ -18,9 +18,10 @@ package io.datakernel.boot;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import com.google.common.reflect.TypeToken;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.*;
-import com.google.inject.internal.MoreTypes;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.Dependency;
 import com.google.inject.spi.HasDependencies;
@@ -34,7 +35,6 @@ import javax.sql.DataSource;
 import java.io.Closeable;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -55,9 +55,7 @@ public final class BootModule extends AbstractModule {
 
 	private final Executor executor;
 
-	private Map<Key<?>, Object>[] pool;
-	@Nullable
-	private Integer currentPoolId;
+	private WorkerThreadsPoolImpl workerThreadsPool;
 
 	private BootModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
@@ -79,7 +77,7 @@ public final class BootModule extends AbstractModule {
 		return bootModule;
 	}
 
-	public static BootModule instanceWithoutAdapters() {
+	public static BootModule newInstance() {
 		return new BootModule();
 	}
 
@@ -101,6 +99,10 @@ public final class BootModule extends AbstractModule {
 				return true;
 			}
 		});
+	}
+
+	private static boolean isWorkerThread(Key<?> binding) {
+		return binding.getAnnotationType() == WorkerThread.class;
 	}
 
 	private static String prettyPrintAnnotation(Annotation annotation) {
@@ -127,7 +129,7 @@ public final class BootModule extends AbstractModule {
 			}
 		}
 		String simpleName = annotation.annotationType().getSimpleName();
-		return "@" + ("NamedImpl".equals(simpleName) ? "Named" : simpleName) + (first ? "" : "(" + sb.toString() + ")");
+		return "@" + ("NamedImpl".equals(simpleName) ? "Named" : simpleName) + (first ? "" : "(" + sb + ")");
 	}
 
 	/**
@@ -180,6 +182,39 @@ public final class BootModule extends AbstractModule {
 		return this;
 	}
 
+	private Service getPoolServiceOrNull(Key<?> key, List<?> instances) {
+		final List<Service> services = new ArrayList<>();
+		for (Object instance : instances) {
+			Service service = getServiceOrNull(key, instance);
+			if (service != null) {
+				services.add(service);
+			}
+		}
+		if (services.isEmpty())
+			return null;
+		return new Service() {
+			@Override
+			public ListenableFuture<?> start() {
+				List<ListenableFuture<?>> futures = new ArrayList<>();
+				for (Service service : services) {
+					ListenableFuture<?> future = service.start();
+					futures.add(future);
+				}
+				return Futures.allAsList(futures);
+			}
+
+			@Override
+			public ListenableFuture<?> stop() {
+				List<ListenableFuture<?>> futures = new ArrayList<>();
+				for (Service service : services) {
+					ListenableFuture<?> future = service.stop();
+					futures.add(future);
+				}
+				return Futures.allAsList(futures);
+			}
+		};
+	}
+
 	@SuppressWarnings("unchecked")
 	private Service getServiceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
@@ -213,89 +248,86 @@ public final class BootModule extends AbstractModule {
 			logger.warn("Unused keys : {}", keys.keySet());
 		}
 
-		for (final Binding<?> binding : injector.getAllBindings().values()) {
-			if (!isSingleton(binding) || binding.getKey().getTypeLiteral().getRawType() == ServiceGraph.class)
-				continue;
-			final Key<?> key = binding.getKey();
-			Object instance = injector.getInstance(key);
-			Service service = getServiceOrNull(key, instance);
-			ServiceGraphKey serviceGraphKey = new ServiceGraphKey(key);
-			graph.add(serviceGraphKey, service);
-			processDependencies(serviceGraphKey, key, injector, graph);
-		}
+		Set<Key<?>> workerThreadRoots = new LinkedHashSet<>();
 
-		for (int workerThreadId = 0; workerThreadId < (pool == null ? 0 : pool.length); workerThreadId++) {
-			for (Map.Entry<Key<?>, Object> entry : pool[workerThreadId].entrySet()) {
-				Key<?> key = entry.getKey();
-				Object instance = entry.getValue();
-				Service service = getServiceOrNull(key, instance);
-				ServiceGraphKey serviceGraphKey = new ServiceGraphKey(key, workerThreadId);
-				graph.add(serviceGraphKey, service);
-				processDependencies(serviceGraphKey, key, injector, graph);
+		for (Binding<?> binding : injector.getAllBindings().values()) {
+			if (isWorkerThread(binding.getKey())) {
+				workerThreadRoots.add(binding.getKey());
 			}
 		}
+
+		for (Binding<?> binding : injector.getAllBindings().values()) {
+			if (isWorkerThread(binding.getKey())) {
+				if (binding instanceof HasDependencies) {
+					for (Dependency<?> dependency : ((HasDependencies) binding).getDependencies()) {
+						workerThreadRoots.remove(dependency.getKey());
+					}
+				}
+			}
+		}
+
+		for (Binding<?> binding : injector.getAllBindings().values()) {
+			if (binding.getKey().getTypeLiteral().getRawType() == ServiceGraph.class)
+				continue;
+			final Key<?> key = binding.getKey();
+			Service service;
+			if (isSingleton(binding)) {
+				Object instance = injector.getInstance(key);
+				service = getServiceOrNull(key, instance);
+			} else if (isWorkerThread(key)) {
+				List<?> instances = workerThreadsPool.getPoolInstances(key);
+				service = getPoolServiceOrNull(key, instances);
+			} else
+				continue;
+			graph.add(key, service);
+			processDependencies(key, injector, graph, workerThreadRoots);
+		}
+
 	}
 
-	private void processDependencies(ServiceGraphKey serviceGraphKey, Key<?> key, Injector injector, ServiceGraph graph) {
+	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph, Set<Key<?>> workerThreadRoots) {
 		Binding<?> binding = injector.getBinding(key);
 		if (!(binding instanceof HasDependencies))
 			return;
 
-		Set<Key<?>> dependenciesForKey = new HashSet<>();
-		Set<Dependency<?>> dependencies = ((HasDependencies) binding).getDependencies();
+		Set<Key<?>> dependencies = new HashSet<>();
+		for (Dependency<?> dependency : ((HasDependencies) binding).getDependencies()) {
+			dependencies.add(dependency.getKey());
+		}
 
-		boolean dependsOnPool = false;
-		for (Dependency<?> dependency : dependencies) {
-			Key<?> dependencyKey = dependency.getKey();
-			dependenciesForKey.add(dependencyKey);
+		if (!difference(removedDependencies.get(key), dependencies).isEmpty()) {
+			logger.warn("Unused removed dependencies for {} : {}", key, difference(removedDependencies.get(key), dependencies));
+		}
+
+		if (!intersection(dependencies, addedDependencies.get(key)).isEmpty()) {
+			logger.warn("Unused added dependencies for {} : {}", key, intersection(dependencies, addedDependencies.get(key)));
+		}
+
+		for (Key<?> dependencyKey : union(difference(dependencies, removedDependencies.get(key)), addedDependencies.get(key))) {
 			if (dependencyKey.getTypeLiteral().getRawType() == WorkerThreadsPool.class) {
-				dependsOnPool = true;
+				graph.add(key, workerThreadRoots);
 			}
-		}
-
-		if (!difference(removedDependencies.get(key), dependenciesForKey).isEmpty()) {
-			logger.warn("Unused removed dependencies for {} : {}", key, difference(removedDependencies.get(key), dependenciesForKey));
-		}
-
-		if (!intersection(dependenciesForKey, addedDependencies.get(key)).isEmpty()) {
-			logger.warn("Unused added dependencies for {} : {}", key, intersection(dependenciesForKey, addedDependencies.get(key)));
-		}
-
-		for (Key<?> dependencyKey : union(difference(dependenciesForKey, removedDependencies.get(key)), addedDependencies.get(key))) {
-			if (dependsOnPool && dependencyKey.getTypeLiteral().getRawType() == Provider.class &&
-					dependencyKey.getAnnotationType() == WorkerThread.class) {
-				Type actualType = ((MoreTypes.ParameterizedTypeImpl)
-						dependencyKey.getTypeLiteral().getType()).getActualTypeArguments()[0];
-				Key<?> actualKey = Key.get(actualType, dependencyKey.getAnnotation());
-				for (int i = 0; i < pool.length; i++) {
-					if (!pool[i].containsKey(actualKey)) {
-						logger.warn("Not found " + actualKey + " in nio worker pool " + i);
-					}
-					graph.add(serviceGraphKey, new ServiceGraphKey(actualKey, i));
-				}
-				continue;
-			}
-
-			if (dependencyKey.getAnnotationType() == WorkerThread.class) {
-				checkArgument(serviceGraphKey.workerThreadId != null, "Can only add dependency to " + dependencyKey + " from within WorkerThread, key: " + serviceGraphKey.key);
-				graph.add(serviceGraphKey, new ServiceGraphKey(dependencyKey, serviceGraphKey.workerThreadId));
-			} else {
-				graph.add(serviceGraphKey, new ServiceGraphKey(dependencyKey));
-			}
+			graph.add(key, dependencyKey);
 		}
 	}
 
 	@Override
 	protected void configure() {
-		NioWorkerScope nioNioWorkerScope = new NioWorkerScope();
-		bindScope(WorkerThread.class, nioNioWorkerScope);
-		bind(WorkerThreadsPool.class).toInstance(nioNioWorkerScope);
+		workerThreadsPool = new WorkerThreadsPoolImpl();
+		requestInjection(workerThreadsPool);
+		bindScope(WorkerThread.class, workerThreadsPool);
 		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
 			@Override
 			public Integer get() {
-				return currentPoolId;
+				return workerThreadsPool.currentPoolId;
 			}
 		});
+	}
+
+	@Provides
+	WorkerThreadsPool workerThreadsPool() {
+		checkArgument(workerThreadsPool.poolSize != null, "Pool size must be provided, as Integer annotated with %s", WorkerThreadsPoolSize.class);
+		return workerThreadsPool;
 	}
 
 	/**
@@ -307,7 +339,15 @@ public final class BootModule extends AbstractModule {
 	@Provides
 	@Singleton
 	ServiceGraph serviceGraph(final Injector injector) {
-		ServiceGraph serviceGraph = ServiceGraph.create();
+		ServiceGraph serviceGraph = new ServiceGraph() {
+			@Override
+			protected String nodeToString(Object node) {
+				Key<?> key = (Key<?>) node;
+				Annotation annotation = key.getAnnotation();
+				return key.getTypeLiteral() +
+						(annotation != null ? " " + prettyPrintAnnotation(annotation) : "");
+			}
+		};
 		createGuiceGraph(injector, serviceGraph);
 		serviceGraph.removeIntermediateNodes();
 		logger.info("Services graph: \n" + serviceGraph);
@@ -342,109 +382,113 @@ public final class BootModule extends AbstractModule {
 		}
 	}
 
-	private static class ServiceGraphKey {
-		private final Key<?> key;
+	private final class WorkerThreadsPoolImpl implements Scope, WorkerThreadsPool {
+		private final Map<Key<?>, Object[]> pool = new HashMap<>();
+
+		@Inject(optional = true)
+		@WorkerThreadsPoolSize
+		Integer poolSize;
+
+		@Inject
+		Injector injector;
+
 		@Nullable
-		private final Integer workerThreadId;
+		Integer currentPoolId;
 
-		public ServiceGraphKey(Key<?> key, int workerThreadId) {
-			checkArgument(workerThreadId >= 0);
-			this.key = checkNotNull(key);
-			this.workerThreadId = workerThreadId;
-		}
-
-		public ServiceGraphKey(Key<?> key) {
-			this.key = key;
-			this.workerThreadId = null;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-
-			ServiceGraphKey that = (ServiceGraphKey) o;
-
-			if (!key.equals(that.key)) return false;
-			return workerThreadId != null ? workerThreadId.equals(that.workerThreadId) : that.workerThreadId == null;
-
-		}
-
-		@Override
-		public int hashCode() {
-			int result = key.hashCode();
-			result = 31 * result + (workerThreadId != null ? workerThreadId.hashCode() : 0);
-			return result;
-		}
-
-		@Override
-		public String toString() {
-			Annotation annotation = key.getAnnotation();
-
-			return key.getTypeLiteral() +
-					(annotation != null ? " " + prettyPrintAnnotation(annotation) : "") +
-					(workerThreadId != null ? " [" + workerThreadId + "]" : "");
-		}
-	}
-
-	private final class NioWorkerScope implements Scope, WorkerThreadsPool {
 		@Override
 		public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
 			return new Provider<T>() {
+				@SuppressWarnings("unchecked")
 				@Override
 				public T get() {
-					checkScope(key);
-					Map<Key<?>, Object> keyToInstance = pool[currentPoolId];
-					@SuppressWarnings("unchecked")
-					T instance = (T) keyToInstance.get(key);
-					if (instance == null && !keyToInstance.containsKey(key)) {
+					checkState(currentPoolId != null && poolSize != null,
+							"To create %s use %s", key, WorkerThreadsPool.class.getSimpleName());
+					T[] instances = (T[]) pool.get(key);
+					if (instances == null) {
+						instances = (T[]) new Object[poolSize];
+						pool.put(key, instances);
+					}
+					T instance = instances[currentPoolId];
+					if (instance == null) {
 						instance = unscoped.get();
-						checkNioSingleton(key, instance);
-						keyToInstance.put(key, instance);
+						instances[currentPoolId] = instance;
 					}
 					return instance;
 				}
 			};
 		}
 
-		private <T> void checkScope(Key<T> key) {
-			if (currentPoolId < 0 || currentPoolId > pool.length)
-				// TODO (vsavchuk): try to simplify, use to Key.toString instead
-				throw new RuntimeException("Could not bind " + ((key.getAnnotation() == null) ? "" :
-						"@" + key.getAnnotation() + " ") + key.getTypeLiteral() + " in NioPoolScope.");
+		@Override
+		public <T> List<T> getPoolInstances(Class<T> type) {
+			return getPoolInstances(Key.get(type, WorkerThread.class));
 		}
 
-		private <T> void checkNioSingleton(Key<T> key, T object) {
-			for (int i = 0; i < pool.length; i++) {
-				if (i == currentPoolId) continue;
-				Map<Key<?>, Object> scopedObjects = pool[i];
-				Object o = scopedObjects.get(key);
-				if (o != null && o == object)
-					// TODO (vsavchuk): use Key in error message, fix error message
-					throw new IllegalStateException("Provider must returns NioSingleton object of " + object.getClass());
-			}
+		@SuppressWarnings("unchecked")
+		@Override
+		public <T> List<T> getPoolInstances(TypeToken<T> type) {
+			return getPoolInstances((Key<T>) Key.get(type.getType(), WorkerThread.class));
 		}
 
 		@Override
-		public <T> List<T> getPoolInstances(int size, Provider<T> itemProvider) {
-			checkArgument(size > 0, "Pool size must be positive value, got %s", size);
-			if (pool == null) {
-				pool = new HashMap[size];
-				for (int i = 0; i < size; i++) {
-					pool[i] = new HashMap<>();
-				}
-			}
-			checkArgument(pool.length == size, "Pool cannot have different size: old size = %s, new size: %s", pool.length, size);
+		public <T> List<T> getPoolInstances(Class<T> type, String named) {
+			return getPoolInstances(Key.get(type, new WorkerThreadAnnotation(named)));
+		}
 
+		@SuppressWarnings("unchecked")
+		@Override
+		public <T> List<T> getPoolInstances(TypeToken<T> type, String named) {
+			return getPoolInstances((Key<T>) Key.get(type.getType(), new WorkerThreadAnnotation(named)));
+		}
+
+		private <T> List<T> getPoolInstances(Key<T> key) {
+			checkArgument(isWorkerThread(key));
 			Integer originalPoolId = currentPoolId;
-			List<T> result = new ArrayList<>(size);
-			for (int i = 0; i < pool.length; i++) {
+			List<T> result = new ArrayList<>();
+			for (int i = 0; i < poolSize; i++) {
 				currentPoolId = i;
-				result.add(itemProvider.get());
+				result.add(injector.getInstance(key));
 			}
 			currentPoolId = originalPoolId;
 			return result;
 		}
+	}
+
+	@SuppressWarnings("ClassExplicitlyAnnotation")
+	private static final class WorkerThreadAnnotation implements WorkerThread {
+		final String value;
+
+		WorkerThreadAnnotation(String value) {
+			this.value = checkNotNull(value);
+		}
+
+		@Override
+		public String value() {
+			return value;
+		}
+
+		@Override
+		public Class<? extends Annotation> annotationType() {
+			return WorkerThread.class;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (!(o instanceof WorkerThread)) return false;
+
+			WorkerThread that = (WorkerThread) o;
+			return value.equals(that.value());
+
+		}
+
+		@Override
+		public int hashCode() {
+			return (127 * "value".hashCode()) ^ value.hashCode();
+		}
+
+		public String toString() {
+			return "@" + WorkerThread.class.getName() + "(value=" + value + ")";
+		}
 
 	}
+
 }

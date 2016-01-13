@@ -16,10 +16,16 @@
 
 package io.datakernel.boot;
 
-import com.google.inject.Provider;
+import com.google.common.reflect.TypeToken;
 
 import java.util.List;
 
 public interface WorkerThreadsPool {
-	<T> List<T> getPoolInstances(int workerThreadsCount, Provider<T> workerThreadInstanceProvider);
+	<T> List<T> getPoolInstances(Class<T> type);
+
+	<T> List<T> getPoolInstances(TypeToken<T> type);
+
+	<T> List<T> getPoolInstances(Class<T> type, String named);
+
+	<T> List<T> getPoolInstances(TypeToken<T> type, String named);
 }

@@ -45,7 +45,7 @@ import static java.util.Collections.singleton;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-public final class ServiceGraph {
+public class ServiceGraph {
 
 	private static final Logger logger = LoggerFactory.getLogger(ServiceGraph.class);
 
@@ -67,7 +67,7 @@ public final class ServiceGraph {
 
 	private final Map<Object, Service> services = new HashMap<>();
 
-	private ServiceGraph() {
+	protected ServiceGraph() {
 	}
 
 	public static ServiceGraph create() {
@@ -83,17 +83,19 @@ public final class ServiceGraph {
 		return this;
 	}
 
-	public final ServiceGraph add(Object key, Object first, Object... rest) {
-		add(key, concat(singleton(first), asList(rest)));
-		return this;
-	}
-
-	public final ServiceGraph add(Object key, Iterable<Object> dependencies) {
+	public ServiceGraph add(Object key, Iterable<Object> dependencies) {
 		for (Object dependency : dependencies) {
 			checkArgument(!(dependency instanceof Service), "Dependency %s must be a key, not a service", dependency);
 			forwards.put(key, dependency);
 			backwards.put(dependency, key);
 		}
+		return this;
+	}
+
+	public ServiceGraph add(Object key, Object first, Object... rest) {
+		if (first instanceof Iterable)
+			return add(key, (Iterable) first);
+		add(key, concat(singleton(first), asList(rest)));
 		return this;
 	}
 
@@ -358,7 +360,7 @@ public final class ServiceGraph {
 		return null;
 	}
 
-	private String nodeToString(Object node) {
+	protected String nodeToString(Object node) {
 		return node.toString();
 	}
 
