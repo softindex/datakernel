@@ -249,7 +249,13 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(indexId))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
-				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull().or(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(newRevisionId)))
+				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull())
+				.unionAll(jooq.select()
+						.from(AGGREGATION_DB_CHUNK)
+						.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(indexId))
+						.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
+						.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
+						.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(newRevisionId)))
 				.fetch();
 
 		Splitter splitter = Splitter.on(' ').omitEmptyStrings();
