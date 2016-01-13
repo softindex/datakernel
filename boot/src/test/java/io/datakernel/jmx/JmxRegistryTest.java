@@ -35,6 +35,8 @@ import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+import static java.util.Arrays.asList;
+
 public class JmxRegistryTest {
 
 	@Rule
@@ -53,7 +55,8 @@ public class JmxRegistryTest {
 			allowing(mbeanFactory).createFor(service);
 			will(returnValue(dynamicMBean));
 
-			exactly(1).of(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
+			exactly(1).of(mBeanServer).registerMBean(
+					with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
 		}});
 
 		Key<?> key_1 = Key.get(ServiceStub.class);
@@ -61,14 +64,16 @@ public class JmxRegistryTest {
 	}
 
 	@Test
-	public void registerSingletonInstanceWith_AnnotationWithoutParameters_AndComposeAppropriateObjectName() throws Exception {
+	public void registerSingletonInstanceWith_AnnotationWithoutParameters_AndComposeAppropriateObjectName()
+			throws Exception {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
 			allowing(mbeanFactory).createFor(service);
 			will(returnValue(dynamicMBean));
 
-			exactly(1).of(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=BasicService")));
+			exactly(1).of(mBeanServer).registerMBean(
+					with(dynamicMBean), with(objectname(domain + ":type=BasicService")));
 		}});
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
@@ -123,6 +128,68 @@ public class JmxRegistryTest {
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
 		jmxRegistry.onSingletonStop(key, service);
+	}
+
+	@Test
+	public void registerWorkers_andComposeAppropriateObjectNames() throws Exception {
+		final ServiceStub worker_1 = new ServiceStub();
+		final ServiceStub worker_2 = new ServiceStub();
+		final ServiceStub worker_3 = new ServiceStub();
+
+		context.checking(new Expectations() {{
+			// creating DynamicMBeans for each worker separately
+			allowing(mbeanFactory).createFor(worker_1);
+			will(returnValue(dynamicMBean));
+
+			allowing(mbeanFactory).createFor(worker_2);
+			will(returnValue(dynamicMBean));
+
+			allowing(mbeanFactory).createFor(worker_3);
+			will(returnValue(dynamicMBean));
+
+			// creating DynamicMBean work workers pool
+			allowing(mbeanFactory).createFor(worker_1, worker_2, worker_3);
+			will(returnValue(dynamicMBean));
+
+			// checking calls and names for each worker separately
+			exactly(1).of(mBeanServer).registerMBean(
+					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=0")));
+			exactly(1).of(mBeanServer).registerMBean(
+					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=1")));
+			exactly(1).of(mBeanServer).registerMBean(
+					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=2")));
+
+			// checking calls and names for worker_pool DynamicMBean
+			exactly(1).of(mBeanServer).registerMBean(
+					with(dynamicMBean), with(objectname(domain + ":type=BasicService")));
+
+		}});
+
+		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
+		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
+		jmxRegistry.onWorkersStart(key, asList(worker_1, worker_2, worker_3));
+	}
+
+	@Test
+	public void unregisterWorkers() throws Exception {
+		final ServiceStub worker_1 = new ServiceStub();
+		final ServiceStub worker_2 = new ServiceStub();
+		final ServiceStub worker_3 = new ServiceStub();
+
+		context.checking(new Expectations() {{
+			// checking calls and names for each worker separately
+			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=0")));
+			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=1")));
+			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=2")));
+
+			// checking calls and names for worker_pool DynamicMBean
+			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService")));
+
+		}});
+
+		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
+		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
+		jmxRegistry.onWorkersStop(key, asList(worker_1, worker_2, worker_3));
 	}
 
 	// annotations
