@@ -17,8 +17,10 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
-import com.google.inject.TypeLiteral;
+import io.datakernel.boot.BootModule;
 import io.datakernel.jmx.annotation.JmxMBean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.management.*;
 import java.lang.annotation.Annotation;
@@ -26,9 +28,12 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 
-import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.lang.String.format;
 
-public final class JmxRegistry {
+public final class JmxRegistry implements BootModule.Listener {
+	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
+
 	private final MBeanServer mbs;
 	private final DynamicMBeanFactory mbeanFactory;
 
@@ -37,56 +42,106 @@ public final class JmxRegistry {
 		this.mbeanFactory = mbeanFactory;
 	}
 
-	public void registerPoolOfInstances(Key<?> key, List<?> instances) {
+	@Override
+	public void onSingletonStart(Key<?> key, Object singletonInstance) {
+		checkNotNull(singletonInstance);
+		checkNotNull(key);
+
+		if (!isJmxMBean(singletonInstance)) {
+			logger.info(format("Instance with key %s was not registered to jmx, " +
+					"because its type is not annotated with @JmxMBean", key.toString()));
+			return;
+		}
+
+		DynamicMBean mbean;
+		try {
+			mbean = mbeanFactory.createFor(singletonInstance);
+		} catch (Exception e) {
+			String msg = format("Instance with key %s is annotated with @JmxMBean " +
+					"but exception was thrown during attempt to create DynamicMBean", key.toString());
+			logger.error(msg, e);
+			return;
+		}
+
+		String name;
+		try {
+			name = createNameForInstance(key);
+		} catch (Exception e) {
+			String msg = format("Error during generation name for instance with key %s", key.toString());
+			logger.error(msg, e);
+			return;
+		}
+
+		ObjectName objectName;
+		try {
+			objectName = new ObjectName(name);
+		} catch (MalformedObjectNameException e) {
+			String msg = format("Cannot create ObjectName for instance with key %s. " +
+					"Proposed String name was \"%s\".", key.toString(), name);
+			logger.error(msg, e);
+			return;
+		}
+
+		try {
+			mbs.registerMBean(mbean, objectName);
+		} catch (NotCompliantMBeanException | InstanceAlreadyExistsException | MBeanRegistrationException e) {
+			String msg = format("Cannot register MBean for instance with key %s and ObjectName \"%s\"",
+					key.toString(), objectName.toString());
+			logger.error(msg, e);
+			return;
+		}
+	}
+
+	@Override
+	public void onSingletonStop(Key<?> key, Object singletonInstance) {
+		if (isJmxMBean(singletonInstance)) {
+			try {
+				String name = createNameForInstance(key);
+				ObjectName objectName = new ObjectName(name);
+				mbs.unregisterMBean(objectName);
+			} catch (Exception e) {
+				String msg =
+						format("Error during attempt to unregister MBean for instance with key %s.", key.toString());
+				logger.error(msg, e);
+			}
+		}
+	}
+
+	@Override
+	public void onWorkersStart(Key<?> key, List<?> poolInstances) {
 
 	}
 
-	public void registerInstance(Key<?> key, Object instance) {
-		DynamicMBean mbean;
-		try {
-			mbean = mbeanFactory.createFor(instance);
-		} catch (Exception e) {
-			// TODO(vmykhalko): is it correct exception handling policy ?
-			throw new RuntimeException(e);
-		}
-		String domain = key.getTypeLiteral().getRawType().getPackage().getName();
+	@Override
+	public void onWorkersStop(Key<?> key, List<?> poolInstances) {
+
+	}
+
+	private static boolean isJmxMBean(Object instance) {
+		return instance.getClass().isAnnotationPresent(JmxMBean.class);
+	}
+
+	private static String createNameForInstance(Key<?> key) throws Exception {
+		Class<?> type = key.getTypeLiteral().getRawType();
 		Annotation annotation = key.getAnnotation();
-		String name;
-		if (annotation == null) {
-			name = domain + ":type=" + key.getTypeLiteral().getRawType().getSimpleName();
+		String domain = type.getPackage().getName();
+		String name = domain + ":";
+		if (annotation == null) { // without annotation
+			name += "type=" + type.getSimpleName();
 		} else {
-			Method[] methods = annotation.annotationType().getDeclaredMethods();
-			if (methods.length == 0) {
-				name = domain + ":type=" + annotation.annotationType().getSimpleName();
-			} else if (methods.length == 1 && methods[0].getName() == "value") {
-				Object value;
-				try {
-					value = methods[0].invoke(annotation);
-				} catch (IllegalAccessException | InvocationTargetException e) {
-					throw new RuntimeException(e);
-				}
-				if (value == null) {
-					String errorMsg = "@" + annotation.annotationType().getName() + "." +
-							methods[0].getName() + "() returned null";
-					throw new NullPointerException(errorMsg);
-				}
-				name = domain + ":" + annotation.annotationType().getSimpleName() + "=" + value.toString();
-			} else {
-				name = domain + ":";
-				for (Method method : methods) {
-					String nameKey = method.getName();
-					String nameValue;
-					try {
-						Object value = method.invoke(annotation);
-						if (value == null) {
-							String errorMsg = "@" + annotation.annotationType().getName() + "." +
-									method.getName() + "() returned null";
-							throw new NullPointerException(errorMsg);
-						}
-						nameValue = value.toString();
-					} catch (IllegalAccessException | InvocationTargetException e) {
-						throw new RuntimeException(e);
-					}
+			Class<? extends Annotation> annotationType = annotation.annotationType();
+			Method[] annotationElements = annotationType.getDeclaredMethods();
+			if (annotationElements.length == 0) { // annotation without elements
+				name += "type=" + annotationType.getSimpleName();
+			} else if (annotationElements.length == 1 && annotationElements[0].getName().equals("value")) {
+				// annotation with single element which has name "value"
+				Object value = fetchAnnotationElementValue(annotation, annotationElements[0]);
+				name += annotationType.getSimpleName() + "=" + value.toString();
+			} else { // annotation with one or more custom elements
+				for (Method annotationParameter : annotationElements) {
+					Object value = fetchAnnotationElementValue(annotation, annotationParameter);
+					String nameKey = annotationParameter.getName();
+					String nameValue = value.toString();
 					name += nameKey + "=" + nameValue + ",";
 				}
 
@@ -95,25 +150,20 @@ public final class JmxRegistry {
 				name = name.substring(0, name.length() - 1);
 			}
 		}
-
-		ObjectName objectName = null;
-		try {
-			objectName = new ObjectName(name);
-		} catch (MalformedObjectNameException e) {
-			throw new RuntimeException(e);
-		}
-		try {
-			mbs.registerMBean(mbean, objectName);
-		} catch (NotCompliantMBeanException | InstanceAlreadyExistsException | MBeanRegistrationException e) {
-			throw new RuntimeException(e);
-		}
+		return name;
 	}
 
-	public boolean isJmxMBean(Object instance) {
-		return instance.getClass().isAnnotationPresent(JmxMBean.class);
-	}
-
-	public void unregister(Key<?> key) {
-
+	/**
+	 * Returns values if it is not null, otherwise throws exception
+	 */
+	private static Object fetchAnnotationElementValue(Annotation annotation, Method element)
+			throws InvocationTargetException, IllegalAccessException {
+		Object value = element.invoke(annotation);
+		if (value == null) {
+			String errorMsg = "@" + annotation.annotationType().getName() + "." +
+					element.getName() + "() returned null";
+			throw new NullPointerException(errorMsg);
+		}
+		return value;
 	}
 }

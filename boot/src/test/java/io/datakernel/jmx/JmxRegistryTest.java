@@ -57,7 +57,7 @@ public class JmxRegistryTest {
 		}});
 
 		Key<?> key_1 = Key.get(ServiceStub.class);
-		jmxRegistry.registerInstance(key_1, service);
+		jmxRegistry.onSingletonStart(key_1, service);
 	}
 
 	@Test
@@ -73,7 +73,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.registerInstance(key, service);
+		jmxRegistry.onSingletonStart(key, service);
 	}
 
 	@Test
@@ -90,7 +90,7 @@ public class JmxRegistryTest {
 
 		Group groupAnnotation = createGroupAnnotation("major");
 		Key<?> key = Key.get(ServiceStub.class, groupAnnotation);
-		jmxRegistry.registerInstance(key, service);
+		jmxRegistry.onSingletonStart(key, service);
 	}
 
 	@Test
@@ -108,8 +108,21 @@ public class JmxRegistryTest {
 
 		ComplexAnnotation complexAnnotation = createComplexAnnotation(1, "thread-one");
 		Key<?> key = Key.get(ServiceStub.class, complexAnnotation);
-		jmxRegistry.registerInstance(key, service);
+		jmxRegistry.onSingletonStart(key, service);
 
+	}
+
+	@Test
+	public void unregisterSingletonInstance() throws Exception {
+		final ServiceStub service = new ServiceStub();
+
+		context.checking(new Expectations() {{
+			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService")));
+		}});
+
+		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
+		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
+		jmxRegistry.onSingletonStop(key, service);
 	}
 
 	// annotations
