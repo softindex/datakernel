@@ -57,6 +57,18 @@ public final class BootModule extends AbstractModule {
 
 	private WorkerThreadsPoolImpl workerThreadsPool;
 
+	private List<Listener> listeners = new ArrayList<>();
+
+	public interface Listener {
+		void onSingletonStart(Key<?> key, Object singletonInstance);
+
+		void onSingletonStop(Key<?> key, Object singletonInstance);
+
+		void onWorkersStart(Key<?> key, List<?> poolInstances);
+
+		void onWorkersStop(Key<?> key, List<?> poolInstances);
+	}
+
 	private BootModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
 				10, TimeUnit.MILLISECONDS,
@@ -132,6 +144,11 @@ public final class BootModule extends AbstractModule {
 		return "@" + ("NamedImpl".equals(simpleName) ? "Named" : simpleName) + (first ? "" : "(" + sb + ")");
 	}
 
+	public BootModule addListener(Listener listener) {
+		listeners.add(listener);
+		return this;
+	}
+
 	/**
 	 * Puts an instance of class and its factory to the factoryMap
 	 *
@@ -182,7 +199,7 @@ public final class BootModule extends AbstractModule {
 		return this;
 	}
 
-	private Service getPoolServiceOrNull(Key<?> key, List<?> instances) {
+	private Service getPoolServiceOrNull(final Key<?> key, final List<?> instances) {
 		final List<Service> services = new ArrayList<>();
 		for (Object instance : instances) {
 			Service service = getServiceOrNull(key, instance);
@@ -200,7 +217,16 @@ public final class BootModule extends AbstractModule {
 					ListenableFuture<?> future = service.start();
 					futures.add(future);
 				}
-				return Futures.allAsList(futures);
+				ListenableFuture<List<Object>> future = Futures.allAsList(futures);
+				future.addListener(new Runnable() {
+					@Override
+					public void run() {
+						for (Listener listener : listeners) {
+							listener.onWorkersStart(key, instances);
+						}
+					}
+				}, executor);
+				return future;
 			}
 
 			@Override
@@ -210,7 +236,16 @@ public final class BootModule extends AbstractModule {
 					ListenableFuture<?> future = service.stop();
 					futures.add(future);
 				}
-				return Futures.allAsList(futures);
+				ListenableFuture<List<Object>> future = Futures.allAsList(futures);
+				future.addListener(new Runnable() {
+					@Override
+					public void run() {
+						for (Listener listener : listeners) {
+							listener.onWorkersStop(key, instances);
+						}
+					}
+				}, executor);
+				return future;
 			}
 		};
 	}
@@ -236,7 +271,7 @@ public final class BootModule extends AbstractModule {
 		}
 		if (serviceAdapter != null) {
 			Service asyncService = ((ServiceAdapter<Object>) serviceAdapter).toService(instance, executor);
-			service = new CachedService(asyncService);
+			service = new CachedService(key, instance, asyncService);
 			services.put(instance, service);
 			return service;
 		}
@@ -354,12 +389,16 @@ public final class BootModule extends AbstractModule {
 		return serviceGraph;
 	}
 
-	private static class CachedService implements Service {
+	private class CachedService implements Service {
+		private final Key<Object> key;
+		private final Object instance;
 		private final Service service;
 		private ListenableFuture<?> startFuture;
 		private ListenableFuture<?> stopFuture;
 
-		private CachedService(Service service) {
+		private CachedService(Key<?> key, Object instance, Service service) {
+			this.key = (Key<Object>) key;
+			this.instance = instance;
 			this.service = service;
 		}
 
@@ -369,6 +408,16 @@ public final class BootModule extends AbstractModule {
 			if (startFuture == null) {
 				startFuture = service.start();
 			}
+			if (!isWorkerThread(key)) {
+				startFuture.addListener(new Runnable() {
+					@Override
+					public void run() {
+						for (Listener listener : listeners) {
+							listener.onSingletonStart(key, instance);
+						}
+					}
+				}, executor);
+			}
 			return startFuture;
 		}
 
@@ -377,6 +426,16 @@ public final class BootModule extends AbstractModule {
 			checkState(startFuture != null);
 			if (stopFuture == null) {
 				stopFuture = service.stop();
+			}
+			if (!isWorkerThread(key)) {
+				startFuture.addListener(new Runnable() {
+					@Override
+					public void run() {
+						for (Listener listener : listeners) {
+							listener.onSingletonStop(key, instance);
+						}
+					}
+				}, executor);
 			}
 			return stopFuture;
 		}
