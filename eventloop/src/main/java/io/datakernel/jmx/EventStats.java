@@ -16,7 +16,9 @@
 
 package io.datakernel.jmx;
 
+import javax.management.openmbean.SimpleType;
 import java.util.SortedMap;
+import java.util.TreeMap;
 
 import static java.lang.Math.exp;
 import static java.lang.Math.log;
@@ -112,7 +114,10 @@ public final class EventStats implements JmxStats<EventStats> {
 
 	@Override
 	public SortedMap<String, TypeAndValue> getAttributes() {
-		throw new UnsupportedOperationException(); // TODO (vmykhalko)
+		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
+		attributes.put("totalCount", new TypeAndValue(SimpleType.LONG, getTotalCount()));
+		attributes.put("smoothedRate", new TypeAndValue(SimpleType.LONG, getSmoothedRate()));
+		return attributes;
 	}
 
 	@Override

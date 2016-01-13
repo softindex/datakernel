@@ -153,11 +153,11 @@ public class JmxRegistryTest {
 
 			// checking calls and names for each worker separately
 			exactly(1).of(mBeanServer).registerMBean(
-					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=0")));
+					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=worker-0")));
 			exactly(1).of(mBeanServer).registerMBean(
-					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=1")));
+					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=worker-1")));
 			exactly(1).of(mBeanServer).registerMBean(
-					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=2")));
+					with(dynamicMBean), with(objectname(domain + ":type=BasicService,workerId=worker-2")));
 
 			// checking calls and names for worker_pool DynamicMBean
 			exactly(1).of(mBeanServer).registerMBean(
@@ -178,9 +178,9 @@ public class JmxRegistryTest {
 
 		context.checking(new Expectations() {{
 			// checking calls and names for each worker separately
-			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=0")));
-			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=1")));
-			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=2")));
+			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=worker-0")));
+			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=worker-1")));
+			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService,workerId=worker-2")));
 
 			// checking calls and names for worker_pool DynamicMBean
 			exactly(1).of(mBeanServer).unregisterMBean(with(objectname(domain + ":type=BasicService")));

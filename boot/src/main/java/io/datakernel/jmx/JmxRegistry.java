@@ -273,7 +273,7 @@ public final class JmxRegistry implements BootModule.Listener {
 	}
 
 	private static String createWorkerName(String commonName, int workerId) {
-		return commonName + format(",workerId=%d", workerId);
+		return commonName + format(",workerId=worker-%d", workerId);
 	}
 
 	private static String createNameForKey(Key<?> key) throws Exception {
