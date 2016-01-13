@@ -28,6 +28,8 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
+import io.datakernel.jmx.JmxMBeans;
+import io.datakernel.jmx.JmxRegistry;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Assert;
 import org.junit.Before;
@@ -37,6 +39,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
@@ -61,7 +64,8 @@ public class HelloWorldGuiceTest {
 		@Override
 		protected void configure() {
 			bind(Integer.class).annotatedWith(WorkerThreadsPoolSize.class).toInstance(WORKERS);
-			install(BootModule.defaultInstance());
+			JmxRegistry jmxRegistry = new JmxRegistry(ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory());
+			install(BootModule.defaultInstance().addListener(jmxRegistry));
 		}
 
 		@Provides
@@ -73,7 +77,8 @@ public class HelloWorldGuiceTest {
 		@Provides
 		@Singleton
 		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerThreadsPool workerThreadsPool) {
-			List<AsyncHttpServer> workerHttpServers = workerThreadsPool.getPoolInstances(AsyncHttpServer.class);
+			List<AsyncHttpServer> workerHttpServers =
+					workerThreadsPool.getPoolInstances(AsyncHttpServer.class);
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
 			primaryNioServer.workerNioServers(workerHttpServers);
 			primaryNioServer.setListenPort(PORT);
@@ -81,14 +86,14 @@ public class HelloWorldGuiceTest {
 		}
 
 		@Provides
-		@WorkerThread
+		@WorkerThread("WorkerEventloop")
 		NioEventloop workerEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-		@WorkerThread
-		AsyncHttpServer workerHttpServer(@WorkerThread NioEventloop eventloop, @WorkerId final int workerId) {
+		@WorkerThread()
+		AsyncHttpServer workerHttpServer(@WorkerThread("WorkerEventloop") NioEventloop eventloop, @WorkerId final int workerId) {
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request,

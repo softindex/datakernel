@@ -326,7 +326,7 @@ public final class NioEventloopJmx implements NioEventloopJmxMBean {
 	private NioEventloopStats collectAllStats() {
 		NioEventloopStats stats = new NioEventloopStats();
 		for (NioEventloop eventloop : eventloops) {
-			stats.add(eventloop.getStats());
+			stats.add(eventloop.getNioEventloopStats());
 		}
 		return stats;
 	}

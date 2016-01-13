@@ -20,6 +20,9 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.jmx.NioEventloopStats;
 import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.annotation.JmxMBean;
+import io.datakernel.jmx.annotation.JmxOperation;
+import io.datakernel.jmx.annotation.JmxParameter;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -53,6 +56,7 @@ import static java.util.Arrays.asList;
  * because it is implementation of {@link Runnable}. Working of this eventloop will be ended, when it has
  * not selected keys and its queues with tasks are empty.
  */
+@JmxMBean
 public final class NioEventloop implements Eventloop, Runnable {
 	private static final Logger logger = LoggerFactory.getLogger(NioEventloop.class);
 
@@ -945,23 +949,27 @@ public final class NioEventloop implements Eventloop, Runnable {
 		});
 	}
 
+	@JmxOperation
 	public void startMonitoring() {
 		this.monitoring = true;
 	}
 
+	@JmxOperation
 	public void stopMonitoring() {
 		this.monitoring = false;
 	}
 
+	@JmxOperation
 	public void resetStats() {
 		stats.resetStats();
 	}
 
-	public void setSmoothingWindow(double smoothingWindow) {
+	@JmxOperation
+	public void setSmoothingWindow(@JmxParameter("smoothingWindow") double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
 	}
 
-	public NioEventloopStats getStats() {
+	public NioEventloopStats getNioEventloopStats() {
 		return stats;
 	}
 

@@ -16,7 +16,9 @@
 
 package io.datakernel.jmx;
 
+import javax.management.openmbean.SimpleType;
 import java.util.SortedMap;
+import java.util.TreeMap;
 
 import static java.lang.Math.*;
 
@@ -172,7 +174,17 @@ public final class ValueStats implements JmxStats<ValueStats> {
 
 	@Override
 	public SortedMap<String, TypeAndValue> getAttributes() {
-		throw new UnsupportedOperationException(); // TODO (vmykhalko)
+		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
+		attributes.put("smoothedAverage", new TypeAndValue(SimpleType.DOUBLE, getSmoothedAverage()));
+		attributes.put("smoothedStandardDeviation",
+				new TypeAndValue(SimpleType.DOUBLE, getSmoothedStandardDeviation()));
+		attributes.put("totalMin", new TypeAndValue(SimpleType.INTEGER, getTotalMin()));
+		attributes.put("totalMax", new TypeAndValue(SimpleType.INTEGER, getTotalMax()));
+		attributes.put("lastValue", new TypeAndValue(SimpleType.INTEGER, getLastValue()));
+		attributes.put("average", new TypeAndValue(SimpleType.DOUBLE, getAverage()));
+		attributes.put("smoothedMin", new TypeAndValue(SimpleType.DOUBLE, getSmoothedMin()));
+		attributes.put("smoothedMax", new TypeAndValue(SimpleType.DOUBLE, getSmoothedMax()));
+		return attributes;
 	}
 
 	/**
