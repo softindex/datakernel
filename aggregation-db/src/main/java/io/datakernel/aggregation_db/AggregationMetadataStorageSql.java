@@ -21,6 +21,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -57,6 +58,8 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	private static final String LOCK_NAME = "cube_lock";
 	private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 180;
 	private static final int MAX_KEYS = 40;
+	private static final Joiner JOINER = Joiner.on(' ');
+	private static final Splitter SPLITTER = Splitter.on(' ').omitEmptyStrings();
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
@@ -117,8 +120,6 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	public void saveAggregationMetadata(DSLContext jooq, Aggregation aggregation, AggregationStructure structure) {
-		Joiner joiner = Joiner.on(' ');
-
 		Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(structure))
 				.create();
@@ -126,9 +127,9 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		jooq.insertInto(AGGREGATION_DB_STRUCTURE)
 				.set(new AggregationDbStructureRecord(
 						aggregation.getId(),
-						joiner.join(aggregation.getKeys()),
-						joiner.join(aggregation.getInputFields()),
-						joiner.join(aggregation.getOutputFields()),
+						JOINER.join(aggregation.getKeys()),
+						JOINER.join(aggregation.getInputFields()),
+						JOINER.join(aggregation.getOutputFields()),
 						gson.toJson(aggregation.getAggregationPredicates())))
 				.onDuplicateKeyIgnore()
 				.execute();
@@ -172,33 +173,28 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 			for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
 				insertQuery.newRecord();
 
-				Map<Field<?>, Object> fields = new LinkedHashMap<>();
-
 				AggregationChunk chunk = createChunk(revisionId, newChunk);
 
-				fields.put(AGGREGATION_DB_CHUNK.ID, chunk.getChunkId());
-				fields.put(AGGREGATION_DB_CHUNK.AGGREGATION_ID, aggregationMetadata.getId());
-				fields.put(AGGREGATION_DB_CHUNK.REVISION_ID, chunk.getRevisionId());
-				fields.put(AGGREGATION_DB_CHUNK.KEYS, Joiner.on(' ').join(aggregationMetadata.getKeys()));
-				fields.put(AGGREGATION_DB_CHUNK.FIELDS, Joiner.on(' ').join(chunk.getFields()));
-				fields.put(AGGREGATION_DB_CHUNK.COUNT, chunk.getCount());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.ID, chunk.getChunkId());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.AGGREGATION_ID, aggregationMetadata.getId());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.REVISION_ID, chunk.getRevisionId());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.KEYS, JOINER.join(aggregationMetadata.getKeys()));
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.FIELDS, JOINER.join(chunk.getFields()));
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.COUNT, chunk.getCount());
 
 				int keyLength = aggregationMetadata.getKeys().size();
 				for (int d = 0; d < MAX_KEYS; d++) {
-					Field<?> minField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min");
-					fields.put(minField, d >= keyLength ? null : chunk.getMinPrimaryKey().values().get(d).toString());
+					Field<String> minField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min").coerce(String.class);
+					insertQuery.addValue(minField, d >= keyLength ? null : chunk.getMinPrimaryKey().values().get(d).toString());
 
-					Field<?> maxField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max");
-					fields.put(maxField, d >= keyLength ? null : chunk.getMaxPrimaryKey().values().get(d).toString());
+					Field<String> maxField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max").coerce(String.class);
+					insertQuery.addValue(maxField, d >= keyLength ? null : chunk.getMaxPrimaryKey().values().get(d).toString());
 				}
-
-				insertQuery.addValues(fields);
 			}
 		}
 
-		Field<?>[] fields = AGGREGATION_DB_CHUNK.fields();
-		List<Field<?>> updateFields = new ArrayList<>();
-		updateFields.addAll(Arrays.asList(fields).subList(1, fields.length)); // except id
+		ArrayList<Field<?>> updateFields = Lists.newArrayList(AGGREGATION_DB_CHUNK.fields());
+		updateFields.remove(AGGREGATION_DB_CHUNK.ID);
 
 		insertQuery.addValuesForUpdate(onDuplicateKeyUpdateValues(updateFields));
 		insertQuery.onDuplicateKeyUpdate(true);
@@ -261,8 +257,6 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 						.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(newRevisionId)))
 				.fetch();
 
-		Splitter splitter = Splitter.on(' ').omitEmptyStrings();
-
 		ArrayList<AggregationChunk> newChunks = new ArrayList<>();
 		for (Record record : newChunkRecords) {
 			Object[] minKeyArray = new Object[aggregation.getKeys().size()];
@@ -276,7 +270,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 			AggregationChunk chunk = new AggregationChunk(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
 					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
-					newArrayList(splitter.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
+					newArrayList(SPLITTER.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
 					PrimaryKey.ofArray(minKeyArray),
 					PrimaryKey.ofArray(maxKeyArray),
 					record.getValue(AGGREGATION_DB_CHUNK.COUNT));
