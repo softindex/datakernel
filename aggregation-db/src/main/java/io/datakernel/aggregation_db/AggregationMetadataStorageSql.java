@@ -46,6 +46,7 @@ import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbStructure.AGGREGATION_DB_STRUCTURE;
+import static io.datakernel.aggregation_db.util.JooqUtils.onDuplicateKeyUpdateValues;
 import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static org.jooq.impl.DSL.currentTimestamp;
@@ -55,6 +56,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 	private static final String LOCK_NAME = "cube_lock";
 	private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 180;
+	private static final int MAX_KEYS = 40;
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
@@ -164,10 +166,15 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 	public void saveNewChunks(DSLContext jooq, final int revisionId,
 	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
+		InsertQuery<AggregationDbChunkRecord> insertQuery = jooq.insertQuery(AGGREGATION_DB_CHUNK);
+
 		for (AggregationMetadata aggregationMetadata : newChunksWithMetadata.keySet()) {
 			for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
+				insertQuery.newRecord();
+
 				AggregationChunk chunk = createChunk(revisionId, newChunk);
 				AggregationDbChunkRecord record = new AggregationDbChunkRecord();
+				record.setId(chunk.getChunkId());
 				record.setAggregationId(aggregationMetadata.getId());
 				record.setRevisionId(chunk.getRevisionId());
 				record.setKeys(Joiner.on(' ').join(aggregationMetadata.getKeys()));
@@ -176,21 +183,34 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 				Map<Field<?>, Object> fields = new LinkedHashMap<>();
 				int size = record.size();
-				for (int i = 1; i < size; i++) {
+
+				for (int i = 0; i < size; i++) {
 					Object value = record.getValue(i);
 					if (value != null) {
 						fields.put(record.field(i), value);
 					}
 				}
 
-				for (int d = 0; d < aggregationMetadata.getKeys().size(); d++) {
-					fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min"), chunk.getMinPrimaryKey().values().get(d).toString());
-					fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max"), chunk.getMaxPrimaryKey().values().get(d).toString());
+				int keyLength = aggregationMetadata.getKeys().size();
+				for (int d = 0; d < MAX_KEYS; d++) {
+					Field<?> minField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min");
+					fields.put(minField, d >= keyLength ? null : chunk.getMinPrimaryKey().values().get(d).toString());
+
+					Field<?> maxField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max");
+					fields.put(maxField, d >= keyLength ? null : chunk.getMaxPrimaryKey().values().get(d).toString());
 				}
 
-				jooq.update(AGGREGATION_DB_CHUNK).set(fields).where(AGGREGATION_DB_CHUNK.ID.equal(chunk.getChunkId())).execute();
+				insertQuery.addValues(fields);
 			}
 		}
+
+		Field<?>[] fields = AGGREGATION_DB_CHUNK.fields();
+		List<Field<?>> updateFields = new ArrayList<>();
+		updateFields.addAll(Arrays.asList(fields).subList(1, fields.length)); // except id
+
+		insertQuery.addValuesForUpdate(onDuplicateKeyUpdateValues(updateFields));
+		insertQuery.onDuplicateKeyUpdate(true);
+		insertQuery.execute();
 	}
 
 	@Override
@@ -198,16 +218,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		callConcurrently(eventloop, executor, false, new Callable<LoadedChunks>() {
 			@Override
 			public LoadedChunks call() {
-				Connection connection = jooqConfiguration.connectionProvider().acquire();
-				Configuration configurationWithConnection = jooqConfiguration.derive(connection);
-				DSLContext jooq = DSL.using(configurationWithConnection);
-				try {
-					getCubeLock(jooq);
-					return loadChunks(jooq, aggregation, lastRevisionId);
-				} finally {
-					releaseCubeLock(jooq);
-					jooqConfiguration.connectionProvider().release(connection);
-				}
+				return loadChunks(DSL.using(jooqConfiguration), aggregation, lastRevisionId);
 			}
 		}, callback);
 	}
