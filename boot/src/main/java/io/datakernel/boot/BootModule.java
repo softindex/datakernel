@@ -59,7 +59,7 @@ public final class BootModule extends AbstractModule {
 
 	private final Executor executor;
 
-	private WorkerThreadsPoolScope workerThreadsScope;
+	private WorkerPoolScope workerPoolScope;
 
 	private List<Listener> listeners = new ArrayList<>();
 
@@ -117,8 +117,8 @@ public final class BootModule extends AbstractModule {
 		});
 	}
 
-	private static boolean isWorkerThread(Key<?> binding) {
-		return binding.getAnnotationType() == WorkerThread.class;
+	private static boolean isWorker(Key<?> binding) {
+		return binding.getAnnotation() instanceof Worker;
 	}
 
 	private static String prettyPrintAnnotation(Annotation annotation) {
@@ -313,28 +313,28 @@ public final class BootModule extends AbstractModule {
 			logger.warn("Unused keys : {}", keys.keySet());
 		}
 
-		Multimap<String, Key<?>> workerThreadRoots = LinkedHashMultimap.create();
+		Multimap<String, Key<?>> workerPoolRoots = LinkedHashMultimap.create();
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
-			if (binding.getKey().getTypeLiteral().getRawType() == WorkerThreadsPool.class) {
+			if (binding.getKey().getTypeLiteral().getRawType() == WorkerPool.class) {
 				injector.getInstance(binding.getKey());
 			}
-			if (isWorkerThread(binding.getKey())) {
-				String poolName = ((WorkerThread) binding.getKey().getAnnotation()).poolName();
-				workerThreadRoots.put(poolName, binding.getKey());
+			if (isWorker(binding.getKey())) {
+				String poolName = ((Worker) binding.getKey().getAnnotation()).poolName();
+				workerPoolRoots.put(poolName, binding.getKey());
 			}
 		}
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
-			if (isWorkerThread(binding.getKey())) {
+			if (isWorker(binding.getKey())) {
 				if (binding instanceof HasDependencies) {
-					String poolName = ((WorkerThread) binding.getKey().getAnnotation()).poolName();
+					String poolName = ((Worker) binding.getKey().getAnnotation()).poolName();
 					for (Dependency<?> dependency : ((HasDependencies) binding).getDependencies()) {
-						if (isWorkerThread(dependency.getKey())) {
-							String dependencyPoolName = ((WorkerThread) dependency.getKey().getAnnotation()).poolName();
+						if (isWorker(dependency.getKey())) {
+							String dependencyPoolName = ((Worker) dependency.getKey().getAnnotation()).poolName();
 							checkArgument(poolName.equals(dependencyPoolName),
 									"Key %s depends on %s from different thread pool", binding.getKey(), dependency.getKey());
-							workerThreadRoots.remove(poolName, dependency.getKey());
+							workerPoolRoots.remove(poolName, dependency.getKey());
 						}
 					}
 				}
@@ -349,18 +349,18 @@ public final class BootModule extends AbstractModule {
 			if (isSingleton(binding)) {
 				Object instance = injector.getInstance(key);
 				service = getServiceOrNull(key, instance);
-			} else if (isWorkerThread(key)) {
-				List<?> instances = workerThreadsScope.getPoolInstances(key);
+			} else if (isWorker(key)) {
+				List<?> instances = workerPoolScope.getPoolInstances(key);
 				service = getPoolServiceOrNull(key, instances);
 			} else
 				continue;
 			graph.add(key, service);
-			processDependencies(key, injector, graph, workerThreadRoots);
+			processDependencies(key, injector, graph, workerPoolRoots);
 		}
 
 	}
 
-	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph, Multimap<String, Key<?>> workerThreadRoots) {
+	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph, Multimap<String, Key<?>> workerPoolRoots) {
 		Binding<?> binding = injector.getBinding(key);
 		if (!(binding instanceof HasDependencies))
 			return;
@@ -379,9 +379,9 @@ public final class BootModule extends AbstractModule {
 		}
 
 		for (Key<?> dependencyKey : union(difference(dependencies, removedDependencies.get(key)), addedDependencies.get(key))) {
-			if (dependencyKey.getTypeLiteral().getRawType() == WorkerThreadsPool.class) {
-				WorkerThreadsPool workerThreadsPool = (WorkerThreadsPool) injector.getInstance(dependencyKey);
-				graph.add(key, workerThreadRoots.get(workerThreadsPool.getPoolName()));
+			if (dependencyKey.getTypeLiteral().getRawType() == WorkerPool.class) {
+				WorkerPool workerPool = (WorkerPool) injector.getInstance(dependencyKey);
+				graph.add(key, workerPoolRoots.get(workerPool.getName()));
 			}
 			graph.add(key, dependencyKey);
 		}
@@ -389,16 +389,16 @@ public final class BootModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		workerThreadsScope = new WorkerThreadsPoolScope();
-		requestInjection(workerThreadsScope);
-		bindScope(WorkerThread.class, workerThreadsScope);
-		bind(WorkerThreadsPoolFactory.class).toInstance(workerThreadsScope);
+		workerPoolScope = new WorkerPoolScope();
+		requestInjection(workerPoolScope);
+		bindScope(Worker.class, workerPoolScope);
+		bind(WorkerPoolFactory.class).toInstance(workerPoolScope);
 		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
 			@Override
 			public Integer get() {
 				return null;
 			}
-		}).in(WorkerThread.class);
+		}).in(Worker.class);
 	}
 
 	/**
@@ -444,7 +444,7 @@ public final class BootModule extends AbstractModule {
 			if (startFuture == null) {
 				startFuture = service.start();
 			}
-			if (!isWorkerThread(key)) {
+			if (!isWorker(key)) {
 				startFuture.addListener(new Runnable() {
 					@Override
 					public void run() {
@@ -463,7 +463,7 @@ public final class BootModule extends AbstractModule {
 			if (stopFuture == null) {
 				stopFuture = service.stop();
 			}
-			if (!isWorkerThread(key)) {
+			if (!isWorker(key)) {
 				startFuture.addListener(new Runnable() {
 					@Override
 					public void run() {

@@ -61,7 +61,7 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		WorkerThreadsPool workerThreadsPool(WorkerThreadsPoolFactory factory, Config config) {
+		WorkerPool workerPool(WorkerPoolFactory factory, Config config) {
 			return factory.createPool(config.get(ConfigConverters.ofInteger(), "workers", 4));
 		}
 
@@ -73,24 +73,24 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerThreadsPool workerThreadsPool,
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerPool workerPool,
 		                                  Config config) {
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
-			primaryNioServer.workerNioServers(workerThreadsPool.getPoolInstances(AsyncHttpServer.class));
+			primaryNioServer.workerNioServers(workerPool.getInstances(AsyncHttpServer.class));
 			int port = config.get(ConfigConverters.ofInteger(), "port", 5577);
 			primaryNioServer.setListenPort(port);
 			return primaryNioServer;
 		}
 
 		@Provides
-		@WorkerThread
+		@Worker
 		NioEventloop workerEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-		@WorkerThread
-		AsyncHttpServer workerHttpServer(@WorkerThread NioEventloop eventloop, @WorkerId final int workerId,
+		@Worker
+		AsyncHttpServer workerHttpServer(@Worker NioEventloop eventloop, @WorkerId final int workerId,
 		                                 Config config) {
 			final String responseMessage = config.get(ConfigConverters.ofString(), "responseMessage", "Hello, World!");
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {

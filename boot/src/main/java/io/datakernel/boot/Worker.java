@@ -29,7 +29,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @BindingAnnotation
 @Target({TYPE, METHOD, PARAMETER})
 @Retention(RUNTIME)
-public @interface WorkerThread {
+public @interface Worker {
 	String value() default "";
 
 	String poolName() default "";

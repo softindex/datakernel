@@ -69,7 +69,7 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
-		WorkerThreadsPool workerThreadsPool(WorkerThreadsPoolFactory factory) {
+		WorkerPool workerPool(WorkerPoolFactory factory) {
 			return factory.createPool(WORKERS);
 		}
 
@@ -81,9 +81,8 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
-		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerThreadsPool workerThreadsPool) {
-			List<AsyncHttpServer> workerHttpServers =
-					workerThreadsPool.getPoolInstances(AsyncHttpServer.class);
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerPool workerPool) {
+			List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
 			primaryNioServer.workerNioServers(workerHttpServers);
 			primaryNioServer.setListenPort(PORT);
@@ -91,14 +90,14 @@ public class HelloWorldGuiceTest {
 		}
 
 		@Provides
-		@WorkerThread("WorkerEventloop")
+		@Worker
 		NioEventloop workerEventloop() {
 			return new NioEventloop();
 		}
 
 		@Provides
-		@WorkerThread()
-		AsyncHttpServer workerHttpServer(@WorkerThread("WorkerEventloop") NioEventloop eventloop, @WorkerId final int workerId) {
+		@Worker
+		AsyncHttpServer workerHttpServer(@Worker NioEventloop eventloop, @WorkerId final int workerId) {
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request,

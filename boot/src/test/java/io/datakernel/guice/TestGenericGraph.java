@@ -55,27 +55,27 @@ public class TestGenericGraph {
 
 		@Provides
 		@Singleton
-		WorkerThreadsPool workerThreadsPool(WorkerThreadsPoolFactory factory) {
+		WorkerPool workerPool(WorkerPoolFactory factory) {
 			return factory.createPool(WORKERS);
 		}
 
 		@Provides
 		@Singleton
-		Pojo<Integer> integerPojo(WorkerThreadsPool workerThreadsPool) {
-			List<Pojo<String>> list = workerThreadsPool.getPoolInstances(new TypeToken<Pojo<String>>() {});
-			List<Pojo<String>> listOther = workerThreadsPool.getPoolInstances(new TypeToken<Pojo<String>>() {}, "other");
+		Pojo<Integer> integerPojo(WorkerPool workerPool) {
+			List<Pojo<String>> list = workerPool.getInstances(new TypeToken<Pojo<String>>() {});
+			List<Pojo<String>> listOther = workerPool.getInstances(new TypeToken<Pojo<String>>() {}, "other");
 			return new Pojo<>(Integer.valueOf(listOther.get(0).getObject())
 					+ Integer.valueOf(list.get(0).getObject()));
 		}
 
 		@Provides
-		@WorkerThread
-		Pojo<String> stringPojo(@WorkerThread("other") Pojo<String> stringPojo) {
+		@Worker
+		Pojo<String> stringPojo(@Worker("other") Pojo<String> stringPojo) {
 			return new Pojo<>("123");
 		}
 
 		@Provides
-		@WorkerThread("other")
+		@Worker("other")
 		Pojo<String> stringPojoOther() {
 			return new Pojo<>("456");
 		}

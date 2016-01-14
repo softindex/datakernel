@@ -28,29 +28,29 @@ import java.util.Map;
 
 import static com.google.common.base.Preconditions.*;
 
-final class WorkerThreadsPoolScope implements Scope, WorkerThreadsPoolFactory {
+final class WorkerPoolScope implements Scope, WorkerPoolFactory {
 	@Inject
 	Injector injector;
 
-	private final Map<String, WorkerThreadsPoolImpl> pools = new HashMap<>();
+	private final Map<String, WorkerPoolImpl> pools = new HashMap<>();
 
-	private WorkerThreadsPoolImpl currentPool;
+	private WorkerPoolImpl currentWorkerPool;
 
 	@Override
-	public WorkerThreadsPool createPool(int poolSize) {
-		return createPool("", poolSize);
+	public WorkerPool createPool(int workers) {
+		return createPool("", workers);
 	}
 
 	@Override
-	public WorkerThreadsPool createPool(String poolName, int poolSize) {
-		checkState(!pools.containsKey(poolName), "Pool with name '%s' has already been created, make sure it is @Singleton", poolName);
-		WorkerThreadsPoolImpl poolImpl = new WorkerThreadsPoolImpl(poolName, poolSize);
-		pools.put(poolName, poolImpl);
-		return poolImpl;
+	public WorkerPool createPool(String name, int workers) {
+		checkState(!pools.containsKey(name), "Pool with name '%s' has already been created, make sure it is @Singleton", name);
+		WorkerPoolImpl workerPool = new WorkerPoolImpl(name, workers);
+		pools.put(name, workerPool);
+		return workerPool;
 	}
 
 	protected List<?> getPoolInstances(Key<?> key) {
-		return pools.get(((WorkerThread) key.getAnnotation()).poolName()).getPoolInstances(key);
+		return pools.get(((Worker) key.getAnnotation()).poolName()).getInstances(key);
 	}
 
 	@Override
@@ -60,17 +60,17 @@ final class WorkerThreadsPoolScope implements Scope, WorkerThreadsPoolFactory {
 			@Override
 			public T get() {
 				if (key.getAnnotationType() == WorkerId.class) {
-					return (T) currentPool.currentWorkerId;
+					return (T) currentWorkerPool.currentWorkerId;
 				}
-				checkArgument(key.getAnnotation() instanceof WorkerThread);
-				WorkerThreadsPoolImpl pool = pools.get(((WorkerThread) key.getAnnotation()).poolName());
+				checkArgument(key.getAnnotation() instanceof Worker);
+				WorkerPoolImpl pool = pools.get(((Worker) key.getAnnotation()).poolName());
 				checkArgument(pool != null);
 
 				checkState(pool.currentWorkerId != null,
-						"To create %s use %s", key, WorkerThreadsPool.class.getSimpleName());
+						"To create %s use %s", key, WorkerPool.class.getSimpleName());
 				T[] instances = (T[]) pool.pool.get(key);
 				if (instances == null) {
-					instances = (T[]) new Object[pool.poolSize];
+					instances = (T[]) new Object[pool.workers];
 					pool.pool.put(key, instances);
 				}
 				T instance = instances[pool.currentWorkerId];
@@ -84,11 +84,11 @@ final class WorkerThreadsPoolScope implements Scope, WorkerThreadsPoolFactory {
 	}
 
 	@SuppressWarnings("ClassExplicitlyAnnotation")
-	private static final class WorkerThreadAnnotation implements WorkerThread {
+	private static final class WorkerAnnotation implements Worker {
 		final String value;
 		final String poolName;
 
-		WorkerThreadAnnotation(String value, String poolName) {
+		WorkerAnnotation(String value, String poolName) {
 			this.value = checkNotNull(value);
 			this.poolName = checkNotNull(poolName);
 		}
@@ -105,14 +105,14 @@ final class WorkerThreadsPoolScope implements Scope, WorkerThreadsPoolFactory {
 
 		@Override
 		public Class<? extends Annotation> annotationType() {
-			return WorkerThread.class;
+			return Worker.class;
 		}
 
 		@Override
 		public boolean equals(Object o) {
-			if (!(o instanceof WorkerThread)) return false;
+			if (!(o instanceof Worker)) return false;
 
-			WorkerThread that = (WorkerThread) o;
+			Worker that = (Worker) o;
 			return value.equals(that.value()) && poolName.equals(that.poolName());
 		}
 
@@ -122,69 +122,69 @@ final class WorkerThreadsPoolScope implements Scope, WorkerThreadsPoolFactory {
 		}
 
 		public String toString() {
-			return "@" + WorkerThread.class.getName() + "(value=" + value + ", poolName=" + poolName + ")";
+			return "@" + Worker.class.getName() + "(value=" + value + ", poolName=" + poolName + ")";
 		}
 
 	}
 
-	private class WorkerThreadsPoolImpl implements WorkerThreadsPool {
-		private final String poolName;
-		private final int poolSize;
+	private class WorkerPoolImpl implements WorkerPool {
+		private final String name;
+		private final int workers;
 
 		private final Map<Key<?>, Object[]> pool = new HashMap<>();
 
 		@Nullable
 		private Integer currentWorkerId;
 
-		public WorkerThreadsPoolImpl(String poolName, int poolSize) {
-			this.poolName = poolName;
-			this.poolSize = poolSize;
+		public WorkerPoolImpl(String name, int workers) {
+			this.name = name;
+			this.workers = workers;
 		}
 
 		@Override
-		public String getPoolName() {
-			return poolName;
+		public String getName() {
+			return name;
 		}
 
 		@Override
-		public int getPoolSize() {
-			return poolSize;
+		public int getWorkers() {
+			return workers;
 		}
 
 		@Override
-		public <T> List<T> getPoolInstances(Class<T> type) {
-			return getPoolInstances(Key.get(type, WorkerThread.class));
+		public <T> List<T> getInstances(Class<T> type) {
+			return getInstances(Key.get(type, Worker.class));
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> List<T> getPoolInstances(TypeToken<T> type) {
-			return getPoolInstances((Key<T>) Key.get(type.getType(), WorkerThread.class));
+		public <T> List<T> getInstances(TypeToken<T> type) {
+			return getInstances((Key<T>) Key.get(type.getType(), Worker.class));
 		}
 
 		@Override
-		public <T> List<T> getPoolInstances(Class<T> type, String instanceName) {
-			return getPoolInstances(Key.get(type, new WorkerThreadAnnotation(instanceName, poolName)));
+		public <T> List<T> getInstances(Class<T> type, String instanceName) {
+			return getInstances(Key.get(type, new WorkerAnnotation(instanceName, name)));
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public <T> List<T> getPoolInstances(TypeToken<T> type, String instanceName) {
-			return getPoolInstances((Key<T>) Key.get(type.getType(), new WorkerThreadAnnotation(instanceName, poolName)));
+		public <T> List<T> getInstances(TypeToken<T> type, String instanceName) {
+			return getInstances((Key<T>) Key.get(type.getType(), new WorkerAnnotation(instanceName, name)));
 		}
 
-		private <T> List<T> getPoolInstances(Key<T> key) {
-			checkArgument(key.getAnnotation() instanceof WorkerThread);
-			WorkerThreadsPoolImpl originalPool = currentPool;
-			currentPool = this;
-			Integer originalPoolId = currentWorkerId;
+		private <T> List<T> getInstances(Key<T> key) {
+			checkArgument(key.getAnnotation() instanceof Worker);
+			WorkerPoolImpl originalWorkerPool = currentWorkerPool;
+			currentWorkerPool = this;
+			Integer originalWorkerId = currentWorkerId;
 			List<T> result = new ArrayList<>();
-			for (int i = 0; i < poolSize; i++) {
+			for (int i = 0; i < workers; i++) {
 				currentWorkerId = i;
 				result.add(injector.getInstance(key));
 			}
-			currentWorkerId = originalPoolId;
-			currentPool = originalPool;
+			currentWorkerId = originalWorkerId;
+			currentWorkerPool = originalWorkerPool;
 			return result;
 		}
 	}

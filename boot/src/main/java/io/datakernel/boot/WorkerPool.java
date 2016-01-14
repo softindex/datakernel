@@ -16,8 +16,20 @@
 
 package io.datakernel.boot;
 
-public interface WorkerThreadsPoolFactory {
-	WorkerThreadsPool createPool(int poolSize);
+import com.google.common.reflect.TypeToken;
 
-	WorkerThreadsPool createPool(String poolName, int poolSize);
+import java.util.List;
+
+public interface WorkerPool {
+	String getName();
+
+	int getWorkers();
+
+	<T> List<T> getInstances(Class<T> type);
+
+	<T> List<T> getInstances(TypeToken<T> type);
+
+	<T> List<T> getInstances(Class<T> type, String instanceName);
+
+	<T> List<T> getInstances(TypeToken<T> type, String instanceName);
 }

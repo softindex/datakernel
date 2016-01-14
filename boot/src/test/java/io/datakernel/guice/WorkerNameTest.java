@@ -29,7 +29,7 @@ import java.util.concurrent.Executor;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.assertEquals;
 
-public class WorkerThreadNameTest {
+public class WorkerNameTest {
 	public static final int PORT = 7583;
 	public static final int WORKERS = 4;
 
@@ -79,7 +79,7 @@ public class WorkerThreadNameTest {
 
 		@Provides
 		@Singleton
-		WorkerThreadsPool workerThreadsPool(WorkerThreadsPoolFactory factory) {
+		WorkerPool workerPool(WorkerPoolFactory factory) {
 			return factory.createPool(WORKERS);
 		}
 
@@ -92,33 +92,33 @@ public class WorkerThreadNameTest {
 
 		@Provides
 		@Singleton
-		Element2 primaryNioServer(Element1 primaryEventloop, WorkerThreadsPool workerThreadsPool) {
-			List<Element4> unusedList = workerThreadsPool.getPoolInstances(Element4.class, "First");
+		Element2 primaryNioServer(Element1 primaryEventloop, WorkerPool workerPool) {
+			List<Element4> unusedList = workerPool.getInstances(Element4.class, "First");
 			return new Element2();
 		}
 
 		@Provides
-		@WorkerThread("First")
+		@Worker("First")
 		Element4 ffWorker() {
 			return new Element4();
 		}
 
 		@Provides
-		@WorkerThread("Second")
+		@Worker("Second")
 		Element4 fSWorker() {
 			return new Element4();
 		}
 
 		@Provides
-		@WorkerThread
+		@Worker
 		Element1 workerEventloop() {
 			return new Element1();
 		}
 
 		@Provides
-		@WorkerThread
-		Element3 workerHttpServer(@WorkerThread Element1 eventloop, @WorkerId final int workerId,
-		                                 @WorkerThread("Second") Element4 unusedString) {
+		@Worker
+		Element3 workerHttpServer(@Worker Element1 eventloop, @WorkerId final int workerId,
+		                          @Worker("Second") Element4 unusedString) {
 			return new Element3();
 		}
 
