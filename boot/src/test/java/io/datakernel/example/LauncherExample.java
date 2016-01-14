@@ -20,7 +20,10 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.boot.*;
+import io.datakernel.boot.BootModule;
+import io.datakernel.boot.Worker;
+import io.datakernel.boot.WorkerId;
+import io.datakernel.boot.WorkerPools;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -61,8 +64,8 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		WorkerPool workerPool(WorkerPoolFactory factory, Config config) {
-			return factory.createPool(config.get(ConfigConverters.ofInteger(), "workers", 4));
+		WorkerPools workerPools(Config config) {
+			return WorkerPools.createDefaultPool(config.get(ConfigConverters.ofInteger(), "workers", 4));
 		}
 
 		@Provides
@@ -73,10 +76,10 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerPool workerPool,
+		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerPools workerPools,
 		                                  Config config) {
 			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
-			primaryNioServer.workerNioServers(workerPool.getInstances(AsyncHttpServer.class));
+			primaryNioServer.workerNioServers(workerPools.getInstances(AsyncHttpServer.class));
 			int port = config.get(ConfigConverters.ofInteger(), "port", 5577);
 			primaryNioServer.setListenPort(port);
 			return primaryNioServer;

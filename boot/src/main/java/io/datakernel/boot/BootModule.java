@@ -18,8 +18,6 @@ package io.datakernel.boot;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.HashMultimap;
-import com.google.common.collect.LinkedHashMultimap;
-import com.google.common.collect.Multimap;
 import com.google.common.collect.SetMultimap;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -313,15 +311,11 @@ public final class BootModule extends AbstractModule {
 			logger.warn("Unused keys : {}", keys.keySet());
 		}
 
-		Multimap<String, Key<?>> workerPoolRoots = LinkedHashMultimap.create();
+		Set<Key<?>> workerRoots = new LinkedHashSet<>();
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
-			if (binding.getKey().getTypeLiteral().getRawType() == WorkerPool.class) {
-				injector.getInstance(binding.getKey());
-			}
 			if (isWorker(binding.getKey())) {
-				String poolName = ((Worker) binding.getKey().getAnnotation()).poolName();
-				workerPoolRoots.put(poolName, binding.getKey());
+				workerRoots.add(binding.getKey());
 			}
 		}
 
@@ -330,11 +324,13 @@ public final class BootModule extends AbstractModule {
 				if (binding instanceof HasDependencies) {
 					String poolName = ((Worker) binding.getKey().getAnnotation()).poolName();
 					for (Dependency<?> dependency : ((HasDependencies) binding).getDependencies()) {
+						checkArgument(dependency.getKey().getTypeLiteral().getRawType() != WorkerPools.class,
+								"Cannot have a dependency on WorkerPool from within the pool, key: %s", binding.getKey());
 						if (isWorker(dependency.getKey())) {
 							String dependencyPoolName = ((Worker) dependency.getKey().getAnnotation()).poolName();
 							checkArgument(poolName.equals(dependencyPoolName),
 									"Key %s depends on %s from different thread pool", binding.getKey(), dependency.getKey());
-							workerPoolRoots.remove(poolName, dependency.getKey());
+							workerRoots.remove(dependency.getKey());
 						}
 					}
 				}
@@ -350,17 +346,17 @@ public final class BootModule extends AbstractModule {
 				Object instance = injector.getInstance(key);
 				service = getServiceOrNull(key, instance);
 			} else if (isWorker(key)) {
-				List<?> instances = workerPoolScope.getPoolInstances(key);
+				List<?> instances = workerPoolScope.getInstances(key);
 				service = getPoolServiceOrNull(key, instances);
 			} else
 				continue;
 			graph.add(key, service);
-			processDependencies(key, injector, graph, workerPoolRoots);
+			processDependencies(key, injector, graph, workerRoots);
 		}
 
 	}
 
-	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph, Multimap<String, Key<?>> workerPoolRoots) {
+	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph, Set<Key<?>> workerThreadRoots) {
 		Binding<?> binding = injector.getBinding(key);
 		if (!(binding instanceof HasDependencies))
 			return;
@@ -379,9 +375,8 @@ public final class BootModule extends AbstractModule {
 		}
 
 		for (Key<?> dependencyKey : union(difference(dependencies, removedDependencies.get(key)), addedDependencies.get(key))) {
-			if (dependencyKey.getTypeLiteral().getRawType() == WorkerPool.class) {
-				WorkerPool workerPool = (WorkerPool) injector.getInstance(dependencyKey);
-				graph.add(key, workerPoolRoots.get(workerPool.getName()));
+			if (dependencyKey.getTypeLiteral().getRawType() == WorkerPools.class) {
+				graph.add(key, workerThreadRoots);
 			}
 			graph.add(key, dependencyKey);
 		}
@@ -390,9 +385,7 @@ public final class BootModule extends AbstractModule {
 	@Override
 	protected void configure() {
 		workerPoolScope = new WorkerPoolScope();
-		requestInjection(workerPoolScope);
 		bindScope(Worker.class, workerPoolScope);
-		bind(WorkerPoolFactory.class).toInstance(workerPoolScope);
 		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
 			@Override
 			public Integer get() {
@@ -410,6 +403,8 @@ public final class BootModule extends AbstractModule {
 	@Provides
 	@Singleton
 	ServiceGraph serviceGraph(final Injector injector) {
+		injector.injectMembers(workerPoolScope);
+		workerPoolScope.setInjector(injector);
 		ServiceGraph serviceGraph = new ServiceGraph() {
 			@Override
 			protected String nodeToString(Object node) {
