@@ -172,24 +172,16 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 			for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
 				insertQuery.newRecord();
 
-				AggregationChunk chunk = createChunk(revisionId, newChunk);
-				AggregationDbChunkRecord record = new AggregationDbChunkRecord();
-				record.setId(chunk.getChunkId());
-				record.setAggregationId(aggregationMetadata.getId());
-				record.setRevisionId(chunk.getRevisionId());
-				record.setKeys(Joiner.on(' ').join(aggregationMetadata.getKeys()));
-				record.setFields(Joiner.on(' ').join(chunk.getFields()));
-				record.setCount(chunk.getCount());
-
 				Map<Field<?>, Object> fields = new LinkedHashMap<>();
-				int size = record.size();
 
-				for (int i = 0; i < size; i++) {
-					Object value = record.getValue(i);
-					if (value != null) {
-						fields.put(record.field(i), value);
-					}
-				}
+				AggregationChunk chunk = createChunk(revisionId, newChunk);
+
+				fields.put(AGGREGATION_DB_CHUNK.ID, chunk.getChunkId());
+				fields.put(AGGREGATION_DB_CHUNK.AGGREGATION_ID, aggregationMetadata.getId());
+				fields.put(AGGREGATION_DB_CHUNK.REVISION_ID, chunk.getRevisionId());
+				fields.put(AGGREGATION_DB_CHUNK.KEYS, Joiner.on(' ').join(aggregationMetadata.getKeys()));
+				fields.put(AGGREGATION_DB_CHUNK.FIELDS, Joiner.on(' ').join(chunk.getFields()));
+				fields.put(AGGREGATION_DB_CHUNK.COUNT, chunk.getCount());
 
 				int keyLength = aggregationMetadata.getKeys().size();
 				for (int d = 0; d < MAX_KEYS; d++) {
