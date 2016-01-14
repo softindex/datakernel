@@ -34,6 +34,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
@@ -55,6 +56,9 @@ import static org.junit.Assert.*;
 
 public class SimpleFsServerTest {
 	private static final InetSocketAddress address = new InetSocketAddress(5560);
+
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
 
 	@Rule
 	public final TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -504,13 +508,11 @@ public class SimpleFsServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	// TODO (arashev): fix the test
-	@Ignore
-	@Test(expected = IllegalStateException.class)
+	@Test
 	public void testPaths() throws Exception {
 		Path storage = Paths.get(temporaryFolder.newFolder("st").toURI());
-		Path badTmp = storage.resolve("/tmp");
-
+		Path badTmp = storage.resolve("tmp");
+		thrown.expect(IllegalStateException.class);
 		SimpleFsServer server = SimpleFsServer.createInstance(new NioEventloop(), newCachedThreadPool(), storage, badTmp, 1234);
 	}
 
