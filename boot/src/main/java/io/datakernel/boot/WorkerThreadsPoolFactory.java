@@ -16,16 +16,8 @@
 
 package io.datakernel.boot;
 
-import com.google.inject.BindingAnnotation;
+public interface WorkerThreadsPoolFactory {
+	WorkerThreadsPool createPool(int poolSize);
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
-
-import static java.lang.annotation.ElementType.*;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-@BindingAnnotation
-@Target({PARAMETER, METHOD, FIELD})
-@Retention(RUNTIME)
-public @interface WorkerThreadsPoolSize {
+	WorkerThreadsPool createPool(String poolName, int poolSize);
 }

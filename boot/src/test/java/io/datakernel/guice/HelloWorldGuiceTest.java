@@ -63,9 +63,14 @@ public class HelloWorldGuiceTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			bind(Integer.class).annotatedWith(WorkerThreadsPoolSize.class).toInstance(WORKERS);
 			JmxRegistry jmxRegistry = new JmxRegistry(ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory());
 			install(BootModule.defaultInstance().addListener(jmxRegistry));
+		}
+
+		@Provides
+		@Singleton
+		WorkerThreadsPool workerThreadsPool(WorkerThreadsPoolFactory factory) {
+			return factory.createPool(WORKERS);
 		}
 
 		@Provides

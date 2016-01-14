@@ -50,7 +50,6 @@ public class WorkerThreadNameTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			bind(Integer.class).annotatedWith(WorkerThreadsPoolSize.class).toInstance(WORKERS);
 			install(BootModule.defaultInstance()
 					.register(Element4.class, new ServiceAdapter<Element4>() {
 						@Override
@@ -80,6 +79,12 @@ public class WorkerThreadNameTest {
 
 		@Provides
 		@Singleton
+		WorkerThreadsPool workerThreadsPool(WorkerThreadsPoolFactory factory) {
+			return factory.createPool(WORKERS);
+		}
+
+		@Provides
+		@Singleton
 		Element1 primaryEventloop() {
 			return new Element1();
 		}
@@ -89,7 +94,6 @@ public class WorkerThreadNameTest {
 		@Singleton
 		Element2 primaryNioServer(Element1 primaryEventloop, WorkerThreadsPool workerThreadsPool) {
 			List<Element4> unusedList = workerThreadsPool.getPoolInstances(Element4.class, "First");
-			List<Element3> workerHttpServers = workerThreadsPool.getPoolInstances(Element3.class);
 			return new Element2();
 		}
 

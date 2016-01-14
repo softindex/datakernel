@@ -44,7 +44,6 @@ public class TestGenericGraph {
 
 		@Override
 		protected void configure() {
-			bind(Integer.class).annotatedWith(WorkerThreadsPoolSize.class).toInstance(WORKERS);
 			install(BootModule.defaultInstance()
 					.register(Pojo.class, new ServiceAdapter<Pojo>() {
 						@Override
@@ -56,9 +55,13 @@ public class TestGenericGraph {
 
 		@Provides
 		@Singleton
-		Pojo<Integer> integerPojo(WorkerThreadsPool workerThreadsPool,
-		                          @WorkerThread Provider<Pojo<String>> pojoProvider,
-		                          @WorkerThread("other") Provider<Pojo<String>> pojoProviderOther) {
+		WorkerThreadsPool workerThreadsPool(WorkerThreadsPoolFactory factory) {
+			return factory.createPool(WORKERS);
+		}
+
+		@Provides
+		@Singleton
+		Pojo<Integer> integerPojo(WorkerThreadsPool workerThreadsPool) {
 			List<Pojo<String>> list = workerThreadsPool.getPoolInstances(new TypeToken<Pojo<String>>() {});
 			List<Pojo<String>> listOther = workerThreadsPool.getPoolInstances(new TypeToken<Pojo<String>>() {}, "other");
 			return new Pojo<>(Integer.valueOf(listOther.get(0).getObject())

@@ -31,4 +31,6 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 public @interface WorkerThread {
 	String value() default "";
+
+	String poolName() default "";
 }

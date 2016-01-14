@@ -60,9 +60,9 @@ public class LauncherExample {
 		}
 
 		@Provides
-		@WorkerThreadsPoolSize
-		Integer poolSize(Config config) {
-			return config.get(ConfigConverters.ofInteger(), "workers", 4);
+		@Singleton
+		WorkerThreadsPool workerThreadsPool(WorkerThreadsPoolFactory factory, Config config) {
+			return factory.createPool(config.get(ConfigConverters.ofInteger(), "workers", 4));
 		}
 
 		@Provides

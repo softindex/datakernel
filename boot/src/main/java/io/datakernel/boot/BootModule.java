@@ -16,16 +16,18 @@
 
 package io.datakernel.boot;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.LinkedHashMultimap;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.SetMultimap;
-import com.google.common.reflect.TypeToken;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.*;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.Dependency;
 import com.google.inject.spi.HasDependencies;
-import io.datakernel.annotation.Nullable;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
@@ -37,6 +39,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.google.common.base.Preconditions.*;
 import static com.google.common.collect.Sets.*;
@@ -55,7 +59,7 @@ public final class BootModule extends AbstractModule {
 
 	private final Executor executor;
 
-	private WorkerThreadsPoolImpl workerThreadsPool;
+	private WorkerThreadsPoolScope workerThreadsScope;
 
 	private List<Listener> listeners = new ArrayList<>();
 
@@ -125,15 +129,15 @@ public final class BootModule extends AbstractModule {
 			for (Method m : methods) {
 				try {
 					Object value = m.invoke(annotation);
-					String attribute = (value instanceof String ? "\"" + value + "\"" : value.toString());
+					if (value.equals(m.getDefaultValue()))
+						continue;
+					String valueStr = (value instanceof String ? "\"" + value + "\"" : value.toString());
 					String methodName = m.getName();
 					if ("value".equals(methodName) && first) {
-						if (!(value instanceof String) || !((String) value).isEmpty()) {
-							sb.append(attribute);
-							first = false;
-						}
+						sb.append(valueStr);
+						first = false;
 					} else {
-						sb.append(first ? "" : ",").append(methodName).append("=").append(attribute);
+						sb.append(first ? "" : ",").append(methodName).append("=").append(valueStr);
 						first = false;
 					}
 				} catch (Exception ignored) {
@@ -201,23 +205,24 @@ public final class BootModule extends AbstractModule {
 
 	private Service getPoolServiceOrNull(final Key<?> key, final List<?> instances) {
 		final List<Service> services = new ArrayList<>();
+		boolean found = false;
 		for (Object instance : instances) {
 			Service service = getServiceOrNull(key, instance);
+			services.add(service);
 			if (service != null) {
-				services.add(service);
+				found = true;
 			}
 		}
-		if (services.isEmpty())
+		if (!found)
 			return null;
 		return new Service() {
 			@Override
 			public ListenableFuture<?> start() {
 				List<ListenableFuture<?>> futures = new ArrayList<>();
 				for (Service service : services) {
-					ListenableFuture<?> future = service.start();
-					futures.add(future);
+					futures.add(service != null ? service.start() : null);
 				}
-				ListenableFuture<List<Object>> future = Futures.allAsList(futures);
+				ListenableFuture<?> future = combineFutures(futures, executor);
 				future.addListener(new Runnable() {
 					@Override
 					public void run() {
@@ -233,10 +238,9 @@ public final class BootModule extends AbstractModule {
 			public ListenableFuture<?> stop() {
 				List<ListenableFuture<?>> futures = new ArrayList<>();
 				for (Service service : services) {
-					ListenableFuture<?> future = service.stop();
-					futures.add(future);
+					futures.add(service != null ? service.stop() : null);
 				}
-				ListenableFuture<List<Object>> future = Futures.allAsList(futures);
+				ListenableFuture<?> future = combineFutures(futures, executor);
 				future.addListener(new Runnable() {
 					@Override
 					public void run() {
@@ -248,6 +252,32 @@ public final class BootModule extends AbstractModule {
 				return future;
 			}
 		};
+	}
+
+	private static ListenableFuture<?> combineFutures(List<ListenableFuture<?>> futures, final Executor executor) {
+		final SettableFuture<?> resultFuture = SettableFuture.create();
+		final AtomicInteger count = new AtomicInteger(futures.size());
+		final AtomicReference<Throwable> exception = new AtomicReference<>();
+		for (ListenableFuture<?> future : futures) {
+			final ListenableFuture<?> finalFuture = future != null ? future : Futures.immediateFuture(null);
+			finalFuture.addListener(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						finalFuture.get();
+					} catch (InterruptedException | ExecutionException e) {
+						exception.set(Throwables.getRootCause(e));
+					}
+					if (count.decrementAndGet() == 0) {
+						if (exception.get() != null)
+							resultFuture.setException(exception.get());
+						else
+							resultFuture.set(null);
+					}
+				}
+			}, executor);
+		}
+		return resultFuture;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -283,19 +313,29 @@ public final class BootModule extends AbstractModule {
 			logger.warn("Unused keys : {}", keys.keySet());
 		}
 
-		Set<Key<?>> workerThreadRoots = new LinkedHashSet<>();
+		Multimap<String, Key<?>> workerThreadRoots = LinkedHashMultimap.create();
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
+			if (binding.getKey().getTypeLiteral().getRawType() == WorkerThreadsPool.class) {
+				injector.getInstance(binding.getKey());
+			}
 			if (isWorkerThread(binding.getKey())) {
-				workerThreadRoots.add(binding.getKey());
+				String poolName = ((WorkerThread) binding.getKey().getAnnotation()).poolName();
+				workerThreadRoots.put(poolName, binding.getKey());
 			}
 		}
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
 			if (isWorkerThread(binding.getKey())) {
 				if (binding instanceof HasDependencies) {
+					String poolName = ((WorkerThread) binding.getKey().getAnnotation()).poolName();
 					for (Dependency<?> dependency : ((HasDependencies) binding).getDependencies()) {
-						workerThreadRoots.remove(dependency.getKey());
+						if (isWorkerThread(dependency.getKey())) {
+							String dependencyPoolName = ((WorkerThread) dependency.getKey().getAnnotation()).poolName();
+							checkArgument(poolName.equals(dependencyPoolName),
+									"Key %s depends on %s from different thread pool", binding.getKey(), dependency.getKey());
+							workerThreadRoots.remove(poolName, dependency.getKey());
+						}
 					}
 				}
 			}
@@ -310,7 +350,7 @@ public final class BootModule extends AbstractModule {
 				Object instance = injector.getInstance(key);
 				service = getServiceOrNull(key, instance);
 			} else if (isWorkerThread(key)) {
-				List<?> instances = workerThreadsPool.getPoolInstances(key);
+				List<?> instances = workerThreadsScope.getPoolInstances(key);
 				service = getPoolServiceOrNull(key, instances);
 			} else
 				continue;
@@ -320,7 +360,7 @@ public final class BootModule extends AbstractModule {
 
 	}
 
-	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph, Set<Key<?>> workerThreadRoots) {
+	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph, Multimap<String, Key<?>> workerThreadRoots) {
 		Binding<?> binding = injector.getBinding(key);
 		if (!(binding instanceof HasDependencies))
 			return;
@@ -340,7 +380,8 @@ public final class BootModule extends AbstractModule {
 
 		for (Key<?> dependencyKey : union(difference(dependencies, removedDependencies.get(key)), addedDependencies.get(key))) {
 			if (dependencyKey.getTypeLiteral().getRawType() == WorkerThreadsPool.class) {
-				graph.add(key, workerThreadRoots);
+				WorkerThreadsPool workerThreadsPool = (WorkerThreadsPool) injector.getInstance(dependencyKey);
+				graph.add(key, workerThreadRoots.get(workerThreadsPool.getPoolName()));
 			}
 			graph.add(key, dependencyKey);
 		}
@@ -348,21 +389,16 @@ public final class BootModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		workerThreadsPool = new WorkerThreadsPoolImpl();
-		requestInjection(workerThreadsPool);
-		bindScope(WorkerThread.class, workerThreadsPool);
+		workerThreadsScope = new WorkerThreadsPoolScope();
+		requestInjection(workerThreadsScope);
+		bindScope(WorkerThread.class, workerThreadsScope);
+		bind(WorkerThreadsPoolFactory.class).toInstance(workerThreadsScope);
 		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
 			@Override
 			public Integer get() {
-				return workerThreadsPool.currentPoolId;
+				return null;
 			}
-		});
-	}
-
-	@Provides
-	WorkerThreadsPool workerThreadsPool() {
-		checkArgument(workerThreadsPool.poolSize != null, "Pool size must be provided, as Integer annotated with %s", WorkerThreadsPoolSize.class);
-		return workerThreadsPool;
+		}).in(WorkerThread.class);
 	}
 
 	/**
@@ -439,115 +475,6 @@ public final class BootModule extends AbstractModule {
 			}
 			return stopFuture;
 		}
-	}
-
-	private final class WorkerThreadsPoolImpl implements Scope, WorkerThreadsPool {
-		private final Map<Key<?>, Object[]> pool = new HashMap<>();
-
-		@Inject(optional = true)
-		@WorkerThreadsPoolSize
-		Integer poolSize;
-
-		@Inject
-		Injector injector;
-
-		@Nullable
-		Integer currentPoolId;
-
-		@Override
-		public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
-			return new Provider<T>() {
-				@SuppressWarnings("unchecked")
-				@Override
-				public T get() {
-					checkState(currentPoolId != null && poolSize != null,
-							"To create %s use %s", key, WorkerThreadsPool.class.getSimpleName());
-					T[] instances = (T[]) pool.get(key);
-					if (instances == null) {
-						instances = (T[]) new Object[poolSize];
-						pool.put(key, instances);
-					}
-					T instance = instances[currentPoolId];
-					if (instance == null) {
-						instance = unscoped.get();
-						instances[currentPoolId] = instance;
-					}
-					return instance;
-				}
-			};
-		}
-
-		@Override
-		public <T> List<T> getPoolInstances(Class<T> type) {
-			return getPoolInstances(Key.get(type, WorkerThread.class));
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public <T> List<T> getPoolInstances(TypeToken<T> type) {
-			return getPoolInstances((Key<T>) Key.get(type.getType(), WorkerThread.class));
-		}
-
-		@Override
-		public <T> List<T> getPoolInstances(Class<T> type, String named) {
-			return getPoolInstances(Key.get(type, new WorkerThreadAnnotation(named)));
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public <T> List<T> getPoolInstances(TypeToken<T> type, String named) {
-			return getPoolInstances((Key<T>) Key.get(type.getType(), new WorkerThreadAnnotation(named)));
-		}
-
-		private <T> List<T> getPoolInstances(Key<T> key) {
-			checkArgument(isWorkerThread(key));
-			Integer originalPoolId = currentPoolId;
-			List<T> result = new ArrayList<>();
-			for (int i = 0; i < poolSize; i++) {
-				currentPoolId = i;
-				result.add(injector.getInstance(key));
-			}
-			currentPoolId = originalPoolId;
-			return result;
-		}
-	}
-
-	@SuppressWarnings("ClassExplicitlyAnnotation")
-	private static final class WorkerThreadAnnotation implements WorkerThread {
-		final String value;
-
-		WorkerThreadAnnotation(String value) {
-			this.value = checkNotNull(value);
-		}
-
-		@Override
-		public String value() {
-			return value;
-		}
-
-		@Override
-		public Class<? extends Annotation> annotationType() {
-			return WorkerThread.class;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (!(o instanceof WorkerThread)) return false;
-
-			WorkerThread that = (WorkerThread) o;
-			return value.equals(that.value());
-
-		}
-
-		@Override
-		public int hashCode() {
-			return (127 * "value".hashCode()) ^ value.hashCode();
-		}
-
-		public String toString() {
-			return "@" + WorkerThread.class.getName() + "(value=" + value + ")";
-		}
-
 	}
 
 }
