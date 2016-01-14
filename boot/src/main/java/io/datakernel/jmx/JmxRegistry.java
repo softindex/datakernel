@@ -26,6 +26,7 @@ import javax.management.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -285,9 +286,10 @@ public final class JmxRegistry implements BootModule.Listener {
 			name += "type=" + type.getSimpleName();
 		} else {
 			Class<? extends Annotation> annotationType = annotation.annotationType();
-			Method[] annotationElements = annotationType.getDeclaredMethods();
+//			Method[] annotationElements = annotationType.getDeclaredMethods();
+			Method[] annotationElements = filterNonEmptyElements(annotation);
 			if (annotationElements.length == 0) { // annotation without elements
-				name += "type=" + annotationType.getSimpleName();
+				name += "type=" + type.getSimpleName() + ",annotation=" + annotationType.getSimpleName();
 			} else if (annotationElements.length == 1 && annotationElements[0].getName().equals("value")) {
 				// annotation with single element which has name "value"
 				Object value = fetchAnnotationElementValue(annotation, annotationElements[0]);
@@ -320,5 +322,22 @@ public final class JmxRegistry implements BootModule.Listener {
 			throw new NullPointerException(errorMsg);
 		}
 		return value;
+	}
+
+	private static Method[] filterNonEmptyElements(Annotation annotation)
+			throws InvocationTargetException, IllegalAccessException {
+		List<Method> filtered = new ArrayList<>();
+		for (Method method : annotation.annotationType().getDeclaredMethods()) {
+			Object elementValue = fetchAnnotationElementValue(annotation, method);
+			if (elementValue instanceof String) {
+				String stringValue = (String) elementValue;
+				if (stringValue.length() == 0) {
+					// skip this element, because it is empty string
+					continue;
+				}
+			}
+			filtered.add(method);
+		}
+		return filtered.toArray(new Method[filtered.size()]);
 	}
 }

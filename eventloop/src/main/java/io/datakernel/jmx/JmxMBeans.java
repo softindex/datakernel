@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.jmx.annotation.JmxOperation;
 import io.datakernel.jmx.annotation.JmxParameter;
@@ -40,6 +41,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String ATTRIBUTE_NAME_REGEX = "^([a-zA-Z0-9]+)_(\\w+)$";
 	private static final Pattern ATTRIBUTE_NAME_PATTERN = Pattern.compile(ATTRIBUTE_NAME_REGEX);
 	private static final String ATTRIBUTE_DEFAULT_DESCRIPTION = "";
+
+	private static final String REFRESH_PERIOD_ATTRIBUTE_NAME = "_refreshPeriod";
+	private static final String SMOOTHING_WINDOW_ATTRIBUTE_NAME = "_smoothingWindow";
+	private static final String SET_REFRESH_PERIOD_OP_NAME = "_setRefreshPeriod";
+	private static final String SET_SMOOTHING_WINDOW_OP_NAME = "_setSmoothingWindow";
+	private static final String SET_REFRESH_PERIOD_PARAMETER_NAME = "period";
+	private static final String SET_SMOOTHING_WINDOW_PARAMETER_NAME = "window";
 
 	private static final JmxMBeans factory = new JmxMBeans();
 
@@ -87,7 +95,23 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				attributes.add(attributeInfo);
 			}
 		}
+
+		addAttributesForRefreshControl(monitorable, attributes);
+
 		return attributes.toArray(new MBeanAttributeInfo[attributes.size()]);
+	}
+
+	private static void addAttributesForRefreshControl(Object monitorable, List<MBeanAttributeInfo> attributes) {
+		if (hasEventloop(monitorable)) {
+			MBeanAttributeInfo refreshPeriodAttr =
+					new MBeanAttributeInfo(REFRESH_PERIOD_ATTRIBUTE_NAME, "int", ATTRIBUTE_DEFAULT_DESCRIPTION,
+							true, false, false);
+			attributes.add(refreshPeriodAttr);
+			MBeanAttributeInfo smoothingWindowAttr =
+					new MBeanAttributeInfo(SMOOTHING_WINDOW_ATTRIBUTE_NAME, "double", ATTRIBUTE_DEFAULT_DESCRIPTION,
+							true, false, false);
+			attributes.add(smoothingWindowAttr);
+		}
 	}
 
 	private static MBeanOperationInfo[] extractOperationsInfo(Object monitorable) {
@@ -125,7 +149,38 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				operations.add(operationInfo);
 			}
 		}
+
+		addOperationsForRefreshControl(monitorable, operations);
+
 		return operations.toArray(new MBeanOperationInfo[operations.size()]);
+	}
+
+	private static void addOperationsForRefreshControl(Object monitorable, List<MBeanOperationInfo> operations) {
+		if (hasEventloop(monitorable)) {
+			MBeanParameterInfo[] setPeriodOpParameters = new MBeanParameterInfo[]{
+					new MBeanParameterInfo(SET_REFRESH_PERIOD_PARAMETER_NAME, "int", "")};
+			MBeanOperationInfo setPeriodOp = new MBeanOperationInfo(
+					SET_REFRESH_PERIOD_OP_NAME, "", setPeriodOpParameters, "void", MBeanOperationInfo.ACTION);
+			operations.add(setPeriodOp);
+
+			MBeanParameterInfo[] setWindowOpParameters = new MBeanParameterInfo[]{
+					new MBeanParameterInfo(SET_SMOOTHING_WINDOW_PARAMETER_NAME, "double", "")};
+			MBeanOperationInfo setSmoothingWindowOp = new MBeanOperationInfo(
+					SET_SMOOTHING_WINDOW_OP_NAME, "", setWindowOpParameters, "void", MBeanOperationInfo.ACTION);
+			operations.add(setSmoothingWindowOp);
+		}
+	}
+
+	private static boolean hasEventloop(Object monitorable) {
+		for (Method method : monitorable.getClass().getMethods()) {
+			boolean nameMatches = method.getName().toLowerCase().equals("geteventloop");
+			boolean returnTypeMatches = Eventloop.class.isAssignableFrom(method.getReturnType());
+			boolean hasNoArgs = method.getParameterTypes().length == 0;
+			if (nameMatches && returnTypeMatches && hasNoArgs) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static JmxParameter findJmxNamedParameterAnnotation(Annotation[] annotations) {

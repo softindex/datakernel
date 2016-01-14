@@ -19,126 +19,22 @@ package io.datakernel.jmx;
 import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.jmx.annotation.JmxOperation;
 import io.datakernel.jmx.annotation.JmxParameter;
-import io.datakernel.jmx.helper.CompositeStatsStub;
-import io.datakernel.jmx.helper.JmxStatsStub;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.junit.Test;
 
-import javax.management.*;
-import java.util.*;
+import javax.management.DynamicMBean;
+import javax.management.MBeanInfo;
+import javax.management.MBeanOperationInfo;
+import javax.management.MBeanParameterInfo;
+import java.util.HashMap;
+import java.util.Map;
 
-import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
-public class JmxMBeansTest {
-	private static final String GROUPED_STATS_COUNTER_ONE_COUNT = "groupedStats_counterOne_count";
-	private static final String GROUPED_STATS_COUNTER_ONE_SUM = "groupedStats_counterOne_sum";
-	private static final String GROUPED_STATS_COUNTER_TWO_COUNT = "groupedStats_counterTwo_count";
-	private static final String GROUPED_STATS_COUNTER_TWO_SUM = "groupedStats_counterTwo_sum";
-	private static final String SIMPLE_STATS_COUNT = "simpleStats_count";
-	private static final String SIMPLE_STATS_SUM = "simpleStats_sum";
-
-	// sorted alphabetically
-	private static final List<String> ALL_ATTRIBUTE_NAMES_LIST = asList(
-			GROUPED_STATS_COUNTER_ONE_COUNT,
-			GROUPED_STATS_COUNTER_ONE_SUM,
-			GROUPED_STATS_COUNTER_TWO_COUNT,
-			GROUPED_STATS_COUNTER_TWO_SUM,
-			SIMPLE_STATS_COUNT,
-			SIMPLE_STATS_SUM
-	);
-
-	private static final String[] ALL_ATTRIBUTE_NAMES_ARRAY =
-			ALL_ATTRIBUTE_NAMES_LIST.toArray(new String[ALL_ATTRIBUTE_NAMES_LIST.size()]);
-
-	@Test
-	public void itShouldCollectAllJmxStatsFromMonitorableAndWriteThemToMBeanInfo() throws Exception {
-		MonitorableStub monitorable = new MonitorableStub();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
-
-		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
-		MBeanAttributeInfo[] mBeanAttributeInfos = mBeanInfo.getAttributes();
-		List<String> attributeNames = new ArrayList<>();
-		for (MBeanAttributeInfo mBeanAttributeInfo : mBeanAttributeInfos) {
-			attributeNames.add(mBeanAttributeInfo.getName());
-		}
-		Collections.sort(attributeNames);
-
-		List<String> expectedAttributeNames = ALL_ATTRIBUTE_NAMES_LIST;
-		assertEquals(expectedAttributeNames, attributeNames);
-	}
-
-	@Test(expected = IllegalArgumentException.class)
-	public void itShouldThrowExceptionWhenClassForCreatingDynamicMBeanIsNotAnnotated() throws Exception {
-		NotAnnotatedService notAnnotated = new NotAnnotatedService();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(notAnnotated);
-	}
-
-	@Test
-	public void itShouldFetchSingleAttributeValueCorrectly() throws Exception {
-		MonitorableStub monitorable = new MonitorableStub();
-		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
-		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
-		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
-
-		// check init values of attributes
-		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
-		assertEquals(23L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_SUM));
-		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_COUNT));
-		assertEquals(35L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_SUM));
-		assertEquals(1, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(51L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
-
-		// modify monitorable object
-		monitorable.getGroupedStats().getCounterOne().recordValue(102L);
-		// we don't write anything to groupedStats_counterTwo
-		monitorable.getSimpleStats().recordValue(207L);
-
-		// check modified values of attributes
-		assertEquals(2, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
-		assertEquals(23L + 102L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_SUM));
-		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_COUNT));
-		assertEquals(35L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_SUM));
-		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(51L + 207L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
-	}
-
-	@Test
-	public void itShouldFetchBunchOfAttributeValuesCorrectly() throws Exception {
-		MonitorableStub monitorable = new MonitorableStub();
-		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
-		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
-		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
-
-		// check fetching all attributes
-		AttributeList expectedAttributeList =
-				createAttributeList(ALL_ATTRIBUTE_NAMES_ARRAY, new Object[]{1, 23L, 1, 35L, 1, 51L});
-		assertEquals(expectedAttributeList, mbean.getAttributes(ALL_ATTRIBUTE_NAMES_ARRAY));
-
-		// check fetching subset of attributes
-		String[] subsetOfNames = new String[]{SIMPLE_STATS_SUM, SIMPLE_STATS_COUNT, GROUPED_STATS_COUNTER_ONE_SUM};
-		expectedAttributeList = createAttributeList(subsetOfNames, new Object[]{51L, 1, 23L});
-		assertEquals(expectedAttributeList, mbean.getAttributes(subsetOfNames));
-
-		// modify monitorable object
-		monitorable.getGroupedStats().getCounterOne().recordValue(102L);
-		// we don't write anything to groupedStats_counterTwo
-		monitorable.getSimpleStats().recordValue(207L);
-
-		// check fetching all attributes after modification
-		expectedAttributeList =
-				createAttributeList(ALL_ATTRIBUTE_NAMES_ARRAY, new Object[]{2, 23L + 102L, 1, 35L, 2, 51L + 207L});
-		assertEquals(expectedAttributeList, mbean.getAttributes(ALL_ATTRIBUTE_NAMES_ARRAY));
-
-		// check fetching subset of attributes after modification
-		expectedAttributeList = createAttributeList(subsetOfNames, new Object[]{51L + 207L, 2, 23L + 102L});
-		assertEquals(expectedAttributeList, mbean.getAttributes(subsetOfNames));
-	}
+public class JmxMBeansOperationsTest {
 
 	@Test
 	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() throws Exception {
@@ -192,26 +88,6 @@ public class JmxMBeansTest {
 	// TODO(vmykhalko): add test for methods with same names but different signatures
 
 	@Test
-	public void itShouldAccumulateJmxStatsValuesFromSeveralMonitorable() throws Exception {
-		MonitorableStub monitorable_1 = new MonitorableStub();
-		MonitorableStub monitorable_2 = new MonitorableStub();
-		monitorable_1.getSimpleStats().recordValue(23L);
-		monitorable_2.getSimpleStats().recordValue(78L);
-
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable_1, monitorable_2);
-
-		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(23L + 78L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
-
-		monitorable_1.getSimpleStats().recordValue(198L);
-		monitorable_2.getSimpleStats().recordValue(201L);
-		monitorable_2.getSimpleStats().recordValue(352L);
-
-		assertEquals(5, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(23L + 78L + 198L + 201L + 352L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
-	}
-
-	@Test
 	public void itShouldBroadcastOperationCallToAllMonitorables() throws Exception {
 		MonitorableStubWithOperations monitorable_1 = new MonitorableStubWithOperations();
 		MonitorableStubWithOperations monitorable_2 = new MonitorableStubWithOperations();
@@ -243,31 +119,13 @@ public class JmxMBeansTest {
 		assertEquals(monitorable_2.getSum(), 10 * 15 + 120 * 150);
 	}
 
+	@Test(expected = IllegalArgumentException.class)
+	public void itShouldThrowExceptionWhenClassForCreatingDynamicMBeanIsNotAnnotated() throws Exception {
+		NotAnnotatedService notAnnotated = new NotAnnotatedService();
+		DynamicMBean mbean = JmxMBeans.factory().createFor(notAnnotated);
+	}
+
 	// helpers
-	public static AttributeList createAttributeList(String[] names, Object[] values) {
-		assert values.length == names.length;
-		AttributeList attrList = new AttributeList();
-
-		for (int i = 0; i < values.length; i++) {
-			attrList.add(new Attribute(names[i], values[i]));
-		}
-		return attrList;
-	}
-
-	@JmxMBean
-	public static class MonitorableStub {
-		CompositeStatsStub groupedStats = new CompositeStatsStub();
-		JmxStatsStub simpleStats = new JmxStatsStub();
-
-		public CompositeStatsStub getGroupedStats() {
-			return groupedStats;
-		}
-
-		public JmxStatsStub getSimpleStats() {
-			return simpleStats;
-		}
-	}
-
 	@JmxMBean
 	public static class MonitorableStubWithOperations {
 		private int count = 0;

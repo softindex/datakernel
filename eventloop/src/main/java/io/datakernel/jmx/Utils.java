@@ -23,7 +23,9 @@ import java.util.TreeMap;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public class Utils {
+public final class Utils {
+
+	private Utils() {}
 
 	public static String extractFieldNameFromGetter(Method method) {
 		checkArgument(isGetter(method));
@@ -36,7 +38,8 @@ public class Utils {
 
 	public static boolean isGetterOfJmxStats(Method method) {
 		boolean returnsJmxStats = JmxStats.class.isAssignableFrom(method.getReturnType());
-		return isGetter(method) && returnsJmxStats;
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsJmxStats && hasNoArgs;
 	}
 
 	public static boolean isGetter(Method method) {

@@ -98,6 +98,7 @@ public class HelloWorldGuiceTest {
 		@Provides
 		@Worker
 		AsyncHttpServer workerHttpServer(@Worker NioEventloop eventloop, @WorkerId final int workerId) {
+
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request,
