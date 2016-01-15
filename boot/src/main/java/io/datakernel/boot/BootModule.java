@@ -54,6 +54,8 @@ public final class BootModule extends AbstractModule {
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
+	private final SetMultimap<Key<?>, Key<?>> workerDependencies = HashMultimap.create();
+
 	private final IdentityHashMap<Object, CachedService> services = new IdentityHashMap<>();
 
 	private final Executor executor;
@@ -311,23 +313,29 @@ public final class BootModule extends AbstractModule {
 
 	private void createGuiceGraph(final Injector injector, final ServiceGraph graph) {
 		if (!difference(keys.keySet(), injector.getAllBindings().keySet()).isEmpty()) {
-			logger.warn("Unused keys : {}", difference(keys.keySet(), injector.getAllBindings().keySet()));
+			logger.warn("Unused services : {}", difference(keys.keySet(), injector.getAllBindings().keySet()));
 		}
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
-			if (binding.getKey().getTypeLiteral().getRawType() == ServiceGraph.class)
-				continue;
-			final Key<?> key = binding.getKey();
-			Service service;
+			Key<?> key = binding.getKey();
 			if (isSingleton(binding)) {
 				Object instance = injector.getInstance(key);
-				service = getServiceOrNull(key, instance);
-			} else if (isWorker(key)) {
-				List<?> instances = workerPoolScope.getInstances(key);
-				service = getPoolServiceOrNull(key, instances);
-			} else
-				continue;
-			graph.add(key, service);
+				Service service = getServiceOrNull(key, instance);
+				graph.add(key, service);
+			}
+		}
+
+		for (Binding<?> binding : injector.getAllBindings().values()) {
+			Key<?> key = binding.getKey();
+			if (isWorker(key)) {
+				if (workerDependencies.values().contains(key)) {
+					List<?> instances = workerPoolScope.getInstances(key);
+					Service service = getPoolServiceOrNull(key, instances);
+					graph.add(key, service);
+				} else {
+					logger.warn("Unused key: {}", key);
+				}
+			}
 		}
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
@@ -353,7 +361,8 @@ public final class BootModule extends AbstractModule {
 			logger.warn("Unused added dependencies for {} : {}", key, intersection(dependencies, addedDependencies.get(key)));
 		}
 
-		for (Key<?> dependencyKey : difference(union(dependencies, addedDependencies.get(key)), removedDependencies.get(key))) {
+		for (Key<?> dependencyKey : difference(union(union(dependencies, workerDependencies.get(key)),
+				addedDependencies.get(key)), removedDependencies.get(key))) {
 			graph.add(key, dependencyKey);
 		}
 	}
@@ -387,12 +396,13 @@ public final class BootModule extends AbstractModule {
 				if (chain.size() >= 2) {
 					Key<?> key = chain.get(chain.size() - 2).getDependency().getKey();
 					Key<T> dependencyKey = provision.getBinding().getKey();
-					if (!isWorker(key) && isWorker(dependencyKey) && key.getTypeLiteral().getRawType() != ServiceGraph.class) {
-						addedDependencies.put(key, dependencyKey);
+					if (isWorker(dependencyKey) && key.getTypeLiteral().getRawType() != ServiceGraph.class) {
+						workerDependencies.put(key, dependencyKey);
 					}
 				}
 			}
 		});
+
 		workerPoolScope = new WorkerPoolScope();
 		requestInjection(workerPoolScope);
 		bindScope(Worker.class, workerPoolScope);

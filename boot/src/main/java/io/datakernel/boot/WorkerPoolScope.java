@@ -23,6 +23,8 @@ import com.google.inject.Scope;
 
 import java.util.List;
 
+import static com.google.common.base.Preconditions.checkState;
+
 final class WorkerPoolScope implements Scope {
 	@Inject(optional = true)
 	WorkerPools pools;
@@ -42,6 +44,7 @@ final class WorkerPoolScope implements Scope {
 	}
 
 	List<?> getInstances(Key<?> key) {
+		checkState(pools != null, "WorkerPools instance must be provided in Guice modules");
 		return pools.getInstances(key);
 	}
 }
