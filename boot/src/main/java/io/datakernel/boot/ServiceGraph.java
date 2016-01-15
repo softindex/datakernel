@@ -249,6 +249,8 @@ public class ServiceGraph {
 							LongestPath longestPath = rootFuture.get();
 							StringBuilder sb = new StringBuilder();
 							printLongestPath(sb, longestPath);
+							if (sb.length() != 0)
+								sb.deleteCharAt(sb.length() - 1);
 							logger.info("Longest path:\n" + sb);
 							resultFuture.set(null);
 							executor.shutdown();

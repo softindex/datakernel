@@ -16,19 +16,16 @@
 
 package io.datakernel.boot;
 
-import com.google.inject.*;
+import com.google.inject.Inject;
+import com.google.inject.Key;
+import com.google.inject.Provider;
+import com.google.inject.Scope;
 
 import java.util.List;
 
 final class WorkerPoolScope implements Scope {
 	@Inject(optional = true)
 	WorkerPools pools;
-
-	void setInjector(Injector injector) {
-		if (pools != null) {
-			pools.injector = injector;
-		}
-	}
 
 	@Override
 	public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {

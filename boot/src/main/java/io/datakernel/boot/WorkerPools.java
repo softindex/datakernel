@@ -118,7 +118,9 @@ public final class WorkerPools {
 	public <T> List<T> getInstances(Key<T> key) {
 		checkState(injector != null, "WorkerPools has not been initialized, make sure Boot module and ServiceGraph is used");
 		checkArgument(key.getAnnotation() instanceof Worker, "Can only get @Worker instances, got key: %s", key);
-		WorkerPool pool = pools.get(((Worker) key.getAnnotation()).poolName());
+		String poolName = ((Worker) key.getAnnotation()).poolName();
+		WorkerPool pool = pools.get(poolName);
+		checkArgument(pool != null, "Unknown poolName for '%s', make sure pool is created and its name corresponds with the key", key);
 		WorkerPool originalWorkerPool = currentWorkerPool;
 		currentWorkerPool = pool;
 		Integer originalWorkerId = currentWorkerId;

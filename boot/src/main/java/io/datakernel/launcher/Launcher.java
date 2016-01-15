@@ -51,7 +51,7 @@ public abstract class Launcher {
 	protected Injector injector;
 
 	@Inject
-	protected ServiceGraph serviceGraph;
+	protected Provider<ServiceGraph> serviceGraphProvider;
 
 	@Inject
 	protected ShutdownNotification shutdownNotification;
@@ -208,13 +208,13 @@ public abstract class Launcher {
 	}
 
 	protected void doStart() throws Exception {
-		serviceGraph.startFuture().get();
+		serviceGraphProvider.get().startFuture().get();
 	}
 
 	abstract protected void doRun() throws Exception;
 
 	protected void doStop() throws Exception {
-		serviceGraph.stopFuture().get();
+		serviceGraphProvider.get().stopFuture().get();
 	}
 
 	protected final void awaitShutdown() throws InterruptedException {

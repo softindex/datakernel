@@ -23,9 +23,8 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.*;
-import com.google.inject.spi.BindingScopingVisitor;
-import com.google.inject.spi.Dependency;
-import com.google.inject.spi.HasDependencies;
+import com.google.inject.matcher.AbstractMatcher;
+import com.google.inject.spi.*;
 import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.NioServer;
 import io.datakernel.eventloop.NioService;
@@ -40,8 +39,10 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static com.google.common.base.Preconditions.*;
+import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Sets.*;
+import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.slf4j.LoggerFactory.getLogger;
 
 public final class BootModule extends AbstractModule {
@@ -60,6 +61,8 @@ public final class BootModule extends AbstractModule {
 	private WorkerPoolScope workerPoolScope;
 
 	private List<Listener> listeners = new ArrayList<>();
+
+	private ServiceGraph serviceGraph;
 
 	public interface Listener {
 		void onSingletonStart(Key<?> key, Object singletonInstance);
@@ -220,7 +223,7 @@ public final class BootModule extends AbstractModule {
 				for (Service service : services) {
 					futures.add(service != null ? service.start() : null);
 				}
-				ListenableFuture<?> future = combineFutures(futures, executor);
+				ListenableFuture<?> future = combineFutures(futures, directExecutor());
 				future.addListener(new Runnable() {
 					@Override
 					public void run() {
@@ -228,7 +231,7 @@ public final class BootModule extends AbstractModule {
 							listener.onWorkersStart(key, instances);
 						}
 					}
-				}, executor);
+				}, directExecutor());
 				return future;
 			}
 
@@ -238,7 +241,7 @@ public final class BootModule extends AbstractModule {
 				for (Service service : services) {
 					futures.add(service != null ? service.stop() : null);
 				}
-				ListenableFuture<?> future = combineFutures(futures, executor);
+				ListenableFuture<?> future = combineFutures(futures, directExecutor());
 				future.addListener(new Runnable() {
 					@Override
 					public void run() {
@@ -246,7 +249,7 @@ public final class BootModule extends AbstractModule {
 							listener.onWorkersStop(key, instances);
 						}
 					}
-				}, executor);
+				}, directExecutor());
 				return future;
 			}
 		};
@@ -308,33 +311,7 @@ public final class BootModule extends AbstractModule {
 
 	private void createGuiceGraph(final Injector injector, final ServiceGraph graph) {
 		if (!difference(keys.keySet(), injector.getAllBindings().keySet()).isEmpty()) {
-			logger.warn("Unused keys : {}", keys.keySet());
-		}
-
-		Set<Key<?>> workerRoots = new LinkedHashSet<>();
-
-		for (Binding<?> binding : injector.getAllBindings().values()) {
-			if (isWorker(binding.getKey())) {
-				workerRoots.add(binding.getKey());
-			}
-		}
-
-		for (Binding<?> binding : injector.getAllBindings().values()) {
-			if (isWorker(binding.getKey())) {
-				if (binding instanceof HasDependencies) {
-					String poolName = ((Worker) binding.getKey().getAnnotation()).poolName();
-					for (Dependency<?> dependency : ((HasDependencies) binding).getDependencies()) {
-						checkArgument(dependency.getKey().getTypeLiteral().getRawType() != WorkerPools.class,
-								"Cannot have a dependency on WorkerPool from within the pool, key: %s", binding.getKey());
-						if (isWorker(dependency.getKey())) {
-							String dependencyPoolName = ((Worker) dependency.getKey().getAnnotation()).poolName();
-							checkArgument(poolName.equals(dependencyPoolName),
-									"Key %s depends on %s from different thread pool", binding.getKey(), dependency.getKey());
-							workerRoots.remove(dependency.getKey());
-						}
-					}
-				}
-			}
+			logger.warn("Unused keys : {}", difference(keys.keySet(), injector.getAllBindings().keySet()));
 		}
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
@@ -351,12 +328,14 @@ public final class BootModule extends AbstractModule {
 			} else
 				continue;
 			graph.add(key, service);
-			processDependencies(key, injector, graph, workerRoots);
 		}
 
+		for (Binding<?> binding : injector.getAllBindings().values()) {
+			processDependencies(binding.getKey(), injector, graph);
+		}
 	}
 
-	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph, Set<Key<?>> workerThreadRoots) {
+	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph) {
 		Binding<?> binding = injector.getBinding(key);
 		if (!(binding instanceof HasDependencies))
 			return;
@@ -374,17 +353,48 @@ public final class BootModule extends AbstractModule {
 			logger.warn("Unused added dependencies for {} : {}", key, intersection(dependencies, addedDependencies.get(key)));
 		}
 
-		for (Key<?> dependencyKey : union(difference(dependencies, removedDependencies.get(key)), addedDependencies.get(key))) {
-			if (dependencyKey.getTypeLiteral().getRawType() == WorkerPools.class) {
-				graph.add(key, workerThreadRoots);
-			}
+		for (Key<?> dependencyKey : difference(union(dependencies, addedDependencies.get(key)), removedDependencies.get(key))) {
 			graph.add(key, dependencyKey);
 		}
 	}
 
 	@Override
 	protected void configure() {
+		final Provider<Injector> injectorProvider = getProvider(Injector.class);
+		bindListener(new AbstractMatcher<Binding<?>>() {
+			@Override
+			public boolean matches(Binding<?> binding) {
+				return binding.getKey().getTypeLiteral().getRawType() == WorkerPools.class;
+			}
+		}, new ProvisionListener() {
+			@Override
+			public <T> void onProvision(ProvisionInvocation<T> provision) {
+				WorkerPools workerPools = (WorkerPools) provision.provision();
+				workerPools.injector = injectorProvider.get();
+			}
+		});
+
+		bindListener(new AbstractMatcher<Binding<?>>() {
+			@Override
+			public boolean matches(Binding<?> binding) {
+				return binding.getKey().getAnnotationType() == Worker.class;
+			}
+		}, new ProvisionListener() {
+			@Override
+			public <T> void onProvision(ProvisionInvocation<T> provision) {
+				provision.provision();
+				List<DependencyAndSource> chain = provision.getDependencyChain();
+				if (chain.size() >= 2) {
+					Key<?> key = chain.get(chain.size() - 2).getDependency().getKey();
+					Key<T> dependencyKey = provision.getBinding().getKey();
+					if (!isWorker(key) && isWorker(dependencyKey) && key.getTypeLiteral().getRawType() != ServiceGraph.class) {
+						addedDependencies.put(key, dependencyKey);
+					}
+				}
+			}
+		});
 		workerPoolScope = new WorkerPoolScope();
+		requestInjection(workerPoolScope);
 		bindScope(Worker.class, workerPoolScope);
 		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
 			@Override
@@ -401,22 +411,21 @@ public final class BootModule extends AbstractModule {
 	 * @return created ServiceGraph
 	 */
 	@Provides
-	@Singleton
-	ServiceGraph serviceGraph(final Injector injector) {
-		injector.injectMembers(workerPoolScope);
-		workerPoolScope.setInjector(injector);
-		ServiceGraph serviceGraph = new ServiceGraph() {
-			@Override
-			protected String nodeToString(Object node) {
-				Key<?> key = (Key<?>) node;
-				Annotation annotation = key.getAnnotation();
-				return key.getTypeLiteral() +
-						(annotation != null ? " " + prettyPrintAnnotation(annotation) : "");
-			}
-		};
-		createGuiceGraph(injector, serviceGraph);
-		serviceGraph.removeIntermediateNodes();
-		logger.info("Services graph: \n" + serviceGraph);
+	synchronized ServiceGraph serviceGraph(final Injector injector) {
+		if (serviceGraph == null) {
+			serviceGraph = new ServiceGraph() {
+				@Override
+				protected String nodeToString(Object node) {
+					Key<?> key = (Key<?>) node;
+					Annotation annotation = key.getAnnotation();
+					return key.getTypeLiteral() +
+							(annotation != null ? " " + prettyPrintAnnotation(annotation) : "");
+				}
+			};
+			createGuiceGraph(injector, serviceGraph);
+			serviceGraph.removeIntermediateNodes();
+			logger.info("Services graph: \n" + serviceGraph);
+		}
 		return serviceGraph;
 	}
 
@@ -447,7 +456,7 @@ public final class BootModule extends AbstractModule {
 							listener.onSingletonStart(key, instance);
 						}
 					}
-				}, executor);
+				}, directExecutor());
 			}
 			return startFuture;
 		}
@@ -466,7 +475,7 @@ public final class BootModule extends AbstractModule {
 							listener.onSingletonStop(key, instance);
 						}
 					}
-				}, executor);
+				}, directExecutor());
 			}
 			return stopFuture;
 		}
