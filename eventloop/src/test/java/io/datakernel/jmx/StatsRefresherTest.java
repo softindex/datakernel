@@ -38,9 +38,10 @@ public class StatsRefresherTest {
 	@Test
 	public void itShouldRefreshAllStats() {
 		final long currentTime = 0;
-		final int period = 100;
+		final int periodInMillis = 100;
+		final double periodInSeconds = periodInMillis / (double) 1000;
 		final double smoothingWindow = 10.0;
-		final StatsRefresher statsRefresher = new StatsRefresher(stats, period, smoothingWindow, eventloop);
+		final StatsRefresher statsRefresher = new StatsRefresher(stats, periodInSeconds, smoothingWindow, eventloop);
 
 		context.checking(new Expectations() {{
 			allowing(eventloop).currentTimeMillis();
@@ -50,7 +51,7 @@ public class StatsRefresherTest {
 			oneOf(stats_2).refreshStats(with(currentTime), with(smoothingWindow));
 			oneOf(stats_3).refreshStats(with(currentTime), with(smoothingWindow));
 
-			oneOf(eventloop).scheduleBackground(currentTime + period, statsRefresher);
+			oneOf(eventloop).scheduleBackground(currentTime + periodInMillis, statsRefresher);
 		}});
 
 		statsRefresher.run();

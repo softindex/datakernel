@@ -29,8 +29,6 @@ public interface NioEventloopJmxMBean {
 
 	void resetStats();
 
-	void setSmoothingWindow(double smoothingWindow);
-
 	// keys stats
 	long getKeysStats_SelectedKeys();
 

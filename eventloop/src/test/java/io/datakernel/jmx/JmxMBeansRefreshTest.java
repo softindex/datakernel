@@ -35,7 +35,7 @@ public class JmxMBeansRefreshTest {
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private final JmxStats<?> stats = context.mock(JmxStats.class);
 
-	private final Eventloop eventloop = new NioEventloop();
+	private final NioEventloop eventloop = new NioEventloop();
 	private final MonitorableWithEventloop monitorable = new MonitorableWithEventloop(stats, eventloop);
 
 	@Test
@@ -47,7 +47,7 @@ public class JmxMBeansRefreshTest {
 			will(returnValue(new TreeMap()));
 		}});
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), true);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanAttributeInfo[] mBeanAttributesInfo = mBeanInfo.getAttributes();
@@ -70,7 +70,7 @@ public class JmxMBeansRefreshTest {
 			will(returnValue(new TreeMap()));
 		}});
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), true);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 
@@ -88,7 +88,7 @@ public class JmxMBeansRefreshTest {
 		assertEquals("void", setPeriodOp.getReturnType());
 		assertEquals(1, setPeriodOp.getSignature().length);
 		MBeanParameterInfo periodParameter = setPeriodOp.getSignature()[0];
-		assertEquals("int", periodParameter.getType());
+		assertEquals("double", periodParameter.getType());
 		assertEquals("period", periodParameter.getName());
 
 		MBeanOperationInfo setSmoothingWindowOp = mBeanOperationsInfo[1];
@@ -98,6 +98,62 @@ public class JmxMBeansRefreshTest {
 		MBeanParameterInfo smoothingWindowParameter = setSmoothingWindowOp.getSignature()[0];
 		assertEquals("double", smoothingWindowParameter.getType());
 		assertEquals("window", smoothingWindowParameter.getName());
+	}
+
+	@Test
+	public void itShouldProperlySetAndGetValuesForRefreshControl() throws Exception {
+		context.checking(new Expectations() {{
+			// return empty map
+			allowing(stats).getAttributes();
+			will(returnValue(new TreeMap()));
+		}});
+
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), true);
+
+		double acceptableError = 1E-10;
+
+		assertEquals(JmxMBeans.DEFAULT_REFRESH_PERIOD, (double) mbean.getAttribute("_refreshPeriod"), acceptableError);
+		assertEquals(JmxMBeans.DEFAULT_SMOOTHING_WINDOW,
+				(double) mbean.getAttribute("_smoothingWindow"), acceptableError);
+
+		double newPeriod = 0.5;
+		mbean.invoke("_setRefreshPeriod", new Object[]{newPeriod}, new String[]{"double"});
+
+		assertEquals(newPeriod, (double) mbean.getAttribute("_refreshPeriod"), acceptableError);
+
+		double newWindow = 3.5;
+		mbean.invoke("_setSmoothingWindow", new Object[]{newWindow}, new String[]{"double"});
+
+		assertEquals(newWindow, (double) mbean.getAttribute("_smoothingWindow"), acceptableError);
+	}
+
+	@Test
+	public void itShouldRefreshStatsUsingCurrentRefreshControlParameters() throws Exception {
+		final double smoothingWindow = 50.0;
+
+		context.checking(new Expectations() {{
+			// return empty map
+			allowing(stats).getAttributes();
+			will(returnValue(new TreeMap()));
+
+			atLeast(1).of(stats).refreshStats(with(any(long.class)), with(smoothingWindow));
+		}});
+
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), true);
+
+		// we don't invoke _setRefreshPeriod because it's quite hard to test it here
+		mbean.invoke("_setSmoothingWindow", new Object[]{smoothingWindow}, new String[]{"double"});
+
+		// [refresh] is background task, it won't keep eventloop alive
+		// so we have to manually set keepAlive(true), and then keepAlive(false) to let test finish
+		eventloop.keepAlive(true);
+		eventloop.schedule(eventloop.currentTimeMillis() + 250, new Runnable() {
+			@Override
+			public void run() {
+				eventloop.keepAlive(false);
+			}
+		});
+		eventloop.run();
 	}
 
 	@JmxMBean

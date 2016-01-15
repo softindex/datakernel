@@ -72,14 +72,6 @@ public final class NioEventloopJmx implements NioEventloopJmxMBean {
 	}
 
 	@Override
-	public void setSmoothingWindow(double smoothingWindow) {
-		for (NioEventloop eventloop : eventloops) {
-			eventloop.setSmoothingWindow(smoothingWindow);
-		}
-
-	}
-
-	@Override
 	public long getKeysStats_SelectedKeys() {
 		return collectAllStats().getSelectedKeys().getTotalCount();
 	}

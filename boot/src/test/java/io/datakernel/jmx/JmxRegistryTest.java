@@ -23,7 +23,6 @@ import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;
 import org.jmock.Expectations;
-import org.jmock.api.Action;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
 import org.junit.Test;
@@ -53,7 +52,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(service);
+			allowing(mbeanFactory).createFor(asList(service), true);
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":type=ServiceStub")));
@@ -69,7 +68,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(service);
+			allowing(mbeanFactory).createFor(asList(service), true);
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean),
@@ -87,7 +86,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(service);
+			allowing(mbeanFactory).createFor(asList(service), true);
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(with(dynamicMBean), with(objectname(domain + ":Group=major")));
@@ -104,7 +103,7 @@ public class JmxRegistryTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(service);
+			allowing(mbeanFactory).createFor(asList(service), true);
 			will(returnValue(dynamicMBean));
 
 			oneOf(mBeanServer).registerMBean(
@@ -139,17 +138,18 @@ public class JmxRegistryTest {
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately
-			allowing(mbeanFactory).createFor(worker_1);
+			allowing(mbeanFactory).createFor(asList(worker_1), false);
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(worker_2);
+			allowing(mbeanFactory).createFor(asList(worker_2), false);
 			will(returnValue(dynamicMBean));
 
-			allowing(mbeanFactory).createFor(worker_3);
+			allowing(mbeanFactory).createFor(asList(worker_3), false);
 			will(returnValue(dynamicMBean));
 
 			// creating DynamicMBean work workers pool
-			allowing(mbeanFactory).createFor(worker_1, worker_2, worker_3); will(doAll());
+			allowing(mbeanFactory).createFor(asList(worker_1, worker_2, worker_3), true);
+			will(doAll());
 			will(returnValue(dynamicMBean));
 
 			// checking calls and names for each worker separately

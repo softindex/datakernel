@@ -17,8 +17,9 @@
 package io.datakernel.jmx;
 
 import javax.management.DynamicMBean;
+import java.util.List;
 
 public interface DynamicMBeanFactory {
 
-	DynamicMBean createFor(Object ... monitorables) throws Exception;
+	DynamicMBean createFor(List<?> monitorables, boolean enableRefreshIfPossible) throws Exception;
 }

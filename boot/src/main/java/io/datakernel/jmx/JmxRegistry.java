@@ -31,6 +31,7 @@ import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 
 public final class JmxRegistry implements BootModule.Listener {
 	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
@@ -56,7 +57,7 @@ public final class JmxRegistry implements BootModule.Listener {
 
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(singletonInstance);
+			mbean = mbeanFactory.createFor(asList(singletonInstance), true);
 		} catch (Exception e) {
 			String msg = format("Instance with key %s is annotated with @JmxMBean " +
 					"but exception was thrown during attempt to create DynamicMBean", key.toString());
@@ -149,7 +150,7 @@ public final class JmxRegistry implements BootModule.Listener {
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(poolInstances.toArray());
+			mbean = mbeanFactory.createFor(poolInstances, true);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
@@ -244,7 +245,7 @@ public final class JmxRegistry implements BootModule.Listener {
 
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(worker);
+			mbean = mbeanFactory.createFor(asList(worker), false);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());

@@ -29,12 +29,10 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static io.datakernel.jmx.Utils.fetchNameToJmxStats;
-import static io.datakernel.jmx.Utils.fetchNameToJmxStatsGetter;
+import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
-import static java.util.Arrays.asList;
 
 public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String ATTRIBUTE_NAME_FORMAT = "%s_%s";
@@ -49,6 +47,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String SET_REFRESH_PERIOD_PARAMETER_NAME = "period";
 	private static final String SET_SMOOTHING_WINDOW_PARAMETER_NAME = "window";
 
+	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
+	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+
 	private static final JmxMBeans factory = new JmxMBeans();
 
 	private JmxMBeans() {
@@ -59,28 +60,47 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return factory;
 	}
 
-	public DynamicMBean createFor(Object... monitorables) throws Exception {
+	public DynamicMBean createFor(List<?> monitorables, boolean enableRefresh) throws Exception {
 		checkNotNull(monitorables);
-		checkArgument(monitorables.length > 0);
-		checkArgument(!arrayContainsNullValues(monitorables), "monitorable can not be null");
-		checkArgument(allObjectsAreOfSameType(asList(monitorables)));
-		checkArgument(allObjectsAreAnnotatedWithJmxMBean(asList(monitorables)),
+		checkArgument(monitorables.size() > 0);
+		checkArgument(!listContainsNullValues(monitorables), "monitorable can not be null");
+		checkArgument(allObjectsAreOfSameType(monitorables));
+		checkArgument(allObjectsAreAnnotatedWithJmxMBean(monitorables),
 				"objects for DynamicMBean creation should be of type annotated with @JmxMBean");
 
 		// all objects are of same type, so we can extract info from any of them
-		Object first = monitorables[0];
-		MBeanInfo mBeanInfo = composeMBeanInfo(first);
+		Object first = monitorables.get(0);
+		MBeanInfo mBeanInfo = composeMBeanInfo(first, enableRefresh);
 		Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType = fetchNameToJmxStatsType(first);
 
-		List<JmxMonitorableWrapper> wrappers = new ArrayList<>();
-		for (Object monitorable : monitorables) {
-			wrappers.add(createWrapper(monitorable));
+		boolean eventloopMonitorables = hasEventloop(first);
+		List<Eventloop> eventloops = new ArrayList<>();
+		if (eventloopMonitorables) {
+			for (Object monitorable : monitorables) {
+				eventloops.add(fetchEventloop(monitorable));
+			}
 		}
 
-		return new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType);
+		List<JmxMonitorableWrapper> wrappers = new ArrayList<>();
+		for (int i = 0; i < monitorables.size(); i++) {
+			Object monitorable = monitorables.get(i);
+			StatsRefresher statsRefresher = null;
+			if (enableRefresh && eventloopMonitorables) {
+				Eventloop eventloop = eventloops.get(i);
+				List<JmxStats<?>> statsList = new ArrayList<>(fetchNameToJmxStats(monitorable).values());
+				statsRefresher =
+						new StatsRefresher(statsList, DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW, eventloop);
+				eventloop.postConcurrently(statsRefresher);
+			}
+			wrappers.add(createWrapper(monitorable, statsRefresher));
+		}
+
+		return new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType,
+				DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW);
 	}
 
-	private static MBeanAttributeInfo[] extractAttributesInfo(Object monitorable) {
+	private static MBeanAttributeInfo[] extractAttributesInfo(Object monitorable, boolean enableRefresh)
+			throws InvocationTargetException, IllegalAccessException {
 		List<MBeanAttributeInfo> attributes = new ArrayList<>();
 		Map<String, JmxStats<?>> nameToJmxStats = fetchNameToJmxStats(monitorable);
 		for (String statsName : nameToJmxStats.keySet()) {
@@ -96,15 +116,18 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		}
 
-		addAttributesForRefreshControl(monitorable, attributes);
+		if (enableRefresh) {
+			addAttributesForRefreshControl(monitorable, attributes);
+		}
 
 		return attributes.toArray(new MBeanAttributeInfo[attributes.size()]);
 	}
 
-	private static void addAttributesForRefreshControl(Object monitorable, List<MBeanAttributeInfo> attributes) {
+	private static void addAttributesForRefreshControl(Object monitorable, List<MBeanAttributeInfo> attributes)
+			throws InvocationTargetException, IllegalAccessException {
 		if (hasEventloop(monitorable)) {
 			MBeanAttributeInfo refreshPeriodAttr =
-					new MBeanAttributeInfo(REFRESH_PERIOD_ATTRIBUTE_NAME, "int", ATTRIBUTE_DEFAULT_DESCRIPTION,
+					new MBeanAttributeInfo(REFRESH_PERIOD_ATTRIBUTE_NAME, "double", ATTRIBUTE_DEFAULT_DESCRIPTION,
 							true, false, false);
 			attributes.add(refreshPeriodAttr);
 			MBeanAttributeInfo smoothingWindowAttr =
@@ -114,7 +137,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private static MBeanOperationInfo[] extractOperationsInfo(Object monitorable) {
+	private static MBeanOperationInfo[] extractOperationsInfo(Object monitorable, boolean enableRefresh)
+			throws InvocationTargetException, IllegalAccessException {
 		// TODO(vmykhalko): refactor this method
 		List<MBeanOperationInfo> operations = new ArrayList<>();
 		Method[] methods = monitorable.getClass().getMethods();
@@ -150,15 +174,18 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		}
 
-		addOperationsForRefreshControl(monitorable, operations);
+		if (enableRefresh) {
+			addOperationsForRefreshControl(monitorable, operations);
+		}
 
 		return operations.toArray(new MBeanOperationInfo[operations.size()]);
 	}
 
-	private static void addOperationsForRefreshControl(Object monitorable, List<MBeanOperationInfo> operations) {
+	private static void addOperationsForRefreshControl(Object monitorable, List<MBeanOperationInfo> operations)
+			throws InvocationTargetException, IllegalAccessException {
 		if (hasEventloop(monitorable)) {
 			MBeanParameterInfo[] setPeriodOpParameters = new MBeanParameterInfo[]{
-					new MBeanParameterInfo(SET_REFRESH_PERIOD_PARAMETER_NAME, "int", "")};
+					new MBeanParameterInfo(SET_REFRESH_PERIOD_PARAMETER_NAME, "double", "")};
 			MBeanOperationInfo setPeriodOp = new MBeanOperationInfo(
 					SET_REFRESH_PERIOD_OP_NAME, "", setPeriodOpParameters, "void", MBeanOperationInfo.ACTION);
 			operations.add(setPeriodOp);
@@ -171,16 +198,37 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private static boolean hasEventloop(Object monitorable) {
+	private static boolean hasEventloop(Object monitorable) throws InvocationTargetException, IllegalAccessException {
+		return tryFetchEventloop(monitorable) != null;
+	}
+
+	private static Eventloop fetchEventloop(Object monitorable)
+			throws InvocationTargetException, IllegalAccessException {
+		Eventloop eventloop = tryFetchEventloop(monitorable);
+		if (eventloop != null) {
+			return eventloop;
+		}
+		throw new IllegalArgumentException("monitorable doesn't contain eventloop");
+	}
+
+	/**
+	 * Returns Eventloop getter if monitorable has it, otherwise returns null
+	 */
+	private static Eventloop tryFetchEventloop(Object monitorable)
+			throws InvocationTargetException, IllegalAccessException {
+		if (Eventloop.class.isAssignableFrom(monitorable.getClass())) {
+			return (Eventloop) monitorable;
+		}
+
 		for (Method method : monitorable.getClass().getMethods()) {
 			boolean nameMatches = method.getName().toLowerCase().equals("geteventloop");
 			boolean returnTypeMatches = Eventloop.class.isAssignableFrom(method.getReturnType());
 			boolean hasNoArgs = method.getParameterTypes().length == 0;
 			if (nameMatches && returnTypeMatches && hasNoArgs) {
-				return true;
+				return (Eventloop) method.invoke(monitorable);
 			}
 		}
-		return false;
+		return null;
 	}
 
 	private static JmxParameter findJmxNamedParameterAnnotation(Annotation[] annotations) {
@@ -192,9 +240,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return null;
 	}
 
-	private static <T> boolean arrayContainsNullValues(T[] array) {
-		for (int i = 0; i < array.length; i++) {
-			if (array[i] == null) {
+	private static <T> boolean listContainsNullValues(List<T> list) {
+		for (int i = 0; i < list.size(); i++) {
+			if (list.get(i) == null) {
 				return true;
 			}
 		}
@@ -221,11 +269,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return true;
 	}
 
-	private static MBeanInfo composeMBeanInfo(Object monitorable) {
+	private static MBeanInfo composeMBeanInfo(Object monitorable, boolean enableRefresh)
+			throws InvocationTargetException, IllegalAccessException {
 		String monitorableName = "";
 		String monitorableDescription = "";
-		MBeanAttributeInfo[] attributes = extractAttributesInfo(monitorable);
-		MBeanOperationInfo[] operations = extractOperationsInfo(monitorable);
+		MBeanAttributeInfo[] attributes = extractAttributesInfo(monitorable, enableRefresh);
+		MBeanOperationInfo[] operations = extractOperationsInfo(monitorable, enableRefresh);
 		return new MBeanInfo(
 				monitorableName,
 				monitorableDescription,
@@ -247,10 +296,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return nameToJmxStatsType;
 	}
 
-	private static JmxMonitorableWrapper createWrapper(Object monitorable) {
+	private static JmxMonitorableWrapper createWrapper(Object monitorable, StatsRefresher statsRefresher) {
 		Map<String, Method> attributeGetters = fetchNameToJmxStatsGetter(monitorable);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(monitorable);
-		return new JmxMonitorableWrapper(monitorable, attributeGetters, opkeyToMethod);
+		return new JmxMonitorableWrapper(monitorable, attributeGetters, opkeyToMethod, statsRefresher);
 	}
 
 	// TODO(vmykhalko): refactor this method (it has common code with  extractOperationsInfo()
@@ -326,17 +375,28 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final MBeanInfo mBeanInfo;
 		private final List<JmxMonitorableWrapper> wrappers;
 		private final Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType;
+		private double refreshPeriod;
+		private double smoothingWindow;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<JmxMonitorableWrapper> wrappers,
-		                              Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType) {
+		                              Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType,
+		                              double refreshPeriod, double smoothingWindow) {
 			this.mBeanInfo = mBeanInfo;
 			this.wrappers = wrappers;
 			this.nameToJmxStatsType = nameToJmxStatsType;
+			this.refreshPeriod = refreshPeriod;
+			this.smoothingWindow = smoothingWindow;
 		}
 
 		@SuppressWarnings("unchecked")
 		@Override
 		public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
+			if (attribute.equals(REFRESH_PERIOD_ATTRIBUTE_NAME)) {
+				return refreshPeriod;
+			} else if (attribute.equals(SMOOTHING_WINDOW_ATTRIBUTE_NAME)) {
+				return smoothingWindow;
+			}
+
 			Matcher matcher = ATTRIBUTE_NAME_PATTERN.matcher(attribute);
 			if (matcher.matches()) {
 				String jmxStatsName = matcher.group(1);
@@ -393,12 +453,49 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public Object invoke(String actionName, Object[] params, String[] signature) throws MBeanException, ReflectionException {
+		public Object invoke(String actionName, Object[] params, String[] signature)
+				throws MBeanException, ReflectionException {
+			if (execIfActionIsForRefreshControl(actionName, params, signature)) {
+				return null;
+			}
+
 			for (JmxMonitorableWrapper wrapper : wrappers) {
 				wrapper.invoke(actionName, params, signature);
 			}
 			// We don't know how to aggregate return values from several monitorables
 			return null;
+		}
+
+		/**
+		 * Returns true and perform action if action is for refresh control, otherwise returns false
+		 */
+		private boolean execIfActionIsForRefreshControl(String actionName, Object[] params, String[] signature)
+				throws MBeanException {
+			boolean singleArgDouble =
+					hasSingleElement(signature) && signature[0].equals("double") && params[0] != null;
+			if (actionName.equals(SET_REFRESH_PERIOD_OP_NAME) && singleArgDouble) {
+				refreshPeriod = (double) params[0];
+				for (JmxMonitorableWrapper wrapper : wrappers) {
+					try {
+						wrapper.setRefreshPeriod(refreshPeriod);
+					} catch (IllegalStateException e) {
+						throw new MBeanException(e, "Cannot set refresh period");
+					}
+				}
+				return true;
+			} else if (actionName.equals(SET_SMOOTHING_WINDOW_OP_NAME) && singleArgDouble) {
+				smoothingWindow = (double) params[0];
+				for (JmxMonitorableWrapper wrapper : wrappers) {
+					try {
+						wrapper.setSmoothingWindow(smoothingWindow);
+					} catch (IllegalStateException e) {
+						throw new MBeanException(e, "Cannot set refresh period");
+					}
+				}
+				return true;
+			}
+
+			return false;
 		}
 
 		@Override
@@ -411,12 +508,14 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final Object monitorable;
 		private final Map<String, Method> attributeGetters;
 		private final Map<OperationKey, Method> operationKeyToMethod;
+		private final StatsRefresher statsRefresher;
 
 		public JmxMonitorableWrapper(Object monitorable, Map<String, Method> attributeGetters,
-		                             Map<OperationKey, Method> operationKeyToMethod) {
+		                             Map<OperationKey, Method> operationKeyToMethod, StatsRefresher statsRefresher) {
 			this.monitorable = monitorable;
 			this.attributeGetters = attributeGetters;
 			this.operationKeyToMethod = operationKeyToMethod;
+			this.statsRefresher = statsRefresher;
 		}
 
 		public JmxStats<?> getJmxStats(String jmxStatsName) throws AttributeNotFoundException, ReflectionException {
@@ -460,6 +559,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 			operationName += ")";
 			return operationName;
+		}
+
+		public void setRefreshPeriod(double refreshPeriod) {
+			if (statsRefresher == null) {
+				throw new IllegalStateException("Cannot set refresh period, statsManager is null");
+			}
+			statsRefresher.setPeriod(refreshPeriod);
+		}
+
+		public void setSmoothingWindow(double smoothingWindow) {
+			if (statsRefresher == null) {
+				throw new IllegalStateException("Cannot set smoothing period, statsManager is null");
+			}
+			statsRefresher.setSmoothingWindow(smoothingWindow);
 		}
 	}
 }

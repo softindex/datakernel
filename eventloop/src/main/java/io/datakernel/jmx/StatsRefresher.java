@@ -23,13 +23,21 @@ import java.util.List;
 public final class StatsRefresher implements Runnable {
 	private final Eventloop eventloop;
 	private final List<JmxStats<?>> statsList;
-	private int period;
-	private double smoothingWindow;
+	private volatile int periodInMillis;
+	private volatile double smoothingWindow;
 
-	public StatsRefresher(List<JmxStats<?>> statsList, int period, double smoothingWindow, Eventloop eventloop) {
+	/**
+	 * Creates StatsRefresher
+	 *
+	 * @param statsList
+	 * @param period          refresh period in seconds
+	 * @param smoothingWindow smoothing window in seconds
+	 * @param eventloop
+	 */
+	public StatsRefresher(List<JmxStats<?>> statsList, double period, double smoothingWindow, Eventloop eventloop) {
 		this.eventloop = eventloop;
 		this.statsList = statsList;
-		this.period = period;
+		this.periodInMillis = (int) (period * 1000);
 		this.smoothingWindow = smoothingWindow;
 	}
 
@@ -39,14 +47,18 @@ public final class StatsRefresher implements Runnable {
 		for (JmxStats<?> stats : statsList) {
 			stats.refreshStats(currentTime, smoothingWindow);
 		}
-		eventloop.scheduleBackground(currentTime + period, this);
+		eventloop.scheduleBackground(currentTime + periodInMillis, this);
 	}
 
-	public void setPeriod(int period) {
-		this.period = period;
+	public void setPeriod(double period) {
+		this.periodInMillis = secondsToMillis(period);
 	}
 
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
+	}
+
+	private static int secondsToMillis(double seconds) {
+		return (int) (seconds * 1000);
 	}
 }

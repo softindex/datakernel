@@ -31,6 +31,7 @@ import javax.management.MBeanParameterInfo;
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 
@@ -39,7 +40,7 @@ public class JmxMBeansOperationsTest {
 	@Test
 	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanOperationInfo[] operations = mBeanInfo.getOperations();
@@ -70,7 +71,7 @@ public class JmxMBeansOperationsTest {
 	@Test
 	public void itShouldInvokeAnnotanedOperationsThroughDynamicMBeanInterface() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		mbean.invoke("increment", null, null);
 		mbean.invoke("increment", null, null);
@@ -91,7 +92,7 @@ public class JmxMBeansOperationsTest {
 	public void itShouldBroadcastOperationCallToAllMonitorables() throws Exception {
 		MonitorableStubWithOperations monitorable_1 = new MonitorableStubWithOperations();
 		MonitorableStubWithOperations monitorable_2 = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(monitorable_1, monitorable_2);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		// set manually init value for second monitorable to be different from first
 		monitorable_2.inc();
@@ -122,7 +123,7 @@ public class JmxMBeansOperationsTest {
 	@Test(expected = IllegalArgumentException.class)
 	public void itShouldThrowExceptionWhenClassForCreatingDynamicMBeanIsNotAnnotated() throws Exception {
 		NotAnnotatedService notAnnotated = new NotAnnotatedService();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(notAnnotated);
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(notAnnotated), false);
 	}
 
 	// helpers

@@ -73,4 +73,12 @@ public final class Utils {
 		}
 		return attributeToJmxStatsGetter;
 	}
+
+	public static <T> boolean isEmtpyOrNull(T[] array) {
+		return array == null || array.length == 0;
+	}
+
+	public static <T> boolean hasSingleElement(T[] array) {
+		return array != null && array.length == 1;
+	}
 }

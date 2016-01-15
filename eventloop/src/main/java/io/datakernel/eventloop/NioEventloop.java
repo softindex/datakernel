@@ -22,7 +22,6 @@ import io.datakernel.eventloop.jmx.NioEventloopStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.jmx.annotation.JmxOperation;
-import io.datakernel.jmx.annotation.JmxParameter;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -148,8 +147,6 @@ public final class NioEventloop implements Eventloop, Runnable {
 
 	private boolean monitoring;
 
-	private volatile double smoothingWindow = 10.0;
-
 	/**
 	 * Creates a new instance of Eventloop with default instance of ByteBufPool
 	 */
@@ -167,7 +164,6 @@ public final class NioEventloop implements Eventloop, Runnable {
 		refreshTimestampAndGet();
 
 		this.stats = new NioEventloopStats();
-		scheduleRefreshStats();
 	}
 
 	private void openSelector() {
@@ -937,18 +933,6 @@ public final class NioEventloop implements Eventloop, Runnable {
 	}
 
 	// JMX
-
-	private void scheduleRefreshStats() {
-		scheduleBackground(currentTimeMillis() + 200L, new Runnable() {
-			@Override
-			public void run() {
-				long timestamp = currentTimeMillis();
-				stats.refreshStats(timestamp, smoothingWindow);
-				scheduleRefreshStats();
-			}
-		});
-	}
-
 	@JmxOperation
 	public void startMonitoring() {
 		this.monitoring = true;
@@ -962,11 +946,6 @@ public final class NioEventloop implements Eventloop, Runnable {
 	@JmxOperation
 	public void resetStats() {
 		stats.resetStats();
-	}
-
-	@JmxOperation
-	public void setSmoothingWindow(@JmxParameter("smoothingWindow") double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
 	}
 
 	public NioEventloopStats getNioEventloopStats() {
