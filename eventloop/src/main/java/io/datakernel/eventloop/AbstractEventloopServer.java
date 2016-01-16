@@ -40,14 +40,14 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
- * It is implementation of {@link NioServer}. It is non-blocking server which works in eventloop.
+ * It is implementation of {@link EventloopServer}. It is non-blocking server which works in eventloop.
  * The server runs on the one thread, and all events are fired on that thread. This server can listen few
  * addresses in one time and you can register multiple connections for responding to incoming data.
  *
  * @param <S> type of AbstractNioServer which extends from it
  */
-public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implements NioServer, AbstractNioServerMBean {
-	private static final Logger logger = getLogger(AbstractNioServer.class);
+public abstract class AbstractEventloopServer<S extends AbstractEventloopServer<S>> implements EventloopServer {
+	private static final Logger logger = getLogger(AbstractEventloopServer.class);
 
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
 	/**
@@ -56,7 +56,7 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	private ServerSocketSettings serverSocketSettings = DEFAULT_SERVER_SOCKET_SETTINGS;
 	private SocketSettings socketSettings = defaultSocketSettings();
 
-	protected final NioEventloop eventloop;
+	protected final Eventloop eventloop;
 
 	private boolean running = false;
 	protected boolean acceptOnce;
@@ -64,11 +64,11 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	private ServerSocketChannel[] serverSocketChannels;
 
 	// JMX
-	private static final ExceptionMarker PREPARE_SOCKET_MARKER = new ExceptionMarker(PrimaryNioServer.class, "PrepareSocketException");
-	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(PrimaryNioServer.class, "CloseException");
+	private static final ExceptionMarker PREPARE_SOCKET_MARKER = new ExceptionMarker(PrimaryEventloopServer.class, "PrepareSocketException");
+	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(PrimaryEventloopServer.class, "CloseException");
 	protected long totalAccepts;
 
-	public AbstractNioServer(NioEventloop eventloop) {
+	public AbstractEventloopServer(Eventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
 	}
 
@@ -211,7 +211,7 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	 * Returns eventloop which is related with this NioServer
 	 */
 	@Override
-	public final NioEventloop getNioEventloop() {
+	public final Eventloop getEventloop() {
 		return eventloop;
 	}
 
@@ -254,7 +254,8 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 	protected abstract SocketConnection createConnection(SocketChannel socketChannel);
 
 	// JMX
-	@Override
+	// TODO (vmykhalko)
+/*	@Override
 	public void resetStats() {
 		totalAccepts = 0;
 		eventloop.resetExceptionStats(PREPARE_SOCKET_MARKER); // TODO (vmykhalko): refactor
@@ -277,5 +278,5 @@ public abstract class AbstractNioServer<S extends AbstractNioServer<S>> implemen
 		ExceptionStats exceptionCounter = eventloop.getExceptionStats(CLOSE_MARKER);
 		return (exceptionCounter == null) ? null : exceptionCounter.compositeData();
 	}
-
+*/
 }

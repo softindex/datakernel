@@ -17,8 +17,8 @@
 package io.datakernel.examples;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.SimpleNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.SimpleEventloopServer;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.eventloop.TcpSocketConnection;
 
@@ -26,10 +26,10 @@ import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
 import java.util.List;
 
-public class MultiEchoServerExample extends SimpleNioServer {
+public class MultiEchoServerExample extends SimpleEventloopServer {
 
 	public class MultiEchoServerConnection extends TcpSocketConnection {
-		protected MultiEchoServerConnection(NioEventloop eventloop, SocketChannel socketChannel) {
+		protected MultiEchoServerConnection(Eventloop eventloop, SocketChannel socketChannel) {
 			super(eventloop, socketChannel);
 		}
 
@@ -57,7 +57,7 @@ public class MultiEchoServerExample extends SimpleNioServer {
 
 	private static List<MultiEchoServerConnection> connections = new LinkedList<>();
 
-	public MultiEchoServerExample(NioEventloop eventloop) {
+	public MultiEchoServerExample(Eventloop eventloop) {
 		super(eventloop);
 	}
 
@@ -69,7 +69,7 @@ public class MultiEchoServerExample extends SimpleNioServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		MultiEchoServerExample echoServer = new MultiEchoServerExample(eventloop);
 		echoServer.setListenPort(9922);

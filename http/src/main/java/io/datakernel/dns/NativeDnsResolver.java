@@ -21,7 +21,7 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +33,7 @@ import java.nio.channels.DatagramChannel;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.datakernel.dns.DnsCache.DnsCacheQueryResult.*;
-import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
+import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 
 /**
@@ -44,7 +44,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 
 	public static final DatagramSocketSettings DEFAULT_DATAGRAM_SOCKET_SETTINGS = defaultDatagramSocketSettings();
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 
 	private DnsClientConnection connection;
 	private final DatagramSocketSettings datagramSocketSettings;
@@ -65,7 +65,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 	 * @param timeout          time which this resolver will wait result
 	 * @param dnsServerAddress address of DNS server which will resolve domain names
 	 */
-	public NativeDnsResolver(NioEventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress) {
+	public NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress) {
 		this(eventloop, datagramSocketSettings, timeout, dnsServerAddress,
 				ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS);
 	}
@@ -77,12 +77,12 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 	 * @param timeout          time which this resolver will wait result
 	 * @param dnsServerAddress address of DNS server which will resolve domain names
 	 */
-	public NativeDnsResolver(NioEventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetAddress dnsServerAddress) {
+	public NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetAddress dnsServerAddress) {
 		this(eventloop, datagramSocketSettings, timeout, new InetSocketAddress(dnsServerAddress, DNS_SERVER_PORT),
 				ONE_MINUTE_MILLIS, ONE_MINUTE_MILLIS);
 	}
 
-	public NativeDnsResolver(NioEventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
+	public NativeDnsResolver(Eventloop eventloop, DatagramSocketSettings datagramSocketSettings, long timeout, InetSocketAddress dnsServerAddress,
 	                         long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
 		this.eventloop = eventloop;
 		this.datagramSocketSettings = datagramSocketSettings;
@@ -97,7 +97,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 	 * @param eventloop eventloop in which DnsClient will be ran
 	 * @return DNS client which will run in other eventloop
 	 */
-	public DnsClient getDnsClientForAnotherEventloop(final NioEventloop eventloop) {
+	public DnsClient getDnsClientForAnotherEventloop(final Eventloop eventloop) {
 		if (eventloop == this.eventloop)
 			return this;
 
@@ -250,7 +250,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 		}
 	}
 
-	public NioEventloop getEventloop() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

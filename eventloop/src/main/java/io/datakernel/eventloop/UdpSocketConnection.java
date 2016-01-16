@@ -42,7 +42,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 	 * @param eventloop       eventloop in which will handle this connection
 	 * @param datagramChannel channel for creating this connection
 	 */
-	public UdpSocketConnection(NioEventloop eventloop, DatagramChannel datagramChannel) {
+	public UdpSocketConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
 		super(eventloop);
 		this.channel = datagramChannel;
 		this.receiveBufferSize = DEFAULT_UDP_BUFFER_SIZE;

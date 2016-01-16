@@ -25,9 +25,9 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.*;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioServer;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopServer;
+import io.datakernel.eventloop.EventloopService;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;
@@ -90,9 +90,9 @@ public final class BootModule extends AbstractModule {
 		bootModule.register(ExecutorService.class, ServiceAdapters.forExecutorService());
 		bootModule.register(Timer.class, ServiceAdapters.forTimer());
 		bootModule.register(DataSource.class, ServiceAdapters.forDataSource());
-		bootModule.register(NioService.class, ServiceAdapters.forNioService());
-		bootModule.register(NioServer.class, ServiceAdapters.forNioServer());
-		bootModule.register(NioEventloop.class, ServiceAdapters.forNioEventloop());
+		bootModule.register(EventloopService.class, ServiceAdapters.forEventloopService());
+		bootModule.register(EventloopServer.class, ServiceAdapters.forEventloopServer());
+		bootModule.register(Eventloop.class, ServiceAdapters.forEventloop());
 		return bootModule;
 	}
 

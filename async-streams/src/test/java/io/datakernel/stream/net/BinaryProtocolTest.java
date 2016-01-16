@@ -22,8 +22,8 @@ import com.google.gson.Gson;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.SimpleNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.SimpleEventloopServer;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumers;
@@ -59,9 +59,9 @@ public class BinaryProtocolTest {
 
 	@Test
 	public void testPing() throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
@@ -123,12 +123,12 @@ public class BinaryProtocolTest {
 			source.add(i);
 		}
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		List<Long> l = new ArrayList<>();
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop, l);
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
@@ -198,11 +198,11 @@ public class BinaryProtocolTest {
 			source.add(i);
 		}
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
@@ -280,11 +280,11 @@ public class BinaryProtocolTest {
 
 		final AtomicBoolean ack = new AtomicBoolean(false);
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
@@ -381,11 +381,11 @@ public class BinaryProtocolTest {
 			source.add(i);
 		}
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,

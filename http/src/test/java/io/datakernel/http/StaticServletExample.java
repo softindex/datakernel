@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 
 import java.io.IOException;
 import java.net.URL;
@@ -31,7 +31,7 @@ public class StaticServletExample {
 
 		final URL resources = Paths.get("./test_data").toUri().toURL();
 
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		MiddlewareServlet main = new MiddlewareServlet();
 
 		System.out.println(resources);

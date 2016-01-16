@@ -31,7 +31,7 @@ public abstract class SocketConnection {
 	private static final Logger logger = LoggerFactory.getLogger(SocketConnection.class);
 	private static final int DEFAULT_RECEIVE_BUFFER_SIZE = 8 * 1024;
 
-	protected final NioEventloop eventloop;
+	protected final Eventloop eventloop;
 
 	private SelectionKey key;
 
@@ -49,7 +49,7 @@ public abstract class SocketConnection {
 	private static final ExceptionMarker WRITE_MARKER = new ExceptionMarker(SocketConnection.class, "WriteException");
 	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(SocketConnection.class, "CloseException");
 
-	protected SocketConnection(NioEventloop eventloop) {
+	protected SocketConnection(Eventloop eventloop) {
 		this.eventloop = eventloop;
 		lifeTime = eventloop.currentTimeMillis();
 		readTime = lifeTime;
@@ -57,9 +57,9 @@ public abstract class SocketConnection {
 	}
 
 	/**
-	 * Returns the {@link NioEventloop} with which was associated with this connection
+	 * Returns the {@link Eventloop} with which was associated with this connection
 	 */
-	public final NioEventloop getEventloop() {
+	public final Eventloop getEventloop() {
 		return eventloop;
 	}
 

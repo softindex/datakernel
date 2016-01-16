@@ -21,7 +21,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
@@ -45,7 +45,7 @@ public class HttpClientExample {
 	private static final String CLIENT_NAME = "client";
 
 	public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		// Create the server, to which client will connect
 		final AsyncHttpServer httpServer = HttpServerExample.helloWorldServer(eventloop, PORT);

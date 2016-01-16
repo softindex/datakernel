@@ -16,7 +16,7 @@
 
 package io.datakernel.hashfs.example;
 
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsServer;
 import io.datakernel.hashfs.ServerInfo;
 
@@ -44,7 +44,7 @@ public class ServerSetupExample {
 		final Set<ServerInfo> bootstrap = new HashSet<>(Arrays.asList(server0, server1, server2, server3, server4));
 
 		// Core component
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		// Starting servers
 		for (ServerInfo server : bootstrap) {

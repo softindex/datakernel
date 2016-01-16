@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Functions;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
 
@@ -33,7 +33,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testSequence() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(4, 5, 6));
@@ -62,7 +62,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testSequenceException() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
@@ -94,7 +94,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testConcat() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),
@@ -111,7 +111,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testConcatException() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		List<Integer> list = new ArrayList<>();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
@@ -130,7 +130,7 @@ public class StreamProducerConcatTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(1, 2, 3)),

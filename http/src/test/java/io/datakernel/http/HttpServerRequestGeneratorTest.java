@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import com.google.common.base.Stopwatch;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpRequestsGenerator.GeneratorOptions;
 import io.datakernel.http.HttpThrottlingServer.ServerOptions;
 
@@ -51,7 +51,7 @@ public class HttpServerRequestGeneratorTest {
 		generatorOptions.setUrl(SERVER_URL);
 		HttpRequestsGenerator.info(generatorOptions);
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, serverOptions);
 		server.start();

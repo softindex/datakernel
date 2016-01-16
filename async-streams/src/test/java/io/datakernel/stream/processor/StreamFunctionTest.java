@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -37,7 +37,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunction() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
 			@Override
@@ -63,7 +63,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunctionConsumerError() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
 			@Override
@@ -106,7 +106,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testFunctionProducerError() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
 			@Override
@@ -136,7 +136,7 @@ public class StreamFunctionTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamFunction<Integer, Integer> streamFunction = new StreamFunction<>(eventloop, new Function<Integer, Integer>() {
 			@Override

@@ -18,7 +18,7 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.rpc.client.jmx.RpcRequestsStats;
 import io.datakernel.rpc.client.sender.RpcSender;
@@ -82,7 +82,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 	@SuppressWarnings("ThrowableInstanceNeverThrown")
 	private static final RpcOverloadException OVERLOAD_EXCEPTION =
 			new RpcOverloadException("Write connection is overloaded");
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final RpcProtocol protocol;
 	private final StatusListener statusListener;
 	private final Map<Integer, ResultCallback<?>> requests = new HashMap<>();
@@ -97,9 +97,9 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 	private boolean monitoring;
 	private RpcRequestsStats requestsStats;
 
-	public RpcClientConnection(NioEventloop eventloop, SocketChannel socketChannel,
-	                               BufferSerializer<RpcMessage> messageSerializer,
-	                               RpcProtocolFactory protocolFactory, StatusListener statusListener) {
+	public RpcClientConnection(Eventloop eventloop, SocketChannel socketChannel,
+	                           BufferSerializer<RpcMessage> messageSerializer,
+	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;
 		this.statusListener = statusListener;
 		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, false);
@@ -280,7 +280,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 	}
 
 	@Override
-	public NioEventloop getEventloop() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

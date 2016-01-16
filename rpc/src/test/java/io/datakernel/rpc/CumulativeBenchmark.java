@@ -20,7 +20,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcException;
 import io.datakernel.rpc.server.RpcRequestHandler;
@@ -54,8 +54,8 @@ public final class CumulativeBenchmark {
 
 	private static final int SERVICE_PORT = 55555;
 
-	private final NioEventloop serverEventloop = new NioEventloop();
-	private final NioEventloop clientEventloop = new NioEventloop();
+	private final Eventloop serverEventloop = new Eventloop();
+	private final Eventloop clientEventloop = new Eventloop();
 
 	private final RpcServer server = RpcServer.create(serverEventloop)
 			.messageTypes(ValueMessage.class)

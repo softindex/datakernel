@@ -17,19 +17,19 @@
 package io.datakernel.stream;
 
 import io.datakernel.async.AsyncGetterWithSetter;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
 import static io.datakernel.async.AsyncCallbacks.createAsyncGetterWithSetter;
-
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
+import static io.datakernel.stream.StreamStatus.READY;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class AsyncStreamsTest {
 	@Test
 	public void testDelayedProducer() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(1, 2, 3));
 

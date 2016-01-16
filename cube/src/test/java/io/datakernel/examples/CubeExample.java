@@ -33,7 +33,7 @@ import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeMetadataStorage;
 import io.datakernel.cube.CubeMetadataStorageSql;
 import io.datakernel.cube.api.CubeHttpServer;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.logfs.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -107,7 +107,7 @@ public class CubeExample {
 	which is also able to handle queries for any subset of its dimensions.
 	We also define an aggregation for "date" dimension only
 	to separately group records by date for fast queries that require only this dimension. */
-	private static Cube getCube(NioEventloop eventloop, DefiningClassLoader classLoader,
+	private static Cube getCube(Eventloop eventloop, DefiningClassLoader classLoader,
 	                            CubeMetadataStorage cubeMetadataStorage,
 	                            AggregationMetadataStorage aggregationMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
@@ -141,7 +141,7 @@ public class CubeExample {
 	}
 
 	/* Instantiate LogToCubeMetadataStorage, which manages persistence of cube and logs metadata. */
-	private static LogToCubeMetadataStorage getLogToCubeMetadataStorage(NioEventloop eventloop,
+	private static LogToCubeMetadataStorage getLogToCubeMetadataStorage(Eventloop eventloop,
 	                                                                    ExecutorService executor,
 	                                                                    Configuration jooqConfiguration,
 	                                                                    AggregationMetadataStorageSql aggregationMetadataStorage) {
@@ -154,7 +154,7 @@ public class CubeExample {
 	}
 
 	/* Create AggregationChunkStorage, that controls saving and reading aggregated data chunks. */
-	private static AggregationChunkStorage getAggregationChunkStorage(NioEventloop eventloop, ExecutorService executor,
+	private static AggregationChunkStorage getAggregationChunkStorage(Eventloop eventloop, ExecutorService executor,
 	                                                                  AggregationStructure structure,
 	                                                                  Path aggregationsDir) {
 		return new LocalFsChunkStorage(eventloop, executor, AsyncExecutors.sequentialExecutor(),
@@ -162,7 +162,7 @@ public class CubeExample {
 	}
 
 	/* Instantiate LogManager, that serializes LogItem's and saves them as logs to LogFileSystem. */
-	private static LogManager<LogItem> getLogManager(NioEventloop eventloop, ExecutorService executor,
+	private static LogManager<LogItem> getLogManager(Eventloop eventloop, ExecutorService executor,
 	                                                 DefiningClassLoader classLoader, Path logsDir) {
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, logsDir);
 		BufferSerializer<LogItem> bufferSerializer = SerializerBuilder
@@ -173,7 +173,7 @@ public class CubeExample {
 	}
 
 	/* Generate some test data and wrap it in StreamProducer. */
-	private static StreamProducers.OfIterator<LogItem> getProducerOfRandomLogItems(NioEventloop eventloop) {
+	private static StreamProducers.OfIterator<LogItem> getProducerOfRandomLogItems(Eventloop eventloop) {
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(NUMBER_OF_TEST_ITEMS);
 		return new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems.iterator());
 	}
@@ -183,7 +183,7 @@ public class CubeExample {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		Path aggregationsDir = getDirectory(AGGREGATIONS_PATH);
 		Path logsDir = getDirectory(LOGS_PATH);
 		AggregationStructure structure = getStructure(classLoader);

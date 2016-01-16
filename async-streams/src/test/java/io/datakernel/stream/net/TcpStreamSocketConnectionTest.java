@@ -22,8 +22,8 @@ import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.SimpleNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.SimpleEventloopServer;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -62,11 +62,11 @@ public final class TcpStreamSocketConnectionTest {
 			source.add(i);
 		}
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
@@ -116,11 +116,11 @@ public final class TcpStreamSocketConnectionTest {
 			source.add(i);
 		}
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
@@ -171,7 +171,7 @@ public final class TcpStreamSocketConnectionTest {
 			source.add(i);
 		}
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		List<Integer> list = new ArrayList<>();
 		final TestStreamConsumers.TestConsumerToList<Integer> consumerToListWithError = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
@@ -185,7 +185,7 @@ public final class TcpStreamSocketConnectionTest {
 			}
 		};
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
@@ -236,7 +236,7 @@ public final class TcpStreamSocketConnectionTest {
 			source.add(i);
 		}
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		List<Integer> list = new ArrayList<>();
 		final TestStreamConsumers.TestConsumerToList<Integer> consumerToListWithError = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
@@ -250,7 +250,7 @@ public final class TcpStreamSocketConnectionTest {
 			}
 		};
 
-		SimpleNioServer server = new SimpleNioServer(eventloop) {
+		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {

@@ -19,7 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -52,7 +52,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param socketChannel channel for this connection
 	 * @param httpClient    client which will handle this connection
 	 */
-	public HttpClientConnection(NioEventloop eventloop, SocketChannel socketChannel, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
+	public HttpClientConnection(Eventloop eventloop, SocketChannel socketChannel, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, socketChannel, httpClient.connectionsList, headerChars, maxHttpMessageSize);
 		this.httpClient = httpClient;
 	}

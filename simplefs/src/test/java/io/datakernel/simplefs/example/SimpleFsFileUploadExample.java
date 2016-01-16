@@ -17,7 +17,7 @@
 package io.datakernel.simplefs.example;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.file.StreamFileReader;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ public class SimpleFsFileUploadExample {
 	public static void main(String[] args) {
 		final InetSocketAddress address = new InetSocketAddress(SERVER_PORT);
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final String fileName = "test.txt";
 

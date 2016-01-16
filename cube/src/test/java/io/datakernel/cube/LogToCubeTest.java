@@ -26,7 +26,6 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.logfs.LocalFsLogFileSystem;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogManagerImpl;
@@ -80,7 +79,7 @@ public class LogToCubeTest {
 	@Test
 	public void testStubStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = getStructure(classLoader);

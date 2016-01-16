@@ -32,7 +32,7 @@ import io.datakernel.datagraph.server.DatagraphClient;
 import io.datakernel.datagraph.server.DatagraphEnvironment;
 import io.datakernel.datagraph.server.DatagraphSerialization;
 import io.datakernel.datagraph.server.DatagraphServer;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumers;
@@ -91,7 +91,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -153,7 +153,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);
 
@@ -217,7 +217,7 @@ public class DatagraphServerTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1511);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddresses.forString("127.0.0.1"), 1512);
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 		StreamConsumers.ToList<TestItem> result1 = new StreamConsumers.ToList<>(eventloop);
 		StreamConsumers.ToList<TestItem> result2 = new StreamConsumers.ToList<>(eventloop);

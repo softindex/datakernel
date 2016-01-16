@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.TestStreamConsumers;
@@ -50,7 +50,7 @@ public class StreamSorterStorageImplTest {
 
 	@Test
 	public void testStreamStorage() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(1, 2, 3, 4, 5, 6, 7));

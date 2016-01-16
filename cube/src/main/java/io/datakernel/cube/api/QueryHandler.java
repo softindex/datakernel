@@ -26,7 +26,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
@@ -44,10 +44,10 @@ public final class QueryHandler implements AsyncHttpServlet {
 
 	private final Gson gson;
 	private final Cube cube;
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final DefiningClassLoader classLoader;
 
-	public QueryHandler(Gson gson, Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
+	public QueryHandler(Gson gson, Cube cube, Eventloop eventloop, DefiningClassLoader classLoader) {
 		this.gson = gson;
 		this.cube = cube;
 		this.eventloop = eventloop;

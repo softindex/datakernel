@@ -19,24 +19,24 @@ package io.datakernel.eventloop;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class NioThreadFactory implements ThreadFactory {
-	private static final ThreadFactory DEFAULT_NIO_THREAD_FACTORY = createNioThreadFactory(Thread.NORM_PRIORITY, true);
+public final class EventloopThreadFactory implements ThreadFactory {
+	private static final ThreadFactory DEFAULT_THREAD_FACTORY = createEventloopThreadFactory(Thread.NORM_PRIORITY, true);
 
 	private final int priority;
 	private final boolean daemon;
 	private final AtomicLong count = new AtomicLong(1);
 
-	public NioThreadFactory(int priority, boolean daemon) {
+	public EventloopThreadFactory(int priority, boolean daemon) {
 		this.priority = priority;
 		this.daemon = daemon;
 	}
 
-	public static ThreadFactory defaultNioThreadFactory() {
-		return DEFAULT_NIO_THREAD_FACTORY;
+	public static ThreadFactory defaultEventloopThreadFactory() {
+		return DEFAULT_THREAD_FACTORY;
 	}
 
-	public static ThreadFactory createNioThreadFactory(int priority, boolean daemon) {
-		return new NioThreadFactory(priority, daemon);
+	public static ThreadFactory createEventloopThreadFactory(int priority, boolean daemon) {
+		return new EventloopThreadFactory(priority, daemon);
 	}
 
 	@Override

@@ -22,7 +22,7 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,7 +50,7 @@ public class HttpTolerantApplicationTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	public static AsyncHttpServer asyncHttpServer(final NioEventloop primaryEventloop) {
+	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
@@ -78,7 +78,7 @@ public class HttpTolerantApplicationTest {
 
 	@Test
 	public void testTolerantServer() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		AsyncHttpServer server = asyncHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
@@ -142,7 +142,7 @@ public class HttpTolerantApplicationTest {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
-			NioEventloop eventloop = new NioEventloop();
+			Eventloop eventloop = new Eventloop();
 			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
 					InetAddresses.forString("8.8.8.8")));
 

@@ -17,7 +17,7 @@
 package io.datakernel.simplefs.example;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.simplefs.SimpleFsServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +42,7 @@ public class SimpleFsServerSetupExample {
 	private static final Path TMP_STORAGE_PATH = Paths.get("./tmp");
 
 	public static void main(String[] args) throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
 		// Configuring and creating server

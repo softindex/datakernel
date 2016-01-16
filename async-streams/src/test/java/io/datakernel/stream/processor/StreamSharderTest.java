@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Functions;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
 
@@ -42,7 +42,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void test1() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -67,7 +67,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void test2() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -93,7 +93,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 
@@ -139,7 +139,7 @@ public class StreamSharderTest {
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		StreamSharder<Integer, Integer> streamSharder = new StreamSharder<>(eventloop, SHARDER, Functions.<Integer>identity());
 

@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.util.ByteBufStrings;
 import io.datakernel.util.ExceptionMarker;
@@ -87,7 +87,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 * @param connectionsList    pool in which will stored this connection
 	 * @param maxHttpMessageSize
 	 */
-	public AbstractHttpConnection(NioEventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
+	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, socketChannel);
 		this.receiveBufferSize = DEFAULT_HTTP_BUFFER_SIZE;
 		this.connectionsList = connectionsList;

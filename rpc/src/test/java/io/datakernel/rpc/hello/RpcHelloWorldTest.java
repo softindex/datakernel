@@ -20,7 +20,7 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcRemoteException;
 import io.datakernel.rpc.server.RpcRequestHandler;
@@ -39,12 +39,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static io.datakernel.async.AsyncCallbacks.startFuture;
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
+import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.rpc.client.sender.RpcStrategies.server;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.junit.Assert.*;
 
-public class RpcNioHelloWorldTest {
+public class RpcHelloWorldTest {
 
 	private interface HelloService {
 		String hello(String name) throws Exception;
@@ -84,7 +84,7 @@ public class RpcNioHelloWorldTest {
 		};
 	}
 
-	private static RpcServer createServer(NioEventloop eventloop) {
+	private static RpcServer createServer(Eventloop eventloop) {
 		return RpcServer.create(eventloop)
 				.messageTypes(HelloRequest.class, HelloResponse.class)
 				.on(HelloRequest.class, helloServiceRequestHandler(new HelloService() {
@@ -100,10 +100,10 @@ public class RpcNioHelloWorldTest {
 	}
 
 	private static class BlockingHelloClient implements HelloService, AutoCloseable {
-		private final NioEventloop eventloop;
+		private final Eventloop eventloop;
 		private final RpcClient client;
 
-		public BlockingHelloClient(NioEventloop eventloop) throws Exception {
+		public BlockingHelloClient(Eventloop eventloop) throws Exception {
 			this.eventloop = eventloop;
 			this.client = RpcClient.create(eventloop)
 					.messageTypes(HelloRequest.class, HelloResponse.class)
@@ -129,7 +129,7 @@ public class RpcNioHelloWorldTest {
 	}
 
 	private static final int PORT = 1234, TIMEOUT = 1500;
-	private NioEventloop eventloop;
+	private Eventloop eventloop;
 	private RpcServer server;
 
 	@Before
@@ -137,10 +137,10 @@ public class RpcNioHelloWorldTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new NioEventloop();
+		eventloop = new Eventloop();
 		server = createServer(eventloop);
 		server.listen();
-		defaultNioThreadFactory().newThread(eventloop).start();
+		defaultEventloopThreadFactory().newThread(eventloop).start();
 	}
 
 	@Test

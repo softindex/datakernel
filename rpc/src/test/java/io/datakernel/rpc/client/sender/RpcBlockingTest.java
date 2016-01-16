@@ -20,7 +20,7 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.hash.ShardingFunction;
 import io.datakernel.rpc.server.RpcRequestHandler;
@@ -37,7 +37,7 @@ import java.util.concurrent.ExecutionException;
 import static io.datakernel.async.AsyncCallbacks.startFuture;
 import static io.datakernel.async.AsyncCallbacks.stopFuture;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioThreadFactory.defaultNioThreadFactory;
+import static io.datakernel.eventloop.EventloopThreadFactory.defaultEventloopThreadFactory;
 import static io.datakernel.rpc.client.sender.RpcStrategies.*;
 import static org.junit.Assert.assertEquals;
 
@@ -48,7 +48,7 @@ public class RpcBlockingTest {
 	private static final int PORT_3 = 10003;
 	private static final int TIMEOUT = 1500;
 
-	private NioEventloop eventloop;
+	private Eventloop eventloop;
 	private Thread thread;
 
 	private RpcServer serverOne;
@@ -60,7 +60,7 @@ public class RpcBlockingTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new NioEventloop();
+		eventloop = new Eventloop();
 
 		serverOne = RpcServer.create(eventloop)
 				.messageTypes(HelloRequest.class, HelloResponse.class)
@@ -80,7 +80,7 @@ public class RpcBlockingTest {
 				.setListenPort(PORT_3);
 		serverThree.listen();
 
-		thread = defaultNioThreadFactory().newThread(eventloop);
+		thread = defaultEventloopThreadFactory().newThread(eventloop);
 		thread.start();
 	}
 

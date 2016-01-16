@@ -26,7 +26,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
+import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -34,12 +34,12 @@ import static org.junit.Assert.assertEquals;
 public class UdpSocketConnectionTest {
 	private static final int SERVER_PORT = 45555;
 	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("127.0.0.1", SERVER_PORT);
-	private NioEventloop eventloop = new NioEventloop();
+	private Eventloop eventloop = new Eventloop();
 
 	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 
 	private class ClientUdpConnection extends UdpSocketConnection {
-		public ClientUdpConnection(NioEventloop eventloop, DatagramChannel datagramChannel) {
+		public ClientUdpConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
 			super(eventloop, datagramChannel);
 		}
 
@@ -89,7 +89,7 @@ public class UdpSocketConnectionTest {
 	}
 
 	private class EchoServerUdpConnection extends UdpSocketConnection {
-		public EchoServerUdpConnection(NioEventloop eventloop, DatagramChannel datagramChannel) {
+		public EchoServerUdpConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
 			super(eventloop, datagramChannel);
 		}
 

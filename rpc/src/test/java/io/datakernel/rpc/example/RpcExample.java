@@ -18,7 +18,7 @@ package io.datakernel.rpc.example;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.server.RpcRequestHandler;
 import io.datakernel.rpc.server.RpcServer;
@@ -35,7 +35,7 @@ public class RpcExample {
 	private static final int SERVICE_PORT = 34765;
 
 	public static void main(String[] args) throws IOException {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final RpcServer server = RpcServer.create(eventloop)
 				.messageTypes(String.class)

@@ -21,7 +21,7 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.client.RpcClient;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.server.RpcRequestHandler;
@@ -60,7 +60,7 @@ public class RpcBinaryProtocolTest {
 	public void test() throws Exception {
 		final String testMessage = "Test";
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final RpcClient client = RpcClient.create(eventloop)
 				.messageTypes(String.class)
@@ -129,7 +129,7 @@ public class RpcBinaryProtocolTest {
 		BufferSerializer<RpcMessage> serializer = serializerBuilder.create(RpcMessage.class);
 
 		int countRequests = 10;
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		int defaultPacketSize = 1 << 10;
 		int maxPacketSize = 1 << 16;
 

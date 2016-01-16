@@ -23,8 +23,8 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
@@ -98,10 +98,10 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testUpload() throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
-		final NioService server = getServer(eventloop, executor);
+		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
 		final StreamProducer<ByteBuf> producerA = StreamFileReader.readFileFully(eventloop, executor, 16 * 256, clientStorage.resolve("a.txt"));
@@ -175,10 +175,10 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testFailedUpload() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
-		final NioService server = getServer(eventloop, executor);
+		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
 		final StreamProducer<ByteBuf> producer = new StreamProducers.ClosingWithError<>(eventloop, new Exception("Test Exception"));
@@ -240,10 +240,10 @@ public class IntegrationSingleNodeTest {
 		final int startPosition = 5;
 		final ResultCallbackFuture<Long> sizeFuture = new ResultCallbackFuture<>();
 
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
-		final NioService server = getServer(eventloop, executor);
+		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
 		final StreamFileWriter consumerD = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("d_downloaded.txt"), true);
@@ -301,10 +301,10 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testFailedDownload() throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
-		final NioService server = getServer(eventloop, executor);
+		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
 		final StreamFileWriter consumerA = StreamFileWriter.createFile(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"), true);
@@ -351,10 +351,10 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testDelete() throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
-		final NioService server = getServer(eventloop, executor);
+		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
 		server.start(new CompletionCallback() {
@@ -397,10 +397,10 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testFailedDelete() throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
-		final NioService server = getServer(eventloop, executor);
+		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
 		server.start(new CompletionCallback() {
@@ -442,10 +442,10 @@ public class IntegrationSingleNodeTest {
 
 	@Test
 	public void testList() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
-		final NioService server = getServer(eventloop, executor);
+		final EventloopService server = getServer(eventloop, executor);
 		final FsClient client = getClient(eventloop);
 
 		final Set<String> expected = Sets.newHashSet("this/a.txt", "this/g.txt", "e.txt", "f.txt", "d.txt");
@@ -489,13 +489,13 @@ public class IntegrationSingleNodeTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	private FsClient getClient(NioEventloop eventloop) {
+	private FsClient getClient(Eventloop eventloop) {
 		return HashFsClient.buildInstance(eventloop, Lists.newArrayList(local))
 				.setMaxRetryAttempts(1)
 				.build();
 	}
 
-	private NioService getServer(NioEventloop eventloop, ExecutorService executor) {
+	private EventloopService getServer(Eventloop eventloop, ExecutorService executor) {
 		return HashFsServer.buildInstance(eventloop, executor, serverStorage, tmp, local, Sets.newHashSet(local))
 				.build();
 	}

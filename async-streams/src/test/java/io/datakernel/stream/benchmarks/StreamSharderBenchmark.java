@@ -18,7 +18,6 @@ package io.datakernel.stream.benchmarks;
 
 import com.google.common.base.Functions;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.TestStreamConsumers;
@@ -86,7 +85,7 @@ public class StreamSharderBenchmark implements Runnable {
 		this.bestTime = -1;
 		this.worstTime = -1;
 
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		for (int i = 0; i < this.benchmarkRounds; i++) {
 			setUp(eventloop);

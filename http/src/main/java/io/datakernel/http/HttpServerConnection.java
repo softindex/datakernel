@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.exception.HttpException;
 import io.datakernel.http.exception.ServiceIllegalArgumentException;
 import io.datakernel.http.server.AsyncHttpServlet;
@@ -76,7 +76,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param servlet       servlet for handling requests
 	 * @param pool          pool in which will be stored this connection
 	 */
-	public HttpServerConnection(NioEventloop eventloop, SocketChannel socketChannel, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+	public HttpServerConnection(Eventloop eventloop, SocketChannel socketChannel, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, socketChannel, pool, headerChars, maxHttpMessageSize);
 		this.servlet = servlet;
 		this.remoteAddress = getRemoteSocketAddress().getAddress();

@@ -20,7 +20,7 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +46,7 @@ public final class DnsCache {
 
 	private final long errorCacheExpirationSeconds;
 	private final long hardExpirationDeltaSeconds;
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 
 	private long maxTtlSeconds = Long.MAX_VALUE;
 
@@ -78,7 +78,7 @@ public final class DnsCache {
 	 * @param hardExpirationDeltaMillis  delta between time at which entry is considered resolved, but needs
 	 *                                   refreshing and time at which entry is considered not resolved
 	 */
-	public DnsCache(NioEventloop eventloop, long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
+	public DnsCache(Eventloop eventloop, long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
 		this.errorCacheExpirationSeconds = errorCacheExpirationMillis / 1000;
 		this.hardExpirationDeltaSeconds = hardExpirationDeltaMillis / 1000;
 		this.eventloop = eventloop;

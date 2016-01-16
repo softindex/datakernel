@@ -17,7 +17,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -35,7 +35,7 @@ public class HttpServerExample {
 	public static final String HELLO = "Hello ";
 
 	/* Create HTTP server, which responds to each request with the concatenation of "Hello " and request body. */
-	public static AsyncHttpServer helloWorldServer(NioEventloop primaryEventloop, int port) {
+	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		AsyncHttpServer httpServer = new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
@@ -49,7 +49,7 @@ public class HttpServerExample {
 
 	/* Run HTTP server in an event loop. */
 	public static void main(String[] args) throws Exception {
-		final NioEventloop primaryEventloop = new NioEventloop();
+		final Eventloop primaryEventloop = new Eventloop();
 		final AsyncHttpServer httpServerListener = helloWorldServer(primaryEventloop, PORT);
 
 		System.out.println("Started HelloWorld HTTP Server on http://localhost:" + PORT);

@@ -20,7 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.hashfs.FsCommand.List;
 import io.datakernel.hashfs.FsResponse.Ok;
@@ -40,7 +40,7 @@ import java.util.Set;
 
 final class GsonClientProtocol implements ClientProtocol {
 	public static final class Builder {
-		private final NioEventloop eventloop;
+		private final Eventloop eventloop;
 		private int minChunkSize = DEFAULT_MIN_CHUNK_SIZE;
 		private int maxChunkSize = DEFAULT_MAX_CHUNK_SIZE;
 		private int deserializerBufferSize = DEFAULT_DESERIALIZER_BUFFER_SIZE;
@@ -50,7 +50,7 @@ final class GsonClientProtocol implements ClientProtocol {
 		private int serializerFlushDelayMillis = DEFAULT_SERIALIZER_FLUSH_DELAY_MS;
 		private SocketSettings socketSettings = SocketSettings.defaultSocketSettings();
 
-		private Builder(NioEventloop eventloop) {
+		private Builder(Eventloop eventloop) {
 			this.eventloop = eventloop;
 		}
 
@@ -109,7 +109,7 @@ final class GsonClientProtocol implements ClientProtocol {
 	private static int DEFAULT_SERIALIZER_MAX_MESSAGE_SIZE = 256 * (1 << 20);
 	private static int DEFAULT_SERIALIZER_FLUSH_DELAY_MS = 0;
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final int minChunkSize;
 	private final int maxChunkSize;
 	private final int deserializerBufferSize;
@@ -119,7 +119,7 @@ final class GsonClientProtocol implements ClientProtocol {
 	private final int serializerFlushDelayMillis;
 	private final SocketSettings socketSettings;
 
-	private GsonClientProtocol(NioEventloop eventloop, int minChunkSize, int maxChunkSize, int deserializerBufferSize,
+	private GsonClientProtocol(Eventloop eventloop, int minChunkSize, int maxChunkSize, int deserializerBufferSize,
 	                           int connectTimeout, int serializerBufferSize, int serializerMaxMessageSize,
 	                           int serializerFlushDelayMillis, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
@@ -133,11 +133,11 @@ final class GsonClientProtocol implements ClientProtocol {
 		this.socketSettings = socketSettings;
 	}
 
-	public static GsonClientProtocol createInstance(NioEventloop eventloop) {
+	public static GsonClientProtocol createInstance(Eventloop eventloop) {
 		return buildInstance(eventloop).build();
 	}
 
-	public static GsonClientProtocol.Builder buildInstance(NioEventloop eventloop) {
+	public static GsonClientProtocol.Builder buildInstance(Eventloop eventloop) {
 		return new Builder(eventloop);
 	}
 

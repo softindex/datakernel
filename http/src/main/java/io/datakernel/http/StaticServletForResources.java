@@ -18,7 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutorService;
 import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 
 public final class StaticServletForResources extends StaticServlet {
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final URL root;
 	private static final byte[] ERROR_BYTES = new byte[]{};
@@ -39,7 +39,7 @@ public final class StaticServletForResources extends StaticServlet {
 	private static final IOException ERROR = new IOException("Resource loading error");
 	private final ConcurrentHashMap<String, byte[]> cache = new ConcurrentHashMap<>();
 
-	public StaticServletForResources(NioEventloop eventloop, ExecutorService executor, String resourceRoot) {
+	public StaticServletForResources(Eventloop eventloop, ExecutorService executor, String resourceRoot) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.root = ClassLoader.getSystemResource(resourceRoot);

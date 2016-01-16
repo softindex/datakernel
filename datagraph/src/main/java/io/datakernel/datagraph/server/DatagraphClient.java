@@ -21,7 +21,7 @@ import io.datakernel.datagraph.graph.StreamId;
 import io.datakernel.datagraph.node.Node;
 import io.datakernel.datagraph.server.command.*;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamProducer;
@@ -50,7 +50,7 @@ import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 public final class DatagraphClient {
 	private static final Logger logger = LoggerFactory.getLogger(DatagraphClient.class);
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final DatagraphSerialization serialization;
 
 	private SocketSettings socketSettings = defaultSocketSettings();
@@ -61,7 +61,7 @@ public final class DatagraphClient {
 	 * @param eventloop     event loop, in which client is to run
 	 * @param serialization DatagraphSerialization object used for serialization
 	 */
-	public DatagraphClient(NioEventloop eventloop, DatagraphSerialization serialization) {
+	public DatagraphClient(Eventloop eventloop, DatagraphSerialization serialization) {
 		this.eventloop = eventloop;
 		this.serialization = serialization;
 	}

@@ -30,7 +30,7 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.AsyncExecutors;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.examples.LogItem;
 import io.datakernel.examples.LogItemSplitter;
 import io.datakernel.logfs.*;
@@ -108,7 +108,7 @@ public class CubeMeasureRemovalTest {
 				CHILD_PARENT_RELATIONSHIPS);
 	}
 
-	private static Cube getCube(NioEventloop eventloop, DefiningClassLoader classLoader,
+	private static Cube getCube(Eventloop eventloop, DefiningClassLoader classLoader,
 	                            CubeMetadataStorage cubeMetadataStorage,
 	                            AggregationMetadataStorage aggregationMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
@@ -121,7 +121,7 @@ public class CubeMeasureRemovalTest {
 		return cube;
 	}
 
-	private static Cube getNewCube(NioEventloop eventloop, DefiningClassLoader classLoader,
+	private static Cube getNewCube(Eventloop eventloop, DefiningClassLoader classLoader,
 	                               CubeMetadataStorage cubeMetadataStorage,
 	                               AggregationMetadataStorage aggregationMetadataStorage,
 	                               AggregationChunkStorage aggregationChunkStorage,
@@ -151,7 +151,7 @@ public class CubeMeasureRemovalTest {
 		return jooqConfiguration;
 	}
 
-	private static LogToCubeMetadataStorage getLogToCubeMetadataStorage(NioEventloop eventloop,
+	private static LogToCubeMetadataStorage getLogToCubeMetadataStorage(Eventloop eventloop,
 	                                                                    ExecutorService executor,
 	                                                                    Configuration jooqConfiguration,
 	                                                                    AggregationMetadataStorageSql aggregationMetadataStorage) {
@@ -163,14 +163,14 @@ public class CubeMeasureRemovalTest {
 		return metadataStorage;
 	}
 
-	private static AggregationChunkStorage getAggregationChunkStorage(NioEventloop eventloop, ExecutorService executor,
+	private static AggregationChunkStorage getAggregationChunkStorage(Eventloop eventloop, ExecutorService executor,
 	                                                                  AggregationStructure structure,
 	                                                                  Path aggregationsDir) {
 		return new LocalFsChunkStorage(eventloop, executor, AsyncExecutors.sequentialExecutor(),
 				structure, aggregationsDir);
 	}
 
-	private static LogManager<LogItem> getLogManager(NioEventloop eventloop, ExecutorService executor,
+	private static LogManager<LogItem> getLogManager(Eventloop eventloop, ExecutorService executor,
 	                                                 DefiningClassLoader classLoader, Path logsDir) {
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, logsDir);
 		BufferSerializer<LogItem> bufferSerializer = SerializerBuilder
@@ -187,7 +187,7 @@ public class CubeMeasureRemovalTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
 		AggregationStructure structure = getStructure(classLoader);

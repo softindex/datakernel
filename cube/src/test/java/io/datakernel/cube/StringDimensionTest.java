@@ -16,11 +16,6 @@
 
 package io.datakernel.cube;
 
-import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-
-import java.util.List;
-
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
@@ -33,10 +28,14 @@ import io.datakernel.cube.bean.DataItemResultString;
 import io.datakernel.cube.bean.DataItemString1;
 import io.datakernel.cube.bean.DataItemString2;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
+
+import java.util.List;
+
+import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
 
 public class StringDimensionTest {
 	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationChunkStorage storage,
@@ -65,7 +64,7 @@ public class StringDimensionTest {
 	@Test
 	public void testQuery() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = cubeStructureWithStringDimension(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, structure);

@@ -19,7 +19,7 @@ package io.datakernel.file;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -45,7 +45,7 @@ public class AsyncFileTest {
 	@Test
 	public void testReadFully() throws Exception {
 		final java.io.File tempFile = temporaryFolder.newFile("hello-2.html");
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		final Path srcPath = Paths.get("test_data/hello.html");
 		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override

@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
 
@@ -31,7 +31,7 @@ import static org.junit.Assert.assertEquals;
 public class StreamConsumerDecoratorTest {
 	@Test
 	public void test2() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		List<Integer> list = new ArrayList<>();
 		final TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -51,7 +51,7 @@ public class StreamConsumerDecoratorTest {
 
 	@Test
 	public void test1() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		List<Integer> list = new ArrayList<>();
 		final StreamConsumers.ToList<Integer> consumer = StreamConsumers.toList(eventloop, list);

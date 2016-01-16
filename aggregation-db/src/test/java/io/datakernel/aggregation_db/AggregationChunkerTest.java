@@ -25,7 +25,7 @@ import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,7 +49,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void test() throws IOException {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata("key-value", KeyValuePair.KEYS, KeyValuePair.FIELDS);
@@ -143,7 +143,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void testProducerWithError() throws IOException {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata("key-value", KeyValuePair.KEYS, KeyValuePair.FIELDS);
@@ -244,7 +244,7 @@ public class AggregationChunkerTest {
 
 	@Test
 	public void testStorageConsumerWithError() throws IOException {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata("key-value", KeyValuePair.KEYS, KeyValuePair.FIELDS);

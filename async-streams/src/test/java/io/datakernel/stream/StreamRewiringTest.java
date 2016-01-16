@@ -18,7 +18,7 @@ package io.datakernel.stream;
 
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.StreamFunction;
 import org.junit.Test;
 
@@ -35,7 +35,7 @@ import static org.junit.Assert.assertNotNull;
 public class StreamRewiringTest {
 	@Test
 	public void noRewire() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -61,7 +61,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireConsumer1() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -93,7 +93,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireConsumer2() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducers.OfIterator<Integer> producer = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator());
 		StreamFunction<Integer, Integer> function1 = new StreamFunction<>(eventloop, Functions.<Integer>identity());
@@ -124,7 +124,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void rewireProducer1() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducers.OfIterator<Integer> producer0 = new StreamProducers.OfIterator<>(eventloop, asList(0).iterator(), false);
 		StreamProducers.OfIterator<Integer> producer1 = new StreamProducers.OfIterator<>(eventloop, asList(1, 2, 3).iterator(), false);
@@ -162,7 +162,7 @@ public class StreamRewiringTest {
 
 	@Test
 	public void testProducerWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamProducer<Integer> producer = StreamProducers.ofIterable(eventloop, asList(1));
 		StreamFunction<Integer, Integer> function = new StreamFunction<>(eventloop, Functions.<Integer>identity());
 		producer.streamTo(function.getInput());

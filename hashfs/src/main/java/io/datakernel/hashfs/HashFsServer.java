@@ -20,8 +20,8 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -39,9 +39,9 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
-public class HashFsServer implements Commands, FsServer, NioService {
+public class HashFsServer implements Commands, FsServer, EventloopService {
 	public final static class Builder {
-		private final NioEventloop eventloop;
+		private final Eventloop eventloop;
 
 		private final GsonClientProtocol.Builder clientBuilder;
 		private final GsonServerProtocol.Builder serverBuilder;
@@ -62,7 +62,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		private int readerBufferSize = FileSystem.DEFAULT_READER_BUFFER_SIZE;
 		private String inProgressExtension = FileSystem.DEFAULT_IN_PROGRESS_EXTENSION;
 
-		private Builder(NioEventloop eventloop, ExecutorService executor,
+		private Builder(Eventloop eventloop, ExecutorService executor,
 		                Path storage, Path tmpStorage, ServerInfo myId, Set<ServerInfo> bootstrap) {
 			this.eventloop = eventloop;
 			this.clientBuilder = GsonClientProtocol.buildInstance(eventloop);
@@ -218,7 +218,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 	private static final long DEFAULT_MAP_UPDATE_TIMEOUT = 10 * 1000;
 
 	private static final Logger logger = LoggerFactory.getLogger(HashFsServer.class);
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 
 	private final ClientProtocol clientProtocol;
 	private final ServerProtocol serverProtocol;
@@ -229,7 +229,7 @@ public class HashFsServer implements Commands, FsServer, NioService {
 	private final long systemUpdateTimeout;
 	private final long mapUpdateTimeout;
 
-	private HashFsServer(NioEventloop eventloop, FileSystem fileSystem, Logic logic,
+	private HashFsServer(Eventloop eventloop, FileSystem fileSystem, Logic logic,
 	                     ClientProtocol clientProtocol, ServerProtocol serverProtocol,
 	                     long systemUpdateTimeout, long mapUpdateTimeout) {
 		this.eventloop = eventloop;
@@ -241,18 +241,18 @@ public class HashFsServer implements Commands, FsServer, NioService {
 		this.mapUpdateTimeout = mapUpdateTimeout;
 	}
 
-	public static HashFsServer createInstance(NioEventloop eventloop, ExecutorService executor,
+	public static HashFsServer createInstance(Eventloop eventloop, ExecutorService executor,
 	                                          Path storage, Path tmpStorage, ServerInfo myId, Set<ServerInfo> bootstrap) {
 		return buildInstance(eventloop, executor, storage, tmpStorage, myId, bootstrap).build();
 	}
 
-	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor,
+	public static Builder buildInstance(Eventloop eventloop, ExecutorService executor,
 	                                    Path storage, Path tmpStorage, ServerInfo myId, Set<ServerInfo> bootstrap) {
 		return new Builder(eventloop, executor, storage, tmpStorage, myId, bootstrap);
 	}
 
 	@Override
-	public NioEventloop getNioEventloop() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

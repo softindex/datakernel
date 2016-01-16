@@ -20,7 +20,7 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
@@ -34,7 +34,7 @@ import java.util.Set;
 
 public class HashFsClient implements FsClient {
 	public final static class Builder {
-		private final NioEventloop eventloop;
+		private final Eventloop eventloop;
 		private final GsonClientProtocol.Builder protocolBuilder;
 		private final List<ServerInfo> bootstrap;
 
@@ -43,7 +43,7 @@ public class HashFsClient implements FsClient {
 		private long baseRetryTimeout = DEFAULT_BASE_RETRY_TIMEOUT;
 		private int maxRetryAttempts = DEFAULT_MAX_RETRY_ATTEMPTS;
 
-		private Builder(NioEventloop eventloop, List<ServerInfo> bootstrap) {
+		private Builder(Eventloop eventloop, List<ServerInfo> bootstrap) {
 			this.eventloop = eventloop;
 			this.protocolBuilder = GsonClientProtocol.buildInstance(eventloop);
 			this.bootstrap = bootstrap;
@@ -118,7 +118,7 @@ public class HashFsClient implements FsClient {
 	private static final long DEFAULT_BASE_RETRY_TIMEOUT = 100;
 	private static final HashingStrategy DEFAULT_HASHING_STRATEGY = new RendezvousHashing();
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final ClientProtocol protocol;
 	private final HashingStrategy hashing;
 	private final List<ServerInfo> bootstrap;
@@ -126,7 +126,7 @@ public class HashFsClient implements FsClient {
 	private final long baseRetryTimeout;
 	private final int maxRetryAttempts;
 
-	private HashFsClient(NioEventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
+	private HashFsClient(Eventloop eventloop, ClientProtocol protocol, HashingStrategy hashing,
 	                     List<ServerInfo> bootstrap, long baseRetryTimeout, int maxRetryAttempts) {
 		this.eventloop = eventloop;
 		this.protocol = protocol;
@@ -136,11 +136,11 @@ public class HashFsClient implements FsClient {
 		this.maxRetryAttempts = maxRetryAttempts;
 	}
 
-	public static HashFsClient createInstance(NioEventloop eventloop, List<ServerInfo> bootstrap) {
+	public static HashFsClient createInstance(Eventloop eventloop, List<ServerInfo> bootstrap) {
 		return new Builder(eventloop, bootstrap).build();
 	}
 
-	public static Builder buildInstance(NioEventloop eventloop, List<ServerInfo> bootstrap) {
+	public static Builder buildInstance(Eventloop eventloop, List<ServerInfo> bootstrap) {
 		return new Builder(eventloop, bootstrap);
 	}
 

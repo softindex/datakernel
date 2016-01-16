@@ -17,23 +17,16 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.util.ByteBufStrings;
 
-import javax.management.MBeanServer;
-import java.lang.management.ManagementFactory;
 import java.util.Random;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static io.datakernel.jmx.MBeanUtils.register;
 
 public class HttpThrottlingServer {
-	private static final String WOW = "wow";
-	private static final String NIO = "nio";
 	private static final Random rand = new Random();
 	private static final int defaultLoadBusinessLogic = 0; // without load on the business logic
 	private static final String TEST_RESPONSE = "Hello, World!";
@@ -81,11 +74,11 @@ public class HttpThrottlingServer {
 
 	private final AsyncHttpServer server;
 
-	public HttpThrottlingServer(NioEventloop eventloop, ServerOptions options) {
+	public HttpThrottlingServer(Eventloop eventloop, ServerOptions options) {
 		this.server = buildHttpServer(eventloop, options.getLoadBusinessLogic()).setListenPort(SERVER_PORT);
 	}
 
-	private static AsyncHttpServer buildHttpServer(NioEventloop eventloop, final int loadBusinessLogic) {
+	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, final int loadBusinessLogic) {
 		eventloop.throttlingController = ThrottlingController.createDefaultThrottlingController();
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
@@ -128,7 +121,7 @@ public class HttpThrottlingServer {
 			return;
 		info(options);
 
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
 

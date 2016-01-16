@@ -19,8 +19,8 @@ package io.datakernel.http;
 import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.eventloop.AbstractNioServer;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.http.server.AsyncHttpServlet;
@@ -38,7 +38,7 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
  * A HttpServer is bound to an IP address and port number and listens for incoming connections
  * from clients on this address. A HttpServer is supported  {@link AsyncHttpServlet} that completes all responses asynchronously.
  */
-public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> implements AsyncHttpServerMBean {
+public final class AsyncHttpServer extends AbstractEventloopServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
@@ -63,7 +63,7 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 	 * @param eventloop eventloop in which will handle this connection
 	 * @param servlet   servlet for handling requests
 	 */
-	public AsyncHttpServer(NioEventloop eventloop, AsyncHttpServlet servlet) {
+	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
 		this.connectionsList = new ExposedLinkedList<>();
 		this.servlet = servlet;
@@ -186,7 +186,8 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 		});
 	}
 
-	@Override
+	// TODO (vmykhalko)
+/*	@Override
 	public void startMonitoring() {
 		monitoring = true;
 	}
@@ -236,4 +237,5 @@ public final class AsyncHttpServer extends AbstractNioServer<AsyncHttpServer> im
 		}
 		return info.toArray(new String[info.size()]);
 	}
+	*/
 }

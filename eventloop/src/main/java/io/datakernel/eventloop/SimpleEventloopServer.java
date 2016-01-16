@@ -16,8 +16,8 @@
 
 package io.datakernel.eventloop;
 
-public abstract class SimpleNioServer extends AbstractNioServer<SimpleNioServer> {
-	public SimpleNioServer(NioEventloop eventloop) {
+public abstract class SimpleEventloopServer extends AbstractEventloopServer<SimpleEventloopServer> {
+	public SimpleEventloopServer(Eventloop eventloop) {
 		super(eventloop);
 	}
 

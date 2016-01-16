@@ -20,7 +20,7 @@ import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.junit.Before;
@@ -47,7 +47,7 @@ public class TestFileSystem {
 	@Rule
 	public final TemporaryFolder tmpFolder = new TemporaryFolder();
 
-	private NioEventloop eventloop = new NioEventloop();
+	private Eventloop eventloop = new Eventloop();
 	private ExecutorService executor = newCachedThreadPool();
 	private Path storage;
 	private Path tmp;

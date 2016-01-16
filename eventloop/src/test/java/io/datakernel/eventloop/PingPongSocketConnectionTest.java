@@ -40,7 +40,7 @@ public class PingPongSocketConnectionTest {
 		private final byte[] response;
 		private final boolean client;
 
-		private PingPongConnection(NioEventloop eventloop, SocketChannel socketChannel, String request, String response, int countdown, boolean client) {
+		private PingPongConnection(Eventloop eventloop, SocketChannel socketChannel, String request, String response, int countdown, boolean client) {
 			super(eventloop, socketChannel);
 			this.countdown = countdown;
 			this.request = encodeAscii(request);
@@ -48,11 +48,11 @@ public class PingPongSocketConnectionTest {
 			this.client = client;
 		}
 
-		public static PingPongConnection clientConnection(NioEventloop eventloop, SocketChannel socketChannel, String ping, String pong, int countdown) {
+		public static PingPongConnection clientConnection(Eventloop eventloop, SocketChannel socketChannel, String ping, String pong, int countdown) {
 			return new PingPongConnection(eventloop, socketChannel, pong, ping, countdown, true);
 		}
 
-		public static PingPongConnection serverConnection(NioEventloop eventloop, SocketChannel socketChannel, String ping, String pong) {
+		public static PingPongConnection serverConnection(Eventloop eventloop, SocketChannel socketChannel, String ping, String pong) {
 			return new PingPongConnection(eventloop, socketChannel, ping, pong, 0, false);
 		}
 
@@ -86,8 +86,8 @@ public class PingPongSocketConnectionTest {
 		}
 	}
 
-	static class TestServer extends SimpleNioServer {
-		public TestServer(NioEventloop eventloop) {
+	static class TestServer extends SimpleEventloopServer {
+		public TestServer(Eventloop eventloop) {
 			super(eventloop);
 		}
 
@@ -99,7 +99,7 @@ public class PingPongSocketConnectionTest {
 
 	@Test
 	public void testPingPong() throws IOException {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		TestServer server = new TestServer(eventloop);
 		server.acceptOnce().setListenPort(PORT);
 

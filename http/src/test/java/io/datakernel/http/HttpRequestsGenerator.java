@@ -22,7 +22,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.ByteBufStrings;
 
 import static com.google.common.base.Preconditions.*;
@@ -140,7 +140,7 @@ public final class HttpRequestsGenerator {
 		}
 	}
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final AsyncHttpClient client;
 	private final GeneratorOptions options;
 	private final CompletionCallback completionCallback;
@@ -150,7 +150,7 @@ public final class HttpRequestsGenerator {
 	private int errorRequests = 0;
 	private int sentRequests = 0;
 
-	public HttpRequestsGenerator(NioEventloop eventloop, GeneratorOptions options, CompletionCallback completionCallback) {
+	public HttpRequestsGenerator(Eventloop eventloop, GeneratorOptions options, CompletionCallback completionCallback) {
 		checkNotNull(options.getUrl());
 		checkArgument(!options.getUrl().isEmpty(), "Url can not be empty");
 
@@ -239,7 +239,7 @@ public final class HttpRequestsGenerator {
 			return;
 		info(options);
 
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		HttpRequestsGenerator generator = new HttpRequestsGenerator(eventloop, options, ignoreCompletionCallback());
 		generator.start();

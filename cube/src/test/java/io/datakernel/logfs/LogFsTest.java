@@ -18,7 +18,7 @@ package io.datakernel.logfs;
 
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.hashfs.HashFsServer;
 import io.datakernel.hashfs.ServerInfo;
@@ -58,7 +58,7 @@ public class LogFsTest {
 	private Path tmpPath;
 	private SettableCurrentTimeProvider timeProvider;
 	private ExecutorService executor;
-	private NioEventloop eventloop;
+	private Eventloop eventloop;
 
 	@Before
 	public void setUp() throws Exception {
@@ -66,7 +66,7 @@ public class LogFsTest {
 		tmpPath = temporaryFolder.newFolder("tmp").toPath();
 		timeProvider = new SettableCurrentTimeProvider();
 		executor = Executors.newCachedThreadPool();
-		eventloop = new NioEventloop(timeProvider);
+		eventloop = new Eventloop(timeProvider);
 	}
 
 	@Test

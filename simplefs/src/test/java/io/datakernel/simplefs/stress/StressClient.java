@@ -20,7 +20,7 @@ import com.google.common.base.Charsets;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Serialize;
@@ -50,7 +50,7 @@ import java.util.concurrent.Executors;
 public class StressClient {
 	private static final Logger logger = LoggerFactory.getLogger(StressClient.class);
 	private InetSocketAddress address = new InetSocketAddress(5560);
-	private NioEventloop eventloop = new NioEventloop();
+	private Eventloop eventloop = new Eventloop();
 	private ExecutorService executor = Executors.newCachedThreadPool();
 
 	private SimpleFsClient client = SimpleFsClient.buildInstance(eventloop, address).build();

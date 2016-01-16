@@ -27,8 +27,8 @@ import io.datakernel.boot.WorkerPools;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.PrimaryNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.PrimaryEventloopServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -70,16 +70,16 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		NioEventloop primaryEventloop() {
-			return new NioEventloop();
+		Eventloop primaryEventloop() {
+			return new Eventloop();
 		}
 
 		@Provides
 		@Singleton
-		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerPools workerPools,
-		                                  Config config) {
-			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
-			primaryNioServer.workerNioServers(workerPools.getInstances(AsyncHttpServer.class));
+		PrimaryEventloopServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPools workerPools,
+		                                     Config config) {
+			PrimaryEventloopServer primaryNioServer = PrimaryEventloopServer.create(primaryEventloop);
+			primaryNioServer.workerServers(workerPools.getInstances(AsyncHttpServer.class));
 			int port = config.get(ConfigConverters.ofInteger(), "port", 5577);
 			primaryNioServer.setListenPort(port);
 			return primaryNioServer;
@@ -87,13 +87,13 @@ public class LauncherExample {
 
 		@Provides
 		@Worker
-		NioEventloop workerEventloop() {
-			return new NioEventloop();
+		Eventloop workerEventloop() {
+			return new Eventloop();
 		}
 
 		@Provides
 		@Worker
-		AsyncHttpServer workerHttpServer(@Worker NioEventloop eventloop, @WorkerId final int workerId,
+		AsyncHttpServer workerHttpServer(@Worker Eventloop eventloop, @WorkerId final int workerId,
 		                                 Config config) {
 			final String responseMessage = config.get(ConfigConverters.ofString(), "responseMessage", "Hello, World!");
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {

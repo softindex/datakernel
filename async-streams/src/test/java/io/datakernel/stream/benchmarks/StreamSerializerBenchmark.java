@@ -17,7 +17,6 @@
 package io.datakernel.stream.benchmarks;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.TestStreamConsumers;
@@ -75,7 +74,7 @@ public class StreamSerializerBenchmark implements Runnable {
 		this.bestTime = -1;
 		this.worstTime = -1;
 
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		for (int i = 0; i < this.benchmarkRounds; i++) {
 			setUp(eventloop);

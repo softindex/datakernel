@@ -16,19 +16,19 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.LinkedList;
 
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ProducerOfValueTest {
-	NioEventloop eventloop = new NioEventloop();
+	Eventloop eventloop = new Eventloop();
 
 	String TEST_STRING = "Hello consumer";
 	Integer TEST_INT = 777;

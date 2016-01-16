@@ -16,7 +16,7 @@
 
 package io.datakernel.async;
 
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 
 import java.util.concurrent.TimeoutException;
@@ -37,7 +37,7 @@ public final class ResultCallbackWithTimeout<T> extends AbstractAsyncCancellable
 	 * @param callback      callback which will be called
 	 * @param timeoutMillis time to live for this callback
 	 */
-	public ResultCallbackWithTimeout(NioEventloop eventloop, final ResultCallback<T> callback, long timeoutMillis) {
+	public ResultCallbackWithTimeout(Eventloop eventloop, final ResultCallback<T> callback, long timeoutMillis) {
 		this.callback = callback;
 
 		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {

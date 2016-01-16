@@ -14,31 +14,26 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.server;
+package io.datakernel.eventloop;
 
-import io.datakernel.eventloop.AbstractNioServerMBean;
+import java.io.IOException;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
+/**
+ * Represents non-blocking server which listens new connection and accepts it asynchronous.
+ * It is {@link AcceptCallback} for handling accepting to this server.
+ */
+public interface EventloopServer extends AcceptCallback {
+	Eventloop getEventloop();
 
-public interface RpcServerMBean extends AbstractNioServerMBean {
+	/**
+	 * Tells the NioServer to start listen on its port and hostname.
+	 *
+	 * @throws IOException if the socket can not be created.
+	 */
+	void listen() throws IOException;
 
-	void setSmoothingWindow(double smoothingWindow);
-
-	void startMonitoring();
-
-	void stopMonitoring();
-
-	boolean isMonitoring();
-
-	void resetStats();
-
-	int getConnectionsCount();
-
-	CompositeData[] getConnections() throws OpenDataException;
-
-	long getTotalRequests();
-
-	long getTotalProcessingErrors();
-
+	/**
+	 * Closes the server. Any open channels will be closed.
+	 */
+	void close();
 }

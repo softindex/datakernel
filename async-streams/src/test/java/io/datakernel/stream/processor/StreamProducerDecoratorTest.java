@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.common.base.Functions;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducerDecorator;
 import io.datakernel.stream.StreamProducers;
@@ -36,7 +36,7 @@ public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void test2() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		List<Integer> list = new ArrayList<>();
 
 		TestStreamConsumers.TestConsumerToList consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
@@ -72,7 +72,7 @@ public class StreamProducerDecoratorTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void test1() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList consumer = TestStreamConsumers.toListOneByOne(eventloop, list);
@@ -90,7 +90,7 @@ public class StreamProducerDecoratorTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		List<Integer> list = new ArrayList<>();
 		TestStreamConsumers.TestConsumerToList<Integer> consumer = TestStreamConsumers.toListOneByOne(eventloop, list);

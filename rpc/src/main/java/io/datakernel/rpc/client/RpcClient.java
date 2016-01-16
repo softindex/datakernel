@@ -20,8 +20,8 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.jmx.RpcConnectsStats;
@@ -47,14 +47,14 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class RpcClient implements NioService {
+public final class RpcClient implements EventloopService {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
 
 	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private RpcStrategy strategy;
 	private List<InetSocketAddress> addresses;
 	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
@@ -87,7 +87,7 @@ public final class RpcClient implements NioService {
 	private final Map<Class<?>, RpcRequestsStats> requestStatsPerClass;
 	private final Map<InetSocketAddress, RpcConnectsStats> connectsStatsPerAddress;
 
-	private RpcClient(NioEventloop eventloop) {
+	private RpcClient(Eventloop eventloop) {
 		this.eventloop = eventloop;
 
 		// JMX
@@ -97,7 +97,7 @@ public final class RpcClient implements NioService {
 		this.connectsStatsPerAddress = new HashMap<>(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
 	}
 
-	public static RpcClient create(final NioEventloop eventloop) {
+	public static RpcClient create(final Eventloop eventloop) {
 		return new RpcClient(eventloop);
 	}
 
@@ -161,7 +161,7 @@ public final class RpcClient implements NioService {
 	}
 
 	@Override
-	public NioEventloop getNioEventloop() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

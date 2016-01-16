@@ -17,7 +17,7 @@
 package io.datakernel.rpc.server;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.ValueStats;
@@ -42,7 +42,7 @@ public final class RpcServerConnection implements RpcConnection {
 	}
 
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final RpcProtocol protocol;
 	private final Map<Class<?>, RpcRequestHandler<Object>> handlers;
 	private final StatusListener statusListener;
@@ -55,7 +55,7 @@ public final class RpcServerConnection implements RpcConnection {
 	private int errorResponses = 0;
 	private boolean monitoring;
 
-	public RpcServerConnection(NioEventloop eventloop, SocketChannel socketChannel,
+	public RpcServerConnection(Eventloop eventloop, SocketChannel socketChannel,
 	                           BufferSerializer<RpcMessage> messageSerializer,
 	                           Map<Class<?>, RpcRequestHandler<Object>> handlers,
 	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
@@ -145,7 +145,7 @@ public final class RpcServerConnection implements RpcConnection {
 	}
 
 	@Override
-	public NioEventloop getEventloop() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

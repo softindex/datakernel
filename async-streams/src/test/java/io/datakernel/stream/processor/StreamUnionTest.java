@@ -17,7 +17,7 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
 
@@ -38,7 +38,7 @@ import static org.junit.Assert.*;
 public class StreamUnionTest {
 	@Test
 	public void test1() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -80,7 +80,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -126,7 +126,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testProducerWithError() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -155,7 +155,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 
@@ -199,7 +199,7 @@ public class StreamUnionTest {
 
 	@Test
 	public void testWithoutProducer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamUnion<Integer> streamUnion = new StreamUnion<>(eventloop);
 		CheckCallCallback checkCallCallback = new CheckCallCallback();

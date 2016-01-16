@@ -16,7 +16,7 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -33,7 +33,7 @@ public class ConsumerToListTest {
 
 	@Test
 	public void emptyListTest() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamConsumers.ToList<String> consumer = new StreamConsumers.ToList<>(eventloop, new ArrayList<String>());
 
 		List<String> testList2 = new ArrayList<>();
@@ -52,7 +52,7 @@ public class ConsumerToListTest {
 
 	@Test
 	public void fullListTest() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		List<Integer> testList1 = new ArrayList<>();
 		testList1.add(1);
 		testList1.add(2);

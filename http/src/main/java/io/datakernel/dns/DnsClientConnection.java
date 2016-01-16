@@ -20,7 +20,7 @@ import io.datakernel.async.ListenableResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackWithTimeout;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.UdpPacket;
 import io.datakernel.eventloop.UdpSocketConnection;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ public class DnsClientConnection extends UdpSocketConnection {
 	 * @param eventloop       eventloop in which will handle this connection
 	 * @param datagramChannel channel for creating this connection
 	 */
-	public DnsClientConnection(NioEventloop eventloop, DatagramChannel datagramChannel) {
+	public DnsClientConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
 		super(eventloop, datagramChannel);
 	}
 

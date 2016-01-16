@@ -22,7 +22,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.stream.AbstractStreamProducer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -86,7 +85,7 @@ public class LogStreamConsumer_ByteBufferTest {
 	@Test
 	public void testProducerWithError() throws InterruptedException {
 		final SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
-		final NioEventloop eventloop = new NioEventloop(timeProvider);
+		final Eventloop eventloop = new Eventloop(timeProvider);
 		timeProvider.setTime(new LocalDateTime("1970-01-01T00:59:59").toDateTime(DateTimeZone.UTC).getMillis());
 		final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 
@@ -147,7 +146,7 @@ public class LogStreamConsumer_ByteBufferTest {
 
 	@Test
 	public void testFileSystemWithError() throws InterruptedException {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormat.forPattern("yyyy-MM-dd_HH").withZone(DateTimeZone.UTC);
 
 		final LogFileSystem fileSystem = new SimpleLogFileSystem(eventloop, executor, testDir, listWriter) {

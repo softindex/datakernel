@@ -18,7 +18,6 @@ package io.datakernel.rpc.protocol.stream;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.jmx.MBeanFormat;
@@ -132,7 +131,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	private boolean monitoring;
 	private long timeMonitoring;
 
-	protected RpcStreamProtocol(NioEventloop eventloop, SocketChannel socketChannel,
+	protected RpcStreamProtocol(Eventloop eventloop, SocketChannel socketChannel,
 	                            BufferSerializer<RpcMessage> messageSerializer,
 	                            int defaultPacketSize, int maxPacketSize, boolean compression) {
 		sender = new Sender(eventloop);

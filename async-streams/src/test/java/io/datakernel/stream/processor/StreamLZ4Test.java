@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
@@ -70,7 +70,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void test() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -122,7 +122,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);
@@ -180,7 +180,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testRaw() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.rawCompressor(eventloop);
 
 		doTest(eventloop, compressor);
@@ -188,7 +188,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4Fast() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 
 		doTest(eventloop, compressor);
@@ -196,7 +196,7 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4High() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(eventloop);
 
 		doTest(eventloop, compressor);
@@ -204,13 +204,13 @@ public class StreamLZ4Test {
 
 	@Test
 	public void testLz4High10() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.highCompressor(eventloop, 10);
 
 		doTest(eventloop, compressor);
 	}
 
-	private void doTest(NioEventloop eventloop, StreamLZ4Compressor compressor) {
+	private void doTest(Eventloop eventloop, StreamLZ4Compressor compressor) {
 		byte data[] = "1".getBytes();
 		ByteBuf buf = ByteBuf.allocate(data.length);
 		buf.put(data);

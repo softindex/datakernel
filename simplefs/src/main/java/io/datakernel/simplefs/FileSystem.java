@@ -19,7 +19,7 @@ package io.datakernel.simplefs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -43,13 +43,13 @@ final class FileSystem {
 	private final String inProgressExtension;
 	private final int bufferSize;
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final ExecutorService executor;
 
 	private final Path fileStorage;
 	private final Path tmpStorage;
 
-	private FileSystem(NioEventloop eventloop, ExecutorService executor,
+	private FileSystem(Eventloop eventloop, ExecutorService executor,
 	                   Path fileStorage, Path tmpStorage, int bufferSize,
 	                   String inProgressExtension) {
 		this.eventloop = eventloop;
@@ -60,11 +60,11 @@ final class FileSystem {
 		this.inProgressExtension = inProgressExtension;
 	}
 
-	public static FileSystem newInstance(NioEventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
+	public static FileSystem newInstance(Eventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
 		return new FileSystem(eventloop, executor, storage, tmpStorage, DEFAULT_READER_BUFFER_SIZE, DEFAULT_IN_PROGRESS_EXTENSION);
 	}
 
-	public static FileSystem newInstance(NioEventloop eventloop, ExecutorService executor,
+	public static FileSystem newInstance(Eventloop eventloop, ExecutorService executor,
 	                                     Path storage, Path tmpStorage, int bufferSize,
 	                                     String inProgressExtension) {
 		return new FileSystem(eventloop, executor, storage, tmpStorage, bufferSize, inProgressExtension);

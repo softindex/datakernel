@@ -17,7 +17,7 @@
 package io.datakernel.stream.examples;
 
 import com.google.common.base.Predicate;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.TestStreamConsumers;
 import io.datakernel.stream.processor.StreamFilter;
@@ -32,7 +32,7 @@ import static java.util.Arrays.asList;
  */
 public class StreamFilterExample {
 	public static void main(String[] args) {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source = ofIterable(eventloop, asList(1, 2, 3));
 

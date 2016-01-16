@@ -17,7 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
 
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
@@ -27,7 +27,7 @@ public final class HelloWorldPostServer {
 	public static final int PORT = 5588;
 	public static final String HELLO_WORLD = "Hello, World!";
 
-	public static AsyncHttpServer helloWorldServer(NioEventloop primaryEventloop, int port) {
+	public static AsyncHttpServer helloWorldServer(Eventloop primaryEventloop, int port) {
 		AsyncHttpServer httpServer = new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
@@ -40,7 +40,7 @@ public final class HelloWorldPostServer {
 	}
 
 	public static void main(String[] args) throws Exception {
-		final NioEventloop primaryEventloop = new NioEventloop();
+		final Eventloop primaryEventloop = new Eventloop();
 
 		final AsyncHttpServer httpServerListener = helloWorldServer(primaryEventloop, PORT);
 

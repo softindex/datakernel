@@ -33,8 +33,7 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -125,7 +124,7 @@ public class CubeTest {
 	@Test
 	public void testQuery1() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
@@ -155,7 +154,7 @@ public class CubeTest {
 
 	private static final int LISTEN_PORT = 45578;
 
-	private NioService prepareServer(NioEventloop eventloop, Path serverStorage, Path tmpStorage) throws IOException {
+	private EventloopService prepareServer(Eventloop eventloop, Path serverStorage, Path tmpStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage, tmpStorage,
 				Lists.newArrayList(new InetSocketAddress(LISTEN_PORT)));
@@ -174,7 +173,7 @@ public class CubeTest {
 		return fileServer;
 	}
 
-	private void stop(NioService server) {
+	private void stop(EventloopService server) {
 		server.stop(new CompletionCallback() {
 			@Override
 			public void onComplete() {
@@ -191,13 +190,13 @@ public class CubeTest {
 	@Test
 	public void testSimpleFsAggregationStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
 		Path tmpStorage = temporaryFolder.newFolder("tmp").toPath();
-		final NioService simpleFsServer1 = prepareServer(eventloop, serverStorage, tmpStorage);
+		final EventloopService simpleFsServer1 = prepareServer(eventloop, serverStorage, tmpStorage);
 
 		AggregationChunkStorage storage = new SimpleFsChunkStorage(eventloop, aggregationStructure,
 				AsyncExecutors.sequentialExecutor(), new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
@@ -228,7 +227,7 @@ public class CubeTest {
 
 		eventloop.run();
 
-		final NioService simpleFsServer2 = prepareServer(eventloop, serverStorage, tmpStorage);
+		final EventloopService simpleFsServer2 = prepareServer(eventloop, serverStorage, tmpStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		final AggregationQuery query = new AggregationQuery()
 				.keys("key1", "key2")
@@ -263,7 +262,7 @@ public class CubeTest {
 	@Test
 	public void testOrdering() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
@@ -298,7 +297,7 @@ public class CubeTest {
 	@Test
 	public void testMultipleOrdering() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
@@ -339,7 +338,7 @@ public class CubeTest {
 	@Test
 	public void testBetweenPredicate() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
@@ -389,7 +388,7 @@ public class CubeTest {
 	@Test
 	public void testBetweenTransformation() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = sophisticatedCubeStructure(classLoader);
 		Cube cube = newSophisticatedCube(eventloop, classLoader, storage, aggregationStructure);
@@ -439,7 +438,7 @@ public class CubeTest {
 	@Test
 	public void testGrouping() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
@@ -473,7 +472,7 @@ public class CubeTest {
 	@Test
 	public void testQuery2() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executorService = newSingleThreadExecutor();
 		Path dir = temporaryFolder.newFolder().toPath();
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
@@ -511,7 +510,7 @@ public class CubeTest {
 	@Test
 	public void testConsolidate() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure cubeStructure = cubeStructure(classLoader);
 		Cube cube = newCube(eventloop, classLoader, storage, cubeStructure);

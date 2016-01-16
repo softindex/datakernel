@@ -17,8 +17,8 @@
 package io.datakernel.examples;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.SimpleNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.SimpleEventloopServer;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.eventloop.TcpSocketConnection;
 
@@ -33,8 +33,8 @@ public class TcpEchoServerExample {
 	public static final int PORT = 9922;
 
 	/* TCP server that prints received data to console and sends it back to sender. */
-	public static class EchoServer extends SimpleNioServer {
-		public EchoServer(NioEventloop eventloop) {
+	public static class EchoServer extends SimpleEventloopServer {
+		public EchoServer(Eventloop eventloop) {
 			super(eventloop);
 		}
 
@@ -44,7 +44,7 @@ public class TcpEchoServerExample {
 		}
 
 		private class EchoServerConnection extends TcpSocketConnection {
-			protected EchoServerConnection(NioEventloop eventloop, SocketChannel socketChannel) {
+			protected EchoServerConnection(Eventloop eventloop, SocketChannel socketChannel) {
 				super(eventloop, socketChannel);
 			}
 
@@ -67,7 +67,7 @@ public class TcpEchoServerExample {
 
 	/* Run server in an event loop. */
 	public static void main(String[] args) throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		EchoServer echoServer = new EchoServer(eventloop);
 		echoServer.setListenPort(PORT).acceptOnce();

@@ -20,9 +20,9 @@ import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioServer;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopServer;
+import io.datakernel.eventloop.EventloopService;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;
@@ -70,15 +70,15 @@ public final class ServiceAdapters {
 		};
 	}
 
-	public static ServiceAdapter<NioService> forNioService() {
-		return new ServiceAdapter<NioService>() {
+	public static ServiceAdapter<EventloopService> forEventloopService() {
+		return new ServiceAdapter<EventloopService>() {
 			@Override
-			public Service toService(final NioService instance, Executor executor) {
+			public Service toService(final EventloopService instance, Executor executor) {
 				return new Service() {
 					@Override
 					public ListenableFuture<?> start() {
 						final SettableFuture<?> future = SettableFuture.create();
-						instance.getNioEventloop().postConcurrently(new Runnable() {
+						instance.getEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
 								instance.start(toCompletionCallback(future));
@@ -90,7 +90,7 @@ public final class ServiceAdapters {
 					@Override
 					public ListenableFuture<?> stop() {
 						final SettableFuture<?> future = SettableFuture.create();
-						instance.getNioEventloop().postConcurrently(new Runnable() {
+						instance.getEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
 								instance.stop(toCompletionCallback(future));
@@ -103,15 +103,15 @@ public final class ServiceAdapters {
 		};
 	}
 
-	public static ServiceAdapter<NioServer> forNioServer() {
-		return new ServiceAdapter<NioServer>() {
+	public static ServiceAdapter<EventloopServer> forEventloopServer() {
+		return new ServiceAdapter<EventloopServer>() {
 			@Override
-			public Service toService(final NioServer instance, Executor executor) {
+			public Service toService(final EventloopServer instance, Executor executor) {
 				return new Service() {
 					@Override
 					public ListenableFuture<?> start() {
 						final SettableFuture<?> future = SettableFuture.create();
-						instance.getNioEventloop().postConcurrently(new Runnable() {
+						instance.getEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
 								try {
@@ -128,7 +128,7 @@ public final class ServiceAdapters {
 					@Override
 					public ListenableFuture<?> stop() {
 						final SettableFuture<?> future = SettableFuture.create();
-						instance.getNioEventloop().postConcurrently(new Runnable() {
+						instance.getEventloop().postConcurrently(new Runnable() {
 							@Override
 							public void run() {
 								instance.close();
@@ -142,10 +142,10 @@ public final class ServiceAdapters {
 		};
 	}
 
-	public static ServiceAdapter<NioEventloop> forNioEventloop(final ThreadFactory threadFactory) {
-		return new ServiceAdapter<NioEventloop>() {
+	public static ServiceAdapter<Eventloop> forEventloop(final ThreadFactory threadFactory) {
+		return new ServiceAdapter<Eventloop>() {
 			@Override
-			public Service toService(final NioEventloop eventloop, final Executor executor) {
+			public Service toService(final Eventloop eventloop, final Executor executor) {
 				return new Service() {
 					volatile SettableFuture<?> stopFuture;
 
@@ -182,8 +182,8 @@ public final class ServiceAdapters {
 		};
 	}
 
-	public static ServiceAdapter<NioEventloop> forNioEventloop() {
-		return forNioEventloop(new ThreadFactory() {
+	public static ServiceAdapter<Eventloop> forEventloop() {
+		return forEventloop(new ThreadFactory() {
 			@Override
 			public Thread newThread(Runnable r) {
 				Thread thread = Executors.defaultThreadFactory().newThread(r);

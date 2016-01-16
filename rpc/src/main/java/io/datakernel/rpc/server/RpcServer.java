@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.eventloop.AbstractNioServer;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.net.ServerSocketSettings;
@@ -39,7 +39,7 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcServer extends AbstractNioServer<RpcServer> implements RpcServerMBean {
+public final class RpcServer extends AbstractEventloopServer<RpcServer> {
 	private Logger logger = getLogger(RpcServer.class);
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
@@ -55,13 +55,13 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 	private boolean monitoring;
 	private volatile double smoothingWindow = 10.0;
 
-	private RpcServer(NioEventloop eventloop) {
+	private RpcServer(Eventloop eventloop) {
 		super(eventloop);
 		serverSocketSettings(DEFAULT_SERVER_SOCKET_SETTINGS);
 		socketSettings(DEFAULT_SOCKET_SETTINGS);
 	}
 
-	public static RpcServer create(NioEventloop eventloop) {
+	public static RpcServer create(Eventloop eventloop) {
 		return new RpcServer(eventloop);
 	}
 
@@ -167,6 +167,8 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 		});
 	}
 
+	// TODO (vmykhalko)
+	/*
 	@Override
 	public void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
@@ -243,5 +245,6 @@ public final class RpcServer extends AbstractNioServer<RpcServer> implements Rpc
 		}
 		return requests;
 	}
+	*/
 }
 

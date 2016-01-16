@@ -16,11 +16,11 @@
 
 package io.datakernel.hashfs;
 
-import io.datakernel.eventloop.AbstractNioServer;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.Eventloop;
 
-abstract class ServerProtocol extends AbstractNioServer<ServerProtocol> {
-	public ServerProtocol(NioEventloop eventloop) {
+abstract class ServerProtocol extends AbstractEventloopServer<ServerProtocol> {
+	public ServerProtocol(Eventloop eventloop) {
 		super(eventloop);
 	}
 

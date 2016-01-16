@@ -21,7 +21,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -38,7 +38,7 @@ public final class SimpleFsClient {
 		private final InetSocketAddress address;
 		private final GsonClientProtocol.Builder protocolBuilder;
 
-		private Builder(NioEventloop eventloop, InetSocketAddress address) {
+		private Builder(Eventloop eventloop, InetSocketAddress address) {
 			this.address = address;
 			protocolBuilder = GsonClientProtocol.buildInstance(eventloop);
 		}
@@ -97,11 +97,11 @@ public final class SimpleFsClient {
 		this.protocol = protocol;
 	}
 
-	public static SimpleFsClient createInstance(NioEventloop eventloop, InetSocketAddress address) {
+	public static SimpleFsClient createInstance(Eventloop eventloop, InetSocketAddress address) {
 		return buildInstance(eventloop, address).build();
 	}
 
-	public static Builder buildInstance(NioEventloop eventloop, InetSocketAddress address) {
+	public static Builder buildInstance(Eventloop eventloop, InetSocketAddress address) {
 		return new Builder(eventloop, address);
 	}
 

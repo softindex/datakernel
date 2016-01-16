@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.eventloop.jmx;
+package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.jmx.AbstractCompositeStats;
@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public final class NioEventloopStats extends AbstractCompositeStats<NioEventloopStats> {
+public final class EventloopStats extends AbstractCompositeStats<EventloopStats> {
 
 	private static final class DurationRunnable {
 		private Runnable runnable;
@@ -228,7 +228,7 @@ public final class NioEventloopStats extends AbstractCompositeStats<NioEventloop
 		scheduledTasksTime.refreshStats(timestamp, window);
 	}
 
-	public void add(NioEventloopStats anotherStats) {
+	public void add(EventloopStats anotherStats) {
 		selectorSelectTime.add(anotherStats.selectorSelectTime);
 		businessLogicTime.add(anotherStats.businessLogicTime);
 		selectedKeys.add(anotherStats.selectedKeys);

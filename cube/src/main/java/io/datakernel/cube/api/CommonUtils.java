@@ -23,7 +23,7 @@ import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.ContentType;
 import io.datakernel.http.HttpHeaders;
 import io.datakernel.http.HttpResponse;
@@ -53,7 +53,7 @@ class CommonUtils {
 
 	@SuppressWarnings("unchecked")
 	public static StreamConsumers.ToList queryCube(Class<?> resultClass, AggregationQuery query, Cube cube,
-	                                               NioEventloop eventloop) {
+	                                               Eventloop eventloop) {
 		StreamConsumers.ToList consumerStream = StreamConsumers.toList(eventloop);
 		cube.query(resultClass, query).streamTo(consumerStream);
 		return consumerStream;

@@ -19,7 +19,7 @@ package io.datakernel.hashfs;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.net.Messaging;
@@ -33,13 +33,13 @@ import java.util.Set;
 
 final class GsonServerProtocol extends ServerProtocol {
 	public static class Builder {
-		private final NioEventloop eventloop;
+		private final Eventloop eventloop;
 		private int deserializerBufferSize = DEFAULT_DESERIALIZER_BUFFER_SIZE;
 		private int serializerBufferSize = DEFAULT_SERIALIZER_BUFFER_SIZE;
 		private int serializerMaxMessageSize = DEFAULT_SERIALIZER_MAX_MESSAGE_SIZE;
 		private int serializerFlushDelayMillis = DEFAULT_SERIALIZER_FLUSH_DELAY_MS;
 
-		private Builder(NioEventloop eventloop) {
+		private Builder(Eventloop eventloop) {
 			this.eventloop = eventloop;
 		}
 
@@ -76,7 +76,7 @@ final class GsonServerProtocol extends ServerProtocol {
 	private final int serializerMaxMessageSize;
 	private final int serializerFlushDelayMillis;
 
-	private GsonServerProtocol(NioEventloop eventloop, int deserializerBufferSize,
+	private GsonServerProtocol(Eventloop eventloop, int deserializerBufferSize,
 	                           int serializerBufferSize, int serializerMaxMessageSize, int serializerFlushDelayMillis) {
 		super(eventloop);
 		this.deserializerBufferSize = deserializerBufferSize;
@@ -85,7 +85,7 @@ final class GsonServerProtocol extends ServerProtocol {
 		this.serializerFlushDelayMillis = serializerFlushDelayMillis;
 	}
 
-	public static Builder buildInstance(NioEventloop eventloop) {
+	public static Builder buildInstance(Eventloop eventloop) {
 		return new Builder(eventloop);
 	}
 

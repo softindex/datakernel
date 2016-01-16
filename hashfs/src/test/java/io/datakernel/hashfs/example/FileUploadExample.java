@@ -18,7 +18,7 @@ package io.datakernel.hashfs.example;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.FsClient;
 import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.hashfs.ServerInfo;
@@ -45,7 +45,7 @@ public class FileUploadExample {
 		String resultFile = "pom.xml";
 
 		// Creating core components
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 
 		// Specifying info about our bootstrap servers (see in previous example)

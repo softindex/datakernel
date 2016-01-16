@@ -22,7 +22,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +63,7 @@ public abstract class BlockingDnsResolver {
 	 * @param eventloop eventloop in which it will calls callback
 	 * @return new DNS Client
 	 */
-	public static DnsClient getAsDnsClient(final BlockingDnsResolver resolver, final NioEventloop eventloop) {
+	public static DnsClient getAsDnsClient(final BlockingDnsResolver resolver, final Eventloop eventloop) {
 		return new DnsClient() {
 			public void resolve(String domainName, final ResultCallback<InetAddress[]> callback, boolean ipv6) {
 				final Eventloop.ConcurrentOperationTracker concurrentOperationTracker = eventloop.startConcurrentOperation();

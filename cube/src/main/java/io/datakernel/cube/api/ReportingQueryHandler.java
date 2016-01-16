@@ -28,7 +28,7 @@ import io.datakernel.codegen.ExpressionComparatorNullable;
 import io.datakernel.codegen.ExpressionSequence;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
@@ -55,11 +55,11 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 	private final Cube cube;
 	private final AggregationStructure structure;
 	private final ReportingConfiguration reportingConfiguration;
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final DefiningClassLoader classLoader;
 	private final Resolver resolver;
 
-	public ReportingQueryHandler(Gson gson, Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
+	public ReportingQueryHandler(Gson gson, Cube cube, Eventloop eventloop, DefiningClassLoader classLoader) {
 		this.gson = gson;
 		this.cube = cube;
 		this.structure = cube.getStructure();

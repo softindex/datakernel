@@ -19,8 +19,8 @@ package io.datakernel.dns;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.Eventloop.ConcurrentOperationTracker;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.time.SettableCurrentTimeProvider;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -44,7 +44,7 @@ import static org.junit.Assert.*;
 public class DnsResolversTest {
 	private DnsClient nativeDnsResolver;
 	private DnsClient simpleDnsResolver;
-	private NioEventloop eventloop;
+	private Eventloop eventloop;
 	private static final int DNS_SERVER_PORT = 53;
 
 	private static final InetSocketAddress GOOGLE_PUBLIC_DNS = new InetSocketAddress("8.8.8.8", DNS_SERVER_PORT);
@@ -141,7 +141,7 @@ public class DnsResolversTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new NioEventloop();
+		eventloop = new Eventloop();
 		Executor executor = Executors.newFixedThreadPool(5);
 
 		nativeDnsResolver = new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
@@ -230,7 +230,7 @@ public class DnsResolversTest {
 	@Ignore
 	@Test
 	public void testConcurrentNativeResolver() throws InterruptedException {
-		NioEventloop primaryEventloop = this.eventloop;
+		Eventloop primaryEventloop = this.eventloop;
 		final NativeDnsResolver nativeDnsResolver = (NativeDnsResolver) this.nativeDnsResolver;
 
 		ConcurrentOperationsCounter counter = new ConcurrentOperationsCounter(10, primaryEventloop.startConcurrentOperation());
@@ -261,7 +261,7 @@ public class DnsResolversTest {
 				} catch (InterruptedException e) {
 					logger.warn("Thread interrupted.", e);
 				}
-				NioEventloop callerEventloop = new NioEventloop();
+				Eventloop callerEventloop = new Eventloop();
 				ConcurrentOperationTracker concurrentOperationTracker = callerEventloop.startConcurrentOperation();
 				ConcurrentDnsResolveCallback callback = new ConcurrentDnsResolveCallback(new DnsResolveCallback(),
 						concurrentOperationTracker, counter);
@@ -320,7 +320,7 @@ public class DnsResolversTest {
 				3, (short) 1);
 
 		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider(0);
-		NioEventloop eventloopWithTimeProvider = new NioEventloop(timeProvider);
+		Eventloop eventloopWithTimeProvider = new Eventloop(timeProvider);
 		NativeDnsResolver nativeResolver = new NativeDnsResolver(eventloopWithTimeProvider, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, GOOGLE_PUBLIC_DNS);
 		DnsCache cache = nativeResolver.getCache();

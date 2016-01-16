@@ -21,7 +21,7 @@ import com.google.common.base.Functions;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
 
@@ -41,7 +41,7 @@ import static org.junit.Assert.*;
 public class StreamReducerTest {
 	@Test
 	public void testEmpty() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 
@@ -63,7 +63,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testDeduplicate() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
@@ -107,7 +107,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithError() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -161,7 +161,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testProducerDisconnectWithError() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
@@ -381,7 +381,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void test2() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -415,7 +415,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void test3() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<KeyValue1> source1 = StreamProducers.ofIterable(eventloop, asList(new KeyValue1(1, 10.0), new KeyValue1(3, 30.0)));
 		StreamProducer<KeyValue2> source2 = StreamProducers.ofIterable(eventloop, asList(new KeyValue2(1, 10.0), new KeyValue2(3, 30.0)));
@@ -449,7 +449,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, EMPTY_LIST);
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7));
@@ -495,7 +495,7 @@ public class StreamReducerTest {
 
 	@Test
 	public void testWithoutProducer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamReducer<Integer, Integer, Void> streamReducer = new StreamReducer<>(eventloop, Ordering.<Integer>natural(), 1);
 		CheckCallCallback checkCallCallback = new CheckCallCallback();

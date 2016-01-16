@@ -43,7 +43,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	 * @param eventloop     eventloop in which this connection will be handled
 	 * @param socketChannel socketChannel for creating this connection
 	 */
-	public TcpSocketConnection(NioEventloop eventloop, SocketChannel socketChannel) {
+	public TcpSocketConnection(Eventloop eventloop, SocketChannel socketChannel) {
 		super(eventloop);
 		this.channel = socketChannel;
 		try {

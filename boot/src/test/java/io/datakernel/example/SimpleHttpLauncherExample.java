@@ -24,7 +24,7 @@ import io.datakernel.boot.BootModule;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -60,13 +60,13 @@ public class SimpleHttpLauncherExample {
 
 		@Provides
 		@Singleton
-		NioEventloop workerEventloop() {
-			return new NioEventloop();
+		Eventloop workerEventloop() {
+			return new Eventloop();
 		}
 
 		@Provides
 		@Singleton
-		AsyncHttpServer workerHttpServer(NioEventloop eventloop, final Config config) {
+		AsyncHttpServer workerHttpServer(Eventloop eventloop, final Config config) {
 			AsyncHttpServer httpServer = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {

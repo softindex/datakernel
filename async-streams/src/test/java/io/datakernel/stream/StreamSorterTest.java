@@ -19,7 +19,7 @@ package io.datakernel.stream;
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.examples.ScheduledProducer;
 import io.datakernel.stream.processor.StreamMergeSorterStorage;
 import io.datakernel.stream.processor.StreamMergeSorterStorageStub;
@@ -38,7 +38,7 @@ import static org.junit.Assert.assertTrue;
 public class StreamSorterTest {
 	@Test
 	public void test() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -62,7 +62,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -88,7 +88,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testCollision() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<>(eventloop);
 
 		final StreamProducer<Integer> scheduledSource = new ScheduledProducer(eventloop) {
@@ -154,7 +154,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testBadStorage() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -198,7 +198,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source = StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2, 5, 1, 4, 3, 2));
 
@@ -232,7 +232,7 @@ public class StreamSorterTest {
 
 	@Test
 	public void testErrorOnProducer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<Integer> source = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(3, 1, 3, 2)),

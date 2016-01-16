@@ -16,7 +16,7 @@
 
 package io.datakernel.async;
 
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import org.junit.Test;
 
 import java.util.HashMap;
@@ -39,7 +39,7 @@ public class ParallelAsyncExecutorTest {
 	@Test
 	public void testSequential() throws Exception {
 		AsyncExecutor executor = AsyncExecutors.sequentialExecutor();
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		Map<Integer, ExecutionInfo> executionInfoMap = new HashMap<>();
 		int tasks = 5;
 
@@ -62,7 +62,7 @@ public class ParallelAsyncExecutorTest {
 	public void testParallel() throws Exception {
 		int maxParallelism = 3;
 		AsyncExecutor executor = AsyncExecutors.parallelExecutor(maxParallelism, 5);
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		Map<Integer, ExecutionInfo> executionInfoMap = new HashMap<>();
 		int tasks = 9;
 
@@ -84,11 +84,11 @@ public class ParallelAsyncExecutorTest {
 		}
 	}
 
-	private static void submitTestTask(AsyncExecutor executor, NioEventloop eventloop, Map<Integer, ExecutionInfo> executionInfoMap, int n) {
+	private static void submitTestTask(AsyncExecutor executor, Eventloop eventloop, Map<Integer, ExecutionInfo> executionInfoMap, int n) {
 		executor.submit(getTestTask(eventloop, n, executionInfoMap), ignoreCompletionCallback());
 	}
 
-	private static AsyncTask getTestTask(final NioEventloop eventloop, final int n, final Map<Integer, ExecutionInfo> executionInfoMap) {
+	private static AsyncTask getTestTask(final Eventloop eventloop, final int n, final Map<Integer, ExecutionInfo> executionInfoMap) {
 		return new AsyncTask() {
 			@Override
 			public void execute(final CompletionCallback callback) {

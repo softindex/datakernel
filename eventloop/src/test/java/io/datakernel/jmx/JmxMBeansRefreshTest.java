@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.jmx.annotation.JmxMBean;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
@@ -35,7 +34,7 @@ public class JmxMBeansRefreshTest {
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private final JmxStats<?> stats = context.mock(JmxStats.class);
 
-	private final NioEventloop eventloop = new NioEventloop();
+	private final Eventloop eventloop = new Eventloop();
 	private final MonitorableWithEventloop monitorable = new MonitorableWithEventloop(stats, eventloop);
 
 	@Test

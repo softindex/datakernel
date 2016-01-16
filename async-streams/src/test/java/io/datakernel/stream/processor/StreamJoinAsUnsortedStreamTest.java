@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.StreamStatus;
@@ -110,7 +110,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 	@Test
 	public void test1() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<DataItemMaster> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItemMaster(10, 10, "masterA"),
@@ -173,7 +173,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 	@Test
 	public void testWithError() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		List<DataItemMasterDetail> list = new ArrayList<>();
 
 		StreamProducer<DataItemMaster> source1 = StreamProducers.ofIterable(eventloop, asList(
@@ -245,7 +245,7 @@ public class StreamJoinAsUnsortedStreamTest {
 
 	@Test
 	public void testProducerWithError() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamProducer<DataItemMaster> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItemMaster(10, 10, "masterA")),
 				StreamProducers.<DataItemMaster>closingWithError(eventloop, new Exception("Test Exception")),

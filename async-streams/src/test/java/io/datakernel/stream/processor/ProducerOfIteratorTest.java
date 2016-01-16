@@ -16,22 +16,24 @@
 
 package io.datakernel.stream.processor;
 
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.stream.*;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumers;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static io.datakernel.stream.StreamStatus.*;
+import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static org.junit.Assert.assertEquals;
 
 public class ProducerOfIteratorTest {
 
 	@Test
 	public void test1() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		List<Integer> list = Arrays.asList(1, 2, 3);
 

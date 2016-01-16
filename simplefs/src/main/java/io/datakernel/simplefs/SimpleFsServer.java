@@ -20,8 +20,8 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import org.slf4j.Logger;
@@ -41,10 +41,10 @@ import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.RUNNING;
 import static io.datakernel.simplefs.SimpleFsServer.ServerStatus.SHUTDOWN;
 
 @SuppressWarnings("unused")
-public final class SimpleFsServer implements NioService {
+public final class SimpleFsServer implements EventloopService {
 	public static final class Builder {
 		private final GsonServerProtocol.Builder protocolBuilder;
-		private final NioEventloop eventloop;
+		private final Eventloop eventloop;
 
 		private final List<InetSocketAddress> addresses = new ArrayList<>();
 
@@ -57,7 +57,7 @@ public final class SimpleFsServer implements NioService {
 		private int readerBufferSize = FileSystem.DEFAULT_READER_BUFFER_SIZE;
 		private String inProgressExtension = FileSystem.DEFAULT_IN_PROGRESS_EXTENSION;
 
-		public Builder(NioEventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
+		public Builder(Eventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
 			this.eventloop = eventloop;
 			this.executor = executor;
 
@@ -136,7 +136,7 @@ public final class SimpleFsServer implements NioService {
 	public static final Exception SERVER_IS_DOWN_EXCEPTION = new Exception("Server is down");
 
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServer.class);
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 
 	private final FileSystem fileSystem;
 	private final GsonServerProtocol protocol;
@@ -147,40 +147,40 @@ public final class SimpleFsServer implements NioService {
 	private CompletionCallback callbackOnStop;
 	private ServerStatus serverStatus;
 
-	private SimpleFsServer(NioEventloop eventLoop, FileSystem fileSystem, GsonServerProtocol protocol, long approveWaitTime) {
+	private SimpleFsServer(Eventloop eventLoop, FileSystem fileSystem, GsonServerProtocol protocol, long approveWaitTime) {
 		this.eventloop = eventLoop;
 		this.fileSystem = fileSystem;
 		this.protocol = protocol;
 		this.approveWaitTime = approveWaitTime;
 	}
 
-	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
+	public static SimpleFsServer createInstance(Eventloop eventloop, ExecutorService executor, Path storage,
 	                                            Path tmpStorage, List<InetSocketAddress> addresses) {
 		return buildInstance(eventloop, executor, storage, tmpStorage)
 				.setListenAddresses(addresses)
 				.build();
 	}
 
-	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
+	public static SimpleFsServer createInstance(Eventloop eventloop, ExecutorService executor, Path storage,
 	                                            Path tmpStorage, InetSocketAddress address) {
 		return buildInstance(eventloop, executor, storage, tmpStorage)
 				.setListenAddress(address)
 				.build();
 	}
 
-	public static SimpleFsServer createInstance(NioEventloop eventloop, ExecutorService executor, Path storage,
+	public static SimpleFsServer createInstance(Eventloop eventloop, ExecutorService executor, Path storage,
 	                                            Path tmpStorage, int port) {
 		return buildInstance(eventloop, executor, storage, tmpStorage)
 				.setListenPort(port)
 				.build();
 	}
 
-	public static Builder buildInstance(NioEventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
+	public static Builder buildInstance(Eventloop eventloop, ExecutorService executor, Path storage, Path tmpStorage) {
 		return new Builder(eventloop, executor, storage, tmpStorage);
 	}
 
 	@Override
-	public NioEventloop getNioEventloop() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

@@ -22,8 +22,8 @@ import io.datakernel.async.*;
 import io.datakernel.dns.DnsClient;
 import io.datakernel.dns.DnsException;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.ValueStats;
@@ -50,7 +50,7 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class AsyncHttpClient implements NioService {
+public class AsyncHttpClient implements EventloopService {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
@@ -58,7 +58,7 @@ public class AsyncHttpClient implements NioService {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final BindException BIND_EXCEPTION = new BindException();
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final DnsClient dnsClient;
 	private final SocketSettings socketSettings;
 	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
@@ -90,7 +90,7 @@ public class AsyncHttpClient implements NioService {
 	 * @param eventloop eventloop in which will handle this connection
 	 * @param dnsClient DNS client for resolving IP addresses for the specified host names
 	 */
-	public AsyncHttpClient(NioEventloop eventloop, DnsClient dnsClient) {
+	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient) {
 		this(eventloop, dnsClient, defaultSocketSettings());
 	}
 
@@ -101,7 +101,7 @@ public class AsyncHttpClient implements NioService {
 	 * @param dnsClient      DNS client for resolving IP addresses for the specified host names
 	 * @param socketSettings settings for creating socket
 	 */
-	public AsyncHttpClient(NioEventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
+	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
 		this.dnsClient = dnsClient;
 		this.socketSettings = checkNotNull(socketSettings);
@@ -419,7 +419,7 @@ public class AsyncHttpClient implements NioService {
 	}
 
 	@Override
-	public NioEventloop getNioEventloop() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

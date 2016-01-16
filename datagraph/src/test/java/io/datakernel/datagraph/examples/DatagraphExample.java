@@ -32,7 +32,7 @@ import io.datakernel.datagraph.server.DatagraphClient;
 import io.datakernel.datagraph.server.DatagraphEnvironment;
 import io.datakernel.datagraph.server.DatagraphSerialization;
 import io.datakernel.datagraph.server.DatagraphServer;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumers;
@@ -61,7 +61,7 @@ public class DatagraphExample {
 	public static void main(String[] args) throws IOException {
 		DatagraphSerialization serialization = new DatagraphSerialization();
 
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		DatagraphClient client = new DatagraphClient(eventloop, serialization);
 
 		// Streams for consuming the result

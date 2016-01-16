@@ -20,8 +20,8 @@ import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.SimpleNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.SimpleEventloopServer;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -47,7 +47,7 @@ import static org.junit.Assert.fail;
  * Example of using TcpStreamSocketConnection and BinaryProtocol.
  */
 public final class BinaryProtocolExample {
-	static final NioEventloop eventloop = new NioEventloop();
+	static final Eventloop eventloop = new Eventloop();
 	static final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 	private static final int LISTEN_PORT = 1234;
 	private static final InetSocketAddress address =
@@ -55,9 +55,9 @@ public final class BinaryProtocolExample {
 
 	/* Subclass of SimpleNioServer with BinaryProtocol, which deserializes received stream
 	and streams it to other consumer. */
-	public static class BinaryProtocolServer extends SimpleNioServer {
+	public static class BinaryProtocolServer extends SimpleEventloopServer {
 
-		public BinaryProtocolServer(NioEventloop eventloop) {
+		public BinaryProtocolServer(Eventloop eventloop) {
 			super(eventloop);
 		}
 
@@ -78,7 +78,7 @@ public final class BinaryProtocolExample {
 
 	/* Create connection to server with BinaryProtocol, which serializes some set of integers
 	and streams them to server. */
-	public static void createClientConnection(final NioEventloop eventloop) {
+	public static void createClientConnection(final Eventloop eventloop) {
 		final StreamBinarySerializer<Integer> streamSerializer =
 				new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
 
@@ -112,7 +112,7 @@ public final class BinaryProtocolExample {
 			source.add(i);
 		}
 
-		SimpleNioServer server = new BinaryProtocolServer(eventloop);
+		SimpleEventloopServer server = new BinaryProtocolServer(eventloop);
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 

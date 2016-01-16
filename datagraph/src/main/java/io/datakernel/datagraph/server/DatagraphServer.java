@@ -24,8 +24,8 @@ import io.datakernel.datagraph.server.command.DatagraphCommand;
 import io.datakernel.datagraph.server.command.DatagraphCommandDownload;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.datagraph.server.command.DatagraphResponse;
-import io.datakernel.eventloop.AbstractNioServer;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
@@ -48,7 +48,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 /**
  * Server for processing JSON commands.
  */
-public final class DatagraphServer extends AbstractNioServer<DatagraphServer> {
+public final class DatagraphServer extends AbstractEventloopServer<DatagraphServer> {
 	private static final Logger logger = LoggerFactory.getLogger(DatagraphServer.class);
 
 	private final DatagraphEnvironment environment;
@@ -61,7 +61,7 @@ public final class DatagraphServer extends AbstractNioServer<DatagraphServer> {
 	 * @param eventloop   event loop which runs the server
 	 * @param environment datagraph environment to use
 	 */
-	public DatagraphServer(NioEventloop eventloop, DatagraphEnvironment environment) {
+	public DatagraphServer(Eventloop eventloop, DatagraphEnvironment environment) {
 		super(eventloop);
 		this.environment = DatagraphEnvironment.extend(environment)
 				.set(DatagraphServer.class, this);

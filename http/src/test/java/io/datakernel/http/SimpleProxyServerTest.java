@@ -20,7 +20,7 @@ import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.net.DatagramSocketSettings;
 import org.junit.Assert;
@@ -51,7 +51,7 @@ public class SimpleProxyServerTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	public static AsyncHttpServer proxyHttpServer(final NioEventloop primaryEventloop, final AsyncHttpClient httpClient) {
+	public static AsyncHttpServer proxyHttpServer(final Eventloop primaryEventloop, final AsyncHttpClient httpClient) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
@@ -72,7 +72,7 @@ public class SimpleProxyServerTest {
 		});
 	}
 
-	public static AsyncHttpServer echoServer(NioEventloop primaryEventloop) {
+	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
@@ -91,14 +91,14 @@ public class SimpleProxyServerTest {
 
 	@Test
 	public void testSimpleProxyServer() throws Exception {
-		NioEventloop eventloop1 = new NioEventloop();
+		Eventloop eventloop1 = new Eventloop();
 		AsyncHttpServer echoServer = echoServer(eventloop1);
 		echoServer.setListenPort(ECHO_SERVER_PORT);
 		echoServer.listen();
 		Thread echoServerThread = new Thread(eventloop1);
 		echoServerThread.start();
 
-		NioEventloop eventloop2 = new NioEventloop();
+		Eventloop eventloop2 = new Eventloop();
 		AsyncHttpClient httpClient = new AsyncHttpClient(eventloop2,
 				new NativeDnsResolver(eventloop2, new DatagramSocketSettings(), 3_000L, InetAddresses.forString("8.8.8.8")));
 

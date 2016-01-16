@@ -29,7 +29,7 @@ import io.datakernel.cube.CubeTest;
 import io.datakernel.cube.bean.DataItem1;
 import io.datakernel.cube.bean.DataItem2;
 import io.datakernel.cube.bean.DataItemResult;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
@@ -86,7 +86,7 @@ public class CubeHttpApiTest {
 
 		// instantiate cube
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure cubeStructure = CubeTest.cubeStructure(classLoader);
 		Cube cube = CubeTest.newCube(eventloop, classLoader, storage, cubeStructure);

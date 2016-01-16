@@ -16,8 +16,8 @@
 
 package io.datakernel.simplefs.stress;
 
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.NioService;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.simplefs.SimpleFsServer;
 
 import java.io.IOException;
@@ -35,9 +35,9 @@ public class StressServer {
 	public static final int PORT = 5560;
 
 	private static final ExecutorService executor = newCachedThreadPool();
-	private static final NioEventloop eventloop = new NioEventloop();
+	private static final Eventloop eventloop = new Eventloop();
 
-	public static NioService server = SimpleFsServer.buildInstance(eventloop, executor, STORAGE_PATH, TMP_PATH)
+	public static EventloopService server = SimpleFsServer.buildInstance(eventloop, executor, STORAGE_PATH, TMP_PATH)
 			.setListenPort(PORT)
 			.build();
 

@@ -17,11 +17,7 @@
 package io.datakernel.rpc.client.sender.helper;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.rpc.client.RpcClientConnection;
 import io.datakernel.rpc.client.sender.RpcSender;
-import io.datakernel.rpc.protocol.RpcMessage;
 
 public final class RpcSenderStub implements RpcSender {
 	private int sends;

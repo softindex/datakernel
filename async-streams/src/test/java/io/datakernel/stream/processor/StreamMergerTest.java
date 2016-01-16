@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.collect.Ordering;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.StreamStatus;
@@ -41,7 +41,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicate() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
@@ -69,7 +69,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDuplicate() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
@@ -97,7 +97,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void test() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		DataItem1 d0 = new DataItem1(0, 1, 1, 1);
 		DataItem1 d1 = new DataItem1(0, 2, 1, 2);
 		DataItem1 d2 = new DataItem1(0, 6, 1, 3);
@@ -146,7 +146,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testDeduplicateWithError() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(7, 8, 3));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));
 
@@ -190,7 +190,7 @@ public class StreamMergerTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testProducerDeduplicateWithError() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamProducer<Integer> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, 7),
 				StreamProducers.ofValue(eventloop, 8),
@@ -227,7 +227,7 @@ public class StreamMergerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		StreamProducer<Integer> source0 = StreamProducers.ofIterable(eventloop, Collections.<Integer>emptyList());
 		StreamProducer<Integer> source1 = StreamProducers.ofIterable(eventloop, asList(3, 7));
 		StreamProducer<Integer> source2 = StreamProducers.ofIterable(eventloop, asList(3, 4, 6));

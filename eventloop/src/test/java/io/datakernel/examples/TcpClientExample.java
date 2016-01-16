@@ -18,7 +18,7 @@ package io.datakernel.examples;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.eventloop.TcpSocketConnection;
 
@@ -38,7 +38,7 @@ import static junit.framework.TestCase.fail;
 public class TcpClientExample {
 	/* TCP client connection, which sends characters and prints received responses to the console. */
 	private static class EchoConsoleClientConnection extends TcpSocketConnection {
-		public EchoConsoleClientConnection(NioEventloop eventloop, SocketChannel socketChannel) {
+		public EchoConsoleClientConnection(Eventloop eventloop, SocketChannel socketChannel) {
 			super(eventloop, socketChannel);
 		}
 
@@ -82,7 +82,7 @@ public class TcpClientExample {
 
 	/* Run TCP client in an event loop. */
 	public static void main(String[] args) throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		System.out.println("Connecting to server at localhost (port 9922)...");
 		eventloop.connect(new InetSocketAddress("localhost", 9922), defaultSocketSettings(), new ConnectCallback() {

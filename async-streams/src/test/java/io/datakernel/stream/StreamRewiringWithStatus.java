@@ -17,7 +17,6 @@
 package io.datakernel.stream;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -32,14 +31,14 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class StreamRewiringWithStatus {
-	private NioEventloop eventloop;
+	private Eventloop eventloop;
 	private List<Integer> list;
 	private Iterator<Integer> it;
 
 	@Before
 	public void before() {
 		it = asList(1, 2, 3, 4, 5).iterator();
-		eventloop = new NioEventloop();
+		eventloop = new Eventloop();
 		list = new ArrayList<>();
 	}
 

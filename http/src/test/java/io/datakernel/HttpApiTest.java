@@ -19,7 +19,7 @@ package io.datakernel;
 import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
 import io.datakernel.http.server.AsyncHttpServlet;
 import org.junit.Before;
@@ -42,7 +42,7 @@ import static org.junit.Assert.fail;
 public class HttpApiTest {
 	public static final int PORT = 5568;
 
-	private NioEventloop eventloop;
+	private Eventloop eventloop;
 	private AsyncHttpServer server;
 	private AsyncHttpClient client;
 
@@ -68,7 +68,7 @@ public class HttpApiTest {
 
 	@Before
 	public void setUp() {
-		eventloop = new NioEventloop();
+		eventloop = new Eventloop();
 		server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {

@@ -22,8 +22,8 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.boot.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.PrimaryNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.PrimaryEventloopServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -75,29 +75,29 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
-		NioEventloop primaryEventloop() {
-			return new NioEventloop();
+		Eventloop primaryEventloop() {
+			return new Eventloop();
 		}
 
 		@Provides
 		@Singleton
-		PrimaryNioServer primaryNioServer(NioEventloop primaryEventloop, WorkerPools workerPools) {
+		PrimaryEventloopServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPools workerPools) {
 			List<AsyncHttpServer> workerHttpServers = workerPools.getInstances(AsyncHttpServer.class);
-			PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop);
-			primaryNioServer.workerNioServers(workerHttpServers);
+			PrimaryEventloopServer primaryNioServer = PrimaryEventloopServer.create(primaryEventloop);
+			primaryNioServer.workerServers(workerHttpServers);
 			primaryNioServer.setListenPort(PORT);
 			return primaryNioServer;
 		}
 
 		@Provides
 		@Worker
-		NioEventloop workerEventloop() {
-			return new NioEventloop();
+		Eventloop workerEventloop() {
+			return new Eventloop();
 		}
 
 		@Provides
 		@Worker
-		AsyncHttpServer workerHttpServer(@Worker NioEventloop eventloop, @WorkerId final int workerId) {
+		AsyncHttpServer workerHttpServer(@Worker Eventloop eventloop, @WorkerId final int workerId) {
 
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override

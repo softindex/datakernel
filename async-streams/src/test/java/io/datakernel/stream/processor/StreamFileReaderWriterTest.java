@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
@@ -54,7 +53,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class StreamFileReaderWriterTest {
-	NioEventloop eventloop;
+	Eventloop eventloop;
 	ExecutorService executor;
 	StreamFileReaderWithError reader;
 
@@ -93,7 +92,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileReader() throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -120,7 +119,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileReaderWithSuspends() throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		byte[] fileBytes = Files.readAllBytes(Paths.get("test_data/in.dat"));
@@ -187,7 +186,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileWriter() throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
@@ -207,7 +206,7 @@ public class StreamFileReaderWriterTest {
 
 	@Test
 	public void testStreamFileWriterRecycle() throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = Executors.newCachedThreadPool();
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
@@ -250,7 +249,7 @@ public class StreamFileReaderWriterTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new NioEventloop();
+		eventloop = new Eventloop();
 		executor = Executors.newCachedThreadPool();
 		reader = new StreamFileReaderWithError(eventloop, executor, 1, Paths.get("test_data/in.dat"), 0, Long.MAX_VALUE);
 
@@ -271,8 +270,8 @@ public class StreamFileReaderWriterTest {
 		protected boolean pendingAsyncOperation;
 
 		public StreamFileReaderWithError(Eventloop eventloop, ExecutorService executor,
-		                        int bufferSize,
-		                        Path path, long position, long length) {
+		                                 int bufferSize,
+		                                 Path path, long position, long length) {
 			super(eventloop);
 			this.executor = checkNotNull(executor);
 			this.bufferSize = bufferSize;
@@ -292,8 +291,8 @@ public class StreamFileReaderWriterTest {
 		 * @param length     number of elements for reading
 		 */
 		public static StreamFileReaderWithError readFileSegment(Eventloop eventloop, ExecutorService executor,
-		                                               int bufferSize,
-		                                               Path path, long position, long length) {
+		                                                        int bufferSize,
+		                                                        Path path, long position, long length) {
 			return new StreamFileReaderWithError(eventloop, executor, bufferSize, path, position, length);
 		}
 
@@ -306,8 +305,8 @@ public class StreamFileReaderWriterTest {
 		 * @param path       location of file
 		 */
 		public static StreamFileReaderWithError readFileFully(Eventloop eventloop, ExecutorService executor,
-		                                             int bufferSize,
-		                                             Path path) {
+		                                                      int bufferSize,
+		                                                      Path path) {
 			return new StreamFileReaderWithError(eventloop, executor, bufferSize, path, 0, Long.MAX_VALUE);
 		}
 
@@ -321,8 +320,8 @@ public class StreamFileReaderWriterTest {
 		 * @param position   position after which reader will read file
 		 */
 		public static StreamFileReaderWithError readFileFrom(Eventloop eventloop, ExecutorService executor,
-		                                            int bufferSize,
-		                                            Path path, long position) {
+		                                                     int bufferSize,
+		                                                     Path path, long position) {
 			return new StreamFileReaderWithError(eventloop, executor, bufferSize, path, position, Long.MAX_VALUE);
 		}
 

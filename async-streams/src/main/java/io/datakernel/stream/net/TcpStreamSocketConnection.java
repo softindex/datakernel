@@ -18,7 +18,6 @@ package io.datakernel.stream.net;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.stream.*;
 import org.slf4j.Logger;
@@ -148,7 +147,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	 * @param eventloop     eventloop in with this connection will be handled
 	 * @param socketChannel socketChannel for this connection
 	 */
-	public TcpStreamSocketConnection(NioEventloop eventloop, SocketChannel socketChannel) {
+	public TcpStreamSocketConnection(Eventloop eventloop, SocketChannel socketChannel) {
 		super(eventloop, socketChannel);
 		this.receiveBufferSize = DEFAULT_STREAM_BUFFER_SIZE;
 		this.socketReader = new Reader(eventloop);

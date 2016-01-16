@@ -20,16 +20,16 @@ import java.nio.channels.SocketChannel;
 import java.util.Collection;
 
 /**
- * It is the {@link AbstractNioServer} which only handles accepting to it. It contains collection of
- * other {@link NioServer}, and when takes place new accept to it, it forwards request to other server
+ * It is the {@link AbstractEventloopServer} which only handles accepting to it. It contains collection of
+ * other {@link EventloopServer}, and when takes place new accept to it, it forwards request to other server
  * from collection with round-robin algorithm.
  */
-public final class PrimaryNioServer extends AbstractNioServer<PrimaryNioServer> {
-	private NioServer[] workerNioServers;
+public final class PrimaryEventloopServer extends AbstractEventloopServer<PrimaryEventloopServer> {
+	private EventloopServer[] workerServers;
 
 	private int currentAcceptor = 0;
 
-	private PrimaryNioServer(NioEventloop primaryEventloop) {
+	private PrimaryEventloopServer(Eventloop primaryEventloop) {
 		super(primaryEventloop);
 	}
 
@@ -39,31 +39,31 @@ public final class PrimaryNioServer extends AbstractNioServer<PrimaryNioServer> 
 	 * @param primaryEventloop the Eventloop which will execute IO tasks of this server
 	 * @return new PrimaryNioServer
 	 */
-	public static PrimaryNioServer create(NioEventloop primaryEventloop) {
-		return new PrimaryNioServer(primaryEventloop);
+	public static PrimaryEventloopServer create(Eventloop primaryEventloop) {
+		return new PrimaryEventloopServer(primaryEventloop);
 	}
 
 	/**
 	 * Adds the list of NioServers which will handle accepting to this server
 	 *
-	 * @param workerNioServers list of workers NioServers
+	 * @param workerServers list of workers NioServers
 	 * @return this PrimaryNioServer
 	 */
 	@SuppressWarnings("unchecked")
-	public PrimaryNioServer workerNioServers(Collection<? extends NioServer> workerNioServers) {
-		this.workerNioServers = workerNioServers.toArray(new NioServer[workerNioServers.size()]);
+	public PrimaryEventloopServer workerServers(Collection<? extends EventloopServer> workerServers) {
+		this.workerServers = workerServers.toArray(new EventloopServer[workerServers.size()]);
 		return this;
 	}
 
 	/**
 	 * Adds the NioServers from argument which will handle accepting to this server
 	 *
-	 * @param workerNioServers list of workers NioServers
+	 * @param workerServers list of workers NioServers
 	 * @return this PrimaryNioServer
 	 */
 	@SuppressWarnings("unchecked")
-	public PrimaryNioServer workerNioServers(NioServer... workerNioServers) {
-		this.workerNioServers = workerNioServers;
+	public PrimaryEventloopServer workerServers(EventloopServer... workerServers) {
+		this.workerServers = workerServers;
 		return this;
 	}
 
@@ -89,16 +89,16 @@ public final class PrimaryNioServer extends AbstractNioServer<PrimaryNioServer> 
 		assert eventloop.inEventloopThread();
 		totalAccepts++;
 
-		final NioServer nioServer = workerNioServers[currentAcceptor];
-		currentAcceptor = (currentAcceptor + 1) % workerNioServers.length;
-		NioEventloop eventloop = nioServer.getNioEventloop();
+		final EventloopServer server = workerServers[currentAcceptor];
+		currentAcceptor = (currentAcceptor + 1) % workerServers.length;
+		Eventloop eventloop = server.getEventloop();
 		if (eventloop == this.eventloop) {
-			nioServer.onAccept(socketChannel);
+			server.onAccept(socketChannel);
 		} else {
 			eventloop.postConcurrently(new Runnable() {
 				@Override
 				public void run() {
-					nioServer.onAccept(socketChannel);
+					server.onAccept(socketChannel);
 				}
 			});
 		}

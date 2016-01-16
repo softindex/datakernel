@@ -17,7 +17,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.UdpPacket;
 import io.datakernel.eventloop.UdpSocketConnection;
 
@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
-import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
+import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 
 /**
@@ -38,7 +38,7 @@ public class UdpEchoServerClientExample {
 
 	/* UDP server, which sends received packets back to sender. */
 	private static class EchoServerUdpConnection extends UdpSocketConnection {
-		public EchoServerUdpConnection(NioEventloop eventloop, DatagramChannel datagramChannel) {
+		public EchoServerUdpConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
 			super(eventloop, datagramChannel);
 		}
 
@@ -57,7 +57,7 @@ public class UdpEchoServerClientExample {
 
 	/* UDP client, which sends test UDP packet to server and outputs received bytes to console. */
 	private static class ClientUdpConnection extends UdpSocketConnection {
-		public ClientUdpConnection(NioEventloop eventloop, DatagramChannel datagramChannel) {
+		public ClientUdpConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
 			super(eventloop, datagramChannel);
 		}
 
@@ -88,7 +88,7 @@ public class UdpEchoServerClientExample {
 
 	/* Run server and client in an event loop. */
 	public static void main(String[] args) throws IOException {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		DatagramChannel serverChannel = createDatagramChannel(defaultDatagramSocketSettings(),
 				SERVER_ADDRESS, null);

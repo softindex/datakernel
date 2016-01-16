@@ -18,7 +18,7 @@ package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamDeserializer;
 import io.datakernel.stream.processor.StreamSerializer;
@@ -66,7 +66,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	 * @param streamDeserializer for deserializing input ByteBuffer to object
 	 * @param streamSerializer   for serializing obtained output object to ByteBuffer
 	 */
-	public StreamMessagingConnection(NioEventloop eventloop, SocketChannel socketChannel,
+	public StreamMessagingConnection(Eventloop eventloop, SocketChannel socketChannel,
 	                                 StreamDeserializer<I> streamDeserializer, StreamSerializer<O> streamSerializer) {
 		super(eventloop, socketChannel);
 		this.streamDeserializer = streamDeserializer;

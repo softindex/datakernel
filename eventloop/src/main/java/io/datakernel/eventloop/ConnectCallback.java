@@ -28,7 +28,7 @@ public interface ConnectCallback extends ExceptionCallback {
 
 	/**
 	 * Method which creates socket connection with socketChannel and registers this connection to
-	 * {@link NioEventloop}.
+	 * {@link Eventloop}.
 	 *
 	 * @param socketChannel socketChannel for creating new connection.
 	 */

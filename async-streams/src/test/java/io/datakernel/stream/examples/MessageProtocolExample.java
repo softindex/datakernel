@@ -18,8 +18,8 @@ package io.datakernel.stream.examples;
 
 import com.google.common.net.InetAddresses;
 import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.SimpleNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.SimpleEventloopServer;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.net.Messaging;
@@ -46,8 +46,8 @@ public class MessageProtocolExample {
 			new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
 
 	/* Subclass of SimpleNioServer with BinaryProtocolMessaging, which sends received bytes back. */
-	public static class MessageProtocolServer extends SimpleNioServer {
-		public MessageProtocolServer(NioEventloop eventloop) {
+	public static class MessageProtocolServer extends SimpleEventloopServer {
+		public MessageProtocolServer(Eventloop eventloop) {
 			super(eventloop);
 		}
 
@@ -68,7 +68,7 @@ public class MessageProtocolExample {
 	/* Create the client connection with MessageProtocol and MessageProtocol.Starter.
 	Starter sends the first integer to server after the start up.
 	Each received integer is decremented and sent back, until the negative integer is received. */
-	public static void createClientConnection(final NioEventloop eventloop) {
+	public static void createClientConnection(final Eventloop eventloop) {
 		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
 					@Override
 					public void onConnect(SocketChannel socketChannel) {
@@ -104,9 +104,9 @@ public class MessageProtocolExample {
 
 	/* Run the server and client in an event loop. */
 	public static void main(String[] args) throws IOException {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
-		SimpleNioServer server = new MessageProtocolServer(eventloop);
+		SimpleEventloopServer server = new MessageProtocolServer(eventloop);
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 		createClientConnection(eventloop);

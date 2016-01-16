@@ -18,7 +18,7 @@ package io.datakernel.dns;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -28,13 +28,13 @@ import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
-import static io.datakernel.eventloop.NioEventloop.createDatagramChannel;
+import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static org.junit.Assert.assertEquals;
 
 public class NativeDnsResolverConnectionTest {
 	private DnsClientConnection dnsClientConnection;
-	private NioEventloop eventloop;
+	private Eventloop eventloop;
 	private static InetSocketAddress DNS_SERVER_ADDRESS = new InetSocketAddress("8.8.8.8", 53);
 	private static long TIMEOUT = 1000L;
 	private int answersReceived = 0;
@@ -44,7 +44,7 @@ public class NativeDnsResolverConnectionTest {
 		ByteBufPool.clear();
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
-		eventloop = new NioEventloop();
+		eventloop = new Eventloop();
 	}
 
 	private class DnsResolveCallback implements ResultCallback<DnsQueryResult> {

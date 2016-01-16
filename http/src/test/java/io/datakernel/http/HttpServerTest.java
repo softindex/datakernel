@@ -19,7 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.jmx.ExceptionStats;
@@ -50,7 +50,7 @@ public class HttpServerTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 	}
 
-	public static AsyncHttpServer blockingHttpServer(NioEventloop primaryEventloop) {
+	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
@@ -60,7 +60,7 @@ public class HttpServerTest {
 		});
 	}
 
-	public static AsyncHttpServer asyncHttpServer(final NioEventloop primaryEventloop) {
+	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
@@ -75,7 +75,7 @@ public class HttpServerTest {
 		});
 	}
 
-	public static AsyncHttpServer delayedHttpServer(final NioEventloop primaryEventloop) {
+	public static AsyncHttpServer delayedHttpServer(final Eventloop primaryEventloop) {
 		final Random random = new Random();
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
@@ -107,7 +107,7 @@ public class HttpServerTest {
 		Assert.assertEquals(expected, decodeAscii(bytes));
 	}
 
-	private void doTestKeepAlive(NioEventloop eventloop, AsyncHttpServer server) throws Exception {
+	private void doTestKeepAlive(Eventloop eventloop, AsyncHttpServer server) throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		server.setListenPort(port);
 		server.listen();
@@ -138,7 +138,7 @@ public class HttpServerTest {
 
 	@Test
 	public void testKeepAlive() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		doTestKeepAlive(eventloop, blockingHttpServer(eventloop));
 		doTestKeepAlive(eventloop, asyncHttpServer(eventloop));
@@ -149,7 +149,7 @@ public class HttpServerTest {
 
 	@Test
 	public void testClosed() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		AsyncHttpServer server = blockingHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
@@ -172,7 +172,7 @@ public class HttpServerTest {
 
 	@Test
 	public void testNoKeepAlive() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		AsyncHttpServer server = blockingHttpServer(eventloop);
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
@@ -197,7 +197,7 @@ public class HttpServerTest {
 
 	@Test
 	public void testPipelining() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		doTestPipelining(eventloop, blockingHttpServer(eventloop));
 		doTestPipelining(eventloop, asyncHttpServer(eventloop));
@@ -206,7 +206,7 @@ public class HttpServerTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	private void doTestPipelining(NioEventloop eventloop, AsyncHttpServer server) throws Exception {
+	private void doTestPipelining(Eventloop eventloop, AsyncHttpServer server) throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		server.setListenPort(port);
 		server.listen();
@@ -233,7 +233,7 @@ public class HttpServerTest {
 	@Test
 	public void testBigHttpMessage() throws Exception {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 		final ByteBuf buf = HttpRequest.post("http://127.0.0.1:" + port)
 				.body(ByteBuf.wrap(encodeAscii("Test big HTTP message body"))).write();
 
@@ -270,7 +270,7 @@ public class HttpServerTest {
 	}
 
 	public static void main(String[] args) throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		AsyncHttpServer server = blockingHttpServer(eventloop).setListenPort(8888);
 		server.listen();
 		eventloop.run();

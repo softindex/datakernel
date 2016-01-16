@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,7 +68,7 @@ public class StreamByteChunkerTest {
 
 	@Test
 	public void testResizer() throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		List<ByteBuf> buffers = new ArrayList<>();
 		Random random = new Random(123456);

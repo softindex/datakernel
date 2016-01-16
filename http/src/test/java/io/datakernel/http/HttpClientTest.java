@@ -21,7 +21,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.server.AsyncHttpServlet;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,7 +47,7 @@ public class HttpClientTest {
 
 	@Test
 	public void testAsyncClient() throws Exception {
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
@@ -82,7 +82,7 @@ public class HttpClientTest {
 	@Test(expected = TimeoutException.class)
 	public void testTimeout() throws Throwable {
 		final int TIMEOUT = 100;
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final AsyncHttpServer httpServer = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
@@ -131,7 +131,7 @@ public class HttpClientTest {
 	@Test(expected = TimeoutException.class)
 	public void testClientTimeoutConnect() throws Throwable {
 		final int TIMEOUT = 1;
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, InetAddresses.forString("8.8.8.8")));
@@ -163,7 +163,7 @@ public class HttpClientTest {
 	@Test(expected = RuntimeException.class)
 	public void testBigHttpMessage() throws Throwable {
 		final int TIMEOUT = 1000;
-		final NioEventloop eventloop = new NioEventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		final AsyncHttpServer httpServer = HelloWorldServer.helloWorldServer(eventloop, PORT);
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,

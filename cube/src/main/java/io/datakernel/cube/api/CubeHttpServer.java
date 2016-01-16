@@ -22,7 +22,7 @@ import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.MiddlewareServlet;
 
@@ -32,7 +32,7 @@ public final class CubeHttpServer {
 	private static final String INFO_REQUEST_PATH = "/info/";
 	private static final String REPORTING_QUERY_REQUEST_PATH = "/";
 
-	public static MiddlewareServlet createServlet(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
+	public static MiddlewareServlet createServlet(Cube cube, Eventloop eventloop, DefiningClassLoader classLoader) {
 		final Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
 				.create();
@@ -50,11 +50,11 @@ public final class CubeHttpServer {
 		return servlet;
 	}
 
-	public static AsyncHttpServer createServer(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader) {
+	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, DefiningClassLoader classLoader) {
 		return new AsyncHttpServer(eventloop, createServlet(cube, eventloop, classLoader));
 	}
 
-	public static AsyncHttpServer createServer(Cube cube, NioEventloop eventloop, DefiningClassLoader classLoader, int port) {
+	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, DefiningClassLoader classLoader, int port) {
 		return createServer(cube, eventloop, classLoader).setListenPort(port);
 	}
 }

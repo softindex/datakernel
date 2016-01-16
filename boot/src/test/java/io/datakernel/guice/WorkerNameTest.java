@@ -92,7 +92,7 @@ public class WorkerNameTest {
 
 		@Provides
 		@Singleton
-		Element2 primaryNioServer(Element1 primaryEventloop, WorkerPools workerPools) {
+		Element2 primaryEventloopServer(Element1 primaryEventloop, WorkerPools workerPools) {
 			List<Element4> unusedList = workerPools.getInstances(Element4.class, "First");
 			return new Element2();
 		}

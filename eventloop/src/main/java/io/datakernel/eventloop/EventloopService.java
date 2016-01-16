@@ -16,16 +16,25 @@
 
 package io.datakernel.eventloop;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
+import io.datakernel.async.CompletionCallback;
 
-public interface AbstractNioServerMBean {
-	void resetStats();
+public interface EventloopService {
+	Eventloop getEventloop();
 
-	long getTotalAccepts();
+	/**
+	 * Starts this component asynchronously.
+	 * Callback completes immediately if the component is already running.
+	 *
+	 * @param callback callback which will be called after completion starting
+	 */
+	void start(CompletionCallback callback);
 
-	CompositeData getLastPrepareSocketException() throws OpenDataException;
-
-	CompositeData getLastCloseException() throws OpenDataException;
+	/**
+	 * Stops this component asynchronously.
+	 * Callback completes immediately if the component is not running / already stopped.
+	 *
+	 * @param callback callback which will be called after completion stopping
+	 */
+	void stop(CompletionCallback callback);
 
 }

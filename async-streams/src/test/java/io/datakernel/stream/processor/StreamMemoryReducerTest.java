@@ -18,7 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import org.junit.Test;
 
@@ -38,7 +38,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void test1() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(1, 1, 10, 20),
@@ -103,7 +103,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void testWithError() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 		List<DataItemResult> list = new ArrayList<>();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
@@ -172,7 +172,7 @@ public class StreamMemoryReducerTest {
 	@SuppressWarnings("ToArrayCallWithZeroLengthArrayArgument")
 	@Test
 	public void testProducerWithError() throws Exception {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.concat(eventloop,
 				StreamProducers.ofValue(eventloop, new DataItem1(1, 1, 10, 20)),
@@ -228,7 +228,7 @@ public class StreamMemoryReducerTest {
 
 	@Test
 	public void testWithoutConsumer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamProducer<DataItem1> source1 = StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(1, 1, 10, 20),
@@ -293,7 +293,7 @@ public class StreamMemoryReducerTest {
 
 	@Test
 	public void testWithoutProducer() {
-		NioEventloop eventloop = new NioEventloop();
+		Eventloop eventloop = new Eventloop();
 
 		StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult> reducer = new StreamReducers.ReducerToAccumulator<DataItemKey, DataItem1, DataItemResult>() {
 			@Override

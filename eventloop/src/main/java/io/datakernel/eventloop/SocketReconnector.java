@@ -36,7 +36,7 @@ public final class SocketReconnector implements AsyncGetter<SocketChannel> {
 
 	public static final int RECONNECT_ALWAYS = Integer.MAX_VALUE;
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final InetSocketAddress address;
 	private final SocketSettings socketSettings;
 	private final int reconnectAttempts;
@@ -51,7 +51,7 @@ public final class SocketReconnector implements AsyncGetter<SocketChannel> {
 	 * @param reconnectAttempts number for attempts to connect
 	 * @param reconnectTimeout  time after which it will begin connect
 	 */
-	public SocketReconnector(NioEventloop eventloop, InetSocketAddress address, SocketSettings socketSettings,
+	public SocketReconnector(Eventloop eventloop, InetSocketAddress address, SocketSettings socketSettings,
 	                         int reconnectAttempts, long reconnectTimeout) {
 		this.eventloop = checkNotNull(eventloop);
 		this.address = checkNotNull(address);
@@ -67,7 +67,7 @@ public final class SocketReconnector implements AsyncGetter<SocketChannel> {
 	 * @param address        address to which socketChannels will be connected.
 	 * @param socketSettings sockets settings for creating new sockets
 	 */
-	public SocketReconnector(NioEventloop eventloop, InetSocketAddress address, SocketSettings socketSettings) {
+	public SocketReconnector(Eventloop eventloop, InetSocketAddress address, SocketSettings socketSettings) {
 		this(eventloop, address, socketSettings, 0, 0);
 	}
 
@@ -105,7 +105,7 @@ public final class SocketReconnector implements AsyncGetter<SocketChannel> {
 	 * @param reconnectTimeout  time after which it will begin connect
 	 * @param callback          callback which handles result
 	 */
-	public static void reconnect(final NioEventloop eventloop, final InetSocketAddress address,
+	public static void reconnect(final Eventloop eventloop, final InetSocketAddress address,
 	                             final SocketSettings socketSettings,
 	                             final int reconnectAttempts, final long reconnectTimeout,
 	                             final ConnectCallback callback) {

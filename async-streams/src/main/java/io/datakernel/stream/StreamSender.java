@@ -18,7 +18,6 @@ package io.datakernel.stream;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.NioEventloop;
 
 import java.util.ArrayDeque;
 
@@ -34,10 +33,6 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 			this.item = item;
 			this.callback = callback;
 		}
-	}
-
-	protected StreamSender(Eventloop eventloop) {
-		super(eventloop);
 	}
 
 	@Override
@@ -75,11 +70,11 @@ public class StreamSender<T> extends AbstractStreamProducer<T> {
 			sendEndOfStream();
 	}
 
-	public StreamSender(NioEventloop eventloop) {
+	public StreamSender(Eventloop eventloop) {
 		this(eventloop, false);
 	}
 
-	public StreamSender(NioEventloop eventloop, boolean sendEndOfStream) {
+	public StreamSender(Eventloop eventloop, boolean sendEndOfStream) {
 		super(eventloop);
 		this.sendEndOfStream = sendEndOfStream;
 	}

@@ -17,8 +17,8 @@
 package io.datakernel.examples;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.NioEventloop;
-import io.datakernel.eventloop.PrimaryNioServer;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.PrimaryEventloopServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -33,15 +33,15 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 /**
  * Example 4.
- * Example of using PrimaryNioServer.
+ * Example of using PrimaryEventloopServer.
  */
-public class PrimaryNioServerExample {
+public class WorkersServerExample {
 	final static int PORT = 9444;
 	final static int WORKERS = 4;
 
 	/* Creates a 'worker' echo server, which will handle requests to primary server.
 	The response to each request contains the number of worker server. */
-	public static AsyncHttpServer echoServer(NioEventloop eventloop, final int workerN) {
+	public static AsyncHttpServer echoServer(Eventloop eventloop, final int workerN) {
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
@@ -53,13 +53,13 @@ public class PrimaryNioServerExample {
 	}
 
 	/* Creates multiple worker echo servers, each in a separate thread.
-	Instantiates a PrimaryNioServer with the specified worker servers. */
+	Instantiates a PrimaryEventloopServer with the specified worker servers. */
 	public static void main(String[] args) throws Exception {
 		final ArrayList<AsyncHttpServer> workerServers = new ArrayList<>();
 
 		// Create and run worker servers
 		for (int i = 0; i < WORKERS; i++) {
-			NioEventloop eventloop = new NioEventloop();
+			Eventloop eventloop = new Eventloop();
 			eventloop.keepAlive(true);
 
 			AsyncHttpServer server = echoServer(eventloop, i);
@@ -69,28 +69,28 @@ public class PrimaryNioServerExample {
 			new Thread(eventloop).start();
 		}
 
-		// Create PrimaryNioServer
-		NioEventloop primaryEventloop = new NioEventloop();
-		PrimaryNioServer primaryNioServer = PrimaryNioServer.create(primaryEventloop)
-				.workerNioServers(workerServers)
+		// Create PrimaryEventloopServer
+		Eventloop primaryEventloop = new Eventloop();
+		PrimaryEventloopServer primaryEventloopServer = PrimaryEventloopServer.create(primaryEventloop)
+				.workerServers(workerServers)
 				.setListenPort(PORT);
 		try {
-			primaryNioServer.listen();
+			primaryEventloopServer.listen();
 
-			// Run PrimaryNioServer
+			// Run PrimaryEventloopServer
 			Thread primaryThread = new Thread(primaryEventloop);
 			primaryThread.start();
 
 			waitForExit();
 
-			// Close PrimaryNioServer
-			primaryNioServer.closeFuture().await();
+			// Close PrimaryEventloopServer
+			primaryEventloopServer.closeFuture().await();
 			primaryThread.join();
 		} finally {
 			// Close all servers
 			for (AsyncHttpServer worker : workerServers) {
 				worker.closeFuture().await();
-				worker.getNioEventloop().keepAlive(false); // end of eventloop
+				worker.getEventloop().keepAlive(false); // end of eventloop
 			}
 		}
 	}

@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 
 public interface RpcConnection {
 	void onReceiveMessage(RpcMessage message);
@@ -25,5 +25,5 @@ public interface RpcConnection {
 
 	void onClosed();
 
-	NioEventloop getEventloop();
+	Eventloop getEventloop();
 }

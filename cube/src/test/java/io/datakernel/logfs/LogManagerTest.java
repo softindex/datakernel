@@ -17,7 +17,7 @@
 package io.datakernel.logfs;
 
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamSender;
@@ -74,7 +74,7 @@ public class LogManagerTest {
 		final String logPartition = "testLog";
 
 		final SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
-		final NioEventloop eventloop = new NioEventloop(timeProvider);
+		final Eventloop eventloop = new Eventloop(timeProvider);
 
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.utf16Serializer());

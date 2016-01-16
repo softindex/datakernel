@@ -19,7 +19,7 @@ package io.datakernel.aggregation_db;
 import io.datakernel.async.AsyncExecutor;
 import io.datakernel.async.AsyncTask;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamProducer;
@@ -36,12 +36,12 @@ import java.util.List;
 public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsChunkStorage.class);
 
-	private final NioEventloop eventloop;
+	private final Eventloop eventloop;
 	private final AggregationStructure aggregationStructure;
 	private final SimpleFsClient client;
 	private final AsyncExecutor asyncExecutor;
 
-	public SimpleFsChunkStorage(NioEventloop eventloop, AggregationStructure aggregationStructure,
+	public SimpleFsChunkStorage(Eventloop eventloop, AggregationStructure aggregationStructure,
 	                            AsyncExecutor asyncExecutor, InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
 		this.aggregationStructure = aggregationStructure;
