@@ -18,7 +18,7 @@ package io.datakernel.examples;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.PrimaryEventloopServer;
+import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -71,11 +71,11 @@ public class WorkersServerExample {
 
 		// Create PrimaryEventloopServer
 		Eventloop primaryEventloop = new Eventloop();
-		PrimaryEventloopServer primaryEventloopServer = PrimaryEventloopServer.create(primaryEventloop)
+		PrimaryServer primaryServer = PrimaryServer.create(primaryEventloop)
 				.workerServers(workerServers)
 				.setListenPort(PORT);
 		try {
-			primaryEventloopServer.listen();
+			primaryServer.listen();
 
 			// Run PrimaryEventloopServer
 			Thread primaryThread = new Thread(primaryEventloop);
@@ -84,7 +84,7 @@ public class WorkersServerExample {
 			waitForExit();
 
 			// Close PrimaryEventloopServer
-			primaryEventloopServer.closeFuture().await();
+			primaryServer.closeFuture().await();
 			primaryThread.join();
 		} finally {
 			// Close all servers

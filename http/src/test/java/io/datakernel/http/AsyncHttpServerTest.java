@@ -42,7 +42,7 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;
 import static org.junit.Assert.*;
 
-public class HttpServerTest {
+public class AsyncHttpServerTest {
 
 	@Before
 	public void before() {

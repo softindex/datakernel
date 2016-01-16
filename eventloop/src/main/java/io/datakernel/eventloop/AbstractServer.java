@@ -19,14 +19,11 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
@@ -46,8 +43,8 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * @param <S> type of AbstractNioServer which extends from it
  */
-public abstract class AbstractEventloopServer<S extends AbstractEventloopServer<S>> implements EventloopServer {
-	private static final Logger logger = getLogger(AbstractEventloopServer.class);
+public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer {
+	private static final Logger logger = getLogger(AbstractServer.class);
 
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
 	/**
@@ -64,11 +61,11 @@ public abstract class AbstractEventloopServer<S extends AbstractEventloopServer<
 	private ServerSocketChannel[] serverSocketChannels;
 
 	// JMX
-	private static final ExceptionMarker PREPARE_SOCKET_MARKER = new ExceptionMarker(PrimaryEventloopServer.class, "PrepareSocketException");
-	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(PrimaryEventloopServer.class, "CloseException");
+	private static final ExceptionMarker PREPARE_SOCKET_MARKER = new ExceptionMarker(PrimaryServer.class, "PrepareSocketException");
+	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(PrimaryServer.class, "CloseException");
 	protected long totalAccepts;
 
-	public AbstractEventloopServer(Eventloop eventloop) {
+	public AbstractServer(Eventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
 	}
 

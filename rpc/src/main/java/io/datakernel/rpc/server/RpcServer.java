@@ -16,10 +16,9 @@
 
 package io.datakernel.rpc.server;
 
-import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.CompositeDataBuilder;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -29,9 +28,6 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import org.slf4j.Logger;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
 import java.nio.channels.SocketChannel;
 import java.util.*;
 
@@ -39,7 +35,7 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class RpcServer extends AbstractEventloopServer<RpcServer> {
+public final class RpcServer extends AbstractServer<RpcServer> {
 	private Logger logger = getLogger(RpcServer.class);
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);

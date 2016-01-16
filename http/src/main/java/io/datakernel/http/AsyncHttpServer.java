@@ -16,20 +16,15 @@
 
 package io.datakernel.http;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Stopwatch;
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.ValueStats;
 
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
@@ -38,7 +33,7 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
  * A HttpServer is bound to an IP address and port number and listens for incoming connections
  * from clients on this address. A HttpServer is supported  {@link AsyncHttpServlet} that completes all responses asynchronously.
  */
-public final class AsyncHttpServer extends AbstractEventloopServer<AsyncHttpServer> {
+public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 

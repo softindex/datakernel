@@ -19,10 +19,7 @@ package io.datakernel.stream.examples;
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SimpleEventloopServer;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.*;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
@@ -55,7 +52,7 @@ public final class BinaryProtocolExample {
 
 	/* Subclass of SimpleNioServer with BinaryProtocol, which deserializes received stream
 	and streams it to other consumer. */
-	public static class BinaryProtocolServer extends SimpleEventloopServer {
+	public static class BinaryProtocolServer extends AbstractServer {
 
 		public BinaryProtocolServer(Eventloop eventloop) {
 			super(eventloop);
@@ -112,7 +109,7 @@ public final class BinaryProtocolExample {
 			source.add(i);
 		}
 
-		SimpleEventloopServer server = new BinaryProtocolServer(eventloop);
+		BinaryProtocolServer server = new BinaryProtocolServer(eventloop);
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 

@@ -35,7 +35,7 @@ import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
 
-public class HttpClientTest {
+public class AsyncHttpClientTest {
 	private static final int PORT = 45788;
 	public static final byte[] TIMEOUT_EXCEPTION_BYTES = encodeAscii("ERROR: Must be TimeoutException");
 

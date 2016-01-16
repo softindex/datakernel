@@ -20,16 +20,16 @@ import java.nio.channels.SocketChannel;
 import java.util.Collection;
 
 /**
- * It is the {@link AbstractEventloopServer} which only handles accepting to it. It contains collection of
+ * It is the {@link AbstractServer} which only handles accepting to it. It contains collection of
  * other {@link EventloopServer}, and when takes place new accept to it, it forwards request to other server
  * from collection with round-robin algorithm.
  */
-public final class PrimaryEventloopServer extends AbstractEventloopServer<PrimaryEventloopServer> {
+public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	private EventloopServer[] workerServers;
 
 	private int currentAcceptor = 0;
 
-	private PrimaryEventloopServer(Eventloop primaryEventloop) {
+	private PrimaryServer(Eventloop primaryEventloop) {
 		super(primaryEventloop);
 	}
 
@@ -39,8 +39,8 @@ public final class PrimaryEventloopServer extends AbstractEventloopServer<Primar
 	 * @param primaryEventloop the Eventloop which will execute IO tasks of this server
 	 * @return new PrimaryNioServer
 	 */
-	public static PrimaryEventloopServer create(Eventloop primaryEventloop) {
-		return new PrimaryEventloopServer(primaryEventloop);
+	public static PrimaryServer create(Eventloop primaryEventloop) {
+		return new PrimaryServer(primaryEventloop);
 	}
 
 	/**
@@ -50,7 +50,7 @@ public final class PrimaryEventloopServer extends AbstractEventloopServer<Primar
 	 * @return this PrimaryNioServer
 	 */
 	@SuppressWarnings("unchecked")
-	public PrimaryEventloopServer workerServers(Collection<? extends EventloopServer> workerServers) {
+	public PrimaryServer workerServers(Collection<? extends EventloopServer> workerServers) {
 		this.workerServers = workerServers.toArray(new EventloopServer[workerServers.size()]);
 		return this;
 	}
@@ -62,7 +62,7 @@ public final class PrimaryEventloopServer extends AbstractEventloopServer<Primar
 	 * @return this PrimaryNioServer
 	 */
 	@SuppressWarnings("unchecked")
-	public PrimaryEventloopServer workerServers(EventloopServer... workerServers) {
+	public PrimaryServer workerServers(EventloopServer... workerServers) {
 		this.workerServers = workerServers;
 		return this;
 	}

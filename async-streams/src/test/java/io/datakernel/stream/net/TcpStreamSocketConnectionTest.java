@@ -21,10 +21,7 @@ import com.google.common.net.InetAddresses;
 import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SimpleEventloopServer;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.*;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
@@ -66,7 +63,7 @@ public final class TcpStreamSocketConnectionTest {
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
@@ -120,7 +117,7 @@ public final class TcpStreamSocketConnectionTest {
 
 		final StreamConsumers.ToList<Integer> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
@@ -185,7 +182,7 @@ public final class TcpStreamSocketConnectionTest {
 			}
 		};
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {
@@ -250,7 +247,7 @@ public final class TcpStreamSocketConnectionTest {
 			}
 		};
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new TcpStreamSocketConnection(eventloop, socketChannel) {

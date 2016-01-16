@@ -28,7 +28,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.PrimaryEventloopServer;
+import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -76,9 +76,9 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		PrimaryEventloopServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPools workerPools,
+		PrimaryServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPools workerPools,
 		                                     Config config) {
-			PrimaryEventloopServer primaryNioServer = PrimaryEventloopServer.create(primaryEventloop);
+			PrimaryServer primaryNioServer = PrimaryServer.create(primaryEventloop);
 			primaryNioServer.workerServers(workerPools.getInstances(AsyncHttpServer.class));
 			int port = config.get(ConfigConverters.ofInteger(), "port", 5577);
 			primaryNioServer.setListenPort(port);

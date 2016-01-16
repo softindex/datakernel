@@ -21,10 +21,7 @@ import com.google.common.net.InetAddresses;
 import com.google.gson.Gson;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SimpleEventloopServer;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
@@ -61,7 +58,7 @@ public class BinaryProtocolTest {
 	public void testPing() throws Exception {
 		final Eventloop eventloop = new Eventloop();
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
@@ -128,7 +125,7 @@ public class BinaryProtocolTest {
 		List<Long> l = new ArrayList<>();
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop, l);
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
@@ -202,7 +199,7 @@ public class BinaryProtocolTest {
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
@@ -284,7 +281,7 @@ public class BinaryProtocolTest {
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,
@@ -385,7 +382,7 @@ public class BinaryProtocolTest {
 
 		final StreamConsumers.ToList<Long> consumerToList = StreamConsumers.toList(eventloop);
 
-		SimpleEventloopServer server = new SimpleEventloopServer(eventloop) {
+		AbstractServer server = new AbstractServer(eventloop) {
 			@Override
 			protected SocketConnection createConnection(SocketChannel socketChannel) {
 				return new StreamMessagingConnection<>(eventloop, socketChannel,

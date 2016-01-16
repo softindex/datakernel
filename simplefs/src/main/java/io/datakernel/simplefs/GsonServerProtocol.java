@@ -18,7 +18,7 @@ package io.datakernel.simplefs;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.stream.net.Messaging;
@@ -32,7 +32,7 @@ import java.util.Set;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
-final class GsonServerProtocol extends AbstractEventloopServer<GsonServerProtocol> {
+final class GsonServerProtocol extends AbstractServer<GsonServerProtocol> {
 	public static final class Builder {
 		private final Eventloop eventloop;
 		private int deserializerBufferSize = DEFAULT_DESERIALIZER_BUFFER_SIZE;

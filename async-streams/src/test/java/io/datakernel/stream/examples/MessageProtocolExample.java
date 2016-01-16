@@ -17,10 +17,7 @@
 package io.datakernel.stream.examples;
 
 import com.google.common.net.InetAddresses;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SimpleEventloopServer;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingHandler;
@@ -46,7 +43,7 @@ public class MessageProtocolExample {
 			new InetSocketAddress(InetAddresses.forString("127.0.0.1"), LISTEN_PORT);
 
 	/* Subclass of SimpleNioServer with BinaryProtocolMessaging, which sends received bytes back. */
-	public static class MessageProtocolServer extends SimpleEventloopServer {
+	public static class MessageProtocolServer extends AbstractServer {
 		public MessageProtocolServer(Eventloop eventloop) {
 			super(eventloop);
 		}
@@ -106,7 +103,7 @@ public class MessageProtocolExample {
 	public static void main(String[] args) throws IOException {
 		final Eventloop eventloop = new Eventloop();
 
-		SimpleEventloopServer server = new MessageProtocolServer(eventloop);
+		MessageProtocolServer server = new MessageProtocolServer(eventloop);
 		server.setListenAddress(address).acceptOnce();
 		server.listen();
 		createClientConnection(eventloop);

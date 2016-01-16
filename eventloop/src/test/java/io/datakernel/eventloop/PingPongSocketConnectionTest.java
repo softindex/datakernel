@@ -86,7 +86,7 @@ public class PingPongSocketConnectionTest {
 		}
 	}
 
-	static class TestServer extends SimpleEventloopServer {
+	static class TestServer extends AbstractServer {
 		public TestServer(Eventloop eventloop) {
 			super(eventloop);
 		}

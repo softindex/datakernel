@@ -16,10 +16,10 @@
 
 package io.datakernel.hashfs;
 
-import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 
-abstract class ServerProtocol extends AbstractEventloopServer<ServerProtocol> {
+abstract class ServerProtocol extends AbstractServer<ServerProtocol> {
 	public ServerProtocol(Eventloop eventloop) {
 		super(eventloop);
 	}

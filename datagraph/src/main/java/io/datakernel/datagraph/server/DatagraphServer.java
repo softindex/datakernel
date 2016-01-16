@@ -24,7 +24,7 @@ import io.datakernel.datagraph.server.command.DatagraphCommand;
 import io.datakernel.datagraph.server.command.DatagraphCommandDownload;
 import io.datakernel.datagraph.server.command.DatagraphCommandExecute;
 import io.datakernel.datagraph.server.command.DatagraphResponse;
-import io.datakernel.eventloop.AbstractEventloopServer;
+import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.serializer.BufferSerializer;
@@ -48,7 +48,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 /**
  * Server for processing JSON commands.
  */
-public final class DatagraphServer extends AbstractEventloopServer<DatagraphServer> {
+public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	private static final Logger logger = LoggerFactory.getLogger(DatagraphServer.class);
 
 	private final DatagraphEnvironment environment;

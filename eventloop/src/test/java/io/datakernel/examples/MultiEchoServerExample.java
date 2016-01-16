@@ -17,16 +17,13 @@
 package io.datakernel.examples;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SimpleEventloopServer;
-import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.eventloop.TcpSocketConnection;
+import io.datakernel.eventloop.*;
 
 import java.nio.channels.SocketChannel;
 import java.util.LinkedList;
 import java.util.List;
 
-public class MultiEchoServerExample extends SimpleEventloopServer {
+public class MultiEchoServerExample extends AbstractServer {
 
 	public class MultiEchoServerConnection extends TcpSocketConnection {
 		protected MultiEchoServerConnection(Eventloop eventloop, SocketChannel socketChannel) {

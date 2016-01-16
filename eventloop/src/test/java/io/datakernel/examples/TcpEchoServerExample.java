@@ -17,10 +17,7 @@
 package io.datakernel.examples;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SimpleEventloopServer;
-import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.eventloop.TcpSocketConnection;
+import io.datakernel.eventloop.*;
 
 import java.nio.channels.SocketChannel;
 
@@ -33,7 +30,7 @@ public class TcpEchoServerExample {
 	public static final int PORT = 9922;
 
 	/* TCP server that prints received data to console and sends it back to sender. */
-	public static class EchoServer extends SimpleEventloopServer {
+	public static class EchoServer extends AbstractServer<EchoServer> {
 		public EchoServer(Eventloop eventloop) {
 			super(eventloop);
 		}
