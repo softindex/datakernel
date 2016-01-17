@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.boot;
+package io.datakernel.service;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;

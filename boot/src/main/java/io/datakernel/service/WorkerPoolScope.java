@@ -14,16 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.boot;
+package io.datakernel.service;
 
 import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
 import io.datakernel.annotation.Nullable;
 
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import static com.google.common.base.Preconditions.checkArgument;

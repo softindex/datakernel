@@ -19,7 +19,7 @@ package io.datakernel.guice;
 import com.google.common.io.Closeables;
 import com.google.inject.*;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.boot.*;
+import io.datakernel.service.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;

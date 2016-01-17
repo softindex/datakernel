@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.boot;
+package io.datakernel.service;
 
 import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;

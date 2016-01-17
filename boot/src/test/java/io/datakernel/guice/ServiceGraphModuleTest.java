@@ -19,10 +19,10 @@ package io.datakernel.guice;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.boot.ServiceGraphModule;
-import io.datakernel.boot.Service;
-import io.datakernel.boot.ServiceAdapter;
-import io.datakernel.boot.ServiceGraph;
+import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.service.Service;
+import io.datakernel.service.ServiceAdapter;
+import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.TestServiceGraphServices;
 import org.junit.Test;
 

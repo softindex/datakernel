@@ -19,9 +19,9 @@ package io.datakernel.guice;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.*;
-import io.datakernel.boot.ServiceGraphModule;
-import io.datakernel.boot.Service;
-import io.datakernel.boot.ServiceGraph;
+import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.service.Service;
+import io.datakernel.service.ServiceGraph;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;

@@ -17,7 +17,7 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
-import io.datakernel.boot.ServiceGraph;
+import io.datakernel.service.ServiceGraph;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
 import io.datakernel.util.FileLocker;

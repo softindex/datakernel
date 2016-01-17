@@ -18,7 +18,6 @@ package io.datakernel.service;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
-import io.datakernel.boot.Service;
 
 public final class TestServiceGraphServices {
 	private TestServiceGraphServices() {

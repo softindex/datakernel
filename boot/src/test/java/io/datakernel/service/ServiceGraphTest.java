@@ -16,7 +16,6 @@
 
 package io.datakernel.service;
 
-import io.datakernel.boot.ServiceGraph;
 import org.junit.Test;
 
 import java.util.concurrent.ExecutionException;

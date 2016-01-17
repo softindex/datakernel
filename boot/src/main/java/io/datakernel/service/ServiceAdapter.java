@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.boot;
+package io.datakernel.service;
 
 import java.util.concurrent.Executor;
 

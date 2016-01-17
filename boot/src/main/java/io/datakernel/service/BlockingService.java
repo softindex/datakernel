@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.boot;
+package io.datakernel.service;
 
 /**
  * It is service which blocks thread during operations start and stop.

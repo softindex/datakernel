@@ -18,7 +18,7 @@ package io.datakernel.guice;
 
 import com.google.common.reflect.TypeToken;
 import com.google.inject.*;
-import io.datakernel.boot.*;
+import io.datakernel.service.*;
 import io.datakernel.service.TestServiceGraphServices;
 import org.junit.Test;
 

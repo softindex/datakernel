@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.boot;
+package io.datakernel.service;
 
 import com.google.common.reflect.TypeToken;
-import com.google.inject.Binding;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 

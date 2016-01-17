@@ -14,21 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.boot;
+package io.datakernel.service;
 
-import com.google.inject.BindingAnnotation;
-import com.google.inject.ScopeAnnotation;
+import com.google.common.util.concurrent.ListenableFuture;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+public interface Service {
+	ListenableFuture<?> start();
 
-import static java.lang.annotation.ElementType.*;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
-
-@ScopeAnnotation
-@BindingAnnotation
-@Target({TYPE, METHOD, PARAMETER})
-@Retention(RUNTIME)
-public @interface Worker {
-	String value() default "";
+	ListenableFuture<?> stop();
 }
