@@ -23,7 +23,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.boot.BootModule;
 import io.datakernel.boot.Worker;
 import io.datakernel.boot.WorkerId;
-import io.datakernel.boot.WorkerPools;
+import io.datakernel.boot.WorkerPool;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -64,8 +64,8 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		WorkerPools workerPools(Config config) {
-			return WorkerPools.createDefaultPool(config.get(ConfigConverters.ofInteger(), "workers", 4));
+		WorkerPool workerPool(Config config) {
+			return new WorkerPool(config.get(ConfigConverters.ofInteger(), "workers", 4));
 		}
 
 		@Provides
@@ -76,10 +76,10 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		PrimaryServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPools workerPools,
+		PrimaryServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPool workerPool,
 		                                     Config config) {
 			PrimaryServer primaryNioServer = PrimaryServer.create(primaryEventloop);
-			primaryNioServer.workerServers(workerPools.getInstances(AsyncHttpServer.class));
+			primaryNioServer.workerServers(workerPool.getInstances(AsyncHttpServer.class));
 			int port = config.get(ConfigConverters.ofInteger(), "port", 5577);
 			primaryNioServer.setListenPort(port);
 			return primaryNioServer;

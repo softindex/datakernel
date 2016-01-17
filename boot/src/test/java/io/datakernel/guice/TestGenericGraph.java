@@ -55,15 +55,15 @@ public class TestGenericGraph {
 
 		@Provides
 		@Singleton
-		WorkerPools workerPools() {
-			return WorkerPools.createDefaultPool(WORKERS);
+		WorkerPool workerPool() {
+			return new WorkerPool(WORKERS);
 		}
 
 		@Provides
 		@Singleton
-		Pojo<Integer> integerPojo(WorkerPools workerPools) {
-			List<Pojo<String>> list = workerPools.getInstances(new TypeToken<Pojo<String>>() {});
-			List<Pojo<String>> listOther = workerPools.getInstances(new TypeToken<Pojo<String>>() {}, "other");
+		Pojo<Integer> integerPojo(WorkerPool workerPool) {
+			List<Pojo<String>> list = workerPool.getInstances(new TypeToken<Pojo<String>>() {});
+			List<Pojo<String>> listOther = workerPool.getInstances(new TypeToken<Pojo<String>>() {}, "other");
 			return new Pojo<>(Integer.valueOf(listOther.get(0).getObject())
 					+ Integer.valueOf(list.get(0).getObject()));
 		}

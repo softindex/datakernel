@@ -16,18 +16,37 @@
 
 package io.datakernel.boot;
 
-import com.google.inject.Inject;
 import com.google.inject.Key;
 import com.google.inject.Provider;
 import com.google.inject.Scope;
+import io.datakernel.annotation.Nullable;
 
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
 final class WorkerPoolScope implements Scope {
-	@Inject(optional = true)
-	WorkerPools pools;
+	final Map<Key<?>, WorkerPoolObjects> pool = new HashMap<>();
+
+	@Nullable
+	WorkerPool currentWorkerPool;
+
+	@Nullable
+	Integer currentWorkerId;
+
+	private static class WorkerPoolObjects {
+		private final WorkerPool workerPool;
+		private final Object[] objects;
+
+		public WorkerPoolObjects(WorkerPool workerPool, Object[] objects) {
+			this.workerPool = workerPool;
+			this.objects = objects;
+		}
+	}
 
 	@Override
 	public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
@@ -35,16 +54,28 @@ final class WorkerPoolScope implements Scope {
 			@SuppressWarnings("unchecked")
 			@Override
 			public T get() {
-				if (key.getAnnotationType() == WorkerId.class) {
-					return (T) pools.currentWorkerId;
+				checkState(currentWorkerPool != null && currentWorkerId != null,
+						"Use WorkerPool to get instances of %s", key);
+
+				WorkerPoolObjects workerPoolObjects = pool.get(key);
+				if (workerPoolObjects == null) {
+					workerPoolObjects = new WorkerPoolObjects(currentWorkerPool, new Object[currentWorkerPool.workers]);
+					pool.put(key, workerPoolObjects);
 				}
-				return pools.provideInstance(key, unscoped);
+				checkArgument(workerPoolObjects.workerPool == currentWorkerPool,
+						"%s has been created with different WorkerPool", key);
+				T[] instances = (T[]) workerPoolObjects.objects;
+				T instance = instances[currentWorkerId];
+				if (instance == null) {
+					instance = unscoped.get();
+					instances[currentWorkerId] = instance;
+				}
+				return instance;
 			}
 		};
 	}
 
 	List<?> getInstances(Key<?> key) {
-		checkState(pools != null, "WorkerPools instance must be provided in Guice modules");
-		return pools.getInstances(key);
+		return Arrays.asList(pool.get(key).objects);
 	}
 }

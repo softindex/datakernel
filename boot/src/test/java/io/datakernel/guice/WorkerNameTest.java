@@ -79,8 +79,8 @@ public class WorkerNameTest {
 
 		@Provides
 		@Singleton
-		WorkerPools workerPools() {
-			return WorkerPools.createDefaultPool(WORKERS);
+		WorkerPool workerPool() {
+			return new WorkerPool(WORKERS);
 		}
 
 		@Provides
@@ -92,8 +92,8 @@ public class WorkerNameTest {
 
 		@Provides
 		@Singleton
-		Element2 primaryEventloopServer(Element1 primaryEventloop, WorkerPools workerPools) {
-			List<Element4> unusedList = workerPools.getInstances(Element4.class, "First");
+		Element2 primaryEventloopServer(Element1 primaryEventloop, WorkerPool workerPool) {
+			List<Element4> unusedList = workerPool.getInstances(Element4.class, "First");
 			return new Element2();
 		}
 

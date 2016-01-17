@@ -69,8 +69,8 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
-		WorkerPools workerPools() {
-			return WorkerPools.createDefaultPool(WORKERS);
+		WorkerPool workerPools() {
+			return new WorkerPool(WORKERS);
 		}
 
 		@Provides
@@ -81,8 +81,8 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
-		PrimaryServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPools workerPools) {
-			List<AsyncHttpServer> workerHttpServers = workerPools.getInstances(AsyncHttpServer.class);
+		PrimaryServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPool workerPool) {
+			List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 			PrimaryServer primaryNioServer = PrimaryServer.create(primaryEventloop);
 			primaryNioServer.workerServers(workerHttpServers);
 			primaryNioServer.setListenPort(PORT);

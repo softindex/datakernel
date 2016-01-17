@@ -120,8 +120,24 @@ public final class BootModule extends AbstractModule {
 		});
 	}
 
-	private static boolean isWorker(Key<?> binding) {
-		return binding.getAnnotation() instanceof Worker;
+	private static boolean isWorkerScope(Binding<?> binding) {
+		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
+			public Boolean visitNoScoping() {
+				return false;
+			}
+
+			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
+				return visitedAnnotation == WorkerScope.class || visitedAnnotation == Worker.class;
+			}
+
+			public Boolean visitScope(Scope visitedScope) {
+				return visitedScope.getClass() == WorkerPoolScope.class;
+			}
+
+			public Boolean visitEagerSingleton() {
+				return false;
+			}
+		});
 	}
 
 	private static String prettyPrintAnnotation(Annotation annotation) {
@@ -210,7 +226,7 @@ public final class BootModule extends AbstractModule {
 		final List<Service> services = new ArrayList<>();
 		boolean found = false;
 		for (Object instance : instances) {
-			Service service = getServiceOrNull(key, instance);
+			Service service = getServiceOrNull(true, key, instance);
 			services.add(service);
 			if (service != null) {
 				found = true;
@@ -284,7 +300,7 @@ public final class BootModule extends AbstractModule {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Service getServiceOrNull(Key<?> key, Object instance) {
+	private Service getServiceOrNull(boolean worker, Key<?> key, Object instance) {
 		checkNotNull(instance);
 		CachedService service = services.get(instance);
 		if (service != null) {
@@ -304,7 +320,7 @@ public final class BootModule extends AbstractModule {
 		}
 		if (serviceAdapter != null) {
 			Service asyncService = ((ServiceAdapter<Object>) serviceAdapter).toService(instance, executor);
-			service = new CachedService(key, instance, asyncService);
+			service = new CachedService(worker, key, instance, asyncService);
 			services.put(instance, service);
 			return service;
 		}
@@ -320,14 +336,14 @@ public final class BootModule extends AbstractModule {
 			Key<?> key = binding.getKey();
 			if (isSingleton(binding)) {
 				Object instance = injector.getInstance(key);
-				Service service = getServiceOrNull(key, instance);
+				Service service = getServiceOrNull(false, key, instance);
 				graph.add(key, service);
 			}
 		}
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
 			Key<?> key = binding.getKey();
-			if (isWorker(key)) {
+			if (isWorkerScope(binding)) {
 				if (workerDependencies.values().contains(key)) {
 					List<?> instances = workerPoolScope.getInstances(key);
 					Service service = getPoolServiceOrNull(key, instances);
@@ -369,24 +385,27 @@ public final class BootModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
+		workerPoolScope = new WorkerPoolScope();
+
 		final Provider<Injector> injectorProvider = getProvider(Injector.class);
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
-				return binding.getKey().getTypeLiteral().getRawType() == WorkerPools.class;
+				return binding.getKey().getTypeLiteral().getRawType() == WorkerPool.class;
 			}
 		}, new ProvisionListener() {
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
-				WorkerPools workerPools = (WorkerPools) provision.provision();
-				workerPools.injector = injectorProvider.get();
+				WorkerPool workerPool = (WorkerPool) provision.provision();
+				workerPool.injector = injectorProvider.get();
+				workerPool.poolScope = workerPoolScope;
 			}
 		});
 
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
-				return binding.getKey().getAnnotationType() == Worker.class;
+				return isWorkerScope(binding);
 			}
 		}, new ProvisionListener() {
 			@Override
@@ -396,22 +415,21 @@ public final class BootModule extends AbstractModule {
 				if (chain.size() >= 2) {
 					Key<?> key = chain.get(chain.size() - 2).getDependency().getKey();
 					Key<T> dependencyKey = provision.getBinding().getKey();
-					if (isWorker(dependencyKey) && key.getTypeLiteral().getRawType() != ServiceGraph.class) {
+					if (key.getTypeLiteral().getRawType() != ServiceGraph.class) {
 						workerDependencies.put(key, dependencyKey);
 					}
 				}
 			}
 		});
 
-		workerPoolScope = new WorkerPoolScope();
-		requestInjection(workerPoolScope);
+		bindScope(WorkerScope.class, workerPoolScope);
 		bindScope(Worker.class, workerPoolScope);
 		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
 			@Override
 			public Integer get() {
-				return null;
+				return workerPoolScope.currentWorkerId;
 			}
-		}).in(Worker.class);
+		});
 	}
 
 	/**
@@ -440,13 +458,15 @@ public final class BootModule extends AbstractModule {
 	}
 
 	private class CachedService implements Service {
+		private final boolean worker;
 		private final Key<Object> key;
 		private final Object instance;
 		private final Service service;
 		private ListenableFuture<?> startFuture;
 		private ListenableFuture<?> stopFuture;
 
-		private CachedService(Key<?> key, Object instance, Service service) {
+		private CachedService(boolean worker, Key<?> key, Object instance, Service service) {
+			this.worker = worker;
 			this.key = (Key<Object>) key;
 			this.instance = instance;
 			this.service = service;
@@ -458,7 +478,7 @@ public final class BootModule extends AbstractModule {
 			if (startFuture == null) {
 				startFuture = service.start();
 			}
-			if (!isWorker(key)) {
+			if (!worker) {
 				startFuture.addListener(new Runnable() {
 					@Override
 					public void run() {
@@ -477,7 +497,7 @@ public final class BootModule extends AbstractModule {
 			if (stopFuture == null) {
 				stopFuture = service.stop();
 			}
-			if (!isWorker(key)) {
+			if (!worker) {
 				startFuture.addListener(new Runnable() {
 					@Override
 					public void run() {
