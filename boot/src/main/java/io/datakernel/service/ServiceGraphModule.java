@@ -400,8 +400,10 @@ public final class ServiceGraphModule extends AbstractModule {
 				protected String nodeToString(Object node) {
 					Key<?> key = (Key<?>) node;
 					Annotation annotation = key.getAnnotation();
+					WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
 					return key.getTypeLiteral() +
-							(annotation != null ? " " + prettyPrintAnnotation(annotation) : "");
+							(annotation != null ? " " + prettyPrintAnnotation(annotation) : "") +
+							(poolObjects != null ? " [" + poolObjects.getWorkerPool().getWorkersCount() + "]" : "");
 				}
 			};
 			createGuiceGraph(injector, serviceGraph);
