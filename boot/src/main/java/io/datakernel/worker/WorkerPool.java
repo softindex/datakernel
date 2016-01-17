@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.worker;
 
 import com.google.common.reflect.TypeToken;
 import com.google.inject.Injector;
@@ -24,9 +24,7 @@ import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
 
-import static com.google.common.base.Preconditions.checkArgument;
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Preconditions.*;
 
 public final class WorkerPool {
 	final int workers;
@@ -43,7 +41,7 @@ public final class WorkerPool {
 		return getInstances(Key.get(type, new WorkerAnnotation("")));
 	}
 
-	public int getWorkers() {
+	public int getWorkersCount() {
 		return workers;
 	}
 

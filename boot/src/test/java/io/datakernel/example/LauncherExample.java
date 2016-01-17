@@ -20,10 +20,6 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.service.ServiceGraphModule;
-import io.datakernel.service.Worker;
-import io.datakernel.service.WorkerId;
-import io.datakernel.service.WorkerPool;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -34,6 +30,10 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.service.ServiceGraphModule;
+import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.WorkerPool;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -76,8 +76,7 @@ public class LauncherExample {
 
 		@Provides
 		@Singleton
-		PrimaryServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPool workerPool,
-		                                     Config config) {
+		PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 			PrimaryServer primaryNioServer = PrimaryServer.create(primaryEventloop);
 			primaryNioServer.workerServers(workerPool.getInstances(AsyncHttpServer.class));
 			int port = config.get(ConfigConverters.ofInteger(), "port", 5577);

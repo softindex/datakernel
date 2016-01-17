@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.worker;
 
 import com.google.inject.BindingAnnotation;
 import com.google.inject.ScopeAnnotation;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.worker;
 
 import com.google.inject.Key;
 import com.google.inject.Provider;
@@ -27,7 +27,7 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
-final class WorkerPoolScope implements Scope {
+public final class WorkerPoolScope implements Scope {
 	final Map<Key<?>, WorkerPoolObjects> pool = new HashMap<>();
 
 	@Nullable
@@ -35,16 +35,6 @@ final class WorkerPoolScope implements Scope {
 
 	@Nullable
 	Integer currentWorkerId;
-
-	static class WorkerPoolObjects {
-		final WorkerPool workerPool;
-		final Object[] objects;
-
-		public WorkerPoolObjects(WorkerPool workerPool, Object[] objects) {
-			this.workerPool = workerPool;
-			this.objects = objects;
-		}
-	}
 
 	@Override
 	public <T> Provider<T> scope(final Key<T> key, final Provider<T> unscoped) {
@@ -73,7 +63,7 @@ final class WorkerPoolScope implements Scope {
 		};
 	}
 
-	WorkerPoolObjects getPoolObjects(Key<?> key) {
+	public WorkerPoolObjects getWorkerPoolObjects(Key<?> key) {
 		return pool.get(key);
 	}
 }

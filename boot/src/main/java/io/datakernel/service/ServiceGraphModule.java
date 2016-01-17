@@ -28,6 +28,9 @@ import com.google.inject.spi.*;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPoolModule;
+import io.datakernel.worker.WorkerPoolObjects;
 import org.slf4j.Logger;
 
 import javax.sql.DataSource;
@@ -60,9 +63,9 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	private final Executor executor;
 
-	private WorkerPoolScope workerPoolScope;
-
 	private List<Listener> listeners = new ArrayList<>();
+
+	private WorkerPoolModule workerPoolModule;
 
 	private ServiceGraph serviceGraph;
 
@@ -115,26 +118,6 @@ public final class ServiceGraphModule extends AbstractModule {
 
 			public Boolean visitEagerSingleton() {
 				return true;
-			}
-		});
-	}
-
-	private static boolean isWorkerScope(Binding<?> binding) {
-		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
-			public Boolean visitNoScoping() {
-				return false;
-			}
-
-			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
-				return visitedAnnotation == WorkerScope.class || visitedAnnotation == Worker.class;
-			}
-
-			public Boolean visitScope(Scope visitedScope) {
-				return visitedScope.getClass() == WorkerPoolScope.class;
-			}
-
-			public Boolean visitEagerSingleton() {
-				return false;
 			}
 		});
 	}
@@ -338,10 +321,10 @@ public final class ServiceGraphModule extends AbstractModule {
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
 			Key<?> key = binding.getKey();
-			if (isWorkerScope(binding)) {
-				WorkerPoolScope.WorkerPoolObjects poolObjects = workerPoolScope.getPoolObjects(key);
+			if (WorkerPoolModule.isWorkerScope(binding)) {
+				WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
 				if (poolObjects != null) {
-					Service service = getPoolServiceOrNull(poolObjects.workerPool, key, Arrays.asList(poolObjects.objects));
+					Service service = getPoolServiceOrNull(poolObjects.getWorkerPool(), key, poolObjects.getObjects());
 					graph.add(key, service);
 				} else {
 					logger.warn("Unused WorkerScope key: {}", key);
@@ -380,27 +363,12 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	@Override
 	protected void configure() {
-		workerPoolScope = new WorkerPoolScope();
-
-		final Provider<Injector> injectorProvider = getProvider(Injector.class);
+		workerPoolModule = new WorkerPoolModule();
+		install(workerPoolModule);
 		bindListener(new AbstractMatcher<Binding<?>>() {
 			@Override
 			public boolean matches(Binding<?> binding) {
-				return binding.getKey().getTypeLiteral().getRawType() == WorkerPool.class;
-			}
-		}, new ProvisionListener() {
-			@Override
-			public <T> void onProvision(ProvisionInvocation<T> provision) {
-				WorkerPool workerPool = (WorkerPool) provision.provision();
-				workerPool.injector = injectorProvider.get();
-				workerPool.poolScope = workerPoolScope;
-			}
-		});
-
-		bindListener(new AbstractMatcher<Binding<?>>() {
-			@Override
-			public boolean matches(Binding<?> binding) {
-				return isWorkerScope(binding);
+				return WorkerPoolModule.isWorkerScope(binding);
 			}
 		}, new ProvisionListener() {
 			@Override
@@ -414,15 +382,6 @@ public final class ServiceGraphModule extends AbstractModule {
 						workerDependencies.put(key, dependencyKey);
 					}
 				}
-			}
-		});
-
-		bindScope(WorkerScope.class, workerPoolScope);
-		bindScope(Worker.class, workerPoolScope);
-		bind(Integer.class).annotatedWith(WorkerId.class).toProvider(new Provider<Integer>() {
-			@Override
-			public Integer get() {
-				return workerPoolScope.currentWorkerId;
 			}
 		});
 	}
@@ -454,7 +413,7 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	private class CachedService implements Service {
 		private final boolean worker;
-		private final Key<Object> key;
+		private final Key<?> key;
 		private final Object instance;
 		private final Service service;
 		private ListenableFuture<?> startFuture;
@@ -462,7 +421,7 @@ public final class ServiceGraphModule extends AbstractModule {
 
 		private CachedService(boolean worker, Key<?> key, Object instance, Service service) {
 			this.worker = worker;
-			this.key = (Key<Object>) key;
+			this.key = key;
 			this.instance = instance;
 			this.service = service;
 		}

@@ -19,7 +19,8 @@ package io.datakernel.guice;
 import com.google.common.reflect.TypeToken;
 import com.google.inject.*;
 import io.datakernel.service.*;
-import io.datakernel.service.TestServiceGraphServices;
+import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerPool;
 import org.junit.Test;
 
 import java.util.List;

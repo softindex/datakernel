@@ -17,9 +17,11 @@
 package io.datakernel.guice;
 
 import com.google.inject.*;
-import io.datakernel.service.*;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.service.TestServiceGraphServices;
+import io.datakernel.service.*;
+import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.WorkerPool;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -92,7 +94,7 @@ public class WorkerNameTest {
 
 		@Provides
 		@Singleton
-		Element2 primaryEventloopServer(Element1 primaryEventloop, WorkerPool workerPool) {
+		Element2 primaryServer(Element1 primaryEventloop, WorkerPool workerPool) {
 			List<Element4> unusedList = workerPool.getInstances(Element4.class, "First");
 			return new Element2();
 		}

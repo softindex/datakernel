@@ -19,7 +19,6 @@ package io.datakernel.guice;
 import com.google.common.io.Closeables;
 import com.google.inject.*;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.service.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -30,7 +29,12 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.jmx.JmxMBeans;
 import io.datakernel.jmx.JmxRegistry;
+import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.ByteBufStrings;
+import io.datakernel.worker.Worker;
+import io.datakernel.worker.WorkerId;
+import io.datakernel.worker.WorkerPool;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -81,7 +85,7 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Singleton
-		PrimaryServer primaryEventloopServer(Eventloop primaryEventloop, WorkerPool workerPool) {
+		PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool) {
 			List<AsyncHttpServer> workerHttpServers = workerPool.getInstances(AsyncHttpServer.class);
 			PrimaryServer primaryNioServer = PrimaryServer.create(primaryEventloop);
 			primaryNioServer.workerServers(workerHttpServers);

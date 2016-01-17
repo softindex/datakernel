@@ -14,18 +14,26 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.worker;
 
-import com.google.inject.ScopeAnnotation;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
+public final class WorkerPoolObjects {
+	final WorkerPool workerPool;
+	final Object[] objects;
 
-import static java.lang.annotation.ElementType.*;
-import static java.lang.annotation.RetentionPolicy.RUNTIME;
+	public WorkerPoolObjects(WorkerPool workerPool, Object[] objects) {
+		this.workerPool = workerPool;
+		this.objects = objects;
+	}
 
-@ScopeAnnotation
-@Target({TYPE, METHOD})
-@Retention(RUNTIME)
-public @interface WorkerScope {
+	public WorkerPool getWorkerPool() {
+		return workerPool;
+	}
+
+	public List<Object> getObjects() {
+		return Collections.unmodifiableList(Arrays.asList(objects));
+	}
 }

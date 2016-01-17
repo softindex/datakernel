@@ -14,19 +14,19 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.worker;
 
-import com.google.inject.BindingAnnotation;
+import com.google.inject.ScopeAnnotation;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
 import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.ElementType.PARAMETER;
+import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-@BindingAnnotation
-@Target({PARAMETER, METHOD})
+@ScopeAnnotation
+@Target({TYPE, METHOD})
 @Retention(RUNTIME)
-public @interface WorkerId {
+public @interface WorkerScope {
 }
