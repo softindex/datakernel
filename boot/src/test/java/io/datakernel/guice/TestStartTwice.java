@@ -19,7 +19,7 @@ package io.datakernel.guice;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.*;
-import io.datakernel.boot.BootModule;
+import io.datakernel.boot.ServiceGraphModule;
 import io.datakernel.boot.Service;
 import io.datakernel.boot.ServiceGraph;
 import org.junit.Test;
@@ -52,7 +52,7 @@ public class TestStartTwice {
 
 		@Override
 		protected void configure() {
-			install(BootModule.defaultInstance());
+			install(ServiceGraphModule.defaultInstance());
 		}
 
 		@Provides

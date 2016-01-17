@@ -20,7 +20,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.boot.BootModule;
+import io.datakernel.boot.ServiceGraphModule;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -42,7 +42,7 @@ public class SimpleHttpLauncherExample {
 		@Override
 		protected void configure() {
 			configs("launcher-example.properties");
-			modules(BootModule.defaultInstance(),
+			modules(ServiceGraphModule.defaultInstance(),
 					new LauncherExampleModule());
 		}
 

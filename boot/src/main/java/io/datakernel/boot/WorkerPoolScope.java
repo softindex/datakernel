@@ -38,9 +38,9 @@ final class WorkerPoolScope implements Scope {
 	@Nullable
 	Integer currentWorkerId;
 
-	private static class WorkerPoolObjects {
-		private final WorkerPool workerPool;
-		private final Object[] objects;
+	static class WorkerPoolObjects {
+		final WorkerPool workerPool;
+		final Object[] objects;
 
 		public WorkerPoolObjects(WorkerPool workerPool, Object[] objects) {
 			this.workerPool = workerPool;
@@ -75,7 +75,7 @@ final class WorkerPoolScope implements Scope {
 		};
 	}
 
-	List<?> getInstances(Key<?> key) {
-		return Arrays.asList(pool.get(key).objects);
+	WorkerPoolObjects getPoolObjects(Key<?> key) {
+		return pool.get(key);
 	}
 }

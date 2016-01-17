@@ -44,6 +44,10 @@ public final class WorkerPool {
 		return getInstances(Key.get(type, new WorkerAnnotation("")));
 	}
 
+	public int getWorkers() {
+		return workers;
+	}
+
 	@SuppressWarnings("unchecked")
 	public <T> List<T> getInstances(TypeToken<T> type) {
 		return getInstances((Key<T>) Key.get(type.getType(), new WorkerAnnotation("")));

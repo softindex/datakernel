@@ -20,7 +20,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.boot.BootModule;
+import io.datakernel.boot.ServiceGraphModule;
 import io.datakernel.boot.Worker;
 import io.datakernel.boot.WorkerId;
 import io.datakernel.boot.WorkerPool;
@@ -47,7 +47,7 @@ public class LauncherExample {
 		@Override
 		protected void configure() {
 			configs("launcher-example.properties");
-			modules(BootModule.defaultInstance(),
+			modules(ServiceGraphModule.defaultInstance(),
 					new LauncherExampleModule());
 		}
 

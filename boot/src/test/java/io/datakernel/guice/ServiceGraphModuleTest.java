@@ -19,7 +19,7 @@ package io.datakernel.guice;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Key;
-import io.datakernel.boot.BootModule;
+import io.datakernel.boot.ServiceGraphModule;
 import io.datakernel.boot.Service;
 import io.datakernel.boot.ServiceAdapter;
 import io.datakernel.boot.ServiceGraph;
@@ -28,12 +28,12 @@ import org.junit.Test;
 
 import java.util.concurrent.Executor;
 
-public class BootModuleTest {
+public class ServiceGraphModuleTest {
 
 	@Test
 	public void testStartStop() throws Exception {
 		Injector injector = Guice.createInjector(
-				BootModule.defaultInstance()
+				ServiceGraphModule.defaultInstance()
 						.register(TestGraph.S.class, new ServiceAdapter<TestGraph.S>() {
 							@Override
 							public Service toService(TestGraph.S instance, Executor executor) {
@@ -63,7 +63,7 @@ public class BootModuleTest {
 	@Test
 	public void testStartStopWithoutOverride() throws Exception {
 		Injector injector = Guice.createInjector(
-				BootModule.defaultInstance()
+				ServiceGraphModule.defaultInstance()
 						.register(TestGraph.S.class, new ServiceAdapter<TestGraph.S>() {
 							@Override
 							public Service toService(TestGraph.S instance, Executor executor) {

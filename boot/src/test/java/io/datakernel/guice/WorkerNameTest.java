@@ -50,7 +50,7 @@ public class WorkerNameTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			install(BootModule.defaultInstance()
+			install(ServiceGraphModule.defaultInstance()
 					.register(Element4.class, new ServiceAdapter<Element4>() {
 						@Override
 						public Service toService(Element4 instance, Executor executor) {

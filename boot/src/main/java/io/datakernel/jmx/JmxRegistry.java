@@ -17,7 +17,8 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
-import io.datakernel.boot.BootModule;
+import io.datakernel.boot.ServiceGraphModule;
+import io.datakernel.boot.WorkerPool;
 import io.datakernel.jmx.annotation.JmxMBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
-public final class JmxRegistry implements BootModule.Listener {
+public final class JmxRegistry implements ServiceGraphModule.Listener {
 	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
 
 	private final MBeanServer mbs;
@@ -112,7 +113,7 @@ public final class JmxRegistry implements BootModule.Listener {
 	}
 
 	@Override
-	public void onWorkersStart(Key<?> key, List<?> poolInstances) {
+	public void onWorkersStart(Key<?> key, WorkerPool workerPool, List<?> poolInstances) {
 		checkNotNull(poolInstances);
 		checkNotNull(key);
 
@@ -179,7 +180,7 @@ public final class JmxRegistry implements BootModule.Listener {
 	}
 
 	@Override
-	public void onWorkersStop(Key<?> key, List<?> poolInstances) {
+	public void onWorkersStop(Key<?> key, WorkerPool workerPool, List<?> poolInstances) {
 		checkNotNull(key);
 
 		if (poolInstances.size() == 0) {

@@ -44,7 +44,7 @@ public class TestGenericGraph {
 
 		@Override
 		protected void configure() {
-			install(BootModule.defaultInstance()
+			install(ServiceGraphModule.defaultInstance()
 					.register(Pojo.class, new ServiceAdapter<Pojo>() {
 						@Override
 						public Service toService(Pojo instance, Executor executor) {

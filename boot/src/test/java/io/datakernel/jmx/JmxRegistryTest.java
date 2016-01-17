@@ -18,6 +18,7 @@ package io.datakernel.jmx;
 
 import com.google.inject.BindingAnnotation;
 import com.google.inject.Key;
+import io.datakernel.boot.WorkerPool;
 import io.datakernel.jmx.annotation.JmxMBean;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
@@ -171,7 +172,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.onWorkersStart(key, asList(worker_1, worker_2, worker_3));
+		jmxRegistry.onWorkersStart(key, new WorkerPool(3), asList(worker_1, worker_2, worker_3));
 	}
 
 	@Test
@@ -197,7 +198,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.onWorkersStop(key, asList(worker_1, worker_2, worker_3));
+		jmxRegistry.onWorkersStop(key, new WorkerPool(3), asList(worker_1, worker_2, worker_3));
 	}
 
 	// annotations

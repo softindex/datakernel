@@ -45,8 +45,8 @@ import static com.google.common.collect.Sets.*;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static org.slf4j.LoggerFactory.getLogger;
 
-public final class BootModule extends AbstractModule {
-	private static final Logger logger = getLogger(BootModule.class);
+public final class ServiceGraphModule extends AbstractModule {
+	private static final Logger logger = getLogger(ServiceGraphModule.class);
 
 	private final Map<Class<?>, ServiceAdapter<?>> factoryMap = new LinkedHashMap<>();
 	private final Map<Key<?>, ServiceAdapter<?>> keys = new LinkedHashMap<>();
@@ -71,33 +71,32 @@ public final class BootModule extends AbstractModule {
 
 		void onSingletonStop(Key<?> key, Object singletonInstance);
 
-		void onWorkersStart(Key<?> key, List<?> poolInstances);
+		void onWorkersStart(Key<?> key, WorkerPool workerPool, List<?> poolInstances);
 
-		void onWorkersStop(Key<?> key, List<?> poolInstances);
+		void onWorkersStop(Key<?> key, WorkerPool workerPool, List<?> poolInstances);
 	}
 
-	private BootModule() {
+	private ServiceGraphModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
 				10, TimeUnit.MILLISECONDS,
 				new SynchronousQueue<Runnable>());
 	}
 
-	public static BootModule defaultInstance() {
-		BootModule bootModule = new BootModule();
-		bootModule.register(Service.class, ServiceAdapters.forService());
-		bootModule.register(BlockingService.class, ServiceAdapters.forBlockingService());
-		bootModule.register(Closeable.class, ServiceAdapters.forCloseable());
-		bootModule.register(ExecutorService.class, ServiceAdapters.forExecutorService());
-		bootModule.register(Timer.class, ServiceAdapters.forTimer());
-		bootModule.register(DataSource.class, ServiceAdapters.forDataSource());
-		bootModule.register(EventloopService.class, ServiceAdapters.forEventloopService());
-		bootModule.register(EventloopServer.class, ServiceAdapters.forEventloopServer());
-		bootModule.register(Eventloop.class, ServiceAdapters.forEventloop());
-		return bootModule;
+	public static ServiceGraphModule defaultInstance() {
+		return newInstance()
+				.register(Service.class, ServiceAdapters.forService())
+				.register(BlockingService.class, ServiceAdapters.forBlockingService())
+				.register(Closeable.class, ServiceAdapters.forCloseable())
+				.register(ExecutorService.class, ServiceAdapters.forExecutorService())
+				.register(Timer.class, ServiceAdapters.forTimer())
+				.register(DataSource.class, ServiceAdapters.forDataSource())
+				.register(EventloopService.class, ServiceAdapters.forEventloopService())
+				.register(EventloopServer.class, ServiceAdapters.forEventloopServer())
+				.register(Eventloop.class, ServiceAdapters.forEventloop());
 	}
 
-	public static BootModule newInstance() {
-		return new BootModule();
+	public static ServiceGraphModule newInstance() {
+		return new ServiceGraphModule();
 	}
 
 	private static boolean isSingleton(Binding<?> binding) {
@@ -167,7 +166,7 @@ public final class BootModule extends AbstractModule {
 		return "@" + ("NamedImpl".equals(simpleName) ? "Named" : simpleName) + (first ? "" : "(" + sb + ")");
 	}
 
-	public BootModule addListener(Listener listener) {
+	public ServiceGraphModule addListener(Listener listener) {
 		listeners.add(listener);
 		return this;
 	}
@@ -180,7 +179,7 @@ public final class BootModule extends AbstractModule {
 	 * @param factory value to be associated with the specified type
 	 * @return ServiceGraphModule with change
 	 */
-	public <T> BootModule register(Class<? extends T> type, ServiceAdapter<T> factory) {
+	public <T> ServiceGraphModule register(Class<? extends T> type, ServiceAdapter<T> factory) {
 		factoryMap.put(type, factory);
 		return this;
 	}
@@ -193,7 +192,7 @@ public final class BootModule extends AbstractModule {
 	 * @param <T>     type of service
 	 * @return ServiceGraphModule with change
 	 */
-	public <T> BootModule registerForSpecificKey(Key<T> key, ServiceAdapter<T> factory) {
+	public <T> ServiceGraphModule registerForSpecificKey(Key<T> key, ServiceAdapter<T> factory) {
 		keys.put(key, factory);
 		return this;
 	}
@@ -205,7 +204,7 @@ public final class BootModule extends AbstractModule {
 	 * @param keyDependency key of dependency
 	 * @return ServiceGraphModule with change
 	 */
-	public BootModule addDependency(Key<?> key, Key<?> keyDependency) {
+	public ServiceGraphModule addDependency(Key<?> key, Key<?> keyDependency) {
 		addedDependencies.put(key, keyDependency);
 		return this;
 	}
@@ -217,12 +216,12 @@ public final class BootModule extends AbstractModule {
 	 * @param keyDependency key of dependency
 	 * @return ServiceGraphModule with change
 	 */
-	public BootModule removeDependency(Key<?> key, Key<?> keyDependency) {
+	public ServiceGraphModule removeDependency(Key<?> key, Key<?> keyDependency) {
 		removedDependencies.put(key, keyDependency);
 		return this;
 	}
 
-	private Service getPoolServiceOrNull(final Key<?> key, final List<?> instances) {
+	private Service getPoolServiceOrNull(final WorkerPool workerPool, final Key<?> key, final List<?> instances) {
 		final List<Service> services = new ArrayList<>();
 		boolean found = false;
 		for (Object instance : instances) {
@@ -246,7 +245,7 @@ public final class BootModule extends AbstractModule {
 					@Override
 					public void run() {
 						for (Listener listener : listeners) {
-							listener.onWorkersStart(key, instances);
+							listener.onWorkersStart(key, workerPool, instances);
 						}
 					}
 				}, directExecutor());
@@ -264,7 +263,7 @@ public final class BootModule extends AbstractModule {
 					@Override
 					public void run() {
 						for (Listener listener : listeners) {
-							listener.onWorkersStop(key, instances);
+							listener.onWorkersStop(key, workerPool, instances);
 						}
 					}
 				}, directExecutor());
@@ -308,14 +307,10 @@ public final class BootModule extends AbstractModule {
 		}
 		ServiceAdapter<?> serviceAdapter = keys.get(key);
 		if (serviceAdapter == null) {
-			Class<?> foundType = null;
-			for (Class<?> type : factoryMap.keySet()) {
-				if (type.isAssignableFrom(instance.getClass())) {
-					foundType = type;
+			for (Map.Entry<Class<?>, ServiceAdapter<?>> entry : factoryMap.entrySet()) {
+				if (entry.getKey().isAssignableFrom(instance.getClass())) {
+					serviceAdapter = entry.getValue();
 				}
-			}
-			if (foundType != null) {
-				serviceAdapter = factoryMap.get(foundType);
 			}
 		}
 		if (serviceAdapter != null) {
@@ -344,12 +339,12 @@ public final class BootModule extends AbstractModule {
 		for (Binding<?> binding : injector.getAllBindings().values()) {
 			Key<?> key = binding.getKey();
 			if (isWorkerScope(binding)) {
-				if (workerDependencies.values().contains(key)) {
-					List<?> instances = workerPoolScope.getInstances(key);
-					Service service = getPoolServiceOrNull(key, instances);
+				WorkerPoolScope.WorkerPoolObjects poolObjects = workerPoolScope.getPoolObjects(key);
+				if (poolObjects != null) {
+					Service service = getPoolServiceOrNull(poolObjects.workerPool, key, Arrays.asList(poolObjects.objects));
 					graph.add(key, service);
 				} else {
-					logger.warn("Unused key: {}", key);
+					logger.warn("Unused WorkerScope key: {}", key);
 				}
 			}
 		}

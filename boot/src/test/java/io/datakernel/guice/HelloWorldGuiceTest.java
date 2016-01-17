@@ -64,7 +64,7 @@ public class HelloWorldGuiceTest {
 		@Override
 		protected void configure() {
 			JmxRegistry jmxRegistry = new JmxRegistry(ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory());
-			install(BootModule.defaultInstance().addListener(jmxRegistry));
+			install(ServiceGraphModule.defaultInstance().addListener(jmxRegistry));
 		}
 
 		@Provides
