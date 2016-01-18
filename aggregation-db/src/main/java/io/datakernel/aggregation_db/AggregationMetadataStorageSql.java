@@ -211,6 +211,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		}, callback);
 	}
 
+	@SuppressWarnings("unchecked")
 	public LoadedChunks loadChunks(DSLContext jooq, Aggregation aggregation, int lastRevisionId) {
 		String indexId = aggregation.getId();
 		Record1<Integer> maxRevisionRecord = jooq
@@ -242,14 +243,22 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 			}
 		}
 
+		List<Field<?>> fieldsToFetch = new ArrayList<>(aggregation.getKeys().size() * 2 + 4);
+		Collections.addAll(fieldsToFetch, AGGREGATION_DB_CHUNK.ID, AGGREGATION_DB_CHUNK.REVISION_ID,
+				AGGREGATION_DB_CHUNK.FIELDS, AGGREGATION_DB_CHUNK.COUNT);
+		for (int d = 0; d < aggregation.getKeys().size(); d++) {
+			fieldsToFetch.add(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min"));
+			fieldsToFetch.add(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max"));
+		}
+
 		List<Record> newChunkRecords = jooq
-				.select()
+				.select(fieldsToFetch)
 				.from(AGGREGATION_DB_CHUNK)
 				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(indexId))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
 				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull())
-				.unionAll(jooq.select()
+				.unionAll(jooq.select(fieldsToFetch)
 						.from(AGGREGATION_DB_CHUNK)
 						.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(indexId))
 						.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
