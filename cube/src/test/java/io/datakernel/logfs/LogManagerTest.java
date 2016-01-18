@@ -124,7 +124,7 @@ public class LogManagerTest {
 		LogManager<TestItem> logManager = new LogManagerImpl<>(eventloop, fileSystem, serializer);
 		LogStreamConsumer<TestItem> logConsumer = logManager.consumer("p1");
 		new StreamProducers.OfIterator<>(eventloop, asList(new TestItem("a"), new TestItem(null),
-				new TestItem("b")).iterator()).streamTo(logConsumer);
+				new TestItem("b"), new TestItem(null), new TestItem("c")).iterator()).streamTo(logConsumer);
 		eventloop.run();
 
 		StreamProducer<TestItem> p1 = logManager.producer("p1", new LogFile("1970-01-01_00", 0), 0L, null);
@@ -134,8 +134,10 @@ public class LogManagerTest {
 		List<TestItem> resultList = consumerToList.getList();
 
 		assertEquals(StreamStatus.END_OF_STREAM, logConsumer.getConsumerStatus()); // not closed with error
-		assertEquals(1, resultList.size());
+		assertEquals(3, resultList.size());
 		assertEquals("a", resultList.get(0).s);
+		assertEquals("b", resultList.get(1).s);
+		assertEquals("c", resultList.get(2).s);
 	}
 
 	@Test
