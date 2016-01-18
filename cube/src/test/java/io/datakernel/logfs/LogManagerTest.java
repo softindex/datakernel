@@ -16,13 +16,15 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.asm.DefiningClassLoader;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.NioEventloop;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.annotations.Deserialize;
+import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.asm.BufferSerializers;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamProducers;
-import io.datakernel.stream.StreamSender;
+import io.datakernel.stream.*;
 import io.datakernel.time.SettableCurrentTimeProvider;
 import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
@@ -44,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -100,6 +103,39 @@ public class LogManagerTest {
 //		System.out.println(p1.getLogPosition());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	public static class TestItem {
+		@Serialize(order = 0)
+		public String s;
+
+		public TestItem(@Deserialize("s") String s) {
+			this.s = s;
+		}
+	}
+
+	@Test
+	public void testSerializationError() throws Exception {
+		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
+		NioEventloop eventloop = new NioEventloop(timeProvider);
+		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
+		LogFileSystemImpl fileSystem = new LogFileSystemImpl(eventloop, executor, testDir);
+		BufferSerializer<TestItem> serializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader()).create(TestItem.class);
+		LogManager<TestItem> logManager = new LogManagerImpl<>(eventloop, fileSystem, serializer);
+		LogStreamConsumer<TestItem> logConsumer = logManager.consumer("p1");
+		new StreamProducers.OfIterator<>(eventloop, asList(new TestItem("a"), new TestItem(null),
+				new TestItem("b")).iterator()).streamTo(logConsumer);
+		eventloop.run();
+
+		StreamProducer<TestItem> p1 = logManager.producer("p1", new LogFile("1970-01-01_00", 0), 0L, null);
+		StreamConsumers.ToList<TestItem> consumerToList = new StreamConsumers.ToList<>(eventloop);
+		p1.streamTo(consumerToList);
+		eventloop.run();
+		List<TestItem> resultList = consumerToList.getList();
+
+		assertEquals(StreamStatus.END_OF_STREAM, logConsumer.getConsumerStatus()); // not closed with error
+		assertEquals(1, resultList.size());
+		assertEquals("a", resultList.get(0).s);
 	}
 
 	@Test
