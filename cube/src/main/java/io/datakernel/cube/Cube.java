@@ -26,11 +26,11 @@ import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.cube.api.AttributeResolver;
-import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
@@ -383,9 +383,19 @@ public final class Cube implements CubeMBean {
 	}
 
 	public void loadChunks(CompletionCallback callback) {
-		CompletionCallback waitAllCallback = AsyncCallbacks.waitAll(aggregations.size(), callback);
-		for (Aggregation aggregation : aggregations.values()) {
-			aggregation.loadChunks(waitAllCallback);
+		loadChunks(new ArrayList<>(this.aggregations.values()).iterator(), callback);
+	}
+
+	private void loadChunks(final Iterator<Aggregation> iterator, final CompletionCallback callback) {
+		if (iterator.hasNext()) {
+			iterator.next().loadChunks(new ForwardingCompletionCallback(callback) {
+				@Override
+				public void onComplete() {
+					loadChunks(iterator, callback);
+				}
+			});
+		} else {
+			callback.onComplete();
 		}
 	}
 

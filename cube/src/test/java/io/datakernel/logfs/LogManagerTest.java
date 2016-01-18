@@ -16,13 +16,19 @@
 
 package io.datakernel.logfs;
 
+import io.datakernel.asm.DefiningClassLoader;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.serializer.BufferSerializer;
+import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.serializer.annotations.Deserialize;
+import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.serializer.asm.BufferSerializers;
-import io.datakernel.stream.StreamConsumers;
-import io.datakernel.stream.StreamSender;
+import io.datakernel.stream.*;
 import io.datakernel.time.SettableCurrentTimeProvider;
+import org.joda.time.DateTimeZone;
 import org.joda.time.LocalDate;
+import org.joda.time.LocalDateTime;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -31,7 +37,6 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +44,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -144,8 +150,43 @@ public class LogManagerTest {
 		System.out.println(list02);
 
 		assertTrue(list02.isEmpty());
-		assertEquals(Arrays.asList("1", "2", "3", "4", "5"), list00);
-		assertEquals(Arrays.asList("3", "4", "5"), list01);
+		assertEquals(asList("1", "2", "3", "4", "5"), list00);
+		assertEquals(asList("3", "4", "5"), list01);
+	}
+
+	public static class TestItem {
+		@Serialize(order = 0)
+		public String s;
+
+		public TestItem(@Deserialize("s") String s) {
+			this.s = s;
+		}
+	}
+
+	@Test
+	public void testSerializationError() throws Exception {
+		SettableCurrentTimeProvider timeProvider = new SettableCurrentTimeProvider();
+		Eventloop eventloop = new Eventloop(timeProvider);
+		timeProvider.setTime(new LocalDateTime("1970-01-01T00:00:00").toDateTime(DateTimeZone.UTC).getMillis());
+		LogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
+		BufferSerializer<TestItem> serializer = SerializerBuilder.newDefaultInstance(new DefiningClassLoader()).create(TestItem.class);
+		LogManager<TestItem> logManager = new LogManagerImpl<>(eventloop, fileSystem, serializer);
+		LogStreamConsumer<TestItem> logConsumer = logManager.consumer("p1");
+		new StreamProducers.OfIterator<>(eventloop, asList(new TestItem("a"), new TestItem(null),
+				new TestItem("b"), new TestItem(null), new TestItem("c")).iterator()).streamTo(logConsumer);
+		eventloop.run();
+
+		StreamProducer<TestItem> p1 = logManager.producer("p1", new LogFile("1970-01-01_00", 0), 0L, null);
+		StreamConsumers.ToList<TestItem> consumerToList = new StreamConsumers.ToList<>(eventloop);
+		p1.streamTo(consumerToList);
+		eventloop.run();
+		List<TestItem> resultList = consumerToList.getList();
+
+		assertEquals(StreamStatus.END_OF_STREAM, logConsumer.getConsumerStatus()); // not closed with error
+		assertEquals(3, resultList.size());
+		assertEquals("a", resultList.get(0).s);
+		assertEquals("b", resultList.get(1).s);
+		assertEquals("c", resultList.get(2).s);
 	}
 
 	private static void clearTestDir(Path testDir) {

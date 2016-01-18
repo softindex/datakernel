@@ -21,6 +21,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -46,6 +47,7 @@ import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbStructure.AGGREGATION_DB_STRUCTURE;
+import static io.datakernel.aggregation_db.util.JooqUtils.onDuplicateKeyUpdateValues;
 import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static org.jooq.impl.DSL.currentTimestamp;
@@ -55,6 +57,9 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 	private static final String LOCK_NAME = "cube_lock";
 	private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 180;
+	private static final int MAX_KEYS = 40;
+	private static final Joiner JOINER = Joiner.on(' ');
+	private static final Splitter SPLITTER = Splitter.on(' ').omitEmptyStrings();
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
@@ -115,8 +120,6 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	public void saveAggregationMetadata(DSLContext jooq, Aggregation aggregation, AggregationStructure structure) {
-		Joiner joiner = Joiner.on(' ');
-
 		Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(structure))
 				.create();
@@ -124,9 +127,9 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		jooq.insertInto(AGGREGATION_DB_STRUCTURE)
 				.set(new AggregationDbStructureRecord(
 						aggregation.getId(),
-						joiner.join(aggregation.getKeys()),
-						joiner.join(aggregation.getInputFields()),
-						joiner.join(aggregation.getOutputFields()),
+						JOINER.join(aggregation.getKeys()),
+						JOINER.join(aggregation.getInputFields()),
+						JOINER.join(aggregation.getOutputFields()),
 						gson.toJson(aggregation.getAggregationPredicates())))
 				.onDuplicateKeyIgnore()
 				.execute();
@@ -164,33 +167,38 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 	public void saveNewChunks(DSLContext jooq, final int revisionId,
 	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
+		InsertQuery<AggregationDbChunkRecord> insertQuery = jooq.insertQuery(AGGREGATION_DB_CHUNK);
+
 		for (AggregationMetadata aggregationMetadata : newChunksWithMetadata.keySet()) {
 			for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
+				insertQuery.newRecord();
+
 				AggregationChunk chunk = createChunk(revisionId, newChunk);
-				AggregationDbChunkRecord record = new AggregationDbChunkRecord();
-				record.setAggregationId(aggregationMetadata.getId());
-				record.setRevisionId(chunk.getRevisionId());
-				record.setKeys(Joiner.on(' ').join(aggregationMetadata.getKeys()));
-				record.setFields(Joiner.on(' ').join(chunk.getFields()));
-				record.setCount(chunk.getCount());
 
-				Map<Field<?>, Object> fields = new LinkedHashMap<>();
-				int size = record.size();
-				for (int i = 1; i < size; i++) {
-					Object value = record.getValue(i);
-					if (value != null) {
-						fields.put(record.field(i), value);
-					}
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.ID, chunk.getChunkId());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.AGGREGATION_ID, aggregationMetadata.getId());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.REVISION_ID, chunk.getRevisionId());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.KEYS, JOINER.join(aggregationMetadata.getKeys()));
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.FIELDS, JOINER.join(chunk.getFields()));
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.COUNT, chunk.getCount());
+
+				int keyLength = aggregationMetadata.getKeys().size();
+				for (int d = 0; d < MAX_KEYS; d++) {
+					Field<String> minField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min").coerce(String.class);
+					insertQuery.addValue(minField, d >= keyLength ? null : chunk.getMinPrimaryKey().values().get(d).toString());
+
+					Field<String> maxField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max").coerce(String.class);
+					insertQuery.addValue(maxField, d >= keyLength ? null : chunk.getMaxPrimaryKey().values().get(d).toString());
 				}
-
-				for (int d = 0; d < aggregationMetadata.getKeys().size(); d++) {
-					fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min"), chunk.getMinPrimaryKey().values().get(d).toString());
-					fields.put(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max"), chunk.getMaxPrimaryKey().values().get(d).toString());
-				}
-
-				jooq.update(AGGREGATION_DB_CHUNK).set(fields).where(AGGREGATION_DB_CHUNK.ID.equal(chunk.getChunkId())).execute();
 			}
 		}
+
+		ArrayList<Field<?>> updateFields = Lists.newArrayList(AGGREGATION_DB_CHUNK.fields());
+		updateFields.remove(AGGREGATION_DB_CHUNK.ID);
+
+		insertQuery.addValuesForUpdate(onDuplicateKeyUpdateValues(updateFields));
+		insertQuery.onDuplicateKeyUpdate(true);
+		insertQuery.execute();
 	}
 
 	@Override
@@ -198,16 +206,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		callConcurrently(eventloop, executor, false, new Callable<LoadedChunks>() {
 			@Override
 			public LoadedChunks call() {
-				Connection connection = jooqConfiguration.connectionProvider().acquire();
-				Configuration configurationWithConnection = jooqConfiguration.derive(connection);
-				DSLContext jooq = DSL.using(configurationWithConnection);
-				try {
-					getCubeLock(jooq);
-					return loadChunks(jooq, aggregation, lastRevisionId);
-				} finally {
-					releaseCubeLock(jooq);
-					jooqConfiguration.connectionProvider().release(connection);
-				}
+				return loadChunks(DSL.using(jooqConfiguration), aggregation, lastRevisionId);
 			}
 		}, callback);
 	}
@@ -249,10 +248,14 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(indexId))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
 				.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
-				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull().or(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(newRevisionId)))
+				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull())
+				.unionAll(jooq.select()
+						.from(AGGREGATION_DB_CHUNK)
+						.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(indexId))
+						.and(AGGREGATION_DB_CHUNK.REVISION_ID.gt(lastRevisionId))
+						.and(AGGREGATION_DB_CHUNK.REVISION_ID.le(newRevisionId))
+						.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.gt(newRevisionId)))
 				.fetch();
-
-		Splitter splitter = Splitter.on(' ').omitEmptyStrings();
 
 		ArrayList<AggregationChunk> newChunks = new ArrayList<>();
 		for (Record record : newChunkRecords) {
@@ -267,7 +270,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 
 			AggregationChunk chunk = new AggregationChunk(record.getValue(AGGREGATION_DB_CHUNK.REVISION_ID),
 					record.getValue(AGGREGATION_DB_CHUNK.ID).intValue(),
-					newArrayList(splitter.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
+					newArrayList(SPLITTER.split(record.getValue(AGGREGATION_DB_CHUNK.FIELDS))),
 					PrimaryKey.ofArray(minKeyArray),
 					PrimaryKey.ofArray(maxKeyArray),
 					record.getValue(AGGREGATION_DB_CHUNK.COUNT));

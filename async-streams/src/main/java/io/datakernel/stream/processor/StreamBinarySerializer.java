@@ -206,6 +206,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 					}
 					estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
 				} catch (Exception e) {
+					outputBuffer.position(positionBegin);
 					handleSerializationError(e);
 					return;
 				}
@@ -227,7 +228,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		private void handleSerializationError(Exception e) {
 			serializationErrors++;
 			if (skipSerializationErrors) {
-				logger.warn("Skipping serialization error in {} : {}", this, e.toString());
+				logger.warn("Skipping serialization error in {} : {}", this, e);
 			} else {
 				closeWithError(e);
 			}
