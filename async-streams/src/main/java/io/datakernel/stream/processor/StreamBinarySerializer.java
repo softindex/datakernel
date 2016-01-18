@@ -176,43 +176,52 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		public void onData(T value) {
 			//noinspection AssertWithSideEffects
 			assert jmxItems != ++jmxItems;
+			int positionBegin;
+			int positionItem;
 			for (; ; ) {
 				ensureSize(headerSize + estimatedMessageSize);
-				int positionBegin = outputBuffer.position();
-				int positionItem = positionBegin + headerSize;
+				positionBegin = outputBuffer.position();
+				positionItem = positionBegin + headerSize;
+				outputBuffer.position(positionItem);
 				try {
-					outputBuffer.position(positionItem);
 					serializer.serialize(outputBuffer, value);
-					int positionEnd = outputBuffer.position();
-					int messageSize = positionEnd - positionItem;
-					assert messageSize != 0;
-					if (messageSize > maxMessageSize) {
-						handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
-						return;
-					}
-					writeSize(outputBuffer.array(), positionBegin, messageSize);
-					messageSize += messageSize >>> 2;
-					if (messageSize > estimatedMessageSize)
-						estimatedMessageSize = messageSize;
-					else
-						estimatedMessageSize -= estimatedMessageSize >>> 8;
-					break;
 				} catch (ArrayIndexOutOfBoundsException e) {
 					outputBuffer.position(positionBegin);
 					int messageSize = outputBuffer.array().length - positionItem;
-					if (messageSize >= maxMessageSize) {
-						handleSerializationError(e);
-						return;
-					}
 					estimatedMessageSize = messageSize + 1 + (messageSize >>> 1);
+					continue;
 				} catch (Exception e) {
 					outputBuffer.position(positionBegin);
 					handleSerializationError(e);
 					return;
 				}
+				break;
 			}
+			int positionEnd = outputBuffer.position();
+			int messageSize = positionEnd - positionItem;
+			if (messageSize > maxMessageSize) {
+				outputBuffer.position(positionBegin);
+				handleSerializationError(OUT_OF_BOUNDS_EXCEPTION);
+				return;
+			}
+			writeSize(outputBuffer.array(), positionBegin, messageSize);
+			messageSize += messageSize >>> 2;
+			if (messageSize > estimatedMessageSize)
+				estimatedMessageSize = messageSize;
+			else
+				estimatedMessageSize -= estimatedMessageSize >>> 8;
+
 			if (!flushPosted) {
 				postFlush();
+			}
+		}
+
+		private void handleSerializationError(Exception e) {
+			serializationErrors++;
+			if (skipSerializationErrors) {
+				logger.warn("Skipping serialization error in {} : {}", this, e);
+			} else {
+				closeWithError(e);
 			}
 		}
 
@@ -223,15 +232,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 			outputBuffer.set(null, 0);
 			logger.trace("endOfStream {}, upstream: {}", this, inputConsumer.getUpstream());
 			outputProducer.sendEndOfStream();
-		}
-
-		private void handleSerializationError(Exception e) {
-			serializationErrors++;
-			if (skipSerializationErrors) {
-				logger.warn("Skipping serialization error in {} : {}", this, e);
-			} else {
-				closeWithError(e);
-			}
 		}
 
 		/**
