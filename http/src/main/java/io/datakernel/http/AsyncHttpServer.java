@@ -21,7 +21,6 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.jmx.ValueStats;
 
 import java.nio.channels.SocketChannel;
@@ -73,7 +72,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		this.timeCheckExpired = new ValueStats();
 		this.expiredConnections = new ValueStats();
 	}
-
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;

@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.http.server.AsyncHttpServlet;
 
 import java.util.HashMap;
 import java.util.Map;

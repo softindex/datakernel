@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.http.server;
+package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
 
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across HTTP.

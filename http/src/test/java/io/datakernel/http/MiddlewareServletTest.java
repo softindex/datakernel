@@ -18,7 +18,6 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Rule;
 import org.junit.Test;

@@ -56,12 +56,16 @@ public final class MBeanFormat {
 		}
 	}
 
-	public static String[] formatException(Throwable exception) {
+	public static String formatExceptionLine(Throwable exception) {
 		if (exception == null)
 			return null;
 		StringWriter stringWriter = new StringWriter();
 		exception.printStackTrace(new PrintWriter(stringWriter));
-		return formatMultilines(stringWriter.toString());
+		return stringWriter.toString();
+	}
+
+	public static String[] formatException(Throwable exception) {
+		return formatMultilines(formatExceptionLine(exception));
 	}
 
 	private static String formatHours(long period) {
@@ -92,7 +96,7 @@ public final class MBeanFormat {
 	}
 
 	public static String[] formatMultilines(String s) {
-		if (s == null)
+		if (s == null || s.isEmpty())
 			return null;
 
 		return split(s);

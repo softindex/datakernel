@@ -20,9 +20,9 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncHttpServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.http.server.AsyncHttpServlet;
 
 import java.io.BufferedReader;
 import java.io.IOException;

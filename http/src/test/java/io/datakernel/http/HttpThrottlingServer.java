@@ -19,7 +19,6 @@ package io.datakernel.http;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
-import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.util.ByteBufStrings;
 
 import java.util.Random;

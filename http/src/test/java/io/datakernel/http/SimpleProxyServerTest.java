@@ -21,7 +21,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.net.DatagramSocketSettings;
 import org.junit.Assert;
 import org.junit.Before;

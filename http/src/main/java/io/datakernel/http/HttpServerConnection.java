@@ -17,12 +17,9 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
+import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.exception.HttpException;
-import io.datakernel.http.exception.ServiceIllegalArgumentException;
-import io.datakernel.http.server.AsyncHttpServlet;
-import io.datakernel.util.ByteBufStrings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,7 +127,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null)
-			throw new ServiceIllegalArgumentException("Unknown HTTP method");
+			throw new SimpleException("Unknown HTTP method");
 
 		request = HttpRequest.create(method);
 
@@ -257,14 +254,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private HttpResponse formatException(Exception e) {
 		int status = 500;
 		ByteBuf message;
-		if (e instanceof HttpException) {
-			HttpException httpException = (HttpException) e;
-			status = httpException.getStatus();
-			message = ByteBufStrings.wrapUTF8(httpException.getMessage());
-		} else {
-			logger.error("Error processing http request", e);
-			message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);
-		}
+		logger.error("Error processing http request", e);
+		message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);
 		return HttpResponse.create(status).noCache().body(message);
 	}
 

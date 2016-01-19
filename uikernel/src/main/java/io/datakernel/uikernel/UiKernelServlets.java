@@ -19,7 +19,6 @@ package io.datakernel.uikernel;
 import com.google.gson.Gson;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.http.*;
-import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.util.ByteBufStrings;
 
 import java.nio.charset.Charset;

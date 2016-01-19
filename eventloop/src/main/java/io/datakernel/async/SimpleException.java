@@ -14,19 +14,25 @@
  * limitations under the License.
  */
 
-package io.datakernel.http.exception;
+package io.datakernel.async;
 
-@SuppressWarnings("serial")
-public class HttpException extends Exception {
-	private final int status;
+@SuppressWarnings("ThrowableInstanceNeverThrown")
+public class SimpleException extends RuntimeException {
 
-	public HttpException(int status, String reason) {
-		super(reason);
-		this.status = status;
+	public SimpleException() {
+		super();
 	}
 
-	public int getStatus() {
-		return status;
+	public SimpleException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public SimpleException(String s) {
+		super(s);
+	}
+
+	public SimpleException(Throwable cause) {
+		super(cause);
 	}
 
 	@Override

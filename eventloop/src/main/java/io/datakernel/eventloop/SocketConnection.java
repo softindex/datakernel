@@ -229,10 +229,14 @@ public abstract class SocketConnection {
 	@Override
 	public String toString() {
 		final long currentTimeMillis = eventloop.currentTimeMillis();
-		return "SocketConnection{" +
+		return getDebugName() + "{" +
 				"lifeTime=" + (currentTimeMillis - lifeTime) +
 				", readTime=" + (currentTimeMillis - readTime) +
 				", writeTime=" + (currentTimeMillis - writeTime) +
 				'}';
+	}
+
+	protected String getDebugName() {
+		return getClass().getSimpleName();
 	}
 }

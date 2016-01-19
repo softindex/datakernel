@@ -212,4 +212,9 @@ public abstract class TcpSocketConnection extends SocketConnection {
 	public String getChannelInfo() {
 		return channel.toString();
 	}
+
+	@Override
+	protected String getDebugName() {
+		return super.getDebugName() + "(" + remoteSocketAddress + ")";
+	}
 }

@@ -21,7 +21,6 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.util.ExceptionMarker;
 import org.junit.Assert;

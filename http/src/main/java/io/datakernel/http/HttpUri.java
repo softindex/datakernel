@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.http.exception.ServiceIllegalArgumentException;
+import io.datakernel.async.SimpleException;
 
 import java.util.Map;
 
@@ -66,7 +66,7 @@ public final class HttpUri {
 		int index = uri.indexOf(SCHEMA_DELIM);
 		if (index < 0 || index > 5) {
 			if (strict)
-				throw new IllegalArgumentException("Partial URI is not allowed: " + uri);
+				throw new SimpleException("Partial URI is not allowed: " + uri);
 			hostPort = null;
 			host = null;
 			port = -1;
@@ -74,7 +74,7 @@ public final class HttpUri {
 		} else {
 			String schema = uri.substring(0, index);
 			if (!schema.equals(HTTP))
-				throw new IllegalArgumentException("Unsupported schema: " + schema);
+				throw new SimpleException("Unsupported schema: " + schema);
 			index += SCHEMA_DELIM.length();
 			int slash = uri.indexOf('/', index);
 			hostPort = (slash == -1) ? uri.substring(index) : uri.substring(index, slash);
@@ -161,7 +161,7 @@ public final class HttpUri {
 		try {
 			params = HttpUtils.parse(query);
 		} catch (IllegalArgumentException e) {
-			throw new ServiceIllegalArgumentException(e);
+			throw new SimpleException(e);
 		}
 	}
 

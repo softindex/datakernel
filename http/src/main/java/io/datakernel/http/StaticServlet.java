@@ -19,7 +19,6 @@ package io.datakernel.http;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.http.server.AsyncHttpServlet;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;

@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.SimpleException;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -110,12 +111,12 @@ public class HttpUriTest {
 		assertEquals("", url.getQuery());
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test(expected = SimpleException.class)
 	public void testInvalidScheme() {
 		HttpUri.ofUrl("https://abc.com/");
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test(expected = SimpleException.class)
 	public void testInvalidPartialUrl() {
 		HttpUri.ofUrl("/path");
 	}

@@ -20,16 +20,16 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncHttpServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
-import io.datakernel.http.server.AsyncHttpServlet;
 import io.datakernel.launcher.Launcher;
+import io.datakernel.service.ServiceGraphModule;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 

@@ -22,7 +22,6 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.server.AsyncHttpServlet;
 import org.junit.Before;
 import org.junit.Test;
 

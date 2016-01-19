@@ -23,14 +23,12 @@ import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 
-import java.net.UnknownHostException;
-
 /**
  * Example 1
  * Example of serialization and deserialization of a simple object (no null fields, generics or complex objects, such as maps or arrays, as fields).
  */
 public class SimpleObjectSerializationExample {
-	public static void main(String[] args) throws UnknownHostException {
+	public static void main(String[] args) {
 		// Create a test object
 		TestDataSimple testData1 = new TestDataSimple(10, "abc");
 		testData1.setI(20);
