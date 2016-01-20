@@ -61,7 +61,7 @@ class CommonUtils {
 
 	public static HttpResponse createResponse(String body) {
 		return HttpResponse.create()
-				.contentType(ContentType.of(MediaTypes.HTML))
+				.contentType(ContentType.of(MediaTypes.JSON))
 				.body(wrapUTF8(body))
 				.header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 	}
@@ -78,6 +78,12 @@ class CommonUtils {
 		HttpResponse response500 = HttpResponse.internalServerError500();
 		response500.body(wrapUTF8(message));
 		return response500;
+	}
+
+	public static HttpResponse response400(String message) {
+		HttpResponse response400 = HttpResponse.badRequest400();
+		response400.body(wrapUTF8(message));
+		return response400;
 	}
 
 	public static HttpResponse response404(String message) {

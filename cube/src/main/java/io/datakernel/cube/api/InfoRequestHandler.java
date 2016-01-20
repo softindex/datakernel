@@ -67,10 +67,10 @@ public final class InfoRequestHandler implements AsyncHttpServlet {
 			processRequest(request, callback);
 		} catch (QueryException e) {
 			logger.info("Request {} could not be processed because of error: {}", request, e.getMessage());
-			callback.onResult(response500(e.getMessage()));
+			callback.onResult(response400(e.getMessage()));
 		} catch (JsonParseException e) {
 			logger.info("Failed to parse JSON in request {}", request);
-			callback.onResult(response500("Failed to parse JSON request"));
+			callback.onResult(response400("Failed to parse JSON request"));
 		} catch (RuntimeException e) {
 			logger.error("Unknown exception occurred while processing request {}", request, e);
 			callback.onResult(response500("Unknown server error"));

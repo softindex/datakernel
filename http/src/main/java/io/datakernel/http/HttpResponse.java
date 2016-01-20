@@ -52,6 +52,10 @@ public final class HttpResponse extends HttpMessage {
 				.header(HttpHeaders.LOCATION, url);
 	}
 
+	public static HttpResponse badRequest400() {
+		return create(400);
+	}
+
 	public static HttpResponse notFound404() {
 		return create(404);
 	}

@@ -27,10 +27,10 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.MiddlewareServlet;
 
 public final class CubeHttpServer {
-	private static final String DIMENSIONS_REQUEST_PATH = "/dimensions/";
-	private static final String QUERY_REQUEST_PATH = "/query/";
-	private static final String INFO_REQUEST_PATH = "/info/";
-	private static final String REPORTING_QUERY_REQUEST_PATH = "/";
+	public static final String DIMENSIONS_REQUEST_PATH = "/dimensions/";
+	public static final String QUERY_REQUEST_PATH = "/query/";
+	public static final String INFO_REQUEST_PATH = "/info/";
+	public static final String REPORTING_QUERY_REQUEST_PATH = "/";
 
 	public static MiddlewareServlet createServlet(Cube cube, Eventloop eventloop, DefiningClassLoader classLoader) {
 		final Gson gson = new GsonBuilder()
