@@ -19,7 +19,7 @@ package io.datakernel.rpc.client.jmx;
 import io.datakernel.jmx.AbstractCompositeStats;
 import io.datakernel.jmx.EventStats;
 
-public final class RpcConnectsStats extends AbstractCompositeStats<RpcConnectsStats> {
+public final class RpcConnectStats extends AbstractCompositeStats<RpcConnectStats> {
 	private final EventStats successfulConnects = new EventStats();
 	private final EventStats failedConnects = new EventStats();
 	private final EventStats closedConnects = new EventStats();
@@ -36,7 +36,7 @@ public final class RpcConnectsStats extends AbstractCompositeStats<RpcConnectsSt
 		closedConnects.refreshStats(timestamp, smoothingWindow);
 	}
 
-	public void add(RpcConnectsStats statsSet) {
+	public void add(RpcConnectStats statsSet) {
 		successfulConnects.add(statsSet.getSuccessfulConnects());
 		failedConnects.add(statsSet.getFailedConnects());
 		closedConnects.add(statsSet.getClosedConnects());

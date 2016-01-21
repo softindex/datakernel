@@ -20,7 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.rpc.client.jmx.RpcRequestsStats;
+import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -95,7 +95,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 
 	// JMX
 	private boolean monitoring;
-	private RpcRequestsStats requestsStats;
+	private RpcRequestStats requestsStats;
 
 	public RpcClientConnection(Eventloop eventloop, SocketChannel socketChannel,
 	                           BufferSerializer<RpcMessage> messageSerializer,
@@ -106,7 +106,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 
 		// JMX
 		this.monitoring = false;
-		this.requestsStats = new RpcRequestsStats();
+		this.requestsStats = new RpcRequestStats();
 	}
 
 	@Override
@@ -295,10 +295,6 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 
 	// JMX
 
-	public void refreshStats(long timestamp, double smoothingWindow) {
-		requestsStats.refreshStats(timestamp, smoothingWindow);
-	}
-
 	public void startMonitoring() {
 		monitoring = true;
 	}
@@ -315,7 +311,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 		requestsStats.resetStats();
 	}
 
-	public RpcRequestsStats getRequestStats() {
+	public RpcRequestStats getRequestStats() {
 		return requestsStats;
 	}
 

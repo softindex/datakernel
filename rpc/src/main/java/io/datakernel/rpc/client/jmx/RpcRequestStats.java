@@ -21,7 +21,7 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.ValueStats;
 
-public final class RpcRequestsStats extends AbstractCompositeStats<RpcRequestsStats> {
+public final class RpcRequestStats extends AbstractCompositeStats<RpcRequestStats> {
 	private static final String LAST_SERVER_EXCEPTION_COUNTER_NAME = "Server exception";
 
 	private final EventStats totalRequests = new EventStats();
@@ -51,7 +51,7 @@ public final class RpcRequestsStats extends AbstractCompositeStats<RpcRequestsSt
 		responseTimeStats.refreshStats(timestamp, smoothingWindow);
 	}
 
-	public void add(RpcRequestsStats statsSet) {
+	public void add(RpcRequestStats statsSet) {
 		totalRequests.add(statsSet.getTotalRequests());
 		successfulRequests.add(statsSet.getSuccessfulRequests());
 		failedRequests.add(statsSet.getFailedRequests());

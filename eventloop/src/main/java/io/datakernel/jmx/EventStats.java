@@ -116,7 +116,7 @@ public final class EventStats implements JmxStats<EventStats> {
 	public SortedMap<String, TypeAndValue> getAttributes() {
 		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
 		attributes.put("totalCount", new TypeAndValue(SimpleType.LONG, getTotalCount()));
-		attributes.put("smoothedRate", new TypeAndValue(SimpleType.LONG, getSmoothedRate()));
+		attributes.put("smoothedRate", new TypeAndValue(SimpleType.DOUBLE, getSmoothedRate()));
 		return attributes;
 	}
 
