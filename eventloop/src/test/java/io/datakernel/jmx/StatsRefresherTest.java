@@ -28,30 +28,24 @@ import java.util.List;
 public class StatsRefresherTest {
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
-	private final Eventloop eventloop = context.mock(Eventloop.class);
 	private final JmxStats<?> stats_1 = context.mock(JmxStats.class, "stats_1");
 	private final JmxStats<?> stats_2 = context.mock(JmxStats.class, "stats_2");
 	private final JmxStats<?> stats_3 = context.mock(JmxStats.class, "stats_3");
 
+	private final Eventloop eventloop = new Eventloop();
 	private final List<JmxStats<?>> stats = Arrays.<JmxStats<?>>asList(stats_1, stats_2, stats_3);
 
-// TODO (vmykhalko)	@Test
+	@Test
 	public void itShouldRefreshAllStats() {
-		final long currentTime = 0;
 		final int periodInMillis = 100;
 		final double periodInSeconds = periodInMillis / (double) 1000;
 		final double smoothingWindow = 10.0;
 		final StatsRefresher statsRefresher = new StatsRefresher(stats, periodInSeconds, smoothingWindow, eventloop);
 
 		context.checking(new Expectations() {{
-			allowing(eventloop).currentTimeMillis();
-			will(returnValue(currentTime));
-
-			oneOf(stats_1).refreshStats(with(currentTime), with(smoothingWindow));
-			oneOf(stats_2).refreshStats(with(currentTime), with(smoothingWindow));
-			oneOf(stats_3).refreshStats(with(currentTime), with(smoothingWindow));
-
-			oneOf(eventloop).scheduleBackground(currentTime + periodInMillis, statsRefresher);
+			oneOf(stats_1).refreshStats(with(any(long.class)), with(smoothingWindow));
+			oneOf(stats_2).refreshStats(with(any(long.class)), with(smoothingWindow));
+			oneOf(stats_3).refreshStats(with(any(long.class)), with(smoothingWindow));
 		}});
 
 		statsRefresher.run();

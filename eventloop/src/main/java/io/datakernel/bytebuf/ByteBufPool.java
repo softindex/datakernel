@@ -19,16 +19,13 @@ package io.datakernel.bytebuf;
 import io.datakernel.jmx.JmxStats;
 import io.datakernel.jmx.JmxStatsWrappers;
 import io.datakernel.jmx.MBeanFormat;
-import io.datakernel.jmx.MBeanUtils;
 import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.util.ConcurrentStack;
 
-import javax.management.MBeanServer;
 import javax.management.ObjectName;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.jmx.JmxStatsWrappers.forLongValue;
 import static io.datakernel.util.Preconditions.check;
 import static java.lang.Integer.numberOfLeadingZeros;
 

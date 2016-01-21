@@ -87,6 +87,8 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 
 		try {
 			mbs.registerMBean(mbean, objectName);
+			logger.info(format("Instance with key %s was successfully registered to jmx " +
+					"with ObjectName \"%s\" ", key.toString(), objectName.toString()));
 		} catch (NotCompliantMBeanException | InstanceAlreadyExistsException | MBeanRegistrationException e) {
 			String msg = format("Cannot register MBean for instance with key %s and ObjectName \"%s\"",
 					key.toString(), objectName.toString());
@@ -130,7 +132,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 
 		if (!isJmxMBean(poolInstances.get(0))) {
 			logger.info(format("Pool of instances with key %s was not registered to jmx, " +
-					"because instances' type is not annotated are not @JmxMBean", key.toString()));
+					"because instances' type is not annotated with @JmxMBean", key.toString()));
 			return;
 		}
 
@@ -171,6 +173,8 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 
 		try {
 			mbs.registerMBean(mbean, objectName);
+			logger.info(format("Pool of instances with key %s was successfully registered to jmx " +
+					"with ObjectName \"%s\"", key.toString(), objectName.toString()));
 		} catch (NotCompliantMBeanException | InstanceAlreadyExistsException | MBeanRegistrationException e) {
 			String msg = format("Cannot register aggregated MBean of pool of workers with key %s " +
 					"and ObjectName \"%s\"", key.toString(), objectName.toString());
