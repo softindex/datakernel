@@ -27,12 +27,6 @@ CREATE PROCEDURE perform_backup()
         aggregation_db_log.*
       FROM aggregation_db_log;
 
-    INSERT INTO aggregation_db_revision_backup
-      SELECT
-        @max_revision AS backup_revision_id,
-        aggregation_db_revision.*
-      FROM aggregation_db_revision;
-
     SELECT release_lock('cube_lock');
 
     SELECT @max_revision;
