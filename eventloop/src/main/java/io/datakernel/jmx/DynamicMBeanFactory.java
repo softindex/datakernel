@@ -21,5 +21,7 @@ import java.util.List;
 
 public interface DynamicMBeanFactory {
 
+	DynamicMBean createFor(List<?> monitorables) throws Exception;
+
 	DynamicMBean createFor(List<?> monitorables, boolean enableRefreshIfPossible) throws Exception;
 }

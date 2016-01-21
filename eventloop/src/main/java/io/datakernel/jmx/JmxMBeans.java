@@ -60,6 +60,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return factory;
 	}
 
+	@Override
+	public DynamicMBean createFor(List<?> monitorables) throws Exception {
+		return createFor(monitorables, false);
+	}
+
+	@Override
 	public DynamicMBean createFor(List<?> monitorables, boolean enableRefresh) throws Exception {
 		checkNotNull(monitorables);
 		checkArgument(monitorables.size() > 0);

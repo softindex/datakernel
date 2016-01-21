@@ -16,8 +16,11 @@
 
 package io.datakernel.bytebuf;
 
+import io.datakernel.jmx.JmxStats;
+import io.datakernel.jmx.JmxStatsWrappers;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.MBeanUtils;
+import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.util.ConcurrentStack;
 
 import javax.management.MBeanServer;
@@ -25,6 +28,7 @@ import javax.management.ObjectName;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.jmx.JmxStatsWrappers.forLongValue;
 import static io.datakernel.util.Preconditions.check;
 import static java.lang.Integer.numberOfLeadingZeros;
 
@@ -50,6 +54,9 @@ public final class ByteBufPool {
 			slabs[i] = new ConcurrentStack<>();
 		}
 	}
+
+	// JMX
+	private static final ByteBufPoolStats stats = new ByteBufPoolStats();
 
 	private ByteBufPool() {
 	}
@@ -221,48 +228,8 @@ public final class ByteBufPool {
 	// JMX
 	public static final ObjectName JMX_NAME = MBeanFormat.name(ByteBufPool.class.getPackage().getName(), ByteBufPool.class.getSimpleName());
 
-	synchronized public static void registerMBean(MBeanServer mbeanServer) {
-		if (mbeanServer.isRegistered(JMX_NAME))
-			return;
-		MBeanUtils.register(mbeanServer, JMX_NAME, new ByteBufPoolMXBean() {
-			@Override
-			public int getCreatedItems() {
-				return ByteBufPool.getCreatedItems();
-			}
-
-			@Override
-			public int getPoolItems() {
-				return ByteBufPool.getPoolItems();
-			}
-
-			@Override
-			public long getPoolItemAvgSize() {
-				int result = 0;
-				for (ConcurrentStack<ByteBuf> slab : slabs) {
-					result += slab.size();
-				}
-				int items = result;
-				return items == 0 ? 0 : ByteBufPool.getPoolSize() / items;
-			}
-
-			@Override
-			public long getPoolSizeKB() {
-				return ByteBufPool.getPoolSize() / 1024;
-			}
-
-			@Override
-			public List<String> getPoolSlabs() {
-				assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
-				List<String> result = new ArrayList<>(slabs.length + 1);
-				result.add("SlotSize,Created,InPool,Total(Kb)");
-				for (int i = 0; i < slabs.length; i++) {
-					long slotSize = 1L << i;
-					int count = slabs[i].size();
-					result.add((slotSize & 0xffffffffL) + "," + created[i] + "," + count + "," + slotSize * count / 1024);
-				}
-				return result;
-			}
-		});
+	public static final ByteBufPoolStats getStats() {
+		return stats;
 	}
 
 	public static int getCreatedItems() {
@@ -315,4 +282,42 @@ public final class ByteBufPool {
 		return result;
 	}
 
+	@JmxMBean
+	public static final class ByteBufPoolStats {
+
+		public JmxStats<?> getCreatedItems() {
+			return JmxStatsWrappers.forLongValue(ByteBufPool.getCreatedItems());
+		}
+
+		public JmxStats<?> getPoolItems() {
+			return JmxStatsWrappers.forLongValue(ByteBufPool.getPoolItems());
+		}
+
+		public JmxStats<?> getPoolItemAvgSize() {
+			int result = 0;
+			for (ConcurrentStack<ByteBuf> slab : slabs) {
+				result += slab.size();
+			}
+			int items = result;
+			long itemAvgSize = items == 0 ? 0 : ByteBufPool.getPoolSize() / items;
+			return JmxStatsWrappers.forLongValue(itemAvgSize);
+		}
+
+		public JmxStats<?> getPoolSizeKB() {
+			long poolSizeKB = ByteBufPool.getPoolSize() / 1024;
+			return JmxStatsWrappers.forLongValue(poolSizeKB);
+		}
+
+		public JmxStats<?> getPoolSlabs() {
+			assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
+			List<String> result = new ArrayList<>(slabs.length + 1);
+			result.add("SlotSize,Created,InPool,Total(Kb)");
+			for (int i = 0; i < slabs.length; i++) {
+				long slotSize = 1L << i;
+				int count = slabs[i].size();
+				result.add((slotSize & 0xffffffffL) + "," + created[i] + "," + count + "," + slotSize * count / 1024);
+			}
+			return JmxStatsWrappers.forListString(result);
+		}
+	}
 }

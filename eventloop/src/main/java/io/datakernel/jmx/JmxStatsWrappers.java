@@ -1,8 +1,15 @@
 package io.datakernel.jmx;
 
+import javax.management.openmbean.ArrayType;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class JmxStatsWrappers {
 
@@ -34,6 +41,10 @@ public final class JmxStatsWrappers {
 
 	public static JmxStringValueStats forStringValue(String value) {
 		return new JmxStringValueStats(value);
+	}
+
+	public static JmxListStringStats forListString(List<String> list) {
+		return new JmxListStringStats(list);
 	}
 
 	public static final class JmxSummableValueStats implements JmxStats<JmxSummableValueStats> {
@@ -245,6 +256,45 @@ public final class JmxStatsWrappers {
 		public SortedMap<String, TypeAndValue> getAttributes() {
 			SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
 			attributes.put("value", new TypeAndValue(SimpleType.STRING, value));
+			return attributes;
+		}
+	}
+
+	public static final class JmxListStringStats implements JmxStats<JmxListStringStats> {
+
+		private List<String> list;
+
+		public JmxListStringStats(List<String> list) {
+			checkNotNull(list);
+
+			this.list = list;
+		}
+
+		public JmxListStringStats() {
+			this.list = new ArrayList<>();
+		}
+
+		@Override
+		public void add(JmxListStringStats other) {
+			this.list.addAll(other.list);
+		}
+
+		@Override
+		public void refreshStats(long timestamp, double smoothingWindow) {
+			list.clear();
+		}
+
+		@Override
+		public SortedMap<String, TypeAndValue> getAttributes() {
+			SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
+			OpenType<?> type = null;
+			try {
+				type = new ArrayType(1, SimpleType.STRING);
+			} catch (OpenDataException e) {
+				throw new RuntimeException(e);
+			}
+			String[] array = list.toArray(new String[list.size()]);
+			attributes.put("list", new TypeAndValue(type, array));
 			return attributes;
 		}
 	}
