@@ -283,14 +283,9 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		}
 		try {
 			doRead();
+		} catch (SimpleException e) {
+			onReadException(e);
 		} catch (Exception e) {
-			if (logger.isDebugEnabled()) {
-				logger.debug("Could not read HTTP message", e);
-			} else {
-				if (logger.isWarnEnabled()) {
-					logger.warn("Could not read HTTP message: {}", e.toString());
-				}
-			}
 			onInternalException(e);
 		}
 	}
