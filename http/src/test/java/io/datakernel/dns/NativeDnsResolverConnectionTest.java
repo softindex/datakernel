@@ -33,7 +33,7 @@ import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSett
 import static org.junit.Assert.assertEquals;
 
 public class NativeDnsResolverConnectionTest {
-	private DnsClientConnection dnsClientConnection;
+	private DnsClientHandler dnsClientConnection;
 	private Eventloop eventloop;
 	private static InetSocketAddress DNS_SERVER_ADDRESS = new InetSocketAddress("8.8.8.8", 53);
 	private static long TIMEOUT = 1000L;
@@ -92,7 +92,7 @@ public class NativeDnsResolverConnectionTest {
 			public void run() {
 				try {
 					DatagramChannel datagramChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
-					dnsClientConnection = new DnsClientConnection(eventloop, datagramChannel);
+					dnsClientConnection = new DnsClientHandler(eventloop, datagramChannel);
 					dnsClientConnection.register();
 				} catch (IOException e) {
 					e.printStackTrace();

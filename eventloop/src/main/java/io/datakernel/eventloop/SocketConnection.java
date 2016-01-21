@@ -112,19 +112,22 @@ public abstract class SocketConnection {
 	}
 
 	protected void onInternalException(Exception e) {
-		logger.error("onInternalException in {}", this, e);
+		if (logger.isErrorEnabled())
+			logger.error("onInternalException in {}", this, e);
 		eventloop.updateExceptionStats(INTERNAL_MARKER, e, this);
 		close();
 	}
 
 	protected void onReadException(Exception e) {
-		logger.warn("onReadException in {} : {}", this, e.toString());
+		if (logger.isWarnEnabled())
+			logger.warn("onReadException in {} : {}", this, e.toString());
 		eventloop.updateExceptionStats(READ_MARKER, e, this);
 		close();
 	}
 
 	protected void onWriteException(Exception e) {
-		logger.warn("onWriteException in {} : {}", this, e.toString());
+		if (logger.isWarnEnabled())
+			logger.warn("onWriteException in {} : {}", this, e.toString());
 		eventloop.updateExceptionStats(WRITE_MARKER, e, this);
 		close();
 	}

@@ -19,7 +19,7 @@ package io.datakernel.examples;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.UdpPacket;
-import io.datakernel.eventloop.UdpSocketConnection;
+import io.datakernel.eventloop.UdpSocketHandler;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -37,8 +37,8 @@ public class UdpEchoServerClientExample {
 	private static final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 
 	/* UDP server, which sends received packets back to sender. */
-	private static class EchoServerUdpConnection extends UdpSocketConnection {
-		public EchoServerUdpConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
+	private static class EchoServerUdpHandler extends UdpSocketHandler {
+		public EchoServerUdpHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
 			super(eventloop, datagramChannel);
 		}
 
@@ -56,8 +56,8 @@ public class UdpEchoServerClientExample {
 	}
 
 	/* UDP client, which sends test UDP packet to server and outputs received bytes to console. */
-	private static class ClientUdpConnection extends UdpSocketConnection {
-		public ClientUdpConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
+	private static class ClientUdpHandler extends UdpSocketHandler {
+		public ClientUdpHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
 			super(eventloop, datagramChannel);
 		}
 
@@ -92,12 +92,12 @@ public class UdpEchoServerClientExample {
 
 		DatagramChannel serverChannel = createDatagramChannel(defaultDatagramSocketSettings(),
 				SERVER_ADDRESS, null);
-		EchoServerUdpConnection serverConnection = new EchoServerUdpConnection(eventloop, serverChannel);
+		EchoServerUdpHandler serverConnection = new EchoServerUdpHandler(eventloop, serverChannel);
 		serverConnection.register();
 
 		// client
 		DatagramChannel clientChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
-		ClientUdpConnection clientConnection = new ClientUdpConnection(eventloop, clientChannel);
+		ClientUdpHandler clientConnection = new ClientUdpHandler(eventloop, clientChannel);
 		clientConnection.register();
 
 		clientConnection.send(new UdpPacket(ByteBuf.wrap(bytesToSend), SERVER_ADDRESS));

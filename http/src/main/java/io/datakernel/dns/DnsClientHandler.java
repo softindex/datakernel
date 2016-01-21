@@ -22,7 +22,7 @@ import io.datakernel.async.ResultCallbackWithTimeout;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.UdpPacket;
-import io.datakernel.eventloop.UdpSocketConnection;
+import io.datakernel.eventloop.UdpSocketHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,10 +33,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
-public class DnsClientConnection extends UdpSocketConnection {
+public class DnsClientHandler extends UdpSocketHandler {
 	private Map<String, ListenableResultCallback<DnsQueryResult>> resultHandlers = new HashMap<>();
 
-	private final Logger logger = LoggerFactory.getLogger(DnsClientConnection.class);
+	private final Logger logger = LoggerFactory.getLogger(DnsClientHandler.class);
 
 	/**
 	 * Creates a new DNS connection
@@ -44,7 +44,7 @@ public class DnsClientConnection extends UdpSocketConnection {
 	 * @param eventloop       eventloop in which will handle this connection
 	 * @param datagramChannel channel for creating this connection
 	 */
-	public DnsClientConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
+	public DnsClientHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
 		super(eventloop, datagramChannel);
 	}
 

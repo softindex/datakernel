@@ -45,7 +45,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 
 	private final Eventloop eventloop;
 
-	private DnsClientConnection connection;
+	private DnsClientHandler connection;
 	private final DatagramSocketSettings datagramSocketSettings;
 
 	private InetSocketAddress dnsServerAddress;
@@ -241,7 +241,7 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 	public void registerConnection() {
 		try {
 			DatagramChannel datagramChannel = createDatagramChannel(datagramSocketSettings, null, dnsServerAddress);
-			connection = new DnsClientConnection(eventloop, datagramChannel);
+			connection = new DnsClientHandler(eventloop, datagramChannel);
 			connection.register();
 		} catch (IOException e) {
 			if (logger.isErrorEnabled())

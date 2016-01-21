@@ -31,15 +31,15 @@ import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSett
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-public class UdpSocketConnectionTest {
+public class UdpSocketHandlerTest {
 	private static final int SERVER_PORT = 45555;
 	private static final InetSocketAddress SERVER_ADDRESS = new InetSocketAddress("127.0.0.1", SERVER_PORT);
 	private Eventloop eventloop = new Eventloop();
 
 	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 
-	private class ClientUdpConnection extends UdpSocketConnection {
-		public ClientUdpConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
+	private class ClientUdpHandler extends UdpSocketHandler {
+		public ClientUdpHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
 			super(eventloop, datagramChannel);
 		}
 
@@ -88,8 +88,8 @@ public class UdpSocketConnectionTest {
 		}
 	}
 
-	private class EchoServerUdpConnection extends UdpSocketConnection {
-		public EchoServerUdpConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
+	private class EchoServerUdpHandler extends UdpSocketHandler {
+		public EchoServerUdpHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
 			super(eventloop, datagramChannel);
 		}
 
@@ -120,12 +120,12 @@ public class UdpSocketConnectionTest {
 				try {
 					//  server
 					DatagramChannel serverChannel = createDatagramChannel(defaultDatagramSocketSettings(), SERVER_ADDRESS, null);
-					EchoServerUdpConnection serverConnection = new EchoServerUdpConnection(eventloop, serverChannel);
+					EchoServerUdpHandler serverConnection = new EchoServerUdpHandler(eventloop, serverChannel);
 					serverConnection.register();
 
 					// client
 					DatagramChannel clientChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
-					ClientUdpConnection clientConnection = new ClientUdpConnection(eventloop, clientChannel);
+					ClientUdpHandler clientConnection = new ClientUdpHandler(eventloop, clientChannel);
 					clientConnection.register();
 
 					clientConnection.sendTestData(bytesToSend, SERVER_ADDRESS);

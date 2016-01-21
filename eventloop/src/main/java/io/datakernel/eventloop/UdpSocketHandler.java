@@ -30,7 +30,7 @@ import java.util.ArrayDeque;
 /**
  * Represent I/O handler of UDP {@link DatagramChannel}
  */
-public abstract class UdpSocketConnection extends SocketConnection {
+public abstract class UdpSocketHandler extends SocketConnection {
 	public static final int DEFAULT_UDP_BUFFER_SIZE = 16384;
 
 	protected final DatagramChannel channel;
@@ -42,7 +42,7 @@ public abstract class UdpSocketConnection extends SocketConnection {
 	 * @param eventloop       eventloop in which will handle this connection
 	 * @param datagramChannel channel for creating this connection
 	 */
-	public UdpSocketConnection(Eventloop eventloop, DatagramChannel datagramChannel) {
+	public UdpSocketHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
 		super(eventloop);
 		this.channel = datagramChannel;
 		this.receiveBufferSize = DEFAULT_UDP_BUFFER_SIZE;
