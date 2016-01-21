@@ -25,13 +25,13 @@ import java.util.Map.Entry;
 public class MiddlewareServlet implements AsyncHttpServlet {
 	private static final String ROOT = "/";
 
-	private final Map<String, MiddlewareServlet> routes = new HashMap<>();
-	private AsyncHttpServlet fallbackRoute;
+	protected final Map<String, MiddlewareServlet> routes = new HashMap<>();
+	protected AsyncHttpServlet fallbackRoute;
 
-	private final Map<HttpMethod, AsyncHttpServlet> handlers = new HashMap<>();
-	private AsyncHttpServlet fallbackHandler;
+	protected final Map<HttpMethod, AsyncHttpServlet> handlers = new HashMap<>();
+	protected AsyncHttpServlet fallbackHandler;
 
-	private final Map<String, MiddlewareServlet> parameters = new HashMap<>();
+	protected final Map<String, MiddlewareServlet> parameters = new HashMap<>();
 
 	public void get(AsyncHttpServlet handler) {
 		get(ROOT, handler);

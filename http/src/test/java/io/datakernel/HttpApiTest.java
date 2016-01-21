@@ -16,11 +16,11 @@
 
 package io.datakernel;
 
-import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
+import io.datakernel.util.Utils;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -78,7 +78,7 @@ public class HttpApiTest {
 		}).setListenPort(PORT);
 
 		client = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-				3_000L, InetAddresses.forString("8.8.8.8")));
+				3_000L, Utils.forString("8.8.8.8")));
 
 		// setup request and response data
 		requestAcceptContentTypes.add(AcceptMediaType.of(MediaTypes.ANY_AUDIO, 90));

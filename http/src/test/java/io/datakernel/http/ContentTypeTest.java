@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.http.HttpUtils.parseQ;
+import static io.datakernel.util.Utils.parseQ;
 import static io.datakernel.http.MediaTypes.*;
 import static io.datakernel.util.ByteBufStrings.*;
 import static java.nio.charset.Charset.forName;

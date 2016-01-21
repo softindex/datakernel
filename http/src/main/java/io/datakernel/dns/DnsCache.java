@@ -16,19 +16,13 @@
 
 package io.datakernel.dns;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static io.datakernel.dns.DnsMessage.AAAA_RECORD_TYPE;
@@ -41,7 +35,7 @@ public final class DnsCache {
 	private static final Logger logger = LoggerFactory.getLogger(DnsCache.class);
 
 	private final Map<String, CachedDnsLookupResult> cache = new ConcurrentHashMap<>();
-	private final Multimap<Long, String> expirations = HashMultimap.create();
+	private final Map<Long, Set<String>> expirations = new HashMap<>();
 	private long lastCleanupSecond;
 
 	private final long errorCacheExpirationSeconds;
@@ -185,7 +179,7 @@ public final class DnsCache {
 			expirationSecond = result.getMinTtl() + getCurrentSecond();
 		String domainName = result.getDomainName();
 		cache.put(domainName, CachedDnsLookupResult.fromQueryWithExpiration(result, expirationSecond));
-		expirations.put(expirationSecond + hardExpirationDeltaSeconds, domainName);
+		setExpiration(expirations, expirationSecond + hardExpirationDeltaSeconds, domainName);
 		if (logger.isDebugEnabled())
 			logger.debug("Add result to cache for host: {}", domainName);
 	}
@@ -199,7 +193,7 @@ public final class DnsCache {
 		long expirationSecond = errorCacheExpirationSeconds + getCurrentSecond();
 		String domainName = exception.getDomainName();
 		cache.put(domainName, CachedDnsLookupResult.fromExceptionWithExpiration(exception, expirationSecond));
-		expirations.put(expirationSecond, domainName);
+		setExpiration(expirations, expirationSecond + hardExpirationDeltaSeconds, domainName);
 		if (logger.isDebugEnabled())
 			logger.debug("Add exception to cache for host: {}", domainName);
 	}
@@ -215,7 +209,7 @@ public final class DnsCache {
 
 	private void clearCache(long callSecond, long lastCleanupSecond) {
 		for (long i = lastCleanupSecond; i <= callSecond; ++i) {
-			Collection<String> domainNames = expirations.removeAll(i);
+			Collection<String> domainNames = expirations.remove(i);
 
 			if (domainNames != null) {
 				for (String domainName : domainNames) {
@@ -265,7 +259,7 @@ public final class DnsCache {
 	}
 
 	public String[] getSuccessfullyResolvedDomainNames() {
-		List<String> domainNames = Lists.newArrayList();
+		List<String> domainNames = new ArrayList<>();
 
 		for (Map.Entry<String, CachedDnsLookupResult> entry : cache.entrySet()) {
 			if (entry.getValue().isSuccessful()) {
@@ -277,7 +271,7 @@ public final class DnsCache {
 	}
 
 	public String[] getDomainNamesOfFailedRequests() {
-		List<String> domainNames = Lists.newArrayList();
+		List<String> domainNames = new ArrayList<>();
 
 		for (Map.Entry<String, CachedDnsLookupResult> entry : cache.entrySet()) {
 			if (!entry.getValue().isSuccessful()) {
@@ -289,7 +283,7 @@ public final class DnsCache {
 	}
 
 	public String[] getAllCacheEntries() {
-		List<String> cacheEntries = Lists.newArrayList();
+		List<String> cacheEntries = new ArrayList<>();
 		StringBuilder sb = new StringBuilder();
 
 		if (!cache.isEmpty())
@@ -315,5 +309,14 @@ public final class DnsCache {
 		}
 
 		return cacheEntries.toArray(new String[cacheEntries.size()]);
+	}
+
+	private void setExpiration(Map<Long, Set<String>> expirations, long time, String domain) {
+		Set<String> sameTime = expirations.get(time);
+		if (sameTime == null) {
+			sameTime = new HashSet<>();
+			expirations.put(time, sameTime);
+		}
+		sameTime.add(domain);
 	}
 }

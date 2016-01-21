@@ -23,8 +23,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.http.HttpUtils.parseQ;
-import static io.datakernel.http.HttpUtils.skipSpaces;
+import static io.datakernel.util.Utils.parseQ;
+import static io.datakernel.util.Utils.skipSpaces;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
 

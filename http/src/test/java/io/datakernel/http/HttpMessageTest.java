@@ -16,12 +16,12 @@
 
 package io.datakernel.http;
 
-import com.google.common.base.Charsets;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -53,7 +53,7 @@ public class HttpMessageTest {
 		assertHttpResponseEquals("HTTP/1.1 500 Internal Server Error\r\nContent-Length: 81\r\n\r\n" +
 				"The server encountered an internal error and was unable to complete your request.", HttpResponse.create(500));
 		assertHttpResponseEquals("HTTP/1.1 502 Error\r\nContent-Length: 9\r\n\r\n" +
-				"Error 502", HttpResponse.create(502).body("Error 502".getBytes(Charsets.UTF_8)));
+				"Error 502", HttpResponse.create(502).body("Error 502".getBytes(StandardCharsets.UTF_8)));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\"\r\nContent-Length: 0\r\n\r\n",
 				HttpResponse.create(200).serverCookie(Collections.singletonList(new HttpCookie("cookie1", "value1"))));
 		assertHttpResponseEquals("HTTP/1.1 200 OK\r\nSet-Cookie: cookie1=\"value1\", cookie2=\"value2\"\r\nContent-Length: 0\r\n\r\n",

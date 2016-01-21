@@ -33,9 +33,9 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
 
-import static com.google.common.io.ByteStreams.readFully;
-import static com.google.common.io.ByteStreams.toByteArray;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.http.TestUtils.readFully;
+import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;
@@ -128,7 +128,7 @@ public class AsyncHttpServerTest {
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\n/abc"); // ?
 
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
-//		assertTrue(socket.isClosed());
+		assertTrue(socket.isClosed());
 		socket.close();
 
 		server.closeFuture().await();

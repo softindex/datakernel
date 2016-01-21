@@ -16,12 +16,12 @@
 
 package io.datakernel.http;
 
-import com.google.common.base.Stopwatch;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.ValueStats;
+import io.datakernel.util.Stopwatch;
 
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeUnit;

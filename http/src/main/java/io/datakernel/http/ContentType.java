@@ -22,7 +22,7 @@ import io.datakernel.util.ByteBufStrings;
 import java.nio.charset.Charset;
 
 import static io.datakernel.http.ContentTypes.lookup;
-import static io.datakernel.http.HttpUtils.skipSpaces;
+import static io.datakernel.util.Utils.skipSpaces;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 public final class ContentType {

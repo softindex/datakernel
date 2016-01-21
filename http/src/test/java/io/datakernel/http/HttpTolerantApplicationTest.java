@@ -16,13 +16,13 @@
 
 package io.datakernel.http;
 
-import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.util.Utils;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -33,10 +33,10 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import static com.google.common.io.ByteStreams.readFully;
-import static com.google.common.io.ByteStreams.toByteArray;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.http.TestUtils.readFully;
+import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.util.ByteBufStrings.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -143,7 +143,7 @@ public class HttpTolerantApplicationTest {
 		try (ServerSocket ignored = socketServer(port, "HTTP/1.1 200 OK\nContent-Type:  \t  text/html; charset=UTF-8\nContent-Length:  4\n\n/abc")) {
 			Eventloop eventloop = new Eventloop();
 			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
-					InetAddresses.forString("8.8.8.8")));
+					Utils.forString("8.8.8.8")));
 
 			httpClient.execute(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
 				@Override

@@ -22,9 +22,9 @@ import io.datakernel.bytebuf.ByteBufPool;
 import java.net.InetAddress;
 import java.util.*;
 
-import static com.google.common.base.Strings.nullToEmpty;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.util.Utils.nullToEmpty;
 import static io.datakernel.util.ByteBufStrings.*;
 
 /**

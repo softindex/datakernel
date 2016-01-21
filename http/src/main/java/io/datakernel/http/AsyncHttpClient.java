@@ -16,8 +16,6 @@
 
 package io.datakernel.http;
 
-import com.google.common.base.Joiner;
-import com.google.common.base.Stopwatch;
 import io.datakernel.async.*;
 import io.datakernel.dns.DnsClient;
 import io.datakernel.dns.DnsException;
@@ -28,6 +26,8 @@ import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.util.Joiner;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,10 +44,10 @@ import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public class AsyncHttpClient implements EventloopService {

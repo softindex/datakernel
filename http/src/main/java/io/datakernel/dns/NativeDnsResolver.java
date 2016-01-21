@@ -16,13 +16,12 @@
 
 package io.datakernel.dns;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.net.InetAddresses;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,10 +30,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static io.datakernel.dns.DnsCache.DnsCacheQueryResult.*;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 /**
  * NativeDnsResolver represents asynchronous DNS resolver, which run in Eventloop.
@@ -115,8 +114,8 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 			private void resolve(final String domainName, final boolean ipv6, final ResultCallback<InetAddress[]> callback) {
 				checkArgument(domainName != null, "Domain name must not be null");
 
-				if (InetAddresses.isInetAddress(domainName)) {
-					callback.onResult(new InetAddress[]{InetAddresses.forString(domainName)});
+				if (Utils.isInetAddress(domainName)) {
+					callback.onResult(new InetAddress[]{Utils.forString(domainName)});
 					return;
 				}
 
@@ -172,8 +171,8 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 	private void resolve(final String domainName, final boolean ipv6, final ResultCallback<InetAddress[]> callback) {
 		checkArgument(domainName != null, "Domain name must not be null");
 
-		if (InetAddresses.isInetAddress(domainName)) {
-			callback.onResult(new InetAddress[]{InetAddresses.forString(domainName)});
+		if (Utils.isInetAddress(domainName)) {
+			callback.onResult(new InetAddress[]{Utils.forString(domainName)});
 			return;
 		}
 
@@ -254,7 +253,6 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 		return eventloop;
 	}
 
-	@VisibleForTesting
 	DnsCache getCache() {
 		return cache;
 	}

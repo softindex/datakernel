@@ -16,11 +16,11 @@
 
 package io.datakernel.http;
 
-import com.google.common.base.Stopwatch;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpRequestsGenerator.GeneratorOptions;
 import io.datakernel.http.HttpThrottlingServer.ServerOptions;
+import io.datakernel.util.Stopwatch;
 
 public class HttpServerRequestGeneratorTest {
 	private static final String SERVER_URL = "http://localhost:" + HttpThrottlingServer.SERVER_PORT;

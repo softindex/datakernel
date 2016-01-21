@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.http;
+package io.datakernel.examples;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.MiddlewareServlet;
+import io.datakernel.http.StaticServletForFiles;
 
 import java.io.IOException;
 import java.net.URL;

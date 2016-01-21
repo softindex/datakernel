@@ -16,14 +16,11 @@
 
 package io.datakernel.http;
 
-import com.google.common.collect.ImmutableMap;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.util.ByteBufStrings;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.ByteBufStrings.*;
@@ -249,16 +246,15 @@ public final class HttpResponse extends HttpMessage {
 		buf.put(result);
 	}
 
-	private static final ImmutableMap<Integer, ByteBuf> DEFAULT_CODE_BODIES;
+	private static final Map<Integer, ByteBuf> DEFAULT_CODE_BODIES;
 
 	static {
-		DEFAULT_CODE_BODIES = ImmutableMap.<Integer, ByteBuf>builder()
-				.put(400, ByteBuf.wrap(encodeAscii("Your browser (or proxy) sent a request that this server could not understand.")))
-				.put(403, ByteBuf.wrap(encodeAscii("You don't have permission to access the requested directory.")))
-				.put(404, ByteBuf.wrap(encodeAscii("The requested URL was not found on this server.")))
-				.put(500, ByteBuf.wrap(encodeAscii("The server encountered an internal error and was unable to complete your request.")))
-				.put(503, ByteBuf.wrap(encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems.")))
-				.build();
+		DEFAULT_CODE_BODIES = new HashMap<>();
+		DEFAULT_CODE_BODIES.put(400, ByteBuf.wrap(encodeAscii("Your browser (or proxy) sent a request that this server could not understand.")));
+		DEFAULT_CODE_BODIES.put(403, ByteBuf.wrap(encodeAscii("You don't have permission to access the requested directory.")));
+		DEFAULT_CODE_BODIES.put(404, ByteBuf.wrap(encodeAscii("The requested URL was not found on this server.")));
+		DEFAULT_CODE_BODIES.put(500, ByteBuf.wrap(encodeAscii("The server encountered an internal error and was unable to complete your request.")));
+		DEFAULT_CODE_BODIES.put(503, ByteBuf.wrap(encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems.")));
 	}
 
 	/**

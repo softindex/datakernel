@@ -20,8 +20,8 @@ import io.datakernel.bytebuf.ByteBuf;
 
 import static io.datakernel.util.ByteBufStrings.*;
 
-// <[RFC2616], Section 3.3.1> case-sensitive
-// Can't parse dates earlier than 1970
+/* <[RFC2616], Section 3.3.1> case-sensitive
+ Can't parse dates earlier than 1970*/
 final class HttpDate {
 	private static final int HOUR_SECONDS = (60 * 60);
 	private static final int DAY_SECONDS = 24 * HOUR_SECONDS;

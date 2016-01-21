@@ -23,7 +23,7 @@ import io.datakernel.util.ByteBufStrings;
 
 import java.util.Random;
 
-import static com.google.common.base.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 public class HttpThrottlingServer {
 	private static final Random rand = new Random();

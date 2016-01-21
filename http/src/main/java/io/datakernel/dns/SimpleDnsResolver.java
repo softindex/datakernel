@@ -16,17 +16,12 @@
 
 package io.datakernel.dns;
 
-import com.google.common.base.Predicate;
-import com.google.common.collect.Iterables;
-
 import java.net.Inet4Address;
 import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.concurrent.Executor;
-
-import static com.google.common.collect.Lists.newArrayList;
 
 /**
  * SimpleDnsResolver is realization of the {@link BlockingDnsResolver}. For resolving domain it is used
@@ -38,25 +33,13 @@ public final class SimpleDnsResolver extends BlockingDnsResolver {
 	}
 
 	@Override
-	protected ResolvedAddress doResolve(String host, final boolean ipv6) {
+	protected ResolvedAddress doResolve(String host, boolean ipv6) {
 		ResolvedAddress resolvedAddress;
 		try {
 			InetAddress[] addresses = InetAddress.getAllByName(host);
 
 			// remove unsolicited addresses
-			ArrayList<InetAddress> addressList = new ArrayList<>(Arrays.asList(addresses));
-			ArrayList<InetAddress> filteredAddresses = newArrayList(Iterables.filter(addressList, new Predicate<InetAddress>() {
-				@Override
-				public boolean apply(InetAddress input) {
-					if (ipv6) {
-						return input instanceof Inet6Address;
-					} else {
-						return input instanceof Inet4Address;
-					}
-				}
-			}));
-
-			addresses = filteredAddresses.toArray(new InetAddress[filteredAddresses.size()]);
+			addresses = filter(addresses, ipv6);
 
 			resolvedAddress = new ResolvedAddress(addresses, positiveKeepMillis);
 		} catch (Exception e) {
@@ -69,5 +52,17 @@ public final class SimpleDnsResolver extends BlockingDnsResolver {
 			logger.debug("Resolved addresses: {} for host: {}", resolvedAddress.getAllAddresses(), host);
 		}
 		return resolvedAddress;
+	}
+
+	private InetAddress[] filter(InetAddress[] unfiltered, final boolean ipv6) {
+		Collection<InetAddress> filtered = new ArrayList<>();
+		for (InetAddress inetAddress : unfiltered) {
+			if (!ipv6 && inetAddress instanceof Inet4Address) {
+				filtered.add(inetAddress);
+			} else if (ipv6 && inetAddress instanceof Inet6Address) {
+				filtered.add(inetAddress);
+			}
+		}
+		return filtered.toArray(new InetAddress[filtered.size()]);
 	}
 }

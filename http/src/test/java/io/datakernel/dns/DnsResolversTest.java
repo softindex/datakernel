@@ -31,12 +31,13 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static org.junit.Assert.*;
@@ -74,8 +75,8 @@ public class DnsResolversTest {
 		}
 
 		@Override
-		public void onException(Exception exception) {
-			callback.onException(exception);
+		public void onException(Exception e) {
+			callback.onException(e);
 			localEventloopConcurrentOperationTracker.complete();
 			counter.completeOperation();
 		}
@@ -104,10 +105,10 @@ public class DnsResolversTest {
 		}
 
 		@Override
-		public void onException(Exception exception) {
-			this.exception = exception;
+		public void onException(Exception e) {
+			this.exception = e;
 			System.out.println("Resolving IP addresses for host failed. Stack trace: ");
-			exception.printStackTrace();
+			e.printStackTrace();
 		}
 
 		public InetAddress[] getResult() {
@@ -174,6 +175,13 @@ public class DnsResolversTest {
 		assertEquals(newHashSet(simpleResult3.result), newHashSet(nativeResult3.result));
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+	}
+
+	@SafeVarargs
+	private final <V> Set<V> newHashSet(V... result) {
+		Set<V> set = new HashSet<>();
+		set.addAll(Arrays.asList(result));
+		return set;
 	}
 
 	@Ignore

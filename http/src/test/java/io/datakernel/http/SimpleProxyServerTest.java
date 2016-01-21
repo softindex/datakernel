@@ -16,12 +16,12 @@
 
 package io.datakernel.http;
 
-import com.google.common.net.InetAddresses;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.util.Utils;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,9 +32,9 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
-import static com.google.common.io.ByteStreams.readFully;
-import static com.google.common.io.ByteStreams.toByteArray;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.http.TestUtils.readFully;
+import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
@@ -99,7 +99,7 @@ public class SimpleProxyServerTest {
 
 		Eventloop eventloop2 = new Eventloop();
 		AsyncHttpClient httpClient = new AsyncHttpClient(eventloop2,
-				new NativeDnsResolver(eventloop2, new DatagramSocketSettings(), 3_000L, InetAddresses.forString("8.8.8.8")));
+				new NativeDnsResolver(eventloop2, new DatagramSocketSettings(), 3_000L, Utils.forString("8.8.8.8")));
 
 		AsyncHttpServer proxyServer = proxyHttpServer(eventloop2, httpClient);
 		proxyServer.setListenPort(PROXY_SERVER_PORT).acceptOnce(false);

@@ -16,25 +16,23 @@
 
 package io.datakernel.dns;
 
-import com.google.common.net.InetAddresses;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.util.ListenableFuture;
+import io.datakernel.util.SettableFuture;
+import io.datakernel.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.collect.Maps.newConcurrentMap;
-import static com.google.common.collect.Maps.newHashMap;
-import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorService;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * It is abstract class which represents non-asynchronous resolving. It resolves each domain
@@ -43,9 +41,9 @@ import static com.google.common.util.concurrent.MoreExecutors.newDirectExecutorS
 public abstract class BlockingDnsResolver {
 	static final Logger logger = LoggerFactory.getLogger(BlockingDnsResolver.class);
 
-	protected final Map<String, ResolvedAddress> cache = newConcurrentMap();
+	protected final Map<String, ResolvedAddress> cache = new ConcurrentHashMap<>();
 
-	protected final Map<String, ListenableFuture<InetAddress[]>> pendings = newHashMap();
+	protected final Map<String, ListenableFuture<InetAddress[]>> pendings = new HashMap<>();
 
 	protected long positiveKeepMillis = TimeUnit.MINUTES.toMillis(60);
 	protected long negativeKeepMillis = TimeUnit.MINUTES.toMillis(10);
@@ -100,7 +98,7 @@ public abstract class BlockingDnsResolver {
 							});
 						}
 					}
-				}, newDirectExecutorService());
+				});
 			}
 
 			@Override
@@ -177,15 +175,15 @@ public abstract class BlockingDnsResolver {
 	protected ListenableFuture<InetAddress[]> resolve(String host, boolean ipv6) {
 		checkNotNull(host);
 
-		if (InetAddresses.isInetAddress(host)) {
-			InetAddress ipAddress = InetAddresses.forString(host);
-			return Futures.immediateFuture(new InetAddress[]{ipAddress});
+		if (Utils.isInetAddress(host)) {
+			InetAddress ipAddress = Utils.forString(host);
+			return SettableFuture.immediateFuture(new InetAddress[]{ipAddress});
 		}
 
 		host = host.toLowerCase();
 		ResolvedAddress resolvedAddress = cache.get(host);
 		if (resolvedAddress != null && !resolvedAddress.isInvalid()) {
-			return Futures.immediateFuture(resolvedAddress.getAllAddresses());
+			return SettableFuture.immediateFuture(resolvedAddress.getAllAddresses());
 		}
 		return resolvePending(host, ipv6);
 	}

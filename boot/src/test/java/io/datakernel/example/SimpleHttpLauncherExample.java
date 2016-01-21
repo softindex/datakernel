@@ -41,7 +41,7 @@ public class SimpleHttpLauncherExample {
 	public static class ServicesLauncher extends Launcher {
 		@Override
 		protected void configure() {
-			configs("launcher-example.properties");
+			optionalConfigs("launcher-example.properties");
 			modules(ServiceGraphModule.defaultInstance(),
 					new LauncherExampleModule());
 		}

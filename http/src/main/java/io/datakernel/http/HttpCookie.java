@@ -21,7 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import java.util.Date;
 import java.util.List;
 
-import static io.datakernel.http.HttpUtils.skipSpaces;
+import static io.datakernel.util.Utils.skipSpaces;
 import static io.datakernel.util.ByteBufStrings.*;
 
 // RFC 6265
