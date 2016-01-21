@@ -16,10 +16,7 @@
 
 package io.datakernel.aggregation_db;
 
-import com.google.common.base.Function;
-import com.google.common.base.Functions;
-import com.google.common.base.MoreObjects;
-import com.google.common.base.Predicate;
+import com.google.common.base.*;
 import com.google.common.collect.Ordering;
 import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.async.CompletionCallback;
@@ -54,6 +51,7 @@ import static java.util.Arrays.asList;
 @SuppressWarnings("unchecked")
 public class Aggregation {
 	private static final Logger logger = LoggerFactory.getLogger(Aggregation.class);
+	private static final Joiner JOINER = Joiner.on(", ");
 
 	private final Eventloop eventloop;
 	private final DefiningClassLoader classLoader;
@@ -529,16 +527,22 @@ public class Aggregation {
 			return;
 		}
 
+		logger.info("Starting consolidation of the following chunks in aggregation '{}': [{}]",
+				aggregationMetadata.getId(), getChunkIds(chunksToConsolidate));
 		metadataStorage.startConsolidation(chunksToConsolidate, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
 				doConsolidation(chunksToConsolidate, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
 					@Override
-					public void onResult(List<AggregationChunk.NewChunk> consolidatedChunks) {
+					public void onResult(final List<AggregationChunk.NewChunk> consolidatedChunks) {
 						metadataStorage.saveConsolidatedChunks(aggregationMetadata, chunksToConsolidate, consolidatedChunks,
 								new ForwardingCompletionCallback(callback) {
 									@Override
 									public void onComplete() {
+										logger.info("Completed consolidation of the following chunks " +
+												"in aggregation '{}': [{}]. Created chunks: [{}]",
+												aggregationMetadata.getId(), getChunkIds(chunksToConsolidate),
+												getNewChunkIds(consolidatedChunks));
 										callback.onResult(true);
 									}
 								});
@@ -546,6 +550,24 @@ public class Aggregation {
 				});
 			}
 		});
+	}
+
+	private static String getNewChunkIds(List<AggregationChunk.NewChunk> chunks) {
+		List<Long> ids = new ArrayList<>();
+		for (AggregationChunk.NewChunk chunk : chunks) {
+			ids.add(chunk.chunkId);
+		}
+
+		return JOINER.join(ids);
+	}
+
+	private static String getChunkIds(List<AggregationChunk> chunks) {
+		List<Long> ids = new ArrayList<>();
+		for (AggregationChunk chunk : chunks) {
+			ids.add(chunk.getChunkId());
+		}
+
+		return JOINER.join(ids);
 	}
 
 	public void loadChunks(final CompletionCallback callback) {
