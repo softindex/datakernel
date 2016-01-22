@@ -17,7 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.stats.*;
 import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
 

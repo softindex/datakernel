@@ -16,9 +16,7 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.MapStats;
-
-import java.net.InetSocketAddress;
+import io.datakernel.jmx.stats.MapStats;
 
 public final class ClassToRequestStats extends MapStats<Class<?>, RpcRequestStats> {
 	@Override

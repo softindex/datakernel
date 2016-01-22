@@ -20,9 +20,9 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncTask;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.jmx.annotation.JmxOperation;
+import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -795,7 +795,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 	/**
 	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
-	 * <p>
+	 * <p/>
 	 * If eventloop contains only background tasks, it will be closed
 	 *
 	 * @param timestamp timestamp after which task will be ran

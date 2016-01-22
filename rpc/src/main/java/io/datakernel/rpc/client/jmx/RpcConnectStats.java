@@ -16,8 +16,8 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.AbstractCompositeStats;
-import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.stats.AbstractCompositeStats;
+import io.datakernel.jmx.stats.EventStats;
 
 public final class RpcConnectStats extends AbstractCompositeStats<RpcConnectStats> {
 	private final EventStats successfulConnects = new EventStats();

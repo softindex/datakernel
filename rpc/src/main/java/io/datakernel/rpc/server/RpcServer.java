@@ -143,27 +143,27 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	@Override
 	protected void onListen() {
-		scheduleRefreshStats();
+//		scheduleRefreshStats();
 	}
 
 	// JMX
 
-	private void scheduleRefreshStats() {
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
-			@Override
-			public void run() {
-				if (!isRunning())
-					return;
-				long timestamp = eventloop.currentTimeMillis();
-				for (RpcServerConnection connection : connections.values()) {
-					connection.refreshStats(timestamp, smoothingWindow);
-				}
-				scheduleRefreshStats();
-			}
-		});
-	}
+//	private void scheduleRefreshStats() {
+//		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
+//			@Override
+//			public void run() {
+//				if (!isRunning())
+//					return;
+//				long timestamp = eventloop.currentTimeMillis();
+//				for (RpcServerConnection connection : connections.values()) {
+//					connection.refreshStats(timestamp, smoothingWindow);
+//				}
+//				scheduleRefreshStats();
+//			}
+//		});
+//	}
 
-	// TODO (vmykhalko)
+	// TODO (vmykhalko): upgrade jmx here
 	/*
 	@Override
 	public void setSmoothingWindow(double smoothingWindow) {

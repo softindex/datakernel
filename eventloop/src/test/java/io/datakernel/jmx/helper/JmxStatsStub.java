@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx.helper;
 
-import io.datakernel.jmx.JmxStats;
+import io.datakernel.jmx.stats.JmxStats;
 
 import javax.management.openmbean.SimpleType;
 import java.util.SortedMap;

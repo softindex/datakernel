@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.MapStats;
+import io.datakernel.jmx.stats.MapStats;
 
 import java.net.InetSocketAddress;
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx;
+package io.datakernel.jmx.stats;
 
 import io.datakernel.jmx.helper.CompositeStatsStub;
 import org.junit.Test;

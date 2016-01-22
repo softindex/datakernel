@@ -18,9 +18,6 @@ package io.datakernel.rpc.protocol;
 
 import io.datakernel.eventloop.SocketConnection;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-
 public interface RpcProtocol {
 	void sendMessage(RpcMessage rpcMessage) throws Exception;
 
@@ -30,11 +27,12 @@ public interface RpcProtocol {
 
 	SocketConnection getSocketConnection();
 
-	void startMonitoring();
-
-	void stopMonitoring();
-
-	void reset();
-
-	CompositeData getConnectionDetails() throws OpenDataException;
+	// TODO(vmykhalko): upgrade jmx
+//	void startMonitoring();
+//
+//	void stopMonitoring();
+//
+//	void reset();
+//
+//	CompositeData getConnectionDetails() throws OpenDataException;
 }

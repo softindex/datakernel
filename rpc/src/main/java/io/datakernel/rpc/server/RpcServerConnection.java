@@ -19,8 +19,8 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.stats.ExceptionStats;
+import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;
@@ -28,8 +28,6 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
 import java.nio.channels.SocketChannel;
 import java.util.Map;
 
@@ -157,51 +155,51 @@ public final class RpcServerConnection implements RpcConnection {
 		return protocol.getSocketConnection();
 	}
 
-	// JMX
-
-	public void startMonitoring() {
-		monitoring = true;
-		protocol.startMonitoring();
-	}
-
-	public void stopMonitoring() {
-		monitoring = false;
-		protocol.stopMonitoring();
-	}
-
-	public boolean isMonitoring() {
-		return monitoring;
-	}
-
-	public void resetStats() {
-		lastRemoteException.resetStats();
-		lastInternalException.resetStats();
-		successfulResponses = 0;
-		errorResponses = 0;
-		timeExecution.resetStats();
-		protocol.reset();
-	}
-
-	public void refreshStats(long timestamp, double smoothingWindow) {
-		timeExecution.refreshStats(timestamp, smoothingWindow);
-	}
-
-	public CompositeData getConnectionDetails() throws OpenDataException {
-		return protocol.getConnectionDetails();
-	}
-
-	public int getSuccessfulResponses() {
-		return successfulResponses;
-	}
-
-	public int getErrorResponses() {
-		return errorResponses;
-	}
-
-	public String getTimeExecutionMillis() {
-		return timeExecution.toString();
-	}
-
+//	// JMX
+//	// TODO(vmykhalko): upgrade jmx here
+//	public void startMonitoring() {
+//		monitoring = true;
+//		protocol.startMonitoring();
+//	}
+//
+//	public void stopMonitoring() {
+//		monitoring = false;
+//		protocol.stopMonitoring();
+//	}
+//
+//	public boolean isMonitoring() {
+//		return monitoring;
+//	}
+//
+//	public void resetStats() {
+//		lastRemoteException.resetStats();
+//		lastInternalException.resetStats();
+//		successfulResponses = 0;
+//		errorResponses = 0;
+//		timeExecution.resetStats();
+//		protocol.reset();
+//	}
+//
+//	public void refreshStats(long timestamp, double smoothingWindow) {
+//		timeExecution.refreshStats(timestamp, smoothingWindow);
+//	}
+//
+////	public CompositeData getConnectionDetails() throws OpenDataException {
+////		return protocol.getConnectionDetails();
+////	}
+//
+//	public int getSuccessfulResponses() {
+//		return successfulResponses;
+//	}
+//
+//	public int getErrorResponses() {
+//		return errorResponses;
+//	}
+//
+//	public String getTimeExecutionMillis() {
+//		return timeExecution.toString();
+//	}
+//
 //	public CompositeData getLastResponseException() throws OpenDataException {
 //		return lastRemoteException.compositeData();
 //	}

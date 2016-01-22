@@ -19,8 +19,6 @@ package io.datakernel.rpc.protocol.stream;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.CompositeDataBuilder;
-import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocol;
 import io.datakernel.serializer.BufferSerializer;
@@ -28,9 +26,6 @@ import io.datakernel.stream.*;
 import io.datakernel.stream.net.TcpStreamSocketConnection;
 import io.datakernel.stream.processor.*;
 
-import javax.management.openmbean.CompositeData;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
 import java.nio.channels.SocketChannel;
 
 abstract class RpcStreamProtocol implements RpcProtocol {
@@ -207,41 +202,41 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		connection.close();
 	}
 
-	// JMX
-	// TODO (vmykhalko)
-	public void startMonitoring() {
-		monitoring = true;
-		timeMonitoring = System.currentTimeMillis();
-	}
+//	// JMX
+//	// TODO (vmykhalko)
+//	public void startMonitoring() {
+//		monitoring = true;
+//		timeMonitoring = System.currentTimeMillis();
+//	}
+//
+//	public void stopMonitoring() {
+//		monitoring = false;
+//		timeMonitoring = 0;
+//	}
+//
+//	public boolean isMonitoring() {
+//		return monitoring;
+//	}
+//
+//	public void reset() {
+//		if (isMonitoring())
+//			timeMonitoring = System.currentTimeMillis();
+//	}
+//
+//	private String getMonitoringTime() {
+//		if (timeMonitoring == 0)
+//			return null;
+//		return MBeanFormat.formatDuration(System.currentTimeMillis() - timeMonitoring);
+//	}
 
-	public void stopMonitoring() {
-		monitoring = false;
-		timeMonitoring = 0;
-	}
-
-	public boolean isMonitoring() {
-		return monitoring;
-	}
-
-	public void reset() {
-		if (isMonitoring())
-			timeMonitoring = System.currentTimeMillis();
-	}
-
-	private String getMonitoringTime() {
-		if (timeMonitoring == 0)
-			return null;
-		return MBeanFormat.formatDuration(System.currentTimeMillis() - timeMonitoring);
-	}
-
-	@Override
-	public CompositeData getConnectionDetails() throws OpenDataException {
-		return CompositeDataBuilder.builder(RpcStreamProtocol.class.getSimpleName(), "Rpc stream connection details")
-				.add("Overloaded", SimpleType.BOOLEAN, isOverloaded())
-				.add("Compression", SimpleType.BOOLEAN, compression)
-				.add("Monitoring", SimpleType.BOOLEAN, isMonitoring())
-				.add("MonitoringTime", SimpleType.STRING, getMonitoringTime())
-				.add("ChannelInfo", SimpleType.STRING, connection.getChannelInfo())
-				.build();
-	}
+//	@Override
+//	public CompositeData getConnectionDetails() throws OpenDataException {
+//		return CompositeDataBuilder.builder(RpcStreamProtocol.class.getSimpleName(), "Rpc stream connection details")
+//				.add("Overloaded", SimpleType.BOOLEAN, isOverloaded())
+//				.add("Compression", SimpleType.BOOLEAN, compression)
+//				.add("Monitoring", SimpleType.BOOLEAN, isMonitoring())
+//				.add("MonitoringTime", SimpleType.STRING, getMonitoringTime())
+//				.add("ChannelInfo", SimpleType.STRING, connection.getChannelInfo())
+//				.build();
+//	}
 }

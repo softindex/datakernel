@@ -16,10 +16,10 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.AbstractCompositeStats;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.stats.AbstractCompositeStats;
+import io.datakernel.jmx.stats.EventStats;
+import io.datakernel.jmx.stats.ExceptionStats;
+import io.datakernel.jmx.stats.ValueStats;
 
 public final class RpcRequestStats extends AbstractCompositeStats<RpcRequestStats> {
 	private final EventStats totalRequests = new EventStats();

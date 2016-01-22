@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx;
+package io.datakernel.jmx.stats;
 
 import javax.management.openmbean.SimpleType;
 import java.util.SortedMap;

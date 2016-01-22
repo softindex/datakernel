@@ -20,6 +20,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.jmx.annotation.JmxOperation;
 import io.datakernel.jmx.annotation.JmxParameter;
+import io.datakernel.jmx.stats.JmxStats;
 
 import javax.management.*;
 import java.lang.annotation.Annotation;
@@ -29,7 +30,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static io.datakernel.jmx.Utils.*;
+import static io.datakernel.jmx.utils.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
