@@ -16,30 +16,22 @@
 
 package io.datakernel.jmx;
 
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
-
 import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
-public final class ExceptionStats {
-	private final Marker marker;
+import static io.datakernel.jmx.MBeanFormat.formatException;
+import static io.datakernel.jmx.Utils.stringOf;
+
+public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	private Throwable throwable;
 	private Object causeObject;
 	private long timestamp;
 	private int count;
 
-	public ExceptionStats(String name) {
-		this(MarkerFactory.getMarker(name));
-	}
-
-	public ExceptionStats(Marker marker) {
-		this.marker = marker;
-	}
-
-	public void update(Throwable throwable, Object causeObject, long timestamp) {
+	public void recordException(Throwable throwable, Object causeObject, long timestamp) {
 		this.count++;
 		this.throwable = throwable;
 		this.causeObject = causeObject;
@@ -53,6 +45,7 @@ public final class ExceptionStats {
 		this.timestamp = 0;
 	}
 
+	@Override
 	public void add(ExceptionStats counter) {
 		this.count += counter.count;
 		if (counter.timestamp > this.timestamp) {
@@ -62,45 +55,40 @@ public final class ExceptionStats {
 		}
 	}
 
-	public Marker getMarker() {
-		return marker;
+	@Override
+	public void refreshStats(long timestamp, double smoothingWindow) {
+
+	}
+
+	@Override
+	public SortedMap<String, TypeAndValue> getAttributes() {
+		try {
+			SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
+			attributes.put("lastException", new TypeAndValue(SimpleType.STRING, stringOf(throwable)));
+			attributes.put("lastExceptionStackTrace",
+					new TypeAndValue(new ArrayType<>(1, SimpleType.STRING), formatException(throwable)));
+			attributes.put("lastExceptionCausedObject", new TypeAndValue(SimpleType.STRING, stringOf(causeObject)));
+			attributes.put("lastExceptionTimestamp", new TypeAndValue(SimpleType.LONG, timestamp));
+			attributes.put("totalExceptions", new TypeAndValue(SimpleType.INTEGER, count));
+			return attributes;
+		} catch (OpenDataException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public Throwable getThrowable() {
+		return throwable;
+	}
+
+	public Object getCauseObject() {
+		return causeObject;
+	}
+
+	public long getTimestamp() {
+		return timestamp;
 	}
 
 	public int getCount() {
 		return count;
 	}
-
-	public String getCauseObject() {
-		Object o = causeObject;
-		if (o == null)
-			return null;
-		return o.toString();
-	}
-
-	public String getExceptionTimestamp() {
-		return MBeanFormat.formatPeriodAgo(timestamp);
-	}
-
-	public String[] getFormattedException() {
-		return MBeanFormat.formatException(throwable);
-	}
-
-	public String getLastException() {
-		return throwable != null ? throwable.toString() : "";
-	}
-
-	public CompositeData compositeData() throws OpenDataException {
-		if (count == 0 || throwable == null) {
-			return null;
-		}
-		return CompositeDataBuilder.builder(marker.getName())
-				.add("ExceptionMarker", SimpleType.STRING, marker.getName())
-				.add("ExceptionType", SimpleType.STRING, throwable.getClass().getSimpleName())
-				.add("StackTrace", new ArrayType<>(1, SimpleType.STRING), getFormattedException())
-				.add("CauseObject", SimpleType.STRING, getCauseObject())
-				.add("Timestamp", SimpleType.STRING, getExceptionTimestamp())
-				.add("Total", SimpleType.INTEGER, count)
-				.build();
-	}
-
 }

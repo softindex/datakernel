@@ -58,7 +58,7 @@ public final class MBeanFormat {
 
 	public static String formatExceptionLine(Throwable exception) {
 		if (exception == null)
-			return null;
+			return "";
 		StringWriter stringWriter = new StringWriter();
 		exception.printStackTrace(new PrintWriter(stringWriter));
 		return stringWriter.toString();

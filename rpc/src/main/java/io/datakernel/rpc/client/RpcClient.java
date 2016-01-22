@@ -495,9 +495,9 @@ public final class RpcClient implements EventloopService {
 
 					long timestamp = eventloop.currentTimeMillis();
 					// TODO(vmykhalko): maybe there should be something more informative instead of null (as causedObject)?
-					generalRequestsStats.getServerExceptions().update(exception, null, timestamp);
+					generalRequestsStats.getServerExceptions().recordException(exception, null, timestamp);
 					ensureRequestStatsPerClass(requestClass)
-							.getServerExceptions().update(exception, null, timestamp);
+							.getServerExceptions().recordException(exception, null, timestamp);
 				}
 			}
 			callback.onException(exception);

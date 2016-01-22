@@ -25,6 +25,8 @@ import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.OpenDataException;
@@ -48,8 +50,10 @@ public final class RpcServerConnection implements RpcConnection {
 	private final StatusListener statusListener;
 
 	// JMX
-	private final ExceptionStats lastRemoteException = new ExceptionStats("RemoteException");
-	private final ExceptionStats lastInternalException = new ExceptionStats("InternalException");
+	// TODO(vmykhalko): remove this marker ?
+	private static final Marker LAST_REMOTE_EXCEPTION_MARKER = MarkerFactory.getMarker("RemoteException");
+	private final ExceptionStats lastRemoteException = new ExceptionStats();
+	private final ExceptionStats lastInternalException = new ExceptionStats();
 	private final ValueStats timeExecution;
 	private int successfulResponses = 0;
 	private int errorResponses = 0;
@@ -106,7 +110,7 @@ public final class RpcServerConnection implements RpcConnection {
 			@Override
 			public void onException(Exception exception) {
 				updateProcessTime();
-				lastRemoteException.update(exception, message.getData(), eventloop.currentTimeMillis());
+				lastRemoteException.recordException(exception, message.getData(), eventloop.currentTimeMillis());
 				sendError(cookie, exception);
 			}
 
@@ -122,10 +126,10 @@ public final class RpcServerConnection implements RpcConnection {
 	private void sendError(int cookie, Exception error) {
 		try {
 			protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(error)));
-			logger.error(lastRemoteException.getMarker(), "Exception while process request ID {}", cookie, error);
+			logger.error(LAST_REMOTE_EXCEPTION_MARKER, "Exception while process request ID {}", cookie, error);
 			errorResponses++;
 		} catch (Exception exception) {
-			lastInternalException.update(exception, error, eventloop.currentTimeMillis());
+			lastInternalException.recordException(exception, error, eventloop.currentTimeMillis());
 			throw new RuntimeException(exception);
 		}
 	}
@@ -198,11 +202,11 @@ public final class RpcServerConnection implements RpcConnection {
 		return timeExecution.toString();
 	}
 
-	public CompositeData getLastResponseException() throws OpenDataException {
-		return lastRemoteException.compositeData();
-	}
-
-	public CompositeData getLastInternalException() throws OpenDataException {
-		return lastInternalException.compositeData();
-	}
+//	public CompositeData getLastResponseException() throws OpenDataException {
+//		return lastRemoteException.compositeData();
+//	}
+//
+//	public CompositeData getLastInternalException() throws OpenDataException {
+//		return lastInternalException.compositeData();
+//	}
 }

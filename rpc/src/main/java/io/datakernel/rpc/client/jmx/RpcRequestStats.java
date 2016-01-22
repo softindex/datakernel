@@ -22,15 +22,13 @@ import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.ValueStats;
 
 public final class RpcRequestStats extends AbstractCompositeStats<RpcRequestStats> {
-	private static final String LAST_SERVER_EXCEPTION_COUNTER_NAME = "Server exception";
-
 	private final EventStats totalRequests = new EventStats();
 	private final EventStats successfulRequests = new EventStats();
 	private final EventStats failedRequests = new EventStats();
 	private final EventStats rejectedRequests = new EventStats();
 	private final EventStats expiredRequests = new EventStats();
 	private final ValueStats responseTimeStats = new ValueStats();
-	private final ExceptionStats serverExceptions = new ExceptionStats(LAST_SERVER_EXCEPTION_COUNTER_NAME);
+	private final ExceptionStats serverExceptions = new ExceptionStats();
 
 	public void resetStats() {
 		totalRequests.resetStats();

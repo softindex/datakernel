@@ -17,14 +17,10 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.jmx.AbstractCompositeStats;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -54,6 +50,14 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		}
 	}
 
+	private static final class ExceptionStatsMap<K> extends MapStats<K, ExceptionStats> {
+
+		@Override
+		protected ExceptionStats createValueJmxStatsInstance() {
+			return new ExceptionStats();
+		}
+	}
+
 	private final ValueStats selectorSelectTime = new ValueStats();
 	private final ValueStats businessLogicTime = new ValueStats();
 	private final EventStats selectedKeys = new EventStats();
@@ -78,8 +82,8 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 	private final ValueStats concurrentTasksTime = new ValueStats();
 	private final ValueStats scheduledTasksTime = new ValueStats();
 
-	private final Map<ExceptionMarker, ExceptionStats> exceptions = new HashMap<>();
-	private final Map<Class<? extends Throwable>, ExceptionStats> severeExceptions = new HashMap<>();
+	private final MapStats<ExceptionMarker, ExceptionStats> exceptions = new ExceptionStatsMap<>();
+	private final MapStats<Class<? extends Throwable>, ExceptionStats> severeExceptions = new ExceptionStatsMap<>();
 
 	public void updateBusinessLogicTime(long timestamp, long businessLogicTime) {
 		this.businessLogicTime.recordValue((int) businessLogicTime);
@@ -149,18 +153,18 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 
 	public void updateExceptionStats(ExceptionMarker marker, Throwable e, Object o, long timestamp) {
 		if (!exceptions.containsKey(marker)) // TODO (vmykhalko): refactor as below
-			exceptions.put(marker, new ExceptionStats(marker.getMarker()));
-		exceptions.get(marker).update(e, o, timestamp);
+			exceptions.put(marker, new ExceptionStats());
+		exceptions.get(marker).recordException(e, o, timestamp);
 	}
 
 	public void updateSevereExceptionStats(Throwable e, Object o, long timestamp) {
 		Class<? extends Throwable> exceptionType = e.getClass();
 		ExceptionStats stats = severeExceptions.get(exceptionType);
 		if (stats == null) {
-			stats = new ExceptionStats(exceptionType.getName());
+			stats = new ExceptionStats();
 			severeExceptions.put(exceptionType, stats);
 		}
-		stats.update(e, o, timestamp);
+		stats.recordException(e, o, timestamp);
 	}
 
 	public void resetExceptionStats(ExceptionMarker marker) { // TODO (vmykhalko): refactor
@@ -201,72 +205,6 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		lastLongestLocalRunnable.reset();
 		lastLongestConcurrentRunnable.reset();
 		lastLongestScheduledRunnable.reset();
-	}
-
-	public void refreshStats(long timestamp, double window) {
-		selectorSelectTime.refreshStats(timestamp, window);
-		businessLogicTime.refreshStats(timestamp, window);
-
-		selectedKeys.refreshStats(timestamp, window);
-		invalidKeys.refreshStats(timestamp, window);
-		acceptKeys.refreshStats(timestamp, window);
-		connectKeys.refreshStats(timestamp, window);
-		readKeys.refreshStats(timestamp, window);
-		writeKeys.refreshStats(timestamp, window);
-
-		localTasks.refreshStats(timestamp, window);
-		concurrentTasks.refreshStats(timestamp, window);
-		scheduledTasks.refreshStats(timestamp, window);
-
-		localTaskDuration.refreshStats(timestamp, window);
-		concurrentTaskDuration.refreshStats(timestamp, window);
-		scheduledTaskDuration.refreshStats(timestamp, window);
-
-		selectedKeysTime.refreshStats(timestamp, window);
-		localTasksTime.refreshStats(timestamp, window);
-		concurrentTasksTime.refreshStats(timestamp, window);
-		scheduledTasksTime.refreshStats(timestamp, window);
-	}
-
-	public void add(EventloopStats anotherStats) {
-		selectorSelectTime.add(anotherStats.selectorSelectTime);
-		businessLogicTime.add(anotherStats.businessLogicTime);
-		selectedKeys.add(anotherStats.selectedKeys);
-		invalidKeys.add(anotherStats.invalidKeys);
-		acceptKeys.add(anotherStats.acceptKeys);
-		connectKeys.add(anotherStats.connectKeys);
-		readKeys.add(anotherStats.readKeys);
-		writeKeys.add(anotherStats.writeKeys);
-		localTasks.add(anotherStats.localTasks);
-		concurrentTasks.add(anotherStats.concurrentTasks);
-		scheduledTasks.add(anotherStats.scheduledTasks);
-
-		localTaskDuration.add(anotherStats.localTaskDuration);
-		concurrentTaskDuration.add(anotherStats.concurrentTaskDuration);
-		scheduledTaskDuration.add(anotherStats.scheduledTaskDuration);
-
-		selectedKeysTime.add(anotherStats.selectedKeysTime);
-		localTasksTime.add(anotherStats.localTasksTime);
-		concurrentTasksTime.add(anotherStats.concurrentTasksTime);
-		scheduledTasksTime.add(anotherStats.scheduledTasksTime);
-
-		for (ExceptionMarker marker : anotherStats.exceptions.keySet()) {
-			ExceptionStats stats = exceptions.get(marker);
-			if (stats == null) {
-				stats = new ExceptionStats(marker.getMarker());
-				exceptions.put(marker, stats);
-			}
-			stats.add(anotherStats.exceptions.get(marker));
-		}
-
-		for (Class<? extends Throwable> exceptionType : anotherStats.severeExceptions.keySet()) {
-			ExceptionStats stats = severeExceptions.get(exceptionType);
-			if (stats == null) {
-				stats = new ExceptionStats(exceptionType.getName()); // TODO (vmykhalko): change signature?
-				severeExceptions.put(exceptionType, stats);
-			}
-			stats.add(anotherStats.severeExceptions.get(exceptionType));
-		}
 	}
 
 	public ValueStats getSelectorSelectTime() {

@@ -36,6 +36,7 @@ import java.util.Random;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
+import static io.datakernel.jmx.MBeanFormat.formatException;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;
@@ -263,7 +264,7 @@ public class AsyncHttpServerTest {
 		thread.join();
 		ExceptionStats exceptionCounter = eventloop.getExceptionStats(new ExceptionMarker(SocketConnection.class, "ReadException"));
 		assertNotNull(exceptionCounter);
-		String[] exception = exceptionCounter.getFormattedException();
+		String[] exception = formatException(exceptionCounter.getThrowable());
 		assertTrue(exception != null && exception.length > 0);
 		assertTrue(exception[0], exception[0].contains("Too big HttpMessage"));
 	}

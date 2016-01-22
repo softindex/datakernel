@@ -81,4 +81,18 @@ public final class Utils {
 	public static <T> boolean hasSingleElement(T[] array) {
 		return array != null && array.length == 1;
 	}
+
+	/**
+	 * If value == null, returns empty string, otherwise return value.toString()
+	 *
+	 * @param value value
+	 * @return returns empty string, if value == null, otherwise return value.toString()
+	 */
+	public static String stringOf(Object value) {
+		if (value != null) {
+			return value.toString();
+		} else {
+			return "";
+		}
+	}
 }

@@ -80,9 +80,7 @@ public final class JmxStatsWrappers {
 		}
 
 		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			this.sum = 0;
-		}
+		public void refreshStats(long timestamp, double smoothingWindow) {}
 
 		@Override
 		public SortedMap<String, TypeAndValue> getAttributes() {
@@ -111,9 +109,7 @@ public final class JmxStatsWrappers {
 		}
 
 		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			this.max = Long.MIN_VALUE;
-		}
+		public void refreshStats(long timestamp, double smoothingWindow) {}
 
 		@Override
 		public SortedMap<String, TypeAndValue> getAttributes() {
@@ -142,9 +138,7 @@ public final class JmxStatsWrappers {
 		}
 
 		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			this.min = Long.MAX_VALUE;
-		}
+		public void refreshStats(long timestamp, double smoothingWindow) {}
 
 		@Override
 		public SortedMap<String, TypeAndValue> getAttributes() {
@@ -175,10 +169,7 @@ public final class JmxStatsWrappers {
 		}
 
 		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			this.total = 0L;
-			this.count = 0;
-		}
+		public void refreshStats(long timestamp, double smoothingWindow) {}
 
 		@Override
 		public SortedMap<String, TypeAndValue> getAttributes() {
@@ -206,9 +197,7 @@ public final class JmxStatsWrappers {
 		}
 
 		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			this.value = 0L;
-		}
+		public void refreshStats(long timestamp, double smoothingWindow) {}
 
 		@Override
 		public SortedMap<String, TypeAndValue> getAttributes() {
@@ -235,9 +224,7 @@ public final class JmxStatsWrappers {
 		}
 
 		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			this.value = 0L;
-		}
+		public void refreshStats(long timestamp, double smoothingWindow) {}
 
 		@Override
 		public SortedMap<String, TypeAndValue> getAttributes() {
@@ -264,9 +251,7 @@ public final class JmxStatsWrappers {
 		}
 
 		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			this.value = "";
-		}
+		public void refreshStats(long timestamp, double smoothingWindow) {}
 
 		@Override
 		public SortedMap<String, TypeAndValue> getAttributes() {
@@ -296,16 +281,14 @@ public final class JmxStatsWrappers {
 		}
 
 		@Override
-		public void refreshStats(long timestamp, double smoothingWindow) {
-			list.clear();
-		}
+		public void refreshStats(long timestamp, double smoothingWindow) {}
 
 		@Override
 		public SortedMap<String, TypeAndValue> getAttributes() {
 			SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
 			OpenType<?> type = null;
 			try {
-				type = new ArrayType(1, SimpleType.STRING);
+				type = new ArrayType<>(1, SimpleType.STRING);
 			} catch (OpenDataException e) {
 				throw new RuntimeException(e);
 			}
