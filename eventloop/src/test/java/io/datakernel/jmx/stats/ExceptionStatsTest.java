@@ -16,16 +16,36 @@
 
 package io.datakernel.jmx.stats;
 
+import org.junit.Before;
 import org.junit.Test;
 
-import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.*;
 import java.util.SortedMap;
 
 import static org.junit.Assert.assertEquals;
 
 public class ExceptionStatsTest {
+	String[] exceptionDetailsItemNames;
+	OpenType<?>[] exceptionDetailsItemTypes;
+
+	@Before
+	public void before() throws OpenDataException {
+		exceptionDetailsItemNames = new String[]{
+				"lastException",
+				"lastExceptionCausedObject",
+				"lastExceptionStackTrace",
+				"lastExceptionTimestamp",
+				"totalExceptions"
+		};
+
+		exceptionDetailsItemTypes = new OpenType<?>[]{
+				SimpleType.STRING,
+				SimpleType.STRING,
+				new ArrayType<>(1, SimpleType.STRING),
+				SimpleType.LONG,
+				SimpleType.INTEGER
+		};
+	}
 
 	@Test
 	public void itShouldProperlyCollectAttributes() throws OpenDataException {
@@ -36,26 +56,27 @@ public class ExceptionStatsTest {
 		stats.recordException(exception, causedObject, timestamp);
 
 		SortedMap<String, JmxStats.TypeAndValue> attributes = stats.getAttributes();
-		assertEquals(5, attributes.size());
+		assertEquals(3, attributes.size());
 
 		String exceptionTypeKey = "lastException";
 		assertEquals(SimpleType.STRING, attributes.get(exceptionTypeKey).getType());
 		assertEquals(exception.toString(), attributes.get(exceptionTypeKey).getValue());
 
-		String causedObjectKey = "lastExceptionCausedObject";
-		assertEquals(SimpleType.STRING, attributes.get(causedObjectKey).getType());
-		assertEquals(causedObject, attributes.get(causedObjectKey).getValue());
-
-		String exceptionStackTraceKey = "lastExceptionStackTrace";
-		assertEquals(new ArrayType<>(1, SimpleType.STRING), attributes.get(exceptionStackTraceKey).getType());
-
-		String timestampKey = "lastExceptionTimestamp";
-		assertEquals(SimpleType.LONG, attributes.get(timestampKey).getType());
-		assertEquals(timestamp, attributes.get(timestampKey).getValue());
-
 		String exceptionCountKey = "totalExceptions";
 		assertEquals(SimpleType.INTEGER, attributes.get(exceptionCountKey).getType());
 		assertEquals(1, attributes.get(exceptionCountKey).getValue());
+
+		String detailsKey = "details";
+		JmxStats.TypeAndValue typeAndValue = attributes.get(detailsKey);
+		CompositeData compositeData = (CompositeData) typeAndValue.getValue();
+		CompositeType expectedDetailsType = new CompositeType("ExceptionStatsDetails", "ExceptionStatsDetails",
+				exceptionDetailsItemNames, exceptionDetailsItemNames, exceptionDetailsItemTypes);
+		assertEquals(expectedDetailsType, typeAndValue.getType());
+
+		assertEquals(exception.toString(), compositeData.get("lastException"));
+		assertEquals(causedObject.toString(), compositeData.get("lastExceptionCausedObject"));
+		assertEquals(timestamp, compositeData.get("lastExceptionTimestamp"));
+		assertEquals(1, compositeData.get("totalExceptions"));
 	}
 
 	@Test
@@ -87,26 +108,27 @@ public class ExceptionStatsTest {
 
 		// check
 		SortedMap<String, JmxStats.TypeAndValue> attributes = accumulator.getAttributes();
-		assertEquals(5, attributes.size());
+		assertEquals(3, attributes.size());
 
 		// exception in stats_2 has most recent timestamp
 		String exceptionTypeKey = "lastException";
 		assertEquals(SimpleType.STRING, attributes.get(exceptionTypeKey).getType());
 		assertEquals(exception_2.toString(), attributes.get(exceptionTypeKey).getValue());
 
-		String causedObjectKey = "lastExceptionCausedObject";
-		assertEquals(SimpleType.STRING, attributes.get(causedObjectKey).getType());
-		assertEquals(causedObject_2, attributes.get(causedObjectKey).getValue());
-
-		String exceptionStackTraceKey = "lastExceptionStackTrace";
-		assertEquals(new ArrayType<>(1, SimpleType.STRING), attributes.get(exceptionStackTraceKey).getType());
-
-		String timestampKey = "lastExceptionTimestamp";
-		assertEquals(SimpleType.LONG, attributes.get(timestampKey).getType());
-		assertEquals(timestamp_2, attributes.get(timestampKey).getValue());
-
 		String exceptionCountKey = "totalExceptions";
 		assertEquals(SimpleType.INTEGER, attributes.get(exceptionCountKey).getType());
 		assertEquals(3, attributes.get(exceptionCountKey).getValue());
+
+		String detailsKey = "details";
+		JmxStats.TypeAndValue typeAndValue = attributes.get(detailsKey);
+		CompositeData compositeData = (CompositeData) typeAndValue.getValue();
+		CompositeType expectedDetailsType = new CompositeType("ExceptionStatsDetails", "ExceptionStatsDetails",
+				exceptionDetailsItemNames, exceptionDetailsItemNames, exceptionDetailsItemTypes);
+		assertEquals(expectedDetailsType, typeAndValue.getType());
+
+		assertEquals(exception_2.toString(), compositeData.get("lastException"));
+		assertEquals(causedObject_2.toString(), compositeData.get("lastExceptionCausedObject"));
+		assertEquals(timestamp_2, compositeData.get("lastExceptionTimestamp"));
+		assertEquals(3, compositeData.get("totalExceptions"));
 	}
 }

@@ -16,9 +16,9 @@
 
 package io.datakernel.jmx.stats;
 
-import javax.management.openmbean.ArrayType;
-import javax.management.openmbean.OpenDataException;
-import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -26,10 +26,45 @@ import static io.datakernel.jmx.utils.MBeanFormat.formatException;
 import static io.datakernel.jmx.utils.Utils.stringOf;
 
 public final class ExceptionStats implements JmxStats<ExceptionStats> {
+	private static final String DETAILS_TYPE_NAME = "ExceptionStatsDetails";
+	private static final String DETAILS_KEY = "details";
+	private static final String LAST_EXCEPTION_KEY = "lastException";
+	private static final String CAUSED_OBJECT_KEY = "lastExceptionCausedObject";
+	private static final String STACK_TRACE_KEY = "lastExceptionStackTrace";
+	private static final String TIMESTAMP_KEY = "lastExceptionTimestamp";
+	private static final String TOTAL_EXCEPTIONS_KEY = "totalExceptions";
+
+	private final CompositeType detailsType;
+
 	private Throwable throwable;
 	private Object causeObject;
 	private long timestamp;
 	private int count;
+
+	public ExceptionStats() {
+		try {
+			String[] detailsItemNames = new String[]{
+					LAST_EXCEPTION_KEY,
+					CAUSED_OBJECT_KEY,
+					STACK_TRACE_KEY,
+					TIMESTAMP_KEY,
+					TOTAL_EXCEPTIONS_KEY
+			};
+
+			OpenType<?>[] detailsItemTypes = new OpenType<?>[]{
+					SimpleType.STRING,
+					SimpleType.STRING,
+					new ArrayType<>(1, SimpleType.STRING),
+					SimpleType.LONG,
+					SimpleType.INTEGER
+			};
+
+			detailsType = new CompositeType(
+					DETAILS_TYPE_NAME, DETAILS_TYPE_NAME, detailsItemNames, detailsItemNames, detailsItemTypes);
+		} catch (OpenDataException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
 	public void recordException(Throwable throwable, Object causeObject, long timestamp) {
 		this.count++;
@@ -62,18 +97,22 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 
 	@Override
 	public SortedMap<String, TypeAndValue> getAttributes() {
+		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
+		attributes.put(LAST_EXCEPTION_KEY, new TypeAndValue(SimpleType.STRING, stringOf(throwable)));
+		attributes.put(TOTAL_EXCEPTIONS_KEY, new TypeAndValue(SimpleType.INTEGER, count));
 		try {
-			SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
-			attributes.put("lastException", new TypeAndValue(SimpleType.STRING, stringOf(throwable)));
-			attributes.put("lastExceptionStackTrace",
-					new TypeAndValue(new ArrayType<>(1, SimpleType.STRING), formatException(throwable)));
-			attributes.put("lastExceptionCausedObject", new TypeAndValue(SimpleType.STRING, stringOf(causeObject)));
-			attributes.put("lastExceptionTimestamp", new TypeAndValue(SimpleType.LONG, timestamp));
-			attributes.put("totalExceptions", new TypeAndValue(SimpleType.INTEGER, count));
-			return attributes;
+			Map<String, Object> details = new HashMap<>();
+			details.put(LAST_EXCEPTION_KEY, stringOf(throwable));
+			details.put(CAUSED_OBJECT_KEY, stringOf(causeObject));
+			details.put(STACK_TRACE_KEY, formatException(throwable));
+			details.put(TIMESTAMP_KEY, timestamp);
+			details.put(TOTAL_EXCEPTIONS_KEY, count);
+			CompositeDataSupport compositeDataSupport = new CompositeDataSupport(detailsType, details);
+			attributes.put(DETAILS_KEY, new TypeAndValue(detailsType, compositeDataSupport));
 		} catch (OpenDataException e) {
 			throw new RuntimeException(e);
 		}
+		return attributes;
 	}
 
 	public Throwable getThrowable() {

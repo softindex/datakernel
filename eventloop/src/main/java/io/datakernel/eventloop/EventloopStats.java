@@ -21,7 +21,6 @@ import io.datakernel.jmx.stats.*;
 import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
 
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public final class EventloopStats extends AbstractCompositeStats<EventloopStats> {
@@ -291,11 +290,11 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		return scheduledTasksTime;
 	}
 
-	public Map<ExceptionMarker, ExceptionStats> getExceptions() {
+	public MapStats<ExceptionMarker, ExceptionStats> getExceptions() {
 		return exceptions;
 	}
 
-	public Map<Class<? extends Throwable>, ExceptionStats> getSevereExceptions() {
+	public MapStats<Class<? extends Throwable>, ExceptionStats> getSevereExceptions() {
 		return severeExceptions;
 	}
 

@@ -27,6 +27,7 @@ import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncHttpServlet;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.jmx.DynamicMBeanFactory;
 import io.datakernel.jmx.JmxMBeans;
 import io.datakernel.jmx.JmxRegistry;
 import io.datakernel.service.ServiceGraph;
@@ -39,6 +40,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import javax.management.MBeanServer;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -67,8 +69,17 @@ public class HelloWorldGuiceTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			JmxRegistry jmxRegistry = new JmxRegistry(ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory());
-			install(ServiceGraphModule.defaultInstance().addListener(jmxRegistry));
+			MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+			DynamicMBeanFactory mbeanFactory = JmxMBeans.factory();
+			JmxRegistry jmxRegistry = new JmxRegistry(mbeanServer, mbeanFactory);
+
+			// register ByteBufPool
+			Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
+			jmxRegistry.onSingletonStart(byteBufPoolKey, ByteBufPool.getStats());
+
+			ServiceGraphModule module = ServiceGraphModule.defaultInstance();
+			module.addListener(jmxRegistry);
+			install(module);
 		}
 
 		@Provides

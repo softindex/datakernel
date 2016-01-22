@@ -19,6 +19,8 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
+import io.datakernel.jmx.stats.EventStats;
+import io.datakernel.jmx.stats.ExceptionStats;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.ExceptionMarker;
@@ -46,7 +48,11 @@ import static org.slf4j.LoggerFactory.getLogger;
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer {
 	private static final Logger logger = getLogger(AbstractServer.class);
 
+	private static final ExceptionMarker PREPARE_SOCKET_MARKER = new ExceptionMarker(PrimaryServer.class, "PrepareSocketException");
+	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(PrimaryServer.class, "CloseException");
+
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
+
 	/**
 	 * Creates a new default socket settings for creating new sockets with its values.
 	 */
@@ -61,9 +67,9 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private ServerSocketChannel[] serverSocketChannels;
 
 	// JMX
-	private static final ExceptionMarker PREPARE_SOCKET_MARKER = new ExceptionMarker(PrimaryServer.class, "PrepareSocketException");
-	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(PrimaryServer.class, "CloseException");
-	protected long totalAccepts;
+	protected EventStats totalAccepts = new EventStats();
+	protected ExceptionStats prepareSocketException = new ExceptionStats();
+	protected ExceptionStats closeException = new ExceptionStats();
 
 	public AbstractServer(Eventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
@@ -197,7 +203,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		try {
 			closeable.close();
 		} catch (Exception e) {
-			eventloop.updateExceptionStats(CLOSE_MARKER, e, closeable);
+
+			// jmx
+			closeException.recordException(e, closeable, eventloop.currentTimeMillis());
+
 			if (logger.isWarnEnabled()) {
 				logger.warn(CLOSE_MARKER.getMarker(), "Exception thrown while closing {}", closeable, e);
 			}
@@ -216,7 +225,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		try {
 			socketSettings.applySettings(socketChannel);
 		} catch (IOException e) {
-			eventloop.updateExceptionStats(PREPARE_SOCKET_MARKER, e, socketChannel);
+
+			// jmx
+			prepareSocketException.recordException(e, socketChannel, eventloop.currentTimeMillis());
+
 			if (logger.isErrorEnabled()) {
 				logger.error(PREPARE_SOCKET_MARKER.getMarker(), "Exception thrown while apply settings socket {}", socketChannel, e);
 			}
@@ -232,7 +244,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	@Override
 	public void onAccept(SocketChannel socketChannel) {
 		assert eventloop.inEventloopThread();
-		totalAccepts++;
+
+		//jmx
+		totalAccepts.recordEvent();
+
 		prepareSocket(socketChannel);
 		SocketConnection connection = createConnection(socketChannel);
 		connection.register();
@@ -250,30 +265,16 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	 */
 	protected abstract SocketConnection createConnection(SocketChannel socketChannel);
 
-	// JMX
-	// TODO (vmykhalko)
-/*	@Override
-	public void resetStats() {
-		totalAccepts = 0;
-		eventloop.resetExceptionStats(PREPARE_SOCKET_MARKER); // TODO (vmykhalko): refactor
-		eventloop.resetExceptionStats(CLOSE_MARKER);
+	// jmx
+	public ExceptionStats getCloseException() {
+		return closeException;
 	}
 
-	@Override
-	public long getTotalAccepts() {
+	public ExceptionStats getPrepareSocketException() {
+		return prepareSocketException;
+	}
+
+	public EventStats getTotalAccepts() {
 		return totalAccepts;
 	}
-
-	@Override
-	public CompositeData getLastPrepareSocketException() throws OpenDataException {
-		ExceptionStats exceptionCounter = eventloop.getExceptionStats(PREPARE_SOCKET_MARKER);
-		return (exceptionCounter == null) ? null : exceptionCounter.compositeData();
-	}
-
-	@Override
-	public CompositeData getLastCloseException() throws OpenDataException {
-		ExceptionStats exceptionCounter = eventloop.getExceptionStats(CLOSE_MARKER);
-		return (exceptionCounter == null) ? null : exceptionCounter.compositeData();
-	}
-*/
 }

@@ -20,6 +20,9 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.jmx.annotation.JmxMBean;
+import io.datakernel.jmx.stats.JmxStats;
+import io.datakernel.jmx.stats.JmxStatsWrappers;
 import io.datakernel.jmx.stats.ValueStats;
 import io.datakernel.util.Stopwatch;
 
@@ -32,6 +35,7 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
  * A HttpServer is bound to an IP address and port number and listens for incoming connections
  * from clients on this address. A HttpServer is supported  {@link AsyncHttpServlet} that completes all responses asynchronously.
  */
+@JmxMBean
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
@@ -160,23 +164,12 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	@Override
 	protected void onListen() {
-		scheduleRefreshStats();
 	}
 
 	// JMX
 
-	private void scheduleRefreshStats() {
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
-			@Override
-			public void run() {
-				if (!isRunning())
-					return;
-				long timestamp = eventloop.currentTimeMillis();
-				timeCheckExpired.refreshStats(timestamp, smoothingWindow);
-				expiredConnections.refreshStats(timestamp, smoothingWindow);
-				scheduleRefreshStats();
-			}
-		});
+	public JmxStats<?> getConnectionsCount() {
+		return JmxStatsWrappers.forSummableValue(connectionsList.size());
 	}
 
 	// TODO (vmykhalko)

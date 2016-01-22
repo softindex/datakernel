@@ -16,6 +16,8 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.jmx.annotation.JmxMBean;
+
 import java.nio.channels.SocketChannel;
 import java.util.Collection;
 
@@ -24,6 +26,7 @@ import java.util.Collection;
  * other {@link EventloopServer}, and when takes place new accept to it, it forwards request to other server
  * from collection with round-robin algorithm.
  */
+@JmxMBean
 public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	private EventloopServer[] workerServers;
 
@@ -87,7 +90,9 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	@Override
 	public void onAccept(final SocketChannel socketChannel) {
 		assert eventloop.inEventloopThread();
-		totalAccepts++;
+
+		// jmx
+		totalAccepts.recordEvent();
 
 		final EventloopServer server = workerServers[currentAcceptor];
 		currentAcceptor = (currentAcceptor + 1) % workerServers.length;
