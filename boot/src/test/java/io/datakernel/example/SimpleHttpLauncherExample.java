@@ -41,7 +41,7 @@ public class SimpleHttpLauncherExample {
 	public static class ServicesLauncher extends Launcher {
 		@Override
 		protected void configure() {
-			optionalConfigs("launcher-example.properties");
+			configs("launcher-example.properties");
 			modules(ServiceGraphModule.defaultInstance(),
 					new LauncherExampleModule());
 		}
@@ -53,6 +53,8 @@ public class SimpleHttpLauncherExample {
 	}
 
 	public static class LauncherExampleModule extends AbstractModule {
+		private static final String DEFAULT_RESPONSE_MESSAGE = "Hello, World!";
+		public static final int DEFAULT_PORT = 5561;
 
 		@Override
 		protected void configure() {
@@ -70,13 +72,13 @@ public class SimpleHttpLauncherExample {
 			AsyncHttpServer httpServer = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
-					final String responseMessage = ConfigConverters.ofString().get(config.getChild("responseMessage"));
+					String responseMessage = config.get(ConfigConverters.ofString(), "responseMessage", DEFAULT_RESPONSE_MESSAGE);
 					HttpResponse content = HttpResponse.create().body(ByteBuf.wrap(encodeAscii(
 							"Message: " + responseMessage + "\n")));
 					callback.onResult(content);
 				}
 			});
-			int port = ConfigConverters.ofInteger().get(config.getChild("port"));
+			int port = config.get(ConfigConverters.ofInteger(), "port", DEFAULT_PORT);
 			return httpServer.setListenPort(port);
 		}
 

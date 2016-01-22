@@ -106,7 +106,7 @@ public class UiKernelServlets {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
-					String json = request.getBodyUtf8();
+					String json = ByteBufStrings.decodeUTF8(request.getBody());
 					R obj = gson.fromJson(json, model.getRecordType());
 					model.create(obj, new ResultCallback<CreateResponse<K>>() {
 						@Override
@@ -132,7 +132,7 @@ public class UiKernelServlets {
 			@Override
 			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
 				try {
-					String json = request.getBodyUtf8();
+					String json = ByteBufStrings.decodeUTF8(request.getBody());
 					List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
 					model.update(list, new ResultCallback<UpdateResponse<K, R>>() {
 						@Override
@@ -186,6 +186,6 @@ public class UiKernelServlets {
 	private static HttpResponse createResponse(String body) {
 		return HttpResponse.create()
 				.contentType(JSON_UTF8)
-				.bodyUtf8(body);
+				.body(ByteBufStrings.wrapUTF8(body));
 	}
 }

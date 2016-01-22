@@ -17,9 +17,9 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
-import io.datakernel.service.ServiceGraph;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigModule;
+import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.FileLocker;
 import org.slf4j.Logger;
 
@@ -40,8 +40,6 @@ public abstract class Launcher {
 	private Module[] modules;
 
 	private File[] configs;
-
-	private File[] optionalConfigs;
 
 	private FileLocker fileLocker;
 
@@ -76,18 +74,6 @@ public abstract class Launcher {
 
 	protected void configs(Path... paths) {
 		this.configs = paths2Files(paths);
-	}
-
-	protected void optionalConfigs(File... files) {
-		this.optionalConfigs = files;
-	}
-
-	protected void optionalConfigs(String... config) {
-		this.optionalConfigs = strings2files(config);
-	}
-
-	protected void optionalConfigs(Path... paths) {
-		this.optionalConfigs = paths2Files(paths);
 	}
 
 	private File[] paths2Files(Path[] paths) {
@@ -187,8 +173,7 @@ public abstract class Launcher {
 		});
 
 		List<Config> configsList = new ArrayList<>();
-		loadConfigs(configs, configsList, false);
-		loadConfigs(optionalConfigs, configsList, true);
+		loadConfigs(configs, configsList, true);
 
 		if (configsList.size() > 0) {
 			config = Config.union(configsList);

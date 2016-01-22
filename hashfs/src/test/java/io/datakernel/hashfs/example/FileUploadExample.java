@@ -41,8 +41,8 @@ public class FileUploadExample {
 
 		// Specifying file names: requested  - path to the file in your local file system,
 		// result - file name after upload in remote fs
-		String requestedFile = "pom.xml";
-		String resultFile = "pom.xml";
+		String requestedFile = "./test/test.txt";
+		String resultFile = "test.txt";
 
 		// Creating core components
 		Eventloop eventloop = new Eventloop();

@@ -160,16 +160,6 @@ public abstract class HttpMessage {
 		return body;
 	}
 
-	public String getBodyAscii() {
-		assert !recycled;
-		return decodeAscii(body);
-	}
-
-	public String getBodyUtf8() {
-		assert !recycled;
-		return decodeUTF8(body);
-	}
-
 	/**
 	 * Recycles body and header. You should do it before reusing.
 	 */

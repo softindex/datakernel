@@ -23,7 +23,8 @@ import io.datakernel.util.ByteBufStrings;
 import java.util.*;
 
 import static io.datakernel.http.HttpHeaders.*;
-import static io.datakernel.util.ByteBufStrings.*;
+import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.util.ByteBufStrings.putDecimal;
 
 /**
  * It represents the HTTP result with which server response in client {@link HttpRequest}. It must ave only
@@ -86,18 +87,6 @@ public final class HttpResponse extends HttpMessage {
 	public HttpResponse body(ByteBuf body) {
 		assert !recycled;
 		setBody(body);
-		return this;
-	}
-
-	public HttpResponse bodyUtf8(String body) {
-		assert !recycled;
-		setBody(wrapUTF8(body));
-		return this;
-	}
-
-	public HttpResponse bodyAscii(String body) {
-		assert !recycled;
-		setBody(wrapAscii(body));
 		return this;
 	}
 

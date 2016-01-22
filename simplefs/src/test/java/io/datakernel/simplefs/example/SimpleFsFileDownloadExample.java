@@ -39,17 +39,16 @@ public class SimpleFsFileDownloadExample {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsFileDownloadExample.class);
 
 	private static final int SERVER_PORT = 6732;
-	private static final Path CLIENT_STORAGE = Paths.get("./");
+	private static final Path CLIENT_STORAGE = Paths.get("./test_data");
 
 	public static void main(String[] args) {
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		final Eventloop eventloop = new Eventloop();
 
-		String requiredFile = "test.txt";
-		final String downloadedFile = "downloaded_test.txt";
+		String requiredFile = "example.txt";
+		final String downloadedFile = "downloaded_example.txt";
 
-		SimpleFsClient client = SimpleFsClient.buildInstance(eventloop, new InetSocketAddress(SERVER_PORT))
-				.build();
+		SimpleFsClient client = SimpleFsClient.createInstance(eventloop, new InetSocketAddress(SERVER_PORT));
 
 		StreamFileWriter consumer =
 				StreamFileWriter.createFile(eventloop, executor, CLIENT_STORAGE.resolve(downloadedFile));

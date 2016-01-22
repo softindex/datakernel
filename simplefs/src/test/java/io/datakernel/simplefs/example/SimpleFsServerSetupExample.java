@@ -38,8 +38,13 @@ public class SimpleFsServerSetupExample {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsServerSetupExample.class);
 
 	public static final int SERVER_PORT = 6732;
-	private static final Path SERVER_STORAGE_PATH = Paths.get("./storage");
-	private static final Path TMP_STORAGE_PATH = Paths.get("./tmp");
+
+	/*  Configuring directories that would keep files
+	 *  Bear in mind that specified directories must not relate somehow
+	 *  e.g. parent-child like
+	 */
+	private static final Path SERVER_STORAGE_PATH = Paths.get("./test_data/storage");
+	private static final Path TMP_STORAGE_PATH = Paths.get("./test_data/tmp");
 
 	public static void main(String[] args) throws IOException {
 		Eventloop eventloop = new Eventloop();

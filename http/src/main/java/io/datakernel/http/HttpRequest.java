@@ -86,18 +86,6 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
-	public HttpRequest bodyUtf8(String body) {
-		assert !recycled;
-		setBody(wrapUTF8(body));
-		return this;
-	}
-
-	public HttpRequest bodyAscii(String body) {
-		assert !recycled;
-		setBody(wrapAscii(body));
-		return this;
-	}
-
 	// specific builder methods
 	public HttpRequest accept(AcceptMediaType... value) {
 		return accept(Arrays.asList(value));

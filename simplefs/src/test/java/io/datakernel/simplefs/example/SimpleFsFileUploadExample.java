@@ -39,17 +39,18 @@ public class SimpleFsFileUploadExample {
 	private static final Logger logger = LoggerFactory.getLogger(SimpleFsFileUploadExample.class);
 
 	private static final int SERVER_PORT = 6732;
-	private static final Path CLIENT_STORAGE = Paths.get("./");
+
+	// Specify path to the storage files are kept and the name of a file
+	private static final Path CLIENT_STORAGE = Paths.get("./test_data");
+	private static final String fileName = "example.txt";
 
 	public static void main(String[] args) {
 		final InetSocketAddress address = new InetSocketAddress(SERVER_PORT);
 		final ExecutorService executor = Executors.newCachedThreadPool();
 		final Eventloop eventloop = new Eventloop();
 
-		final String fileName = "test.txt";
-
 		// Create client
-		SimpleFsClient client = SimpleFsClient.buildInstance(eventloop, address).build();
+		SimpleFsClient client = SimpleFsClient.createInstance(eventloop, address);
 
 		final StreamFileReader producer =
 				StreamFileReader.readFileFully(eventloop, executor, 16 * 1024, CLIENT_STORAGE.resolve(fileName));
