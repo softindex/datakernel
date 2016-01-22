@@ -18,14 +18,36 @@ package io.datakernel.async;
 
 import java.util.concurrent.*;
 
-public class ResultCallbackFuture<T> implements ResultCallback<T>, Future<T> {
+public class ResultCallbackFuture<T> implements ResultCallback<T>, CompletionCallback, Future<T> {
 	private final CountDownLatch latch = new CountDownLatch(1);
 	private T result;
 	private Exception exception;
 
+	public static <T> ResultCallbackFuture<T> immediateFuture(T result) {
+		ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		future.onResult(result);
+		return future;
+	}
+
+	public static <T> ResultCallbackFuture<T> immediateFailingFuture(Exception exception) {
+		ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		future.onException(exception);
+		return future;
+	}
+
+	public ResultCallbackFuture<T> withCompletionResult(T result) {
+		this.result = result;
+		return this;
+	}
+
 	@Override
 	public void onResult(T result) {
-		this.result = result;
+		withCompletionResult(result);
+		onComplete();
+	}
+
+	@Override
+	public void onComplete() {
 		latch.countDown();
 		onResultOrException();
 	}

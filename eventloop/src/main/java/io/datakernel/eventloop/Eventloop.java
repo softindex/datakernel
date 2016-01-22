@@ -17,8 +17,9 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
+import io.datakernel.async.AsyncCallable;
+import io.datakernel.async.AsyncTask;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.eventloop.EventloopStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.jmx.annotation.JmxOperation;
@@ -56,7 +57,7 @@ import static java.util.Arrays.asList;
  * not selected keys and its queues with tasks are empty.
  */
 @JmxMBean
-public final class Eventloop implements Runnable, CurrentTimeProvider {
+public final class Eventloop implements Runnable, CurrentTimeProvider, EventloopExecutor {
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 
 	private static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
@@ -781,62 +782,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider {
 	}
 
 	/**
-	 * Posts from another thread task, which is expected to return result.
-	 * <p/>
-	 * This is preferred method to communicate with eventloop from another thread when a result is expected
-	 *
-	 * @param callable task to be executed
-	 * @param <V>      type of result
-	 * @return {@code Future}, which can be used to retrieve result
-	 */
-	public <V> Future<V> postAsFuture(final Callable<V> callable) {
-		final ResultCallbackFuture<V> future = new ResultCallbackFuture<>();
-		postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				V result = null;
-				Exception throwedException = null;
-
-				try {
-					result = callable.call();
-				} catch (Exception e) {
-					throwedException = e;
-				}
-
-				if (throwedException == null) {
-					future.onResult(result);
-				} else {
-					future.onException(throwedException);
-				}
-			}
-		});
-		return future;
-	}
-
-	public Future<Void> postAsFuture(final Runnable runnable) {
-		final ResultCallbackFuture<Void> future = new ResultCallbackFuture<>();
-		postConcurrently(new Runnable() {
-			@Override
-			public void run() {
-				Exception throwedException = null;
-
-				try {
-					runnable.run();
-				} catch (Exception e) {
-					throwedException = e;
-				}
-
-				if (throwedException == null) {
-					future.onResult(null);
-				} else {
-					future.onException(throwedException);
-				}
-			}
-		});
-		return future;
-	}
-
-	/**
 	 * Schedules new task. Returns {@link ScheduledRunnable} with this runnable.
 	 *
 	 * @param timestamp timestamp after which task will be ran
@@ -850,7 +795,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider {
 
 	/**
 	 * Schedules new background task. Returns {@link ScheduledRunnable} with this runnable.
-	 * <p/>
+	 * <p>
 	 * If eventloop contains only background tasks, it will be closed
 	 *
 	 * @param timestamp timestamp after which task will be ran
@@ -977,4 +922,84 @@ public final class Eventloop implements Runnable, CurrentTimeProvider {
 	public interface ConcurrentOperationTracker {
 		void complete();
 	}
+
+	@Override
+	public Future<?> submit(final Runnable runnable) {
+		return submit(runnable, null);
+	}
+
+	@Override
+	public Future<?> submit(AsyncTask asyncTask) {
+		return submit(asyncTask, null);
+	}
+
+	@Override
+	public <T> Future<T> submit(final Runnable runnable, final T result) {
+		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				Exception exception = null;
+				try {
+					runnable.run();
+				} catch (Exception e) {
+					exception = e;
+				}
+				if (exception == null) {
+					future.onResult(result);
+				} else {
+					future.onException(exception);
+				}
+			}
+		});
+		return future;
+	}
+
+	@Override
+	public <T> Future<T> submit(final AsyncTask asyncTask, final T result) {
+		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				asyncTask.execute(future.withCompletionResult(result));
+			}
+		});
+		return future;
+	}
+
+	@Override
+	public <T> Future<T> submit(final Callable<T> callable) {
+		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				T result = null;
+				Exception exception = null;
+				try {
+					result = callable.call();
+				} catch (Exception e) {
+					exception = e;
+				}
+				if (exception == null) {
+					future.onResult(result);
+				} else {
+					future.onException(exception);
+				}
+			}
+		});
+		return future;
+	}
+
+	@Override
+	public <T> Future<T> submit(final AsyncCallable<T> asyncCallable) {
+		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
+		postConcurrently(new Runnable() {
+			@Override
+			public void run() {
+				asyncCallable.call(future);
+			}
+		});
+		return future;
+	}
+
 }

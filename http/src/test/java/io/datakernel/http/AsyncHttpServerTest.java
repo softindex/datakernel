@@ -261,7 +261,7 @@ public class AsyncHttpServerTest {
 		}
 		server.closeFuture().await();
 		thread.join();
-		ExceptionStats exceptionCounter = eventloop.getExceptionStats(new ExceptionMarker(SocketConnection.class, "InternalException"));
+		ExceptionStats exceptionCounter = eventloop.getExceptionStats(new ExceptionMarker(SocketConnection.class, "ReadException"));
 		assertNotNull(exceptionCounter);
 		String[] exception = exceptionCounter.getFormattedException();
 		assertTrue(exception != null && exception.length > 0);
