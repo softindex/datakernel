@@ -19,7 +19,6 @@ package io.datakernel.util;
 import io.datakernel.http.HttpHeaders;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpUri;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -28,9 +27,9 @@ import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
-import static io.datakernel.util.ByteBufStrings.decodeDecimal;
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
+import static io.datakernel.util.ByteBufStrings.*;
 
 /**
  * Util for working with {@link HttpRequest}
@@ -38,8 +37,12 @@ import static io.datakernel.util.ByteBufStrings.encodeAscii;
 public final class Utils {
 	private static final Splitter commaSplitter = Splitter.on(',').trimResults();
 	private static final Splitter querySplitter = Splitter.on('&');
-	private static final Splitter dotSplitter = Splitter.on('.');
 	private static final String ENCODING = "UTF-8";
+
+	private static Pattern VALID_IPV4_PATTERN =
+			Pattern.compile("^(25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)(\\.(25[0-5]|2[0-4]\\d|[0-1]?\\d?\\d)){3}$", Pattern.CASE_INSENSITIVE);
+	private static Pattern VALID_IPV6_PATTERN =
+			Pattern.compile("^(?:[0-9a-fA-F]{0,4}:){0,7}[0-9a-fA-F]{0,4}$", Pattern.CASE_INSENSITIVE);
 
 	public static InetAddress forString(String host) {
 		try {
@@ -54,6 +57,11 @@ public final class Utils {
 		int colons = 0;
 		int dots = 0;
 		byte[] bytes = encodeAscii(host);
+
+		if (bytes[0] == '[' && bytes[bytes.length - 1] == ']') {
+			return checkIpv6(bytes);
+		}
+
 		for (byte b : bytes) {
 			if (b == '.') {
 				dots++;
@@ -69,8 +77,7 @@ public final class Utils {
 
 		if (colons > 0 && colons < 17) {
 			if (dots > 0) {
-				// 0:0:0:0:0:FFFF:129.144.52.38 of this kind
-				throw new NotImplementedException();
+				// not implemented
 			}
 			return checkIpv6(bytes);
 		} else if (dots > 0 && dots < 5) {
@@ -79,7 +86,11 @@ public final class Utils {
 		return false;
 	}
 
-	private static boolean checkIpv4(byte[] bytes) {
+	/*
+	 *  Checks only xxx.xxx.xxx.xxx format
+	 *  more - https://ru.wikipedia.org/wiki/IPv4
+	 */
+	public static boolean checkIpv4(byte[] bytes) {
 		int start = 0;
 		for (int i = 0; i < bytes.length; i++) {
 			if (bytes[i] == '.' || i == bytes.length - 1) {
@@ -91,9 +102,13 @@ public final class Utils {
 		return true;
 	}
 
-	private static boolean checkIpv6(byte[] bytes) {
-		// TODO (arashev)
-		return false;
+	/*
+	* http://stackoverflow.com/questions/5963199/ipv6-validation
+	* rfc2732
+	*/
+	public static boolean checkIpv6(byte[] bytes) {
+		// TODO (arashev) remove later
+		return VALID_IPV6_PATTERN.matcher(decodeAscii(bytes)).matches();
 	}
 
 	public static int skipSpaces(byte[] bytes, int pos, int end) {
