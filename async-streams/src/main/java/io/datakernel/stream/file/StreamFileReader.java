@@ -217,5 +217,14 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	public long getPosition() {
 		return position;
 	}
+
+	@Override
+	public String toString() {
+		return "StreamFileReader{" + path +
+				", pos=" + position +
+				", len=" + length +
+				(pendingAsyncOperation ? ", pendingAsyncOperation" : "") +
+				'}';
+	}
 }
 

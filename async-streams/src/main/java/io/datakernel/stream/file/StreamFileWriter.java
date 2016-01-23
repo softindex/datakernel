@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -296,5 +297,14 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		if (flushCallback != null) {
 			flushCallback.onException(e);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return "StreamFileWriter{" + path +
+				", " + Arrays.toString(options) +
+				", pos=" + position +
+				(pendingAsyncOperation ? ", pendingAsyncOperation" : "") +
+				'}';
 	}
 }
