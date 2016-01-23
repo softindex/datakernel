@@ -519,4 +519,6 @@ public final class AsyncFile implements File {
 	public AsynchronousFileChannel getChannel() {
 		return channel;
 	}
+
+	// TODO (arashev): add nice toString() with filename
 }

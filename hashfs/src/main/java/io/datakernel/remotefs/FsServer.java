@@ -25,10 +25,16 @@ import io.datakernel.stream.StreamProducer;
 
 import java.util.Set;
 
+// TODO (arashev): consider making it abstract class, or just remove it altogether
 public interface FsServer extends NioService {
 	void upload(String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
 	void commit(String fileName, boolean success, CompletionCallback callback);
+
+	// TODO (arashev): fix API, something like this:
+//	StreamProducer<ByteBuf> download(String fileName);
+//	void download(String fileName, ResultCallback<StreamProducer<ByteBuf>> callback);
+//	void download(String fileName, ResultCallback<AsyncFile> callback); // to send file size to client
 
 	void download(String fileName, StreamConsumer<ByteBuf> consumer, ResultCallback<CompletionCallback> callback);
 
@@ -40,6 +46,7 @@ public interface FsServer extends NioService {
 
 	void checkOffer(Set<String> forUpload, Set<String> forDeletion, ResultCallback<Set<String>> callback);
 
+	// TODO (arashev): make it implementation-specific
 	enum ServerStatus {
 		RUNNING, SHUTDOWN
 	}

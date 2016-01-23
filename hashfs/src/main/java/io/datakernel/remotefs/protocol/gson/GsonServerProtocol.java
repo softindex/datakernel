@@ -162,6 +162,7 @@ public final class GsonServerProtocol extends AbstractNioServer<GsonServerProtoc
 				server.download(item.filePath, forwarder.getInput(), new ResultCallback<CompletionCallback>() {
 					@Override
 					public void onResult(final CompletionCallback callback) {
+						// TODO (arashev): If file exists, file size should also be sent here before streaming file contents
 						messaging.sendMessage(new ResponseOk());
 						messaging.write(forwarder.getOutput(), new CompletionCallback() {
 							@Override
@@ -171,6 +172,7 @@ public final class GsonServerProtocol extends AbstractNioServer<GsonServerProtoc
 
 							@Override
 							public void onException(Exception e) {
+								// TODO (arashev): Error must not be sent after OK response. Send it before streaming.
 								messaging.sendMessage(new ResponseError(e.getMessage()));
 								callback.onException(e);
 							}

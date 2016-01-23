@@ -199,6 +199,7 @@ public final class SimpleFsServer implements FsServer {
 
 		if (serverStatus != RUNNING) {
 			logger.info("Can't perform operation. Server is down!");
+			// TODO (arashev): do it with preconditions, since it's abnormal situation which should never occur
 			callback.onException(new Exception("Server is down"));
 			return;
 		}
@@ -213,6 +214,7 @@ public final class SimpleFsServer implements FsServer {
 
 		if (serverStatus != RUNNING) {
 			logger.info("Can't perform operation. Server is down!");
+			// TODO (arashev): do it with preconditions, since it's abnormal situation which should never occur
 			callback.onException(new Exception("Server is down"));
 			return;
 		}
@@ -243,6 +245,7 @@ public final class SimpleFsServer implements FsServer {
 		callback.onException(new UnsupportedOperationException());
 	}
 
+	// TODO (arashev): consider removing it, to clean up files, we can use crontab instead
 	private void scheduleTmpFileDeletion(final String fileName) {
 		eventloop.scheduleBackground(eventloop.currentTimeMillis() + approveWaitTime, new Runnable() {
 			@Override

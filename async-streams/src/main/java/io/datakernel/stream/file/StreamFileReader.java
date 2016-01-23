@@ -42,7 +42,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamFileReader.class);
 
 	private final ExecutorService executor;
-	protected AsyncFile asyncFile;
+	protected AsyncFile asyncFile; // TODO (arashev): consider making it final, to decouple file opening logic from the stream itself
 	private Path path;
 
 	protected final int bufferSize;
