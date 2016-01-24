@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx.stats;
 
+import io.datakernel.jmx.JmxStats;
 import io.datakernel.jmx.helper.CompositeStatsStub;
 import org.junit.Test;
 

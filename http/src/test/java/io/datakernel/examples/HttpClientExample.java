@@ -21,11 +21,7 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpClient;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.util.Utils;
+import io.datakernel.http.*;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -53,7 +49,7 @@ public class HttpClientExample {
 		// Create the client
 		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-						3_000L, Utils.forString("8.8.8.8")));
+						3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
 		httpServer.listen();

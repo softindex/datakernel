@@ -21,7 +21,6 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
-import io.datakernel.util.Utils;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -68,7 +67,7 @@ public class ProxyServerExample {
 	private static AsyncHttpClient createClient(Eventloop eventloop) {
 		return new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-						3_000L, Utils.forString("8.8.8.8")));
+						3_000L, HttpUtils.inetAddress("8.8.8.8")));
 	}
 
 	public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {

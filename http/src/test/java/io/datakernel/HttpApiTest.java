@@ -20,7 +20,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
-import io.datakernel.util.Utils;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -78,7 +77,7 @@ public class HttpApiTest {
 		}).setListenPort(PORT);
 
 		client = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-				3_000L, Utils.forString("8.8.8.8")));
+				3_000L, HttpUtils.inetAddress("8.8.8.8")));
 
 		// setup request and response data
 		requestAcceptContentTypes.add(AcceptMediaType.of(MediaTypes.ANY_AUDIO, 90));
@@ -129,7 +128,7 @@ public class HttpApiTest {
 		response.date(responseDate);
 		response.expires(expiresDate);
 		response.contentType(responseContentType);
-		response.serverCookie(responseCookies);
+		response.setCookies(responseCookies);
 		response.lastModified(lastModified);
 		response.age(age);
 		return response;
@@ -143,27 +142,27 @@ public class HttpApiTest {
 		request.contentType(requestContentType);
 		request.ifModifiedSince(dateIMS);
 		request.ifUnModifiedSince(dateIUMS);
-		request.clientCookies(requestCookies);
+		request.cookies(requestCookies);
 		return request;
 	}
 
 	private void testResponse(HttpResponse response) {
 		assertEquals(responseContentType.toString(), response.getContentType().toString());
-		assertEquals(responseCookies.toString(), response.getCookies().toString());
+		assertEquals(responseCookies.toString(), response.parseCookies().toString());
 		assertEquals(responseDate.toString(), response.getDate().toString());
-		assertEquals(age, response.getAge());
-		assertEquals(expiresDate.toString(), response.getExpires().toString());
-		assertEquals(lastModified.toString(), response.getLastModified().toString());
+		assertEquals(age, response.parseAge());
+		assertEquals(expiresDate.toString(), response.parseExpires().toString());
+		assertEquals(lastModified.toString(), response.parseLastModified().toString());
 	}
 
 	private void testRequest(HttpRequest request) {
-		assertEquals(requestAcceptContentTypes.toString(), request.getAccept().toString());
-		assertEquals(requestAcceptCharsets.toString(), request.getAcceptCharsets().toString());
+		assertEquals(requestAcceptContentTypes.toString(), request.parseAccept().toString());
+		assertEquals(requestAcceptCharsets.toString(), request.parseAcceptCharsets().toString());
 		assertEquals(requestDate.toString(), request.getDate().toString());
-		assertEquals(dateIMS.toString(), request.getIfModifiedSince().toString());
-		assertEquals(dateIUMS.toString(), request.getIfUnModifiedSince().toString());
+		assertEquals(dateIMS.toString(), request.parseIfModifiedSince().toString());
+		assertEquals(dateIUMS.toString(), request.parseIfUnModifiedSince().toString());
 		assertEquals(requestContentType.toString(), request.getContentType().toString());
-		assertEquals(requestCookies.toString(), request.getCookies().toString());
+		assertEquals(requestCookies.toString(), request.parseCookies().toString());
 	}
 
 	private static Date createDate(int year, int month, int day) {

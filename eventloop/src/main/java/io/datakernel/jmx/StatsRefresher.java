@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.stats.JmxStats;
 
 import java.util.List;
 

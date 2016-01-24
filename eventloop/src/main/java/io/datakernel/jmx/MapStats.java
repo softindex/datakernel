@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.stats;
+package io.datakernel.jmx;
 
 import javax.management.openmbean.*;
 import java.util.*;

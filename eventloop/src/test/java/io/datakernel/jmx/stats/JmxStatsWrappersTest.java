@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx.stats;
 
+import io.datakernel.jmx.JmxStats;
+import io.datakernel.jmx.JmxStatsWrappers;
 import org.junit.Test;
 
 import javax.management.openmbean.SimpleType;

@@ -16,7 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.jmx.annotation.JmxMBean;
+import io.datakernel.jmx.JmxMBean;
 
 import java.nio.channels.SocketChannel;
 import java.util.Collection;

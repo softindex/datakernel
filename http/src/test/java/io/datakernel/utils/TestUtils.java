@@ -16,7 +16,7 @@
 
 package io.datakernel.utils;
 
-import io.datakernel.util.Utils;
+import io.datakernel.http.HttpUtils;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -26,25 +26,25 @@ public class TestUtils {
 	@Test
 	public void testIsIpv4InetAddress() {
 		String ip = "127.0.0.1";
-		assertTrue(Utils.isInetAddress(ip));
+		assertTrue(HttpUtils.isInetAddress(ip));
 
 		ip = "255.255.255.255";
-		assertTrue(Utils.isInetAddress(ip));
+		assertTrue(HttpUtils.isInetAddress(ip));
 
 		ip = "0.0.0.0";
-		assertTrue(Utils.isInetAddress(ip));
+		assertTrue(HttpUtils.isInetAddress(ip));
 
 		ip = "345.213.2344.78568";
-		assertFalse(Utils.isInetAddress(ip));
+		assertFalse(HttpUtils.isInetAddress(ip));
 	}
 
 	@Test
 	public void testIsIpv6InetAddress() {
 		String ip = "FEDC:BA98:7654:3210:FEDC:BA98:7654:3210";
-		assertTrue(Utils.isInetAddress(ip));
+		assertTrue(HttpUtils.isInetAddress(ip));
 
 		ip = "f:0:e:0:A:0:C:0";
-		assertTrue(Utils.isInetAddress(ip));
+		assertTrue(HttpUtils.isInetAddress(ip));
 
 		ip = "::3210";
 //		assertTrue(Utils.isInetAddress(ip));

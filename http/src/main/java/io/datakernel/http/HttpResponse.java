@@ -62,32 +62,27 @@ public final class HttpResponse extends HttpMessage {
 
 	// common builder methods
 	public HttpResponse header(HttpHeader header, ByteBuf value) {
-		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
 	public HttpResponse header(HttpHeader header, byte[] value) {
-		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
 	public HttpResponse header(HttpHeader header, String value) {
-		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
-	public HttpResponse body(byte[] array) {
-		assert !recycled;
-		return body(ByteBuf.wrap(array));
-	}
-
 	public HttpResponse body(ByteBuf body) {
-		assert !recycled;
 		setBody(body);
 		return this;
+	}
+
+	public HttpResponse body(byte[] array) {
+		return body(ByteBuf.wrap(array));
 	}
 
 	// specific builder methods
@@ -96,7 +91,6 @@ public final class HttpResponse extends HttpMessage {
 	private static final Value AGE__0 = HttpHeaders.asBytes(AGE, "0");
 
 	public HttpResponse noCache() {
-		assert !recycled;
 		setHeader(CACHE_CONTROL__NO_STORE);
 		setHeader(PRAGMA__NO_CACHE);
 		setHeader(AGE__0);
@@ -104,39 +98,41 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	public HttpResponse age(int value) {
-		assert !recycled;
 		setHeader(ofDecimal(AGE, value));
 		return this;
 	}
 
-	public HttpResponse contentType(ContentType value) {
-		assert !recycled;
-		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, value));
+	public HttpResponse contentType(ContentType contentType) {
+		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
 		return this;
 	}
 
-	public HttpResponse date(Date value) {
-		assert !recycled;
-		setHeader(ofDate(HttpHeaders.DATE, value));
+	public HttpResponse date(Date date) {
+		setHeader(ofDate(HttpHeaders.DATE, date));
 		return this;
 	}
 
-	public HttpResponse expires(Date value) {
-		assert !recycled;
-		setHeader(ofDate(HttpHeaders.EXPIRES, value));
+	public HttpResponse expires(Date date) {
+		setHeader(ofDate(HttpHeaders.EXPIRES, date));
 		return this;
 	}
 
-	public HttpResponse lastModified(Date value) {
-		assert !recycled;
-		setHeader(ofDate(HttpHeaders.LAST_MODIFIED, value));
+	public HttpResponse lastModified(Date date) {
+		setHeader(ofDate(HttpHeaders.LAST_MODIFIED, date));
 		return this;
 	}
 
-	public HttpResponse serverCookie(List<HttpCookie> values) {
-		assert !recycled;
-		addHeader(ofSetCookies(HttpHeaders.SET_COOKIE, values));
+	public HttpResponse setCookies(List<HttpCookie> cookies) {
+		addHeader(ofSetCookies(HttpHeaders.SET_COOKIE, cookies));
 		return this;
+	}
+
+	public HttpResponse setCookies(HttpCookie... cookies) {
+		return setCookies(Arrays.asList(cookies));
+	}
+
+	public HttpResponse setCookie(HttpCookie cookie) {
+		return setCookies(Collections.singletonList(cookie));
 	}
 
 	// getters
@@ -145,39 +141,40 @@ public final class HttpResponse extends HttpMessage {
 		return code;
 	}
 
-	public int getAge() {
+	public int parseAge() {
 		assert !recycled;
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(AGE);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(AGE);
 		if (header != null)
 			return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
 		return 0;
 	}
 
-	public Date getExpires() {
+	public Date parseExpires() {
 		assert !recycled;
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(EXPIRES);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(EXPIRES);
 		if (header != null)
 			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
 	}
 
-	public Date getLastModified() {
+	public Date parseLastModified() {
 		assert !recycled;
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(LAST_MODIFIED);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(LAST_MODIFIED);
 		if (header != null)
 			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
 	}
 
-	public List<HttpCookie> getCookies() {
+	@Override
+	public List<HttpCookie> parseCookies() {
 		assert !recycled;
-		List<HttpCookie> cookie = new ArrayList<>();
-		List<Value> headers = getHeaders(SET_COOKIE);
+		List<HttpCookie> cookies = new ArrayList<>();
+		List<Value> headers = getHeaderValues(SET_COOKIE);
 		for (Value header : headers) {
 			ValueOfBytes value = (ValueOfBytes) header;
-			HttpCookie.parse(value.array, value.offset, value.offset + value.size, cookie);
+			HttpCookie.parse(value.array, value.offset, value.offset + value.size, cookies);
 		}
-		return cookie;
+		return cookies;
 	}
 
 	// internal

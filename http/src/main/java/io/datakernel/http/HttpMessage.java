@@ -19,9 +19,7 @@ package io.datakernel.http;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.ByteBufStrings.*;
@@ -39,7 +37,7 @@ public abstract class HttpMessage {
 	protected HttpMessage() {
 	}
 
-	public List<HttpHeaders.Value> getHeaders() {
+	protected List<HttpHeaders.Value> getHeaders() {
 		assert !recycled;
 		return headers;
 	}
@@ -52,7 +50,7 @@ public abstract class HttpMessage {
 	 */
 	protected void setHeader(HttpHeaders.Value value) {
 		assert !recycled;
-		assert getHeader(value.getKey()) == null : "Duplicate header: " + value.getKey();
+		assert getHeaderValue(value.getKey()) == null : "Duplicate header: " + value.getKey();
 		headers.add(value);
 	}
 
@@ -119,7 +117,7 @@ public abstract class HttpMessage {
 	// getters
 	public int getContentLength() {
 		assert !recycled;
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(CONTENT_LENGTH);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_LENGTH);
 		if (header != null)
 			return ByteBufStrings.decodeDecimal(header.array, header.offset, header.size);
 		return 0;
@@ -127,7 +125,7 @@ public abstract class HttpMessage {
 
 	public ContentType getContentType() {
 		assert !recycled;
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(CONTENT_TYPE);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_TYPE);
 		if (header != null)
 			return ContentType.parse(header.array, header.offset, header.size);
 		return null;
@@ -135,7 +133,7 @@ public abstract class HttpMessage {
 
 	public Date getDate() {
 		assert !recycled;
-		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeader(DATE);
+		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(DATE);
 		if (header != null) {
 			long date = HttpDate.parse(header.array, header.offset);
 			return new Date(date);
@@ -225,7 +223,7 @@ public abstract class HttpMessage {
 		return size;
 	}
 
-	public final HttpHeaders.Value getHeader(HttpHeader header) {
+	protected final HttpHeaders.Value getHeaderValue(HttpHeader header) {
 		for (HttpHeaders.Value headerValue : headers) {
 			if (header.equals(headerValue.getKey()))
 				return headerValue;
@@ -233,12 +231,12 @@ public abstract class HttpMessage {
 		return null;
 	}
 
-	public final String getHeaderString(HttpHeader header) {
-		HttpHeaders.Value result = getHeader(header);
+	public final String getHeader(HttpHeader header) {
+		HttpHeaders.Value result = getHeaderValue(header);
 		return result == null ? null : result.toString();
 	}
 
-	public final List<HttpHeaders.Value> getHeaders(HttpHeader header) {
+	protected final List<HttpHeaders.Value> getHeaderValues(HttpHeader header) {
 		List<HttpHeaders.Value> result = new ArrayList<>();
 		for (HttpHeaders.Value headerValue : headers) {
 			if (header.equals(headerValue.getKey()))
@@ -257,4 +255,27 @@ public abstract class HttpMessage {
 
 		return result;
 	}
+
+	protected abstract List<HttpCookie> parseCookies();
+
+	public Map<String, HttpCookie> parseCookiesMap() {
+		assert !recycled;
+		List<HttpCookie> cookies = parseCookies();
+		LinkedHashMap<String, HttpCookie> map = new LinkedHashMap<>();
+		for (HttpCookie cookie : cookies) {
+			map.put(cookie.getName(), cookie);
+		}
+		return map;
+	}
+
+	public HttpCookie parseCookie(String name) {
+		assert !recycled;
+		List<HttpCookie> cookies = parseCookies();
+		for (HttpCookie cookie : cookies) {
+			if (name.equals(cookie.getName()))
+				return cookie;
+		}
+		return null;
+	}
+
 }

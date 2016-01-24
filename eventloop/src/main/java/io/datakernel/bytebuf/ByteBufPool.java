@@ -16,10 +16,10 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.jmx.annotation.JmxMBean;
-import io.datakernel.jmx.stats.JmxStats;
-import io.datakernel.jmx.stats.JmxStatsWrappers;
-import io.datakernel.jmx.utils.MBeanFormat;
+import io.datakernel.jmx.JmxMBean;
+import io.datakernel.jmx.JmxStats;
+import io.datakernel.jmx.JmxStatsWrappers;
+import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.util.ConcurrentStack;
 
 import javax.management.ObjectName;

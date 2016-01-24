@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.utils;
+package io.datakernel.jmx;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;

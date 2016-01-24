@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.stats;
+package io.datakernel.jmx;
 
 import javax.management.openmbean.*;
 import java.util.HashMap;
@@ -22,8 +22,8 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import static io.datakernel.jmx.utils.MBeanFormat.formatException;
-import static io.datakernel.jmx.utils.Utils.stringOf;
+import static io.datakernel.jmx.MBeanFormat.formatException;
+import static io.datakernel.jmx.Utils.stringOf;
 
 public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	private static final String DETAILS_TYPE_NAME = "ExceptionStatsDetails";

@@ -16,9 +16,6 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.annotation.JmxMBean;
-import io.datakernel.jmx.annotation.JmxOperation;
-import io.datakernel.jmx.annotation.JmxParameter;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.hamcrest.Matcher;

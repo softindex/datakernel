@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.stats;
+package io.datakernel.jmx;
 
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import static io.datakernel.jmx.utils.Utils.fetchNameToJmxStats;
+import static io.datakernel.jmx.Utils.fetchNameToJmxStats;
 import static java.lang.String.format;
 
 public abstract class AbstractCompositeStats<T extends AbstractCompositeStats<T>> implements JmxStats<T> {

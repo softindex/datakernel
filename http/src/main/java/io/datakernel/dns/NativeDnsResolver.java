@@ -20,8 +20,8 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.http.HttpUtils;
 import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,8 +114,8 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 			private void resolve(final String domainName, final boolean ipv6, final ResultCallback<InetAddress[]> callback) {
 				checkArgument(domainName != null, "Domain name must not be null");
 
-				if (Utils.isInetAddress(domainName)) {
-					callback.onResult(new InetAddress[]{Utils.forString(domainName)});
+				if (HttpUtils.isInetAddress(domainName)) {
+					callback.onResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
 					return;
 				}
 
@@ -171,8 +171,8 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 	private void resolve(final String domainName, final boolean ipv6, final ResultCallback<InetAddress[]> callback) {
 		checkArgument(domainName != null, "Domain name must not be null");
 
-		if (Utils.isInetAddress(domainName)) {
-			callback.onResult(new InetAddress[]{Utils.forString(domainName)});
+		if (HttpUtils.isInetAddress(domainName)) {
+			callback.onResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
 			return;
 		}
 

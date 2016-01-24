@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-package io.datakernel.util;
+package io.datakernel.http;
 
-import io.datakernel.http.HttpHeaders;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpUri;
+import io.datakernel.util.Splitter;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -34,7 +32,7 @@ import static io.datakernel.util.ByteBufStrings.*;
 /**
  * Util for working with {@link HttpRequest}
  */
-public final class Utils {
+public final class HttpUtils {
 	private static final Splitter commaSplitter = Splitter.on(',').trimResults();
 	private static final Splitter querySplitter = Splitter.on('&');
 	private static final String ENCODING = "UTF-8";
@@ -44,7 +42,7 @@ public final class Utils {
 	private static Pattern VALID_IPV6_PATTERN =
 			Pattern.compile("^(?:[0-9a-fA-F]{0,4}:){0,7}[0-9a-fA-F]{0,4}$", Pattern.CASE_INSENSITIVE);
 
-	public static InetAddress forString(String host) {
+	public static InetAddress inetAddress(String host) {
 		try {
 			return InetAddress.getByName(host);
 		} catch (UnknownHostException e) {
@@ -139,11 +137,11 @@ public final class Utils {
 	 * @param request received request
 	 */
 	public static InetAddress getRealIp(HttpRequest request) {
-		String s = request.getHeaderString(HttpHeaders.X_FORWARDED_FOR);
+		String s = request.getHeader(HttpHeaders.X_FORWARDED_FOR);
 		if (!isNullOrEmpty(s)) {
 			String clientIP = commaSplitter.split(s).iterator().next();
 			try {
-				return Utils.forString(clientIP);
+				return HttpUtils.inetAddress(clientIP);
 			} catch (IllegalArgumentException ignored) {
 			}
 		}
@@ -155,7 +153,7 @@ public final class Utils {
 	}
 
 	public static InetAddress getRealIpNginx(HttpRequest request) throws UnknownHostException {
-		String s = request.getHeaderString(HttpHeaders.X_REAL_IP);
+		String s = request.getHeader(HttpHeaders.X_REAL_IP);
 		if (!isNullOrEmpty(s))
 			return InetAddress.getByName(s.trim());
 
@@ -168,7 +166,7 @@ public final class Utils {
 	 * @param request Http request with header host
 	 */
 	public static String getHost(HttpRequest request) {
-		String host = request.getHeaderString(HttpHeaders.HOST);
+		String host = request.getHeader(HttpHeaders.HOST);
 		if ((host == null) || host.isEmpty())
 			throw new IllegalArgumentException("Absent header host in " + request);
 		return host;

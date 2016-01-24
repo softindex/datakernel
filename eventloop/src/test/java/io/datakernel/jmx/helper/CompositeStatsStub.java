@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx.helper;
 
-import io.datakernel.jmx.stats.AbstractCompositeStats;
+import io.datakernel.jmx.AbstractCompositeStats;
 
 public final class CompositeStatsStub extends AbstractCompositeStats<CompositeStatsStub> {
 	private JmxStatsStub counterOne = new JmxStatsStub();

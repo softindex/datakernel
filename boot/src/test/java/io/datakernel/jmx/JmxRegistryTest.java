@@ -18,7 +18,6 @@ package io.datakernel.jmx;
 
 import com.google.inject.BindingAnnotation;
 import com.google.inject.Key;
-import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.worker.WorkerPool;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;

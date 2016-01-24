@@ -24,7 +24,7 @@ import java.util.*;
 
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
-import static io.datakernel.util.Utils.nullToEmpty;
+import static io.datakernel.http.HttpUtils.nullToEmpty;
 import static io.datakernel.util.ByteBufStrings.*;
 
 /**
@@ -58,42 +58,41 @@ public final class HttpRequest extends HttpMessage {
 
 	// common builder methods
 	public HttpRequest header(HttpHeader header, ByteBuf value) {
-		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
 	public HttpRequest header(HttpHeader header, byte[] value) {
-		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
 	public HttpRequest header(HttpHeader header, String value) {
-		assert !recycled;
 		setHeader(header, value);
 		return this;
 	}
 
 	public HttpRequest body(byte[] array) {
-		assert !recycled;
 		return body(ByteBuf.wrap(array));
 	}
 
 	public HttpRequest body(ByteBuf body) {
-		assert !recycled;
 		setBody(body);
 		return this;
 	}
 
 	// specific builder methods
+	public HttpRequest accept(List<AcceptMediaType> value) {
+		addHeader(ofAcceptContentTypes(HttpHeaders.ACCEPT, value));
+		return this;
+	}
+
 	public HttpRequest accept(AcceptMediaType... value) {
 		return accept(Arrays.asList(value));
 	}
 
-	public HttpRequest accept(List<AcceptMediaType> value) {
-		assert !recycled;
-		addHeader(ofAcceptContentTypes(HttpHeaders.ACCEPT, value));
+	public HttpRequest acceptCharsets(List<AcceptCharset> values) {
+		addHeader(ofCharsets(HttpHeaders.ACCEPT_CHARSET, values));
 		return this;
 	}
 
@@ -101,43 +100,36 @@ public final class HttpRequest extends HttpMessage {
 		return acceptCharsets(Arrays.asList(values));
 	}
 
-	public HttpRequest acceptCharsets(List<AcceptCharset> values) {
-		assert !recycled;
-		addHeader(ofCharsets(HttpHeaders.ACCEPT_CHARSET, values));
-		return this;
-	}
-
-	public HttpRequest clientCookies(HttpCookie... cookie) {
-		return clientCookies(Arrays.asList(cookie));
-	}
-
-	public HttpRequest clientCookies(List<HttpCookie> cookies) {
-		assert !recycled;
+	public HttpRequest cookies(List<HttpCookie> cookies) {
 		addHeader(ofCookies(COOKIE, cookies));
 		return this;
 	}
 
-	public HttpRequest contentType(ContentType value) {
-		assert !recycled;
-		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, value));
+	public HttpRequest cookies(HttpCookie... cookie) {
+		return cookies(Arrays.asList(cookie));
+	}
+
+	public HttpRequest cookie(HttpCookie cookie) {
+		return cookies(Collections.singletonList(cookie));
+	}
+
+	public HttpRequest contentType(ContentType contentType) {
+		setHeader(ofContentType(HttpHeaders.CONTENT_TYPE, contentType));
 		return this;
 	}
 
-	public HttpRequest date(Date value) {
-		assert !recycled;
-		setHeader(ofDate(HttpHeaders.DATE, value));
+	public HttpRequest date(Date date) {
+		setHeader(ofDate(HttpHeaders.DATE, date));
 		return this;
 	}
 
-	public HttpRequest ifModifiedSince(Date value) {
-		assert !recycled;
-		setHeader(ofDate(IF_MODIFIED_SINCE, value));
+	public HttpRequest ifModifiedSince(Date date) {
+		setHeader(ofDate(IF_MODIFIED_SINCE, date));
 		return this;
 	}
 
-	public HttpRequest ifUnModifiedSince(Date value) {
-		assert !recycled;
-		setHeader(ofDate(IF_UNMODIFIED_SINCE, value));
+	public HttpRequest ifUnModifiedSince(Date date) {
+		setHeader(ofDate(IF_UNMODIFIED_SINCE, date));
 		return this;
 	}
 
@@ -151,7 +143,6 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public HttpRequest url(String url) {
-		assert !recycled;
 		return url(HttpUri.ofUrl(url));
 	}
 
@@ -162,10 +153,10 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	// getters
-	public List<AcceptMediaType> getAccept() {
+	public List<AcceptMediaType> parseAccept() {
 		assert !recycled;
 		List<AcceptMediaType> list = new ArrayList<>();
-		List<Value> headers = getHeaders(ACCEPT);
+		List<Value> headers = getHeaderValues(ACCEPT);
 		for (Value header : headers) {
 			ValueOfBytes value = (ValueOfBytes) header;
 			AcceptMediaType.parse(value.array, value.offset, value.size, list);
@@ -173,10 +164,10 @@ public final class HttpRequest extends HttpMessage {
 		return list;
 	}
 
-	public List<AcceptCharset> getAcceptCharsets() {
+	public List<AcceptCharset> parseAcceptCharsets() {
 		assert !recycled;
 		List<AcceptCharset> charsets = new ArrayList<>();
-		List<Value> headers = getHeaders(ACCEPT_CHARSET);
+		List<Value> headers = getHeaderValues(ACCEPT_CHARSET);
 		for (Value header : headers) {
 			ValueOfBytes value = (ValueOfBytes) header;
 			AcceptCharset.parse(value.array, value.offset, value.size, charsets);
@@ -184,10 +175,11 @@ public final class HttpRequest extends HttpMessage {
 		return charsets;
 	}
 
-	public List<HttpCookie> getCookies() {
+	@Override
+	public List<HttpCookie> parseCookies() {
 		assert !recycled;
 		List<HttpCookie> cookie = new ArrayList<>();
-		List<Value> headers = getHeaders(COOKIE);
+		List<Value> headers = getHeaderValues(COOKIE);
 		for (Value header : headers) {
 			ValueOfBytes value = (ValueOfBytes) header;
 			HttpCookie.parseSimple(value.array, value.offset, value.offset + value.size, cookie);
@@ -195,17 +187,17 @@ public final class HttpRequest extends HttpMessage {
 		return cookie;
 	}
 
-	public Date getIfModifiedSince() {
+	public Date parseIfModifiedSince() {
 		assert !recycled;
-		ValueOfBytes header = (ValueOfBytes) getHeader(IF_MODIFIED_SINCE);
+		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
 		if (header != null)
 			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
 	}
 
-	public Date getIfUnModifiedSince() {
+	public Date parseIfUnModifiedSince() {
 		assert !recycled;
-		ValueOfBytes header = (ValueOfBytes) getHeader(IF_UNMODIFIED_SINCE);
+		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_UNMODIFIED_SINCE);
 		if (header != null)
 			return new Date(HttpDate.parse(header.array, header.offset));
 		return null;
@@ -321,7 +313,7 @@ public final class HttpRequest extends HttpMessage {
 
 	@Override
 	public String toString() {
-		String host = nullToEmpty(getHeaderString(HttpHeaders.HOST));
+		String host = nullToEmpty(getHeader(HttpHeaders.HOST));
 		if (url == null)
 			return host;
 		return host + url.getPathAndQuery();

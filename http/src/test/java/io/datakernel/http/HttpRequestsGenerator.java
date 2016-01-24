@@ -22,14 +22,11 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.util.ByteBufStrings;
-import io.datakernel.util.Utils;
 import io.datakernel.util.Stopwatch;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
-import static io.datakernel.util.Preconditions.checkState;
+import static io.datakernel.util.Preconditions.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public final class HttpRequestsGenerator {
@@ -160,7 +157,7 @@ public final class HttpRequestsGenerator {
 		this.options = checkNotNull(options);
 		this.client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
-						3_000L, Utils.forString("8.8.8.8")));
+						3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		this.completionCallback = checkNotNull(completionCallback);
 	}
 

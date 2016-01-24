@@ -14,33 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.stats;
+package io.datakernel.jmx;
 
-import javax.management.openmbean.OpenType;
-import java.util.SortedMap;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-public interface JmxStats<T extends JmxStats<T>> {
-	void add(T stats);
-
-	void refreshStats(long timestamp, double smoothingWindow);
-
-	final class TypeAndValue {
-		private final OpenType<?> type;
-		private final Object value;
-
-		public TypeAndValue(OpenType<?> type, Object value) {
-			this.type = type;
-			this.value = value;
-		}
-
-		public OpenType<?> getType() {
-			return type;
-		}
-
-		public Object getValue() {
-			return value;
-		}
-	}
-
-	SortedMap<String, TypeAndValue> getAttributes();
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface JmxParameter {
+	String value();
 }

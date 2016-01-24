@@ -17,7 +17,6 @@
 package io.datakernel.http;
 
 import io.datakernel.async.SimpleException;
-import io.datakernel.util.Utils;
 
 import java.util.Map;
 
@@ -160,7 +159,7 @@ public final class HttpUri {
 		if (params != null)
 			return;
 		try {
-			params = Utils.parse(query);
+			params = HttpUtils.parse(query);
 		} catch (IllegalArgumentException e) {
 			throw new SimpleException(e);
 		}

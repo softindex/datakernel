@@ -20,10 +20,10 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.annotation.JmxMBean;
-import io.datakernel.jmx.stats.JmxStats;
-import io.datakernel.jmx.stats.JmxStatsWrappers;
-import io.datakernel.jmx.stats.ValueStats;
+import io.datakernel.jmx.JmxMBean;
+import io.datakernel.jmx.JmxStats;
+import io.datakernel.jmx.JmxStatsWrappers;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.Stopwatch;
 
 import java.nio.channels.SocketChannel;

@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
-import io.datakernel.jmx.annotation.JmxMBean;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.WorkerPool;
 import org.slf4j.Logger;

@@ -16,6 +16,8 @@
 
 package io.datakernel.jmx.stats;
 
+import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxStats;
 import org.junit.Before;
 import org.junit.Test;
 
