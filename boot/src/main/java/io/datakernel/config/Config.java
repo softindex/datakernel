@@ -233,7 +233,7 @@ public final class Config {
 	private Config ensureChild(String path) {
 		checkArgument(!path.isEmpty(), "Path must not be empty");
 		Config result = this;
-		for (String key : SPLITTER.split(path)) {
+		for (String key : SPLITTER.splitToList(path)) {
 			checkState(!key.isEmpty(), "Child path must not be empty: %s", path);
 			Config child = result.children.get(key);
 			if (child == null) {

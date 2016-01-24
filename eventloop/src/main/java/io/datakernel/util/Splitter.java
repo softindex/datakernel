@@ -23,8 +23,8 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class Splitter {
-
 	private final CharSequenceWrapper separators;
+	private boolean shallTrim;
 
 	private Splitter(CharSequence separators) {
 		checkArgument(separators != null && separators.length() > 0);
@@ -39,13 +39,14 @@ public final class Splitter {
 		return new Splitter(separators);
 	}
 
+	// TODO (vmykhalko): replace with static methods with appropriate parameters and move to Utils class
 	public String[] split(String input) {
+		// TODO (vmykhalko): inefficient implementation, make sure no garbage is created at all
 		List<Integer> separatorsPositions = new ArrayList<>(input.length());
 		for (int i = 0; i < input.length(); i++) {
 			char currentChar = input.charAt(i);
 			if (separators.contains(currentChar)) {
 				separatorsPositions.add(i);
-				continue;
 			}
 		}
 
@@ -58,6 +59,35 @@ public final class Splitter {
 		}
 		splittedSubStrings[separatorsPositions.size()] = input.substring(currentSubStringStart, input.length());
 		return splittedSubStrings;
+	}
+
+	public List<String> splitToList(String input) {
+		List<Integer> separatorsPositions = new ArrayList<>(input.length());
+		for (int i = 0; i < input.length(); i++) {
+			char currentChar = input.charAt(i);
+			if (separators.contains(currentChar)) {
+				separatorsPositions.add(i);
+			}
+		}
+
+		List<String> splitSubStrings = new ArrayList<>(separatorsPositions.size() + 1);
+		int currentSubStringStart = 0;
+		for (Integer separatorsPosition : separatorsPositions) {
+			int currentSeparatorPosition = separatorsPosition;
+			String result = input.substring(currentSubStringStart, currentSeparatorPosition);
+			if (shallTrim) {
+				result = result.trim();
+			}
+			splitSubStrings.add(result);
+			currentSubStringStart = currentSeparatorPosition + 1;
+		}
+		splitSubStrings.add(input.substring(currentSubStringStart, input.length()));
+		return splitSubStrings;
+	}
+
+	public Splitter trimResults() {
+		this.shallTrim = true;
+		return this;
 	}
 
 	private static final class CharSequenceWrapper {
@@ -76,5 +106,4 @@ public final class Splitter {
 			return false;
 		}
 	}
-
 }

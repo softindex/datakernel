@@ -36,6 +36,7 @@ public class Joiner {
 		return new Joiner(separator);
 	}
 
+	// TODO (vmykhalko): replace with static methods with appropriate parameters and move to Utils class
 	public String join(Object... inputs) {
 		checkArgument(inputs != null && inputs.length > 0, "Inputs must contain at least one Object");
 		StringBuilder stringBuilder = new StringBuilder();

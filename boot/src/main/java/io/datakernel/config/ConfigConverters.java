@@ -177,7 +177,7 @@ public final class ConfigConverters {
 			if (string.isEmpty())
 				return emptyList();
 			List<T> list = new ArrayList<>();
-			for (String elementString : splitter.split(string)) {
+			for (String elementString : splitter.splitToList(string)) {
 				T element = elementConverter.fromString(elementString.trim());
 				list.add(element);
 			}

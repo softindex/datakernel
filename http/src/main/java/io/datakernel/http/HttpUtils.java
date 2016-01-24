@@ -139,7 +139,7 @@ public final class HttpUtils {
 	public static InetAddress getRealIp(HttpRequest request) {
 		String s = request.getHeader(HttpHeaders.X_FORWARDED_FOR);
 		if (!isNullOrEmpty(s)) {
-			String clientIP = commaSplitter.split(s).iterator().next();
+			String clientIP = commaSplitter.splitToList(s).iterator().next();
 			try {
 				return HttpUtils.inetAddress(clientIP);
 			} catch (IllegalArgumentException ignored) {
@@ -194,7 +194,7 @@ public final class HttpUtils {
 	 */
 	public static Map<String, String> parse(String query, String enc) {
 		LinkedHashMap<String, String> qps = new LinkedHashMap<>();
-		for (String pair : querySplitter.split(query)) {
+		for (String pair : querySplitter.splitToList(query)) {
 			int pos = pair.indexOf('=');
 			String name;
 			String val = null;
