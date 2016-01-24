@@ -34,8 +34,6 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -44,7 +42,6 @@ import static org.junit.Assert.*;
 
 public class DnsResolversTest {
 	private DnsClient nativeDnsResolver;
-	private DnsClient simpleDnsResolver;
 	private Eventloop eventloop;
 	private static final int DNS_SERVER_PORT = 53;
 
@@ -143,36 +140,24 @@ public class DnsResolversTest {
 		ByteBufPool.setSizes(0, Integer.MAX_VALUE);
 
 		eventloop = new Eventloop();
-		Executor executor = Executors.newFixedThreadPool(5);
 
 		nativeDnsResolver = new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS,
 				3_000L, LOCAL_DNS);
-		simpleDnsResolver = BlockingDnsResolver.getAsDnsClient(new SimpleDnsResolver(executor), eventloop);
 	}
 
 	@Ignore
 	@Test
 	public void testResolversWithCorrectDomainNames() throws Exception {
-		DnsResolveCallback simpleResult1 = new DnsResolveCallback();
 		DnsResolveCallback nativeResult1 = new DnsResolveCallback();
-		simpleDnsResolver.resolve4("www.google.com", simpleResult1);
 		nativeDnsResolver.resolve4("www.google.com", nativeResult1);
 
-		DnsResolveCallback simpleResult2 = new DnsResolveCallback();
 		DnsResolveCallback nativeResult2 = new DnsResolveCallback();
-		simpleDnsResolver.resolve4("www.stackoverflow.com", simpleResult2);
 		nativeDnsResolver.resolve4("www.stackoverflow.com", nativeResult2);
 
-		DnsResolveCallback simpleResult3 = new DnsResolveCallback();
 		DnsResolveCallback nativeResult3 = new DnsResolveCallback();
-		simpleDnsResolver.resolve4("microsoft.com", simpleResult3);
 		nativeDnsResolver.resolve4("microsoft.com", nativeResult3);
 
 		eventloop.run();
-
-		assertEquals(newHashSet(simpleResult1.result), newHashSet(nativeResult1.result));
-		assertEquals(newHashSet(simpleResult2.result), newHashSet(nativeResult2.result));
-		assertEquals(newHashSet(simpleResult3.result), newHashSet(nativeResult3.result));
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -187,12 +172,6 @@ public class DnsResolversTest {
 	@Ignore
 	@Test
 	public void testResolve6() throws Exception {
-		DnsResolveCallback simpleDnsResolverCallback = new DnsResolveCallback();
-		simpleDnsResolver.resolve6("www.google.com", simpleDnsResolverCallback);
-
-		simpleDnsResolver.resolve6("www.flickr.com", new DnsResolveCallback());
-		simpleDnsResolver.resolve6("www.kpi.ua", new DnsResolveCallback());
-
 		DnsResolveCallback nativeDnsResolverCallback = new DnsResolveCallback();
 		nativeDnsResolver.resolve6("www.google.com", nativeDnsResolverCallback);
 
@@ -201,16 +180,11 @@ public class DnsResolversTest {
 
 		eventloop.run();
 
-		InetAddress simpleResult[] = simpleDnsResolverCallback.result;
 		InetAddress nativeResult[] = nativeDnsResolverCallback.result;
 
-		assertNotNull(simpleResult);
 		assertNotNull(nativeResult);
 
-		Set<InetAddress> simpleResultList = newHashSet(simpleResult);
 		Set<InetAddress> nativeResultList = newHashSet(nativeResult);
-
-		assertEquals(simpleResultList, nativeResultList);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -218,18 +192,13 @@ public class DnsResolversTest {
 	@Ignore
 	@Test
 	public void testResolversWithIncorrectDomainNames() throws Exception {
-		DnsResolveCallback simpleDnsResolverCallback = new DnsResolveCallback();
-		simpleDnsResolver.resolve4("rfwaufnau", simpleDnsResolverCallback);
-
 		DnsResolveCallback nativeDnsResolverCallback = new DnsResolveCallback();
 		nativeDnsResolver.resolve4("fsafa", nativeDnsResolverCallback);
 
 		eventloop.run();
 
 		assertTrue(nativeDnsResolverCallback.exception instanceof DnsException);
-		assertTrue(simpleDnsResolverCallback.exception instanceof DnsException);
 
-		assertNull(simpleDnsResolverCallback.result);
 		assertNull(nativeDnsResolverCallback.result);
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
