@@ -393,11 +393,17 @@ public final class Cube {
 			@Override
 			public void run() {
 				if (iterator.hasNext()) {
-					Aggregation aggregation = iterator.next();
-					aggregation.consolidate(maxChunksToConsolidate, new ForwardingResultCallback<Boolean>(callback) {
+					final Aggregation aggregation = iterator.next();
+					aggregation.consolidate(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 						@Override
 						public void onResult(Boolean result) {
 							consolidate(maxChunksToConsolidate, result || found, iterator, callback);
+						}
+
+						@Override
+						public void onException(Exception exception) {
+							logger.error("Consolidating aggregation '{}' failed", aggregation.getId(), exception);
+							consolidate(maxChunksToConsolidate, found, iterator, callback);
 						}
 					});
 				} else {

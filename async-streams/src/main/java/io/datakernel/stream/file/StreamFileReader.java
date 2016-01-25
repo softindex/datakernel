@@ -222,7 +222,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	public String toString() {
 		return "StreamFileReader{" + path +
 				", pos=" + position +
-				", len=" + length +
+				(length != Long.MAX_VALUE ? ", len=" + length : "") +
 				(pendingAsyncOperation ? ", pendingAsyncOperation" : "") +
 				'}';
 	}
