@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -51,7 +52,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	private final boolean forceOnClose;
 
 	private final ArrayDeque<ByteBuf> queue = new ArrayDeque<>();
-	private AsyncFile asyncFile;
+	private AsyncFile asyncFile; // TODO (arashev): consider making it final, to decouple file opening logic from the stream itself
 
 	private long position;
 
@@ -148,7 +149,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.trace("Completed writing in file");
+				logger.trace("Completed writing in file"); // TODO (arashev): add filename here and everywhere! make sure it works
 
 				buf.recycle();
 				pendingAsyncOperation = false;
@@ -163,11 +164,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			public void onException(final Exception e) {
 				logger.error("Failed to write data in file", e);
 
+				// TODO (arashev): async op is not complete yet, since we have callback
 				pendingAsyncOperation = false;
 				buf.recycle();
 				doCleanup(new CompletionCallback() {
 					@Override
 					public void onComplete() {
+						// TODO (arashev): now it is complete, move it here and below
 						closeWithError(e);
 					}
 
@@ -181,10 +184,11 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	private void postFlush() {
-
+		// TODO (arashev): if we have error, why waiting for queue.isEmpty? close everything immediately. write tests.
 		if (error != null && !pendingAsyncOperation && queue.isEmpty()) {
 			doCleanup(new CompletionCallback() {
 
+				// TODO (arashev): what if asyncFile.writeFully fails? consider moving this directly into doCleanup
 				private void tryRemoveFile() {
 					if (removeFileOnException) {
 						try {
@@ -213,6 +217,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			doCleanup(new CompletionCallback() {
 				@Override
 				public void onComplete() {
+					// TODO (arashev): move into doCleanup?
 					if (flushCallback != null) {
 						flushCallback.onComplete();
 					}
@@ -223,7 +228,9 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 					closeWithError(new Exception("Can't do cleanup for file\t" + path.getFileName()));
 				}
 			});
+			// TODO (arashev): missing return; ?
 		}
+
 		if (!queue.isEmpty() && !pendingAsyncOperation && asyncFile != null) {
 			logger.trace("Writing in file");
 			pendingAsyncOperation = true;
@@ -269,7 +276,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	private void doCleanup(CompletionCallback callback) {
 		if (asyncFile != null) {
-			if (forceOnClose)
+			if (forceOnClose) // TODO (arashev): why forcing file if error occurs? just close it
 				asyncFile.forceAndClose(callback);
 			else
 				asyncFile.close(callback);
@@ -293,8 +300,18 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	protected void onError(final Exception e) {
 		logger.error("{}: onError", this, e);
 		postFlush();
+		// TODO (arashev): move into doCleanup?
 		if (flushCallback != null) {
 			flushCallback.onException(e);
 		}
+	}
+
+	@Override
+	public String toString() {
+		return "StreamFileWriter{" + path +
+				", " + Arrays.toString(options) +
+				", pos=" + position +
+				(pendingAsyncOperation ? ", pendingAsyncOperation" : "") +
+				'}';
 	}
 }
