@@ -45,6 +45,7 @@ public final class LogToCubeRunner<T> {
 
 	private final String log;
 	private final List<String> partitions;
+	private final String processId;
 
 	private static final Logger logger = LoggerFactory.getLogger(LogToCubeRunner.class);
 
@@ -64,7 +65,7 @@ public final class LogToCubeRunner<T> {
 	 */
 	public LogToCubeRunner(Eventloop eventloop, Cube cube, LogManager<T> logManager,
 	                       AggregatorSplitter.Factory<T> aggregatorSplitterFactory, String log, List<String> partitions,
-	                       LogToCubeMetadataStorage metadataStorage) {
+	                       LogToCubeMetadataStorage metadataStorage, String processId) {
 		this.eventloop = eventloop;
 		this.metadataStorage = metadataStorage;
 		this.cube = cube;
@@ -72,6 +73,7 @@ public final class LogToCubeRunner<T> {
 		this.aggregatorSplitterFactory = aggregatorSplitterFactory;
 		this.log = log;
 		this.partitions = ImmutableList.copyOf(partitions);
+		this.processId = processId;
 	}
 
 	public void processLog(final CompletionCallback callback) {
@@ -118,13 +120,14 @@ public final class LogToCubeRunner<T> {
 	                                 final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
 	                                 final CompletionCallback callback) {
 		logger.trace("processLog_doCommit called. Log: {}. Old positions: {}. New positions: {}. New chunks: {}.", log, oldPositions, newPositions, newChunks);
-		metadataStorage.saveCommit(log, oldPositions, newPositions, newChunks, new ForwardingCompletionCallback(callback) {
-			@Override
-			public void onComplete() {
-				processLog_afterCommit(newChunks, callback);
-			}
+		metadataStorage.saveCommit(log, processId, oldPositions, newPositions, newChunks,
+				new ForwardingCompletionCallback(callback) {
+					@Override
+					public void onComplete() {
+						processLog_afterCommit(newChunks, callback);
+					}
 
-		});
+				});
 	}
 
 	private void processLog_afterCommit(Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {

@@ -121,7 +121,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	}
 
 	@Override
-	public void saveCommit(final String log,
+	public void saveCommit(final String log, final String processId,
 	                       final Map<String, LogPosition> oldPositions,
 	                       final Map<String, LogPosition> newPositions,
 	                       final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
@@ -129,12 +129,12 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 		runConcurrently(eventloop, executor, false, new Runnable() {
 			@Override
 			public void run() {
-				saveCommit(log, oldPositions, newPositions, newChunks);
+				saveCommit(log, processId, oldPositions, newPositions, newChunks);
 			}
 		}, callback);
 	}
 
-	private void saveCommit(final String log, Map<String, LogPosition> oldPositions,
+	private void saveCommit(final String log, final String processId, Map<String, LogPosition> oldPositions,
 	                        final Map<String, LogPosition> newPositions,
 	                        final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
 		final Connection connection = jooqConfiguration.connectionProvider().acquire();
@@ -168,7 +168,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 								.execute();
 					}
 
-					aggregationMetadataStorage.saveNewChunks(jooq, newChunks);
+					aggregationMetadataStorage.saveNewChunks(jooq, processId, newChunks);
 				}
 			});
 		} finally {

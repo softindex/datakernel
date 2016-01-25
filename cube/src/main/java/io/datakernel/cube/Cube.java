@@ -399,27 +399,28 @@ public final class Cube implements CubeMBean {
 		}
 	}
 
-	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
-		consolidate(maxChunksToConsolidate, false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
+	public void consolidate(int maxChunksToConsolidate, String consolidatorId, ResultCallback<Boolean> callback) {
+		consolidate(maxChunksToConsolidate, consolidatorId, false,
+				new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	private void consolidate(final int maxChunksToConsolidate, final boolean found, final Iterator<Aggregation> iterator,
-	                         final ResultCallback<Boolean> callback) {
+	private void consolidate(final int maxChunksToConsolidate, final String consolidatorId, final boolean found,
+	                         final Iterator<Aggregation> iterator, final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				if (iterator.hasNext()) {
 					final Aggregation aggregation = iterator.next();
-					aggregation.consolidate(maxChunksToConsolidate, new ResultCallback<Boolean>() {
+					aggregation.consolidate(maxChunksToConsolidate, consolidatorId, new ResultCallback<Boolean>() {
 						@Override
 						public void onResult(Boolean result) {
-							consolidate(maxChunksToConsolidate, result || found, iterator, callback);
+							consolidate(maxChunksToConsolidate, consolidatorId, result || found, iterator, callback);
 						}
 
 						@Override
 						public void onException(Exception exception) {
 							logger.error("Consolidating aggregation '{}' failed", aggregation.getId(), exception);
-							consolidate(maxChunksToConsolidate, found, iterator, callback);
+							consolidate(maxChunksToConsolidate, consolidatorId, found, iterator, callback);
 						}
 					});
 				} else {

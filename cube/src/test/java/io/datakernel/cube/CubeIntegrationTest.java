@@ -166,7 +166,7 @@ public class CubeIntegrationTest {
 				aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(eventloop, executor, classLoader, logsDir);
 		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
-				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
+				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage, LOG_PARTITION_NAME);
 
 		cube.saveAggregations(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
@@ -224,7 +224,7 @@ public class CubeIntegrationTest {
 
 		// Consolidate
 		ResultCallbackFuture<Boolean> callback = new ResultCallbackFuture<>();
-		cube.consolidate(100, callback);
+		cube.consolidate(100, "consolidator", callback);
 		eventloop.run();
 		boolean consolidated = callback.isDone() ? callback.get() : false;
 		assertEquals(true, consolidated);

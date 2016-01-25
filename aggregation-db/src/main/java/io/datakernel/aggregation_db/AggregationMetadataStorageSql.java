@@ -146,12 +146,13 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	@Override
-	public void saveChunks(final AggregationMetadata aggregationMetadata, final List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
+	public void saveChunks(final AggregationMetadata aggregationMetadata, final String processId,
+	                       final List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		runConcurrently(eventloop, executor, false, new Runnable() {
 			@Override
 			public void run() {
 				DSLContext jooq = DSL.using(jooqConfiguration);
-				saveNewChunks(jooq,
+				saveNewChunks(jooq, processId,
 						ImmutableMultimap.<AggregationMetadata, AggregationChunk.NewChunk>builder()
 								.putAll(aggregationMetadata, newChunks)
 								.build());
@@ -159,13 +160,13 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		}, callback);
 	}
 
-	public void saveNewChunks(DSLContext jooq,
+	public void saveNewChunks(DSLContext jooq, String processId,
 	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
 		int revisionId = nextRevisionId(jooq);
-		saveNewChunks(jooq, revisionId, newChunksWithMetadata);
+		saveNewChunks(jooq, revisionId, processId, newChunksWithMetadata);
 	}
 
-	public void saveNewChunks(DSLContext jooq, final int revisionId,
+	public void saveNewChunks(DSLContext jooq, final int revisionId, String processId,
 	                          Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
 		InsertQuery<AggregationDbChunkRecord> insertQuery = jooq.insertQuery(AGGREGATION_DB_CHUNK);
 
@@ -181,6 +182,7 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.KEYS, JOINER.join(aggregationMetadata.getKeys()));
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.FIELDS, JOINER.join(chunk.getFields()));
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.COUNT, chunk.getCount());
+				insertQuery.addValue(AGGREGATION_DB_CHUNK.PROCESS_ID, processId);
 
 				int keyLength = aggregationMetadata.getKeys().size();
 				for (int d = 0; d < MAX_KEYS; d++) {
@@ -289,19 +291,22 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 	}
 
 	@Override
-	public void saveConsolidatedChunks(final AggregationMetadata aggregationMetadata, final List<AggregationChunk> originalChunks,
-	                                   final List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+	public void saveConsolidatedChunks(final AggregationMetadata aggregationMetadata, final String consolidatorId,
+	                                   final List<AggregationChunk> originalChunks,
+	                                   final List<AggregationChunk.NewChunk> consolidatedChunks,
+	                                   CompletionCallback callback) {
 		runConcurrently(eventloop, executor, false, new Runnable() {
 			@Override
 			public void run() {
-				saveConsolidatedChunks(aggregationMetadata, originalChunks, consolidatedChunks);
+				saveConsolidatedChunks(aggregationMetadata, consolidatorId, originalChunks, consolidatedChunks);
 			}
 		}, callback);
 	}
 
-	public void saveConsolidatedChunks(final AggregationMetadata aggregationMetadata,
-	                                   final List<AggregationChunk> originalChunks,
-	                                   final List<AggregationChunk.NewChunk> consolidatedChunks) {
+	private void saveConsolidatedChunks(final AggregationMetadata aggregationMetadata,
+	                                    final String consolidatorId,
+	                                    final List<AggregationChunk> originalChunks,
+	                                    final List<AggregationChunk.NewChunk> consolidatedChunks) {
 		final Connection connection = jooqConfiguration.connectionProvider().acquire();
 		final Configuration configurationWithConnection = jooqConfiguration.derive(connection);
 		DSLContext jooq = DSL.using(configurationWithConnection);
@@ -317,17 +322,19 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 					jooq.update(AGGREGATION_DB_CHUNK)
 							.set(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID, revisionId)
 							.set(AGGREGATION_DB_CHUNK.CONSOLIDATION_COMPLETED, currentTimestamp())
-							.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(originalChunks, new Function<AggregationChunk, Long>() {
-								@Override
-								public Long apply(AggregationChunk chunk) {
-									return chunk.getChunkId();
-								}
-							}))))
+							.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(originalChunks,
+									new Function<AggregationChunk, Long>() {
+										@Override
+										public Long apply(AggregationChunk chunk) {
+											return chunk.getChunkId();
+										}
+									}))))
 							.execute();
 
-					saveNewChunks(jooq, revisionId, ImmutableMultimap.<AggregationMetadata, AggregationChunk.NewChunk>builder()
-							.putAll(aggregationMetadata, consolidatedChunks)
-							.build());
+					saveNewChunks(jooq, revisionId, consolidatorId,
+							ImmutableMultimap.<AggregationMetadata, AggregationChunk.NewChunk>builder()
+									.putAll(aggregationMetadata, consolidatedChunks)
+									.build());
 				}
 			});
 		} finally {

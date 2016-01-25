@@ -518,7 +518,8 @@ public class Aggregation {
 		return (Predicate) builder.newInstance();
 	}
 
-	public void consolidate(int maxChunksToConsolidate, final ResultCallback<Boolean> callback) {
+	public void consolidate(int maxChunksToConsolidate, final String consolidatorId,
+	                        final ResultCallback<Boolean> callback) {
 		logger.trace("Aggregation {} consolidation started", this);
 
 		final List<AggregationChunk> chunksToConsolidate;
@@ -548,12 +549,12 @@ public class Aggregation {
 				doConsolidation(chunksToConsolidate, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
 					@Override
 					public void onResult(final List<AggregationChunk.NewChunk> consolidatedChunks) {
-						metadataStorage.saveConsolidatedChunks(aggregationMetadata, chunksToConsolidate, consolidatedChunks,
-								new ForwardingCompletionCallback(callback) {
+						metadataStorage.saveConsolidatedChunks(aggregationMetadata, consolidatorId, chunksToConsolidate,
+								consolidatedChunks, new ForwardingCompletionCallback(callback) {
 									@Override
 									public void onComplete() {
 										logger.info("Completed consolidation of the following chunks " +
-												"in aggregation '{}': [{}]. Created chunks: [{}]",
+														"in aggregation '{}': [{}]. Created chunks: [{}]",
 												aggregationMetadata.getId(), getChunkIds(chunksToConsolidate),
 												getNewChunkIds(consolidatedChunks));
 										callback.onResult(true);

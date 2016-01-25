@@ -199,7 +199,7 @@ public class CubeExample {
 				aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(eventloop, executor, classLoader, logsDir);
 		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
-				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
+				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage, LOG_PARTITION_NAME);
 
 		/* Save the specified aggregations to metadata storage. */
 		cube.saveAggregations(AsyncCallbacks.ignoreCompletionCallback());

@@ -55,7 +55,8 @@ public interface AggregationMetadataStorage {
 	 * @param newChunks           list of chunks to save
 	 * @param callback            callback which is called once saving is complete
 	 */
-	void saveChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
+	void saveChunks(AggregationMetadata aggregationMetadata, String processId,
+	                List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
 
 	void startConsolidation(List<AggregationChunk> chunksToConsolidate,
 	                        CompletionCallback callback);
@@ -88,6 +89,7 @@ public interface AggregationMetadataStorage {
 	 * @param consolidatedChunks  list of chunks that appeared as a result of consolidation of original chunks
 	 * @param callback            callback which is called once saving is complete
 	 */
-	void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk> originalChunks,
-	                            List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback);
+	void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, String consolidatorId,
+	                            List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks,
+	                            CompletionCallback callback);
 }

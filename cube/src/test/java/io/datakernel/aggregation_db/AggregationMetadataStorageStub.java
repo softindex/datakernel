@@ -47,7 +47,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void saveChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
+	public void saveChunks(AggregationMetadata aggregationMetadata, String processId, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		this.tmpChunks.put(aggregationMetadata.getId(), newChunks);
 		callback.onComplete();
 	}
@@ -70,7 +70,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+	public void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, String consolidatorId, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
 		callback.onComplete();
 	}
 

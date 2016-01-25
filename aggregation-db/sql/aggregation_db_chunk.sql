@@ -7,6 +7,7 @@ CREATE TABLE `aggregation_db_chunk` (
   `consolidated_revision_id` INT(11) NULL DEFAULT NULL,
   `consolidation_started` TIMESTAMP NULL DEFAULT NULL,
   `consolidation_completed` TIMESTAMP NULL DEFAULT NULL,
+  `process_id` VARCHAR(100) NOT NULL DEFAULT '',
   `keys` VARCHAR(1000) NOT NULL DEFAULT '',
   `fields` VARCHAR(1000) NOT NULL DEFAULT '',
   `d1_min` TEXT NULL DEFAULT NULL,

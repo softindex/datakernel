@@ -26,10 +26,7 @@ import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.async.AsyncExecutors;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.*;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
@@ -525,12 +522,14 @@ public class CubeTest {
 		eventloop.run();
 
 		ResultCallbackFuture<Boolean> future = new ResultCallbackFuture<>();
-		cube.consolidate(100, future);
+		cube.consolidate(100, "consolidator", future);
+
 		eventloop.run();
 		assertEquals(true, future.get());
 
 		future = new ResultCallbackFuture<>();
-		cube.consolidate(100, future);
+		cube.consolidate(100, "consolidator", future);
+
 		eventloop.run();
 		assertEquals(true, future.get());
 

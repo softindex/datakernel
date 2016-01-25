@@ -99,7 +99,7 @@ public class LogToCubeTest {
 		LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
 
 		LogToCubeRunner<TestPubRequest> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager, TestAggregatorSplitter.factory(),
-				"testlog", asList("partitionA"), logToCubeMetadataStorageStub);
+				"testlog", asList("partitionA"), logToCubeMetadataStorageStub, "partitionA");
 
 		new StreamProducers.OfIterator<>(eventloop, asList(
 				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),
