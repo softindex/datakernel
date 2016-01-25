@@ -16,10 +16,7 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncTask;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.*;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
@@ -159,7 +156,19 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		post(new Runnable() {
 			@Override
 			public void run() {
-				asyncTask.execute(future.withCompletionResult(result));
+				asyncTask.execute(new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						complete();
+						future.onResult(result);
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						complete();
+						future.onException(exception);
+					}
+				});
 			}
 		}, future);
 		return future;
@@ -195,7 +204,19 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		post(new Runnable() {
 			@Override
 			public void run() {
-				asyncCallable.call(future);
+				asyncCallable.call(new ResultCallback<T>() {
+					@Override
+					public void onResult(T result) {
+						complete();
+						future.onResult(result);
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						complete();
+						future.onException(exception);
+					}
+				});
 			}
 		}, future);
 		return future;
