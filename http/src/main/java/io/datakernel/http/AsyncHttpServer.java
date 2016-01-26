@@ -20,10 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.JmxMBean;
-import io.datakernel.jmx.JmxStats;
-import io.datakernel.jmx.JmxStatsWrappers;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 import io.datakernel.util.Stopwatch;
 
 import java.nio.channels.SocketChannel;
@@ -168,6 +165,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	// JMX
 
+	@JmxAttribute
 	public JmxStats<?> getConnectionsCount() {
 		return JmxStatsWrappers.forSummableValue(connectionsList.size());
 	}

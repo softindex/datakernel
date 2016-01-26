@@ -21,6 +21,7 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncTask;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxMBean;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.DatagramSocketSettings;
@@ -883,6 +884,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		stats.resetStats();
 	}
 
+	@JmxAttribute
 	public EventloopStats getEventloopStats() {
 		return stats;
 	}

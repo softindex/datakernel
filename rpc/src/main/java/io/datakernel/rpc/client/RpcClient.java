@@ -22,7 +22,10 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.MapStats;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.jmx.*;
@@ -418,18 +421,22 @@ public final class RpcClient implements EventloopService {
 		});
 	}
 
+	@JmxAttribute
 	public RpcRequestStats getGeneralRequestsStats() {
 		return generalRequestsStats;
 	}
 
+	@JmxAttribute
 	public MapStats<Class<?>, RpcRequestStats> getRequestsStatsPerClass() {
 		return requestStatsPerClass;
 	}
 
+	@JmxAttribute
 	public MapStats<InetSocketAddress, RpcConnectStats> getConnectsStatsPerAddress() {
 		return connectsStatsPerAddress;
 	}
 
+	@JmxAttribute
 	public MapStats<InetSocketAddress, RpcRequestStats> getRequestStatsPerAddress() {
 		MapStats<InetSocketAddress, RpcRequestStats> requestStatsPerAddress = new AddressToRequestStats();
 		for (InetSocketAddress address : addresses) {
@@ -442,8 +449,9 @@ public final class RpcClient implements EventloopService {
 		return requestStatsPerAddress;
 	}
 
-	public JmxStats<?> getActiveConnectionsCount() {
-		return JmxStatsWrappers.forLongValue(connections.size());
+	@JmxAttribute
+	public int getActiveConnectionsCount() {
+		return connections.size();
 	}
 
 	private RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {

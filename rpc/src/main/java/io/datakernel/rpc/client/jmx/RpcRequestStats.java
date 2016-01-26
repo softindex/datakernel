@@ -16,10 +16,7 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.AbstractCompositeStats;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 
 public final class RpcRequestStats extends AbstractCompositeStats<RpcRequestStats> {
 	private final EventStats totalRequests = new EventStats();
@@ -59,30 +56,37 @@ public final class RpcRequestStats extends AbstractCompositeStats<RpcRequestStat
 		serverExceptions.add(statsSet.getServerExceptions());
 	}
 
+	@JmxAttribute
 	public EventStats getTotalRequests() {
 		return totalRequests;
 	}
 
+	@JmxAttribute
 	public EventStats getSuccessfulRequests() {
 		return successfulRequests;
 	}
 
+	@JmxAttribute
 	public EventStats getFailedRequests() {
 		return failedRequests;
 	}
 
+	@JmxAttribute
 	public EventStats getRejectedRequests() {
 		return rejectedRequests;
 	}
 
+	@JmxAttribute
 	public EventStats getExpiredRequests() {
 		return expiredRequests;
 	}
 
+	@JmxAttribute
 	public ValueStats getResponseTime() {
 		return responseTimeStats;
 	}
 
+	@JmxAttribute
 	public ExceptionStats getServerExceptions() {
 		return serverExceptions;
 	}

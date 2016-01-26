@@ -206,50 +206,62 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		lastLongestScheduledRunnable.reset();
 	}
 
+	@JmxAttribute
 	public ValueStats getSelectorSelectTime() {
 		return selectorSelectTime;
 	}
 
+	@JmxAttribute
 	public ValueStats getBusinessLogicTime() {
 		return businessLogicTime;
 	}
 
+	@JmxAttribute
 	public EventStats getSelectedKeys() {
 		return selectedKeys;
 	}
 
+	@JmxAttribute
 	public EventStats getInvalidKeys() {
 		return invalidKeys;
 	}
 
+	@JmxAttribute
 	public EventStats getAcceptKeys() {
 		return acceptKeys;
 	}
 
+	@JmxAttribute
 	public EventStats getConnectKeys() {
 		return connectKeys;
 	}
 
+	@JmxAttribute
 	public EventStats getReadKeys() {
 		return readKeys;
 	}
 
+	@JmxAttribute
 	public EventStats getWriteKeys() {
 		return writeKeys;
 	}
 
+	@JmxAttribute
 	public EventStats getLocalTasks() {
 		return localTasks;
 	}
 
+	@JmxAttribute
 	public EventStats getConcurrentTasks() {
 		return concurrentTasks;
 	}
 
+	@JmxAttribute
 	public EventStats getScheduledTasks() {
 		return scheduledTasks;
 	}
 
+	@JmxAttribute
 	public ValueStats getLocalTaskDuration() {
 		return localTaskDuration;
 	}
@@ -258,6 +270,7 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		return lastLongestLocalRunnable;
 	}
 
+	@JmxAttribute
 	public ValueStats getConcurrentTaskDuration() {
 		return concurrentTaskDuration;
 	}
@@ -266,6 +279,7 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		return lastLongestConcurrentRunnable;
 	}
 
+	@JmxAttribute
 	public ValueStats getScheduledTaskDuration() {
 		return scheduledTaskDuration;
 	}
@@ -274,26 +288,32 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		return lastLongestScheduledRunnable;
 	}
 
+	@JmxAttribute
 	public ValueStats getSelectedKeysTime() {
 		return selectedKeysTime;
 	}
 
+	@JmxAttribute
 	public ValueStats getLocalTasksTime() {
 		return localTasksTime;
 	}
 
+	@JmxAttribute
 	public ValueStats getConcurrentTasksTime() {
 		return concurrentTasksTime;
 	}
 
+	@JmxAttribute
 	public ValueStats getScheduledTasksTime() {
 		return scheduledTasksTime;
 	}
 
+	@JmxAttribute
 	public MapStats<ExceptionMarker, ExceptionStats> getExceptions() {
 		return exceptions;
 	}
 
+	@JmxAttribute
 	public MapStats<Class<? extends Throwable>, ExceptionStats> getSevereExceptions() {
 		return severeExceptions;
 	}

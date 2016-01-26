@@ -21,6 +21,7 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.ExceptionMarker;
@@ -266,14 +267,18 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected abstract SocketConnection createConnection(SocketChannel socketChannel);
 
 	// jmx
+
+	@JmxAttribute
 	public ExceptionStats getCloseException() {
 		return closeException;
 	}
 
+	@JmxAttribute
 	public ExceptionStats getPrepareSocketException() {
 		return prepareSocketException;
 	}
 
+	@JmxAttribute
 	public EventStats getTotalAccepts() {
 		return totalAccepts;
 	}
