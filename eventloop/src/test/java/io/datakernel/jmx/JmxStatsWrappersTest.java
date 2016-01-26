@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.stats;
+package io.datakernel.jmx;
 
-import io.datakernel.jmx.JmxStats;
-import io.datakernel.jmx.JmxStatsWrappers;
 import org.junit.Test;
 
 import javax.management.openmbean.SimpleType;

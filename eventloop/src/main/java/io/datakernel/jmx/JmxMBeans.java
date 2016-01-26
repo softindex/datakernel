@@ -75,6 +75,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Object first = monitorables.get(0);
 		MBeanInfo mBeanInfo = composeMBeanInfo(first, enableRefresh);
 		Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType = fetchNameToJmxStatsType(first);
+		Map<String, MBeanAttributeInfo> nameToSimpleAttribute = fetchNameToSimpleAttribute(first);
 
 		boolean eventloopMonitorables = hasEventloop(first);
 		List<Eventloop> eventloops = new ArrayList<>();
@@ -83,6 +84,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				eventloops.add(fetchEventloop(monitorable));
 			}
 		}
+
+		List<SimpleAttribute> writableAttributes = collectWritableAttributes(first);
 
 		List<JmxMonitorableWrapper> wrappers = new ArrayList<>();
 		for (int i = 0; i < monitorables.size(); i++) {
@@ -95,11 +98,35 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						new StatsRefresher(statsList, DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW, eventloop);
 				eventloop.postConcurrently(statsRefresher);
 			}
-			wrappers.add(createWrapper(monitorable, statsRefresher));
+			wrappers.add(createWrapper(monitorable, statsRefresher, writableAttributes));
 		}
 
-		return new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType,
+		return new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType, nameToSimpleAttribute,
 				DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW);
+	}
+
+	private static List<SimpleAttribute> collectWritableAttributes(Object monitorable) {
+		Method[] methods = monitorable.getClass().getMethods();
+		List<SimpleAttribute> writableAttributes = new ArrayList<>();
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfSimpleType(method)) {
+				String name = extractFieldNameFromGetter(method);
+				boolean writable = doesSetterForAttributeExist(monitorable, name, method.getReturnType());
+				if (writable) {
+					writableAttributes.add(new SimpleAttribute(name, method.getReturnType()));
+				}
+			}
+		}
+		return writableAttributes;
+	}
+
+	private static Map<String, MBeanAttributeInfo> fetchNameToSimpleAttribute(Object monitorable) {
+		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributeInfo(monitorable);
+		Map<String, MBeanAttributeInfo> nameToSimpleAttribute = new HashMap<>();
+		for (MBeanAttributeInfo simpleAttr : simpleAttrs) {
+			nameToSimpleAttribute.put(simpleAttr.getName(), simpleAttr);
+		}
+		return nameToSimpleAttribute;
 	}
 
 	private static MBeanAttributeInfo[] extractAttributesInfo(Object monitorable, boolean enableRefresh)
@@ -119,11 +146,91 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		}
 
+		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributeInfo(monitorable);
+		attributes.addAll(simpleAttrs);
+
 		if (enableRefresh) {
 			addAttributesForRefreshControl(monitorable, attributes);
 		}
 
 		return attributes.toArray(new MBeanAttributeInfo[attributes.size()]);
+	}
+
+	/**
+	 * Simple attributes means that attribute's type is of one of the following: boolean, int, long, double, String
+	 */
+	private static List<MBeanAttributeInfo> fetchSimpleAttributeInfo(Object monitorable) {
+		List<MBeanAttributeInfo> attrList = new ArrayList<>();
+		Method[] methods = monitorable.getClass().getMethods();
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfSimpleType(method)) {
+				String name = extractFieldNameFromGetter(method);
+				boolean writable = doesSetterForAttributeExist(monitorable, name, method.getReturnType());
+				String type = method.getReturnType().getName();
+				MBeanAttributeInfo attrInfo =
+						new MBeanAttributeInfo(name, type, ATTRIBUTE_DEFAULT_DESCRIPTION,
+								true, writable, false);
+				attrList.add(attrInfo);
+			}
+		}
+		return attrList;
+	}
+
+	/**
+	 * Tries to fetch setters for writable attributes. Throws exception if there is no setter for writable attribute
+	 * Ignores read-only attributes
+	 */
+	private static Map<String, Method> fetchNameToSimpleAttributeSetter(
+			Object monitorable, List<SimpleAttribute> writableAttributes) {
+		Map<String, Method> simpleAttributeSetters = new HashMap<>();
+		for (SimpleAttribute attribute : writableAttributes) {
+			String attrName = attribute.getName();
+			Class<?> attrType = attribute.getType();
+			Method setter = tryFetchSetter(monitorable, attrName, attrType);
+			if (setter == null) {
+				throw new IllegalArgumentException(
+						format("Cannot fetch setter for writable attribute with name \"%s\" and type \"%s\"",
+								attrName, attrType.toString())
+				);
+			}
+			simpleAttributeSetters.put(attrName, setter);
+		}
+		return simpleAttributeSetters;
+	}
+
+	private static boolean doesSetterForAttributeExist(Object monitorable, String name, Class<?> type) {
+		Method[] methods = monitorable.getClass().getMethods();
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(JmxAttribute.class) && isSetterOf(method, name, type)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static Method tryFetchSetter(Object monitorable, String name, Class<?> type) {
+		Method[] methods = monitorable.getClass().getMethods();
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(JmxAttribute.class) && isSetterOf(method, name, type)) {
+				return method;
+			}
+		}
+		return null;
+	}
+
+	private static boolean isSetterOf(Method method, String name, Class<?> type) {
+		if (isSetter(method)) {
+			String methodName = method.getName();
+			String attrName = methodName.substring(3, 4).toLowerCase() + methodName.substring(4);
+			return attrName.equals(name) && method.getParameterTypes()[0].equals(type);
+		}
+		return false;
+	}
+
+	public static boolean isSetter(Method method) {
+		String methodName = method.getName();
+		return methodName.length() > 3 && methodName.startsWith("set")
+				&& method.getReturnType().equals(void.class) && method.getParameterTypes().length == 1;
 	}
 
 	private static void addAttributesForRefreshControl(Object monitorable, List<MBeanAttributeInfo> attributes)
@@ -299,10 +406,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return nameToJmxStatsType;
 	}
 
-	private static JmxMonitorableWrapper createWrapper(Object monitorable, StatsRefresher statsRefresher) {
-		Map<String, Method> attributeGetters = fetchNameToJmxStatsGetter(monitorable);
+	private static JmxMonitorableWrapper createWrapper(
+			Object monitorable, StatsRefresher statsRefresher, List<SimpleAttribute> writableAttributes) {
+		Map<String, Method> nameToJmxStatsGetter = fetchNameToJmxStatsGetter(monitorable);
+		Map<String, Method> nameToSimpleAttributeGetter = fetchNameToSimpleAttributeGetter(monitorable);
+		Map<String, Method> nameToSimpleAttributeSetter =
+				fetchNameToSimpleAttributeSetter(monitorable, writableAttributes);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(monitorable);
-		return new JmxMonitorableWrapper(monitorable, attributeGetters, opkeyToMethod, statsRefresher);
+		return new JmxMonitorableWrapper(monitorable, nameToJmxStatsGetter,
+				nameToSimpleAttributeGetter, nameToSimpleAttributeSetter,
+				opkeyToMethod, statsRefresher);
 	}
 
 	// TODO(vmykhalko): refactor this method (it has common code with  extractOperationsInfo()
@@ -330,6 +443,24 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		}
 		return opkeyToMethod;
+	}
+
+	private static final class SimpleAttribute {
+		private final String name;
+		private final Class<?> type;
+
+		public SimpleAttribute(String name, Class<?> type) {
+			this.name = name;
+			this.type = type;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public Class<?> getType() {
+			return type;
+		}
 	}
 
 	private static final class OperationKey {
@@ -378,15 +509,18 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final MBeanInfo mBeanInfo;
 		private final List<JmxMonitorableWrapper> wrappers;
 		private final Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType;
+		private final Map<String, MBeanAttributeInfo> nameToSimpleAttribute;
 		private double refreshPeriod;
 		private double smoothingWindow;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<JmxMonitorableWrapper> wrappers,
 		                              Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType,
+		                              Map<String, MBeanAttributeInfo> nameToSimpleAttribute,
 		                              double refreshPeriod, double smoothingWindow) {
 			this.mBeanInfo = mBeanInfo;
 			this.wrappers = wrappers;
 			this.nameToJmxStatsType = nameToJmxStatsType;
+			this.nameToSimpleAttribute = nameToSimpleAttribute;
 			this.refreshPeriod = refreshPeriod;
 			this.smoothingWindow = smoothingWindow;
 		}
@@ -402,37 +536,72 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			Matcher matcher = ATTRIBUTE_NAME_PATTERN.matcher(attribute);
 			if (matcher.matches()) {
-				String jmxStatsName = matcher.group(1);
-				if (!nameToJmxStatsType.containsKey(jmxStatsName)) {
+				// attribute is JmxStats
+				String attrName = matcher.group(1);
+				if (nameToJmxStatsType.containsKey(attrName)) {
+					Class<? extends JmxStats<?>> jmxStatsType = nameToJmxStatsType.get(attrName);
+					// wildcard is removed intentionally, types must be same
+					JmxStats statsAccumulator;
+					try {
+						statsAccumulator = jmxStatsType.newInstance();
+					} catch (InstantiationException | IllegalAccessException e) {
+						String errorMsg = "All JmxStats Implementations must have public constructor without parameters";
+						throw new ReflectionException(e, errorMsg);
+					}
+					for (JmxMonitorableWrapper wrapper : wrappers) {
+						statsAccumulator.add(wrapper.getJmxStats(attrName));
+					}
+					String attrNameRest = matcher.group(2);
+					Map<String, JmxStats.TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
+					JmxStats.TypeAndValue typeAndValue = jmxStatsAttributes.get(attrNameRest);
+					if (typeAndValue == null) {
+						throw new AttributeNotFoundException();
+					}
+					return typeAndValue.getValue();
+				} else {
 					throw new AttributeNotFoundException();
 				}
-				Class<? extends JmxStats<?>> jmxStatsType = nameToJmxStatsType.get(jmxStatsName);
-				// wildcard is removed intentionally, types must be same
-				JmxStats statsAccumulator;
-				try {
-					statsAccumulator = jmxStatsType.newInstance();
-				} catch (InstantiationException | IllegalAccessException e) {
-					String errorMsg = "All JmxStats Implementations must have public constructor without parameters";
-					throw new ReflectionException(e, errorMsg);
-				}
-				for (JmxMonitorableWrapper wrapper : wrappers) {
-					statsAccumulator.add(wrapper.getJmxStats(jmxStatsName));
-				}
-				String attrNameRest = matcher.group(2);
-				Map<String, JmxStats.TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
-				JmxStats.TypeAndValue typeAndValue = jmxStatsAttributes.get(attrNameRest);
-				if (typeAndValue == null) {
-					throw new AttributeNotFoundException();
-				}
-				return typeAndValue.getValue();
+			} else if (nameToSimpleAttribute.containsKey(attribute)) {
+				// attribute is of simple type
+				return aggregateSimpleTypeAttribute(attribute);
 			} else {
 				throw new AttributeNotFoundException();
 			}
 		}
 
+		private Object aggregateSimpleTypeAttribute(String attrName)
+				throws AttributeNotFoundException, ReflectionException {
+			JmxMonitorableWrapper first = wrappers.get(0);
+			Object attrValue = first.getSimpleAttributeValue(attrName);
+			for (int i = 1; i < wrappers.size(); i++) {
+				Object currentAttrValue = wrappers.get(i).getSimpleAttributeValue(attrName);
+				if (!Objects.equals(attrValue, currentAttrValue)) {
+					return null;
+				}
+			}
+			return attrValue;
+		}
+
 		@Override
-		public void setAttribute(Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
-			throw new UnsupportedOperationException("Setting of attributes is not available");
+		public void setAttribute(Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
+				MBeanException, ReflectionException {
+			MBeanAttributeInfo attrInfo = nameToSimpleAttribute.get(attribute.getName());
+			if (attrInfo == null) {
+				throw new AttributeNotFoundException(format("There is no attribute with name \"%s\"", attribute));
+			}
+			if (!attrInfo.isWritable()) {
+				throw new AttributeNotFoundException(format("Attribute with name \"%s\" is not writable", attribute));
+			}
+			for (JmxMonitorableWrapper wrapper : wrappers) {
+				try {
+					wrapper.setSimpleAttribute(attribute.getName(), attribute.getValue());
+				} catch (InvocationTargetException | IllegalAccessException e) {
+					throw new ReflectionException(e,
+							format("Cannot set value \"%s\" to attribute with name \"%s\"",
+									attribute.getName(), attribute.getValue().toString())
+					);
+				}
+			}
 		}
 
 		@Override
@@ -444,6 +613,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				try {
 					attrList.add(new Attribute(attrName, getAttribute(attrName)));
 				} catch (AttributeNotFoundException | MBeanException | ReflectionException e) {
+					// TODO(vmykhalko): maybe use another exception handling policy (e.g. logging) ?
 					e.printStackTrace();
 				}
 			}
@@ -452,7 +622,19 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		@Override
 		public AttributeList setAttributes(AttributeList attributes) {
-			throw new UnsupportedOperationException("Setting of attributes is not available");
+			AttributeList resultList = new AttributeList();
+			for (int i = 0; i < attributes.size(); i++) {
+				Attribute attribute = (Attribute) attributes.get(i);
+				try {
+					setAttribute(attribute);
+					resultList.add(new Attribute(attribute.getName(), attribute.getValue()));
+				} catch (AttributeNotFoundException | InvalidAttributeValueException
+						| MBeanException | ReflectionException e) {
+					// TODO(vmykhalko): maybe use another exception handling policy (e.g. logging) ?
+					e.printStackTrace();
+				}
+			}
+			return resultList;
 		}
 
 		@Override
@@ -509,20 +691,26 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static final class JmxMonitorableWrapper {
 		private final Object monitorable;
-		private final Map<String, Method> attributeGetters;
+		private final Map<String, Method> jmxStatsGetters;
+		private final Map<String, Method> simpleAttributeGetters;
+		private final Map<String, Method> simpleAttributeSetters;
 		private final Map<OperationKey, Method> operationKeyToMethod;
 		private final StatsRefresher statsRefresher;
 
-		public JmxMonitorableWrapper(Object monitorable, Map<String, Method> attributeGetters,
+		public JmxMonitorableWrapper(Object monitorable, Map<String, Method> jmxStatsGetters,
+		                             Map<String, Method> simpleAttributeGetters,
+		                             Map<String, Method> simpleAttributeSetters,
 		                             Map<OperationKey, Method> operationKeyToMethod, StatsRefresher statsRefresher) {
 			this.monitorable = monitorable;
-			this.attributeGetters = attributeGetters;
+			this.jmxStatsGetters = jmxStatsGetters;
+			this.simpleAttributeGetters = simpleAttributeGetters;
+			this.simpleAttributeSetters = simpleAttributeSetters;
 			this.operationKeyToMethod = operationKeyToMethod;
 			this.statsRefresher = statsRefresher;
 		}
 
 		public JmxStats<?> getJmxStats(String jmxStatsName) throws AttributeNotFoundException, ReflectionException {
-			Method jmxStatsGetter = attributeGetters.get(jmxStatsName);
+			Method jmxStatsGetter = jmxStatsGetters.get(jmxStatsName);
 			if (jmxStatsGetter == null) {
 				throw new AttributeNotFoundException();
 			}
@@ -531,6 +719,24 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new ReflectionException(e);
 			}
+		}
+
+		public Object getSimpleAttributeValue(String attrName) throws AttributeNotFoundException, ReflectionException {
+			Method simpleAttributeGetter = simpleAttributeGetters.get(attrName);
+			if (simpleAttributeGetter == null) {
+				throw new AttributeNotFoundException();
+			}
+			try {
+				return simpleAttributeGetter.invoke(monitorable);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				throw new ReflectionException(e);
+			}
+		}
+
+		public void setSimpleAttribute(String attrName, Object value)
+				throws InvocationTargetException, IllegalAccessException {
+			Method setter = simpleAttributeSetters.get(attrName);
+			setter.invoke(monitorable, value);
 		}
 
 		public Object invoke(String actionName, Object[] params, String[] signature)

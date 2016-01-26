@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.stats;
+package io.datakernel.jmx;
 
-import io.datakernel.jmx.JmxStats;
-import io.datakernel.jmx.MapStats;
 import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Test;
 

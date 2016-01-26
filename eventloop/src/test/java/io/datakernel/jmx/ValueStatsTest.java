@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.stats;
+package io.datakernel.jmx;
 
-import io.datakernel.jmx.ValueStats;
 import org.junit.Test;
 
 import java.util.Random;

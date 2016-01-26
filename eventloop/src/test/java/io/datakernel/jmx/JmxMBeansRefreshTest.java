@@ -164,6 +164,7 @@ public class JmxMBeansRefreshTest {
 			this.eventloop = eventloop;
 		}
 
+		@JmxAttribute
 		public JmxStats<?> getJmxStats() {
 			return jmxStats;
 		}

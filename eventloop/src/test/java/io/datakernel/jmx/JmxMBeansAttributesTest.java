@@ -16,161 +16,192 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.helper.CompositeStatsStub;
-import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Test;
 
 import javax.management.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class JmxMBeansAttributesTest {
-	private static final String GROUPED_STATS_COUNTER_ONE_COUNT = "groupedStats_counterOne_count";
-	private static final String GROUPED_STATS_COUNTER_ONE_SUM = "groupedStats_counterOne_sum";
-	private static final String GROUPED_STATS_COUNTER_TWO_COUNT = "groupedStats_counterTwo_count";
-	private static final String GROUPED_STATS_COUNTER_TWO_SUM = "groupedStats_counterTwo_sum";
-	private static final String SIMPLE_STATS_COUNT = "simpleStats_count";
-	private static final String SIMPLE_STATS_SUM = "simpleStats_sum";
-
-	// sorted alphabetically
-	private static final List<String> ALL_ATTRIBUTE_NAMES_LIST = asList(
-			GROUPED_STATS_COUNTER_ONE_COUNT,
-			GROUPED_STATS_COUNTER_ONE_SUM,
-			GROUPED_STATS_COUNTER_TWO_COUNT,
-			GROUPED_STATS_COUNTER_TWO_SUM,
-			SIMPLE_STATS_COUNT,
-			SIMPLE_STATS_SUM
-	);
-
-	private static final String[] ALL_ATTRIBUTE_NAMES_ARRAY =
-			ALL_ATTRIBUTE_NAMES_LIST.toArray(new String[ALL_ATTRIBUTE_NAMES_LIST.size()]);
 
 	@Test
-	public void itShouldCollectAllJmxStatsFromMonitorableAndWriteThemToMBeanInfo() throws Exception {
-		MonitorableStub monitorable = new MonitorableStub();
+	public void itShouldCollectAllJmxAttributesOfBasicTypes() throws Exception {
+		MonitorableWithIntegerAttribute monitorable =
+				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
-		MBeanAttributeInfo[] mBeanAttributeInfos = mBeanInfo.getAttributes();
-		List<String> attributeNames = new ArrayList<>();
-		for (MBeanAttributeInfo mBeanAttributeInfo : mBeanAttributeInfos) {
-			attributeNames.add(mBeanAttributeInfo.getName());
-		}
-		Collections.sort(attributeNames);
+		Map<String, MBeanAttributeInfo> nameToAttr = formNameToAttr(mBeanInfo.getAttributes());
+		assertEquals(5, nameToAttr.size());
 
-		List<String> expectedAttributeNames = ALL_ATTRIBUTE_NAMES_LIST;
-		assertEquals(expectedAttributeNames, attributeNames);
+		// read-only-attribute
+		MBeanAttributeInfo booleanAttr = nameToAttr.get("booleanAttr");
+		assertEquals("boolean", booleanAttr.getType());
+		assertEquals(true, booleanAttr.isReadable());
+		assertEquals(false, booleanAttr.isWritable());
+
+		// read-write-attribute
+		MBeanAttributeInfo intAttr = nameToAttr.get("intAttr");
+		assertEquals("int", intAttr.getType());
+		assertEquals(true, intAttr.isReadable());
+		assertEquals(true, intAttr.isWritable());
+
+		// read-only-attribute
+		MBeanAttributeInfo longAttr = nameToAttr.get("longAttr");
+		assertEquals("long", longAttr.getType());
+		assertEquals(true, longAttr.isReadable());
+		assertEquals(false, longAttr.isWritable());
+
+		// read-only-attribute
+		MBeanAttributeInfo doubleAttr = nameToAttr.get("doubleAttr");
+		assertEquals("double", doubleAttr.getType());
+		assertEquals(true, doubleAttr.isReadable());
+		assertEquals(false, doubleAttr.isWritable());
+
+		// read-write-attribute
+		MBeanAttributeInfo strAttr = nameToAttr.get("strAttr");
+		assertEquals("java.lang.String", strAttr.getType());
+		assertEquals(true, strAttr.isReadable());
+		assertEquals(true, strAttr.isWritable());
 	}
 
 	@Test
-	public void itShouldFetchSingleAttributeValueCorrectly() throws Exception {
-		MonitorableStub monitorable = new MonitorableStub();
-		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
-		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
-		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
-
-		// check init values of attributes
-		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
-		assertEquals(23L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_SUM));
-		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_COUNT));
-		assertEquals(35L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_SUM));
-		assertEquals(1, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(51L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
-
-		// modify monitorable object
-		monitorable.getGroupedStats().getCounterOne().recordValue(102L);
-		// we don't write anything to groupedStats_counterTwo
-		monitorable.getSimpleStats().recordValue(207L);
-
-		// check modified values of attributes
-		assertEquals(2, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
-		assertEquals(23L + 102L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_SUM));
-		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_COUNT));
-		assertEquals(35L, (long) mbean.getAttribute(GROUPED_STATS_COUNTER_TWO_SUM));
-		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(51L + 207L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
-	}
-
-	@Test
-	public void itShouldFetchBunchOfAttributeValuesCorrectly() throws Exception {
-		MonitorableStub monitorable = new MonitorableStub();
-		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
-		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
-		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
-
-		// check fetching all attributes
-		AttributeList expectedAttributeList =
-				createAttributeList(ALL_ATTRIBUTE_NAMES_ARRAY, new Object[]{1, 23L, 1, 35L, 1, 51L});
-		assertEquals(expectedAttributeList, mbean.getAttributes(ALL_ATTRIBUTE_NAMES_ARRAY));
-
-		// check fetching subset of attributes
-		String[] subsetOfNames = new String[]{SIMPLE_STATS_SUM, SIMPLE_STATS_COUNT, GROUPED_STATS_COUNTER_ONE_SUM};
-		expectedAttributeList = createAttributeList(subsetOfNames, new Object[]{51L, 1, 23L});
-		assertEquals(expectedAttributeList, mbean.getAttributes(subsetOfNames));
-
-		// modify monitorable object
-		monitorable.getGroupedStats().getCounterOne().recordValue(102L);
-		// we don't write anything to groupedStats_counterTwo
-		monitorable.getSimpleStats().recordValue(207L);
-
-		// check fetching all attributes after modification
-		expectedAttributeList =
-				createAttributeList(ALL_ATTRIBUTE_NAMES_ARRAY, new Object[]{2, 23L + 102L, 1, 35L, 2, 51L + 207L});
-		assertEquals(expectedAttributeList, mbean.getAttributes(ALL_ATTRIBUTE_NAMES_ARRAY));
-
-		// check fetching subset of attributes after modification
-		expectedAttributeList = createAttributeList(subsetOfNames, new Object[]{51L + 207L, 2, 23L + 102L});
-		assertEquals(expectedAttributeList, mbean.getAttributes(subsetOfNames));
-	}
-
-	@Test
-	public void itShouldAccumulateJmxStatsValuesFromSeveralMonitorable() throws Exception {
-		MonitorableStub monitorable_1 = new MonitorableStub();
-		MonitorableStub monitorable_2 = new MonitorableStub();
-		monitorable_1.getSimpleStats().recordValue(23L);
-		monitorable_2.getSimpleStats().recordValue(78L);
-
+	public void itShouldReturnCommonValueIfAllValuesAreSameForPoolOfMonitorables() throws Exception {
+		MonitorableWithIntegerAttribute monitorable_1 =
+				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
+		MonitorableWithIntegerAttribute monitorable_2 =
+				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
 
-		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(23L + 78L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
-
-		monitorable_1.getSimpleStats().recordValue(198L);
-		monitorable_2.getSimpleStats().recordValue(201L);
-		monitorable_2.getSimpleStats().recordValue(352L);
-
-		assertEquals(5, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
-		assertEquals(23L + 78L + 198L + 201L + 352L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
+		assertEquals(true, mbean.getAttribute("booleanAttr"));
+		assertEquals(100, mbean.getAttribute("intAttr"));
+		assertEquals(1000L, mbean.getAttribute("longAttr"));
+		assertEquals(1.5, mbean.getAttribute("doubleAttr"));
+		assertEquals("data", mbean.getAttribute("strAttr"));
 	}
 
-	// helpers
-	public static AttributeList createAttributeList(String[] names, Object[] values) {
-		assert values.length == names.length;
-		AttributeList attrList = new AttributeList();
+	@Test
+	public void itShouldReturnNullIfValuesDifferInInstancesOfPoolOfMonitorables() throws Exception {
+		MonitorableWithIntegerAttribute monitorable_1 =
+				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
+		MonitorableWithIntegerAttribute monitorable_2 =
+				new MonitorableWithIntegerAttribute(false, 250, 25000L, 5.0, "data-2");
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
 
-		for (int i = 0; i < values.length; i++) {
-			attrList.add(new Attribute(names[i], values[i]));
+		assertEquals(null, mbean.getAttribute("booleanAttr"));
+		assertEquals(null, mbean.getAttribute("intAttr"));
+		assertEquals(null, mbean.getAttribute("longAttr"));
+		assertEquals(null, mbean.getAttribute("doubleAttr"));
+		assertEquals(null, mbean.getAttribute("strAttr"));
+	}
+
+	@Test
+	public void itShouldSetWritableAttributes() throws Exception {
+		MonitorableWithIntegerAttribute monitorable =
+				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+
+		mbean.setAttribute(new Attribute("intAttr", 320));
+		mbean.setAttribute(new Attribute("strAttr", "message"));
+
+		assertEquals(320, mbean.getAttribute("intAttr"));
+		assertEquals("message", mbean.getAttribute("strAttr"));
+	}
+
+	@Test
+	public void itShouldNotSetNonReadOnlyAttributes() throws Exception {
+		MonitorableWithIntegerAttribute monitorable =
+				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+
+		int exceptions = 0;
+
+		try {
+			mbean.setAttribute(new Attribute("booleanAttr", false));
+		} catch (AttributeNotFoundException e) {
+			exceptions++;
 		}
-		return attrList;
+
+		try {
+			mbean.setAttribute(new Attribute("longAttr", 800L));
+		} catch (AttributeNotFoundException e) {
+			exceptions++;
+		}
+
+		try {
+			mbean.setAttribute(new Attribute("doubleAttr", 17.3));
+		} catch (AttributeNotFoundException e) {
+			exceptions++;
+		}
+
+		assertEquals(3, exceptions);
+		assertEquals(true, mbean.getAttribute("booleanAttr"));
+		assertEquals(1000L, mbean.getAttribute("longAttr"));
+		assertEquals(1.5, mbean.getAttribute("doubleAttr"));
+	}
+
+	public static Map<String, MBeanAttributeInfo> formNameToAttr(MBeanAttributeInfo[] attributes) {
+		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
+		for (MBeanAttributeInfo attribute : attributes) {
+			nameToAttr.put(attribute.getName(), attribute);
+		}
+		return nameToAttr;
 	}
 
 	@JmxMBean
-	public static class MonitorableStub {
-		CompositeStatsStub groupedStats = new CompositeStatsStub();
-		JmxStatsStub simpleStats = new JmxStatsStub();
+	public static final class MonitorableWithIntegerAttribute {
+		private boolean booleanAttr;
+		private int intAttr;
+		private long longAttr;
+		private double doubleAttr;
+		private String strAttr;
 
-		public CompositeStatsStub getGroupedStats() {
-			return groupedStats;
+		public MonitorableWithIntegerAttribute(boolean booleanAttr, int intAttr, long longAttr,
+		                                       double doubleAttr, String strAttr) {
+			this.booleanAttr = booleanAttr;
+			this.intAttr = intAttr;
+			this.longAttr = longAttr;
+			this.doubleAttr = doubleAttr;
+			this.strAttr = strAttr;
 		}
 
-		public JmxStatsStub getSimpleStats() {
-			return simpleStats;
+		@JmxAttribute
+		public boolean getBooleanAttr() {
+			return booleanAttr;
+		}
+
+		@JmxAttribute
+		public int getIntAttr() {
+			return intAttr;
+		}
+
+		@JmxAttribute
+		public long getLongAttr() {
+			return longAttr;
+		}
+
+		@JmxAttribute
+		public double getDoubleAttr() {
+			return doubleAttr;
+		}
+
+		@JmxAttribute
+		public String getStrAttr() {
+			return strAttr;
+		}
+
+		// intAttr and strAttr are writable
+		@JmxAttribute
+		public void setIntAttr(int intAttr) {
+			this.intAttr = intAttr;
+		}
+
+		@JmxAttribute
+		public void setStrAttr(String strAttr) {
+			this.strAttr = strAttr;
 		}
 	}
 }

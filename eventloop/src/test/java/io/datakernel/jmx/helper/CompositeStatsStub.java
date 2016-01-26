@@ -17,15 +17,18 @@
 package io.datakernel.jmx.helper;
 
 import io.datakernel.jmx.AbstractCompositeStats;
+import io.datakernel.jmx.JmxAttribute;
 
 public final class CompositeStatsStub extends AbstractCompositeStats<CompositeStatsStub> {
 	private JmxStatsStub counterOne = new JmxStatsStub();
 	private JmxStatsStub counterTwo = new JmxStatsStub();
 
+	@JmxAttribute
 	public JmxStatsStub getCounterOne() {
 		return counterOne;
 	}
 
+	@JmxAttribute
 	public JmxStatsStub getCounterTwo() {
 		return counterTwo;
 	}

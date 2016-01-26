@@ -18,6 +18,8 @@ package io.datakernel.jmx;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -40,6 +42,18 @@ public final class Utils {
 		boolean returnsJmxStats = JmxStats.class.isAssignableFrom(method.getReturnType());
 		boolean hasNoArgs = method.getParameterTypes().length == 0;
 		return isGetter(method) && returnsJmxStats && hasNoArgs;
+	}
+
+	public static boolean isGetterOfSimpleType(Method method) {
+		boolean returnsSimpleType =
+				boolean.class.isAssignableFrom(method.getReturnType())
+						|| int.class.isAssignableFrom(method.getReturnType())
+						|| long.class.isAssignableFrom(method.getReturnType())
+						|| double.class.isAssignableFrom(method.getReturnType())
+						|| String.class.isAssignableFrom(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		// TODO(vmykhalko): maybe also condisder "is*" getter for boolean instead of "get*" getter ?
+		return isGetter(method) && returnsSimpleType && hasNoArgs;
 	}
 
 	public static boolean isGetter(Method method) {
@@ -66,9 +80,21 @@ public final class Utils {
 		SortedMap<String, Method> attributeToJmxStatsGetter = new TreeMap<>();
 		Method[] methods = objectWithJmxStats.getClass().getMethods();
 		for (Method method : methods) {
-			if (isGetterOfJmxStats(method)) {
+			if (isGetterOfJmxStats(method) && method.isAnnotationPresent(JmxAttribute.class)) {
 				String currentJmxStatsName = extractFieldNameFromGetter(method);
 				attributeToJmxStatsGetter.put(currentJmxStatsName, method);
+			}
+		}
+		return attributeToJmxStatsGetter;
+	}
+
+	public static Map<String, Method> fetchNameToSimpleAttributeGetter(Object objectWithJmxStats) {
+		Map<String, Method> attributeToJmxStatsGetter = new HashMap<>();
+		Method[] methods = objectWithJmxStats.getClass().getMethods();
+		for (Method method : methods) {
+			if (isGetterOfSimpleType(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+				String currentAttrName = extractFieldNameFromGetter(method);
+				attributeToJmxStatsGetter.put(currentAttrName, method);
 			}
 		}
 		return attributeToJmxStatsGetter;
