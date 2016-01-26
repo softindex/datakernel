@@ -126,7 +126,6 @@ public final class LogToCubeRunner<T> {
 					public void onComplete() {
 						processLog_afterCommit(newChunks, callback);
 					}
-
 				});
 	}
 
@@ -134,5 +133,4 @@ public final class LogToCubeRunner<T> {
 		logger.trace("processLog_afterCommit called. New chunks: {}", newChunks);
 		callback.onComplete();
 	}
-
 }

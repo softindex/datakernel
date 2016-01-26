@@ -122,7 +122,12 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 	}
 
 	public LogPosition getLogPosition() {
-		return currentLogFile == null ? startPosition :
-				new LogPosition(currentLogFile, currentDecompressor.getInputStreamPosition());
+		if (currentLogFile == null)
+			return startPosition;
+
+		if (currentLogFile.equals(startPosition.getLogFile()))
+			return new LogPosition(currentLogFile, startPosition.getPosition() + currentDecompressor.getInputStreamPosition());
+
+		return new LogPosition(currentLogFile, currentDecompressor.getInputStreamPosition());
 	}
 }
