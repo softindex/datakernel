@@ -155,6 +155,17 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				inputBuf = null;
 			}
 		}
+
+		@Override
+		public String toString() {
+			return '{' + super.toString() +
+					" producer:" + inputConsumer.getUpstream() +
+					" inBytes:" + jmxBytesInput +
+					" outBytes:" + jmxBytesOutput +
+					" inBufs:" + jmxBufsInput +
+					" outBufs:" + jmxBufsOutput +
+					'}';
+		}
 	}
 
 	private final Header header = new Header();

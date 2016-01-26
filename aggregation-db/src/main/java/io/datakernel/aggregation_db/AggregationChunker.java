@@ -151,6 +151,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 
 				StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
 				outputProducer.streamTo(forwarder.getInput());
+				logger.info("Writing chunk #{} to aggregation '{}'", newId, aggregationId);
 				storage.chunkWriter(aggregationId, keys, fields, recordClass, newId, forwarder.getOutput(), new CompletionCallback() {
 					@Override
 					public void onComplete() {

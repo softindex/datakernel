@@ -149,7 +149,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 
 					for (String partition : newPositions.keySet()) {
 						LogPosition logPosition = newPositions.get(partition);
-						logger.info("Finished reading logs at position {}", logPosition);
+						logger.info("Finished reading log '{}' for partition '{}' at position {}", log, partition, logPosition);
 
 						if (logPosition.getLogFile() == null)
 							continue;

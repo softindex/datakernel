@@ -138,6 +138,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 				final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 
+				logger.info("Writing chunk #{} to aggregation '{}'", newId, aggregationMetadata.getId());
 				storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId, producer, new CompletionCallback() {
 					@Override
 					public void onComplete() {

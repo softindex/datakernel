@@ -27,11 +27,13 @@ import io.datakernel.cube.AggregatorSplitter;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.processor.StreamUnion;
+import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Processes logs. Creates new aggregation chunks and persists them using logic defined in supplied {@code AggregatorSplitter}.
@@ -87,12 +89,19 @@ public final class LogToCubeRunner<T> {
 
 	private void processLog_gotPositions(Map<String, LogPosition> positions, final CompletionCallback callback) {
 		logger.trace("processLog_gotPositions called. Positions: {}", positions);
+		final Stopwatch sw = Stopwatch.createStarted();
+		final AggregatorSplitter<T> aggregator = aggregatorSplitterFactory.create(eventloop);
 		LogCommitTransaction<T> logCommitTransaction = new LogCommitTransaction<>(eventloop, logManager, log, positions, new ForwardingLogCommitCallback(callback) {
 			@Override
 			public void onCommit(String log, Map<String, LogPosition> oldPositions,
 			                     Map<String, LogPosition> newPositions,
 			                     Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
 				processLog_doCommit(log, oldPositions, newPositions, newChunks, callback);
+
+				sw.stop();
+				logger.info("Aggregated {} objects from log '{}' into {} chunks in {} (~{} objects/second)",
+						aggregator.getItems(), log, newChunks.size(), sw,
+						(int) (aggregator.getItems() / ((double) sw.elapsed(TimeUnit.NANOSECONDS) / 1E9)));
 			}
 		});
 
@@ -105,10 +114,8 @@ public final class LogToCubeRunner<T> {
 			}
 			logCommitTransaction.logProducer(logPartition, logPosition)
 					.streamTo(streamUnion.newInput());
-			logger.info("Started reading logs for partition {} from position {}", logPartition, logPosition);
+			logger.info("Started reading log '{}' for partition '{}' from position {}", log, logPartition, logPosition);
 		}
-
-		AggregatorSplitter<T> aggregator = aggregatorSplitterFactory.create(eventloop);
 
 		streamUnion.getOutput().streamTo(aggregator.getInput());
 

@@ -23,6 +23,8 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 
@@ -36,6 +38,8 @@ import static java.lang.Math.min;
  * @param <T> original type of data
  */
 public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamBinaryDeserializerMBean {
+	private static final Logger logger = LoggerFactory.getLogger(StreamBinaryDeserializer.class);
+
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -196,6 +200,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 			if (byteBufs.isEmpty()) {
 				if (inputConsumer.getConsumerStatus().isClosed()) {
 					outputProducer.sendEndOfStream();
+					logger.info("Deserialized {} objects from {}", jmxItems, inputConsumer.getUpstream());
 				} else {
 					if (!isStatusReady()) {
 						resumeProduce();
@@ -304,6 +309,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		}
 		outputProducer.byteBufs.clear();
 		outputProducer.sendEndOfStream();
+		logger.info("Deserialized {} objects from {}", outputProducer.jmxItems, inputConsumer.getUpstream());
 	}
 
 	@Override

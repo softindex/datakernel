@@ -38,12 +38,14 @@ public abstract class AggregatorSplitter<T> extends AbstractStreamSplitter<T> {
 
 	private Cube cube;
 	private LogCommitTransaction<?> transaction;
+	private int items;
 
 	public AggregatorSplitter(Eventloop eventloop) {
 		super(eventloop);
 		this.inputConsumer = new InputConsumer() {
 			@Override
 			public void onData(T item) {
+				++items;
 				processItem(item);
 			}
 		};
@@ -75,5 +77,9 @@ public abstract class AggregatorSplitter<T> extends AbstractStreamSplitter<T> {
 		this.cube = cube;
 		this.transaction = transaction;
 		addOutputs();
+	}
+
+	public int getItems() {
+		return items;
 	}
 }
