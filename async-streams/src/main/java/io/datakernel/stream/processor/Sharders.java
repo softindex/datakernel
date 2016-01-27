@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 /**
  * Static utility methods pertaining to Sharders
  */
-public class Sharders {
+public final class Sharders {
 	private Sharders() {
 	}
 

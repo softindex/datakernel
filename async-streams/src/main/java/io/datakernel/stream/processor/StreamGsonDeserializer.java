@@ -20,12 +20,15 @@ import com.google.gson.Gson;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayDeque;
 
-public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamGsonDeserializerMBean {
+@JmxMBean
+public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T> {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -183,17 +186,17 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 		outputProducer.sendEndOfStream();
 	}
 
-	@Override
+	@JmxAttribute
 	public int getItems() {
 		return outputProducer.jmxItems;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getBufs() {
 		return outputProducer.jmxBufs;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getBytes() {
 		return outputProducer.jmxBytes;
 	}

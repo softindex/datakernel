@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.StreamConsumer;
 
 import java.util.Comparator;
@@ -32,7 +33,8 @@ import java.util.Comparator;
  * @param <A> type of accumulator
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A> {
+@JmxMBean
+public final class StreamReducer<K, O, A> extends AbstractStreamReducer<K, O, A> {
 
 	/**
 	 * Creates a new instance of StreamReducer

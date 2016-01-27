@@ -30,10 +30,12 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
@@ -55,7 +57,8 @@ import static java.util.Collections.sort;
  * Also provides functionality for managing aggregations.
  */
 @SuppressWarnings("unchecked")
-public final class Cube implements CubeMBean {
+@JmxMBean
+public final class Cube {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
 	private final Eventloop eventloop;
@@ -533,7 +536,9 @@ public final class Cube implements CubeMBean {
 				.toString();
 	}
 
-	@Override
+	// jmx
+
+	@JmxAttribute
 	public void setIgnoreChunkReadingExceptions(boolean ignoreChunkReadingExceptions) {
 		this.ignoreChunkReadingExceptions = ignoreChunkReadingExceptions;
 		for (Aggregation aggregation : aggregations.values()) {
@@ -541,12 +546,12 @@ public final class Cube implements CubeMBean {
 		}
 	}
 
-	@Override
-	public boolean isIgnoreChunkReadingExceptions() {
+	@JmxAttribute
+	public boolean getIgnoreChunkReadingExceptions() {
 		return ignoreChunkReadingExceptions;
 	}
 
-	@Override
+	@JmxAttribute
 	public void setChunkSize(int chunkSize) {
 		this.aggregationChunkSize = chunkSize;
 		for (Aggregation aggregation : aggregations.values()) {
@@ -554,12 +559,12 @@ public final class Cube implements CubeMBean {
 		}
 	}
 
-	@Override
+	@JmxAttribute
 	public int getChunkSize() {
 		return aggregationChunkSize;
 	}
 
-	@Override
+	@JmxAttribute
 	public void setSorterItemsInMemory(int sorterItemsInMemory) {
 		this.sorterItemsInMemory = sorterItemsInMemory;
 		for (Aggregation aggregation : aggregations.values()) {
@@ -567,7 +572,7 @@ public final class Cube implements CubeMBean {
 		}
 	}
 
-	@Override
+	@JmxAttribute
 	public int getSorterItemsInMemory() {
 		return sorterItemsInMemory;
 	}

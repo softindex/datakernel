@@ -19,6 +19,8 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -31,7 +33,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @param <T>
  */
-public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> implements StreamFilterMBean {
+@JmxMBean
+public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -93,12 +96,12 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 		this.outputProducer = new OutputProducer(predicate);
 	}
 
-	@Override
+	@JmxAttribute
 	public int getInputItems() {
 		return outputProducer.jmxInputItems;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getOutputItems() {
 		return outputProducer.jmxOutputItems;
 	}

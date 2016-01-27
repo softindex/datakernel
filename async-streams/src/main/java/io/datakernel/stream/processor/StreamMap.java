@@ -17,6 +17,8 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
@@ -30,7 +32,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <I> type of input data
  * @param <O> type of output data
  */
-public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> implements StreamMapMBean {
+@JmxMBean
+public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> {
 	private int jmxItems;
 
 	/**
@@ -163,7 +166,7 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> i
 		this.outputProducer = new OutputProducer(mapper);
 	}
 
-	@Override
+	@JmxAttribute
 	public int getItems() {
 		return jmxItems;
 	}

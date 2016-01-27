@@ -18,6 +18,8 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -34,7 +36,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <O> type of output data
  * @param <A> type of accumulator
  */
-public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryTransformer<I, HashMap<K, A>, O> implements StreamMemoryReducerMBean {
+@JmxMBean
+public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryTransformer<I, HashMap<K, A>, O> {
 	private int jmxItems;
 
 	private final StreamReducers.ReducerToResult<K, I, O, A> reducer;
@@ -110,7 +113,7 @@ public final class StreamMemoryReducer<K, I, O, A> extends AbstractStreamMemoryT
 		this.iterator = state.values().iterator();
 	}
 
-	@Override
+	@JmxAttribute
 	public int getItems() {
 		return jmxItems;
 	}

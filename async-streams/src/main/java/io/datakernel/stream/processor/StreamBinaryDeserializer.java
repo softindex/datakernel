@@ -19,6 +19,8 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
@@ -37,7 +39,8 @@ import static java.lang.Math.min;
  *
  * @param <T> original type of data
  */
-public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, StreamBinaryDeserializerMBean {
+@JmxMBean
+public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T> {
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinaryDeserializer.class);
 
 	private final InputConsumer inputConsumer;
@@ -312,17 +315,17 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		logger.info("Deserialized {} objects from {}", outputProducer.jmxItems, inputConsumer.getUpstream());
 	}
 
-	@Override
+	@JmxAttribute
 	public int getItems() {
 		return outputProducer.jmxItems;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getBufs() {
 		return outputProducer.jmxBufs;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getBytes() {
 		return outputProducer.jmxBytes;
 	}

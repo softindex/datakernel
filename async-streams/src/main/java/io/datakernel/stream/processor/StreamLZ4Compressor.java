@@ -19,6 +19,8 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import net.jpountz.lz4.LZ4Compressor;
@@ -26,7 +28,8 @@ import net.jpountz.lz4.LZ4Factory;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
-public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamLZ4CompressorMBean {
+@JmxMBean
+public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 	static final byte[] MAGIC = new byte[]{'L', 'Z', '4', 'B', 'l', 'o', 'c', 'k'};
 	static final int MAGIC_LENGTH = MAGIC.length;
 
@@ -227,17 +230,17 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		return outputBuf;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getBytesInput() {
 		return outputProducer.jmxBytesInput;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getBytesOutput() {
 		return outputProducer.jmxBytesOutput;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getBufs() {
 		return outputProducer.jmxBufs;
 	}

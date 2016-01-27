@@ -18,6 +18,8 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.AbstractStreamTransformer_1_N;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
@@ -32,7 +34,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <T> type of input items
  */
 @SuppressWarnings("unchecked")
-public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> implements StreamSharderMBean {
+@JmxMBean
+public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> {
 	private long jmxItems;
 
 	protected final class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
@@ -92,7 +95,7 @@ public final class StreamSharder<K, T> extends AbstractStreamTransformer_1_N<T> 
 		return addOutput(new OutputProducer());
 	}
 
-	@Override
+	@JmxAttribute
 	public long getItems() {
 		return jmxItems;
 	}

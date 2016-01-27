@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.AbstractStreamTransformer_N_1;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
@@ -39,7 +40,7 @@ import static com.google.common.base.Preconditions.checkArgument;
  * @param <A> type of accumulator
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTransformer_N_1<O> implements AbstractStreamReducerMBean {
+public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTransformer_N_1<O> {
 	public static final int BUFFER_SIZE = 1024;
 
 	private final int bufferSize;
@@ -221,22 +222,22 @@ public abstract class AbstractStreamReducer<K, O, A> extends AbstractStreamTrans
 		return input;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getInputItems() {
 		return jmxInputItems;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getOnFirst() {
 		return jmxOnFirst;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getOnNext() {
 		return jmxOnNext;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getOnComplete() {
 		return jmxOnComplete;
 	}

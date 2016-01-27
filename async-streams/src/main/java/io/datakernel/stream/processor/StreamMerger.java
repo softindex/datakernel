@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.StreamConsumer;
 
 import java.util.Comparator;
@@ -32,6 +33,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <K> type of key for mapping
  * @param <T> type of output data
  */
+@JmxMBean
 public final class StreamMerger<K, T> extends AbstractStreamReducer<K, T, Void> {
 
 	private final Function<T, K> keyFunction;

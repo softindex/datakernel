@@ -22,7 +22,7 @@ import io.datakernel.stream.StreamDataReceiver;
  * Static utility methods pertaining to {@link StreamReducers.Reducer}.
  * Contains primary ready for use reducers.
  */
-public class StreamReducers {
+public final class StreamReducers {
 	private StreamReducers() {
 	}
 

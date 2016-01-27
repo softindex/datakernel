@@ -28,6 +28,7 @@ import io.datakernel.datagraph.dataset.impl.DatasetListConsumer;
 import io.datakernel.datagraph.graph.DataGraph;
 import io.datakernel.datagraph.graph.Partition;
 import io.datakernel.datagraph.graph.RemotePartition;
+import io.datakernel.datagraph.helper.StreamMergeSorterStorageStub;
 import io.datakernel.datagraph.server.DatagraphClient;
 import io.datakernel.datagraph.server.DatagraphEnvironment;
 import io.datakernel.datagraph.server.DatagraphSerialization;
@@ -37,7 +38,6 @@ import io.datakernel.serializer.annotations.Deserialize;
 import io.datakernel.serializer.annotations.Serialize;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.processor.StreamMergeSorterStorage;
-import io.datakernel.stream.processor.StreamMergeSorterStorageStub;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;

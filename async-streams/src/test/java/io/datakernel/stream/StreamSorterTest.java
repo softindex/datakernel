@@ -21,8 +21,8 @@ import com.google.common.collect.Ordering;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.examples.ScheduledProducer;
+import io.datakernel.stream.helper.StreamMergeSorterStorageStub;
 import io.datakernel.stream.processor.StreamMergeSorterStorage;
-import io.datakernel.stream.processor.StreamMergeSorterStorageStub;
 import io.datakernel.stream.processor.StreamSorter;
 import org.junit.Test;
 

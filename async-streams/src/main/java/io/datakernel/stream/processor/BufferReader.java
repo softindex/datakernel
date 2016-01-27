@@ -23,7 +23,7 @@ import java.nio.charset.Charset;
 /**
  * Reads characters from a character-input stream, buffers characters
  */
-public class BufferReader extends Reader {
+public final class BufferReader extends Reader {
 	private byte[] buf;
 	private int pos;
 	private int limit;

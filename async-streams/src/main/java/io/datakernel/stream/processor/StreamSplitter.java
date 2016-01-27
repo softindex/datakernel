@@ -17,11 +17,14 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 
 @SuppressWarnings("unchecked")
-public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implements StreamSplitterMBean {
+@JmxMBean
+public final class StreamSplitter<T> extends AbstractStreamSplitter<T> {
 	private int jmxItems;
 
 	public StreamSplitter(Eventloop eventloop) {
@@ -41,7 +44,7 @@ public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implement
 		return addOutput(new OutputProducer<T>());
 	}
 
-	@Override
+	@JmxAttribute
 	public int getItems() {
 		return jmxItems;
 	}

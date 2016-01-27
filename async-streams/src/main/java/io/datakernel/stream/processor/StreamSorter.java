@@ -19,6 +19,8 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
@@ -36,7 +38,8 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <K> type of keys
  * @param <T> type of objects
  */
-public final class StreamSorter<K, T> implements StreamTransformer<T, T>, StreamSorterMBean {
+@JmxMBean
+public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	protected long jmxItems;
 
 	private InputConsumer inputConsumer;
@@ -207,7 +210,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Stream
 		return inputConsumer.forwarder.getOutput();
 	}
 
-	@Override
+	@JmxAttribute
 	public long getItems() {
 		return jmxItems;
 	}

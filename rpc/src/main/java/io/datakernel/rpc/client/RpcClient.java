@@ -22,10 +22,7 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxMBean;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.MapStats;
+import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.jmx.*;
@@ -450,8 +447,8 @@ public final class RpcClient implements EventloopService {
 	}
 
 	@JmxAttribute
-	public int getActiveConnectionsCount() {
-		return connections.size();
+	public JmxStats<?> getActiveConnectionsCount() {
+		return JmxStatsWrappers.forSummableValue(connections.size());
 	}
 
 	private RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {

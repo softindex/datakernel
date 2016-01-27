@@ -122,6 +122,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	 */
 	private long timestamp;
 
+	// TODO: why this field is public ?
 	public ThrottlingController throttlingController;
 
 	/**

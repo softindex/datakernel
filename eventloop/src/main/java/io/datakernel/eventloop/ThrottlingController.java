@@ -16,6 +16,9 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
+import io.datakernel.jmx.JmxOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +27,8 @@ import java.util.Random;
 import static io.datakernel.util.Preconditions.check;
 import static java.lang.Math.pow;
 
-public final class ThrottlingController implements ThrottlingControllerMBean {
+@JmxMBean
+public final class ThrottlingController {
 	private static int staticInstanceCounter = 0;
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
@@ -161,111 +165,111 @@ public final class ThrottlingController implements ThrottlingControllerMBean {
 		return smoothedTimePerKeyMillis;
 	}
 
-	@Override
+	@JmxAttribute
 	public double getAvgKeysPerSecond() {
 		return 1000.0 / getAvgTimePerKeyMillis();
 	}
 
-	@Override
+	@JmxAttribute
 	public double getAvgThrottling() {
 		return smoothedThrottling;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getTargetTimeMillis() {
 		return targetTimeMillis;
 	}
 
-	@Override
+	@JmxAttribute
 	public void setTargetTimeMillis(int targetTimeMillis) {
 		check(targetTimeMillis > 0);
 		this.targetTimeMillis = targetTimeMillis;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getGcTimeMillis() {
 		return gcTimeMillis;
 	}
 
-	@Override
+	@JmxAttribute
 	public void setGcTimeMillis(int gcTimeMillis) {
 		check(gcTimeMillis > 0);
 		this.gcTimeMillis = gcTimeMillis;
 	}
 
-	@Override
+	@JmxAttribute
 	public double getThrottlingDecrease() {
 		return throttlingDecrease;
 	}
 
-	@Override
+	@JmxAttribute
 	public void setThrottlingDecrease(double throttlingDecrease) {
 		check(throttlingDecrease >= 0.0 && throttlingDecrease <= 1.0);
 		this.throttlingDecrease = throttlingDecrease;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getSmoothingWindow() {
 		return smoothingWindow;
 	}
 
-	@Override
+	@JmxAttribute
 	public void setSmoothingWindow(int smoothingWindow) {
 		check(smoothingWindow > 0);
 		this.smoothingWindow = smoothingWindow;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getTotalRequests() {
 		return infoTotalRequests;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getTotalRequestsThrottled() {
 		return infoTotalRequestsThrottled;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getTotalProcessed() {
 		return infoTotalRequests - infoTotalRequestsThrottled;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getTotalTimeMillis() {
 		return infoTotalTimeMillis;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getRounds() {
 		return infoRounds;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getRoundsZeroThrottling() {
 		return infoRoundsZeroThrottling;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getRoundsExceededTargetTime() {
 		return infoRoundsExceededTargetTime;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getInfoRoundsGc() {
 		return infoRoundsGc;
 	}
 
-	@Override
-	public float getThrottling() {
+	@JmxAttribute
+	public double getThrottling() {
 		return throttling;
 	}
 
-	@Override
+	@JmxAttribute
 	public String getThrottlingStatus() {
 		return toString();
 	}
 
-	@Override
+	@JmxOperation
 	public void resetInfo() {
 		infoTotalRequests = 0;
 		infoTotalRequestsThrottled = 0;

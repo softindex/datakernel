@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream.helper;
 
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
+import io.datakernel.stream.processor.StreamMergeSorterStorage;
 
 import java.util.ArrayList;
 import java.util.HashMap;

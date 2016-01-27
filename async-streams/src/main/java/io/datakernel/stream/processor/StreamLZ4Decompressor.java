@@ -19,6 +19,8 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import net.jpountz.lz4.LZ4Exception;
@@ -34,7 +36,8 @@ import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
 
-public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements StreamLZ4DecompressorMBean {
+@JmxMBean
+public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -251,22 +254,22 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		return outputProducer.inputStreamPosition;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getBytesInput() {
 		return outputProducer.jmxBytesInput;
 	}
 
-	@Override
+	@JmxAttribute
 	public long getBytesOutput() {
 		return outputProducer.jmxBytesOutput;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getBufsInput() {
 		return outputProducer.jmxBufsInput;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getBufsOutput() {
 		return outputProducer.jmxBufsOutput;
 	}

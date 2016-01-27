@@ -22,7 +22,7 @@ import java.nio.charset.Charset;
 /**
  * A buffer to which char sequences and values can be appended.
  */
-public class BufferAppendable implements Appendable {
+public final class BufferAppendable implements Appendable {
 	private byte[] buf;
 	private int pos;
 

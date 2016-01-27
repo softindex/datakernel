@@ -20,6 +20,8 @@ import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.JmxMBean;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.stream.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +30,8 @@ import java.util.*;
 
 import static com.google.common.collect.Iterables.transform;
 
-public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>,
-		AggregationGroupReducerMBean {
+@JmxMBean
+public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
 
 	private final AggregationChunkStorage storage;
@@ -181,7 +183,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		chunksCallback.onException(e);
 	}
 
-	@Override
+	@JmxOperation
 	public void flush() {
 		doNext();
 	}
