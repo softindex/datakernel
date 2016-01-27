@@ -21,6 +21,9 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpUtils;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.DatagramSocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,16 +32,20 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
+import java.util.ArrayList;
+import java.util.List;
 
 import static io.datakernel.dns.DnsCache.DnsCacheQueryResult.*;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static java.util.Arrays.asList;
 
 /**
  * NativeDnsResolver represents asynchronous DNS resolver, which run in Eventloop.
  */
-public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBean {
+@JmxMBean
+public final class NativeDnsResolver implements DnsClient {
 	private final Logger logger = LoggerFactory.getLogger(NativeDnsResolver.class);
 
 	public static final DatagramSocketSettings DEFAULT_DATAGRAM_SOCKET_SETTINGS = defaultDatagramSocketSettings();
@@ -257,17 +264,17 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 		return cache;
 	}
 
-	@Override
+	@JmxAttribute
 	public int getNumberOfCachedDomainNames() {
 		return cache.getNumberOfCachedDomainNames();
 	}
 
-	@Override
+	@JmxAttribute
 	public int getNumberOfCachedExceptions() {
 		return cache.getNumberOfCachedExceptions();
 	}
 
-	@Override
+	@JmxAttribute
 	public int getNumberOfQueriesInProgress() {
 		if (connection == null) {
 			return 0;
@@ -276,41 +283,41 @@ public final class NativeDnsResolver implements DnsClient, NativeDnsResolverMBea
 		}
 	}
 
-	@Override
-	public String[] getDomainNamesBeingResolved() {
+	@JmxAttribute
+	public List<String> getDomainNamesBeingResolved() {
 		if (connection == null) {
-			return new String[0];
+			return new ArrayList<>();
 		} else {
-			return connection.getDomainNamesBeingResolved();
+			return asList(connection.getDomainNamesBeingResolved());
 		}
 	}
 
-	@Override
-	public String[] getAllCacheEntries() {
-		return cache.getAllCacheEntries();
+	@JmxAttribute
+	public List<String> getAllCacheEntries() {
+		return asList(cache.getAllCacheEntries());
 	}
 
-	@Override
-	public String[] getSuccessfullyResolvedDomainNames() {
-		return cache.getSuccessfullyResolvedDomainNames();
+	@JmxAttribute
+	public List<String> getSuccessfullyResolvedDomainNames() {
+		return asList(cache.getSuccessfullyResolvedDomainNames());
 	}
 
-	@Override
-	public String[] getDomainNamesOfFailedRequests() {
-		return cache.getDomainNamesOfFailedRequests();
+	@JmxAttribute
+	public List<String> getDomainNamesOfFailedRequests() {
+		return asList(cache.getDomainNamesOfFailedRequests());
 	}
 
-	@Override
+	@JmxOperation
 	public void emptyCache() {
 		cache.emptyCache();
 	}
 
-	@Override
+	@JmxAttribute
 	public void setMaxTtlMillis(long maxTtlMillis) {
 		cache.setMaxTtlMillis(maxTtlMillis);
 	}
 
-	@Override
+	@JmxAttribute
 	public long getMaxTtlMillis() {
 		return cache.getMaxTtlMillis();
 	}

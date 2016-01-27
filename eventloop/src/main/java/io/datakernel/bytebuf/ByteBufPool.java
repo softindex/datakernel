@@ -16,7 +16,9 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
+import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.util.ConcurrentStack;
 
 import javax.management.ObjectName;
@@ -305,7 +307,7 @@ public final class ByteBufPool {
 		}
 
 		@JmxAttribute
-		public JmxStats<?> getPoolSlabs() {
+		public List<String> getPoolSlabs() {
 			assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
 			List<String> result = new ArrayList<>(slabs.length + 1);
 			result.add("SlotSize,Created,InPool,Total(Kb)");
@@ -314,7 +316,7 @@ public final class ByteBufPool {
 				int count = slabs[i].size();
 				result.add((slotSize & 0xffffffffL) + "," + created[i] + "," + count + "," + slotSize * count / 1024);
 			}
-			return JmxStatsWrappers.forListString(result);
+			return result;
 		}
 	}
 }
