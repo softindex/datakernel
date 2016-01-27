@@ -49,9 +49,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static final JmxMBeans factory = new JmxMBeans();
 
-	private JmxMBeans() {
-
-	}
+	private JmxMBeans() {}
 
 	public static JmxMBeans factory() {
 		return factory;
@@ -76,6 +74,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		MBeanInfo mBeanInfo = composeMBeanInfo(first, enableRefresh);
 		Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType = fetchNameToJmxStatsType(first);
 		Map<String, MBeanAttributeInfo> nameToSimpleAttribute = fetchNameToSimpleAttribute(first);
+		Set<String> listAttributeNames = fetchNameToListAttributeGetter(first).keySet();
 
 		boolean eventloopMonitorables = hasEventloop(first);
 		List<Eventloop> eventloops = new ArrayList<>();
@@ -102,7 +101,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		return new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType, nameToSimpleAttribute,
-				DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW);
+				listAttributeNames, DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW);
 	}
 
 	private static List<SimpleAttribute> collectWritableAttributes(Object monitorable) {
@@ -121,7 +120,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static Map<String, MBeanAttributeInfo> fetchNameToSimpleAttribute(Object monitorable) {
-		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributeInfo(monitorable);
+		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributesInfo(monitorable);
 		Map<String, MBeanAttributeInfo> nameToSimpleAttribute = new HashMap<>();
 		for (MBeanAttributeInfo simpleAttr : simpleAttrs) {
 			nameToSimpleAttribute.put(simpleAttr.getName(), simpleAttr);
@@ -146,8 +145,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		}
 
-		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributeInfo(monitorable);
+		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributesInfo(monitorable);
 		attributes.addAll(simpleAttrs);
+
+		List<MBeanAttributeInfo> listAttrs = fetchListAttributesInfo(monitorable);
+		attributes.addAll(listAttrs);
 
 		if (enableRefresh) {
 			addAttributesForRefreshControl(monitorable, attributes);
@@ -159,7 +161,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	/**
 	 * Simple attributes means that attribute's type is of one of the following: boolean, int, long, double, String
 	 */
-	private static List<MBeanAttributeInfo> fetchSimpleAttributeInfo(Object monitorable) {
+	private static List<MBeanAttributeInfo> fetchSimpleAttributesInfo(Object monitorable) {
 		List<MBeanAttributeInfo> attrList = new ArrayList<>();
 		Method[] methods = monitorable.getClass().getMethods();
 		for (Method method : methods) {
@@ -170,6 +172,25 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				MBeanAttributeInfo attrInfo =
 						new MBeanAttributeInfo(name, type, ATTRIBUTE_DEFAULT_DESCRIPTION,
 								true, writable, false);
+				attrList.add(attrInfo);
+			}
+		}
+		return attrList;
+	}
+
+	/**
+	 * fetch attributes of type java.util.List
+	 */
+	private static List<MBeanAttributeInfo> fetchListAttributesInfo(Object monitorable) {
+		List<MBeanAttributeInfo> attrList = new ArrayList<>();
+		Method[] methods = monitorable.getClass().getMethods();
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfList(method)) {
+				String name = extractFieldNameFromGetter(method);
+				String type = String[].class.getName();
+				MBeanAttributeInfo attrInfo =
+						new MBeanAttributeInfo(name, type, ATTRIBUTE_DEFAULT_DESCRIPTION,
+								true, false, false);
 				attrList.add(attrInfo);
 			}
 		}
@@ -412,9 +433,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Map<String, Method> nameToSimpleAttributeGetter = fetchNameToSimpleAttributeGetter(monitorable);
 		Map<String, Method> nameToSimpleAttributeSetter =
 				fetchNameToSimpleAttributeSetter(monitorable, writableAttributes);
+		Map<String, Method> nameToListAttributeGetter = fetchNameToListAttributeGetter(monitorable);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(monitorable);
-		return new JmxMonitorableWrapper(monitorable, nameToJmxStatsGetter,
+		return new JmxMonitorableWrapper(monitorable,
+				nameToJmxStatsGetter,
 				nameToSimpleAttributeGetter, nameToSimpleAttributeSetter,
+				nameToListAttributeGetter,
 				opkeyToMethod, statsRefresher);
 	}
 
@@ -510,17 +534,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final List<JmxMonitorableWrapper> wrappers;
 		private final Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType;
 		private final Map<String, MBeanAttributeInfo> nameToSimpleAttribute;
+		private final Set<String> listAttributes;
 		private double refreshPeriod;
 		private double smoothingWindow;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<JmxMonitorableWrapper> wrappers,
 		                              Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType,
 		                              Map<String, MBeanAttributeInfo> nameToSimpleAttribute,
+		                              Set<String> listAttributes,
 		                              double refreshPeriod, double smoothingWindow) {
 			this.mBeanInfo = mBeanInfo;
 			this.wrappers = wrappers;
 			this.nameToJmxStatsType = nameToJmxStatsType;
 			this.nameToSimpleAttribute = nameToSimpleAttribute;
+			this.listAttributes = listAttributes;
 			this.refreshPeriod = refreshPeriod;
 			this.smoothingWindow = smoothingWindow;
 		}
@@ -564,6 +591,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			} else if (nameToSimpleAttribute.containsKey(attribute)) {
 				// attribute is of simple type
 				return aggregateSimpleTypeAttribute(attribute);
+			} else if (listAttributes.contains(attribute)) {
+				return aggregateListAttribute(attribute);
 			} else {
 				throw new AttributeNotFoundException();
 			}
@@ -580,6 +609,21 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				}
 			}
 			return attrValue;
+		}
+
+		private String[] aggregateListAttribute(String attrName)
+				throws AttributeNotFoundException, ReflectionException {
+			List<String> allItems = new ArrayList<>();
+			for (JmxMonitorableWrapper wrapper : wrappers) {
+				List<?> currentList = wrapper.getListAttributeValue(attrName);
+				if (currentList != null) {
+					for (Object o : currentList) {
+						String item = o != null ? o.toString() : "null";
+						allItems.add(item);
+					}
+				}
+			}
+			return allItems.toArray(new String[allItems.size()]);
 		}
 
 		@Override
@@ -694,17 +738,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final Map<String, Method> jmxStatsGetters;
 		private final Map<String, Method> simpleAttributeGetters;
 		private final Map<String, Method> simpleAttributeSetters;
+		private final Map<String, Method> listAttributeGetters;
 		private final Map<OperationKey, Method> operationKeyToMethod;
 		private final StatsRefresher statsRefresher;
 
 		public JmxMonitorableWrapper(Object monitorable, Map<String, Method> jmxStatsGetters,
 		                             Map<String, Method> simpleAttributeGetters,
 		                             Map<String, Method> simpleAttributeSetters,
+		                             Map<String, Method> listAttributeGetters,
 		                             Map<OperationKey, Method> operationKeyToMethod, StatsRefresher statsRefresher) {
 			this.monitorable = monitorable;
 			this.jmxStatsGetters = jmxStatsGetters;
 			this.simpleAttributeGetters = simpleAttributeGetters;
 			this.simpleAttributeSetters = simpleAttributeSetters;
+			this.listAttributeGetters = listAttributeGetters;
 			this.operationKeyToMethod = operationKeyToMethod;
 			this.statsRefresher = statsRefresher;
 		}
@@ -728,6 +775,18 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 			try {
 				return simpleAttributeGetter.invoke(monitorable);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				throw new ReflectionException(e);
+			}
+		}
+
+		public List<?> getListAttributeValue(String attrName) throws AttributeNotFoundException, ReflectionException {
+			Method listAttributeGetter = listAttributeGetters.get(attrName);
+			if (listAttributeGetter == null) {
+				throw new AttributeNotFoundException();
+			}
+			try {
+				return (List<?>) listAttributeGetter.invoke(monitorable);
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new ReflectionException(e);
 			}

@@ -18,10 +18,7 @@ package io.datakernel.jmx;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -54,6 +51,12 @@ public final class Utils {
 		boolean hasNoArgs = method.getParameterTypes().length == 0;
 		// TODO(vmykhalko): maybe also condisder "is*" getter for boolean instead of "get*" getter ?
 		return isGetter(method) && returnsSimpleType && hasNoArgs;
+	}
+
+	public static boolean isGetterOfList(Method method) {
+		boolean returnsList = List.class.isAssignableFrom(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsList && hasNoArgs;
 	}
 
 	public static boolean isGetter(Method method) {
@@ -93,6 +96,18 @@ public final class Utils {
 		Method[] methods = objectWithJmxStats.getClass().getMethods();
 		for (Method method : methods) {
 			if (isGetterOfSimpleType(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+				String currentAttrName = extractFieldNameFromGetter(method);
+				attributeToJmxStatsGetter.put(currentAttrName, method);
+			}
+		}
+		return attributeToJmxStatsGetter;
+	}
+
+	public static Map<String, Method> fetchNameToListAttributeGetter(Object objectWithJmxStats) {
+		Map<String, Method> attributeToJmxStatsGetter = new HashMap<>();
+		Method[] methods = objectWithJmxStats.getClass().getMethods();
+		for (Method method : methods) {
+			if (isGetterOfList(method) && method.isAnnotationPresent(JmxAttribute.class)) {
 				String currentAttrName = extractFieldNameFromGetter(method);
 				attributeToJmxStatsGetter.put(currentAttrName, method);
 			}
