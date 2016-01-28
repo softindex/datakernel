@@ -599,13 +599,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		private Object aggregateSimpleTypeAttribute(String attrName)
-				throws AttributeNotFoundException, ReflectionException {
+				throws AttributeNotFoundException, ReflectionException, MBeanException {
 			JmxMonitorableWrapper first = wrappers.get(0);
 			Object attrValue = first.getSimpleAttributeValue(attrName);
 			for (int i = 1; i < wrappers.size(); i++) {
 				Object currentAttrValue = wrappers.get(i).getSimpleAttributeValue(attrName);
 				if (!Objects.equals(attrValue, currentAttrValue)) {
-					return null;
+					throw new MBeanException(new Exception("Attribute values in pool instances are different"));
 				}
 			}
 			return attrValue;

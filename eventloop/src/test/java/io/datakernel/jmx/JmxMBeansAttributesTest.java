@@ -84,18 +84,46 @@ public class JmxMBeansAttributesTest {
 	}
 
 	@Test
-	public void itShouldReturnNullIfValuesDifferInInstancesOfPoolOfMonitorables() throws Exception {
+	public void itShouldThrowExceptionIfValuesDifferInInstancesOfPoolOfMonitorables() throws Exception {
 		MonitorableWithIntegerAttribute monitorable_1 =
 				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
 		MonitorableWithIntegerAttribute monitorable_2 =
 				new MonitorableWithIntegerAttribute(false, 250, 25000L, 5.0, "data-2");
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
 
-		assertEquals(null, mbean.getAttribute("booleanAttr"));
-		assertEquals(null, mbean.getAttribute("intAttr"));
-		assertEquals(null, mbean.getAttribute("longAttr"));
-		assertEquals(null, mbean.getAttribute("doubleAttr"));
-		assertEquals(null, mbean.getAttribute("strAttr"));
+		int exceptionsThrown = 0;
+
+		try {
+			mbean.getAttribute("booleanAttr");
+		} catch (MBeanException mbeanException) {
+			exceptionsThrown++;
+		}
+
+		try {
+			mbean.getAttribute("intAttr");
+		} catch (MBeanException mbeanException) {
+			exceptionsThrown++;
+		}
+
+		try {
+			mbean.getAttribute("longAttr");
+		} catch (MBeanException mbeanException) {
+			exceptionsThrown++;
+		}
+
+		try {
+			mbean.getAttribute("doubleAttr");
+		} catch (MBeanException mbeanException) {
+			exceptionsThrown++;
+		}
+
+		try {
+			mbean.getAttribute("strAttr");
+		} catch (MBeanException mbeanException) {
+			exceptionsThrown++;
+		}
+
+		assertEquals(5, exceptionsThrown);
 	}
 
 	@Test
