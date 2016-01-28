@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.jmx.Utils.isJmxMBean;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -49,7 +50,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 		checkNotNull(singletonInstance);
 		checkNotNull(key);
 
-		if (!isJmxMBean(singletonInstance)) {
+		if (!isJmxMBean(singletonInstance.getClass())) {
 			logger.info(format("Instance with key %s was not registered to jmx, " +
 					"because its type is not annotated with @JmxMBean", key.toString()));
 			return;
@@ -100,7 +101,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 	public void onSingletonStop(Key<?> key, Object singletonInstance) {
 		checkNotNull(key);
 
-		if (isJmxMBean(singletonInstance)) {
+		if (isJmxMBean(singletonInstance.getClass())) {
 			try {
 				String name = createNameForKey(key);
 				ObjectName objectName = new ObjectName(name);
@@ -129,7 +130,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 			return;
 		}
 
-		if (!isJmxMBean(poolInstances.get(0))) {
+		if (!isJmxMBean(poolInstances.get(0).getClass())) {
 			logger.info(format("Pool of instances with key %s was not registered to jmx, " +
 					"because instances' type is not annotated with @JmxMBean", key.toString()));
 			return;
@@ -194,7 +195,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 			return;
 		}
 
-		if (!isJmxMBean(poolInstances.get(0))) {
+		if (!isJmxMBean(poolInstances.get(0).getClass())) {
 			return;
 		}
 
@@ -228,10 +229,6 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 					"with key %s.", key.toString());
 			logger.error(msg, e);
 		}
-	}
-
-	private static boolean isJmxMBean(Object instance) {
-		return instance.getClass().isAnnotationPresent(JmxMBean.class);
 	}
 
 	private boolean allInstancesAreOfSameType(List<?> instances) {

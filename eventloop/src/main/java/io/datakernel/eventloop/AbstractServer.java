@@ -22,6 +22,7 @@ import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxMBean;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.ExceptionMarker;
@@ -46,6 +47,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * @param <S> type of AbstractNioServer which extends from it
  */
+@JmxMBean
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer {
 	private static final Logger logger = getLogger(AbstractServer.class);
 

@@ -393,7 +393,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static boolean allObjectsAreAnnotatedWithJmxMBean(List<?> objects) {
 		for (Object object : objects) {
-			if (!object.getClass().isAnnotationPresent(JmxMBean.class)) {
+			if (!isJmxMBean(object.getClass())) {
 				return false;
 			}
 		}
