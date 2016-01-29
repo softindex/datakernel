@@ -59,7 +59,7 @@ public class JmxRegistryTest {
 		}});
 
 		Key<?> key_1 = Key.get(ServiceStub.class);
-		jmxRegistry.onSingletonStart(key_1, service);
+		jmxRegistry.registerSingleton(key_1, service);
 	}
 
 	@Test
@@ -77,7 +77,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.onSingletonStart(key, service);
+		jmxRegistry.registerSingleton(key, service);
 	}
 
 	@Test
@@ -94,7 +94,7 @@ public class JmxRegistryTest {
 
 		Group groupAnnotation = createGroupAnnotation("major");
 		Key<?> key = Key.get(ServiceStub.class, groupAnnotation);
-		jmxRegistry.onSingletonStart(key, service);
+		jmxRegistry.registerSingleton(key, service);
 	}
 
 	@Test
@@ -112,7 +112,7 @@ public class JmxRegistryTest {
 
 		ComplexAnnotation complexAnnotation = createComplexAnnotation(1, "thread-one");
 		Key<?> key = Key.get(ServiceStub.class, complexAnnotation);
-		jmxRegistry.onSingletonStart(key, service);
+		jmxRegistry.registerSingleton(key, service);
 
 	}
 
@@ -126,7 +126,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.onSingletonStop(key, service);
+		jmxRegistry.unregisterSingleton(key, service);
 	}
 
 	@Test
@@ -171,7 +171,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.onWorkersStart(key, new WorkerPool(3), asList(worker_1, worker_2, worker_3));
+		jmxRegistry.registerWorkers(key, asList(worker_1, worker_2, worker_3));
 	}
 
 	@Test
@@ -197,7 +197,7 @@ public class JmxRegistryTest {
 
 		BasicService basicServiceAnnotation = createBasicServiceAnnotation();
 		Key<?> key = Key.get(ServiceStub.class, basicServiceAnnotation);
-		jmxRegistry.onWorkersStop(key, new WorkerPool(3), asList(worker_1, worker_2, worker_3));
+		jmxRegistry.unregisterWorkers(key, asList(worker_1, worker_2, worker_3));
 	}
 
 	// annotations

@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
-import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.WorkerPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +33,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
-public final class JmxRegistry implements ServiceGraphModule.Listener {
+public final class JmxRegistry {
 	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
 
 	private final MBeanServer mbs;
@@ -45,8 +44,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 		this.mbeanFactory = mbeanFactory;
 	}
 
-	@Override
-	public void onSingletonStart(Key<?> key, Object singletonInstance) {
+	public void registerSingleton(Key<?> key, Object singletonInstance) {
 		checkNotNull(singletonInstance);
 		checkNotNull(key);
 
@@ -97,8 +95,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 		}
 	}
 
-	@Override
-	public void onSingletonStop(Key<?> key, Object singletonInstance) {
+	public void unregisterSingleton(Key<?> key, Object singletonInstance) {
 		checkNotNull(key);
 
 		if (isJmxMBean(singletonInstance.getClass())) {
@@ -114,8 +111,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 		}
 	}
 
-	@Override
-	public void onWorkersStart(Key<?> key, WorkerPool workerPool, List<?> poolInstances) {
+	public void registerWorkers(Key<?> key, List<?> poolInstances) {
 		checkNotNull(poolInstances);
 		checkNotNull(key);
 
@@ -183,8 +179,7 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 		}
 	}
 
-	@Override
-	public void onWorkersStop(Key<?> key, WorkerPool workerPool, List<?> poolInstances) {
+	public void unregisterWorkers(Key<?> key, List<?> poolInstances) {
 		checkNotNull(key);
 
 		if (poolInstances.size() == 0) {
@@ -288,7 +283,6 @@ public final class JmxRegistry implements ServiceGraphModule.Listener {
 			name += "type=" + type.getSimpleName();
 		} else {
 			Class<? extends Annotation> annotationType = annotation.annotationType();
-//			Method[] annotationElements = annotationType.getDeclaredMethods();
 			Method[] annotationElements = filterNonEmptyElements(annotation);
 			if (annotationElements.length == 0) { // annotation without elements
 				name += "type=" + type.getSimpleName() + ",annotation=" + annotationType.getSimpleName();

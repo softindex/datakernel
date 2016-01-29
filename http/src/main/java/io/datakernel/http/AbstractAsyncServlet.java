@@ -18,10 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +29,7 @@ import java.util.concurrent.RejectedExecutionException;
  * For using this servlet you should override method doServeAsync(, in this method must be logic
  * for handling requests and creating result.
  */
+@JmxMBean
 public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 	protected static final Logger logger = LoggerFactory.getLogger(AbstractAsyncServlet.class);
 	public static final RejectedExecutionException THROTTLED_EXCEPTION = new RejectedExecutionException("Throttled");
@@ -50,6 +48,13 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 
 		public RequestExceptionDetails(HttpRequest request) {
 			this.requestUrl = request.toString();
+		}
+
+		@Override
+		public String toString() {
+			return "RequestExceptionDetails{" +
+					"requestUrl='" + requestUrl + '\'' +
+					'}';
 		}
 	}
 
@@ -133,6 +138,10 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 
 	protected HttpResponse formatRejectedResponse(HttpRequest request, RejectedExecutionException e) {
 		return formatErrorResponse(request, e);
+	}
+
+	public Eventloop getEventloop() {
+		return eventloop;
 	}
 
 	@JmxAttribute

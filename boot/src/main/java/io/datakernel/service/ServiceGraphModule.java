@@ -25,9 +25,12 @@ import com.google.common.util.concurrent.SettableFuture;
 import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.*;
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
+import io.datakernel.jmx.JmxMBeans;
+import io.datakernel.jmx.JmxRegistry;
 import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPoolObjects;
@@ -36,6 +39,7 @@ import org.slf4j.Logger;
 import javax.sql.DataSource;
 import java.io.Closeable;
 import java.lang.annotation.Annotation;
+import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.*;
@@ -337,6 +341,36 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 	}
 
+	private void registerJmxMBeans(Injector injector) {
+		JmxRegistry jmxRegistry = new JmxRegistry(ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory());
+
+		// register ByteBufPool
+		Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
+		jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats());
+
+		// register singletons
+		for (Binding<?> binding : injector.getAllBindings().values()) {
+			Key<?> key = binding.getKey();
+			if (isSingleton(binding)) {
+				Object instance = injector.getInstance(key);
+				if (instance != null) {
+					jmxRegistry.registerSingleton(key, instance);
+				}
+			}
+		}
+
+		// register workers
+		for (Binding<?> binding : injector.getAllBindings().values()) {
+			Key<?> key = binding.getKey();
+			if (WorkerPoolModule.isWorkerScope(binding)) {
+				WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
+				if (poolObjects != null) {
+					jmxRegistry.registerWorkers(key, poolObjects.getObjects());
+				}
+			}
+		}
+	}
+
 	private void processDependencies(Key<?> key, Injector injector, ServiceGraph graph) {
 		Binding<?> binding = injector.getBinding(key);
 		if (!(binding instanceof HasDependencies))
@@ -406,6 +440,7 @@ public final class ServiceGraphModule extends AbstractModule {
 							(poolObjects != null ? " [" + poolObjects.getWorkerPool().getWorkersCount() + "]" : "");
 				}
 			};
+			registerJmxMBeans(injector);
 			createGuiceGraph(injector, serviceGraph);
 			serviceGraph.removeIntermediateNodes();
 			logger.info("Services graph: \n" + serviceGraph);

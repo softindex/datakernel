@@ -23,13 +23,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
-import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncHttpServlet;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
-import io.datakernel.jmx.DynamicMBeanFactory;
-import io.datakernel.jmx.JmxMBeans;
-import io.datakernel.jmx.JmxRegistry;
+import io.datakernel.http.*;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.ByteBufStrings;
@@ -40,12 +34,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.management.MBeanServer;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.management.ManagementFactory;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.List;
@@ -69,17 +61,7 @@ public class HelloWorldGuiceTest {
 	public static class TestModule extends AbstractModule {
 		@Override
 		protected void configure() {
-			MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-			DynamicMBeanFactory mbeanFactory = JmxMBeans.factory();
-			JmxRegistry jmxRegistry = new JmxRegistry(mbeanServer, mbeanFactory);
-
-			// register ByteBufPool
-			Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
-			jmxRegistry.onSingletonStart(byteBufPoolKey, ByteBufPool.getStats());
-
-			ServiceGraphModule module = ServiceGraphModule.defaultInstance();
-			module.addListener(jmxRegistry);
-			install(module);
+			install(ServiceGraphModule.defaultInstance());
 		}
 
 		@Provides
@@ -112,17 +94,21 @@ public class HelloWorldGuiceTest {
 
 		@Provides
 		@Worker
-		AsyncHttpServer workerHttpServer(@Worker Eventloop eventloop, @WorkerId final int workerId) {
+		AsyncHttpServer workerHttpServer(@Worker Eventloop eventloop, @Worker AsyncHttpServlet servlet) {
+			return new AsyncHttpServer(eventloop, servlet);
+		}
 
-			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
+		@Provides
+		@Worker
+		AsyncHttpServlet servlet(@Worker Eventloop eventloop, @WorkerId final int workerId) {
+			return new AbstractAsyncServlet(eventloop) {
 				@Override
-				public void serveAsync(HttpRequest request,
-				                       ResultCallback<HttpResponse> callback) {
+				protected void doServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
 					HttpResponse httpResponse = HttpResponse.create(200);
 					httpResponse.body(ByteBuf.wrap(ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId)));
 					callback.onResult(httpResponse);
 				}
-			});
+			};
 		}
 
 	}
