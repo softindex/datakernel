@@ -27,7 +27,7 @@ public abstract class MapStats<K, S extends JmxStats<S>> implements JmxStats<Map
 
 	private SortedMap<String, TypeAndValue> attributesOfInnerJmxStats;
 
-	protected abstract S createValueJmxStatsInstance();
+	protected abstract S createJmxStatsInstance();
 
 	@Override
 	public void add(MapStats<K, S> other) {
@@ -43,7 +43,10 @@ public abstract class MapStats<K, S extends JmxStats<S>> implements JmxStats<Map
 
 		// add stats of unique other keys
 		for (K uniqueOtherKey : uniqueOtherKeys) {
-			keyToStats.put(uniqueOtherKey, other.keyToStats.get(uniqueOtherKey));
+			// create new instance to avoid side-effects
+			S accumulator = createJmxStatsInstance();
+			accumulator.add(other.keyToStats.get(uniqueOtherKey));
+			keyToStats.put(uniqueOtherKey, accumulator);
 		}
 
 		// aggregate stats of common keys
@@ -62,7 +65,7 @@ public abstract class MapStats<K, S extends JmxStats<S>> implements JmxStats<Map
 	@Override
 	public SortedMap<String, TypeAndValue> getAttributes() {
 		if (attributesOfInnerJmxStats == null) {
-			attributesOfInnerJmxStats = createValueJmxStatsInstance().getAttributes();
+			attributesOfInnerJmxStats = createJmxStatsInstance().getAttributes();
 		}
 		try {
 			SortedMap<String, TypeAndValue> distributedStatsAttributes = new TreeMap<>();
@@ -100,7 +103,7 @@ public abstract class MapStats<K, S extends JmxStats<S>> implements JmxStats<Map
 		columnNames.add(KEY_NAME);
 		columnTypes.add(SimpleType.STRING);
 		if (attributesOfInnerJmxStats == null) {
-			attributesOfInnerJmxStats = createValueJmxStatsInstance().getAttributes();
+			attributesOfInnerJmxStats = createJmxStatsInstance().getAttributes();
 		}
 		for (String attrName : attributesOfInnerJmxStats.keySet()) {
 			columnNames.add(attrName);

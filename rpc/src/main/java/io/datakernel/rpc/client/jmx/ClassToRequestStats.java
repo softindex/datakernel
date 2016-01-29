@@ -20,7 +20,7 @@ import io.datakernel.jmx.MapStats;
 
 public final class ClassToRequestStats extends MapStats<Class<?>, RpcRequestStats> {
 	@Override
-	protected RpcRequestStats createValueJmxStatsInstance() {
+	protected RpcRequestStats createJmxStatsInstance() {
 		return new RpcRequestStats();
 	}
 }

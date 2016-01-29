@@ -52,7 +52,7 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 	private static final class ExceptionStatsMap<K> extends MapStats<K, ExceptionStats> {
 
 		@Override
-		protected ExceptionStats createValueJmxStatsInstance() {
+		protected ExceptionStats createJmxStatsInstance() {
 			return new ExceptionStats();
 		}
 	}

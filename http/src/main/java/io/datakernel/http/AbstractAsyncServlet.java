@@ -41,22 +41,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 	private EventStats requests = new EventStats();
 	private EventStats requestsThrottled = new EventStats();
 	private final ExceptionStats exceptions = new ExceptionStats();
-
-	private static class RequestExceptionDetails {
-		private final String requestUrl;
-		//		private final ByteBuf requestBody; TODO (vmykhalko)
-
-		public RequestExceptionDetails(HttpRequest request) {
-			this.requestUrl = request.toString();
-		}
-
-		@Override
-		public String toString() {
-			return "RequestExceptionDetails{" +
-					"requestUrl='" + requestUrl + '\'' +
-					'}';
-		}
-	}
+	private final HttpCodeStats httpCodeStats = new HttpCodeStats();
 
 	protected AbstractAsyncServlet(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -77,18 +62,56 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 	 */
 	@Override
 	public final void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+		if (isMonitoring(request)) {
+			serveMonitoredRequest(request, callback);
+		} else {
+			serveNotMonitoredRequest(request, callback);
+		}
+	}
+
+	private void serveMonitoredRequest(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
 		requests.recordEvent();
+
 		if (isRequestThrottled(request)) {
 			requestsThrottled.recordEvent();
 			handleRejectedRequest(request, THROTTLED_EXCEPTION, callback);
 			return;
 		}
+
 		final long timestamp = eventloop.currentTimeMillis();
 		doServeAsync(request, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				int duration = (int) (eventloop.currentTimeMillis() - timestamp);
 				timings.recordValue(duration);
+				if (result != null) {
+					int code = result.getCode();
+					HttpStats stats = ensureStatsForCode(code);
+					stats.getRequests().recordEvent();
+					stats.getTimings().recordValue(duration);
+				}
+
+				callback.onResult(result);
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				exceptions.recordException(exception, extractUrl(request), eventloop.currentTimeMillis());
+				handleException(request, exception, callback);
+			}
+		});
+
+	}
+
+	private void serveNotMonitoredRequest(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+		if (isRequestThrottled(request)) {
+			handleRejectedRequest(request, THROTTLED_EXCEPTION, callback);
+			return;
+		}
+
+		doServeAsync(request, new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(HttpResponse result) {
 				callback.onResult(result);
 			}
 
@@ -97,6 +120,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 				handleException(request, exception, callback);
 			}
 		});
+
 	}
 
 	/**
@@ -112,7 +136,6 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 		if (logger.isErrorEnabled()) {
 			logger.error("Exception on {}: {}", request, e.toString());
 		}
-		exceptions.recordException(e, new RequestExceptionDetails(request), eventloop.currentTimeMillis());
 		response = formatErrorResponse(request, e);
 		if (response != null) {
 			callback.onResult(response);
@@ -140,6 +163,22 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 		return formatErrorResponse(request, e);
 	}
 
+	// jmx
+	protected boolean isMonitoring(HttpRequest request) {
+		return true;
+	}
+
+	private static String extractUrl(HttpRequest request) {
+		return "url: " + request.toString();
+	}
+
+	private HttpStats ensureStatsForCode(int code) {
+		if (!httpCodeStats.containsKey(code)) {
+			httpCodeStats.put(code, new HttpStats());
+		}
+		return httpCodeStats.get(code);
+	}
+
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
@@ -162,5 +201,32 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 	@JmxAttribute
 	public final ValueStats getTimings() {
 		return timings;
+	}
+
+	@JmxAttribute
+	public final HttpCodeStats getHttpCodeStats() {
+		return httpCodeStats;
+	}
+
+	public static final class HttpCodeStats extends MapStats<Integer, HttpStats> {
+		@Override
+		protected HttpStats createJmxStatsInstance() {
+			return new HttpStats();
+		}
+	}
+
+	public static final class HttpStats extends AbstractCompositeStats<HttpStats> {
+		private ValueStats timings = new ValueStats();
+		private EventStats requests = new EventStats();
+
+		@JmxAttribute
+		public ValueStats getTimings() {
+			return timings;
+		}
+
+		@JmxAttribute
+		public EventStats getRequests() {
+			return requests;
+		}
 	}
 }

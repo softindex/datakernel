@@ -22,7 +22,7 @@ import java.net.InetSocketAddress;
 
 public final class AddressToConnectStats extends MapStats<InetSocketAddress, RpcConnectStats> {
 	@Override
-	protected RpcConnectStats createValueJmxStatsInstance() {
+	protected RpcConnectStats createJmxStatsInstance() {
 		return new RpcConnectStats();
 	}
 }

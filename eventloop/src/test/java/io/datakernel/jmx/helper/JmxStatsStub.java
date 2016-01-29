@@ -36,6 +36,14 @@ public final class JmxStatsStub implements JmxStats<JmxStatsStub> {
 		++count;
 	}
 
+	public long getSum() {
+		return sum;
+	}
+
+	public int getCount() {
+		return count;
+	}
+
 	public long getLastTimestamp() {
 		return lastTimestamp;
 	}

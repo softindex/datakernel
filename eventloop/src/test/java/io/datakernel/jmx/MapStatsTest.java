@@ -96,6 +96,13 @@ public class MapStatsTest {
 		CompositeData rowWithKey_3 = tabularData.get(new Object[]{"key-3"});
 		assertEquals(71L, (long) rowWithKey_3.get("sum"));
 		assertEquals(1, (int) rowWithKey_3.get("count"));
+
+		// check for side-effects absence
+		assertEquals(52L, dStats_1.get("key-1").getSum());
+		assertEquals(187L, dStats_1.get("key-2").getSum());
+
+		assertEquals(33L + 15L, dStats_2.get("key-2").getSum());
+		assertEquals(71L, dStats_2.get("key-3").getSum());
 	}
 
 	@Test
@@ -121,7 +128,7 @@ public class MapStatsTest {
 	public static final class JmxStatsStubMapStats extends MapStats<String, JmxStatsStub> {
 
 		@Override
-		protected JmxStatsStub createValueJmxStatsInstance() {
+		protected JmxStatsStub createJmxStatsInstance() {
 			return new JmxStatsStub();
 		}
 	}
