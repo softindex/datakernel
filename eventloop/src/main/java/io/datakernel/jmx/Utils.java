@@ -60,6 +60,12 @@ public final class Utils {
 		return isGetter(method) && returnsList && hasNoArgs;
 	}
 
+	public static boolean isGetterOfArray(Method method) {
+		boolean returnsArray = Object[].class.isAssignableFrom(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsArray && hasNoArgs;
+	}
+
 	public static boolean isGetterOfThrowable(Method method) {
 		boolean returnsThrowable = Throwable.class.isAssignableFrom(method.getReturnType());
 		boolean hasNoArgs = method.getParameterTypes().length == 0;
@@ -115,6 +121,18 @@ public final class Utils {
 		Method[] methods = objectWithJmxStats.getClass().getMethods();
 		for (Method method : methods) {
 			if (isGetterOfList(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+				String currentAttrName = extractFieldNameFromGetter(method);
+				attributeToJmxStatsGetter.put(currentAttrName, method);
+			}
+		}
+		return attributeToJmxStatsGetter;
+	}
+
+	public static Map<String, Method> fetchNameToArrayAttributeGetter(Object objectWithJmxStats) {
+		Map<String, Method> attributeToJmxStatsGetter = new HashMap<>();
+		Method[] methods = objectWithJmxStats.getClass().getMethods();
+		for (Method method : methods) {
+			if (isGetterOfArray(method) && method.isAnnotationPresent(JmxAttribute.class)) {
 				String currentAttrName = extractFieldNameFromGetter(method);
 				attributeToJmxStatsGetter.put(currentAttrName, method);
 			}
