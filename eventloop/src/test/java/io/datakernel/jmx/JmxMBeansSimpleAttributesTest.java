@@ -19,13 +19,13 @@ package io.datakernel.jmx;
 import org.junit.Test;
 
 import javax.management.*;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-public class JmxMBeansAttributesTest {
+public class JmxMBeansSimpleAttributesTest {
 
 	@Test
 	public void itShouldCollectAllJmxAttributesOfBasicTypes() throws Exception {
@@ -171,70 +171,6 @@ public class JmxMBeansAttributesTest {
 		assertEquals(1.5, mbean.getAttribute("doubleAttr"));
 	}
 
-	@Test
-	public void itShouldCollectInfoAboutListAttributes() throws Exception {
-		MonitorableWithList monitorable =
-				new MonitorableWithList(asList(new SimplePOJO("data-10"), new SimplePOJO("data-20")));
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
-
-		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
-		Map<String, MBeanAttributeInfo> nameToAttr = formNameToAttr(mBeanInfo.getAttributes());
-		assertEquals(1, nameToAttr.size());
-
-		MBeanAttributeInfo listAttr = nameToAttr.get("listAttr");
-		// list of objects is represented as array of strings using toString() method
-		assertEquals(String[].class.getName(), listAttr.getType());
-		assertEquals(true, listAttr.isReadable());
-		assertEquals(false, listAttr.isWritable());
-	}
-
-	@Test
-	public void itShouldProperlyReturnsList() throws Exception {
-		SimplePOJO pojo_1 = new SimplePOJO("data-10");
-		SimplePOJO pojo_2 = new SimplePOJO("data-20");
-		MonitorableWithList monitorable =
-				new MonitorableWithList(asList(pojo_1, pojo_2));
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
-
-		String[] expected = new String[]{pojo_1.toString(), pojo_2.toString()};
-		String[] actual = (String[]) mbean.getAttribute("listAttr");
-		assertArrayEquals(expected, actual);
-	}
-
-	@Test
-	public void itShouldProperlyAggregateLists() throws Exception {
-		SimplePOJO pojo_1 = new SimplePOJO("data-10");
-		SimplePOJO pojo_2 = new SimplePOJO("data-20");
-		MonitorableWithList monitorable_1 =
-				new MonitorableWithList(asList(pojo_1, pojo_2));
-
-		SimplePOJO pojo_3 = new SimplePOJO("data-500");
-		MonitorableWithList monitorable_2 =
-				new MonitorableWithList(asList(pojo_3));
-
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
-
-		Set<String> expected = new HashSet<>(asList((String[]) mbean.getAttribute("listAttr")));
-		Set<String> actual = new HashSet<>(asList(pojo_1.toString(), pojo_2.toString(), pojo_3.toString()));
-		assertEquals(expected, actual);
-	}
-
-	@Test
-	public void itShouldIgnoreNullLists() throws Exception {
-		MonitorableWithList monitorable_1 =
-				new MonitorableWithList(null);
-
-		SimplePOJO pojo_1 = new SimplePOJO("data-500");
-		MonitorableWithList monitorable_2 =
-				new MonitorableWithList(asList(pojo_1));
-
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
-
-		Set<String> expected = new HashSet<>(asList((String[]) mbean.getAttribute("listAttr")));
-		Set<String> actual = new HashSet<>(asList(pojo_1.toString()));
-		assertEquals(expected, actual);
-	}
-
 	// helpers
 	public static Map<String, MBeanAttributeInfo> formNameToAttr(MBeanAttributeInfo[] attributes) {
 		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
@@ -297,32 +233,4 @@ public class JmxMBeansAttributesTest {
 			this.strAttr = strAttr;
 		}
 	}
-
-	@JmxMBean
-	public static final class MonitorableWithList {
-		private List<SimplePOJO> listAttr;
-
-		public MonitorableWithList(List<SimplePOJO> listAttr) {
-			this.listAttr = listAttr;
-		}
-
-		@JmxAttribute
-		public List<SimplePOJO> getListAttr() {
-			return listAttr;
-		}
-	}
-
-	public static final class SimplePOJO {
-		private final String name;
-
-		public SimplePOJO(String name) {
-			this.name = name;
-		}
-
-		@Override
-		public String toString() {
-			return "name=" + name;
-		}
-	}
-
 }

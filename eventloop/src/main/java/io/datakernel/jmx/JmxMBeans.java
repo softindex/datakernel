@@ -19,6 +19,7 @@ package io.datakernel.jmx;
 import io.datakernel.eventloop.Eventloop;
 
 import javax.management.*;
+import javax.management.openmbean.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -44,10 +45,19 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String SET_REFRESH_PERIOD_PARAMETER_NAME = "period";
 	private static final String SET_SMOOTHING_WINDOW_PARAMETER_NAME = "window";
 
+	// CompositeData of Throwable
+	private static final String THROWABLE_COMPOSITE_TYPE_NAME = "CompositeDataOfThrowable";
+	private static final String THROWABLE_TYPE_KEY = "type";
+	private static final String THROWABLE_MESSAGE_KEY = "message";
+	private static final String THROWABLE_CAUSE_KEY = "cause";
+	private static final String THROWABLE_STACK_TRACE_KEY = "stackTrace";
+
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
 	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private static final JmxMBeans factory = new JmxMBeans();
+
+	private static CompositeType compositeTypeOfThrowable;
 
 	private JmxMBeans() {}
 
@@ -75,6 +85,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType = fetchNameToJmxStatsType(first);
 		Map<String, MBeanAttributeInfo> nameToSimpleAttribute = fetchNameToSimpleAttribute(first);
 		Set<String> listAttributeNames = fetchNameToListAttributeGetter(first).keySet();
+		Set<String> throwableAttributeNames = fetchNameToThrowableAttributeGetter(first).keySet();
 
 		boolean eventloopMonitorables = hasEventloop(first);
 		List<Eventloop> eventloops = new ArrayList<>();
@@ -101,7 +112,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		return new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType, nameToSimpleAttribute,
-				listAttributeNames, DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW);
+				listAttributeNames, throwableAttributeNames, DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW);
 	}
 
 	private static List<SimpleAttribute> collectWritableAttributes(Object monitorable) {
@@ -151,6 +162,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		List<MBeanAttributeInfo> listAttrs = fetchListAttributesInfo(monitorable);
 		attributes.addAll(listAttrs);
 
+		List<MBeanAttributeInfo> exceptionAttrs = fetchExceptionAttributesInfo(monitorable);
+		attributes.addAll(exceptionAttrs);
+
 		if (enableRefresh) {
 			addAttributesForRefreshControl(monitorable, attributes);
 		}
@@ -195,6 +209,47 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		}
 		return attrList;
+	}
+
+	private static List<MBeanAttributeInfo> fetchExceptionAttributesInfo(Object monitorable) {
+		List<MBeanAttributeInfo> attrList = new ArrayList<>();
+		Method[] methods = monitorable.getClass().getMethods();
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfThrowable(method)) {
+				String name = extractFieldNameFromGetter(method);
+				String type = THROWABLE_COMPOSITE_TYPE_NAME;
+				MBeanAttributeInfo attrInfo =
+						new MBeanAttributeInfo(name, type, ATTRIBUTE_DEFAULT_DESCRIPTION,
+								true, false, false);
+				attrList.add(attrInfo);
+			}
+		}
+		return attrList;
+	}
+
+	private static CompositeType getCompositeTypeOfThrowable() throws OpenDataException {
+		if (compositeTypeOfThrowable == null) {
+			String[] itemNames = new String[]{
+					THROWABLE_TYPE_KEY,
+					THROWABLE_MESSAGE_KEY,
+					THROWABLE_CAUSE_KEY,
+					THROWABLE_STACK_TRACE_KEY
+			};
+			OpenType<?>[] itemTypes = new OpenType<?>[]{
+					SimpleType.STRING,
+					SimpleType.STRING,
+					SimpleType.STRING,
+					new ArrayType<>(1, SimpleType.STRING)
+			};
+
+			compositeTypeOfThrowable = new CompositeType(
+					THROWABLE_COMPOSITE_TYPE_NAME,
+					THROWABLE_COMPOSITE_TYPE_NAME,
+					itemNames,
+					itemNames,
+					itemTypes);
+		}
+		return compositeTypeOfThrowable;
 	}
 
 	/**
@@ -434,11 +489,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Map<String, Method> nameToSimpleAttributeSetter =
 				fetchNameToSimpleAttributeSetter(monitorable, writableAttributes);
 		Map<String, Method> nameToListAttributeGetter = fetchNameToListAttributeGetter(monitorable);
+		Map<String, Method> nameToThrowableAttributeGetter = fetchNameToThrowableAttributeGetter(monitorable);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(monitorable);
 		return new JmxMonitorableWrapper(monitorable,
 				nameToJmxStatsGetter,
 				nameToSimpleAttributeGetter, nameToSimpleAttributeSetter,
 				nameToListAttributeGetter,
+				nameToThrowableAttributeGetter,
 				opkeyToMethod, statsRefresher);
 	}
 
@@ -535,19 +592,21 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType;
 		private final Map<String, MBeanAttributeInfo> nameToSimpleAttribute;
 		private final Set<String> listAttributes;
+		private final Set<String> exceptionAttributes;
 		private double refreshPeriod;
 		private double smoothingWindow;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<JmxMonitorableWrapper> wrappers,
 		                              Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType,
 		                              Map<String, MBeanAttributeInfo> nameToSimpleAttribute,
-		                              Set<String> listAttributes,
+		                              Set<String> listAttributes, Set<String> exceptionAttributes,
 		                              double refreshPeriod, double smoothingWindow) {
 			this.mBeanInfo = mBeanInfo;
 			this.wrappers = wrappers;
 			this.nameToJmxStatsType = nameToJmxStatsType;
 			this.nameToSimpleAttribute = nameToSimpleAttribute;
 			this.listAttributes = listAttributes;
+			this.exceptionAttributes = exceptionAttributes;
 			this.refreshPeriod = refreshPeriod;
 			this.smoothingWindow = smoothingWindow;
 		}
@@ -593,6 +652,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				return aggregateSimpleTypeAttribute(attribute);
 			} else if (listAttributes.contains(attribute)) {
 				return aggregateListAttribute(attribute);
+			} else if (exceptionAttributes.contains(attribute)) {
+				try {
+					return buildCompositeDataForThrowable(aggregateExceptionAttribute(attribute));
+				} catch (OpenDataException e) {
+					throw new MBeanException(
+							e, format("Cannot create CompositeData for Throwable with name \"%s\"", attribute));
+				}
 			} else {
 				throw new AttributeNotFoundException();
 			}
@@ -624,6 +690,37 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				}
 			}
 			return allItems.toArray(new String[allItems.size()]);
+		}
+
+		private Throwable aggregateExceptionAttribute(String attrName)
+				throws AttributeNotFoundException, ReflectionException, MBeanException {
+			JmxMonitorableWrapper first = wrappers.get(0);
+			Throwable throwable = first.getThrowableAttributeValue(attrName);
+			for (int i = 1; i < wrappers.size(); i++) {
+				Throwable currentThrowable = wrappers.get(i).getThrowableAttributeValue(attrName);
+				if (!Objects.equals(throwable, currentThrowable)) {
+					throw new MBeanException(new Exception("Throwables in pool instances are different"));
+				}
+			}
+			return throwable;
+		}
+
+		private CompositeData buildCompositeDataForThrowable(Throwable throwable) throws OpenDataException {
+			Map<String, Object> items = new HashMap<>();
+			if (throwable == null) {
+				items.put(THROWABLE_TYPE_KEY, "");
+				items.put(THROWABLE_MESSAGE_KEY, "");
+				items.put(THROWABLE_CAUSE_KEY, "");
+				items.put(THROWABLE_STACK_TRACE_KEY, new String[0]);
+			} else {
+				items.put(THROWABLE_TYPE_KEY, throwable.getClass().getName());
+				items.put(THROWABLE_MESSAGE_KEY, throwable.getMessage());
+				Throwable cause = throwable.getCause();
+				items.put(THROWABLE_CAUSE_KEY, cause != null ? cause.getClass().getName() : "");
+				String[] stackTrace = MBeanFormat.formatException(throwable);
+				items.put(THROWABLE_STACK_TRACE_KEY, stackTrace);
+			}
+			return new CompositeDataSupport(getCompositeTypeOfThrowable(), items);
 		}
 
 		@Override
@@ -739,6 +836,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final Map<String, Method> simpleAttributeGetters;
 		private final Map<String, Method> simpleAttributeSetters;
 		private final Map<String, Method> listAttributeGetters;
+		private final Map<String, Method> throwableAttributeGetters;
 		private final Map<OperationKey, Method> operationKeyToMethod;
 		private final StatsRefresher statsRefresher;
 
@@ -746,12 +844,14 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		                             Map<String, Method> simpleAttributeGetters,
 		                             Map<String, Method> simpleAttributeSetters,
 		                             Map<String, Method> listAttributeGetters,
+		                             Map<String, Method> throwableAttributeGetters,
 		                             Map<OperationKey, Method> operationKeyToMethod, StatsRefresher statsRefresher) {
 			this.monitorable = monitorable;
 			this.jmxStatsGetters = jmxStatsGetters;
 			this.simpleAttributeGetters = simpleAttributeGetters;
 			this.simpleAttributeSetters = simpleAttributeSetters;
 			this.listAttributeGetters = listAttributeGetters;
+			this.throwableAttributeGetters = throwableAttributeGetters;
 			this.operationKeyToMethod = operationKeyToMethod;
 			this.statsRefresher = statsRefresher;
 		}
@@ -787,6 +887,19 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 			try {
 				return (List<?>) listAttributeGetter.invoke(monitorable);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				throw new ReflectionException(e);
+			}
+		}
+
+		public Throwable getThrowableAttributeValue(String attrName)
+				throws AttributeNotFoundException, ReflectionException {
+			Method throwableAttributeGetter = throwableAttributeGetters.get(attrName);
+			if (throwableAttributeGetter == null) {
+				throw new AttributeNotFoundException();
+			}
+			try {
+				return (Throwable) throwableAttributeGetter.invoke(monitorable);
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new ReflectionException(e);
 			}
