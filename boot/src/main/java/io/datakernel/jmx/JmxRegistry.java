@@ -17,7 +17,6 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
-import io.datakernel.worker.WorkerPool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,19 +47,23 @@ public final class JmxRegistry {
 		checkNotNull(singletonInstance);
 		checkNotNull(key);
 
-		if (!isJmxMBean(singletonInstance.getClass())) {
+		Class<?> instanceClass = singletonInstance.getClass();
+		Object mbean;
+		if (isJmxMBean(instanceClass)) {
+			try {
+				mbean = mbeanFactory.createFor(asList(singletonInstance), true);
+			} catch (Exception e) {
+				String msg = format("Instance with key %s is annotated with @JmxMBean " +
+						"but exception was thrown during attempt to create DynamicMBean", key.toString());
+				logger.error(msg, e);
+				return;
+			}
+		} else if (isStandardMBean(instanceClass) || isMXBean(instanceClass)) {
+			mbean = singletonInstance;
+		} else {
 			logger.info(format("Instance with key %s was not registered to jmx, " +
-					"because its type is not annotated with @JmxMBean", key.toString()));
-			return;
-		}
-
-		DynamicMBean mbean;
-		try {
-			mbean = mbeanFactory.createFor(asList(singletonInstance), true);
-		} catch (Exception e) {
-			String msg = format("Instance with key %s is annotated with @JmxMBean " +
-					"but exception was thrown during attempt to create DynamicMBean", key.toString());
-			logger.error(msg, e);
+					"because its type is not annotated with @JmxMBean " +
+					"and does not implement neither *MBean nor *MXBean interface", key.toString()));
 			return;
 		}
 
@@ -335,5 +338,24 @@ public final class JmxRegistry {
 			filtered.add(method);
 		}
 		return filtered.toArray(new Method[filtered.size()]);
+	}
+
+	private static boolean isStandardMBean(Class<?> clazz) {
+		return classImplementsInterfaceWithNameEndingWith(clazz, "MBean");
+	}
+
+	private static boolean isMXBean(Class<?> clazz) {
+		return classImplementsInterfaceWithNameEndingWith(clazz, "MXBean");
+	}
+
+	private static boolean classImplementsInterfaceWithNameEndingWith(Class<?> clazz, String ending) {
+		String clazzName = clazz.getSimpleName();
+		Class<?>[] interfaces = clazz.getInterfaces();
+		for (Class<?> anInterface : interfaces) {
+			String interfaceName = anInterface.getSimpleName();
+			if (interfaceName.equals(clazzName + ending)) ;
+			return true;
+		}
+		return false;
 	}
 }

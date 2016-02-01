@@ -18,10 +18,6 @@ package io.datakernel.jmx;
 
 import com.google.inject.BindingAnnotation;
 import com.google.inject.Key;
-import io.datakernel.worker.WorkerPool;
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
-import org.hamcrest.Matcher;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
@@ -29,12 +25,11 @@ import org.junit.Test;
 
 import javax.management.DynamicMBean;
 import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
-import javax.management.ObjectName;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
+import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 import static java.util.Arrays.asList;
 
 public class JmxRegistryTest {
@@ -270,24 +265,4 @@ public class JmxRegistryTest {
 	public final class ServiceStub {
 
 	}
-
-	// custom matcher
-	public static Matcher<ObjectName> objectname(final String name) {
-		return new BaseMatcher<ObjectName>() {
-			@Override
-			public boolean matches(Object item) {
-				try {
-					return new ObjectName(name).equals((ObjectName) item);
-				} catch (MalformedObjectNameException e) {
-					throw new RuntimeException(e);
-				}
-			}
-
-			@Override
-			public void describeTo(Description description) {
-				description.appendText("ObjectName: " + name);
-			}
-		};
-	}
-
 }
