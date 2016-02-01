@@ -107,7 +107,6 @@ public class AggregationMetadataStorageSql implements AggregationMetadataStorage
 		}, callback);
 	}
 
-	@Override
 	public long newChunkId() {
 		DSLContext jooq = DSL.using(jooqConfiguration);
 		return jooq

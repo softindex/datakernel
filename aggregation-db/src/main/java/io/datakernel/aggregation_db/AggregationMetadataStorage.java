@@ -34,13 +34,6 @@ public interface AggregationMetadataStorage {
 	void newChunkId(ResultCallback<Long> callback);
 
 	/**
-	 * Synchronously retrieves new unique id for chunk.
-	 *
-	 * @return new chunk id
-	 */
-	long newChunkId(); // TODO (dtkachenko): remove
-
-	/**
 	 * Saves metadata of the given aggregation asynchronously.
 	 *
 	 * @param aggregation aggregation which metadata is to be saved

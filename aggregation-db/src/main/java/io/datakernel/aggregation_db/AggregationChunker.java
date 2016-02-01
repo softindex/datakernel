@@ -34,18 +34,18 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	public AggregationChunker(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
 	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 	                          int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
-		ChunkerTransformer chunkerTransformer = new ChunkerTransformer(eventloop, aggregationId, keys, fields, recordClass,
-				storage, metadataStorage, chunkSize, chunksCallback);
-		setActualConsumer(chunkerTransformer.getInput());
+		Chunker chunker = new Chunker(eventloop, aggregationId, keys, fields, recordClass, storage, metadataStorage,
+				chunkSize, chunksCallback);
+		setActualConsumer(chunker.getInput());
 	}
 
-	private class ChunkerTransformer extends AbstractStreamTransformer_1_1<T, T> {
+	private class Chunker extends AbstractStreamTransformer_1_1<T, T> {
 		private InputConsumer inputConsumer;
 		private OutputProducer outputProducer;
 
-		protected ChunkerTransformer(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
-		                             Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-		                             int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+		protected Chunker(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
+		                  Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
+		                  int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 			super(eventloop);
 			this.outputProducer = new OutputProducer();
 			this.inputConsumer = new InputConsumer(aggregationId, keys, fields, recordClass,
@@ -53,25 +53,25 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		}
 
 		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
-			private long newId;
 			private final String aggregationId;
 			private final List<String> keys;
 			private final List<String> fields;
 			private final Class<T> recordClass;
-			private final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback;
+			private AggregationChunkStorage storage;
+			private AggregationMetadataStorage metadataStorage;
 			private final int chunkSize;
+			private final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback;
 
-			private T first;
-			private T last;
 			private int count;
 
 			private int pendingChunks;
+			private boolean returnedChunks;
+
 			private final List<AggregationChunk.NewChunk> chunks = new ArrayList<>();
-			private AggregationChunkStorage storage;
-			private AggregationMetadataStorage metadataStorage;
 
 			public InputConsumer(String aggregationId, List<String> keys, List<String> fields,
-			                     Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
+			                     Class<T> recordClass, AggregationChunkStorage storage,
+			                     AggregationMetadataStorage metadataStorage,
 			                     int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 				checkArgument(chunkSize > 0);
 				this.aggregationId = aggregationId;
@@ -86,20 +86,17 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 
 			@Override
 			protected void onUpstreamEndOfStream() {
-				saveChunk();
-
-				if (outputProducer.getDownstream() != null) {
+				if (outputProducer.getDownstream() != null)
 					outputProducer.sendEndOfStream();
-				}
 
-				logger.trace("{}: downstream producer {} closed.", this, outputProducer);
+				if (pendingChunks == 0 && !returnedChunks)
+					chunksCallback.onResult(chunks);
 			}
 
 			@Override
 			protected void onError(Exception e) {
 				super.onError(e);
 				chunksCallback.onException(e);
-				logger.error("{}: downstream producer {} exception.", this, outputProducer, e);
 			}
 
 			@Override
@@ -112,58 +109,62 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				if (outputProducer.getDownstream() == null) {
 					++pendingChunks;
 					startNewChunk();
-					first = item;
-				} else if (count == chunkSize) {
+				} else if (count == chunkSize)
 					rotateChunk();
-					first = item;
-				}
 
 				++count;
-
 				outputProducer.send(item);
-				last = item;
 			}
 
 			private void rotateChunk() {
-				saveChunk();
 				++pendingChunks;
 				outputProducer.getDownstream().onProducerEndOfStream();
 				startNewChunk();
 			}
 
-			private void saveChunk() {
-				if (count != 0) {
-					AggregationChunk.NewChunk chunk = new AggregationChunk.NewChunk(
-							InputConsumer.this.newId,
-							fields,
-							PrimaryKey.ofObject(first, keys),
-							PrimaryKey.ofObject(last, keys),
-							count);
-					chunks.add(chunk);
-				}
+			private AggregationChunk.NewChunk createNewChunk(long id, T first, T last, int count) {
+				return new AggregationChunk.NewChunk(id, fields, PrimaryKey.ofObject(first, keys),
+						PrimaryKey.ofObject(last, keys), count);
 			}
 
-			public void startNewChunk() {
-				newId = metadataStorage.newChunkId(); // TODO (dtkachenko): refactor as async
-				first = null;
-				last = null;
+			private void startNewChunk() {
 				count = 0;
+				final MetadataCounter metadataCounter = new MetadataCounter(eventloop);
+				outputProducer.streamTo(metadataCounter.getInput());
 
-				StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
-				outputProducer.streamTo(forwarder.getInput());
-				logger.info("Writing chunk #{} to aggregation '{}'", newId, aggregationId);
-				storage.chunkWriter(aggregationId, keys, fields, recordClass, newId, forwarder.getOutput(), new CompletionCallback() {
+				metadataStorage.newChunkId(new ResultCallback<Long>() {
 					@Override
-					public void onComplete() {
-						if (--pendingChunks == 0) {
-							chunksCallback.onResult(chunks);
-						}
-						logger.trace("{}: saving new chunk with id {} to storage {} completed.", this, newId, storage);
+					public void onResult(final Long chunkId) {
+						storage.chunkWriter(aggregationId, keys, fields, recordClass, chunkId, metadataCounter.getOutput(),
+								new CompletionCallback() {
+									@Override
+									public void onComplete() {
+										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId,
+												metadataCounter.first, metadataCounter.last, metadataCounter.count);
+										chunks.add(newChunk);
+
+										if (--pendingChunks == 0 && getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+											chunksCallback.onResult(chunks);
+											returnedChunks = true;
+										}
+
+										logger.trace("Saving new chunk with id {} to storage {} completed",
+												chunkId, storage);
+									}
+
+									@Override
+									public void onException(Exception exception) {
+										logger.error("Saving new chunk with id {} to storage {} failed",
+												chunkId, storage, exception);
+										closeWithError(exception);
+									}
+								});
 					}
 
 					@Override
 					public void onException(Exception exception) {
-						logger.error("{}: saving new chunk with id {} to storage {} failed.", this, newId, storage);
+						logger.error("Failed to retrieve new chunk id from metadata storage {}",
+								metadataStorage, exception);
 						closeWithError(exception);
 					}
 				});
@@ -171,7 +172,6 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		}
 
 		private class OutputProducer extends AbstractOutputProducer {
-
 			@Override
 			protected void onDownstreamSuspended() {
 				inputConsumer.suspend();
@@ -181,6 +181,55 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			protected void onDownstreamResumed() {
 				inputConsumer.resume();
 			}
+		}
+	}
+
+	private final class MetadataCounter extends AbstractStreamTransformer_1_1<T, T> {
+		private final InputConsumer inputConsumer;
+		private final OutputProducer outputProducer;
+
+		private T first;
+		private T last;
+		private int count;
+
+		private final class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
+			@Override
+			public void onData(T item) {
+				if (first == null)
+					first = item;
+
+				last = item;
+				++count;
+				outputProducer.send(item);
+			}
+
+			@Override
+			protected void onUpstreamEndOfStream() {
+				outputProducer.sendEndOfStream();
+			}
+
+			@Override
+			public StreamDataReceiver<T> getDataReceiver() {
+				return this;
+			}
+		}
+
+		private final class OutputProducer extends AbstractOutputProducer {
+			@Override
+			protected void onDownstreamSuspended() {
+				inputConsumer.suspend();
+			}
+
+			@Override
+			protected void onDownstreamResumed() {
+				inputConsumer.resume();
+			}
+		}
+
+		private MetadataCounter(Eventloop eventloop) {
+			super(eventloop);
+			this.inputConsumer = new InputConsumer();
+			this.outputProducer = new OutputProducer();
 		}
 	}
 }

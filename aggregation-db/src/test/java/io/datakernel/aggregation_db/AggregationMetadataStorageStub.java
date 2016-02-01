@@ -37,7 +37,6 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 		callback.onResult(++chunkId);
 	}
 
-	@Override
 	public long newChunkId() {
 		return ++chunkId;
 	}

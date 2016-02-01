@@ -38,6 +38,17 @@ public class AggregationChunk {
 			this.maxPrimaryKey = maxPrimaryKey;
 			this.count = count;
 		}
+
+		@Override
+		public String toString() {
+			return MoreObjects.toStringHelper(this)
+					.add("chunkId", chunkId)
+					.add("fields", fields)
+					.add("minPrimaryKey", minPrimaryKey)
+					.add("maxPrimaryKey", maxPrimaryKey)
+					.add("count", count)
+					.toString();
+		}
 	}
 
 	public static AggregationChunk createChunk(int revisionId, NewChunk newChunk) {
