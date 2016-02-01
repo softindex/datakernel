@@ -132,7 +132,7 @@ public final class NativeDnsResolver implements DnsClient {
 					return;
 
 				if (cacheQueryResult == RESOLVED_NEEDS_REFRESHING) {
-					NativeDnsResolver.this.eventloop.postConcurrently(new Runnable() {
+					NativeDnsResolver.this.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							NativeDnsResolver.this.resolve(domainName, ipv6, AsyncCallbacks.<InetAddress[]>ignoreResultCallback());
@@ -142,7 +142,7 @@ public final class NativeDnsResolver implements DnsClient {
 				}
 
 				if (cacheQueryResult == NOT_RESOLVED) {
-					NativeDnsResolver.this.eventloop.postConcurrently(new Runnable() {
+					NativeDnsResolver.this.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							NativeDnsResolver.this.resolve(domainName, ipv6, AsyncCallbacks.concurrentResultCallback(eventloop, callback));

@@ -231,7 +231,7 @@ public final class AsyncFile implements File {
 			@Override
 			public void completed(final Integer result, Object attachment) {
 				buf.setByteBuffer(byteBuffer);
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						tracker.complete();
@@ -242,7 +242,7 @@ public final class AsyncFile implements File {
 
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						tracker.complete();
@@ -268,7 +268,7 @@ public final class AsyncFile implements File {
 			@Override
 			public void completed(final Integer result, Object attachment) {
 				buf.setByteBuffer(byteBuffer);
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						tracker.complete();
@@ -279,7 +279,7 @@ public final class AsyncFile implements File {
 
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						tracker.complete();
@@ -298,7 +298,7 @@ public final class AsyncFile implements File {
 			public void completed(Integer result, Object attachment) {
 				buf.setByteBuffer(byteBuffer);
 				if (buf.remaining() == 0) {
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -316,7 +316,7 @@ public final class AsyncFile implements File {
 
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						tracker.complete();
@@ -357,7 +357,7 @@ public final class AsyncFile implements File {
 			public void completed(Integer result, Object attachment) {
 				buf.setByteBuffer(byteBuffer);
 				if (buf.remaining() == 0 || result == -1) {
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -375,7 +375,7 @@ public final class AsyncFile implements File {
 
 			@Override
 			public void failed(final Throwable exc, Object attachment) {
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						tracker.complete();

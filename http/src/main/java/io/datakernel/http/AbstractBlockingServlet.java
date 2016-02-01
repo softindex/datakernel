@@ -49,7 +49,7 @@ public abstract class AbstractBlockingServlet extends AbstractAsyncServlet {
 			public void run() {
 				try {
 					final HttpResponse httpResponse = doServeBlocking(request);
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							callback.onResult(httpResponse);
@@ -57,14 +57,14 @@ public abstract class AbstractBlockingServlet extends AbstractAsyncServlet {
 					});
 				} catch (final RejectedExecutionException e) {
 					requestsRejected.recordEvent();
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							handleRejectedRequest(request, e, callback);
 						}
 					});
 				} catch (final Exception e) {
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							handleException(request, e, callback);

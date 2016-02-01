@@ -120,7 +120,7 @@ public class CubeHttpApiTest {
 				parameters.put("measures", gson.toJson(new String[]{"metric1", "metric2", "metric3"}));
 				parameters.put("filters", gson.toJson(new AggregationQuery.QueryPredicates().eq("key1", 1).eq("key2", 3)));
 				sendGet("/query", parameters, responseCallback);
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						httpServer.close();

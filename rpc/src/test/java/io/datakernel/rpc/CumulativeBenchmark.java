@@ -149,7 +149,7 @@ public final class CumulativeBenchmark {
 			clientEventloop.run();
 
 		} finally {
-			serverEventloop.postConcurrently(new Runnable() {
+			serverEventloop.execute(new Runnable() {
 				@Override
 				public void run() {
 

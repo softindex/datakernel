@@ -78,7 +78,7 @@ public final class ServiceAdapters {
 					@Override
 					public ListenableFuture<?> start() {
 						final SettableFuture<?> future = SettableFuture.create();
-						instance.getEventloop().postConcurrently(new Runnable() {
+						instance.getEventloop().execute(new Runnable() {
 							@Override
 							public void run() {
 								instance.start(toCompletionCallback(future));
@@ -90,7 +90,7 @@ public final class ServiceAdapters {
 					@Override
 					public ListenableFuture<?> stop() {
 						final SettableFuture<?> future = SettableFuture.create();
-						instance.getEventloop().postConcurrently(new Runnable() {
+						instance.getEventloop().execute(new Runnable() {
 							@Override
 							public void run() {
 								instance.stop(toCompletionCallback(future));
@@ -111,7 +111,7 @@ public final class ServiceAdapters {
 					@Override
 					public ListenableFuture<?> start() {
 						final SettableFuture<?> future = SettableFuture.create();
-						instance.getEventloop().postConcurrently(new Runnable() {
+						instance.getEventloop().execute(new Runnable() {
 							@Override
 							public void run() {
 								try {
@@ -128,7 +128,7 @@ public final class ServiceAdapters {
 					@Override
 					public ListenableFuture<?> stop() {
 						final SettableFuture<?> future = SettableFuture.create();
-						instance.getEventloop().postConcurrently(new Runnable() {
+						instance.getEventloop().execute(new Runnable() {
 							@Override
 							public void run() {
 								instance.close();
@@ -169,7 +169,7 @@ public final class ServiceAdapters {
 					@Override
 					public ListenableFuture<?> stop() {
 						stopFuture = SettableFuture.create();
-						eventloop.postConcurrently(new Runnable() {
+						eventloop.execute(new Runnable() {
 							@Override
 							public void run() {
 								eventloop.keepAlive(false);

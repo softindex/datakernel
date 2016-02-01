@@ -20,9 +20,10 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncTask;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 
-public interface EventloopExecutor {
+public interface EventloopExecutor extends Executor {
 	Future<?> submit(Runnable runnable);
 
 	Future<?> submit(AsyncTask asyncTask);

@@ -54,14 +54,14 @@ public class TcpClientExample {
 						if (line.isEmpty())
 							break;
 						final ByteBuf buf = ByteBuf.wrap(encodeAscii(line));
-						eventloop.postConcurrently(new Runnable() {
+						eventloop.execute(new Runnable() {
 							@Override
 							public void run() {
 								write(buf);
 							}
 						});
 					}
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							close();

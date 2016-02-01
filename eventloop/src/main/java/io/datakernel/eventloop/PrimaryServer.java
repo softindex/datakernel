@@ -97,7 +97,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 		if (eventloop == this.eventloop) {
 			server.onAccept(socketChannel);
 		} else {
-			eventloop.postConcurrently(new Runnable() {
+			eventloop.execute(new Runnable() {
 				@Override
 				public void run() {
 					server.onAccept(socketChannel);

@@ -178,7 +178,7 @@ public final class AsyncCallbacks {
 	 * @param <T>       type of result
 	 */
 	public static <T> void postResultConcurrently(Eventloop eventloop, final ResultCallback<T> callback, final T result) {
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				callback.onResult(result);
@@ -194,7 +194,7 @@ public final class AsyncCallbacks {
 	 * @param e         the exception with which ResultCallback will be called.
 	 */
 	public static void postExceptionConcurrently(Eventloop eventloop, final ExceptionCallback callback, final Exception e) {
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				callback.onException(e);
@@ -209,7 +209,7 @@ public final class AsyncCallbacks {
 	 * @param callback  the callback for calling
 	 */
 	public static void postCompletionConcurrently(Eventloop eventloop, final CompletionCallback callback) {
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				callback.onComplete();
@@ -226,7 +226,7 @@ public final class AsyncCallbacks {
 	 * @param <T>       type of elements in iterator
 	 */
 	public static <T> void postNextConcurrently(Eventloop eventloop, final IteratorCallback<T> callback, final T next) {
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				callback.onNext(next);
@@ -242,7 +242,7 @@ public final class AsyncCallbacks {
 	 * @param <T>       type of elements in iterator
 	 */
 	public static <T> void postEndConcurrently(Eventloop eventloop, final IteratorCallback<T> callback) {
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				callback.onEnd();
@@ -298,7 +298,7 @@ public final class AsyncCallbacks {
 			public void run() {
 				try {
 					final T result = callable.call();
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -307,7 +307,7 @@ public final class AsyncCallbacks {
 					});
 				} catch (final Exception e) {
 					logger.error("callConcurrently error", e);
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -348,7 +348,7 @@ public final class AsyncCallbacks {
 			public void run() {
 				try {
 					final O result = function.apply(value);
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -357,7 +357,7 @@ public final class AsyncCallbacks {
 					});
 				} catch (final Exception e) {
 					logger.error("applyConcurrently error", e);
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -397,7 +397,7 @@ public final class AsyncCallbacks {
 			public void run() {
 				try {
 					settable.set(value);
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -406,7 +406,7 @@ public final class AsyncCallbacks {
 					});
 				} catch (final Exception e) {
 					logger.error("setConcurrently error", e);
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -443,7 +443,7 @@ public final class AsyncCallbacks {
 			public void run() {
 				try {
 					runnable.run();
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -452,7 +452,7 @@ public final class AsyncCallbacks {
 					});
 				} catch (final Exception e) {
 					logger.error("runConcurrently error", e);
-					eventloop.postConcurrently(new Runnable() {
+					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							tracker.complete();
@@ -947,7 +947,7 @@ public final class AsyncCallbacks {
 	 */
 	public static CompletionCallbackFuture listenFuture(final EventloopServer server) {
 		final CompletionCallbackFuture future = new CompletionCallbackFuture();
-		server.getEventloop().postConcurrently(new Runnable() {
+		server.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {
 				try {
@@ -968,7 +968,7 @@ public final class AsyncCallbacks {
 	 */
 	public static CompletionCallbackFuture closeFuture(final EventloopServer server) {
 		final CompletionCallbackFuture future = new CompletionCallbackFuture();
-		server.getEventloop().postConcurrently(new Runnable() {
+		server.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {
 				server.close();
@@ -985,7 +985,7 @@ public final class AsyncCallbacks {
 	 */
 	public static CompletionCallbackFuture startFuture(final EventloopService eventloopService) {
 		final CompletionCallbackFuture future = new CompletionCallbackFuture();
-		eventloopService.getEventloop().postConcurrently(new Runnable() {
+		eventloopService.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {
 				eventloopService.start(future);
@@ -1001,7 +1001,7 @@ public final class AsyncCallbacks {
 	 */
 	public static CompletionCallbackFuture stopFuture(final EventloopService eventloopService) {
 		final CompletionCallbackFuture future = new CompletionCallbackFuture();
-		eventloopService.getEventloop().postConcurrently(new Runnable() {
+		eventloopService.getEventloop().execute(new Runnable() {
 			@Override
 			public void run() {
 				eventloopService.stop(future);
@@ -1039,7 +1039,7 @@ public final class AsyncCallbacks {
 		return new ResultCallback<T>() {
 			@Override
 			public void onResult(final T result) {
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						callback.onResult(result);
@@ -1049,7 +1049,7 @@ public final class AsyncCallbacks {
 
 			@Override
 			public void onException(final Exception exception) {
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						callback.onException(exception);
@@ -1073,7 +1073,7 @@ public final class AsyncCallbacks {
 		return new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						callback.onComplete();
@@ -1083,7 +1083,7 @@ public final class AsyncCallbacks {
 
 			@Override
 			public void onException(final Exception exception) {
-				eventloop.postConcurrently(new Runnable() {
+				eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						callback.onException(exception);

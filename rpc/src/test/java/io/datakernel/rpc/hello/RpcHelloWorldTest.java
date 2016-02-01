@@ -164,7 +164,7 @@ public class RpcHelloWorldTest {
 			final CountDownLatch latch = new CountDownLatch(count);
 			for (int i = 0; i < count; i++) {
 				final String name = "World" + i;
-				client.eventloop.postConcurrently(new Runnable() {
+				client.eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						client.client.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
@@ -228,7 +228,7 @@ public class RpcHelloWorldTest {
 
 			for (int i = 0; i < count; i++) {
 				final String name = "world" + i;
-				client1.eventloop.postConcurrently(new Runnable() {
+				client1.eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						client1.client.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
@@ -246,7 +246,7 @@ public class RpcHelloWorldTest {
 						});
 					}
 				});
-				client2.eventloop.postConcurrently(new Runnable() {
+				client2.eventloop.execute(new Runnable() {
 					@Override
 					public void run() {
 						client2.client.sendRequest(new HelloRequest(name), TIMEOUT, new ResultCallback<HelloResponse>() {
@@ -285,7 +285,7 @@ public class RpcHelloWorldTest {
 				Stopwatch stopwatch = Stopwatch.createUnstarted();
 				stopwatch.start();
 				for (int i = 0; i < count; i++) {
-					client.eventloop.postConcurrently(new Runnable() {
+					client.eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
 							client.client.sendRequest(new HelloRequest("benchmark"), TIMEOUT, new ResultCallback<HelloResponse>() {

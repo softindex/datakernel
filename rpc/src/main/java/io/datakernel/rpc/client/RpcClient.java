@@ -323,7 +323,7 @@ public final class RpcClient implements EventloopService {
 
 	public <T> ResultCallbackFuture<T> sendRequestFuture(final Object request, final int timeout) {
 		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				sendRequest(request, timeout, future);
@@ -355,7 +355,7 @@ public final class RpcClient implements EventloopService {
 	 */
 	@JmxOperation
 	public void startMonitoring() {
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				RpcClient.this.monitoring = true;
@@ -374,7 +374,7 @@ public final class RpcClient implements EventloopService {
 	 */
 	@JmxOperation
 	public void stopMonitoring() {
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				RpcClient.this.monitoring = false;
@@ -397,7 +397,7 @@ public final class RpcClient implements EventloopService {
 	 */
 	@JmxOperation
 	public void resetStats() {
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				generalRequestsStats.resetStats();

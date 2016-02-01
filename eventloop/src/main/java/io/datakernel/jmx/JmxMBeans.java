@@ -107,7 +107,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				List<JmxStats<?>> statsList = new ArrayList<>(fetchNameToJmxStats(monitorable).values());
 				statsRefresher =
 						new StatsRefresher(statsList, DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW, eventloop);
-				eventloop.postConcurrently(statsRefresher);
+				eventloop.execute(statsRefresher);
 			}
 			wrappers.add(createWrapper(monitorable, statsRefresher, writableAttributes));
 		}

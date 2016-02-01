@@ -98,7 +98,7 @@ public class LogManagerTest {
 		executor.submit(eventloop);
 
 		for (final Entry<Long, String> entry : testData.entrySet()) {
-			eventloop.postConcurrently(new Runnable() {
+			eventloop.execute(new Runnable() {
 				@Override
 				public void run() {
 					timeProvider.setTime(entry.getKey());
@@ -112,7 +112,7 @@ public class LogManagerTest {
 		}
 		timeProvider.setTime(eventloop.currentTimeMillis() + LogManagerImpl.DEFAULT_FLUSH_DELAY * 2);
 		eventloop.refreshTimestampAndGet();
-		eventloop.postConcurrently(new Runnable() {
+		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
 				streamSender.endStreaming();

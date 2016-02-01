@@ -776,7 +776,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	 *
 	 * @param runnable runnable of this task
 	 */
-	public void postConcurrently(Runnable runnable) {
+	@Override
+	public void execute(Runnable runnable) {
 		concurrentTasks.offer(runnable);
 		if (selector != null) {
 			selector.wakeup();
@@ -939,7 +940,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	@Override
 	public <T> Future<T> submit(final Runnable runnable, final T result) {
 		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
-		postConcurrently(new Runnable() {
+		execute(new Runnable() {
 			@Override
 			public void run() {
 				Exception exception = null;
@@ -961,7 +962,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	@Override
 	public <T> Future<T> submit(final AsyncTask asyncTask, final T result) {
 		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
-		postConcurrently(new Runnable() {
+		execute(new Runnable() {
 			@Override
 			public void run() {
 				asyncTask.execute(future.withCompletionResult(result));
@@ -973,7 +974,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	@Override
 	public <T> Future<T> submit(final Callable<T> callable) {
 		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
-		postConcurrently(new Runnable() {
+		execute(new Runnable() {
 			@Override
 			public void run() {
 				T result = null;
@@ -996,7 +997,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	@Override
 	public <T> Future<T> submit(final AsyncCallable<T> asyncCallable) {
 		final ResultCallbackFuture<T> future = new ResultCallbackFuture<>();
-		postConcurrently(new Runnable() {
+		execute(new Runnable() {
 			@Override
 			public void run() {
 				asyncCallable.call(future);

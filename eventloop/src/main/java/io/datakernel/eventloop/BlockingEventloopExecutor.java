@@ -65,7 +65,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 				notFull.await();
 			}
 			tasks.incrementAndGet();
-			eventloop.postConcurrently(runnable);
+			eventloop.execute(runnable);
 		} finally {
 			lock.unlock();
 		}
