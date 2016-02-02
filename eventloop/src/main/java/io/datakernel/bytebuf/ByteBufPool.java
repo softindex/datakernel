@@ -16,8 +16,6 @@
 
 package io.datakernel.bytebuf;
 
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxMBean;
 import io.datakernel.jmx.MBeanFormat;
 import io.datakernel.util.ConcurrentStack;
 
@@ -278,20 +276,32 @@ public final class ByteBufPool {
 		return result;
 	}
 
-	@JmxMBean
-	public static final class ByteBufPoolStats {
+	public interface ByteBufPoolStatsMXBean {
 
-		@JmxAttribute
+		int getCreatedItems();
+
+		int getPoolItems();
+
+		long getPoolItemAvgSize();
+
+		long getPoolSizeKB();
+
+		List<String> getPoolSlabs();
+	}
+
+	public static final class ByteBufPoolStats implements ByteBufPoolStatsMXBean {
+
+		@Override
 		public int getCreatedItems() {
 			return ByteBufPool.getCreatedItems();
 		}
 
-		@JmxAttribute
+		@Override
 		public int getPoolItems() {
 			return ByteBufPool.getPoolItems();
 		}
 
-		@JmxAttribute
+		@Override
 		public long getPoolItemAvgSize() {
 			int result = 0;
 			for (ConcurrentStack<ByteBuf> slab : slabs) {
@@ -301,12 +311,12 @@ public final class ByteBufPool {
 			return items == 0 ? 0 : ByteBufPool.getPoolSize() / items;
 		}
 
-		@JmxAttribute
+		@Override
 		public long getPoolSizeKB() {
 			return ByteBufPool.getPoolSize() / 1024;
 		}
 
-		@JmxAttribute
+		@Override
 		public List<String> getPoolSlabs() {
 			assert slabs.length == 33 : "Except slabs[32] that contains ByteBufs with size 0";
 			List<String> result = new ArrayList<>(slabs.length + 1);

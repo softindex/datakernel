@@ -22,6 +22,7 @@ import io.datakernel.jmx.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
 /**
@@ -29,8 +30,7 @@ import java.util.concurrent.RejectedExecutionException;
  * For using this servlet you should override method doServeAsync(, in this method must be logic
  * for handling requests and creating result.
  */
-@JmxMBean
-public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
+public abstract class AbstractAsyncServlet implements AsyncHttpServlet, ConcurrentJmxMBean {
 	protected static final Logger logger = LoggerFactory.getLogger(AbstractAsyncServlet.class);
 	public static final RejectedExecutionException THROTTLED_EXCEPTION = new RejectedExecutionException("Throttled");
 
@@ -164,6 +164,12 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet {
 	}
 
 	// jmx
+
+	@Override
+	public Executor getJmxExecutor() {
+		return eventloop;
+	}
+
 	protected boolean isMonitoring(HttpRequest request) {
 		return true;
 	}

@@ -51,7 +51,7 @@ public final class JmxRegistry {
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
 			try {
-				mbean = mbeanFactory.createFor(asList(singletonInstance), true);
+				mbean = mbeanFactory.createFor(asList((ConcurrentJmxMBean) singletonInstance), true);
 			} catch (Exception e) {
 				String msg = format("Instance with key %s is annotated with @JmxMBean " +
 						"but exception was thrown during attempt to create DynamicMBean", key.toString());
@@ -131,8 +131,13 @@ public final class JmxRegistry {
 
 		if (!isJmxMBean(poolInstances.get(0).getClass())) {
 			logger.info(format("Pool of instances with key %s was not registered to jmx, " +
-					"because instances' type is not annotated with @JmxMBean", key.toString()));
+					"because instances' type does not implement ConcurrentJmxMBean interface", key.toString()));
 			return;
+		}
+
+		List<ConcurrentJmxMBean> concurrentJmxMBeans = new ArrayList<>();
+		for (Object poolInstance : poolInstances) {
+			concurrentJmxMBeans.add((ConcurrentJmxMBean) poolInstance);
 		}
 
 		String commonName;
@@ -145,14 +150,14 @@ public final class JmxRegistry {
 		}
 
 		// register mbeans for each worker separately
-		for (int i = 0; i < poolInstances.size(); i++) {
-			registerMBeanForWorker(poolInstances.get(i), i, commonName, key);
+		for (int i = 0; i < concurrentJmxMBeans.size(); i++) {
+			registerMBeanForWorker(concurrentJmxMBeans.get(i), i, commonName, key);
 		}
 
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(poolInstances, true);
+			mbean = mbeanFactory.createFor(concurrentJmxMBeans, true);
 		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
@@ -239,7 +244,7 @@ public final class JmxRegistry {
 		return true;
 	}
 
-	private void registerMBeanForWorker(Object worker, int workerId, String commonName, Key<?> key) {
+	private void registerMBeanForWorker(ConcurrentJmxMBean worker, int workerId, String commonName, Key<?> key) {
 		String workerName = createWorkerName(commonName, workerId);
 
 		DynamicMBean mbean;

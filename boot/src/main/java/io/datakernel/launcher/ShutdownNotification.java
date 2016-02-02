@@ -17,21 +17,18 @@
 package io.datakernel.launcher;
 
 import com.google.inject.Singleton;
-import io.datakernel.jmx.JmxMBean;
-import io.datakernel.jmx.JmxOperation;
 
 import java.util.concurrent.CountDownLatch;
 
 @Singleton
-@JmxMBean
-public final class ShutdownNotification {
+public final class ShutdownNotification implements ShutdownNotificationMBean {
 	private final CountDownLatch latch = new CountDownLatch(1);
 
 	public void await() throws InterruptedException {
 		latch.await();
 	}
 
-	@JmxOperation
+	@Override
 	public void requestShutdown() {
 		latch.countDown();
 	}

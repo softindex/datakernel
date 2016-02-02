@@ -21,8 +21,8 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.DnsCache.DnsCacheQueryResult;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.HttpUtils;
+import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxMBean;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.DatagramSocketSettings;
 import org.slf4j.Logger;
@@ -34,6 +34,7 @@ import java.net.InetSocketAddress;
 import java.nio.channels.DatagramChannel;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.dns.DnsCache.DnsCacheQueryResult.*;
 import static io.datakernel.eventloop.Eventloop.createDatagramChannel;
@@ -44,8 +45,7 @@ import static java.util.Arrays.asList;
 /**
  * NativeDnsResolver represents asynchronous DNS resolver, which run in Eventloop.
  */
-@JmxMBean
-public final class NativeDnsResolver implements DnsClient {
+public final class NativeDnsResolver implements DnsClient, ConcurrentJmxMBean {
 	private final Logger logger = LoggerFactory.getLogger(NativeDnsResolver.class);
 
 	public static final DatagramSocketSettings DEFAULT_DATAGRAM_SOCKET_SETTINGS = defaultDatagramSocketSettings();
@@ -262,6 +262,12 @@ public final class NativeDnsResolver implements DnsClient {
 
 	DnsCache getCache() {
 		return cache;
+	}
+
+	// JMX
+	@Override
+	public Executor getJmxExecutor() {
+		return eventloop;
 	}
 
 	@JmxAttribute

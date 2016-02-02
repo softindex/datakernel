@@ -27,6 +27,8 @@ import javax.management.MBeanOperationInfo;
 import javax.management.MBeanParameterInfo;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -37,7 +39,7 @@ public class JmxMBeansOperationsTest {
 	@Test
 	public void itShouldCollectInformationAbountJMXOperationsToMBeanInfo() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanOperationInfo[] operations = mBeanInfo.getOperations();
@@ -68,7 +70,7 @@ public class JmxMBeansOperationsTest {
 	@Test
 	public void itShouldInvokeAnnotanedOperationsThroughDynamicMBeanInterface() throws Exception {
 		MonitorableStubWithOperations monitorable = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		mbean.invoke("increment", null, null);
 		mbean.invoke("increment", null, null);
@@ -89,7 +91,7 @@ public class JmxMBeansOperationsTest {
 	public void itShouldBroadcastOperationCallToAllMonitorables() throws Exception {
 		MonitorableStubWithOperations monitorable_1 = new MonitorableStubWithOperations();
 		MonitorableStubWithOperations monitorable_2 = new MonitorableStubWithOperations();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		// set manually init value for second monitorable to be different from first
 		monitorable_2.inc();
@@ -117,15 +119,8 @@ public class JmxMBeansOperationsTest {
 		assertEquals(monitorable_2.getSum(), 10 * 15 + 120 * 150);
 	}
 
-	@Test(expected = IllegalArgumentException.class)
-	public void itShouldThrowExceptionWhenClassForCreatingDynamicMBeanIsNotAnnotated() throws Exception {
-		NotAnnotatedService notAnnotated = new NotAnnotatedService();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(notAnnotated));
-	}
-
 	// helpers
-	@JmxMBean
-	public static class MonitorableStubWithOperations {
+	public static class MonitorableStubWithOperations implements ConcurrentJmxMBean {
 		private int count = 0;
 		private String info = "";
 		private long sum = 0;
@@ -156,20 +151,25 @@ public class JmxMBeansOperationsTest {
 		public void multiplyAndAdd(long valueOne, long valueTwo) {
 			sum += valueOne * valueTwo;
 		}
-	}
 
-	public static class NotAnnotatedService {
-		private int count = 0;
-
-		public int getCount() {
-			return count;
-		}
-
-		@JmxOperation
-		public void inc() {
-			count++;
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
 		}
 	}
+
+//	public static class NotAnnotatedService {
+//		private int count = 0;
+//
+//		public int getCount() {
+//			return count;
+//		}
+//
+//		@JmxOperation
+//		public void inc() {
+//			count++;
+//		}
+//	}
 
 	// custom matchers
 	public static <T> Matcher<Map<T, ?>> hasKey(final T key) {

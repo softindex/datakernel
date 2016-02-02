@@ -28,6 +28,7 @@ import javax.management.MBeanServer;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 import static java.util.Arrays.asList;
@@ -261,8 +262,11 @@ public class JmxRegistryTest {
 	}
 
 	// helper classes
-	@JmxMBean
-	public final class ServiceStub {
+	public final class ServiceStub implements ConcurrentJmxMBean {
 
+		@Override
+		public Executor getJmxExecutor() {
+			return null;
+		}
 	}
 }

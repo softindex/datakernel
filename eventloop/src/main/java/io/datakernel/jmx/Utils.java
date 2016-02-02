@@ -16,7 +16,6 @@
 
 package io.datakernel.jmx;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -153,21 +152,7 @@ public final class Utils {
 	}
 
 	public static boolean isJmxMBean(Class<?> clazz) {
-		return atLeastOneClassInHierarchyIsAnnotated(clazz, JmxMBean.class);
-	}
-
-	public static boolean atLeastOneClassInHierarchyIsAnnotated(Class<?> clazz,
-	                                                            Class<? extends Annotation> annotation) {
-		Class<?> currentClass = clazz;
-		while (true) {
-			if (currentClass.isAnnotationPresent(annotation)) {
-				return true;
-			}
-			currentClass = currentClass.getSuperclass();
-			if (currentClass == null) {
-				return false;
-			}
-		}
+		return ConcurrentJmxMBean.class.isAssignableFrom(clazz);
 	}
 
 	public static <T> boolean isEmtpyOrNull(T[] array) {

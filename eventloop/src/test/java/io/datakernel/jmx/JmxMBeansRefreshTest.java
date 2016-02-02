@@ -24,9 +24,12 @@ import org.junit.Test;
 
 import javax.management.*;
 import java.util.*;
+import java.util.concurrent.Executor;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+
+// TODO(vmykhalko): start here. design and implement refreshing
 
 public class JmxMBeansRefreshTest {
 	@Rule
@@ -37,7 +40,7 @@ public class JmxMBeansRefreshTest {
 	private final MonitorableWithEventloop monitorable = new MonitorableWithEventloop(stats, eventloop);
 
 	@Test
-	public void itShouldCreateAttributesForRefreshControlIfMonitorableHasEventloopGetter()
+	public void itShouldCreateAttributesForRefreshControlIfRefreshIsEnabled()
 			throws Exception {
 		context.checking(new Expectations() {{
 			// return empty map
@@ -61,7 +64,7 @@ public class JmxMBeansRefreshTest {
 	}
 
 	@Test
-	public void itShouldCreateOperationForRefreshControlIfMonitorableHasEventloopGetter() throws Exception {
+	public void itShouldCreateOperationForRefreshControlIfRefreshIsEnabled() throws Exception {
 		context.checking(new Expectations() {{
 			// return empty map
 			allowing(stats).getAttributes();
@@ -99,6 +102,25 @@ public class JmxMBeansRefreshTest {
 	}
 
 	@Test
+	public void itShouldNotCreateAttributesAndOperationsForRefreshControlIfRefreshIsDisabled()
+			throws Exception {
+		context.checking(new Expectations() {{
+			// return empty map
+			allowing(stats).getAttributes();
+			will(returnValue(new TreeMap()));
+		}});
+
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
+
+		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
+		MBeanAttributeInfo[] mBeanAttributesInfo = mBeanInfo.getAttributes();
+		MBeanOperationInfo[] mBeanOperationsInfo = mBeanInfo.getOperations();
+
+		assertEquals(Collections.emptyList(), asList(mBeanAttributesInfo));
+		assertEquals(Collections.emptyList(), asList(mBeanOperationsInfo));
+	}
+
+	@Test
 	public void itShouldProperlySetAndGetValuesForRefreshControl() throws Exception {
 		context.checking(new Expectations() {{
 			// return empty map
@@ -125,37 +147,7 @@ public class JmxMBeansRefreshTest {
 		assertEquals(newWindow, (double) mbean.getAttribute("_smoothingWindow"), acceptableError);
 	}
 
-	@Test
-	public void itShouldRefreshStatsUsingCurrentRefreshControlParameters() throws Exception {
-		final double smoothingWindow = 50.0;
-
-		context.checking(new Expectations() {{
-			// return empty map
-			allowing(stats).getAttributes();
-			will(returnValue(new TreeMap()));
-
-			atLeast(1).of(stats).refreshStats(with(any(long.class)), with(smoothingWindow));
-		}});
-
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), true);
-
-		// we don't invoke _setRefreshPeriod because it's quite hard to test it here
-		mbean.invoke("_setSmoothingWindow", new Object[]{smoothingWindow}, new String[]{"double"});
-
-		// [refresh] is background task, it won't keep eventloop alive
-		// so we have to manually set keepAlive(true), and then keepAlive(false) to let test finish
-		eventloop.keepAlive(true);
-		eventloop.schedule(eventloop.currentTimeMillis() + 250, new Runnable() {
-			@Override
-			public void run() {
-				eventloop.keepAlive(false);
-			}
-		});
-		eventloop.run();
-	}
-
-	@JmxMBean
-	public static final class MonitorableWithEventloop {
+	public static final class MonitorableWithEventloop implements ConcurrentJmxMBean {
 		private final JmxStats<?> jmxStats;
 		private final Eventloop eventloop;
 
@@ -169,7 +161,8 @@ public class JmxMBeansRefreshTest {
 			return jmxStats;
 		}
 
-		public Eventloop getEventloop() {
+		@Override
+		public Executor getJmxExecutor() {
 			return eventloop;
 		}
 	}

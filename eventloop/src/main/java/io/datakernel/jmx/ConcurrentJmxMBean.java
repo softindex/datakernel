@@ -14,14 +14,17 @@
  * limitations under the License.
  */
 
-//package io.datakernel.jmx;
-//
-//import java.lang.annotation.ElementType;
-//import java.lang.annotation.Retention;
-//import java.lang.annotation.RetentionPolicy;
-//import java.lang.annotation.Target;
-//
-//@Target(ElementType.TYPE)
-//@Retention(RetentionPolicy.RUNTIME)
-//public @interface JmxMBean {
-//}
+package io.datakernel.jmx;
+
+import java.util.concurrent.Executor;
+
+public interface ConcurrentJmxMBean {
+
+	/**
+	 * Returns {@link Executor} which will be used for performing all jmx operations.
+	 *
+	 * @return {@link Executor} which will be used for performing all jmx operations.
+	 * (getting and setting attributes, operation invocations, refreshing {@link JmxStats}, etc.)
+	 */
+	Executor getJmxExecutor();
+}

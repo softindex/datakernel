@@ -21,6 +21,8 @@ import org.junit.Test;
 import javax.management.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -31,7 +33,7 @@ public class JmxMBeansSimpleAttributesTest {
 	public void itShouldCollectAllJmxAttributesOfBasicTypes() throws Exception {
 		MonitorableWithIntegerAttribute monitorable =
 				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> nameToAttr = formNameToAttr(mBeanInfo.getAttributes());
@@ -74,7 +76,7 @@ public class JmxMBeansSimpleAttributesTest {
 				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
 		MonitorableWithIntegerAttribute monitorable_2 =
 				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		assertEquals(true, mbean.getAttribute("booleanAttr"));
 		assertEquals(100, mbean.getAttribute("intAttr"));
@@ -89,7 +91,7 @@ public class JmxMBeansSimpleAttributesTest {
 				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
 		MonitorableWithIntegerAttribute monitorable_2 =
 				new MonitorableWithIntegerAttribute(false, 250, 25000L, 5.0, "data-2");
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		int exceptionsThrown = 0;
 
@@ -130,7 +132,7 @@ public class JmxMBeansSimpleAttributesTest {
 	public void itShouldSetWritableAttributes() throws Exception {
 		MonitorableWithIntegerAttribute monitorable =
 				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		mbean.setAttribute(new Attribute("intAttr", 320));
 		mbean.setAttribute(new Attribute("strAttr", "message"));
@@ -143,7 +145,7 @@ public class JmxMBeansSimpleAttributesTest {
 	public void itShouldNotSetNonReadOnlyAttributes() throws Exception {
 		MonitorableWithIntegerAttribute monitorable =
 				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		int exceptions = 0;
 
@@ -180,8 +182,7 @@ public class JmxMBeansSimpleAttributesTest {
 		return nameToAttr;
 	}
 
-	@JmxMBean
-	public static final class MonitorableWithIntegerAttribute {
+	public static final class MonitorableWithIntegerAttribute implements ConcurrentJmxMBean {
 		private boolean booleanAttr;
 		private int intAttr;
 		private long longAttr;
@@ -231,6 +232,11 @@ public class JmxMBeansSimpleAttributesTest {
 		@JmxAttribute
 		public void setStrAttr(String strAttr) {
 			this.strAttr = strAttr;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
 		}
 	}
 }

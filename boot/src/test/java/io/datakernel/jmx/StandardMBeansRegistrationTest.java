@@ -22,11 +22,9 @@ import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
 import org.junit.Test;
 
-import javax.management.DynamicMBean;
 import javax.management.MBeanServer;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
-import static java.util.Arrays.asList;
 
 public class StandardMBeansRegistrationTest {
 
@@ -34,7 +32,6 @@ public class StandardMBeansRegistrationTest {
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
 	private DynamicMBeanFactory mbeanFactory = context.mock(DynamicMBeanFactory.class);
-	private DynamicMBean dynamicMBean = context.mock(DynamicMBean.class);
 	private JmxRegistry jmxRegistry = new JmxRegistry(mBeanServer, mbeanFactory);
 	private final String domain = ServiceStub.class.getPackage().getName();
 
@@ -43,9 +40,6 @@ public class StandardMBeansRegistrationTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(asList(service), true);
-			will(returnValue(dynamicMBean));
-
 			oneOf(mBeanServer).registerMBean(with(any(Object.class)), with(objectname(domain + ":type=ServiceStub")));
 		}});
 

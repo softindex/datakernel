@@ -24,6 +24,8 @@ import javax.management.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -52,7 +54,7 @@ public class JmxMBeansStatsTest {
 	@Test
 	public void itShouldCollectAllJmxStatsFromMonitorableAndWriteThemToMBeanInfo() throws Exception {
 		MonitorableStub monitorable = new MonitorableStub();
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		MBeanAttributeInfo[] mBeanAttributeInfos = mBeanInfo.getAttributes();
@@ -72,7 +74,7 @@ public class JmxMBeansStatsTest {
 		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
 		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
 		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		// check init values of attributes
 		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
@@ -102,7 +104,7 @@ public class JmxMBeansStatsTest {
 		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
 		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
 		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		// check fetching all attributes
 		AttributeList expectedAttributeList =
@@ -136,7 +138,7 @@ public class JmxMBeansStatsTest {
 		monitorable_1.getSimpleStats().recordValue(23L);
 		monitorable_2.getSimpleStats().recordValue(78L);
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
 		assertEquals(23L + 78L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));
@@ -160,8 +162,7 @@ public class JmxMBeansStatsTest {
 		return attrList;
 	}
 
-	@JmxMBean
-	public static class MonitorableStub {
+	public static class MonitorableStub implements ConcurrentJmxMBean {
 		CompositeStatsStub groupedStats = new CompositeStatsStub();
 		JmxStatsStub simpleStats = new JmxStatsStub();
 
@@ -173,6 +174,11 @@ public class JmxMBeansStatsTest {
 		@JmxAttribute
 		public JmxStatsStub getSimpleStats() {
 			return simpleStats;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
 		}
 	}
 }

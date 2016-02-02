@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertArrayEquals;
@@ -36,7 +38,7 @@ public class JmxMBeansArrayAttributesTest {
 	public void itShouldCollectInfoAboutArrayAttributes() throws Exception {
 		MonitorableWithArray monitorable =
 				new MonitorableWithArray(new SimplePOJO[]{new SimplePOJO("data-10"), new SimplePOJO("data-20")});
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> nameToAttr = formNameToAttr(mBeanInfo.getAttributes());
@@ -55,7 +57,7 @@ public class JmxMBeansArrayAttributesTest {
 		SimplePOJO pojo_2 = new SimplePOJO("data-20");
 		MonitorableWithArray monitorable =
 				new MonitorableWithArray(new SimplePOJO[]{pojo_1, pojo_2});
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		String[] expected = new String[]{pojo_1.toString(), pojo_2.toString()};
 		String[] actual = (String[]) mbean.getAttribute("arrayAttr");
@@ -73,7 +75,7 @@ public class JmxMBeansArrayAttributesTest {
 		MonitorableWithArray monitorable_2 =
 				new MonitorableWithArray(new SimplePOJO[]{pojo_3});
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		Set<String> expected = new HashSet<>(asList((String[]) mbean.getAttribute("arrayAttr")));
 		Set<String> actual = new HashSet<>(asList(pojo_1.toString(), pojo_2.toString(), pojo_3.toString()));
@@ -89,7 +91,7 @@ public class JmxMBeansArrayAttributesTest {
 		MonitorableWithArray monitorable_2 =
 				new MonitorableWithArray(new SimplePOJO[]{pojo_1});
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		Set<String> expected = new HashSet<>(asList((String[]) mbean.getAttribute("arrayAttr")));
 		Set<String> actual = new HashSet<>(asList(pojo_1.toString()));
@@ -105,8 +107,7 @@ public class JmxMBeansArrayAttributesTest {
 		return nameToAttr;
 	}
 
-	@JmxMBean
-	public static final class MonitorableWithArray {
+	public static final class MonitorableWithArray implements ConcurrentJmxMBean {
 		private SimplePOJO[] arrayAttr;
 
 		public MonitorableWithArray(SimplePOJO[] arrayAttr) {
@@ -116,6 +117,11 @@ public class JmxMBeansArrayAttributesTest {
 		@JmxAttribute
 		public SimplePOJO[] getArrayAttr() {
 			return arrayAttr;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
 		}
 	}
 

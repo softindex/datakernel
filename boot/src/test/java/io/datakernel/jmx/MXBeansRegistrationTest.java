@@ -26,7 +26,6 @@ import javax.management.DynamicMBean;
 import javax.management.MBeanServer;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
-import static java.util.Arrays.asList;
 
 public class MXBeansRegistrationTest {
 
@@ -43,9 +42,6 @@ public class MXBeansRegistrationTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			allowing(mbeanFactory).createFor(asList(service), true);
-			will(returnValue(dynamicMBean));
-
 			oneOf(mBeanServer).registerMBean(with(any(Object.class)), with(objectname(domain + ":type=ServiceStub")));
 		}});
 

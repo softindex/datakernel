@@ -16,19 +16,19 @@
 
 package io.datakernel.eventloop;
 
+import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxMBean;
 import io.datakernel.jmx.JmxOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
+import java.util.concurrent.Executor;
 
 import static io.datakernel.util.Preconditions.check;
 import static java.lang.Math.pow;
 
-@JmxMBean
-public final class ThrottlingController {
+public final class ThrottlingController implements ConcurrentJmxMBean {
 	private static int staticInstanceCounter = 0;
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
@@ -55,6 +55,8 @@ public final class ThrottlingController {
 		}
 	};
 
+	private final Eventloop eventloop;
+
 	// settings
 	private int targetTimeMillis;
 	private int gcTimeMillis;
@@ -80,8 +82,8 @@ public final class ThrottlingController {
 
 	private float throttling;
 
-	public static ThrottlingController createDefaultThrottlingController() {
-		ThrottlingController throttlingController = new ThrottlingController();
+	public static ThrottlingController createDefaultThrottlingController(Eventloop eventloop) {
+		ThrottlingController throttlingController = new ThrottlingController(eventloop);
 		throttlingController.setTargetTimeMillis(TARGET_TIME_MILLIS);
 		throttlingController.setGcTimeMillis(GC_TIME_MILLIS);
 		throttlingController.setSmoothingWindow(SMOOTHING_WINDOW);
@@ -90,7 +92,8 @@ public final class ThrottlingController {
 		return throttlingController;
 	}
 
-	public ThrottlingController() {
+	public ThrottlingController(Eventloop eventloop) {
+		this.eventloop = eventloop;
 	}
 
 	public void init(double initialKeysPerSecond, double initialThrottling) {
@@ -290,5 +293,10 @@ public final class ThrottlingController {
 				infoRounds,
 				infoRoundsZeroThrottling,
 				infoRoundsExceededTargetTime);
+	}
+
+	@Override
+	public Executor getJmxExecutor() {
+		return null;
 	}
 }

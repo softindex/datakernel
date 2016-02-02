@@ -25,6 +25,8 @@ import javax.management.MBeanInfo;
 import javax.management.openmbean.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -37,7 +39,7 @@ public class JmxMBeansExceptionAttributesTest {
 		Exception notThrownException = new RuntimeException("ex-msg", new IllegalArgumentException());
 		MonitorableWithExceptionAttribute monitorable = new MonitorableWithExceptionAttribute(notThrownException);
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
 		Map<String, MBeanAttributeInfo> nameToAttr = formNameToAttr(mBeanInfo.getAttributes());
 		assertEquals(1, nameToAttr.size());
@@ -61,7 +63,7 @@ public class JmxMBeansExceptionAttributesTest {
 		}
 		MonitorableWithExceptionAttribute monitorable = new MonitorableWithExceptionAttribute(thrownException);
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
 
 		CompositeData exceptionInfo = (CompositeData) mbean.getAttribute("exceptionAttr");
 
@@ -80,7 +82,7 @@ public class JmxMBeansExceptionAttributesTest {
 				new MonitorableWithExceptionAttribute(new IllegalArgumentException());
 		MonitorableWithExceptionAttribute monitorable_2 =
 				new MonitorableWithExceptionAttribute(new IllegalArgumentException());
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		mbean.getAttribute("exceptionAttr");
 	}
@@ -90,7 +92,7 @@ public class JmxMBeansExceptionAttributesTest {
 		Exception exception = new Exception("msg");
 		MonitorableWithExceptionAttribute monitorable_1 = new MonitorableWithExceptionAttribute(exception);
 		MonitorableWithExceptionAttribute monitorable_2 = new MonitorableWithExceptionAttribute(exception);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2));
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
 		CompositeData exceptionInfo = (CompositeData) mbean.getAttribute("exceptionAttr");
 		assertEquals("java.lang.Exception", exceptionInfo.get("type"));
@@ -130,8 +132,7 @@ public class JmxMBeansExceptionAttributesTest {
 		return nameToAttr;
 	}
 
-	@JmxMBean
-	public static final class MonitorableWithExceptionAttribute {
+	public static final class MonitorableWithExceptionAttribute implements ConcurrentJmxMBean {
 		private Throwable exception;
 
 		public MonitorableWithExceptionAttribute(Throwable exception) {
@@ -141,6 +142,11 @@ public class JmxMBeansExceptionAttributesTest {
 		@JmxAttribute
 		public Throwable getExceptionAttr() {
 			return exception;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
 		}
 	}
 }
