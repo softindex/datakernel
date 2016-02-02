@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.*;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
@@ -47,8 +48,7 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-@JmxMBean
-public final class RpcClient implements EventloopService {
+public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
@@ -350,72 +350,53 @@ public final class RpcClient implements EventloopService {
 
 	// JMX
 
-	/**
-	 * Thread-safe operation
-	 */
-	@JmxOperation
-	public void startMonitoring() {
-		eventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				RpcClient.this.monitoring = true;
-				for (InetSocketAddress address : addresses) {
-					RpcClientConnection connection = connections.get(address);
-					if (connection != null) {
-						connection.startMonitoring();
-					}
-				}
-			}
-		});
+	@Override
+	public Executor getJmxExecutor() {
+		return eventloop;
 	}
 
-	/**
-	 * Thread-safe operation
-	 */
+	@JmxOperation
+	public void startMonitoring() {
+		RpcClient.this.monitoring = true;
+		for (InetSocketAddress address : addresses) {
+			RpcClientConnection connection = connections.get(address);
+			if (connection != null) {
+				connection.startMonitoring();
+			}
+		}
+	}
+
 	@JmxOperation
 	public void stopMonitoring() {
-		eventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				RpcClient.this.monitoring = false;
-				for (InetSocketAddress address : addresses) {
-					RpcClientConnection connection = connections.get(address);
-					if (connection != null) {
-						connection.stopMonitoring();
-					}
-				}
+		RpcClient.this.monitoring = false;
+		for (InetSocketAddress address : addresses) {
+			RpcClientConnection connection = connections.get(address);
+			if (connection != null) {
+				connection.stopMonitoring();
 			}
-		});
+		}
 	}
 
 	private boolean isMonitoring() {
 		return monitoring;
 	}
 
-	/**
-	 * Thread-safe operation
-	 */
 	@JmxOperation
 	public void resetStats() {
-		eventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				generalRequestsStats.resetStats();
-				for (InetSocketAddress address : connectsStatsPerAddress.keySet()) {
-					connectsStatsPerAddress.get(address).reset();
-				}
-				for (Class<?> requestClass : requestStatsPerClass.keySet()) {
-					requestStatsPerClass.get(requestClass).resetStats();
-				}
+		generalRequestsStats.resetStats();
+		for (InetSocketAddress address : connectsStatsPerAddress.keySet()) {
+			connectsStatsPerAddress.get(address).reset();
+		}
+		for (Class<?> requestClass : requestStatsPerClass.keySet()) {
+			requestStatsPerClass.get(requestClass).resetStats();
+		}
 
-				for (InetSocketAddress address : addresses) {
-					RpcClientConnection connection = connections.get(address);
-					if (connection != null) {
-						connection.resetStats();
-					}
-				}
+		for (InetSocketAddress address : addresses) {
+			RpcClientConnection connection = connections.get(address);
+			if (connection != null) {
+				connection.resetStats();
 			}
-		});
+		}
 	}
 
 	@JmxAttribute

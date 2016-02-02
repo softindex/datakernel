@@ -19,14 +19,15 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -38,9 +39,10 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <K> type of keys
  * @param <T> type of objects
  */
-@JmxMBean
-public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
+public final class StreamSorter<K, T> implements StreamTransformer<T, T>, ConcurrentJmxMBean {
 	protected long jmxItems;
+
+	private final Eventloop eventloop;
 
 	private InputConsumer inputConsumer;
 
@@ -184,6 +186,8 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 		checkNotNull(keyFunction);
 		checkNotNull(storage);
 
+		this.eventloop = eventloop;
+
 		Comparator<T> itemComparator = new Comparator<T>() {
 			private final Function<T, K> _keyFunction = keyFunction;
 			private final Comparator<K> _keyComparator = keyComparator;
@@ -208,6 +212,12 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T> {
 	@Override
 	public StreamProducer<T> getOutput() {
 		return inputConsumer.forwarder.getOutput();
+	}
+
+	// jmx
+	@Override
+	public Executor getJmxExecutor() {
+		return eventloop;
 	}
 
 	@JmxAttribute

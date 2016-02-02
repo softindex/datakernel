@@ -19,8 +19,8 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxMBean;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializationInputBuffer;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
+import java.util.concurrent.Executor;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.lang.Math.min;
@@ -39,8 +40,7 @@ import static java.lang.Math.min;
  *
  * @param <T> original type of data
  */
-@JmxMBean
-public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T> {
+public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, ConcurrentJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinaryDeserializer.class);
 
 	private final InputConsumer inputConsumer;
@@ -313,6 +313,12 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		outputProducer.byteBufs.clear();
 		outputProducer.sendEndOfStream();
 		logger.info("Deserialized {} objects from {}", outputProducer.jmxItems, inputConsumer.getUpstream());
+	}
+
+	// jmx
+	@Override
+	public Executor getJmxExecutor() {
+		return eventloop;
 	}
 
 	@JmxAttribute

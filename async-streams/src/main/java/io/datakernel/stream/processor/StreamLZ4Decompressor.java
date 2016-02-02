@@ -19,8 +19,8 @@ package io.datakernel.stream.processor;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import net.jpountz.lz4.LZ4Exception;
@@ -31,13 +31,13 @@ import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
 import java.io.IOException;
+import java.util.concurrent.Executor;
 
 import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
 
-@JmxMBean
-public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements ConcurrentJmxMBean {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -252,6 +252,12 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 
 	public long getInputStreamPosition() {
 		return outputProducer.inputStreamPosition;
+	}
+
+	// jmx
+	@Override
+	public Executor getJmxExecutor() {
+		return eventloop;
 	}
 
 	@JmxAttribute

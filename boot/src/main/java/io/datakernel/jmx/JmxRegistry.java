@@ -53,7 +53,7 @@ public final class JmxRegistry {
 			try {
 				mbean = mbeanFactory.createFor(asList((ConcurrentJmxMBean) singletonInstance), true);
 			} catch (Exception e) {
-				String msg = format("Instance with key %s is annotated with @JmxMBean " +
+				String msg = format("Instance with key %s implemetns ConcurrentJmxMBean " +
 						"but exception was thrown during attempt to create DynamicMBean", key.toString());
 				logger.error(msg, e);
 				return;
@@ -62,7 +62,7 @@ public final class JmxRegistry {
 			mbean = singletonInstance;
 		} else {
 			logger.info(format("Instance with key %s was not registered to jmx, " +
-					"because its type is not annotated with @JmxMBean " +
+					"because its type does not implement ConcurrentJmxMBean " +
 					"and does not implement neither *MBean nor *MXBean interface", key.toString()));
 			return;
 		}

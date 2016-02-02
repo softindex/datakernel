@@ -18,7 +18,6 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.JmxMBean;
 import io.datakernel.stream.StreamConsumer;
 
 import java.util.Comparator;
@@ -34,7 +33,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <A> type of accumulator
  * @param <I> type of input data
  */
-@JmxMBean
 public final class StreamReducerSimple<K, I, O, A> extends AbstractStreamReducer<K, O, A> {
 
 	private final Function<I, K> keyFunction;
