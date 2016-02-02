@@ -17,7 +17,6 @@
 package io.datakernel.aggregation_db;
 
 import com.google.common.base.Function;
-import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.ConcurrentJmxMBean;
@@ -36,10 +35,10 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	private final AggregationChunkStorage storage;
 	private final AggregationMetadataStorage metadataStorage;
-	private final AggregationMetadata aggregationMetadata;
+	private final String aggregationId;
 	private final List<String> keys;
-	private final List<String> outputFields;
-	private final Class<?> accumulatorClass;
+	private final List<String> fields;
+	private final Class<?> recordClass;
 	private final Function<T, Comparable<?>> keyFunction;
 	private final Aggregate aggregate;
 	private final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback;
@@ -48,19 +47,21 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
 	private final List<AggregationChunk.NewChunk> chunks = new ArrayList<>();
-	private boolean saving;
+
+	private int pendingWriters;
+	private boolean returnedResult;
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
 	                               AggregationMetadataStorage metadataStorage, AggregationMetadata aggregationMetadata,
-	                               Class<?> accumulatorClass, Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
+	                               Class<?> recordClass, Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback, int chunkSize) {
 		super(eventloop);
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
-		this.aggregationMetadata = aggregationMetadata;
+		this.aggregationId = aggregationMetadata.getId();
 		this.keys = aggregationMetadata.getKeys();
-		this.outputFields = aggregationMetadata.getOutputFields();
-		this.accumulatorClass = accumulatorClass;
+		this.fields = aggregationMetadata.getOutputFields();
+		this.recordClass = recordClass;
 		this.keyFunction = keyFunction;
 		this.aggregate = aggregate;
 		this.chunksCallback = chunksCallback;
@@ -83,34 +84,22 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			map.put(key, accumulator);
 
 			if (map.size() == chunkSize) {
-				doNext();
+				doFlush();
 			}
 		}
 	}
 
-	private void doNext() {
-		if (saving) {
-			suspend();
+	@SuppressWarnings("unchecked")
+	private void doFlush() {
+		if (map.isEmpty())
 			return;
-		}
 
-		if (getConsumerStatus() == StreamStatus.END_OF_STREAM && map.isEmpty()) {
-			chunksCallback.onResult(chunks);
-			logger.trace("{}: completed saving chunks {} for aggregation {}. Closing itself.", this, chunks, aggregationMetadata);
-			return;
-		}
-
-		if (map.isEmpty()) {
-			return;
-		}
-
-		saving = true;
+		++pendingWriters;
 
 		final List<Map.Entry<Comparable<?>, Object>> entryList = new ArrayList<>(map.entrySet());
 		map.clear();
 
 		Collections.sort(entryList, new Comparator<Map.Entry<Comparable<?>, Object>>() {
-			@SuppressWarnings("unchecked")
 			@Override
 			public int compare(Map.Entry<Comparable<?>, Object> o1, Map.Entry<Comparable<?>, Object> o2) {
 				Comparable<Object> key1 = (Comparable<Object>) o1.getKey();
@@ -119,75 +108,63 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			}
 		});
 
-		metadataStorage.newChunkId(new ResultCallback<Long>() {
-			@SuppressWarnings("unchecked")
+		Iterable<Object> list = transform(entryList, new Function<Map.Entry<Comparable<?>, Object>, Object>() {
 			@Override
-			public void onResult(Long newId) {
-				AggregationChunk.NewChunk newChunk = new AggregationChunk.NewChunk(
-						newId,
-						outputFields,
-						PrimaryKey.ofObject(entryList.get(0).getValue(), keys),
-						PrimaryKey.ofObject(entryList.get(entryList.size() - 1).getValue(), keys),
-						entryList.size());
-				chunks.add(newChunk);
+			public Object apply(Map.Entry<Comparable<?>, Object> input) {
+				return input.getValue();
+			}
+		});
 
-				Iterable<Object> list = transform(entryList, new Function<Map.Entry<Comparable<?>, Object>, Object>() {
+		final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
+
+		producer.streamTo(new AggregationChunker(eventloop, aggregationId, keys, fields,
+				recordClass, storage, metadataStorage, chunkSize,
+				new ResultCallback<List<AggregationChunk.NewChunk>>() {
 					@Override
-					public Object apply(Map.Entry<Comparable<?>, Object> input) {
-						return input.getValue();
-					}
-				});
+					public void onResult(List<AggregationChunk.NewChunk> newChunks) {
+						chunks.addAll(newChunks);
 
-				final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
-
-				logger.info("Writing chunk #{} to aggregation '{}'", newId, aggregationMetadata.getId());
-				storage.chunkWriter(aggregationMetadata.getId(), keys, outputFields, accumulatorClass, newId, producer, new CompletionCallback() {
-					@Override
-					public void onComplete() {
-						saving = false;
-						eventloop.post(new Runnable() {
-							@Override
-							public void run() {
-								doNext();
-							}
-						});
+						if (--pendingWriters == 0 && getConsumerStatus() == StreamStatus.END_OF_STREAM && !returnedResult) {
+							chunksCallback.onResult(chunks);
+							returnedResult = true;
+						}
 					}
 
 					@Override
 					public void onException(Exception e) {
-						logger.error("Saving chunks {} to aggregation storage {} failed.", chunks, storage, e);
+						logger.error("Saving chunks to aggregation storage {} failed", storage, e);
+						--pendingWriters;
 						closeWithError(e);
+						reportException(e);
 					}
-				});
-
-				AggregationGroupReducer.this.resume();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.error("Failed to retrieve new chunk id from the metadata storage {}.", metadataStorage);
-				closeWithError(exception);
-			}
-		});
+				}));
 	}
 
 	@Override
 	public void onEndOfStream() {
-		logger.trace("{}: upstream producer {} closed", this, upstreamProducer);
-		doNext();
+		doFlush();
+
+		if (pendingWriters == 0 && !returnedResult)
+			chunksCallback.onResult(chunks);
 	}
 
 	@Override
 	protected void onError(Exception e) {
-		logger.error("{}: upstream producer {} exception", this, upstreamProducer, e);
-		chunksCallback.onException(e);
+		reportException(e);
+	}
+
+	private void reportException(Exception e) {
+		if (!returnedResult) {
+			chunksCallback.onException(e);
+			returnedResult = true;
+		}
 	}
 
 	// jmx
 
 	@JmxOperation
 	public void flush() {
-		doNext();
+		doFlush();
 	}
 
 	@Override

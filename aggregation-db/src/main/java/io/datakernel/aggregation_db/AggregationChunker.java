@@ -65,7 +65,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			private int count;
 
 			private int pendingChunks;
-			private boolean returnedChunks;
+			private boolean returnedResult;
 
 			private final List<AggregationChunk.NewChunk> chunks = new ArrayList<>();
 
@@ -89,14 +89,14 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				if (outputProducer.getDownstream() != null)
 					outputProducer.sendEndOfStream();
 
-				if (pendingChunks == 0 && !returnedChunks)
+				if (pendingChunks == 0 && !returnedResult)
 					chunksCallback.onResult(chunks);
 			}
 
 			@Override
 			protected void onError(Exception e) {
 				super.onError(e);
-				chunksCallback.onException(e);
+				reportException(e);
 			}
 
 			@Override
@@ -143,9 +143,9 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 												metadataCounter.first, metadataCounter.last, metadataCounter.count);
 										chunks.add(newChunk);
 
-										if (--pendingChunks == 0 && getConsumerStatus() == StreamStatus.END_OF_STREAM) {
+										if (--pendingChunks == 0 && getConsumerStatus() == StreamStatus.END_OF_STREAM && !returnedResult) {
 											chunksCallback.onResult(chunks);
-											returnedChunks = true;
+											returnedResult = true;
 										}
 
 										logger.trace("Saving new chunk with id {} to storage {} completed",
@@ -153,21 +153,32 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 									}
 
 									@Override
-									public void onException(Exception exception) {
+									public void onException(Exception e) {
 										logger.error("Saving new chunk with id {} to storage {} failed",
-												chunkId, storage, exception);
-										closeWithError(exception);
+												chunkId, storage, e);
+										--pendingChunks;
+										closeWithError(e);
+										reportException(e);
 									}
 								});
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					public void onException(Exception e) {
 						logger.error("Failed to retrieve new chunk id from metadata storage {}",
-								metadataStorage, exception);
-						closeWithError(exception);
+								metadataStorage, e);
+						--pendingChunks;
+						closeWithError(e);
+						reportException(e);
 					}
 				});
+			}
+
+			private void reportException(Exception e) {
+				if (!returnedResult) {
+					chunksCallback.onException(e);
+					returnedResult = true;
+				}
 			}
 		}
 
