@@ -816,7 +816,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public void setAttribute(Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
+		public void setAttribute(final Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
 				MBeanException, ReflectionException {
 			MBeanAttributeInfo attrInfo = nameToSimpleAttribute.get(attribute.getName());
 			if (attrInfo == null) {
@@ -825,15 +825,34 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			if (!attrInfo.isWritable()) {
 				throw new AttributeNotFoundException(format("Attribute with name \"%s\" is not writable", attribute));
 			}
-			for (JmxMonitorableWrapper wrapper : wrappers) {
-				try {
-					wrapper.setSimpleAttribute(attribute.getName(), attribute.getValue());
-				} catch (InvocationTargetException | IllegalAccessException e) {
-					throw new ReflectionException(e,
-							format("Cannot set value \"%s\" to attribute with name \"%s\"",
-									attribute.getName(), attribute.getValue().toString())
-					);
-				}
+
+			final CountDownLatch latch = new CountDownLatch(wrappers.size());
+			final AtomicReference<Exception> exceptionReference = new AtomicReference<>();
+			for (final JmxMonitorableWrapper wrapper : wrappers) {
+				Executor executor = wrapper.getExecutor();
+				executor.execute(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							wrapper.setSimpleAttribute(attribute.getName(), attribute.getValue());
+							latch.countDown();
+						} catch (Exception e) {
+							exceptionReference.set(e);
+							latch.countDown();
+						}
+					}
+				});
+			}
+
+			try {
+				latch.await();
+			} catch (InterruptedException e) {
+				throw new MBeanException(e);
+			}
+
+			Exception exception = exceptionReference.get();
+			if (exception != null) {
+				throw new MBeanException(exception);
 			}
 		}
 
