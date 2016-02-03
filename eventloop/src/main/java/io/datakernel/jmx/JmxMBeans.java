@@ -680,6 +680,38 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				return smoothingWindow;
 			}
 
+			if (isJmxStatsAttribute(attribute)) {
+				return aggregateJmxStatsAttribute(attribute);
+			} else if (nameToSimpleAttribute.containsKey(attribute)) {
+				return aggregateSimpleTypeAttribute(attribute);
+			} else if (listAttributes.contains(attribute)) {
+				return aggregateListAttribute(attribute);
+			} else if (arrayAttributes.contains(attribute)) {
+				return aggregateArrayAttribute(attribute);
+			} else if (exceptionAttributes.contains(attribute)) {
+				try {
+					return buildCompositeDataForThrowable(aggregateExceptionAttribute(attribute));
+				} catch (OpenDataException e) {
+					throw new MBeanException(
+							e, format("Cannot create CompositeData for Throwable with name \"%s\"", attribute));
+				}
+			} else {
+				throw new AttributeNotFoundException();
+			}
+		}
+
+		private boolean isJmxStatsAttribute(String attrName) {
+			Matcher matcher = ATTRIBUTE_NAME_PATTERN.matcher(attrName);
+			if (matcher.matches()) {
+				String jmxStatsName = matcher.group(1);
+				return nameToJmxStatsType.containsKey(jmxStatsName);
+			} else {
+				return false;
+			}
+		}
+
+		private Object aggregateJmxStatsAttribute(String attribute)
+				throws ReflectionException, AttributeNotFoundException, MBeanException {
 			Matcher matcher = ATTRIBUTE_NAME_PATTERN.matcher(attribute);
 			if (matcher.matches()) {
 				// attribute is JmxStats
@@ -707,22 +739,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				} else {
 					throw new AttributeNotFoundException();
 				}
-			} else if (nameToSimpleAttribute.containsKey(attribute)) {
-				// attribute is of simple type
-				return aggregateSimpleTypeAttribute(attribute);
-			} else if (listAttributes.contains(attribute)) {
-				return aggregateListAttribute(attribute);
-			} else if (arrayAttributes.contains(attribute)) {
-				return aggregateArrayAttribute(attribute);
-			} else if (exceptionAttributes.contains(attribute)) {
-				try {
-					return buildCompositeDataForThrowable(aggregateExceptionAttribute(attribute));
-				} catch (OpenDataException e) {
-					throw new MBeanException(
-							e, format("Cannot create CompositeData for Throwable with name \"%s\"", attribute));
-				}
 			} else {
-				throw new AttributeNotFoundException();
+				throw new MBeanException(new IllegalStateException(
+						format("Error. JmxStats attribute with name \"%s\" " +
+								"does not conform naming convention", attribute)
+				));
 			}
 		}
 

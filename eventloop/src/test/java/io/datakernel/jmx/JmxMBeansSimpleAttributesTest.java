@@ -173,6 +173,14 @@ public class JmxMBeansSimpleAttributesTest {
 		assertEquals(1.5, mbean.getAttribute("doubleAttr"));
 	}
 
+	@Test
+	public void itShouldCorrectlyFetchAttributesWithUnderscoreInName() throws Exception {
+		ClassWithUnderscoreInAttributeName monitorable = new ClassWithUnderscoreInAttributeName();
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
+
+		assertEquals(10, mbean.getAttribute("count_one"));
+	}
+
 	// helpers
 	public static Map<String, MBeanAttributeInfo> formNameToAttr(MBeanAttributeInfo[] attributes) {
 		Map<String, MBeanAttributeInfo> nameToAttr = new HashMap<>();
@@ -232,6 +240,19 @@ public class JmxMBeansSimpleAttributesTest {
 		@JmxAttribute
 		public void setStrAttr(String strAttr) {
 			this.strAttr = strAttr;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
+		}
+	}
+
+	public static class ClassWithUnderscoreInAttributeName implements ConcurrentJmxMBean {
+
+		@JmxAttribute
+		public int getCount_one() {
+			return 10;
 		}
 
 		@Override
