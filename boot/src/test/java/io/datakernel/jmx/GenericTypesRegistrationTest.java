@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import com.google.inject.Key;
+import com.google.inject.TypeLiteral;
 import org.jmock.Expectations;
 import org.jmock.integration.junit4.JUnitRuleMockery;
 import org.junit.Rule;
@@ -26,45 +27,51 @@ import javax.management.MBeanServer;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 
-public class StandardMBeansRegistrationTest {
+public class GenericTypesRegistrationTest {
 
 	@Rule
 	public JUnitRuleMockery context = new JUnitRuleMockery();
 	private MBeanServer mBeanServer = context.mock(MBeanServer.class);
 	private DynamicMBeanFactory mbeanFactory = context.mock(DynamicMBeanFactory.class);
 	private JmxRegistry jmxRegistry = new JmxRegistry(mBeanServer, mbeanFactory);
-	private final String domain = ServiceStub.class.getPackage().getName();
+	private final String domain = ServiceStubOne.class.getPackage().getName();
 
 	@Test
-	public void itShouldRegisterStandardMBeans() throws Exception {
-		final ServiceStub service = new ServiceStub();
+	public void itShouldFormProperlyNameForTypeWithOneGenericParameter() throws Exception {
+		final ServiceStubOne service = new ServiceStubOne();
 
 		context.checking(new Expectations() {{
-			oneOf(mBeanServer).registerMBean(with(service), with(objectname(domain + ":type=ServiceStub")));
+			oneOf(mBeanServer).registerMBean(with(service),
+					with(objectname(domain + ":type=ServiceStubOne,T1=String")));
 		}});
 
-		Key<?> key = Key.get(ServiceStub.class);
+		TypeLiteral<ServiceStubOne<String>> gType = new TypeLiteral<ServiceStubOne<String>>() {};
+		Key<?> key = Key.get(gType);
 		jmxRegistry.registerSingleton(key, service);
 	}
 
 	@Test
-	public void itShouldNotRegisterClassesThatAreNotMBeans() {
-		final NonMBeanServiceImpl nonMBean = new NonMBeanServiceImpl();
+	public void itShouldFormProperlyNameForTypeWithSeveralGenericParameter() throws Exception {
+		final ServiceStubOne service = new ServiceStubOne();
 
 		context.checking(new Expectations() {{
-			// we do not expect any calls
-			// any call of mBeanServer will produce error
+			oneOf(mBeanServer).registerMBean(with(service),
+					with(objectname(domain + ":type=ServiceStubThree,T1=String,T2=Integer,T3=Long"))
+			);
 		}});
 
-		Key<?> key = Key.get(NonMBeanServiceImpl.class);
-		jmxRegistry.registerSingleton(key, nonMBean);
+		TypeLiteral<ServiceStubThree<String, Integer, Long>> gType =
+				new TypeLiteral<ServiceStubThree<String, Integer, Long>>() {};
+		Key<?> key = Key.get(gType);
+		jmxRegistry.registerSingleton(key, service);
 	}
 
-	public interface ServiceStubMBean {
+	public interface ServiceStubOneMBean {
 		int getCount();
 	}
 
-	public static class ServiceStub implements ServiceStubMBean {
+	public static class ServiceStubOne<T> implements ServiceStubOneMBean {
+		private T value = null;
 
 		@Override
 		public int getCount() {
@@ -72,14 +79,17 @@ public class StandardMBeansRegistrationTest {
 		}
 	}
 
-	public interface NonMBeanService {
-		int getTotal();
+	public interface ServiceStubThreeMBean {
+		int getCount();
 	}
 
-	public static class NonMBeanServiceImpl implements NonMBeanService {
+	public static class ServiceStubThree<A, B, C> implements ServiceStubThreeMBean {
+		private A a = null;
+		private B b = null;
+		private C c = null;
 
 		@Override
-		public int getTotal() {
+		public int getCount() {
 			return 0;
 		}
 	}

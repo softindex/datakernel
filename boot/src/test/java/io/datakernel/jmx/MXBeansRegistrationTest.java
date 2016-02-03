@@ -42,11 +42,11 @@ public class MXBeansRegistrationTest {
 		final ServiceStub service = new ServiceStub();
 
 		context.checking(new Expectations() {{
-			oneOf(mBeanServer).registerMBean(with(any(Object.class)), with(objectname(domain + ":type=ServiceStub")));
+			oneOf(mBeanServer).registerMBean(with(service), with(objectname(domain + ":type=ServiceStub")));
 		}});
 
-		Key<?> key_1 = Key.get(ServiceStub.class);
-		jmxRegistry.registerSingleton(key_1, service);
+		Key<?> key = Key.get(ServiceStub.class);
+		jmxRegistry.registerSingleton(key, service);
 	}
 
 	public interface ServiceStubMXBean {

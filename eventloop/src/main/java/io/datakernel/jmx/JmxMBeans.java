@@ -647,6 +647,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					final long currentTimestamp = TIME_PROVIDER.currentTimeMillis();
 					for (JmxMonitorableWrapper wrapper : wrappers) {
 						final Executor executor = wrapper.getExecutor();
+						checkNotNull(executor, "Error. Executor of ConcurrentMBean cannot be null");
 						final List<? extends JmxStats<?>> statsList = wrapper.getAllJmxStats();
 						executor.execute(new Runnable() {
 							@Override

@@ -24,6 +24,8 @@ import javax.management.*;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +36,8 @@ import static java.util.Arrays.asList;
 
 public final class JmxRegistry {
 	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
+
+	private static final String GENERIC_PARAM_NAME_FORMAT = "T%d=%s";
 
 	private final MBeanServer mbs;
 	private final DynamicMBeanFactory mbeanFactory;
@@ -283,17 +287,17 @@ public final class JmxRegistry {
 	}
 
 	private static String createNameForKey(Key<?> key) throws Exception {
-		Class<?> type = key.getTypeLiteral().getRawType();
+		Class<?> rawType = key.getTypeLiteral().getRawType();
 		Annotation annotation = key.getAnnotation();
-		String domain = type.getPackage().getName();
+		String domain = rawType.getPackage().getName();
 		String name = domain + ":";
 		if (annotation == null) { // without annotation
-			name += "type=" + type.getSimpleName();
+			name += "type=" + rawType.getSimpleName();
 		} else {
 			Class<? extends Annotation> annotationType = annotation.annotationType();
 			Method[] annotationElements = filterNonEmptyElements(annotation);
 			if (annotationElements.length == 0) { // annotation without elements
-				name += "type=" + type.getSimpleName() + ",annotation=" + annotationType.getSimpleName();
+				name += "type=" + rawType.getSimpleName() + ",annotation=" + annotationType.getSimpleName();
 			} else if (annotationElements.length == 1 && annotationElements[0].getName().equals("value")) {
 				// annotation with single element which has name "value"
 				Object value = fetchAnnotationElementValue(annotation, annotationElements[0]);
@@ -311,7 +315,23 @@ public final class JmxRegistry {
 				name = name.substring(0, name.length() - 1);
 			}
 		}
-		return name;
+		return addGenericParamsInfo(name, key);
+	}
+
+	private static String addGenericParamsInfo(String srcName, Key<?> key) {
+		Type type = key.getTypeLiteral().getType();
+		String resultName = srcName;
+		if (type instanceof ParameterizedType) {
+			ParameterizedType pType = (ParameterizedType) type;
+			Type[] genericArgs = pType.getActualTypeArguments();
+			for (int i = 0; i < genericArgs.length; i++) {
+				Type genericArg = genericArgs[i];
+				String argClassName = ((Class<?>) genericArg).getSimpleName();
+				int argId = i + 1;
+				resultName += "," + format(GENERIC_PARAM_NAME_FORMAT, argId, argClassName);
+			}
+		}
+		return resultName;
 	}
 
 	/**
