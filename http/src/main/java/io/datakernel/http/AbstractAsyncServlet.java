@@ -48,9 +48,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 	}
 
 	protected boolean isRequestThrottled(HttpRequest request) {
-		if (eventloop.throttlingController != null)
-			return eventloop.throttlingController.isRequestThrottled();
-		return false;
+		return eventloop.isRequestThrottled();
 	}
 
 	/**

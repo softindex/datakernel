@@ -94,6 +94,7 @@ public final class ThrottlingController implements ConcurrentJmxMBean {
 
 	public ThrottlingController(Eventloop eventloop) {
 		this.eventloop = eventloop;
+		this.eventloop.throttlingController = this;
 	}
 
 	public void init(double initialKeysPerSecond, double initialThrottling) {
@@ -297,6 +298,6 @@ public final class ThrottlingController implements ConcurrentJmxMBean {
 
 	@Override
 	public Executor getJmxExecutor() {
-		return null;
+		return eventloop;
 	}
 }

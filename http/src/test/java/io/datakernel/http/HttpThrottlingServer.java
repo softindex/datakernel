@@ -78,7 +78,7 @@ public class HttpThrottlingServer {
 	}
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, final int loadBusinessLogic) {
-		eventloop.throttlingController = ThrottlingController.createDefaultThrottlingController(eventloop);
+		ThrottlingController.createDefaultThrottlingController(eventloop);
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override

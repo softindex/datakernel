@@ -118,8 +118,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	 */
 	private long timestamp;
 
-	// TODO: why this field is public ?
-	public ThrottlingController throttlingController;
+	// TODO: why this field is package-private ?
+	ThrottlingController throttlingController;
 
 	/**
 	 * Count of selected keys for last Selector.select()
@@ -222,6 +222,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		return !localTasks.isEmpty() || !scheduledTasks.isEmpty() || !concurrentTasks.isEmpty()
 				|| concurrentOperationsCount.get() > 0
 				|| keepAlive || !selector.keys().isEmpty();
+	}
+
+	public boolean isRequestThrottled() {
+		return throttlingController != null && throttlingController.isRequestThrottled();
 	}
 
 	/**
