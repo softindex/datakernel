@@ -358,8 +358,9 @@ public final class JmxRegistry {
 		Class<?>[] interfaces = clazz.getInterfaces();
 		for (Class<?> anInterface : interfaces) {
 			String interfaceName = anInterface.getSimpleName();
-			if (interfaceName.equals(clazzName + ending)) ;
-			return true;
+			if (interfaceName.equals(clazzName + ending)) {
+				return true;
+			}
 		}
 		return false;
 	}

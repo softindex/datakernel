@@ -43,8 +43,21 @@ public class StandardMBeansRegistrationTest {
 			oneOf(mBeanServer).registerMBean(with(any(Object.class)), with(objectname(domain + ":type=ServiceStub")));
 		}});
 
-		Key<?> key_1 = Key.get(ServiceStub.class);
-		jmxRegistry.registerSingleton(key_1, service);
+		Key<?> key = Key.get(ServiceStub.class);
+		jmxRegistry.registerSingleton(key, service);
+	}
+
+	@Test
+	public void itShouldNotRegisterClassesThatAreNotMBeans() {
+		final NonMBeanServiceImpl nonMBean = new NonMBeanServiceImpl();
+
+		context.checking(new Expectations(){{
+			// we do not expect any calls
+			// any call of mBeanServer will produce error
+		}});
+
+		Key<?> key = Key.get(NonMBeanServiceImpl.class);
+		jmxRegistry.registerSingleton(key, nonMBean);
 	}
 
 	public interface ServiceStubMBean {
@@ -55,6 +68,18 @@ public class StandardMBeansRegistrationTest {
 
 		@Override
 		public int getCount() {
+			return 0;
+		}
+	}
+
+	public interface NonMBeanService {
+		int getTotal();
+	}
+
+	public static class NonMBeanServiceImpl implements NonMBeanService {
+
+		@Override
+		public int getTotal() {
 			return 0;
 		}
 	}
