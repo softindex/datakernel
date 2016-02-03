@@ -38,6 +38,8 @@ public class JmxMBeansStatsTest {
 	private static final String SIMPLE_STATS_COUNT = "simpleStats_count";
 	private static final String SIMPLE_STATS_SUM = "simpleStats_sum";
 
+	private static final long SNAPSHOT_UPDATE_PERIOD = 0L;
+
 	// sorted alphabetically
 	private static final List<String> ALL_ATTRIBUTE_NAMES_LIST = asList(
 			GROUPED_STATS_COUNTER_ONE_COUNT,
@@ -74,7 +76,7 @@ public class JmxMBeansStatsTest {
 		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
 		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
 		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
+		DynamicMBean mbean = JmxMBeans.factory(SNAPSHOT_UPDATE_PERIOD).createFor(asList(monitorable), false);
 
 		// check init values of attributes
 		assertEquals(1, (int) mbean.getAttribute(GROUPED_STATS_COUNTER_ONE_COUNT));
@@ -104,7 +106,7 @@ public class JmxMBeansStatsTest {
 		monitorable.getGroupedStats().getCounterOne().recordValue(23L);
 		monitorable.getGroupedStats().getCounterTwo().recordValue(35L);
 		monitorable.getSimpleStats().recordValue(51L);
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
+		DynamicMBean mbean = JmxMBeans.factory(SNAPSHOT_UPDATE_PERIOD).createFor(asList(monitorable), false);
 
 		// check fetching all attributes
 		AttributeList expectedAttributeList =
@@ -138,7 +140,8 @@ public class JmxMBeansStatsTest {
 		monitorable_1.getSimpleStats().recordValue(23L);
 		monitorable_2.getSimpleStats().recordValue(78L);
 
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
+		DynamicMBean mbean = JmxMBeans.factory(SNAPSHOT_UPDATE_PERIOD)
+				.createFor(asList(monitorable_1, monitorable_2), false);
 
 		assertEquals(2, (int) mbean.getAttribute(SIMPLE_STATS_COUNT));
 		assertEquals(23L + 78L, (long) mbean.getAttribute(SIMPLE_STATS_SUM));

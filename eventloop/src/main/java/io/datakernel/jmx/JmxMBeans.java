@@ -30,8 +30,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static io.datakernel.jmx.RefreshTaskPerPool.ExecutorAndStatsList;
 import static io.datakernel.jmx.Utils.*;
@@ -40,8 +38,6 @@ import static java.lang.String.format;
 
 public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String ATTRIBUTE_NAME_FORMAT = "%s_%s";
-	private static final String ATTRIBUTE_NAME_REGEX = "^([a-zA-Z0-9]+)_(\\w+)$";
-	private static final Pattern ATTRIBUTE_NAME_PATTERN = Pattern.compile(ATTRIBUTE_NAME_REGEX);
 	private static final String ATTRIBUTE_DEFAULT_DESCRIPTION = "";
 
 	private static final Timer TIMER = new Timer(true);
@@ -62,16 +58,24 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
 	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
-	private static final JmxMBeans factory = new JmxMBeans();
+	public static final long SNAPSHOT_UPDATE_DEFAULT_PERIOD = 200L; // milliseconds
 
 	private static final CurrentTimeProvider TIME_PROVIDER = CurrentTimeProviderSystem.instance();
 
 	private static CompositeType compositeTypeOfThrowable;
 
-	private JmxMBeans() {}
+	private final long snapshotUpdatePeriod;
+
+	private JmxMBeans(long snapshotUpdatePeriod) {
+		this.snapshotUpdatePeriod = snapshotUpdatePeriod;
+	}
 
 	public static JmxMBeans factory() {
-		return factory;
+		return new JmxMBeans(SNAPSHOT_UPDATE_DEFAULT_PERIOD);
+	}
+
+	public static JmxMBeans factory(long snapshotUpdatePeriod) {
+		return new JmxMBeans(snapshotUpdatePeriod);
 	}
 
 	@Override
@@ -98,8 +102,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			wrappers.add(createWrapper(monitorables.get(i), writableAttributes));
 		}
 
-		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType, nameToSimpleAttribute,
-				listAttributeNames, arrayAttributeNames, throwableAttributeNames, enableRefresh);
+		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(mBeanInfo, wrappers, nameToJmxStatsType,
+				nameToSimpleAttribute, listAttributeNames, arrayAttributeNames, throwableAttributeNames,
+				enableRefresh, snapshotUpdatePeriod);
 
 		if (enableRefresh) {
 			mbean.startRefreshing(DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW);
@@ -401,19 +406,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		operations.add(setSmoothingWindowOp);
 	}
 
-	private static boolean hasEventloop(Object monitorable) throws InvocationTargetException, IllegalAccessException {
-		return tryFetchEventloop(monitorable) != null;
-	}
-
-	private static Eventloop fetchEventloop(Object monitorable)
-			throws InvocationTargetException, IllegalAccessException {
-		Eventloop eventloop = tryFetchEventloop(monitorable);
-		if (eventloop != null) {
-			return eventloop;
-		}
-		throw new IllegalArgumentException("monitorable doesn't contain eventloop");
-	}
-
 	/**
 	 * Returns Eventloop getter if monitorable has it, otherwise returns null
 	 */
@@ -607,6 +599,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final Set<String> arrayAttributes;
 		private final Set<String> exceptionAttributes;
 
+		private volatile AttributesSnapshot lastAttributesSnapshot;
+
+		private final long snapshotUpdatePeriod;
+
 		// refresh
 		private volatile double refreshPeriod;
 		private volatile double smoothingWindow;
@@ -616,7 +612,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		                              Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType,
 		                              Map<String, MBeanAttributeInfo> nameToSimpleAttribute,
 		                              Set<String> listAttributes, Set<String> arrayAttributes,
-		                              Set<String> exceptionAttributes, boolean enableRefresh) {
+		                              Set<String> exceptionAttributes, boolean enableRefresh,
+		                              long snapshotUpdatePeriod) {
 			this.mBeanInfo = mBeanInfo;
 			this.wrappers = wrappers;
 			this.nameToJmxStatsType = nameToJmxStatsType;
@@ -625,6 +622,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			this.arrayAttributes = arrayAttributes;
 			this.exceptionAttributes = exceptionAttributes;
 			this.refreshEnabled = enableRefresh;
+			this.snapshotUpdatePeriod = snapshotUpdatePeriod;
 		}
 
 		public void startRefreshing(double defaultRefreshPeriod, double defaultSmoothingWindow) {
@@ -681,132 +679,122 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				return smoothingWindow;
 			}
 
-			if (isJmxStatsAttribute(attribute)) {
-				return aggregateJmxStatsAttribute(attribute);
-			} else if (nameToSimpleAttribute.containsKey(attribute)) {
-				return aggregateSimpleTypeAttribute(attribute);
-			} else if (listAttributes.contains(attribute)) {
-				return aggregateListAttribute(attribute);
-			} else if (arrayAttributes.contains(attribute)) {
-				return aggregateArrayAttribute(attribute);
-			} else if (exceptionAttributes.contains(attribute)) {
-				try {
-					return buildCompositeDataForThrowable(aggregateExceptionAttribute(attribute));
-				} catch (OpenDataException e) {
-					throw new MBeanException(
-							e, format("Cannot create CompositeData for Throwable with name \"%s\"", attribute));
-				}
-			} else {
-				throw new AttributeNotFoundException();
+			if (lastAttributesSnapshot == null) {
+				lastAttributesSnapshot = createFreshAttributesSnapshot();
 			}
-		}
 
-		private boolean isJmxStatsAttribute(String attrName) {
-			Matcher matcher = ATTRIBUTE_NAME_PATTERN.matcher(attrName);
-			if (matcher.matches()) {
-				String jmxStatsName = matcher.group(1);
-				return nameToJmxStatsType.containsKey(jmxStatsName);
-			} else {
-				return false;
-			}
-		}
+			long timePassedAfterLastSnapshotUpdate =
+					TIME_PROVIDER.currentTimeMillis() - lastAttributesSnapshot.getTimestamp();
 
-		private Object aggregateJmxStatsAttribute(String attribute)
-				throws ReflectionException, AttributeNotFoundException, MBeanException {
-			Matcher matcher = ATTRIBUTE_NAME_PATTERN.matcher(attribute);
-			if (matcher.matches()) {
-				// attribute is JmxStats
-				String attrName = matcher.group(1);
-				if (nameToJmxStatsType.containsKey(attrName)) {
-					Class<? extends JmxStats<?>> jmxStatsType = nameToJmxStatsType.get(attrName);
-					// wildcard is removed intentionally, types must be same
-					JmxStats statsAccumulator;
-					try {
-						statsAccumulator = jmxStatsType.newInstance();
-					} catch (InstantiationException | IllegalAccessException e) {
-						String errorMsg = "All JmxStats Implementations must have public constructor without parameters";
-						throw new ReflectionException(e, errorMsg);
-					}
-					for (JmxMonitorableWrapper wrapper : wrappers) {
-						statsAccumulator.add(wrapper.getJmxStats(attrName));
-					}
-					String attrNameRest = matcher.group(2);
-					Map<String, JmxStats.TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
-					JmxStats.TypeAndValue typeAndValue = jmxStatsAttributes.get(attrNameRest);
-					if (typeAndValue == null) {
-						throw new AttributeNotFoundException();
-					}
-					return typeAndValue.getValue();
-				} else {
-					throw new AttributeNotFoundException();
-				}
-			} else {
-				throw new MBeanException(new IllegalStateException(
-						format("Error. JmxStats attribute with name \"%s\" " +
-								"does not conform naming convention", attribute)
-				));
+			if (timePassedAfterLastSnapshotUpdate >= snapshotUpdatePeriod) {
+				lastAttributesSnapshot = createFreshAttributesSnapshot();
 			}
-		}
 
-		private Object aggregateSimpleTypeAttribute(String attrName)
-				throws AttributeNotFoundException, ReflectionException, MBeanException {
-			JmxMonitorableWrapper first = wrappers.get(0);
-			Object attrValue = first.getSimpleAttributeValue(attrName);
-			for (int i = 1; i < wrappers.size(); i++) {
-				Object currentAttrValue = wrappers.get(i).getSimpleAttributeValue(attrName);
-				if (!Objects.equals(attrValue, currentAttrValue)) {
-					throw new MBeanException(new Exception("Attribute values in pool instances are different"));
-				}
-			}
-			return attrValue;
-		}
-
-		private String[] aggregateListAttribute(String attrName)
-				throws AttributeNotFoundException, ReflectionException {
-			List<String> allItems = new ArrayList<>();
-			for (JmxMonitorableWrapper wrapper : wrappers) {
-				List<?> currentList = wrapper.getListAttributeValue(attrName);
-				if (currentList != null) {
-					for (Object o : currentList) {
-						String item = o != null ? o.toString() : "null";
-						allItems.add(item);
-					}
-				}
-			}
-			return allItems.toArray(new String[allItems.size()]);
+			return lastAttributesSnapshot.getAttribute(attribute);
 		}
 
 		private boolean refreshEnabled() {
 			return refreshEnabled;
 		}
 
-		// TODO(vmykhalko): refactor this method - it resembles aggregateListAttribute()
-		private String[] aggregateArrayAttribute(String attrName)
-				throws AttributeNotFoundException, ReflectionException {
-			List<String> allItems = new ArrayList<>();
-			for (JmxMonitorableWrapper wrapper : wrappers) {
-				Object[] currentArray = wrapper.getArrayAttributeValue(attrName);
-				if (currentArray != null) {
-					for (Object o : currentArray) {
-						String item = o != null ? o.toString() : "null";
-						allItems.add(item);
-					}
+		@SuppressWarnings("unchecked")
+		private Map<String, Object> aggregateAllJmxStatsAttributes() throws ReflectionException, AttributeNotFoundException, MBeanException {
+			Map<String, Object> nameToAttribute = new HashMap<>();
+			for (final String jmxStatsName : nameToJmxStatsType.keySet()) {
+				Class<? extends JmxStats<?>> jmxStatsType = nameToJmxStatsType.get(jmxStatsName);
+				// wildcard is removed intentionally, types must be same
+				JmxStats statsAccumulator;
+				try {
+					statsAccumulator = jmxStatsType.newInstance();
+				} catch (InstantiationException | IllegalAccessException e) {
+					String errorMsg = "All JmxStats Implementations must have public constructor without parameters";
+					throw new ReflectionException(e, errorMsg);
+				}
+
+				for (final JmxMonitorableWrapper wrapper : wrappers) {
+					statsAccumulator.add(wrapper.getJmxStats(jmxStatsName));
+				}
+
+				Map<String, JmxStats.TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
+				for (String subAttrName : jmxStatsAttributes.keySet()) {
+					String attrName = jmxStatsName + "_" + subAttrName;
+					nameToAttribute.put(attrName, jmxStatsAttributes.get(subAttrName).getValue());
 				}
 			}
-			return allItems.toArray(new String[allItems.size()]);
+			return nameToAttribute;
 		}
 
-		private Throwable aggregateExceptionAttribute(String attrName)
+		private Map<String, Object> aggregateAllSimpleTypeAttributes()
 				throws AttributeNotFoundException, ReflectionException, MBeanException {
-			JmxMonitorableWrapper first = wrappers.get(0);
-			Throwable throwable = first.getThrowableAttributeValue(attrName);
-			for (int i = 1; i < wrappers.size(); i++) {
-				Throwable currentThrowable = wrappers.get(i).getThrowableAttributeValue(attrName);
-				if (!Objects.equals(throwable, currentThrowable)) {
-					throw new MBeanException(new Exception("Throwables in pool instances are different"));
+			Map<String, Object> nameToAttribute = new HashMap<>();
+			for (String attrName : nameToSimpleAttribute.keySet()) {
+				JmxMonitorableWrapper first = wrappers.get(0);
+				Object attrValue = first.getSimpleAttributeValue(attrName);
+				for (int i = 1; i < wrappers.size(); i++) {
+					Object currentAttrValue = wrappers.get(i).getSimpleAttributeValue(attrName);
+					if (!Objects.equals(attrValue, currentAttrValue)) {
+						throw new MBeanException(new Exception("Attribute values in pool instances are different"));
+					}
 				}
+				nameToAttribute.put(attrName, attrValue);
 			}
-			return throwable;
+			return nameToAttribute;
+		}
+
+		private Map<String, String[]> aggregateAllListAttributes()
+				throws AttributeNotFoundException, ReflectionException {
+			Map<String, String[]> nameToAttribute = new HashMap<>();
+			for (String listAttrName : listAttributes) {
+				List<String> allItems = new ArrayList<>();
+				for (JmxMonitorableWrapper wrapper : wrappers) {
+					List<?> currentList = wrapper.getListAttributeValue(listAttrName);
+					if (currentList != null) {
+						for (Object o : currentList) {
+							String item = o != null ? o.toString() : "null";
+							allItems.add(item);
+						}
+					}
+				}
+				nameToAttribute.put(listAttrName, allItems.toArray(new String[allItems.size()]));
+			}
+			return nameToAttribute;
+		}
+
+		// TODO(vmykhalko): refactor this method - it resembles aggregateAllListAttributes()
+		private Map<String, String[]> aggregateAllArrayAttributes()
+				throws AttributeNotFoundException, ReflectionException {
+			Map<String, String[]> nameToAttribute = new HashMap<>();
+			for (String arrayAttrName : arrayAttributes) {
+				List<String> allItems = new ArrayList<>();
+				for (JmxMonitorableWrapper wrapper : wrappers) {
+					Object[] currentArray = wrapper.getArrayAttributeValue(arrayAttrName);
+					if (currentArray != null) {
+						for (Object o : currentArray) {
+							String item = o != null ? o.toString() : "null";
+							allItems.add(item);
+						}
+					}
+				}
+				nameToAttribute.put(arrayAttrName, allItems.toArray(new String[allItems.size()]));
+			}
+			return nameToAttribute;
+		}
+
+		private Map<String, Object> aggregateAllExceptionAttributes()
+				throws AttributeNotFoundException, ReflectionException, MBeanException, OpenDataException {
+			Map<String, Object> nameToAttribute = new HashMap<>();
+			for (String exceptionAttrName : exceptionAttributes) {
+				JmxMonitorableWrapper first = wrappers.get(0);
+				Throwable throwable = first.getThrowableAttributeValue(exceptionAttrName);
+				for (int i = 1; i < wrappers.size(); i++) {
+					Throwable currentThrowable = wrappers.get(i).getThrowableAttributeValue(exceptionAttrName);
+					if (!Objects.equals(throwable, currentThrowable)) {
+						throw new MBeanException(new Exception("Throwables in pool instances are different"));
+					}
+				}
+				nameToAttribute.put(exceptionAttrName, buildCompositeDataForThrowable(throwable));
+			}
+			return nameToAttribute;
 		}
 
 		private CompositeData buildCompositeDataForThrowable(Throwable throwable) throws OpenDataException {
@@ -942,9 +930,42 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return false;
 		}
 
+		private AttributesSnapshot createFreshAttributesSnapshot()
+				throws MBeanException, AttributeNotFoundException, ReflectionException {
+			Map<String, Object> nameToAttribute = new HashMap<>();
+			nameToAttribute.putAll(aggregateAllJmxStatsAttributes());
+			nameToAttribute.putAll(aggregateAllSimpleTypeAttributes());
+			nameToAttribute.putAll(aggregateAllListAttributes());
+			nameToAttribute.putAll(aggregateAllArrayAttributes());
+			try {
+				nameToAttribute.putAll(aggregateAllExceptionAttributes());
+			} catch (OpenDataException e) {
+				throw new MBeanException(e);
+			}
+			return new AttributesSnapshot(TIME_PROVIDER.currentTimeMillis(), nameToAttribute);
+		}
+
 		@Override
 		public MBeanInfo getMBeanInfo() {
 			return mBeanInfo;
+		}
+
+		private static final class AttributesSnapshot {
+			private final long timestamp;
+			private final Map<String, Object> nameToAttribute;
+
+			public AttributesSnapshot(long timestamp, Map<String, Object> nameToAttribute) {
+				this.timestamp = timestamp;
+				this.nameToAttribute = nameToAttribute;
+			}
+
+			public long getTimestamp() {
+				return timestamp;
+			}
+
+			public Object getAttribute(String attrName) {
+				return nameToAttribute.get(attrName);
+			}
 		}
 	}
 
