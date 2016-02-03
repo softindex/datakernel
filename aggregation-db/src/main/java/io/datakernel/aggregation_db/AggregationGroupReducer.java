@@ -96,6 +96,9 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 		++pendingWriters;
 
+		if (pendingWriters > 1)
+			suspend();
+
 		final List<Map.Entry<Comparable<?>, Object>> entryList = new ArrayList<>(map.entrySet());
 		map.clear();
 
@@ -128,6 +131,9 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 							chunksCallback.onResult(chunks);
 							returnedResult = true;
 						}
+
+						if (pendingWriters < 2)
+							resume();
 					}
 
 					@Override
