@@ -113,7 +113,7 @@ public class KeyValueTest {
 						.put("timestamp", new FieldTypeLong())
 						.build());
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
-				AsyncExecutors.sequentialExecutor(), aggregationStructure, temporaryFolder.newFolder().toPath());
+				aggregationStructure, temporaryFolder.newFolder().toPath());
 
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage, aggregationChunkStorage, aggregationMetadata,
 				aggregationStructure, keyValueProcessorFactory);

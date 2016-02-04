@@ -137,7 +137,7 @@ public class InvertedIndexTest {
 				ImmutableMap.<String, String>of());
 		Path path = temporaryFolder.newFolder().toPath();
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
-				AsyncExecutors.sequentialExecutor(), structure, path);
+				structure, path);
 
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage, aggregationChunkStorage, aggregationMetadata,
 				structure, processorFactory);

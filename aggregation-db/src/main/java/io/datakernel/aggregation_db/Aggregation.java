@@ -59,6 +59,7 @@ public class Aggregation {
 	private final AggregationMetadataStorage metadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final AggregationMetadata aggregationMetadata;
+	private final String partitioningKey;
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
 	private boolean ignoreChunkReadingExceptions;
@@ -88,13 +89,15 @@ public class Aggregation {
 	 */
 	public Aggregation(Eventloop eventloop, DefiningClassLoader classLoader, AggregationMetadataStorage metadataStorage,
 	                   AggregationChunkStorage aggregationChunkStorage, AggregationMetadata aggregationMetadata, AggregationStructure structure,
-	                   ProcessorFactory processorFactory, int sorterItemsInMemory,
-	                   int aggregationChunkSize) {
+	                   ProcessorFactory processorFactory, String partitioningKey,
+	                   int sorterItemsInMemory, int aggregationChunkSize) {
+		checkArgument(partitioningKey == null || aggregationMetadata.getKeys().contains(partitioningKey));
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
 		this.metadataStorage = metadataStorage;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.aggregationMetadata = aggregationMetadata;
+		this.partitioningKey = partitioningKey;
 		this.sorterItemsInMemory = sorterItemsInMemory;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.structure = structure;
@@ -120,8 +123,8 @@ public class Aggregation {
 	public Aggregation(Eventloop eventloop, DefiningClassLoader classLoader, AggregationMetadataStorage metadataStorage,
 	                   AggregationChunkStorage aggregationChunkStorage, AggregationMetadata aggregationMetadata, AggregationStructure structure,
 	                   ProcessorFactory processorFactory) {
-		this(eventloop, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata, structure, processorFactory,
-				1_000_000, 1_000_000);
+		this(eventloop, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata, structure,
+				processorFactory, null, 1_000_000, 1_000_000);
 	}
 
 	public List<String> getAggregationFieldsForConsumer(List<String> fields) {
@@ -214,6 +217,28 @@ public class Aggregation {
 		++lastRevisionId;
 	}
 
+	public static <T> StreamConsumer<T> createChunker(PartitioningStrategy partitioningStrategy, Eventloop eventloop,
+	                                                  String aggregationId, List<String> keys, List<String> fields,
+	                                                  Class<T> recordClass, AggregationChunkStorage storage,
+	                                                  AggregationMetadataStorage metadataStorage, int chunkSize,
+	                                                  ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+		if (partitioningStrategy == null)
+			return new AggregationChunker<>(eventloop, aggregationId, keys, fields, recordClass, storage,
+					metadataStorage, chunkSize, chunksCallback);
+
+		return new PartitioningAggregationChunker<>(partitioningStrategy, eventloop, aggregationId, keys, fields,
+				recordClass, storage, metadataStorage, chunkSize, chunksCallback).getInput();
+	}
+
+	private PartitioningStrategy createPartitioningStrategy(Class recordClass) {
+		if (partitioningKey == null)
+			return null;
+
+		AsmBuilder<PartitioningStrategy> builder = new AsmBuilder<>(classLoader, PartitioningStrategy.class);
+		builder.method("getPartition", getter(cast(arg(0), recordClass), "date"));
+		return builder.newInstance();
+	}
+
 	/**
 	 * Provides a {@link StreamConsumer} for streaming data to this aggregation.
 	 *
@@ -261,9 +286,10 @@ public class Aggregation {
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, aggregationMetadata.getKeys(),
 				inputFields, aggregationMetadata.getOutputFields());
 
-		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage,
-				metadataStorage, aggregationMetadata, aggregationClass, keyFunction, aggregate,
-				chunksCallback, aggregationChunkSize);
+		PartitioningStrategy partitioningStrategy = createPartitioningStrategy(aggregationClass);
+
+		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, metadataStorage, aggregationMetadata,
+				partitioningStrategy, aggregationClass, keyFunction, aggregate, chunksCallback, aggregationChunkSize);
 	}
 
 	/**
@@ -359,10 +385,12 @@ public class Aggregation {
 			}
 		}
 
-		Class<?> resultClass = structure.createRecordClass(getKeys(), fields);
+		Class resultClass = structure.createRecordClass(getKeys(), fields);
+
+		PartitioningStrategy partitioningStrategy = createPartitioningStrategy(resultClass);
 
 		consolidatedProducer(getKeys(), fields, resultClass, null, chunksToConsolidate)
-				.streamTo(new AggregationChunker(eventloop, getId(), getKeys(), fields, resultClass,
+				.streamTo(createChunker(partitioningStrategy, eventloop, getId(), getKeys(), fields, resultClass,
 						aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback));
 	}
 

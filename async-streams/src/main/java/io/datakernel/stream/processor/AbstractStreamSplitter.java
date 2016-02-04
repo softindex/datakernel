@@ -45,13 +45,13 @@ public abstract class AbstractStreamSplitter<I> extends AbstractStreamTransforme
 
 		@Override
 		protected void onDownstreamSuspended() {
-			inputConsumer.getUpstream().onConsumerSuspended();
+			inputConsumer.suspend();
 		}
 
 		@Override
 		protected void onDownstreamResumed() {
 			if (allOutputsResumed()) {
-				inputConsumer.getUpstream().onConsumerResumed();
+				inputConsumer.resume();
 			}
 		}
 	}

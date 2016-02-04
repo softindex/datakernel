@@ -129,8 +129,7 @@ public class CubeIntegrationTest {
 	private static AggregationChunkStorage getAggregationChunkStorage(Eventloop eventloop, ExecutorService executor,
 	                                                                  AggregationStructure structure,
 	                                                                  Path aggregationsDir) {
-		return new LocalFsChunkStorage(eventloop, executor, AsyncExecutors.sequentialExecutor(),
-				structure, aggregationsDir);
+		return new LocalFsChunkStorage(eventloop, executor, structure, aggregationsDir);
 	}
 
 	private static LogManager<LogItem> getLogManager(Eventloop eventloop, ExecutorService executor,

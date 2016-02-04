@@ -196,7 +196,7 @@ public class CubeTest {
 		final EventloopService simpleFsServer1 = prepareServer(eventloop, serverStorage, tmpStorage);
 
 		AggregationChunkStorage storage = new SimpleFsChunkStorage(eventloop, aggregationStructure,
-				AsyncExecutors.sequentialExecutor(), new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
+				new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
 
 		final int consumers = 2;
@@ -473,8 +473,7 @@ public class CubeTest {
 		ExecutorService executorService = newSingleThreadExecutor();
 		Path dir = temporaryFolder.newFolder().toPath();
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
-		AggregationChunkStorage storage = new LocalFsChunkStorage(eventloop, executorService,
-				AsyncExecutors.sequentialExecutor(), aggregationStructure, dir);
+		AggregationChunkStorage storage = new LocalFsChunkStorage(eventloop, executorService, aggregationStructure, dir);
 		Cube cube = newCube(eventloop, classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
 				.streamTo(cube.consumer(DataItem1.class, DataItem1.DIMENSIONS, DataItem1.METRICS, new MyCommitCallback(cube)));

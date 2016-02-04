@@ -146,11 +146,16 @@ public final class Cube implements ConcurrentJmxMBean {
 	 *
 	 * @param aggregationMetadata metadata of aggregation
 	 */
-	public void addAggregation(AggregationMetadata aggregationMetadata) {
-		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage, aggregationChunkStorage, aggregationMetadata, structure,
-				new SummationProcessorFactory(classLoader), sorterItemsInMemory, aggregationChunkSize);
+	public void addAggregation(AggregationMetadata aggregationMetadata, String partitioningKey) {
+		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage,
+				aggregationChunkStorage, aggregationMetadata,  structure, new SummationProcessorFactory(classLoader),
+				partitioningKey, sorterItemsInMemory, aggregationChunkSize);
 		checkArgument(!aggregations.containsKey(aggregation.getId()), "Aggregation '%s' is already defined", aggregation.getId());
 		aggregations.put(aggregation.getId(), aggregation);
+	}
+
+	public void addAggregation(AggregationMetadata aggregationMetadata) {
+		addAggregation(aggregationMetadata, null);
 	}
 
 	public void incrementLastRevisionId() {

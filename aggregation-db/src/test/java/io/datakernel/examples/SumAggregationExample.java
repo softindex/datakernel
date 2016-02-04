@@ -67,7 +67,7 @@ public class SumAggregationExample {
 
 		// local file system storage for data
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
-				AsyncExecutors.sequentialExecutor(), aggregationStructure, Paths.get(DATA_PATH));
+				aggregationStructure, Paths.get(DATA_PATH));
 
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, aggregationStructure, summationProcessorFactory);

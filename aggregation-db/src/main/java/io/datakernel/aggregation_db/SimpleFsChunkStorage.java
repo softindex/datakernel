@@ -16,8 +16,6 @@
 
 package io.datakernel.aggregation_db;
 
-import io.datakernel.async.AsyncExecutor;
-import io.datakernel.async.AsyncTask;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -39,13 +37,11 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	private final Eventloop eventloop;
 	private final AggregationStructure aggregationStructure;
 	private final SimpleFsClient client;
-	private final AsyncExecutor asyncExecutor;
 
 	public SimpleFsChunkStorage(Eventloop eventloop, AggregationStructure aggregationStructure,
-	                            AsyncExecutor asyncExecutor, InetSocketAddress serverAddress) {
+	                            InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
 		this.aggregationStructure = aggregationStructure;
-		this.asyncExecutor = asyncExecutor;
 		this.client = SimpleFsClient.createInstance(eventloop, serverAddress);
 	}
 
@@ -72,26 +68,9 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 		final StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
-		asyncExecutor.submit(new AsyncTask() {
-			@Override
-			public void execute(CompletionCallback callback) {
-				producer.streamTo(serializer.getInput());
-				serializer.getOutput().streamTo(compressor.getInput());
-				client.upload(path(id), compressor.getOutput(), callback);
-			}
-		}, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.info("Uploaded chunk #{} to SimpleFS successfully", id);
-				callback.onComplete();
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.error("Uploading chunk #{} to SimpleFS failed", id, exception);
-				callback.onException(exception);
-			}
-		});
+		producer.streamTo(serializer.getInput());
+		serializer.getOutput().streamTo(compressor.getInput());
+		client.upload(path(id), compressor.getOutput(), callback);
 	}
 
 	private String path(long id) {

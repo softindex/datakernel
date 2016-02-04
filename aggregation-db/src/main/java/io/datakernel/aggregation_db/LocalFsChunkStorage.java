@@ -16,8 +16,6 @@
 
 package io.datakernel.aggregation_db;
 
-import io.datakernel.async.AsyncExecutor;
-import io.datakernel.async.AsyncTask;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -47,7 +45,6 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
-	private final AsyncExecutor asyncExecutor;
 	private final AggregationStructure structure;
 
 	private final Path dir;
@@ -60,11 +57,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	 * @param executorService executor, where blocking IO operations are to be run
 	 * @param dir             directory where data is saved
 	 */
-	public LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AsyncExecutor asyncExecutor,
-	                           AggregationStructure structure, Path dir) {
+	public LocalFsChunkStorage(Eventloop eventloop, ExecutorService executorService, AggregationStructure structure,
+	                           Path dir) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
-		this.asyncExecutor = asyncExecutor;
 		this.structure = structure;
 		this.dir = dir;
 	}
@@ -115,14 +111,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		final StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id), false, true);
 
-		asyncExecutor.submit(new AsyncTask() {
-			@Override
-			public void execute(CompletionCallback callback) {
-				producer.streamTo(serializer.getInput());
-				serializer.getOutput().streamTo(compressor.getInput());
-				compressor.getOutput().streamTo(writer);
-				writer.setFlushCallback(callback);
-			}
-		}, callback);
+		producer.streamTo(serializer.getInput());
+		serializer.getOutput().streamTo(compressor.getInput());
+		compressor.getOutput().streamTo(writer);
+		writer.setFlushCallback(callback);
 	}
 }

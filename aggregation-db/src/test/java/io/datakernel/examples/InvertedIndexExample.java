@@ -73,7 +73,7 @@ public class InvertedIndexExample {
 
 		// local file system storage for data
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
-				AsyncExecutors.sequentialExecutor(), structure, Paths.get(DATA_PATH));
+				structure, Paths.get(DATA_PATH));
 
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, structure, processorFactory);

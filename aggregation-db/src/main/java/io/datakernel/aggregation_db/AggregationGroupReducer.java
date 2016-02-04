@@ -38,6 +38,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final String aggregationId;
 	private final List<String> keys;
 	private final List<String> fields;
+	private final PartitioningStrategy partitioningStrategy;
 	private final Class<?> recordClass;
 	private final Function<T, Comparable<?>> keyFunction;
 	private final Aggregate aggregate;
@@ -53,7 +54,8 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
 	                               AggregationMetadataStorage metadataStorage, AggregationMetadata aggregationMetadata,
-	                               Class<?> recordClass, Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
+	                               PartitioningStrategy partitioningStrategy, Class<?> recordClass,
+	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback, int chunkSize) {
 		super(eventloop);
 		this.storage = storage;
@@ -61,6 +63,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.aggregationId = aggregationMetadata.getId();
 		this.keys = aggregationMetadata.getKeys();
 		this.fields = aggregationMetadata.getOutputFields();
+		this.partitioningStrategy = partitioningStrategy;
 		this.recordClass = recordClass;
 		this.keyFunction = keyFunction;
 		this.aggregate = aggregate;
@@ -120,7 +123,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 		final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 
-		producer.streamTo(new AggregationChunker(eventloop, aggregationId, keys, fields,
+		producer.streamTo(Aggregation.createChunker(partitioningStrategy, eventloop, aggregationId, keys, fields,
 				recordClass, storage, metadataStorage, chunkSize,
 				new ResultCallback<List<AggregationChunk.NewChunk>>() {
 					@Override

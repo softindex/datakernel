@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.examples;
+package io.datakernel.cube;
 
 import com.google.common.collect.ImmutableMap;
 import com.zaxxer.hikari.HikariConfig;
@@ -27,62 +27,47 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.AsyncExecutors;
+import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
-import io.datakernel.cube.Cube;
-import io.datakernel.cube.CubeMetadataStorage;
-import io.datakernel.cube.CubeMetadataStorageSql;
-import io.datakernel.cube.api.CubeHttpServer;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.examples.LogItem;
+import io.datakernel.examples.LogItemSplitter;
 import io.datakernel.logfs.*;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
 import org.jooq.impl.DataSourceConnectionProvider;
 import org.jooq.impl.DefaultConfiguration;
+import org.junit.Ignore;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
-import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static java.util.Arrays.asList;
+import static org.junit.Assert.assertEquals;
 
-/**
- * Example, that describes the essential steps to get the cube up and running, along with log processing tools
- * and HTTP server, that allows users to perform JSON queries.
- * To run this example, do the following:
- * 1. Create *.properties file with database access configuration (driver, URL, username, password)
- * and specify the path to this file in DATABASE_PROPERTIES_PATH constant
- * (it is advised to launch examples in $MODULE_DIR$, so paths are resolved properly).
- * 2. Specify SQLDialect in DATABASE_DIALECT constant according to RDBMS you are using.
- * 3. (Optional) Change directories (AGGREGATIONS_PATH and LOGS_PATH) used to store test data.
- * 4. (Optional) Change names of log partitions (LOG_PARTITION_NAME and LOG_PARTITIONS).
- * 5. (Optional) Define another port to be used by HTTP server (HTTP_SERVER_PORT).
- * 6. (Optional) Adjust the size of test data set (NUMBER_OF_TEST_ITEMS).
- * 7. Run main() and enjoy.
- */
-public class CubeExample {
+@SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
+public class CubePartitioningTest {
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
 	private static final String DATABASE_PROPERTIES_PATH = "test.properties";
 	private static final SQLDialect DATABASE_DIALECT = SQLDialect.MYSQL;
-	private static final String AGGREGATIONS_PATH = "test/aggregations/";
-	private static final String LOGS_PATH = "test/logs/";
 	private static final String LOG_PARTITION_NAME = "partitionA";
 	private static final List<String> LOG_PARTITIONS = asList(LOG_PARTITION_NAME);
 	private static final String LOG_NAME = "testlog";
-	private static final int HTTP_SERVER_PORT = 45555;
-	private static final int NUMBER_OF_TEST_ITEMS = 100;
 
-	/* Define structure of a cube: names and types of dimensions and measures. */
-	public static AggregationStructure getStructure(DefiningClassLoader classLoader) {
+	private static AggregationStructure getStructure(DefiningClassLoader classLoader) {
 		return new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
 						.put("date", new KeyTypeDate())
@@ -102,24 +87,17 @@ public class CubeExample {
 						.build());
 	}
 
-	/* Define aggregations and instantiate cube with the specified structure, eventloop and storages.
-	Here we create the detailed aggregation over all 5 dimensions,
-	which is also able to handle queries for any subset of its dimensions.
-	We also define an aggregation for "date" dimension only
-	to separately group records by date for fast queries that require only this dimension. */
 	private static Cube getCube(Eventloop eventloop, DefiningClassLoader classLoader,
 	                            CubeMetadataStorage cubeMetadataStorage,
 	                            AggregationMetadataStorage aggregationMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, cubeStructure,
-				100_000, 1_000_000);
-		cube.addAggregation(new AggregationMetadata("detailed", LogItem.DIMENSIONS, LogItem.MEASURES));
-		cube.addAggregation(new AggregationMetadata("date", asList("date"), LogItem.MEASURES));
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage,
+				aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
+		cube.addAggregation(new AggregationMetadata("date", asList("date"), LogItem.MEASURES), "date");
 		return cube;
 	}
 
-	/* Load database access properties from file and instantiate Configuration for use by jOOQ. */
 	private static Configuration getJooqConfiguration() throws IOException {
 		Properties properties = new Properties();
 		properties.load(new InputStreamReader(
@@ -134,13 +112,6 @@ public class CubeExample {
 		return jooqConfiguration;
 	}
 
-	private static Path getDirectory(String path) {
-		Path directory = Paths.get(path);
-		deleteRecursivelyQuietly(directory);
-		return directory;
-	}
-
-	/* Instantiate LogToCubeMetadataStorage, which manages persistence of cube and logs metadata. */
 	private static LogToCubeMetadataStorage getLogToCubeMetadataStorage(Eventloop eventloop,
 	                                                                    ExecutorService executor,
 	                                                                    Configuration jooqConfiguration,
@@ -153,14 +124,12 @@ public class CubeExample {
 		return metadataStorage;
 	}
 
-	/* Create AggregationChunkStorage, that controls saving and reading aggregated data chunks. */
 	private static AggregationChunkStorage getAggregationChunkStorage(Eventloop eventloop, ExecutorService executor,
 	                                                                  AggregationStructure structure,
 	                                                                  Path aggregationsDir) {
 		return new LocalFsChunkStorage(eventloop, executor, structure, aggregationsDir);
 	}
 
-	/* Instantiate LogManager, that serializes LogItem's and saves them as logs to LogFileSystem. */
 	private static LogManager<LogItem> getLogManager(Eventloop eventloop, ExecutorService executor,
 	                                                 DefiningClassLoader classLoader, Path logsDir) {
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, logsDir);
@@ -171,20 +140,16 @@ public class CubeExample {
 		return new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
 	}
 
-	/* Generate some test data and wrap it in StreamProducer. */
-	private static StreamProducers.OfIterator<LogItem> getProducerOfRandomLogItems(Eventloop eventloop) {
-		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(NUMBER_OF_TEST_ITEMS);
-		return new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems.iterator());
-	}
-
-	public static void main(String[] args) throws IOException {
-		// used for database queries and some blocking IO operations
+	@Ignore
+	@SuppressWarnings("ConstantConditions")
+	@Test
+	public void test() throws Exception {
 		ExecutorService executor = Executors.newCachedThreadPool();
 
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
-		Path aggregationsDir = getDirectory(AGGREGATIONS_PATH);
-		Path logsDir = getDirectory(LOGS_PATH);
+		Path aggregationsDir = temporaryFolder.newFolder().toPath();
+		Path logsDir = temporaryFolder.newFolder().toPath();
 		AggregationStructure structure = getStructure(classLoader);
 
 		Configuration jooqConfiguration = getJooqConfiguration();
@@ -200,24 +165,103 @@ public class CubeExample {
 		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage, LOG_PARTITION_NAME);
 
-		/* Save the specified aggregations to metadata storage. */
 		cube.saveAggregations(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
-		/* Stream data to logs. */
-		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems = getProducerOfRandomLogItems(eventloop);
+
+		// Save and aggregate logs
+		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
+		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems = new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems.iterator());
 		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		/* Read logs, aggregate data and save to cube. */
 		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
-		/* Launch HTTP server, that accepts JSON queries to cube. */
-		AsyncHttpServer server = CubeHttpServer.createServer(cube, eventloop, classLoader, HTTP_SERVER_PORT);
-		server.listen();
+		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(300);
+		producerOfRandomLogItems = new StreamProducers.OfIterator<>(eventloop, listOfRandomLogItems2.iterator());
+		producerOfRandomLogItems.streamTo(logManager.consumer(LOG_PARTITION_NAME));
 		eventloop.run();
 
-		executor.shutdown();
+		logToCubeRunner.processLog(AsyncCallbacks.ignoreCompletionCallback());
+		eventloop.run();
+
+		// Load metadata
+		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		eventloop.run();
+
+		Map<Long, AggregationChunk> chunks = cube.getAggregations().get("date").getChunks();
+		assertEquals(22, chunks.size());
+
+
+		AggregationQuery query = new AggregationQuery().keys("date").fields("clicks");
+		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
+		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
+		eventloop.run();
+
+
+		// Aggregate manually
+		Map<Integer, Long> map = new HashMap<>();
+		aggregateToMap(map, listOfRandomLogItems);
+		aggregateToMap(map, listOfRandomLogItems2);
+
+
+		// Check query results
+		for (LogItem logItem : queryResultConsumer.getList()) {
+			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
+		}
+
+		int consolidations = 0;
+		while (true) {
+			cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+			eventloop.run();
+
+			ResultCallbackFuture<Boolean> callback = new ResultCallbackFuture<>();
+			cube.consolidate(100, "consolidator", callback);
+			eventloop.run();
+			boolean consolidated = callback.isDone() ? callback.get() : false;
+			if (consolidated)
+				++consolidations;
+			else
+				break;
+		}
+		assertEquals(11, consolidations);
+
+
+		// Load metadata
+		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
+		eventloop.run();
+
+
+		// Query
+		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
+		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
+		eventloop.run();
+
+
+		// Check query results
+		for (LogItem logItem : queryResultConsumer.getList()) {
+			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
+		}
+
+		// Check that every chunk contains only one date
+		chunks = cube.getAggregations().get("date").getChunks();
+		assertEquals(11, chunks.size());
+		for (AggregationChunk chunk : chunks.values()) {
+			assertEquals(chunk.getMinPrimaryKey().get(0), chunk.getMaxPrimaryKey().get(0));
+		}
+	}
+
+	private void aggregateToMap(Map<Integer, Long> map, List<LogItem> logItems) {
+		for (LogItem logItem : logItems) {
+			int date = logItem.date;
+			long clicks = logItem.clicks;
+			if (map.get(date) == null) {
+				map.put(date, clicks);
+			} else {
+				Long clicksForDate = map.get(date);
+				map.put(date, clicksForDate + clicks);
+			}
+		}
 	}
 }
