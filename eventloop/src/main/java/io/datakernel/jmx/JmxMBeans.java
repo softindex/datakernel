@@ -16,7 +16,6 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
 import org.slf4j.Logger;
@@ -60,6 +59,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String THROWABLE_MESSAGE_KEY = "message";
 	private static final String THROWABLE_CAUSE_KEY = "cause";
 	private static final String THROWABLE_STACK_TRACE_KEY = "stackTrace";
+	private static CompositeType compositeTypeOfThrowable;
 
 	private static final Exception SIMPLE_TYPE_AGGREGATION_EXCEPTION =
 			new Exception("Attribute values in pool instances are different");
@@ -67,11 +67,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			new Exception("Throwables in pool instances are different");
 
 	public static final long SNAPSHOT_UPDATE_DEFAULT_PERIOD = 200L; // milliseconds
-
 	private static final CurrentTimeProvider TIME_PROVIDER = CurrentTimeProviderSystem.instance();
-
-	private static CompositeType compositeTypeOfThrowable;
-
 	private final long snapshotUpdatePeriod;
 
 	private JmxMBeans(long snapshotUpdatePeriod) {
@@ -412,26 +408,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		MBeanOperationInfo setSmoothingWindowOp = new MBeanOperationInfo(
 				SET_SMOOTHING_WINDOW_OP_NAME, "", setWindowOpParameters, "void", MBeanOperationInfo.ACTION);
 		operations.add(setSmoothingWindowOp);
-	}
-
-	/**
-	 * Returns Eventloop getter if monitorable has it, otherwise returns null
-	 */
-	private static Eventloop tryFetchEventloop(Object monitorable)
-			throws InvocationTargetException, IllegalAccessException {
-		if (Eventloop.class.isAssignableFrom(monitorable.getClass())) {
-			return (Eventloop) monitorable;
-		}
-
-		for (Method method : monitorable.getClass().getMethods()) {
-			boolean nameMatches = method.getName().toLowerCase().equals("geteventloop");
-			boolean returnTypeMatches = Eventloop.class.isAssignableFrom(method.getReturnType());
-			boolean hasNoArgs = method.getParameterTypes().length == 0;
-			if (nameMatches && returnTypeMatches && hasNoArgs) {
-				return (Eventloop) method.invoke(monitorable);
-			}
-		}
-		return null;
 	}
 
 	private static JmxParameter findJmxNamedParameterAnnotation(Annotation[] annotations) {
