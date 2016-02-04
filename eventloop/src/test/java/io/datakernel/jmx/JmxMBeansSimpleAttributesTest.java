@@ -86,46 +86,71 @@ public class JmxMBeansSimpleAttributesTest {
 	}
 
 	@Test
-	public void itShouldThrowExceptionIfValuesDifferInInstancesOfPoolOfMonitorables() throws Exception {
+	public void itShouldThrowProperExceptionIfValuesDifferInInstancesOfPoolOfMonitorables() throws Exception {
 		MonitorableWithIntegerAttribute monitorable_1 =
-				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
+				new MonitorableWithIntegerAttribute(true, 100, 25000L, 1.5, "data");
 		MonitorableWithIntegerAttribute monitorable_2 =
-				new MonitorableWithIntegerAttribute(false, 250, 25000L, 5.0, "data-2");
+				new MonitorableWithIntegerAttribute(true, 250, 25000L, 5.0, "data-2");
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable_1, monitorable_2), false);
 
-		int exceptionsThrown = 0;
+		int aggregationExceptionThrown = 0;
+		int anotherExceptionThrown = 0;
 
 		try {
 			mbean.getAttribute("booleanAttr");
 		} catch (MBeanException mbeanException) {
-			exceptionsThrown++;
+			// booleanAttr is same, so this increment should not happen
+			anotherExceptionThrown++;
 		}
 
 		try {
 			mbean.getAttribute("intAttr");
 		} catch (MBeanException mbeanException) {
-			exceptionsThrown++;
+			if (mbeanException.getCause().getClass() == Exception.class) {
+				aggregationExceptionThrown++;
+			} else {
+				anotherExceptionThrown++;
+			}
 		}
 
 		try {
 			mbean.getAttribute("longAttr");
 		} catch (MBeanException mbeanException) {
-			exceptionsThrown++;
+			// longAttr is same, so this increment should not happen
+			anotherExceptionThrown++;
 		}
 
 		try {
 			mbean.getAttribute("doubleAttr");
 		} catch (MBeanException mbeanException) {
-			exceptionsThrown++;
+			if (mbeanException.getCause().getClass() == Exception.class) {
+				aggregationExceptionThrown++;
+			} else {
+				anotherExceptionThrown++;
+			}
 		}
 
 		try {
 			mbean.getAttribute("strAttr");
 		} catch (MBeanException mbeanException) {
-			exceptionsThrown++;
+			if (mbeanException.getCause().getClass() == Exception.class) {
+				aggregationExceptionThrown++;
+			} else {
+				anotherExceptionThrown++;
+			}
 		}
 
-		assertEquals(5, exceptionsThrown);
+		assertEquals(3, aggregationExceptionThrown);
+		assertEquals(0, anotherExceptionThrown);
+	}
+
+	@Test(expected = AttributeNotFoundException.class)
+	public void itShouldAppropriateExceptionWhenAttributeNotFound() throws Exception {
+		MonitorableWithIntegerAttribute monitorable =
+				new MonitorableWithIntegerAttribute(true, 100, 1000L, 1.5, "data");
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(monitorable), false);
+
+		mbean.getAttribute("notExistingAttribute");
 	}
 
 	@Test

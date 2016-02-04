@@ -19,6 +19,8 @@ package io.datakernel.jmx;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.management.*;
 import javax.management.openmbean.*;
@@ -37,6 +39,8 @@ import static io.datakernel.util.Preconditions.*;
 import static java.lang.String.format;
 
 public final class JmxMBeans implements DynamicMBeanFactory {
+	private static final Logger LOGGER = LoggerFactory.getLogger(JmxMBeans.class);
+
 	private static final String ATTRIBUTE_NAME_FORMAT = "%s_%s";
 	private static final String ATTRIBUTE_DEFAULT_DESCRIPTION = "";
 
@@ -47,6 +51,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String SET_SMOOTHING_WINDOW_OP_NAME = "_setSmoothingWindow";
 	private static final String SET_REFRESH_PERIOD_PARAMETER_NAME = "period";
 	private static final String SET_SMOOTHING_WINDOW_PARAMETER_NAME = "window";
+	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
+	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	// CompositeData of Throwable
 	private static final String THROWABLE_COMPOSITE_TYPE_NAME = "CompositeDataOfThrowable";
@@ -55,8 +61,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String THROWABLE_CAUSE_KEY = "cause";
 	private static final String THROWABLE_STACK_TRACE_KEY = "stackTrace";
 
-	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
-	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+	private static final Exception SIMPLE_TYPE_AGGREGATION_EXCEPTION =
+			new Exception("Attribute values in pool instances are different");
+	private static final Exception THROWABLE_AGGREGATION_EXCEPTION =
+			new Exception("Throwables in pool instances are different");
 
 	public static final long SNAPSHOT_UPDATE_DEFAULT_PERIOD = 200L; // milliseconds
 
@@ -690,7 +698,19 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				lastAttributesSnapshot = createFreshAttributesSnapshot();
 			}
 
-			return lastAttributesSnapshot.getAttribute(attribute);
+			if (!lastAttributesSnapshot.containsAttribute(attribute)) {
+				throw new AttributeNotFoundException(format("Error. Attribute with name \"%s\" do not exist " +
+						"or error happened during fetching (or aggregating) its value. " +
+						"Take a look to appropriate logger for details", attribute));
+			}
+
+			Object attrValue = lastAttributesSnapshot.getAttribute(attribute);
+
+			if (attrValue instanceof Exception) {
+				throw new MBeanException((Exception) attrValue);
+			}
+
+			return attrValue;
 		}
 
 		private boolean refreshEnabled() {
@@ -698,7 +718,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@SuppressWarnings("unchecked")
-		private Map<String, Object> aggregateAllJmxStatsAttributes() throws ReflectionException, AttributeNotFoundException, MBeanException {
+		private Map<String, Object> aggregateAllJmxStatsAttributes() {
 			Map<String, Object> nameToAttribute = new HashMap<>();
 			for (final String jmxStatsName : nameToJmxStatsType.keySet()) {
 				Class<? extends JmxStats<?>> jmxStatsType = nameToJmxStatsType.get(jmxStatsName);
@@ -708,11 +728,19 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					statsAccumulator = jmxStatsType.newInstance();
 				} catch (InstantiationException | IllegalAccessException e) {
 					String errorMsg = "All JmxStats Implementations must have public constructor without parameters";
-					throw new ReflectionException(e, errorMsg);
+					LOGGER.error(errorMsg, e);
+					continue;
 				}
 
-				for (final JmxMonitorableWrapper wrapper : wrappers) {
-					statsAccumulator.add(wrapper.getJmxStats(jmxStatsName));
+				try {
+					for (final JmxMonitorableWrapper wrapper : wrappers) {
+						statsAccumulator.add(wrapper.getJmxStats(jmxStatsName));
+					}
+				} catch (IllegalArgumentException | InvocationTargetException | IllegalAccessException e) {
+					String errorMsg =
+							format("Cannot fetch JmxStats with name \"%s\" during JmxStats accumulation", jmxStatsName);
+					LOGGER.error(errorMsg, e);
+					continue;
 				}
 
 				Map<String, JmxStats.TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
@@ -724,75 +752,103 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return nameToAttribute;
 		}
 
-		private Map<String, Object> aggregateAllSimpleTypeAttributes()
-				throws AttributeNotFoundException, ReflectionException, MBeanException {
+		private Map<String, Object> aggregateAllSimpleTypeAttributes() {
 			Map<String, Object> nameToAttribute = new HashMap<>();
 			for (String attrName : nameToSimpleAttribute.keySet()) {
-				JmxMonitorableWrapper first = wrappers.get(0);
-				Object attrValue = first.getSimpleAttributeValue(attrName);
-				for (int i = 1; i < wrappers.size(); i++) {
-					Object currentAttrValue = wrappers.get(i).getSimpleAttributeValue(attrName);
-					if (!Objects.equals(attrValue, currentAttrValue)) {
-						throw new MBeanException(new Exception("Attribute values in pool instances are different"));
+				try {
+					JmxMonitorableWrapper first = wrappers.get(0);
+					Object attrValue = first.getSimpleAttributeValue(attrName);
+					for (int i = 1; i < wrappers.size(); i++) {
+						Object currentAttrValue = wrappers.get(i).getSimpleAttributeValue(attrName);
+						if (!Objects.equals(attrValue, currentAttrValue)) {
+							throw new AggregationException();
+						}
 					}
+					nameToAttribute.put(attrName, attrValue);
+				} catch (AggregationException e) {
+					nameToAttribute.put(attrName, SIMPLE_TYPE_AGGREGATION_EXCEPTION);
+				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+					String errorMsg =
+							format("Cannot fetch simple-type attribute with name \"%s\"", attrName);
+					LOGGER.error(errorMsg, e);
 				}
-				nameToAttribute.put(attrName, attrValue);
 			}
 			return nameToAttribute;
 		}
 
-		private Map<String, String[]> aggregateAllListAttributes()
-				throws AttributeNotFoundException, ReflectionException {
+		private Map<String, String[]> aggregateAllListAttributes() {
 			Map<String, String[]> nameToAttribute = new HashMap<>();
 			for (String listAttrName : listAttributes) {
-				List<String> allItems = new ArrayList<>();
-				for (JmxMonitorableWrapper wrapper : wrappers) {
-					List<?> currentList = wrapper.getListAttributeValue(listAttrName);
-					if (currentList != null) {
-						for (Object o : currentList) {
-							String item = o != null ? o.toString() : "null";
-							allItems.add(item);
+				try {
+					List<String> allItems = new ArrayList<>();
+					for (JmxMonitorableWrapper wrapper : wrappers) {
+						List<?> currentList = wrapper.getListAttributeValue(listAttrName);
+						if (currentList != null) {
+							for (Object o : currentList) {
+								String item = o != null ? o.toString() : "null";
+								allItems.add(item);
+							}
 						}
 					}
+					nameToAttribute.put(listAttrName, allItems.toArray(new String[allItems.size()]));
+				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+					String errorMsg =
+							format("Cannot fetch list attribute with name \"%s\"", listAttrName);
+					LOGGER.error(errorMsg, e);
 				}
-				nameToAttribute.put(listAttrName, allItems.toArray(new String[allItems.size()]));
 			}
 			return nameToAttribute;
 		}
 
 		// TODO(vmykhalko): refactor this method - it resembles aggregateAllListAttributes()
-		private Map<String, String[]> aggregateAllArrayAttributes()
-				throws AttributeNotFoundException, ReflectionException {
+		private Map<String, String[]> aggregateAllArrayAttributes() {
 			Map<String, String[]> nameToAttribute = new HashMap<>();
 			for (String arrayAttrName : arrayAttributes) {
-				List<String> allItems = new ArrayList<>();
-				for (JmxMonitorableWrapper wrapper : wrappers) {
-					Object[] currentArray = wrapper.getArrayAttributeValue(arrayAttrName);
-					if (currentArray != null) {
-						for (Object o : currentArray) {
-							String item = o != null ? o.toString() : "null";
-							allItems.add(item);
+				try {
+					List<String> allItems = new ArrayList<>();
+					for (JmxMonitorableWrapper wrapper : wrappers) {
+						Object[] currentArray = wrapper.getArrayAttributeValue(arrayAttrName);
+						if (currentArray != null) {
+							for (Object o : currentArray) {
+								String item = o != null ? o.toString() : "null";
+								allItems.add(item);
+							}
 						}
 					}
+					nameToAttribute.put(arrayAttrName, allItems.toArray(new String[allItems.size()]));
+				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+					String errorMsg =
+							format("Cannot fetch array attribute with name \"%s\"", arrayAttrName);
+					LOGGER.error(errorMsg, e);
 				}
-				nameToAttribute.put(arrayAttrName, allItems.toArray(new String[allItems.size()]));
 			}
 			return nameToAttribute;
 		}
 
-		private Map<String, Object> aggregateAllExceptionAttributes()
-				throws AttributeNotFoundException, ReflectionException, MBeanException, OpenDataException {
+		private Map<String, Object> aggregateAllExceptionAttributes() {
 			Map<String, Object> nameToAttribute = new HashMap<>();
 			for (String exceptionAttrName : exceptionAttributes) {
-				JmxMonitorableWrapper first = wrappers.get(0);
-				Throwable throwable = first.getThrowableAttributeValue(exceptionAttrName);
-				for (int i = 1; i < wrappers.size(); i++) {
-					Throwable currentThrowable = wrappers.get(i).getThrowableAttributeValue(exceptionAttrName);
-					if (!Objects.equals(throwable, currentThrowable)) {
-						throw new MBeanException(new Exception("Throwables in pool instances are different"));
+				try {
+					JmxMonitorableWrapper first = wrappers.get(0);
+					Throwable throwable = first.getThrowableAttributeValue(exceptionAttrName);
+					for (int i = 1; i < wrappers.size(); i++) {
+						Throwable currentThrowable = wrappers.get(i).getThrowableAttributeValue(exceptionAttrName);
+						if (!Objects.equals(throwable, currentThrowable)) {
+							throw new AggregationException();
+						}
 					}
+					nameToAttribute.put(exceptionAttrName, buildCompositeDataForThrowable(throwable));
+				} catch (AggregationException e) {
+					nameToAttribute.put(exceptionAttrName, THROWABLE_AGGREGATION_EXCEPTION);
+				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
+					String errorMsg =
+							format("Cannot fetch Throwable attribute with name \"%s\"", exceptionAttrName);
+					LOGGER.error(errorMsg, e);
+				} catch (OpenDataException e) {
+					String errorMsg = format("Cannot create CompositeData for Throwable attribute " +
+							"with name \"%s\"", exceptionAttrName);
+					LOGGER.error(errorMsg, e);
 				}
-				nameToAttribute.put(exceptionAttrName, buildCompositeDataForThrowable(throwable));
 			}
 			return nameToAttribute;
 		}
@@ -949,18 +1005,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return false;
 		}
 
-		private AttributesSnapshot createFreshAttributesSnapshot()
-				throws MBeanException, AttributeNotFoundException, ReflectionException {
+		private AttributesSnapshot createFreshAttributesSnapshot() {
 			Map<String, Object> nameToAttribute = new HashMap<>();
 			nameToAttribute.putAll(aggregateAllJmxStatsAttributes());
 			nameToAttribute.putAll(aggregateAllSimpleTypeAttributes());
 			nameToAttribute.putAll(aggregateAllListAttributes());
 			nameToAttribute.putAll(aggregateAllArrayAttributes());
-			try {
-				nameToAttribute.putAll(aggregateAllExceptionAttributes());
-			} catch (OpenDataException e) {
-				throw new MBeanException(e);
-			}
+			nameToAttribute.putAll(aggregateAllExceptionAttributes());
 			return new AttributesSnapshot(TIME_PROVIDER.currentTimeMillis(), nameToAttribute);
 		}
 
@@ -984,6 +1035,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			public Object getAttribute(String attrName) {
 				return nameToAttribute.get(attrName);
+			}
+
+			public boolean containsAttribute(String attrName) {
+				return nameToAttribute.containsKey(attrName);
 			}
 		}
 	}
@@ -1019,16 +1074,14 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			this.operationKeyToMethod = operationKeyToMethod;
 		}
 
-		public JmxStats<?> getJmxStats(String jmxStatsName) throws AttributeNotFoundException, ReflectionException {
+		public JmxStats<?> getJmxStats(String jmxStatsName)
+				throws IllegalArgumentException, InvocationTargetException, IllegalAccessException {
 			Method jmxStatsGetter = jmxStatsGetters.get(jmxStatsName);
 			if (jmxStatsGetter == null) {
-				throw new AttributeNotFoundException();
+				throw new IllegalArgumentException(
+						format("Getter for JmxStats with name \"%s\" not found", jmxStatsName));
 			}
-			try {
-				return (JmxStats<?>) jmxStatsGetter.invoke(monitorable);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new ReflectionException(e);
-			}
+			return (JmxStats<?>) jmxStatsGetter.invoke(monitorable);
 		}
 
 		public Executor getExecutor() {
@@ -1039,53 +1092,44 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return jmxStatsList;
 		}
 
-		public Object getSimpleAttributeValue(String attrName) throws AttributeNotFoundException, ReflectionException {
+		public Object getSimpleAttributeValue(String attrName)
+				throws IllegalArgumentException, InvocationTargetException, IllegalAccessException {
 			Method simpleAttributeGetter = simpleAttributeGetters.get(attrName);
 			if (simpleAttributeGetter == null) {
-				throw new AttributeNotFoundException();
+				throw new IllegalArgumentException(
+						format("Getter for simple-type attribute with name \"%s\" not found", attrName));
 			}
-			try {
-				return simpleAttributeGetter.invoke(monitorable);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new ReflectionException(e);
-			}
+			return simpleAttributeGetter.invoke(monitorable);
 		}
 
-		public List<?> getListAttributeValue(String attrName) throws AttributeNotFoundException, ReflectionException {
+		public List<?> getListAttributeValue(String attrName)
+				throws IllegalArgumentException, InvocationTargetException, IllegalAccessException {
 			Method listAttributeGetter = listAttributeGetters.get(attrName);
 			if (listAttributeGetter == null) {
-				throw new AttributeNotFoundException();
+				throw new IllegalArgumentException(
+						format("Getter for List attribute with name \"%s\" not found", attrName));
 			}
-			try {
-				return (List<?>) listAttributeGetter.invoke(monitorable);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new ReflectionException(e);
-			}
+			return (List<?>) listAttributeGetter.invoke(monitorable);
 		}
 
-		public Object[] getArrayAttributeValue(String attrName) throws AttributeNotFoundException, ReflectionException {
+		public Object[] getArrayAttributeValue(String attrName)
+				throws IllegalArgumentException, InvocationTargetException, IllegalAccessException {
 			Method arrayAttributeGetter = arrayAttributeGetters.get(attrName);
 			if (arrayAttributeGetter == null) {
-				throw new AttributeNotFoundException();
+				throw new IllegalArgumentException(
+						format("Getter for Array attribute with name \"%s\" not found", attrName));
 			}
-			try {
-				return (Object[]) arrayAttributeGetter.invoke(monitorable);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new ReflectionException(e);
-			}
+			return (Object[]) arrayAttributeGetter.invoke(monitorable);
 		}
 
 		public Throwable getThrowableAttributeValue(String attrName)
-				throws AttributeNotFoundException, ReflectionException {
+				throws IllegalArgumentException, InvocationTargetException, IllegalAccessException {
 			Method throwableAttributeGetter = throwableAttributeGetters.get(attrName);
 			if (throwableAttributeGetter == null) {
-				throw new AttributeNotFoundException();
+				throw new IllegalArgumentException(
+						format("Getter for Throwable attribute with name \"%s\" not found", attrName));
 			}
-			try {
-				return (Throwable) throwableAttributeGetter.invoke(monitorable);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new ReflectionException(e);
-			}
+			return (Throwable) throwableAttributeGetter.invoke(monitorable);
 		}
 
 		public void setSimpleAttribute(String attrName, Object value)
