@@ -40,8 +40,8 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	}
 
 	private class Chunker extends AbstractStreamTransformer_1_1<T, T> {
-		private InputConsumer inputConsumer;
-		private OutputProducer outputProducer;
+		private final InputConsumer inputConsumer;
+		private final OutputProducer outputProducer;
 
 		protected Chunker(Eventloop eventloop, String aggregationId, List<String> keys, List<String> fields,
 		                  Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
@@ -62,16 +62,18 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			private final int chunkSize;
 			private final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback;
 
+			private T first;
+			private T last;
 			private int count;
+			private Metadata currentChunkMetadata;
 
 			private int pendingChunks;
 			private boolean returnedResult;
 
 			private final List<AggregationChunk.NewChunk> chunks = new ArrayList<>();
 
-			public InputConsumer(String aggregationId, List<String> keys, List<String> fields,
-			                     Class<T> recordClass, AggregationChunkStorage storage,
-			                     AggregationMetadataStorage metadataStorage,
+			public InputConsumer(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+			                     AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 			                     int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 				checkArgument(chunkSize > 0);
 				this.aggregationId = aggregationId;
@@ -86,8 +88,10 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 
 			@Override
 			protected void onUpstreamEndOfStream() {
-				if (outputProducer.getDownstream() != null)
+				if (outputProducer.getDownstream() != null) {
+					currentChunkMetadata.init(first, last, count);
 					outputProducer.sendEndOfStream();
+				}
 
 				if (pendingChunks == 0 && !returnedResult)
 					chunksCallback.onResult(chunks);
@@ -109,15 +113,21 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				if (outputProducer.getDownstream() == null) {
 					++pendingChunks;
 					startNewChunk();
-				} else if (count == chunkSize)
+					first = item;
+				} else if (count == chunkSize) {
 					rotateChunk();
+					first = item;
+				}
 
 				++count;
+
 				outputProducer.send(item);
+				last = item;
 			}
 
 			private void rotateChunk() {
 				++pendingChunks;
+				currentChunkMetadata.init(first, last, count);
 				outputProducer.getDownstream().onProducerEndOfStream();
 				startNewChunk();
 			}
@@ -128,19 +138,25 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			}
 
 			private void startNewChunk() {
+				first = null;
+				last = null;
 				count = 0;
-				final MetadataCounter metadataCounter = new MetadataCounter(eventloop);
-				outputProducer.streamTo(metadataCounter.getInput());
+
+				final Metadata metadata = new Metadata();
+				currentChunkMetadata = metadata;
+
+				final StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
+				outputProducer.streamTo(forwarder.getInput());
 
 				metadataStorage.newChunkId(new ResultCallback<Long>() {
 					@Override
 					public void onResult(final Long chunkId) {
-						storage.chunkWriter(aggregationId, keys, fields, recordClass, chunkId, metadataCounter.getOutput(),
+						storage.chunkWriter(aggregationId, keys, fields, recordClass, chunkId, forwarder.getOutput(),
 								new CompletionCallback() {
 									@Override
 									public void onComplete() {
-										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId,
-												metadataCounter.first, metadataCounter.last, metadataCounter.count);
+										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId, metadata.first,
+												metadata.last, metadata.count);
 										chunks.add(newChunk);
 
 										if (--pendingChunks == 0 && getConsumerStatus() == StreamStatus.END_OF_STREAM && !returnedResult) {
@@ -193,54 +209,17 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				inputConsumer.resume();
 			}
 		}
-	}
 
-	private final class MetadataCounter extends AbstractStreamTransformer_1_1<T, T> {
-		private final InputConsumer inputConsumer;
-		private final OutputProducer outputProducer;
+		private final class Metadata {
+			private T first;
+			private T last;
+			private int count;
 
-		private T first;
-		private T last;
-		private int count;
-
-		private final class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
-			@Override
-			public void onData(T item) {
-				if (first == null)
-					first = item;
-
-				last = item;
-				++count;
-				outputProducer.send(item);
+			private void init(T first, T last, int count) {
+				this.first = first;
+				this.last = last;
+				this.count = count;
 			}
-
-			@Override
-			protected void onUpstreamEndOfStream() {
-				outputProducer.sendEndOfStream();
-			}
-
-			@Override
-			public StreamDataReceiver<T> getDataReceiver() {
-				return this;
-			}
-		}
-
-		private final class OutputProducer extends AbstractOutputProducer {
-			@Override
-			protected void onDownstreamSuspended() {
-				inputConsumer.suspend();
-			}
-
-			@Override
-			protected void onDownstreamResumed() {
-				inputConsumer.resume();
-			}
-		}
-
-		private MetadataCounter(Eventloop eventloop) {
-			super(eventloop);
-			this.inputConsumer = new InputConsumer();
-			this.outputProducer = new OutputProducer();
 		}
 	}
 }
