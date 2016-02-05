@@ -65,12 +65,11 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 			assert path.charAt(0) == '/';
 			path = path.substring(1); // removing initial '/'
 		}
-		final ContentType type = getContentType(path);
 		final String finalPath = path;
 		doServeAsync(path, new ForwardingResultCallback<ByteBuf>(callback) {
 			@Override
 			public void onResult(ByteBuf buf) {
-				callback.onResult(createHttpResponse(buf, finalPath).contentType(type));
+				callback.onResult(createHttpResponse(buf, finalPath));
 			}
 		});
 	}
