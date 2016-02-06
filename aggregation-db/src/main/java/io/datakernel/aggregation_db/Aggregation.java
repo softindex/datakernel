@@ -16,7 +16,10 @@
 
 package io.datakernel.aggregation_db;
 
-import com.google.common.base.*;
+import com.google.common.base.Function;
+import com.google.common.base.Functions;
+import com.google.common.base.Joiner;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.async.CompletionCallback;
@@ -189,10 +192,6 @@ public class Aggregation {
 		return aggregationMetadata.getOutputFields();
 	}
 
-	public String getId() {
-		return aggregationMetadata.getId();
-	}
-
 	public double getCost(AggregationQuery query) {
 		return aggregationMetadata.getCost(query);
 	}
@@ -218,15 +217,15 @@ public class Aggregation {
 	}
 
 	public static <T> StreamConsumer<T> createChunker(PartitioningStrategy partitioningStrategy, Eventloop eventloop,
-	                                                  String aggregationId, List<String> keys, List<String> fields,
+	                                                  List<String> keys, List<String> fields,
 	                                                  Class<T> recordClass, AggregationChunkStorage storage,
 	                                                  AggregationMetadataStorage metadataStorage, int chunkSize,
 	                                                  ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		if (partitioningStrategy == null)
-			return new AggregationChunker<>(eventloop, aggregationId, keys, fields, recordClass, storage,
+			return new AggregationChunker<>(eventloop, keys, fields, recordClass, storage,
 					metadataStorage, chunkSize, chunksCallback);
 
-		return new PartitioningAggregationChunker<>(partitioningStrategy, eventloop, aggregationId, keys, fields,
+		return new PartitioningAggregationChunker<>(partitioningStrategy, eventloop, keys, fields,
 				recordClass, storage, metadataStorage, chunkSize, chunksCallback).getInput();
 	}
 
@@ -235,7 +234,7 @@ public class Aggregation {
 			return null;
 
 		AsmBuilder<PartitioningStrategy> builder = new AsmBuilder<>(classLoader, PartitioningStrategy.class);
-		builder.method("getPartition", getter(cast(arg(0), recordClass), "date"));
+		builder.method("getPartition", getter(cast(arg(0), recordClass), partitioningKey));
 		return builder.newInstance();
 	}
 
@@ -390,7 +389,7 @@ public class Aggregation {
 		PartitioningStrategy partitioningStrategy = createPartitioningStrategy(resultClass);
 
 		consolidatedProducer(getKeys(), fields, resultClass, null, chunksToConsolidate)
-				.streamTo(createChunker(partitioningStrategy, eventloop, getId(), getKeys(), fields, resultClass,
+				.streamTo(createChunker(partitioningStrategy, eventloop, getKeys(), fields, resultClass,
 						aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback));
 	}
 
@@ -429,7 +428,7 @@ public class Aggregation {
 				producersClasses.add(chunksClass);
 
 				logger.info("Reading following chunks sequentially: {}", chunks);
-				StreamProducer producer = sequentialProducer(aggregationMetadata, predicates, chunks, chunksClass);
+				StreamProducer producer = sequentialProducer(predicates, chunks, chunksClass);
 				producers.add(producer);
 
 				chunks.clear();
@@ -463,19 +462,19 @@ public class Aggregation {
 		return streamReducer.getOutput();
 	}
 
-	private StreamProducer sequentialProducer(AggregationMetadata aggregation, AggregationQuery.QueryPredicates predicates,
+	private StreamProducer sequentialProducer(AggregationQuery.QueryPredicates predicates,
 	                                          List<AggregationChunk> individualChunks, Class<?> sequenceClass) {
 		checkArgument(!individualChunks.isEmpty());
 		List<StreamProducer<Object>> producers = new ArrayList<>();
 		for (AggregationChunk chunk : individualChunks) {
-			producers.add(chunkReaderWithFilter(aggregation, predicates, chunk, sequenceClass));
+			producers.add(chunkReaderWithFilter(predicates, chunk, sequenceClass));
 		}
 		return StreamProducers.concat(eventloop, producers);
 	}
 
-	private StreamProducer chunkReaderWithFilter(AggregationMetadata aggregationMetadata, AggregationQuery.QueryPredicates predicates,
+	private StreamProducer chunkReaderWithFilter(AggregationQuery.QueryPredicates predicates,
 	                                             AggregationChunk chunk, Class<?> chunkRecordClass) {
-		StreamProducer chunkReader = aggregationChunkStorage.chunkReader(aggregationMetadata.getId(), aggregationMetadata.getKeys(),
+		StreamProducer chunkReader = aggregationChunkStorage.chunkReader(getKeys(),
 				chunk.getFields(), chunkRecordClass, chunk.getChunkId());
 		StreamProducer chunkProducer = chunkReader;
 		if (ignoreChunkReadingExceptions) {
@@ -486,7 +485,7 @@ public class Aggregation {
 		if (predicates == null)
 			return chunkProducer;
 		StreamFilter streamFilter = new StreamFilter<>(eventloop,
-				createPredicate(aggregationMetadata, chunk, chunkRecordClass, predicates));
+				createPredicate(chunk, chunkRecordClass, predicates));
 		chunkProducer.streamTo(streamFilter.getInput());
 		return streamFilter.getOutput();
 	}
@@ -504,7 +503,7 @@ public class Aggregation {
 		return builder.newInstance();
 	}
 
-	private Predicate createPredicate(AggregationMetadata aggregationMetadata, AggregationChunk chunk,
+	private Predicate createPredicate(AggregationChunk chunk,
 	                                  Class<?> chunkRecordClass, AggregationQuery.QueryPredicates predicates) {
 		List<String> keysAlreadyInChunk = new ArrayList<>();
 		for (int i = 0; i < aggregationMetadata.getKeys().size(); i++) {
@@ -546,7 +545,7 @@ public class Aggregation {
 		return (Predicate) builder.newInstance();
 	}
 
-	public void consolidate(int maxChunksToConsolidate, final String consolidatorId,
+	public void consolidate(int maxChunksToConsolidate,
 	                        final ResultCallback<Boolean> callback) {
 		logger.trace("Aggregation {} consolidation started", this);
 
@@ -570,20 +569,20 @@ public class Aggregation {
 		}
 
 		logger.info("Starting consolidation of the following chunks in aggregation '{}': [{}]",
-				aggregationMetadata.getId(), getChunkIds(chunksToConsolidate));
+				aggregationMetadata, getChunkIds(chunksToConsolidate));
 		metadataStorage.startConsolidation(chunksToConsolidate, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
 				doConsolidation(chunksToConsolidate, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
 					@Override
 					public void onResult(final List<AggregationChunk.NewChunk> consolidatedChunks) {
-						metadataStorage.saveConsolidatedChunks(aggregationMetadata, consolidatorId, chunksToConsolidate,
+						metadataStorage.saveConsolidatedChunks(chunksToConsolidate,
 								consolidatedChunks, new ForwardingCompletionCallback(callback) {
 									@Override
 									public void onComplete() {
 										logger.info("Completed consolidation of the following chunks " +
 														"in aggregation '{}': [{}]. Created chunks: [{}]",
-												aggregationMetadata.getId(), getChunkIds(chunksToConsolidate),
+												aggregationMetadata, getChunkIds(chunksToConsolidate),
 												getNewChunkIds(consolidatedChunks));
 										callback.onResult(true);
 									}
@@ -613,7 +612,7 @@ public class Aggregation {
 	}
 
 	public void loadChunks(final CompletionCallback callback) {
-		metadataStorage.loadChunks(this, lastRevisionId, new ForwardingResultCallback<LoadedChunks>(callback) {
+		metadataStorage.loadChunks(lastRevisionId, new ForwardingResultCallback<LoadedChunks>(callback) {
 			@Override
 			public void onResult(LoadedChunks loadedChunks) {
 				for (AggregationChunk newChunk : loadedChunks.newChunks) {
@@ -659,8 +658,6 @@ public class Aggregation {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("aggregationMetadata", aggregationMetadata)
-				.toString();
+		return getKeys().toString();
 	}
 }

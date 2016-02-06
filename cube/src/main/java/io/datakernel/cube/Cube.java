@@ -64,7 +64,6 @@ public final class Cube implements ConcurrentJmxMBean {
 	private final Eventloop eventloop;
 	private final DefiningClassLoader classLoader;
 	private final CubeMetadataStorage cubeMetadataStorage;
-	private final AggregationMetadataStorage aggregationMetadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
@@ -74,6 +73,7 @@ public final class Cube implements ConcurrentJmxMBean {
 	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
 
 	private Map<String, Aggregation> aggregations = new LinkedHashMap<>();
+	private AggregationKeyRelationships childParentRelationships;
 
 	private int lastRevisionId;
 
@@ -81,27 +81,28 @@ public final class Cube implements ConcurrentJmxMBean {
 	 * Instantiates a cube with the specified structure, that runs in a given event loop,
 	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
 	 * and uses the specified parameters.
-	 *
-	 * @param eventloop                  event loop, in which the cube is to run
+	 *  @param eventloop                  event loop, in which the cube is to run
 	 * @param classLoader                class loader for defining dynamic classes
-	 * @param cubeMetadataStorage        storage for persisting cube metadata
-	 * @param aggregationMetadataStorage storage for aggregations metadata
+	 * @param cubeMetadataStorage storage for aggregations metadata
 	 * @param aggregationChunkStorage    storage for data chunks
 	 * @param structure                  structure of a cube
 	 * @param aggregationChunkSize       maximum size of aggregation chunk
 	 * @param sorterItemsInMemory        maximum number of records that can stay in memory while sorting
 	 */
-	public Cube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
-	            AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	public Cube(Eventloop eventloop, DefiningClassLoader classLoader,
+	            CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
 	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory) {
 		this.eventloop = eventloop;
 		this.classLoader = classLoader;
 		this.cubeMetadataStorage = cubeMetadataStorage;
-		this.aggregationMetadataStorage = aggregationMetadataStorage;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.structure = structure;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
+	}
+
+	public void setChildParentRelationships(Map<String, String> childParentRelationships) {
+		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
 	}
 
 	public Map<String, Aggregation> getAggregations() {
@@ -133,29 +134,21 @@ public final class Cube implements ConcurrentJmxMBean {
 	}
 
 	/**
-	 * Adds the given aggregation.
-	 *
-	 * @param aggregation aggregation to add
-	 */
-	public void addAggregation(Aggregation aggregation) {
-		aggregations.put(aggregation.getId(), aggregation);
-	}
-
-	/**
 	 * Creates an {@link Aggregation} with the specified metadata and adds it to the collection of aggregations managed by this cube.
 	 *
 	 * @param aggregationMetadata metadata of aggregation
 	 */
-	public void addAggregation(AggregationMetadata aggregationMetadata, String partitioningKey) {
+	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata, String partitioningKey) {
+		AggregationMetadataStorage aggregationMetadataStorage = cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
 		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage,
-				aggregationChunkStorage, aggregationMetadata,  structure, new SummationProcessorFactory(classLoader),
+				aggregationChunkStorage, aggregationMetadata, structure, new SummationProcessorFactory(classLoader),
 				partitioningKey, sorterItemsInMemory, aggregationChunkSize);
-		checkArgument(!aggregations.containsKey(aggregation.getId()), "Aggregation '%s' is already defined", aggregation.getId());
-		aggregations.put(aggregation.getId(), aggregation);
+		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
+		aggregations.put(aggregationId, aggregation);
 	}
 
-	public void addAggregation(AggregationMetadata aggregationMetadata) {
-		addAggregation(aggregationMetadata, null);
+	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata) {
+		addAggregation(aggregationId, aggregationMetadata, null);
 	}
 
 	public void incrementLastRevisionId() {
@@ -265,7 +258,7 @@ public final class Cube implements ConcurrentJmxMBean {
 	}
 
 	private Map<Aggregation, List<String>> findAggregationsForQuery(final AggregationQuery query) {
-		Map<String, List<String>> aggregationIdToAppliedPredicateKeys = new HashMap<>();
+		Map<Aggregation, List<String>> aggregationIdToAppliedPredicateKeys = new HashMap<>();
 		Map<Aggregation, List<String>> aggregationToAppliedPredicateKeys = new LinkedHashMap<>();
 		List<Aggregation> allAggregations = newArrayList(aggregations.values());
 		Collections.sort(allAggregations, descendingNumberOfPredicatesComparator());
@@ -275,7 +268,7 @@ public final class Cube implements ConcurrentJmxMBean {
 
 		for (Aggregation aggregation : allAggregations) {
 			AggregationFilteringResult result = aggregation.applyQueryPredicates(query, structure);
-			aggregationIdToAppliedPredicateKeys.put(aggregation.getId(), result.getAppliedPredicateKeys());
+			aggregationIdToAppliedPredicateKeys.put(aggregation, result.getAppliedPredicateKeys());
 			boolean satisfiesPredicates = result.isMatches();
 
 			if (satisfiesPredicates) {
@@ -292,7 +285,7 @@ public final class Cube implements ConcurrentJmxMBean {
 		List<Aggregation> resultAggregations = newArrayList(concat(aggregationsThatSatisfyPredicates, aggregationsWithoutPredicates));
 
 		for (Aggregation aggregation : resultAggregations) {
-			aggregationToAppliedPredicateKeys.put(aggregation, aggregationIdToAppliedPredicateKeys.get(aggregation.getId()));
+			aggregationToAppliedPredicateKeys.put(aggregation, aggregationIdToAppliedPredicateKeys.get(aggregation));
 		}
 
 		return aggregationToAppliedPredicateKeys;
@@ -352,7 +345,7 @@ public final class Cube implements ConcurrentJmxMBean {
 
 			queryResultProducer.streamTo(streamReducerInput);
 
-			logger.info("Streaming query {} result from aggregation '{}'", filteredQuery, aggregation.getId());
+			logger.info("Streaming query {} result from aggregation '{}'", filteredQuery, aggregation);
 
 			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getOutputFields()))));
 		}
@@ -366,28 +359,6 @@ public final class Cube implements ConcurrentJmxMBean {
 		logger.trace("Finished building StreamProducer for query.");
 
 		return orderedResultStream;
-	}
-
-	/**
-	 * Asynchronously saves metadata on this cube's aggregations.
-	 *
-	 * @param callback callback which is called when saving to metadata storage is completed
-	 */
-	public void saveAggregations(CompletionCallback callback) {
-		cubeMetadataStorage.saveAggregations(structure, aggregations.values(), callback);
-	}
-
-	public void loadAggregations(final CompletionCallback callback) {
-		cubeMetadataStorage.loadAggregations(structure,
-				new ForwardingResultCallback<List<AggregationMetadata>>(callback) {
-					@Override
-					public void onResult(List<AggregationMetadata> result) {
-						for (AggregationMetadata aggregationMetadata : result) {
-							addAggregation(aggregationMetadata);
-						}
-						callback.onComplete();
-					}
-				});
 	}
 
 	public void loadChunks(CompletionCallback callback) {
@@ -419,7 +390,7 @@ public final class Cube implements ConcurrentJmxMBean {
 			public void run() {
 				if (iterator.hasNext()) {
 					final Aggregation aggregation = iterator.next();
-					aggregation.consolidate(maxChunksToConsolidate, consolidatorId, new ResultCallback<Boolean>() {
+					aggregation.consolidate(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 						@Override
 						public void onResult(Boolean result) {
 							consolidate(maxChunksToConsolidate, consolidatorId, result || found, iterator, callback);
@@ -427,7 +398,7 @@ public final class Cube implements ConcurrentJmxMBean {
 
 						@Override
 						public void onException(Exception exception) {
-							logger.error("Consolidating aggregation '{}' failed", aggregation.getId(), exception);
+							logger.error("Consolidating aggregation '{}' failed", aggregation, exception);
 							consolidate(maxChunksToConsolidate, consolidatorId, found, iterator, callback);
 						}
 					});
@@ -472,17 +443,17 @@ public final class Cube implements ConcurrentJmxMBean {
 			availableDimensions.addAll(newArrayList(filter(aggregation.getKeys(), not(in(queryDimensions)))));
 		}
 
-		Set<List<String>> drillDownChains = structure.getChildParentRelationships().buildDrillDownChains(dimensions, availableDimensions);
+		Set<List<String>> drillDownChains = childParentRelationships.buildDrillDownChains(dimensions, availableDimensions);
 
 		return new AvailableDrillDowns(drillDownChains, availableMeasures);
 	}
 
 	public Set<String> findChildrenDimensions(String parent) {
-		return structure.getChildParentRelationships().findChildren(parent);
+		return childParentRelationships.findChildren(parent);
 	}
 
 	public List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
-		return structure.getChildParentRelationships().buildDrillDownChain(usedDimensions, dimension);
+		return childParentRelationships.buildDrillDownChain(usedDimensions, dimension);
 	}
 
 	public List<String> buildDrillDownChain(String dimension) {

@@ -21,8 +21,6 @@ import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.cube.Cube;
-import io.datakernel.cube.CubeMetadataStorage;
 
 import java.util.List;
 import java.util.Map;
@@ -30,7 +28,7 @@ import java.util.Map;
 /**
  * Manages persistence of cube and log metadata.
  */
-public interface LogToCubeMetadataStorage extends CubeMetadataStorage {
+public interface LogToCubeMetadataStorage {
 	/**
 	 * Asynchronously loads log positions for the given log name and list of names of partitions.
 	 *
@@ -44,15 +42,14 @@ public interface LogToCubeMetadataStorage extends CubeMetadataStorage {
 	 * Commits information about processing log to metadata storage.
 	 * Updates (in storage) old log positions with the new values, contained in the list of new log positions.
 	 * Saves metadata on new chunks, that appeared as a result of processing log, to the given cube.
-	 *
-	 * @param log          name of log file
-	 * @param processId    id of aggregator process
+	 *  @param log          name of log file
 	 * @param oldPositions old log positions
 	 * @param newPositions new log positions
 	 * @param newChunks    metadata on new chunks
 	 * @param callback     callback which is called once committing is complete
 	 */
-	void saveCommit(String log, String processId, Map<String, LogPosition> oldPositions,
+	void saveCommit(String log, Map<AggregationMetadata, String> idMap,
+	                Map<String, LogPosition> oldPositions,
 	                Map<String, LogPosition> newPositions,
 	                Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
 }

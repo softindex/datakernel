@@ -58,9 +58,9 @@ public class LogToCubeTest {
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
-	                           AggregationMetadataStorage aggregationMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                           AggregationChunkStorage aggregationChunkStorage,
 	                           AggregationStructure aggregationStructure) {
-		return new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage,
+		return new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				aggregationStructure, 1_000_000, 1_000_000);
 	}
 
@@ -80,13 +80,13 @@ public class LogToCubeTest {
 	public void testStubStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
-		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
+		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
 		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = getStructure(classLoader);
-		LogToCubeMetadataStorageStub logToCubeMetadataStorageStub = new LogToCubeMetadataStorageStub(aggregationMetadataStorage);
-		Cube cube = newCube(eventloop, classLoader, logToCubeMetadataStorageStub, aggregationMetadataStorage, aggregationStorage, structure);
-		cube.addAggregation(new AggregationMetadata("pub", asList("pub"), asList("pubRequests")));
-		cube.addAggregation(new AggregationMetadata("adv", asList("adv"), asList("advRequests")));
+		LogToCubeMetadataStorageStub logToCubeMetadataStorageStub = new LogToCubeMetadataStorageStub(cubeMetadataStorage);
+		Cube cube = newCube(eventloop, classLoader, cubeMetadataStorage, aggregationStorage, structure);
+		cube.addAggregation("pub", new AggregationMetadata(asList("pub"), asList("pubRequests")));
+		cube.addAggregation("adv", new AggregationMetadata(asList("adv"), asList("advRequests")));
 
 		ExecutorService executor = Executors.newCachedThreadPool();
 		Path dir = temporaryFolder.newFolder().toPath();
@@ -99,7 +99,7 @@ public class LogToCubeTest {
 		LogManager<TestPubRequest> logManager = new LogManagerImpl<>(eventloop, fileSystem, bufferSerializer);
 
 		LogToCubeRunner<TestPubRequest> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager, TestAggregatorSplitter.factory(),
-				"testlog", asList("partitionA"), logToCubeMetadataStorageStub, "partitionA");
+				"testlog", asList("partitionA"), logToCubeMetadataStorageStub);
 
 		new StreamProducers.OfIterator<>(eventloop, asList(
 				new TestPubRequest(1000, 1, asList(new TestPubRequest.TestAdvRequest(10))),

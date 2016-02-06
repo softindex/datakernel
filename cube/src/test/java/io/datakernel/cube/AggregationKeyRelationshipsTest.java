@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation_db;
+package io.datakernel.cube;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
@@ -26,7 +26,8 @@ import java.util.Set;
 
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class AggregationKeyRelationshipsTest {
 	private AggregationKeyRelationships aggregationKeyRelationships;

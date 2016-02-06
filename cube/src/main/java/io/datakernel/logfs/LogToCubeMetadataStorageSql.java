@@ -17,7 +17,8 @@
 package io.datakernel.logfs;
 
 import com.google.common.collect.Multimap;
-import io.datakernel.aggregation_db.*;
+import io.datakernel.aggregation_db.AggregationChunk;
+import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.CubeMetadataStorageSql;
@@ -32,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,31 +53,27 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	private final ExecutorService executor;
 	private final Configuration jooqConfiguration;
 	private final CubeMetadataStorageSql cubeMetadataStorage;
-	private final AggregationMetadataStorageSql aggregationMetadataStorage;
 
 	/**
 	 * Constructs a metadata storage for cube metadata and logs, that runs in the specified event loop,
 	 * performs SQL queries in the given executor, connects to RDBMS using the specified configuration,
 	 * and uses the given cube metadata storage for some of the operations.
-	 *
-	 * @param eventloop                  event loop, in which metadata storage is to run
+	 *  @param eventloop                  event loop, in which metadata storage is to run
 	 * @param executor                   executor, where SQL queries are to be run
 	 * @param jooqConfiguration          database connection configuration
-	 * @param cubeMetadataStorage        cube metadata storage
-	 * @param aggregationMetadataStorage aggregation metadata storage
+	 * @param cubeMetadataStorage aggregation metadata storage
 	 */
 	public LogToCubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor,
-	                                   Configuration jooqConfiguration, CubeMetadataStorageSql cubeMetadataStorage,
-	                                   AggregationMetadataStorageSql aggregationMetadataStorage) {
+	                                   Configuration jooqConfiguration,
+	                                   CubeMetadataStorageSql cubeMetadataStorage) {
 		this.eventloop = eventloop;
 		this.executor = executor;
 		this.jooqConfiguration = jooqConfiguration;
 		this.cubeMetadataStorage = cubeMetadataStorage;
-		this.aggregationMetadataStorage = aggregationMetadataStorage;
 	}
 
 	void truncateTables(DSLContext jooq) {
-		aggregationMetadataStorage.truncateTables(jooq);
+		cubeMetadataStorage.truncateTables(jooq);
 		jooq.truncate(AGGREGATION_DB_LOG).execute();
 	}
 
@@ -121,7 +117,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	}
 
 	@Override
-	public void saveCommit(final String log, final String processId,
+	public void saveCommit(final String log, final Map<AggregationMetadata, String> idMap,
 	                       final Map<String, LogPosition> oldPositions,
 	                       final Map<String, LogPosition> newPositions,
 	                       final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
@@ -129,19 +125,20 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 		runConcurrently(eventloop, executor, false, new Runnable() {
 			@Override
 			public void run() {
-				saveCommit(log, processId, oldPositions, newPositions, newChunks);
+				saveCommit(log, idMap, oldPositions, newPositions, newChunks);
 			}
 		}, callback);
 	}
 
-	private void saveCommit(final String log, final String processId, Map<String, LogPosition> oldPositions,
+	private void saveCommit(final String log, final Map<AggregationMetadata, String> idMap,
+	                        final Map<String, LogPosition> oldPositions,
 	                        final Map<String, LogPosition> newPositions,
 	                        final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
 		final Connection connection = jooqConfiguration.connectionProvider().acquire();
 		final Configuration configurationWithConnection = jooqConfiguration.derive(connection);
 		DSLContext jooq = DSL.using(configurationWithConnection);
 		try {
-			aggregationMetadataStorage.getCubeLock(jooq);
+			cubeMetadataStorage.getCubeLock(jooq);
 			jooq.transaction(new TransactionalRunnable() {
 				@Override
 				public void run(Configuration configuration) throws Exception {
@@ -169,23 +166,13 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 					}
 
 					if (!newChunks.isEmpty())
-						aggregationMetadataStorage.saveNewChunks(jooq, processId, newChunks);
+						cubeMetadataStorage.doSaveNewChunks(jooq, idMap, newChunks);
 				}
 			});
 		} finally {
-			aggregationMetadataStorage.releaseCubeLock(jooq);
+			cubeMetadataStorage.releaseCubeLock(jooq);
 			jooqConfiguration.connectionProvider().release(connection);
 		}
 	}
 
-	@Override
-	public void loadAggregations(AggregationStructure structure, ResultCallback<List<AggregationMetadata>> callback) {
-		cubeMetadataStorage.loadAggregations(structure, callback);
-	}
-
-	@Override
-	public void saveAggregations(AggregationStructure structure, Collection<Aggregation> aggregations,
-	                             CompletionCallback callback) {
-		cubeMetadataStorage.saveAggregations(structure, aggregations, callback);
-	}
 }

@@ -49,7 +49,7 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields,
+	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id) {
 		Class<?> sourceClass = chunkTypes.get(id);
 		AsmBuilder<Function> factory = new AsmBuilder(classLoader, Function.class);
@@ -82,8 +82,7 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields,
-	                                         Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
+	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
 		chunkTypes.put(id, recordClass);
 		ArrayList<Object> list = new ArrayList<>();
 		lists.put(id, list);
@@ -93,7 +92,7 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void removeChunk(String aggregationId, long id, CompletionCallback callback) {
+	public void removeChunk(long id, CompletionCallback callback) {
 		chunkTypes.remove(id);
 		lists.remove(id);
 		callback.onComplete();

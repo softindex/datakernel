@@ -40,11 +40,11 @@ import static org.junit.Assert.assertEquals;
 public class StringDimensionTest {
 	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationChunkStorage storage,
 	                           AggregationStructure structure) {
-		AggregationMetadataStorageStub aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		Cube cube = new Cube(eventloop, classLoader, new LogToCubeMetadataStorageStub(aggregationMetadataStorage), aggregationMetadataStorage,
+		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage,
 				storage, structure, 100_000, 1_000_000);
-		cube.addAggregation(
-				new AggregationMetadata("detailedAggregation", asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
+		cube.addAggregation("detailedAggregation",
+				new AggregationMetadata(asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
 		return cube;
 	}
 

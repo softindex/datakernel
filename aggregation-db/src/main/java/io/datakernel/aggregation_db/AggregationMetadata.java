@@ -40,7 +40,6 @@ import static com.google.common.collect.Lists.newArrayList;
  * Provides methods for managing index, querying for chunks by key, searching for chunks that are available for consolidation.
  */
 public class AggregationMetadata {
-	private final String id;
 	private final ImmutableList<String> keys;
 	private final ImmutableList<String> inputFields;
 	private final ImmutableList<String> outputFields;
@@ -50,33 +49,31 @@ public class AggregationMetadata {
 
 	private static final int EQUALS_QUERIES_THRESHOLD = 1_000;
 
-	public AggregationMetadata(String id, Collection<String> keys, Collection<String> inputFields) {
-		this(id, keys, inputFields, inputFields, null);
+	public AggregationMetadata(Collection<String> keys, Collection<String> inputFields) {
+		this(keys, inputFields, inputFields, null);
 	}
 
-	public AggregationMetadata(String id, Collection<String> keys, Collection<String> inputFields,
+	public AggregationMetadata(Collection<String> keys, Collection<String> inputFields,
 	                           Collection<String> outputFields) {
-		this(id, keys, inputFields, outputFields, null);
+		this(keys, inputFields, outputFields, null);
 	}
 
-	public AggregationMetadata(String id, Collection<String> keys, Collection<String> inputFields,
+	public AggregationMetadata(Collection<String> keys, Collection<String> inputFields,
 	                           QueryPredicates predicates) {
-		this(id, keys, inputFields, inputFields, predicates);
+		this(keys, inputFields, inputFields, predicates);
 	}
 
 	/**
 	 * Constructs an aggregation metadata object with the given id, keys, input and output fields.
 	 *
-	 * @param id           id of aggregation
 	 * @param keys         list of key names
 	 * @param inputFields  list of input field names
 	 * @param outputFields list of output field names
 	 * @param predicates   list of predicates
 	 */
 	@SuppressWarnings("unchecked")
-	public AggregationMetadata(String id, Collection<String> keys, Collection<String> inputFields,
+	public AggregationMetadata(Collection<String> keys, Collection<String> inputFields,
 	                           Collection<String> outputFields, QueryPredicates predicates) {
-		this.id = id;
 		this.predicates = predicates;
 		this.keys = ImmutableList.copyOf(keys);
 		this.inputFields = ImmutableList.copyOf(inputFields);
@@ -202,10 +199,6 @@ public class AggregationMetadata {
 			PrimaryKey upper = chunk.getMaxPrimaryKey().prefix(size);
 			index.remove(lower, upper, chunk);
 		}
-	}
-
-	public String getId() {
-		return id;
 	}
 
 	public List<String> getKeys() {
@@ -582,6 +575,6 @@ public class AggregationMetadata {
 
 	@Override
 	public String toString() {
-		return "Aggregation{id='" + id + '\'' + ", keys=" + keys + ", fields=" + inputFields + '}';
+		return "Aggregation{keys=" + keys + ", fields=" + inputFields + '}';
 	}
 }

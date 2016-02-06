@@ -17,7 +17,6 @@
 package io.datakernel.aggregation_db;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
@@ -30,36 +29,29 @@ public interface AggregationChunkStorage {
 	 * Creates a {@code StreamProducer} that streams records contained in the chunk.
 	 * The chunk to read is determined by {@code aggregationId} and {@code id}.
 	 *
-	 * @param aggregationId id of aggregation that contains the chunk
-	 * @param keys          keys of chunk record
 	 * @param fields        fields of chunk record
 	 * @param recordClass   class of chunk record
 	 * @param id            id of chunk
 	 * @return StreamProducer, which will stream read records to its wired consumer.
 	 */
-	<T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+	<T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass,
 	                                  long id);
 
 	/**
 	 * Creates a {@code StreamConsumer} that persists streamed records.
 	 * The chunk to write is determined by {@code aggregationId} and {@code id}.
-	 *
-	 * @param aggregationId id of aggregation that contains the chunk
-	 * @param keys          keys of chunk record
 	 * @param fields        fields of chunk record
 	 * @param recordClass   class of chunk record
 	 * @param id            id of chunk
 	 * @param producer      producer of records
 	 */
-	<T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+	<T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass,
 	                     long id, StreamProducer<T> producer, CompletionCallback callback);
 
 	/**
 	 * Removes the chunk determined by {@code aggregationId} and {@code id}.
-	 *
-	 * @param aggregationId id of aggregation that contains the chunk
-	 * @param id            id of chunk
+	 *  @param id            id of chunk
 	 * @param callback      callback
 	 */
-	void removeChunk(String aggregationId, long id, CompletionCallback callback);
+	void removeChunk(long id, CompletionCallback callback);
 }

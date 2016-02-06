@@ -47,7 +47,7 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields,
+	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, final long id) {
 		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, keys, fields);
@@ -61,7 +61,7 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass,
 	                            final long id, final StreamProducer<T> producer, final CompletionCallback callback) {
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, keys, fields);
@@ -78,7 +78,7 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void removeChunk(final String aggregationId, final long id, CompletionCallback callback) {
+	public void removeChunk(final long id, CompletionCallback callback) {
 		client.delete(path(id), callback);
 	}
 }

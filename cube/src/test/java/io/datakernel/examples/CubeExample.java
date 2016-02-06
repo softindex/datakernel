@@ -19,7 +19,10 @@ package io.datakernel.examples;
 import com.google.common.collect.ImmutableMap;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import io.datakernel.aggregation_db.*;
+import io.datakernel.aggregation_db.AggregationChunkStorage;
+import io.datakernel.aggregation_db.AggregationMetadata;
+import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.aggregation_db.LocalFsChunkStorage;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeDouble;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
@@ -27,7 +30,6 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeDate;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.AsyncCallbacks;
-import io.datakernel.async.AsyncExecutors;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeMetadataStorage;
@@ -95,10 +97,6 @@ public class CubeExample {
 						.put("clicks", new FieldTypeLong())
 						.put("conversions", new FieldTypeLong())
 						.put("revenue", new FieldTypeDouble())
-						.build(),
-				ImmutableMap.<String, String>builder()
-						.put("campaign", "advertiser")
-						.put("banner", "campaign")
 						.build());
 	}
 
@@ -109,13 +107,16 @@ public class CubeExample {
 	to separately group records by date for fast queries that require only this dimension. */
 	private static Cube getCube(Eventloop eventloop, DefiningClassLoader classLoader,
 	                            CubeMetadataStorage cubeMetadataStorage,
-	                            AggregationMetadataStorage aggregationMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage, aggregationChunkStorage, cubeStructure,
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationChunkStorage, cubeStructure,
 				100_000, 1_000_000);
-		cube.addAggregation(new AggregationMetadata("detailed", LogItem.DIMENSIONS, LogItem.MEASURES));
-		cube.addAggregation(new AggregationMetadata("date", asList("date"), LogItem.MEASURES));
+		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS, LogItem.MEASURES));
+		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES));
+		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
+				.put("campaign", "advertiser")
+				.put("banner", "campaign")
+				.build());
 		return cube;
 	}
 
@@ -144,11 +145,9 @@ public class CubeExample {
 	private static LogToCubeMetadataStorage getLogToCubeMetadataStorage(Eventloop eventloop,
 	                                                                    ExecutorService executor,
 	                                                                    Configuration jooqConfiguration,
-	                                                                    AggregationMetadataStorageSql aggregationMetadataStorage) {
-		CubeMetadataStorageSql cubeMetadataStorage =
-				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration);
+	                                                                    CubeMetadataStorageSql aggregationMetadataStorage) {
 		LogToCubeMetadataStorageSql metadataStorage = new LogToCubeMetadataStorageSql(eventloop, executor,
-				jooqConfiguration, cubeMetadataStorage, aggregationMetadataStorage);
+				jooqConfiguration, aggregationMetadataStorage);
 		metadataStorage.truncateTables();
 		return metadataStorage;
 	}
@@ -190,19 +189,15 @@ public class CubeExample {
 		Configuration jooqConfiguration = getJooqConfiguration();
 		AggregationChunkStorage aggregationChunkStorage =
 				getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
-		AggregationMetadataStorageSql aggregationMetadataStorage =
-				new AggregationMetadataStorageSql(eventloop, executor, jooqConfiguration);
+		CubeMetadataStorageSql aggregationMetadataStorage =
+				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
 				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, aggregationMetadataStorage);
-		Cube cube = getCube(eventloop, classLoader, logToCubeMetadataStorage, aggregationMetadataStorage,
+		Cube cube = getCube(eventloop, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(eventloop, executor, classLoader, logsDir);
 		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
-				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage, LOG_PARTITION_NAME);
-
-		/* Save the specified aggregations to metadata storage. */
-		cube.saveAggregations(AsyncCallbacks.ignoreCompletionCallback());
-		eventloop.run();
+				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
 		/* Stream data to logs. */
 		StreamProducers.OfIterator<LogItem> producerOfRandomLogItems = getProducerOfRandomLogItems(eventloop);

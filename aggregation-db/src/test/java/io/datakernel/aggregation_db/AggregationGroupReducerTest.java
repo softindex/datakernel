@@ -34,9 +34,7 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static io.datakernel.aggregation_db.InvertedIndexTest.InvertedIndexRecord;
 import static java.util.Arrays.asList;
@@ -53,7 +51,7 @@ public class AggregationGroupReducerTest {
 		final Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("inverted index", InvertedIndexRecord.KEYS,
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS);
 		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
@@ -65,30 +63,27 @@ public class AggregationGroupReducerTest {
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
-						.build(),
-				ImmutableMap.<String, String>of());
+						.build());
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
-		final Map<Long, List> map = new HashMap<>();
+		final List items = new ArrayList();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
 
 			@Override
-			public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
-				return new StreamProducers.OfIterator<T>(eventloop, map.get(aggregationId).iterator());
+			public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+				return new StreamProducers.OfIterator<T>(eventloop, items.iterator());
 			}
 
 			@Override
-			public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
-				List<T> list = new ArrayList<>();
-				map.put(id, list);
-				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, list);
+			public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
+				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, items);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
 				producer.streamTo(consumer);
 			}
 
 			@Override
-			public void removeChunk(String aggregationId, long id, CompletionCallback callback) {
+			public void removeChunk(long id, CompletionCallback callback) {
 
 			}
 		};
@@ -147,7 +142,7 @@ public class AggregationGroupReducerTest {
 		final Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("inverted index", InvertedIndexRecord.KEYS,
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS);
 		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
@@ -159,30 +154,27 @@ public class AggregationGroupReducerTest {
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
-						.build(),
-				ImmutableMap.<String, String>of());
+						.build());
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
-		final Map<String, List> map = new HashMap<>();
+		final List items = new ArrayList();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
 
 			@Override
-			public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id) {
-				return new StreamProducers.OfIterator<T>(eventloop, map.get(aggregationId).iterator());
+			public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+				return new StreamProducers.OfIterator<T>(eventloop, items.iterator());
 			}
 
 			@Override
-			public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
-				List<T> list = new ArrayList<>();
-				map.put(aggregationId, list);
-				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, list);
+			public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
+				StreamConsumers.ToList consumer = StreamConsumers.toList(eventloop, items);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
 				producer.streamTo(consumer);
 			}
 
 			@Override
-			public void removeChunk(String aggregationId, long id, CompletionCallback callback) {
+			public void removeChunk(long id, CompletionCallback callback) {
 
 			}
 		};

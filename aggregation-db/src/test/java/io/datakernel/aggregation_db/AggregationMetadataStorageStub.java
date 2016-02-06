@@ -22,18 +22,16 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 
 public class AggregationMetadataStorageStub implements AggregationMetadataStorage {
 	private long chunkId;
-	private Map<String, List<AggregationChunk.NewChunk>> tmpChunks = new HashMap<>();
+	private List<AggregationChunk.NewChunk> tmpChunks;
 
 	@Override
-	public void newChunkId(ResultCallback<Long> callback) {
+	public void createChunkId(ResultCallback<Long> callback) {
 		callback.onResult(++chunkId);
 	}
 
@@ -42,12 +40,13 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void saveAggregationMetadata(Aggregation aggregation, AggregationStructure structure, CompletionCallback callback) {
+	public void saveAggregationMetadata(CompletionCallback callback) {
+		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public void saveChunks(AggregationMetadata aggregationMetadata, String processId, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
-		this.tmpChunks.put(aggregationMetadata.getId(), newChunks);
+	public void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
+		this.tmpChunks = newChunks;
 		callback.onComplete();
 	}
 
@@ -57,10 +56,9 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void loadChunks(Aggregation aggregation, final int lastRevisionId, ResultCallback<LoadedChunks> callback) {
-		List<AggregationChunk.NewChunk> newChunks = tmpChunks.get(aggregation.getId());
+	public void loadChunks(final int lastRevisionId, ResultCallback<LoadedChunks> callback) {
 		callback.onResult(new LoadedChunks(lastRevisionId + 1, Collections.<Long>emptyList(),
-				Collections2.transform(newChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
+				Collections2.transform(tmpChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
 					@Override
 					public AggregationChunk apply(AggregationChunk.NewChunk input) {
 						return createChunk(lastRevisionId, input);
@@ -69,7 +67,7 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, String consolidatorId, List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+	public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
 		callback.onComplete();
 	}
 

@@ -23,7 +23,6 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.async.AsyncExecutors;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -52,7 +51,7 @@ public class KeyValueExample {
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 
 		// define the index structure (names and types of record properties) and metadata
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("key-value",
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(
 				KeyValuePair.KEYS, KeyValuePair.FIELDS);
 		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()

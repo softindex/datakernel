@@ -23,7 +23,6 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeList;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeString;
-import io.datakernel.async.AsyncExecutors;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -51,7 +50,7 @@ public class InvertedIndexExample {
 		// to simplify this example we will just use a no-op metadata storage
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("inverted index", InvertedIndexRecord.KEYS,
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexQueryResult.OUTPUT_FIELDS);
 
 		/* Define index structure. Here input records (which are streamed to DB)
@@ -68,8 +67,7 @@ public class InvertedIndexExample {
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
-						.build(),
-				ImmutableMap.<String, String>of());
+						.build());
 
 		// local file system storage for data
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,

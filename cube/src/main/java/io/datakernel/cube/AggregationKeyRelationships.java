@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation_db;
+package io.datakernel.cube;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;

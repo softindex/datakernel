@@ -31,28 +31,23 @@ public interface AggregationMetadataStorage {
 	 *
 	 * @param callback callback for consuming new chunk id
 	 */
-	void newChunkId(ResultCallback<Long> callback);
+	void createChunkId(ResultCallback<Long> callback);
 
 	/**
 	 * Saves metadata of the given aggregation asynchronously.
 	 *
-	 * @param aggregation aggregation which metadata is to be saved
 	 * @param callback    callback which is called once saving is complete
 	 */
-	void saveAggregationMetadata(Aggregation aggregation, AggregationStructure structure, CompletionCallback callback);
+	void saveAggregationMetadata(CompletionCallback callback);
 
 	/**
 	 * Saves given chunks metadata to metadata storage asynchronously.
-	 *
-	 * @param aggregationMetadata metadata of aggregation which contains the specified chunks
-	 * @param newChunks           list of chunks to save
+	 *  @param newChunks           list of chunks to save
 	 * @param callback            callback which is called once saving is complete
 	 */
-	void saveChunks(AggregationMetadata aggregationMetadata, String processId,
-	                List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
+	void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback);
 
-	void startConsolidation(List<AggregationChunk> chunksToConsolidate,
-	                        CompletionCallback callback);
+	void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback);
 
 	final class LoadedChunks {
 		public final int lastRevisionId;
@@ -68,21 +63,17 @@ public interface AggregationMetadataStorage {
 
 	/**
 	 * Loads metadata of chunks, whose revision id is after {@code lastRevisionId}, to specified {@link Aggregation} asynchronously.
-	 *
-	 * @param aggregation    aggregation where loaded chunks are to be saved
-	 * @param lastRevisionId lower bound for revision id
+	 *  @param lastRevisionId lower bound for revision id
 	 * @param callback       callback which is called once loading is complete
 	 */
-	void loadChunks(Aggregation aggregation, int lastRevisionId, ResultCallback<LoadedChunks> callback);
+	void loadChunks(int lastRevisionId, ResultCallback<LoadedChunks> callback);
 
 	/**
 	 * Asynchronously saves the metadata of the given list of new chunks that are result of consolidation of the list of specified chunks.
-	 *  @param aggregationMetadata metadata of aggregation that contains original and consolidated chunks
 	 * @param originalChunks      list of original chunks
 	 * @param consolidatedChunks  list of chunks that appeared as a result of consolidation of original chunks
 	 * @param callback            callback which is called once saving is complete
 	 */
-	void saveConsolidatedChunks(AggregationMetadata aggregationMetadata, String consolidatorId,
-	                            List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks,
+	void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks,
 	                            CompletionCallback callback);
 }

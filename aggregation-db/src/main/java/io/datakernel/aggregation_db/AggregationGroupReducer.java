@@ -35,7 +35,6 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	private final AggregationChunkStorage storage;
 	private final AggregationMetadataStorage metadataStorage;
-	private final String aggregationId;
 	private final List<String> keys;
 	private final List<String> fields;
 	private final PartitioningStrategy partitioningStrategy;
@@ -60,7 +59,6 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		super(eventloop);
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
-		this.aggregationId = aggregationMetadata.getId();
 		this.keys = aggregationMetadata.getKeys();
 		this.fields = aggregationMetadata.getOutputFields();
 		this.partitioningStrategy = partitioningStrategy;
@@ -123,7 +121,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 		final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 
-		producer.streamTo(Aggregation.createChunker(partitioningStrategy, eventloop, aggregationId, keys, fields,
+		producer.streamTo(Aggregation.createChunker(partitioningStrategy, eventloop, keys, fields,
 				recordClass, storage, metadataStorage, chunkSize,
 				new ResultCallback<List<AggregationChunk.NewChunk>>() {
 					@Override

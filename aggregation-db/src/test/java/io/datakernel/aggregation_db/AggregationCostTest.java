@@ -14,10 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.cube;
+package io.datakernel.aggregation_db;
 
-import io.datakernel.aggregation_db.AggregationMetadata;
-import io.datakernel.aggregation_db.AggregationQuery;
 import org.junit.Test;
 
 import static java.util.Arrays.asList;
@@ -26,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 public class AggregationCostTest {
 	@Test
 	public void testAggregationCost1() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("detailed", asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
 		AggregationQuery query = new AggregationQuery()
 				.key("date")
 				.field("clicks");
@@ -36,7 +34,7 @@ public class AggregationCostTest {
 
 	@Test
 	public void testAggregationCost2() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("detailed", asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
 		AggregationQuery query = new AggregationQuery()
 				.key("date")
 				.field("clicks")
@@ -47,7 +45,7 @@ public class AggregationCostTest {
 
 	@Test
 	public void testAggregationCost3() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("detailed", asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
 		AggregationQuery query = new AggregationQuery()
 				.keys(asList("date", "advertiser"))
 				.field("clicks")
@@ -59,7 +57,7 @@ public class AggregationCostTest {
 
 	@Test
 	public void testAggregationCost4() throws Exception {
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("detailed", asList("date", "publisher", "advertiser"), asList("clicks"));
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(asList("date", "publisher", "advertiser"), asList("clicks"));
 		AggregationQuery query = new AggregationQuery()
 				.keys(asList("date", "publisher"))
 				.field("clicks")

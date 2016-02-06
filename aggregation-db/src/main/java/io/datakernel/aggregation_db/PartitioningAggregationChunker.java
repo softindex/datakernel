@@ -20,7 +20,8 @@ import com.carrotsearch.hppc.IntObjectMap;
 import com.carrotsearch.hppc.IntObjectOpenHashMap;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamStatus;
 import io.datakernel.stream.processor.AbstractStreamSplitter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +35,6 @@ public final class PartitioningAggregationChunker<T> extends AbstractStreamSplit
 	private final PartitioningStrategy partitioningStrategy;
 
 	private final Eventloop eventloop;
-	private final String aggregationId;
 	private final List<String> keys;
 	private final List<String> fields;
 	private final Class<T> recordClass;
@@ -49,14 +49,13 @@ public final class PartitioningAggregationChunker<T> extends AbstractStreamSplit
 	private boolean returnedResult;
 
 	public PartitioningAggregationChunker(PartitioningStrategy partitioningStrategy, Eventloop eventloop,
-	                                      String aggregationId, List<String> keys, List<String> fields,
+	                                      List<String> keys, List<String> fields,
 	                                      Class<T> recordClass, AggregationChunkStorage storage,
 	                                      AggregationMetadataStorage metadataStorage, int chunkSize,
 	                                      ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		super(eventloop);
 		this.partitioningStrategy = partitioningStrategy;
 		this.eventloop = eventloop;
-		this.aggregationId = aggregationId;
 		this.keys = keys;
 		this.fields = fields;
 		this.recordClass = recordClass;
@@ -88,7 +87,7 @@ public final class PartitioningAggregationChunker<T> extends AbstractStreamSplit
 		if (chunker != null)
 			return chunker;
 
-		AggregationChunker<T> newChunker = new AggregationChunker<>(eventloop, aggregationId, keys, fields, recordClass,
+		AggregationChunker<T> newChunker = new AggregationChunker<>(eventloop, keys, fields, recordClass,
 				storage, metadataStorage, chunkSize, getResultCallback(partition));
 
 		addOutput(new OutputProducer<T>()).streamTo(newChunker);

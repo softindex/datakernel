@@ -23,7 +23,6 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.async.AsyncExecutors;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -102,7 +101,7 @@ public class KeyValueTest {
 		Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("key-value", KeyValuePair.KEYS, KeyValuePair.FIELDS);
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
 		ProcessorFactory keyValueProcessorFactory = new KeyValueProcessorFactory(classLoader);
 		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()

@@ -75,7 +75,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public void removeChunk(String aggregationId, long id, CompletionCallback callback) {
+	public void removeChunk(long id, CompletionCallback callback) {
 		Path path = path(id);
 		try {
 			Files.delete(path);
@@ -87,7 +87,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> StreamProducer<T> chunkReader(String aggregationId, List<String> keys, List<String> fields,
+	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id) {
 		StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
 				path(id), 0L);
@@ -103,7 +103,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> void chunkWriter(String aggregationId, List<String> keys, List<String> fields, Class<T> recordClass,
+	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass,
 	                            long id, final StreamProducer<T> producer, CompletionCallback callback) {
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		final StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,

@@ -23,7 +23,6 @@ import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
 import io.datakernel.aggregation_db.fieldtype.FieldTypeList;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeString;
-import io.datakernel.async.AsyncExecutors;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -121,7 +120,7 @@ public class InvertedIndexTest {
 		Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
-		AggregationMetadata aggregationMetadata = new AggregationMetadata("inverted index", InvertedIndexRecord.KEYS,
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS);
 		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
@@ -133,8 +132,7 @@ public class InvertedIndexTest {
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
-						.build(),
-				ImmutableMap.<String, String>of());
+						.build());
 		Path path = temporaryFolder.newFolder().toPath();
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
 				structure, path);

@@ -48,7 +48,10 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -80,21 +83,20 @@ public class CubePartitioningTest {
 						.put("clicks", new FieldTypeLong())
 						.put("conversions", new FieldTypeLong())
 						.put("revenue", new FieldTypeDouble())
-						.build(),
-				ImmutableMap.<String, String>builder()
-						.put("campaign", "advertiser")
-						.put("banner", "campaign")
 						.build());
 	}
 
 	private static Cube getCube(Eventloop eventloop, DefiningClassLoader classLoader,
 	                            CubeMetadataStorage cubeMetadataStorage,
-	                            AggregationMetadataStorage aggregationMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationMetadataStorage,
+		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage,
 				aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
-		cube.addAggregation(new AggregationMetadata("date", asList("date"), LogItem.MEASURES), "date");
+		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES), "date");
+		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
+				.put("campaign", "advertiser")
+				.put("banner", "campaign")
+				.build());
 		return cube;
 	}
 
@@ -115,11 +117,11 @@ public class CubePartitioningTest {
 	private static LogToCubeMetadataStorage getLogToCubeMetadataStorage(Eventloop eventloop,
 	                                                                    ExecutorService executor,
 	                                                                    Configuration jooqConfiguration,
-	                                                                    AggregationMetadataStorageSql aggregationMetadataStorage) {
+	                                                                    CubeMetadataStorageSql aggregationMetadataStorage) {
 		CubeMetadataStorageSql cubeMetadataStorage =
-				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration);
+				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorageSql metadataStorage = new LogToCubeMetadataStorageSql(eventloop, executor,
-				jooqConfiguration, cubeMetadataStorage, aggregationMetadataStorage);
+				jooqConfiguration, aggregationMetadataStorage);
 		metadataStorage.truncateTables();
 		return metadataStorage;
 	}
@@ -155,19 +157,15 @@ public class CubePartitioningTest {
 		Configuration jooqConfiguration = getJooqConfiguration();
 		AggregationChunkStorage aggregationChunkStorage =
 				getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
-		AggregationMetadataStorageSql aggregationMetadataStorage =
-				new AggregationMetadataStorageSql(eventloop, executor, jooqConfiguration);
+		CubeMetadataStorageSql cubeMetadataStorageSql =
+				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
-				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, aggregationMetadataStorage);
-		Cube cube = getCube(eventloop, classLoader, logToCubeMetadataStorage, aggregationMetadataStorage,
+				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
+		Cube cube = getCube(eventloop, classLoader, cubeMetadataStorageSql,
 				aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(eventloop, executor, classLoader, logsDir);
 		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
-				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage, LOG_PARTITION_NAME);
-
-		cube.saveAggregations(AsyncCallbacks.ignoreCompletionCallback());
-		eventloop.run();
-
+				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems = LogItem.getListOfRandomLogItems(100);
@@ -193,18 +191,15 @@ public class CubePartitioningTest {
 		Map<Long, AggregationChunk> chunks = cube.getAggregations().get("date").getChunks();
 		assertEquals(22, chunks.size());
 
-
 		AggregationQuery query = new AggregationQuery().keys("date").fields("clicks");
 		StreamConsumers.ToList<LogItem> queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
 		eventloop.run();
 
-
 		// Aggregate manually
 		Map<Integer, Long> map = new HashMap<>();
 		aggregateToMap(map, listOfRandomLogItems);
 		aggregateToMap(map, listOfRandomLogItems2);
-
 
 		// Check query results
 		for (LogItem logItem : queryResultConsumer.getList()) {
@@ -227,17 +222,14 @@ public class CubePartitioningTest {
 		}
 		assertEquals(11, consolidations);
 
-
 		// Load metadata
 		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
-
 
 		// Query
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
 		eventloop.run();
-
 
 		// Check query results
 		for (LogItem logItem : queryResultConsumer.getList()) {

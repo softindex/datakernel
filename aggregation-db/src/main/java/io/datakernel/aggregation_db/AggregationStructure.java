@@ -18,7 +18,6 @@ package io.datakernel.aggregation_db;
 
 import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
-import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.codegen.AsmBuilder;
@@ -34,8 +33,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
-import java.nio.file.Paths;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,7 +55,6 @@ public class AggregationStructure {
 	private final Map<String, KeyType> keys;
 	private final Map<String, FieldType> fields;
 	private final Map<String, FieldType> outputFields;
-	private final AggregationKeyRelationships childParentRelationships;
 
 	private final static Logger logger = LoggerFactory.getLogger(AggregationStructure.class);
 
@@ -67,23 +65,20 @@ public class AggregationStructure {
 	 * @param keys        map of aggregation keys (key is key name)
 	 * @param fields      map of aggregation fields (key is field name)
 	 */
-	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields) {
-		this(classLoader, keys, fields, fields, ImmutableMap.<String, String>of());
+	public AggregationStructure(DefiningClassLoader classLoader,
+	                            Map<String, KeyType> keys,
+	                            Map<String, FieldType> fields) {
+		this(classLoader, keys, fields, fields);
 	}
 
-	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys, Map<String, FieldType> fields,
-	                            Map<String, String> childParentRelationships) {
-		this(classLoader, keys, fields, fields, childParentRelationships);
-	}
-
-	public AggregationStructure(DefiningClassLoader classLoader, Map<String, KeyType> keys,
-	                            Map<String, FieldType> fields, Map<String, FieldType> outputFields,
-	                            Map<String, String> childParentRelationships) {
+	public AggregationStructure(DefiningClassLoader classLoader,
+	                            Map<String, KeyType> keys,
+	                            Map<String, FieldType> fields,
+	                            Map<String, FieldType> outputFields) {
 		this.classLoader = classLoader;
-		this.keys = keys;
-		this.fields = fields;
-		this.outputFields = outputFields;
-		this.childParentRelationships = new AggregationKeyRelationships(childParentRelationships);
+		this.keys = new LinkedHashMap<>(keys);
+		this.fields = new LinkedHashMap<>(fields);
+		this.outputFields = new LinkedHashMap<>(outputFields);
 	}
 
 	public Map<String, KeyType> getKeys() {
@@ -112,10 +107,6 @@ public class AggregationStructure {
 
 	public Map<String, FieldType> getOutputFields() {
 		return outputFields;
-	}
-
-	public AggregationKeyRelationships getChildParentRelationships() {
-		return childParentRelationships;
 	}
 
 	public boolean containsKey(String key) {
@@ -161,34 +152,6 @@ public class AggregationStructure {
 		builder.method("apply", applyDef);
 
 		return (Function) builder.newInstance();
-	}
-
-	public Class<?> createFieldClass(List<String> fields) {
-		logger.trace("Creating field class for fields {}", fields);
-		AsmBuilder builder = new AsmBuilder(classLoader, Comparable.class);
-
-		for (String field : fields) {
-			Class<?> dataType = null;
-			FieldType fieldType = this.fields.get(field);
-
-			if (fieldType != null) {
-				dataType = fieldType.getDataType();
-			} else {
-				KeyType keyType = this.keys.get(field);
-				if (keyType != null) {
-					dataType = keyType.getDataType();
-				}
-			}
-
-			builder.field(field, dataType);
-		}
-
-		builder.method("compareTo", compareTo(fields));
-		builder.method("equals", asEquals(fields));
-		builder.method("toString", asString(fields));
-		builder.method("hashCode", hashCodeOfThis(fields));
-
-		return builder.defineClass();
 	}
 
 	public Comparator createFieldComparator(AggregationQuery query, Class<?> fieldClass) {

@@ -18,6 +18,7 @@ package io.datakernel.logfs;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Multimap;
+import io.datakernel.aggregation_db.Aggregation;
 import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.async.CompletionCallback;
@@ -31,6 +32,7 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -47,7 +49,6 @@ public final class LogToCubeRunner<T> {
 
 	private final String log;
 	private final List<String> partitions;
-	private final String processId;
 
 	private static final Logger logger = LoggerFactory.getLogger(LogToCubeRunner.class);
 
@@ -56,8 +57,7 @@ public final class LogToCubeRunner<T> {
 	 * uses given log manager for reading logs, processes logs using an {@code AggregatorSplitter},
 	 * that is instantiated through the specified factory, works with the given log and partitions,
 	 * and uses the specified {@code LogToCubeMetadataStorage} for persistence of log and cube metadata.
-	 *
-	 * @param eventloop                 event loop to run in
+	 *  @param eventloop                 event loop to run in
 	 * @param cube                      cube to save new chunks
 	 * @param logManager                log manager for reading logs
 	 * @param aggregatorSplitterFactory factory that instantiates an {@code AggregatorSplitter} subclass
@@ -67,7 +67,7 @@ public final class LogToCubeRunner<T> {
 	 */
 	public LogToCubeRunner(Eventloop eventloop, Cube cube, LogManager<T> logManager,
 	                       AggregatorSplitter.Factory<T> aggregatorSplitterFactory, String log, List<String> partitions,
-	                       LogToCubeMetadataStorage metadataStorage, String processId) {
+	                       LogToCubeMetadataStorage metadataStorage) {
 		this.eventloop = eventloop;
 		this.metadataStorage = metadataStorage;
 		this.cube = cube;
@@ -75,7 +75,6 @@ public final class LogToCubeRunner<T> {
 		this.aggregatorSplitterFactory = aggregatorSplitterFactory;
 		this.log = log;
 		this.partitions = ImmutableList.copyOf(partitions);
-		this.processId = processId;
 	}
 
 	public void processLog(final CompletionCallback callback) {
@@ -127,7 +126,11 @@ public final class LogToCubeRunner<T> {
 	                                 final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
 	                                 final CompletionCallback callback) {
 		logger.trace("processLog_doCommit called. Log: {}. Old positions: {}. New positions: {}. New chunks: {}.", log, oldPositions, newPositions, newChunks);
-		metadataStorage.saveCommit(log, processId, oldPositions, newPositions, newChunks,
+		Map<AggregationMetadata, String> idMap = new HashMap<>();
+		for (Map.Entry<String, Aggregation> entry : cube.getAggregations().entrySet()) {
+			idMap.put(entry.getValue().getAggregationMetadata(), entry.getKey());
+		}
+		metadataStorage.saveCommit(log, idMap, oldPositions, newPositions, newChunks,
 				new ForwardingCompletionCallback(callback) {
 					@Override
 					public void onComplete() {
