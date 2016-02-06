@@ -64,7 +64,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 
 			private T first;
 			private T last;
-			private int count;
+			private int count = Integer.MAX_VALUE;
 			private Metadata currentChunkMetadata;
 
 			private int pendingChunks;
@@ -110,25 +110,22 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 
 			@Override
 			public void onData(T item) {
-				if (outputProducer.getDownstream() == null) {
-					++pendingChunks;
-					startNewChunk();
-					first = item;
-				} else if (count == chunkSize) {
+				if (count >= chunkSize) {
 					rotateChunk();
 					first = item;
 				}
 
 				++count;
 
-				outputProducer.send(item);
+				downstreamDataReceiver.onData(item);
 				last = item;
 			}
 
 			private void rotateChunk() {
-				++pendingChunks;
-				currentChunkMetadata.init(first, last, count);
-				outputProducer.getDownstream().onProducerEndOfStream();
+				if (outputProducer.getDownstream() != null) {
+					currentChunkMetadata.init(first, last, count);
+					outputProducer.getDownstream().onProducerEndOfStream();
+				}
 				startNewChunk();
 			}
 
@@ -138,6 +135,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			}
 
 			private void startNewChunk() {
+				++pendingChunks;
 				first = null;
 				last = null;
 				count = 0;

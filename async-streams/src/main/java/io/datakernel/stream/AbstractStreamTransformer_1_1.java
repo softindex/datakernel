@@ -38,6 +38,8 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 	protected Object tag;
 
 	protected abstract class AbstractInputConsumer extends AbstractStreamConsumer<I> {
+		protected StreamDataReceiver<O> downstreamDataReceiver;
+
 		public AbstractInputConsumer() {
 			super(AbstractStreamTransformer_1_1.this.eventloop);
 			checkState(inputConsumer == null);
@@ -50,7 +52,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		}
 
 		protected void onUpstreamStarted() {
-
 		}
 
 		@Override
@@ -79,7 +80,6 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 		public void closeWithError(Exception e) {
 			super.closeWithError(e);
 		}
-
 	}
 
 	protected abstract class AbstractOutputProducer extends AbstractStreamProducer<O> {
@@ -91,6 +91,7 @@ public abstract class AbstractStreamTransformer_1_1<I, O> implements StreamTrans
 
 		@Override
 		protected final void onDataReceiverChanged() {
+			inputConsumer.downstreamDataReceiver = this.downstreamDataReceiver;
 			if (inputConsumer.getUpstream() != null) {
 				inputConsumer.getUpstream().bindDataReceiver();
 			}
