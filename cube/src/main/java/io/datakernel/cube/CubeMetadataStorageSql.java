@@ -23,13 +23,9 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
-import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.aggregation_db.sql.tables.records.AggregationDbChunkRecord;
-import io.datakernel.aggregation_db.sql.tables.records.AggregationDbStructureRecord;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
@@ -93,16 +89,6 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 					@Override
 					public Long call() throws Exception {
 						return doCreateChunkId();
-					}
-				}, callback);
-			}
-
-			@Override
-			public void saveAggregationMetadata(CompletionCallback callback) {
-				runConcurrently(eventloop, executor, false, new Runnable() {
-					@Override
-					public void run() {
-						doSaveAggregationMetadata(DSL.using(jooqConfiguration), aggregationId, aggregationMetadata, aggregationStructure);
 					}
 				}, callback);
 			}
@@ -181,22 +167,6 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				.returning(AGGREGATION_DB_CHUNK.ID)
 				.fetchOne()
 				.getId();
-	}
-
-	public void doSaveAggregationMetadata(DSLContext jooq, String aggregationId, AggregationMetadata aggregationMetadata, AggregationStructure structure) {
-		Gson gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(structure))
-				.create();
-
-		jooq.insertInto(AGGREGATION_DB_STRUCTURE)
-				.set(new AggregationDbStructureRecord(
-						aggregationId,
-						JOINER.join(aggregationMetadata.getKeys()),
-						JOINER.join(aggregationMetadata.getInputFields()),
-						JOINER.join(aggregationMetadata.getOutputFields()),
-						gson.toJson(aggregationMetadata.getAggregationPredicates())))
-				.onDuplicateKeyIgnore()
-				.execute();
 	}
 
 	public void doSaveNewChunks(DSLContext jooq,

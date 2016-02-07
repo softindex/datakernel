@@ -52,14 +52,11 @@ public class AggregationGroupReducerTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
-				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS);
+				InvertedIndexRecord.OUTPUT_FIELDS);
 		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
 						.put("word", new KeyTypeString())
-						.build(),
-				ImmutableMap.<String, FieldType>builder()
-						.put("documentId", new FieldTypeInt())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
@@ -89,15 +86,14 @@ public class AggregationGroupReducerTest {
 		};
 
 		Class<InvertedIndexRecord> inputClass = InvertedIndexRecord.class;
-		List<String> inputFields = aggregationMetadata.getInputFields();
 		Class<?> keyClass = structure.createKeyClass(aggregationMetadata.getKeys());
-		Class<?> aggregationClass = structure.createRecordClass(aggregationMetadata.getKeys(), aggregationMetadata.getOutputFields());
+		Class<?> aggregationClass = structure.createRecordClass(aggregationMetadata.getKeys(), aggregationMetadata.getFields());
 
 		Function<InvertedIndexRecord, Comparable<?>> keyFunction = structure.createKeyFunction(inputClass, keyClass,
 				aggregationMetadata.getKeys());
 
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, aggregationMetadata.getKeys(),
-				inputFields, aggregationMetadata.getOutputFields());
+				InvertedIndexRecord.INPUT_FIELDS, aggregationMetadata.getFields());
 
 		int aggregationChunkSize = 2;
 		final List<List<AggregationChunk.NewChunk>> listCallback = new ArrayList<>();
@@ -143,14 +139,11 @@ public class AggregationGroupReducerTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
-				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS);
+				InvertedIndexRecord.OUTPUT_FIELDS);
 		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
 						.put("word", new KeyTypeString())
-						.build(),
-				ImmutableMap.<String, FieldType>builder()
-						.put("documentId", new FieldTypeInt())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
@@ -180,15 +173,15 @@ public class AggregationGroupReducerTest {
 		};
 
 		Class<InvertedIndexRecord> inputClass = InvertedIndexRecord.class;
-		List<String> inputFields = aggregationMetadata.getInputFields();
+		List<String> inputFields = InvertedIndexRecord.INPUT_FIELDS;
 		Class<?> keyClass = structure.createKeyClass(aggregationMetadata.getKeys());
-		Class<?> aggregationClass = structure.createRecordClass(aggregationMetadata.getKeys(), aggregationMetadata.getOutputFields());
+		Class<?> aggregationClass = structure.createRecordClass(aggregationMetadata.getKeys(), aggregationMetadata.getFields());
 
 		Function<InvertedIndexRecord, Comparable<?>> keyFunction = structure.createKeyFunction(inputClass, keyClass,
 				aggregationMetadata.getKeys());
 
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, aggregationMetadata.getKeys(),
-				inputFields, aggregationMetadata.getOutputFields());
+				inputFields, aggregationMetadata.getFields());
 
 		int aggregationChunkSize = 2;
 		final List<List<AggregationChunk.NewChunk>> listCallback = new ArrayList<>();

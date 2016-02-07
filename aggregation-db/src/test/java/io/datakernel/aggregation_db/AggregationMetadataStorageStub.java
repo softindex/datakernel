@@ -40,11 +40,6 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
-	public void saveAggregationMetadata(CompletionCallback callback) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
 	public void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		this.tmpChunks = newChunks;
 		callback.onComplete();

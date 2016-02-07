@@ -121,14 +121,11 @@ public class InvertedIndexTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
-				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS);
+				InvertedIndexRecord.OUTPUT_FIELDS);
 		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
 						.put("word", new KeyTypeString())
-						.build(),
-				ImmutableMap.<String, FieldType>builder()
-						.put("documentId", new FieldTypeInt())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
 						.put("documents", new FieldTypeList(new FieldTypeInt()))
@@ -142,19 +139,19 @@ public class InvertedIndexTest {
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
 
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("brown", 3),
 				new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
 
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
 
 		eventloop.run();
 

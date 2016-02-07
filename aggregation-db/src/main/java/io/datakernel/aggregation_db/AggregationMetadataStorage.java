@@ -34,13 +34,6 @@ public interface AggregationMetadataStorage {
 	void createChunkId(ResultCallback<Long> callback);
 
 	/**
-	 * Saves metadata of the given aggregation asynchronously.
-	 *
-	 * @param callback    callback which is called once saving is complete
-	 */
-	void saveAggregationMetadata(CompletionCallback callback);
-
-	/**
 	 * Saves given chunks metadata to metadata storage asynchronously.
 	 *  @param newChunks           list of chunks to save
 	 * @param callback            callback which is called once saving is complete

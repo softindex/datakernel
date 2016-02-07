@@ -46,11 +46,6 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 			}
 
 			@Override
-			public void saveAggregationMetadata(CompletionCallback callback) {
-				throw new UnsupportedOperationException();
-			}
-
-			@Override
 			public void saveChunks(List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 				doSaveChunk(aggregationId, newChunks, callback);
 			}

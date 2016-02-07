@@ -30,6 +30,7 @@ import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.ErrorIgnoringTransformer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -38,8 +39,10 @@ import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
@@ -131,11 +134,11 @@ public class Aggregation {
 	}
 
 	public List<String> getAggregationFieldsForConsumer(List<String> fields) {
-		return newArrayList(filter(aggregationMetadata.getInputFields(), in(fields)));
+		return newArrayList(filter(aggregationMetadata.getFields(), in(fields)));
 	}
 
 	public List<String> getAggregationFieldsForQuery(List<String> queryFields) {
-		return newArrayList(filter(queryFields, in(aggregationMetadata.getOutputFields())));
+		return newArrayList(filter(queryFields, in(aggregationMetadata.getFields())));
 	}
 
 	public boolean allKeysIn(List<String> requestedKeys) {
@@ -184,12 +187,8 @@ public class Aggregation {
 		return aggregationMetadata.getNumberOfPredicates();
 	}
 
-	public List<String> getInputFields() {
-		return aggregationMetadata.getInputFields();
-	}
-
-	public List<String> getOutputFields() {
-		return aggregationMetadata.getOutputFields();
+	public List<String> getFields() {
+		return aggregationMetadata.getFields();
 	}
 
 	public double getCost(AggregationQuery query) {
@@ -249,6 +248,10 @@ public class Aggregation {
 		return consumer(inputClass, new AggregationCommitCallback(this));
 	}
 
+	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> inputFields) {
+		return consumer(inputClass, inputFields, new AggregationCommitCallback(this));
+	}
+
 	/**
 	 * Provides a {@link StreamConsumer} for streaming data to this aggregation.
 	 *
@@ -274,16 +277,16 @@ public class Aggregation {
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> inputFields,
 	                                      ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		if (inputFields == null)
-			inputFields = aggregationMetadata.getInputFields();
+			inputFields = aggregationMetadata.getFields();
 
 		Class<?> keyClass = structure.createKeyClass(aggregationMetadata.getKeys());
-		Class<?> aggregationClass = structure.createRecordClass(aggregationMetadata.getKeys(), aggregationMetadata.getOutputFields());
+		Class<?> aggregationClass = structure.createRecordClass(aggregationMetadata.getKeys(), aggregationMetadata.getFields());
 
 		Function<T, Comparable<?>> keyFunction = structure.createKeyFunction(inputClass, keyClass,
 				aggregationMetadata.getKeys());
 
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, aggregationMetadata.getKeys(),
-				inputFields, aggregationMetadata.getOutputFields());
+				inputFields, aggregationMetadata.getFields());
 
 		PartitioningStrategy partitioningStrategy = createPartitioningStrategy(aggregationClass);
 
@@ -315,7 +318,7 @@ public class Aggregation {
 		List<AggregationQuery.QueryPredicateNotEquals> notEqualsPredicates = getNotEqualsPredicates(query.getPredicates());
 
 		for (String key : resultKeys) {
-			Object restrictedValue = structure.getRestrictedValue(key);
+			Object restrictedValue = structure.getKeyType(key).getRestrictedValue();
 			if (restrictedValue != null)
 				notEqualsPredicates.add(new AggregationQuery.QueryPredicateNotEquals(key, restrictedValue));
 		}
@@ -328,8 +331,12 @@ public class Aggregation {
 
 		if (sortingRequired(resultKeys, aggregationMetadata.getKeys())) {
 			Comparator keyComparator = structure.createKeyComparator(outputClass, resultKeys);
-			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure,
-					outputClass, aggregationMetadata.getKeys(), aggregationFields);
+			Path path = Paths.get("sorterStorage", "%d.part");
+			BufferSerializer bufferSerializer = structure.createBufferSerializer(outputClass, aggregationMetadata.getKeys(), aggregationFields);
+			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop,
+					Executors.newCachedThreadPool(), // TODO (dtkachenko)
+					bufferSerializer, path,
+					64); // TODO (dtkachenko)
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
 					sorterItemsInMemory);
 			queryResultProducer.streamTo(sorter.getInput());
@@ -378,7 +385,7 @@ public class Aggregation {
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
 			for (String field : chunk.getFields()) {
-				if (!fields.contains(field) && aggregationMetadata.getOutputFields().contains(field)) {
+				if (!fields.contains(field) && aggregationMetadata.getFields().contains(field)) {
 					fields.add(field);
 				}
 			}
@@ -455,7 +462,7 @@ public class Aggregation {
 			Function extractKeyFunction = structure.createKeyFunction(producerClasses.get(i), keyClass, keys);
 
 			StreamReducers.Reducer reducer = processorFactory.aggregationReducer(producerClasses.get(i), resultClass,
-					keys, newArrayList(filter(fields, in(producersFields.get(i)))), aggregationMetadata.getOutputFields());
+					keys, newArrayList(filter(fields, in(producersFields.get(i)))), aggregationMetadata.getFields());
 
 			producer.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
 		}

@@ -60,7 +60,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
 		this.keys = aggregationMetadata.getKeys();
-		this.fields = aggregationMetadata.getOutputFields();
+		this.fields = aggregationMetadata.getFields();
 		this.partitioningStrategy = partitioningStrategy;
 		this.recordClass = recordClass;
 		this.keyFunction = keyFunction;

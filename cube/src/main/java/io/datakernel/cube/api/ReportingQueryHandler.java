@@ -240,7 +240,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 
 		private void processMeasures() {
 			for (String queryMeasure : queryMeasures) {
-				if (structure.containsOutputField(queryMeasure)) {
+				if (structure.containsField(queryMeasure)) {
 					storedMeasures.add(queryMeasure);
 				} else if (reportingConfiguration.containsComputedMeasure(queryMeasure)) {
 					ReportingDSLExpression reportingDSLExpression = reportingConfiguration.getExpressionForMeasure(queryMeasure);
@@ -303,7 +303,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 				builder.field(key, keyType.getDataType());
 			}
 			for (String field : resultFields) {
-				FieldType fieldType = structure.getOutputFieldType(field);
+				FieldType fieldType = structure.getFieldType(field);
 				builder.field(field, fieldType.getDataType());
 			}
 			for (Map.Entry<String, Class<?>> nameEntry : attributeTypes.entrySet()) {
@@ -450,7 +450,7 @@ public final class ReportingQueryHandler implements AsyncHttpServlet {
 			AsmBuilder<TotalsPlaceholder> builder = new AsmBuilder<>(classLoader, TotalsPlaceholder.class);
 
 			for (String field : requestedStoredFields) {
-				FieldType fieldType = structure.getOutputFieldType(field);
+				FieldType fieldType = structure.getFieldType(field);
 				builder.field(field, fieldType.getDataType());
 			}
 			for (String computedMeasure : computedMeasureNames) {

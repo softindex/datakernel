@@ -36,14 +36,18 @@ import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
@@ -347,7 +351,7 @@ public final class Cube implements ConcurrentJmxMBean {
 
 			logger.info("Streaming query {} result from aggregation '{}'", filteredQuery, aggregation);
 
-			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getOutputFields()))));
+			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getFields()))));
 		}
 
 		if (!queryMeasures.isEmpty())
@@ -427,7 +431,7 @@ public final class Cube implements ConcurrentJmxMBean {
 
 		for (Aggregation aggregation : aggregations.values()) {
 			Set<String> aggregationMeasures = newHashSet();
-			aggregationMeasures.addAll(aggregation.getOutputFields());
+			aggregationMeasures.addAll(aggregation.getFields());
 
 			if (!all(queryDimensions, in(aggregation.getKeys())))
 				continue;
@@ -467,13 +471,13 @@ public final class Cube implements ConcurrentJmxMBean {
 
 		for (Aggregation aggregation : aggregations.values()) {
 			Set<String> aggregationMeasures = newHashSet();
-			aggregationMeasures.addAll(aggregation.getOutputFields());
+			aggregationMeasures.addAll(aggregation.getFields());
 
 			if (!all(dimensions, in(aggregation.getKeys()))) {
 				continue;
 			}
 
-			if (!any(allMeasures, in(aggregation.getOutputFields()))) {
+			if (!any(allMeasures, in(aggregation.getFields()))) {
 				continue;
 			}
 
@@ -488,7 +492,13 @@ public final class Cube implements ConcurrentJmxMBean {
 	                                                     List<String> dimensions, List<String> measures) {
 		if (queryRequiresSorting(query)) {
 			Comparator fieldComparator = structure.createFieldComparator(query, resultClass);
-			StreamMergeSorterStorage sorterStorage = SorterStorageUtils.getSorterStorage(eventloop, structure, resultClass, dimensions, measures);
+			Path path = Paths.get("sorterStorage", "%d.part");
+			BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, dimensions, measures);
+			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop,
+					Executors.newCachedThreadPool(), // TODO (dtkachenko)
+					bufferSerializer,
+					path,
+					64); // TODO (dtkachenko)
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
 					fieldComparator, false, sorterItemsInMemory);
 			rawResultStream.getOutput().streamTo(sorter.getInput());

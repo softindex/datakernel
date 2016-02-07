@@ -41,43 +41,31 @@ import static com.google.common.collect.Lists.newArrayList;
  */
 public class AggregationMetadata {
 	private final ImmutableList<String> keys;
-	private final ImmutableList<String> inputFields;
-	private final ImmutableList<String> outputFields;
+	private final ImmutableList<String> fields;
 	private final QueryPredicates predicates;
 
 	private final RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
 	private static final int EQUALS_QUERIES_THRESHOLD = 1_000;
 
-	public AggregationMetadata(Collection<String> keys, Collection<String> inputFields) {
-		this(keys, inputFields, inputFields, null);
-	}
-
-	public AggregationMetadata(Collection<String> keys, Collection<String> inputFields,
-	                           Collection<String> outputFields) {
-		this(keys, inputFields, outputFields, null);
-	}
-
-	public AggregationMetadata(Collection<String> keys, Collection<String> inputFields,
-	                           QueryPredicates predicates) {
-		this(keys, inputFields, inputFields, predicates);
+	public AggregationMetadata(Collection<String> keys, Collection<String> fields) {
+		this(keys, fields, null);
 	}
 
 	/**
-	 * Constructs an aggregation metadata object with the given id, keys, input and output fields.
+	 * Constructs an aggregation metadata object with the given id, keys, fields.
 	 *
-	 * @param keys         list of key names
-	 * @param inputFields  list of input field names
-	 * @param outputFields list of output field names
-	 * @param predicates   list of predicates
+	 * @param keys       list of key names
+	 * @param fields     list of field names
+	 * @param predicates list of predicates
 	 */
 	@SuppressWarnings("unchecked")
-	public AggregationMetadata(Collection<String> keys, Collection<String> inputFields,
-	                           Collection<String> outputFields, QueryPredicates predicates) {
+	public AggregationMetadata(Collection<String> keys,
+	                           Collection<String> fields,
+	                           QueryPredicates predicates) {
 		this.predicates = predicates;
 		this.keys = ImmutableList.copyOf(keys);
-		this.inputFields = ImmutableList.copyOf(inputFields);
-		this.outputFields = ImmutableList.copyOf(outputFields);
+		this.fields = ImmutableList.copyOf(fields);
 		this.prefixRanges = new RangeTree[keys.size() + 1];
 		for (int size = 0; size <= keys.size(); size++) {
 			this.prefixRanges[size] = new RangeTree<>();
@@ -205,12 +193,8 @@ public class AggregationMetadata {
 		return keys;
 	}
 
-	public List<String> getInputFields() {
-		return inputFields;
-	}
-
-	public List<String> getOutputFields() {
-		return outputFields;
+	public List<String> getFields() {
+		return fields;
 	}
 
 	public QueryPredicates getAggregationPredicates() {
@@ -235,7 +219,7 @@ public class AggregationMetadata {
 	public double getCost(AggregationQuery query) {
 		int unfilteredKeyCost = 100;
 
-		List<String> remainingFields = newArrayList(filter(query.getResultFields(), not(in(outputFields))));
+		List<String> remainingFields = newArrayList(filter(query.getResultFields(), not(in(fields))));
 
 		ArrayList<QueryPredicate> equalsPredicates = newArrayList(filter(query.getPredicates().asCollection(),
 				new Predicate<QueryPredicate>() {
@@ -575,6 +559,6 @@ public class AggregationMetadata {
 
 	@Override
 	public String toString() {
-		return "Aggregation{keys=" + keys + ", fields=" + inputFields + '}';
+		return "Aggregation{keys=" + keys + ", fields=" + fields + '}';
 	}
 }

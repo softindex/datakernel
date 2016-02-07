@@ -50,7 +50,7 @@ public class ReportingQueryResponseDeserializer implements JsonDeserializer<Repo
 				KeyType keyType = structure.getKeyType(jsonRecordEntry.getKey());
 				if (keyType != null) {
 					record.put(jsonRecordEntry.getKey(), keyType.fromJson(jsonRecordEntry.getValue()));
-				} else if (structure.containsOutputField(jsonRecordEntry.getKey())) {
+				} else if (structure.containsField(jsonRecordEntry.getKey())) {
 					record.put(jsonRecordEntry.getKey(), jsonRecordEntry.getValue().getAsNumber());
 				} else
 					throw new JsonParseException("Unknown record key/field");

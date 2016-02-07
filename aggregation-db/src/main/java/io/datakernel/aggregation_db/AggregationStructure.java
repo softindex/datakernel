@@ -51,12 +51,11 @@ import static io.datakernel.codegen.Expressions.*;
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class AggregationStructure {
+	private final static Logger logger = LoggerFactory.getLogger(AggregationStructure.class);
+
 	private final DefiningClassLoader classLoader;
 	private final Map<String, KeyType> keys;
 	private final Map<String, FieldType> fields;
-	private final Map<String, FieldType> outputFields;
-
-	private final static Logger logger = LoggerFactory.getLogger(AggregationStructure.class);
 
 	/**
 	 * Constructs a new aggregation structure with the given class loader, keys and fields.
@@ -68,17 +67,9 @@ public class AggregationStructure {
 	public AggregationStructure(DefiningClassLoader classLoader,
 	                            Map<String, KeyType> keys,
 	                            Map<String, FieldType> fields) {
-		this(classLoader, keys, fields, fields);
-	}
-
-	public AggregationStructure(DefiningClassLoader classLoader,
-	                            Map<String, KeyType> keys,
-	                            Map<String, FieldType> fields,
-	                            Map<String, FieldType> outputFields) {
 		this.classLoader = classLoader;
 		this.keys = new LinkedHashMap<>(keys);
 		this.fields = new LinkedHashMap<>(fields);
-		this.outputFields = new LinkedHashMap<>(outputFields);
 	}
 
 	public Map<String, KeyType> getKeys() {
@@ -89,36 +80,20 @@ public class AggregationStructure {
 		return keys.get(key);
 	}
 
-	public Object getRestrictedValue(String key) {
-		return keys.get(key).getRestrictedValue();
-	}
-
-	public FieldType getInputFieldType(String inputField) {
-		return fields.get(inputField);
-	}
-
-	public FieldType getOutputFieldType(String outputField) {
-		return outputFields.get(outputField);
+	public boolean containsKey(String key) {
+		return keys.containsKey(key);
 	}
 
 	public Map<String, FieldType> getFields() {
 		return fields;
 	}
 
-	public Map<String, FieldType> getOutputFields() {
-		return outputFields;
+	public FieldType getFieldType(String outputField) {
+		return fields.get(outputField);
 	}
 
-	public boolean containsKey(String key) {
-		return keys.containsKey(key);
-	}
-
-	public boolean containsInputField(String field) {
+	public boolean containsField(String field) {
 		return fields.containsKey(field);
-	}
-
-	public boolean containsOutputField(String field) {
-		return outputFields.containsKey(field);
 	}
 
 	public Class<?> createKeyClass(List<String> keys) {
@@ -134,24 +109,6 @@ public class AggregationStructure {
 		builder.method("toString", asString(keys));
 
 		return builder.defineClass();
-	}
-
-	public Function createFieldFunction(Class<?> recordClass, Class<?> fieldClass, List<String> fields) {
-		logger.trace("Creating field function for fields {}", fields);
-		AsmBuilder builder = new AsmBuilder(classLoader, Function.class);
-		Expression field = let(constructor(fieldClass));
-		ExpressionSequence applyDef = sequence(field);
-
-		for (String fieldString : fields) {
-			applyDef.add(set(
-					getter(field, fieldString),
-					getter(cast(arg(0), recordClass), fieldString)));
-		}
-
-		applyDef.add(field);
-		builder.method("apply", applyDef);
-
-		return (Function) builder.newInstance();
 	}
 
 	public Comparator createFieldComparator(AggregationQuery query, Class<?> fieldClass) {
@@ -214,7 +171,7 @@ public class AggregationStructure {
 			builder.field(key, d.getDataType());
 		}
 		for (String field : fields) {
-			FieldType m = this.outputFields.get(field);
+			FieldType m = this.fields.get(field);
 			builder.field(field, m.getDataType());
 		}
 		builder.method("toString", asString(newArrayList(concat(keys, fields))));
@@ -234,7 +191,7 @@ public class AggregationStructure {
 			builder.field(key, keyType.getDataType());
 		}
 		for (String field : resultFields) {
-			FieldType fieldType = this.outputFields.get(field);
+			FieldType fieldType = this.fields.get(field);
 			if (fieldType == null) {
 				throw new AggregationException("Field with the name '" + field + "' not found.");
 			}
@@ -294,7 +251,7 @@ public class AggregationStructure {
 			}
 		}
 		for (String field : fields) {
-			FieldType fieldType = this.outputFields.get(field);
+			FieldType fieldType = this.fields.get(field);
 			try {
 				Field recordClassField = recordClass.getField(field);
 				serializerGenClass.addField(recordClassField, fieldType.serializerGen(), -1, -1);
