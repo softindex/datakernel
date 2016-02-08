@@ -19,6 +19,8 @@ package io.datakernel.jmx;
 import javax.management.openmbean.*;
 import java.util.*;
 
+// TODO (vmykhalko): according to new approach with POJO - maybe AbstractCompositeStats are useless
+// TODO maybe instead use JmxAttributeAccumulator for Map independently of JmxStats ?
 public abstract class MapStats<K, S extends JmxStats<S>> implements JmxStats<MapStats<K, S>>, Map<K, S> {
 	private static final String ATTRIBUTE_NAME = "mapStats";
 	private static final String KEY_NAME = "_key";

@@ -23,6 +23,7 @@ import java.util.TreeMap;
 import static io.datakernel.jmx.Utils.fetchNameToJmxStats;
 import static java.lang.String.format;
 
+// TODO (vmykhalko): according to new approach with POJO - maybe AbstractCompositeStats are useless
 public abstract class AbstractCompositeStats<T extends AbstractCompositeStats<T>> implements JmxStats<T> {
 	private static final String ATTRIBUTE_NAME_PATTERN = "%s_%s";
 

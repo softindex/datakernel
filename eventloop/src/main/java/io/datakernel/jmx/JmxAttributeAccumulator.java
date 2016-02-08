@@ -16,8 +16,10 @@
 
 package io.datakernel.jmx;
 
-public interface JmxStats<T extends JmxStats> extends JmxAttributeAccumulator<T> {
+import java.util.SortedMap;
 
-	void refreshStats(long timestamp, double smoothingWindow);
+public interface JmxAttributeAccumulator<T> {
+	void add(T value);
 
+	SortedMap<String, TypeAndValue> getAttributes();
 }

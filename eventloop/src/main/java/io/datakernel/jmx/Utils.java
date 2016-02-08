@@ -53,6 +53,26 @@ public final class Utils {
 		return isGetter(method) && returnsSimpleType && hasNoArgs;
 	}
 
+	public static boolean isGetterOfPrimitive(Method method) {
+		boolean returnsPrimitive =
+				boolean.class.isAssignableFrom(method.getReturnType())
+						|| byte.class.isAssignableFrom(method.getReturnType())
+						|| short.class.isAssignableFrom(method.getReturnType())
+						|| char.class.isAssignableFrom(method.getReturnType())
+						|| int.class.isAssignableFrom(method.getReturnType())
+						|| long.class.isAssignableFrom(method.getReturnType())
+						|| float.class.isAssignableFrom(method.getReturnType())
+						|| double.class.isAssignableFrom(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsPrimitive && hasNoArgs;
+	}
+
+	public static boolean isGetterOfString(Method method) {
+		boolean returnsString = String.class.isAssignableFrom(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsString && hasNoArgs;
+	}
+
 	public static boolean isGetterOfList(Method method) {
 		boolean returnsList = List.class.isAssignableFrom(method.getReturnType());
 		boolean hasNoArgs = method.getParameterTypes().length == 0;
@@ -71,8 +91,20 @@ public final class Utils {
 		return isGetter(method) && returnsThrowable && hasNoArgs;
 	}
 
+	public static boolean isGetterOfPojo(Method method) {
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		boolean doesntReturnStandardType =
+				!isGetterOfPrimitive(method) &&
+						!isGetterOfString(method) &&
+						!isGetterOfArray(method) &&
+						!isGetterOfList(method) &&
+						!isGetterOfThrowable(method);
+		return isGetter(method) && doesntReturnStandardType && hasNoArgs;
+	}
+
 	public static boolean isGetter(Method method) {
-		return method.getName().length() > 3 && method.getName().startsWith("get");
+		return method.getName().length() > 3 && method.getName().startsWith("get")
+				&& method.getReturnType() != void.class;
 	}
 
 	public static SortedMap<String, JmxStats<?>> fetchNameToJmxStats(Object objectWithJmxStats) {

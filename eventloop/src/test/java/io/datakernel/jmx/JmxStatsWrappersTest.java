@@ -29,7 +29,7 @@ public class JmxStatsWrappersTest {
 	public void itShouldReturnProperAttributesForSummableJmxStats() {
 		JmxStats<?> jmxStats = JmxStatsWrappers.forSummableValue(10L);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = jmxStats.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = jmxStats.getAttributes();
 		assertEquals(1, attributes.size());
 		assertEquals(SimpleType.LONG, attributes.get("sum").getType());
 		assertEquals(10L, attributes.get("sum").getValue());
@@ -44,7 +44,7 @@ public class JmxStatsWrappersTest {
 		accumulator.add(jmxStats_1);
 		accumulator.add(jmxStats_2);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = accumulator.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = accumulator.getAttributes();
 		assertEquals(1, attributes.size());
 		assertEquals(SimpleType.LONG, attributes.get("sum").getType());
 		assertEquals(10L + 21L, attributes.get("sum").getValue());
@@ -54,7 +54,7 @@ public class JmxStatsWrappersTest {
 	public void itShouldReturnProperAttributesForMaxValueJmxStats() {
 		JmxStats<?> jmxStats = JmxStatsWrappers.forMaxValue(10L);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = jmxStats.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = jmxStats.getAttributes();
 		assertEquals(1, attributes.size());
 		assertEquals(SimpleType.LONG, attributes.get("max").getType());
 		assertEquals(10L, attributes.get("max").getValue());
@@ -69,7 +69,7 @@ public class JmxStatsWrappersTest {
 		accumulator.add(jmxStats_1);
 		accumulator.add(jmxStats_2);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = accumulator.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = accumulator.getAttributes();
 		assertEquals(1, attributes.size());
 		assertEquals(SimpleType.LONG, attributes.get("max").getType());
 		assertEquals(21L, attributes.get("max").getValue());
@@ -79,7 +79,7 @@ public class JmxStatsWrappersTest {
 	public void itShouldReturnProperAttributesForMinValueJmxStats() {
 		JmxStats<?> jmxStats = JmxStatsWrappers.forMinValue(10L);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = jmxStats.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = jmxStats.getAttributes();
 		assertEquals(1, attributes.size());
 		assertEquals(SimpleType.LONG, attributes.get("min").getType());
 		assertEquals(10L, attributes.get("min").getValue());
@@ -94,7 +94,7 @@ public class JmxStatsWrappersTest {
 		accumulator.add(jmxStats_1);
 		accumulator.add(jmxStats_2);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = accumulator.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = accumulator.getAttributes();
 		assertEquals(1, attributes.size());
 		assertEquals(SimpleType.LONG, attributes.get("min").getType());
 		assertEquals(10L, attributes.get("min").getValue());
@@ -104,7 +104,7 @@ public class JmxStatsWrappersTest {
 	public void itShouldReturnProperAttributesForAverageValueJmxStats() {
 		JmxStats<?> jmxStats = JmxStatsWrappers.forAverageValue(10L);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = jmxStats.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = jmxStats.getAttributes();
 		assertEquals(1, attributes.size());
 		assertEquals(SimpleType.DOUBLE, attributes.get("average").getType());
 		double acceptableError = 1E-10;
@@ -122,7 +122,7 @@ public class JmxStatsWrappersTest {
 		accumulator.add(jmxStats_2);
 		accumulator.add(jmxStats_3);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = accumulator.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = accumulator.getAttributes();
 		assertEquals(1, attributes.size());
 		assertEquals(SimpleType.DOUBLE, attributes.get("average").getType());
 		assertEquals((10L + 21L + 104L) / 3.0, attributes.get("average").getValue());

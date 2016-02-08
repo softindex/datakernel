@@ -37,10 +37,10 @@ public class MapStatsTest {
 		dStats.get("key-1").recordValue(23L);
 		dStats.get("key-2").recordValue(187L);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = dStats.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = dStats.getAttributes();
 		assertEquals(1, attributes.size());
 
-		JmxStats.TypeAndValue typeAndValue = attributes.get("mapStats");
+		TypeAndValue typeAndValue = attributes.get("mapStats");
 
 		String[] columnNames = new String[]{"_key", "sum", "count"};
 		CompositeType rowType = new CompositeType("rowType", "rowType",
@@ -82,7 +82,7 @@ public class MapStatsTest {
 		accumulator.add(dStats_2);
 
 		// check
-		JmxStats.TypeAndValue typeAndValue = accumulator.getAttributes().get("mapStats");
+		TypeAndValue typeAndValue = accumulator.getAttributes().get("mapStats");
 		TabularData tabularData = (TabularData) typeAndValue.getValue();
 
 		CompositeData rowWithKey_1 = tabularData.get(new Object[]{"key-1"});

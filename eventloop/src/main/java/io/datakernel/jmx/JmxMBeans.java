@@ -132,7 +132,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfSimpleType(method)) {
 				String name = extractFieldNameFromGetter(method);
-				boolean writable = doesSetterForAttributeExist(monitorable, name, method.getReturnType());
+				boolean writable = doesSetterForAttributeExist(monitorable.getClass(), name, method.getReturnType());
 				if (writable) {
 					writableAttributes.add(new SimpleAttribute(name, method.getReturnType()));
 				}
@@ -142,7 +142,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static Map<String, MBeanAttributeInfo> fetchNameToSimpleAttribute(Object monitorable) {
-		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributesInfo(monitorable);
+		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributesInfo(monitorable.getClass());
 		Map<String, MBeanAttributeInfo> nameToSimpleAttribute = new HashMap<>();
 		for (MBeanAttributeInfo simpleAttr : simpleAttrs) {
 			nameToSimpleAttribute.put(simpleAttr.getName(), simpleAttr);
@@ -156,9 +156,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Map<String, JmxStats<?>> nameToJmxStats = fetchNameToJmxStats(monitorable);
 		for (String statsName : nameToJmxStats.keySet()) {
 			JmxStats<?> stats = nameToJmxStats.get(statsName);
-			SortedMap<String, JmxStats.TypeAndValue> statsAttributes = stats.getAttributes();
+			SortedMap<String, TypeAndValue> statsAttributes = stats.getAttributes();
 			for (String statsAttributeName : statsAttributes.keySet()) {
-				JmxStats.TypeAndValue typeAndValue = statsAttributes.get(statsAttributeName);
+				TypeAndValue typeAndValue = statsAttributes.get(statsAttributeName);
 				String attrName = format(ATTRIBUTE_NAME_FORMAT, statsName, statsAttributeName);
 				String attrType = typeAndValue.getType().getTypeName();
 				MBeanAttributeInfo attributeInfo =
@@ -167,7 +167,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		}
 
-		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributesInfo(monitorable);
+		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributesInfo(monitorable.getClass());
 		attributes.addAll(simpleAttrs);
 
 		List<MBeanAttributeInfo> listAttrs = fetchListAttributesInfo(monitorable);
@@ -179,6 +179,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		List<MBeanAttributeInfo> exceptionAttrs = fetchExceptionAttributesInfo(monitorable);
 		attributes.addAll(exceptionAttrs);
 
+		List<MBeanAttributeInfo> pojoAttrs = fetchPojoAttributesInfo(monitorable.getClass());
+		attributes.addAll(pojoAttrs);
+
 		if (enableRefresh) {
 			addAttributesForRefreshControl(attributes);
 		}
@@ -189,13 +192,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	/**
 	 * Simple attributes means that attribute's type is of one of the following: boolean, int, long, double, String
 	 */
-	private static List<MBeanAttributeInfo> fetchSimpleAttributesInfo(Object monitorable) {
+	private static List<MBeanAttributeInfo> fetchSimpleAttributesInfo(Class<?> clazz) {
 		List<MBeanAttributeInfo> attrList = new ArrayList<>();
-		Method[] methods = monitorable.getClass().getMethods();
+		Method[] methods = clazz.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfSimpleType(method)) {
 				String name = extractFieldNameFromGetter(method);
-				boolean writable = doesSetterForAttributeExist(monitorable, name, method.getReturnType());
+				boolean writable = doesSetterForAttributeExist(clazz, name, method.getReturnType());
 				String type = method.getReturnType().getName();
 				MBeanAttributeInfo attrInfo =
 						new MBeanAttributeInfo(name, type, ATTRIBUTE_DEFAULT_DESCRIPTION,
@@ -257,6 +260,39 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return attrList;
 	}
 
+	private static List<MBeanAttributeInfo> fetchPojoAttributesInfo(Class<?> clazz) {
+		List<MBeanAttributeInfo> attrList = new ArrayList<>();
+		Method[] methods = clazz.getMethods();
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfPojo(method)) {
+				String currentPojoName = extractFieldNameFromGetter(method);
+				Class<?> currentPojoClass = method.getReturnType();
+				List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributesInfo(currentPojoClass);
+				for (MBeanAttributeInfo simpleAttr : simpleAttrs) {
+					attrList.add(addPrefixToAttrName(simpleAttr, currentPojoName));
+				}
+
+				List<MBeanAttributeInfo> pojoAttrs = fetchPojoAttributesInfo(currentPojoClass);
+				for (MBeanAttributeInfo pojoAttr : pojoAttrs) {
+					attrList.add(addPrefixToAttrName(pojoAttr, currentPojoName));
+				}
+			}
+		}
+		return attrList;
+	}
+
+	private static MBeanAttributeInfo addPrefixToAttrName(MBeanAttributeInfo attr, String prefix) {
+		return new MBeanAttributeInfo(
+				prefix + "_" + attr.getName(),
+				attr.getType(),
+				attr.getDescription(),
+				attr.isReadable(),
+				attr.isWritable(),
+				attr.isIs());
+	}
+
+//	private static Map<String, >
+
 	private static CompositeType getCompositeTypeOfThrowable() throws OpenDataException {
 		if (compositeTypeOfThrowable == null) {
 			String[] itemNames = new String[]{
@@ -304,8 +340,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return simpleAttributeSetters;
 	}
 
-	private static boolean doesSetterForAttributeExist(Object monitorable, String name, Class<?> type) {
-		Method[] methods = monitorable.getClass().getMethods();
+	private static boolean doesSetterForAttributeExist(Class<?> clazz, String name, Class<?> type) {
+		Method[] methods = clazz.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxAttribute.class) && isSetterOf(method, name, type)) {
 				return true;
@@ -719,7 +755,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					continue;
 				}
 
-				Map<String, JmxStats.TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
+				Map<String, TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
 				for (String subAttrName : jmxStatsAttributes.keySet()) {
 					String attrName = jmxStatsName + "_" + subAttrName;
 					nameToAttribute.put(attrName, jmxStatsAttributes.get(subAttrName).getValue());
@@ -1040,6 +1076,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		                             Map<OperationKey, Method> operationKeyToMethod) {
 			this.monitorable = monitorable;
 			// TODO (vmykhalko): maybe do not use getters of jmx stats ?
+			// actually
 			this.jmxStatsGetters = jmxStatsGetters;
 			this.jmxStatsList = jmxStatsList;
 			this.simpleAttributeGetters = simpleAttributeGetters;
@@ -1065,6 +1102,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		public List<? extends JmxStats<?>> getAllJmxStats() {
+			// TODO (vmykhalko): according to RPC (stats per connection) use-case,
+			// TODO we should use getters but not cached version of stats
 			return jmxStatsList;
 		}
 

@@ -22,7 +22,7 @@ import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
-public class EventsStatsTest {
+public class EventStatsTest {
 
 	private static final Random RANDOM = new Random();
 

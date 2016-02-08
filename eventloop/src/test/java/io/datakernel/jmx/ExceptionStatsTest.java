@@ -55,7 +55,7 @@ public class ExceptionStatsTest {
 		long timestamp = 1000L;
 		stats.recordException(exception, causedObject, timestamp);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = stats.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = stats.getAttributes();
 		assertEquals(3, attributes.size());
 
 		String exceptionTypeKey = "lastException";
@@ -67,7 +67,7 @@ public class ExceptionStatsTest {
 		assertEquals(1, attributes.get(exceptionCountKey).getValue());
 
 		String detailsKey = "details";
-		JmxStats.TypeAndValue typeAndValue = attributes.get(detailsKey);
+		TypeAndValue typeAndValue = attributes.get(detailsKey);
 		CompositeData compositeData = (CompositeData) typeAndValue.getValue();
 		CompositeType expectedDetailsType = new CompositeType("ExceptionStatsDetails", "ExceptionStatsDetails",
 				exceptionDetailsItemNames, exceptionDetailsItemNames, exceptionDetailsItemTypes);
@@ -107,7 +107,7 @@ public class ExceptionStatsTest {
 		accumulator.add(stats_3);
 
 		// check
-		SortedMap<String, JmxStats.TypeAndValue> attributes = accumulator.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = accumulator.getAttributes();
 		assertEquals(3, attributes.size());
 
 		// exception in stats_2 has most recent timestamp
@@ -120,7 +120,7 @@ public class ExceptionStatsTest {
 		assertEquals(3, attributes.get(exceptionCountKey).getValue());
 
 		String detailsKey = "details";
-		JmxStats.TypeAndValue typeAndValue = attributes.get(detailsKey);
+		TypeAndValue typeAndValue = attributes.get(detailsKey);
 		CompositeData compositeData = (CompositeData) typeAndValue.getValue();
 		CompositeType expectedDetailsType = new CompositeType("ExceptionStatsDetails", "ExceptionStatsDetails",
 				exceptionDetailsItemNames, exceptionDetailsItemNames, exceptionDetailsItemTypes);

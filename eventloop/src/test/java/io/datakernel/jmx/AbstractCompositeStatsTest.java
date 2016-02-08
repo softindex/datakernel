@@ -33,7 +33,7 @@ public class AbstractCompositeStatsTest {
 		compositeStatsStub.getCounterOne().recordValue(15);
 		compositeStatsStub.getCounterTwo().recordValue(147);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = compositeStatsStub.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = compositeStatsStub.getAttributes();
 		assertEquals(4, attributes.size());
 
 		Iterator<String> iterator = attributes.keySet().iterator();
@@ -73,7 +73,7 @@ public class AbstractCompositeStatsTest {
 		accumulator.add(compositeStatsStub_1);
 		accumulator.add(compositeStatsStub_2);
 
-		SortedMap<String, JmxStats.TypeAndValue> attributes = accumulator.getAttributes();
+		SortedMap<String, TypeAndValue> attributes = accumulator.getAttributes();
 		assertEquals(4, attributes.size());
 
 		String attribute_1_name = "counterOne_count";

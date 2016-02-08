@@ -16,8 +16,22 @@
 
 package io.datakernel.jmx;
 
-public interface JmxStats<T extends JmxStats> extends JmxAttributeAccumulator<T> {
+import javax.management.openmbean.OpenType;
 
-	void refreshStats(long timestamp, double smoothingWindow);
+public final class TypeAndValue {
+	private final OpenType<?> type;
+	private final Object value;
 
+	public TypeAndValue(OpenType<?> type, Object value) {
+		this.type = type;
+		this.value = value;
+	}
+
+	public OpenType<?> getType() {
+		return type;
+	}
+
+	public Object getValue() {
+		return value;
+	}
 }
