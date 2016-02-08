@@ -17,6 +17,7 @@
 package io.datakernel.aggregation_db;
 
 import com.google.common.base.Function;
+import io.datakernel.async.AsyncOperationsTracker;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.ConcurrentJmxMBean;
@@ -33,6 +34,8 @@ import static com.google.common.collect.Iterables.transform;
 public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>, ConcurrentJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
 
+	private static final int MAX_OUTPUT_STREAMS = 1;
+
 	private final AggregationChunkStorage storage;
 	private final AggregationMetadataStorage metadataStorage;
 	private final List<String> keys;
@@ -41,15 +44,10 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final Class<?> recordClass;
 	private final Function<T, Comparable<?>> keyFunction;
 	private final Aggregate aggregate;
-	private final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback;
+	private final AsyncOperationsTracker<AggregationChunk.NewChunk> operationsTracker;
 	private final int chunkSize;
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
-
-	private final List<AggregationChunk.NewChunk> chunks = new ArrayList<>();
-
-	private int pendingWriters;
-	private boolean returnedResult;
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
 	                               AggregationMetadataStorage metadataStorage, AggregationMetadata aggregationMetadata,
@@ -65,8 +63,8 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.recordClass = recordClass;
 		this.keyFunction = keyFunction;
 		this.aggregate = aggregate;
-		this.chunksCallback = chunksCallback;
 		this.chunkSize = chunkSize;
+		this.operationsTracker = new AsyncOperationsTracker<>(chunksCallback);
 	}
 
 	@Override
@@ -95,9 +93,9 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		if (map.isEmpty())
 			return;
 
-		++pendingWriters;
+		final ResultCallback<List<AggregationChunk.NewChunk>> operationCallback = operationsTracker.startOperation();
 
-		if (pendingWriters > 1)
+		if (operationsTracker.getOperationsCount() > MAX_OUTPUT_STREAMS)
 			suspend();
 
 		final List<Map.Entry<Comparable<?>, Object>> entryList = new ArrayList<>(map.entrySet());
@@ -126,23 +124,17 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 				new ResultCallback<List<AggregationChunk.NewChunk>>() {
 					@Override
 					public void onResult(List<AggregationChunk.NewChunk> newChunks) {
-						chunks.addAll(newChunks);
+						operationCallback.onResult(newChunks);
 
-						if (--pendingWriters == 0 && getConsumerStatus() == StreamStatus.END_OF_STREAM && !returnedResult) {
-							chunksCallback.onResult(chunks);
-							returnedResult = true;
-						}
-
-						if (pendingWriters < 2)
+						if (operationsTracker.getOperationsCount() <= MAX_OUTPUT_STREAMS)
 							resume();
 					}
 
 					@Override
 					public void onException(Exception e) {
 						logger.error("Saving chunks to aggregation storage {} failed", storage, e);
-						--pendingWriters;
 						closeWithError(e);
-						reportException(e);
+						operationCallback.onException(e);
 					}
 				}));
 	}
@@ -150,21 +142,12 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	@Override
 	public void onEndOfStream() {
 		doFlush();
-
-		if (pendingWriters == 0 && !returnedResult)
-			chunksCallback.onResult(chunks);
+		operationsTracker.shutDown();
 	}
 
 	@Override
 	protected void onError(Exception e) {
-		reportException(e);
-	}
-
-	private void reportException(Exception e) {
-		if (!returnedResult) {
-			chunksCallback.onException(e);
-			returnedResult = true;
-		}
+		operationsTracker.shutDownWithException(e);
 	}
 
 	// jmx

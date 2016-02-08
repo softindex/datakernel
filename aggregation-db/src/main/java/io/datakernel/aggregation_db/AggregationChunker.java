@@ -16,17 +16,21 @@
 
 package io.datakernel.aggregation_db;
 
+import io.datakernel.async.AsyncOperationsTracker;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamTransformer_1_1;
+import io.datakernel.stream.StreamConsumerDecorator;
+import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamForwarder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static java.util.Collections.singletonList;
 
 public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationChunker.class);
@@ -36,7 +40,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private final Class<T> recordClass;
 	private AggregationChunkStorage storage;
 	private AggregationMetadataStorage metadataStorage;
-	private final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback;
+	private final AsyncOperationsTracker<AggregationChunk.NewChunk> operationsTracker;
 
 	public AggregationChunker(Eventloop eventloop, List<String> keys, List<String> fields,
 	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
@@ -46,7 +50,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		this.recordClass = recordClass;
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
-		this.chunksCallback = chunksCallback;
+		this.operationsTracker = new AsyncOperationsTracker<>(chunksCallback);
 		Chunker chunker = new Chunker(eventloop, chunkSize);
 		setActualConsumer(chunker.getInput());
 	}
@@ -62,18 +66,12 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		}
 
 		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
-
 			private final int chunkSize;
 
 			private T first;
 			private T last;
 			private int count = Integer.MAX_VALUE;
 			private Metadata currentChunkMetadata;
-
-			private int pendingChunks;
-			private boolean returnedResult;
-
-			private final List<AggregationChunk.NewChunk> chunks = new ArrayList<>();
 
 			public InputConsumer(int chunkSize) {
 				checkArgument(chunkSize > 0);
@@ -87,14 +85,13 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 					outputProducer.sendEndOfStream();
 				}
 
-				if (pendingChunks == 0 && !returnedResult)
-					chunksCallback.onResult(chunks);
+				operationsTracker.shutDown();
 			}
 
 			@Override
 			protected void onError(Exception e) {
 				super.onError(e);
-				reportException(e);
+				operationsTracker.shutDownWithException(e);
 			}
 
 			@Override
@@ -129,7 +126,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			}
 
 			private void startNewChunk() {
-				++pendingChunks;
+				final ResultCallback<List<AggregationChunk.NewChunk>> operationCallback = operationsTracker.startOperation();
 				first = null;
 				last = null;
 				count = 0;
@@ -149,12 +146,8 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 									public void onComplete() {
 										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId, metadata.first,
 												metadata.last, metadata.count);
-										chunks.add(newChunk);
 
-										if (--pendingChunks == 0 && getConsumerStatus() == StreamStatus.END_OF_STREAM && !returnedResult) {
-											chunksCallback.onResult(chunks);
-											returnedResult = true;
-										}
+										operationCallback.onResult(singletonList(newChunk));
 
 										logger.trace("Saving new chunk with id {} to storage {} completed",
 												chunkId, storage);
@@ -164,9 +157,8 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 									public void onException(Exception e) {
 										logger.error("Saving new chunk with id {} to storage {} failed",
 												chunkId, storage, e);
-										--pendingChunks;
 										closeWithError(e);
-										reportException(e);
+										operationCallback.onException(e);
 									}
 								});
 					}
@@ -175,18 +167,10 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 					public void onException(Exception e) {
 						logger.error("Failed to retrieve new chunk id from metadata storage {}",
 								metadataStorage, e);
-						--pendingChunks;
 						closeWithError(e);
-						reportException(e);
+						operationCallback.onException(e);
 					}
 				});
-			}
-
-			private void reportException(Exception e) {
-				if (!returnedResult) {
-					chunksCallback.onException(e);
-					returnedResult = true;
-				}
 			}
 		}
 
