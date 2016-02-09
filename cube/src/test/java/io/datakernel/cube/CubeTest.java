@@ -19,7 +19,6 @@ package io.datakernel.cube;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
@@ -156,10 +155,11 @@ public class CubeTest {
 
 	private static final int LISTEN_PORT = 45578;
 
-	private EventloopService prepareServer(Eventloop eventloop, Path serverStorage, Path tmpStorage) throws IOException {
+	private EventloopService prepareServer(Eventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		SimpleFsServer fileServer = SimpleFsServer.createInstance(eventloop, executor, serverStorage, tmpStorage,
-				Lists.newArrayList(new InetSocketAddress(LISTEN_PORT)));
+		SimpleFsServer fileServer = SimpleFsServer.build(eventloop, executor, serverStorage)
+				.listenPort(LISTEN_PORT)
+				.build();
 
 		fileServer.start(new CompletionCallback() {
 			@Override
@@ -197,8 +197,7 @@ public class CubeTest {
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
-		Path tmpStorage = temporaryFolder.newFolder("tmp").toPath();
-		final EventloopService simpleFsServer1 = prepareServer(eventloop, serverStorage, tmpStorage);
+		final EventloopService simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
 		AggregationChunkStorage storage = new SimpleFsChunkStorage(eventloop, aggregationStructure,
 				new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
@@ -229,7 +228,7 @@ public class CubeTest {
 
 		eventloop.run();
 
-		final EventloopService simpleFsServer2 = prepareServer(eventloop, serverStorage, tmpStorage);
+		final EventloopService simpleFsServer2 = prepareServer(eventloop, serverStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		final AggregationQuery query = new AggregationQuery()
 				.keys("key1", "key2")

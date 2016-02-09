@@ -48,7 +48,7 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static java.lang.Math.min;
-import static java.nio.file.StandardOpenOption.*;
+import static java.nio.file.StandardOpenOption.READ;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -63,8 +63,7 @@ public class StreamFileReaderWriterTest {
 	@Test
 	public void testStreamWriterOnError() throws IOException {
 		File tempFile = tempFolder.newFile("outWriterWithError.dat");
-		StreamFileWriter writer = new StreamFileWriter(eventloop, executor, Paths.get(tempFile.getAbsolutePath()),
-				new OpenOption[]{WRITE, TRUNCATE_EXISTING}, true);
+		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
 
 		reader.streamTo(writer);
 
@@ -78,7 +77,7 @@ public class StreamFileReaderWriterTest {
 	@Test
 	public void testStreamReaderOnCloseWithError() throws IOException {
 		final File tempFile = tempFolder.newFile("outReaderWithError.dat");
-		final StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executor,
+		final StreamFileWriter writer = StreamFileWriter.create(eventloop, executor,
 				Paths.get(tempFile.getAbsolutePath()));
 
 		reader.streamTo(writer);
@@ -193,8 +192,7 @@ public class StreamFileReaderWriterTest {
 
 		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
 
-		StreamFileWriter writer = new StreamFileWriter(eventloop, executor, Paths.get(tempFile.getAbsolutePath()),
-				new OpenOption[]{WRITE, TRUNCATE_EXISTING}, false, true);
+		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
 
 		producer.streamTo(writer);
 		eventloop.run();
@@ -215,8 +213,7 @@ public class StreamFileReaderWriterTest {
 				StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes)),
 				StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Test Exception")));
 
-		StreamFileWriter writer = new StreamFileWriter(eventloop, executor, Paths.get(tempFile.getAbsolutePath()),
-				new OpenOption[]{WRITE, TRUNCATE_EXISTING}, false);
+		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
 
 		producer.streamTo(writer);
 		eventloop.run();
@@ -433,6 +430,7 @@ public class StreamFileReaderWriterTest {
 			logger.error("{}: downstream consumer {} exception.", this, downstreamConsumer);
 		}
 
+		@Override
 		protected void doCleanup() {
 			if (asyncFile != null) {
 				asyncFile.close(ignoreCompletionCallback());

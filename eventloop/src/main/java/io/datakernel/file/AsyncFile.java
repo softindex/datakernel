@@ -45,8 +45,9 @@ import static java.nio.file.StandardOpenOption.*;
 public final class AsyncFile implements File {
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
-
 	private final AsynchronousFileChannel channel;
+
+	private final String name;
 
 	/**
 	 * Creates a new instance of AsyncFile
@@ -54,12 +55,28 @@ public final class AsyncFile implements File {
 	 * @param eventloop event loop in which a file will be used
 	 * @param executor  executor for running tasks in other thread
 	 * @param channel   an asynchronous channel for reading, writing, and manipulating a file.
+	 * @param name      name of the file
 	 */
 	private AsyncFile(Eventloop eventloop, ExecutorService executor,
-	                  AsynchronousFileChannel channel) {
+	                  AsynchronousFileChannel channel, String name) {
 		this.eventloop = checkNotNull(eventloop);
 		this.executor = checkNotNull(executor);
 		this.channel = checkNotNull(channel);
+		this.name = checkNotNull(name);
+	}
+
+	/**
+	 *  Opens file in a blocking manner
+	 *
+	 * @param eventloop   event loop in which a file will be used
+	 * @param executor    executor for running tasks in other thread
+	 * @param path        the  path of the file to open or create
+	 * @param openOptions options specifying how the file is opened
+	 */
+	public static AsyncFile open(final Eventloop eventloop, final ExecutorService executor,
+	                             final Path path, final OpenOption[] openOptions) throws IOException {
+		AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, openOptions);
+		return new AsyncFile(eventloop, executor, channel, path.getFileName().toString());
 	}
 
 	/**
@@ -78,7 +95,7 @@ public final class AsyncFile implements File {
 			@Override
 			public T call() throws Exception {
 				AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, openOptions);
-				return (T) new AsyncFile(eventloop, executor, channel);
+				return (T) new AsyncFile(eventloop, executor, channel, path.getFileName().toString());
 			}
 		}, callback);
 	}
@@ -96,6 +113,21 @@ public final class AsyncFile implements File {
 			@Override
 			public void runWithException() throws Exception {
 				Files.delete(path);
+			}
+		}, callback);
+	}
+
+	public static void length(Eventloop eventloop, ExecutorService executor, final Path path,
+	                          ResultCallback<Long> callback) {
+		callConcurrently(eventloop, executor, false, new Callable<Long>() {
+			@Override
+			public Long call() throws Exception {
+				java.io.File file = path.toFile();
+				if (!file.exists() || file.isDirectory()) {
+					return -1L;
+				} else {
+					return file.length();
+				}
 			}
 		}, callback);
 	}
@@ -520,5 +552,12 @@ public final class AsyncFile implements File {
 		return channel;
 	}
 
-	// TODO (arashev): add nice toString() with filename
+	public boolean isOpen() {
+		return channel.isOpen();
+	}
+
+	@Override
+	public String toString() {
+		return name;
+	}
 }

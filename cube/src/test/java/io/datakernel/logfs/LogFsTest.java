@@ -30,6 +30,7 @@ import io.datakernel.stream.StreamProducers;
 import io.datakernel.time.SettableCurrentTimeProvider;
 import org.joda.time.format.DateTimeFormatter;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -55,18 +56,19 @@ public class LogFsTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 	private Path path;
-	private Path tmpPath;
 	private SettableCurrentTimeProvider timeProvider;
 	private ExecutorService executor;
 	private Eventloop eventloop;
+	private Eventloop serverEventloop;
 
 	@Before
 	public void setUp() throws Exception {
 		path = temporaryFolder.newFolder("storage").toPath();
-		tmpPath = temporaryFolder.newFolder("tmp").toPath();
 		timeProvider = new SettableCurrentTimeProvider();
 		executor = Executors.newCachedThreadPool();
 		eventloop = new Eventloop(timeProvider);
+		serverEventloop = new Eventloop();
+		serverEventloop.keepAlive(true);
 	}
 
 	@Test
@@ -127,10 +129,10 @@ public class LogFsTest {
 	public void testSimpleFs() throws Exception {
 		String logName = "log";
 		InetSocketAddress address = new InetSocketAddress(33333);
-		final SimpleFsServer server = createServer(address, path, tmpPath);
+		final SimpleFsServer server = createServer(address, path);
 		SimpleFsClient client = createClient(address);
 
-		LogFileSystem fileSystem = new SimpleFsLogFileSystem(client, logName);
+		LogFileSystem fileSystem = new RemoteLogFileSystem(eventloop, logName, client);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer());
 		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
@@ -192,18 +194,20 @@ public class LogFsTest {
 		final HashFsServer server = createServer(serverInfo, servers, path);
 		HashFsClient client = createClient(servers);
 
-		LogFileSystem fileSystem = new HashFsLogFileSystem(client, logName);
+		LogFileSystem fileSystem = new RemoteLogFileSystem(eventloop, logName, client);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem,
 				BufferSerializers.utf16Serializer(), DETAILED_DATE_TIME_FORMATTER, 10 * 60 * 1000);
-		DateTimeFormatter dateTimeFormatter = logManager.getDateTimeFormatter();
 
 		CompletionCallback stopCallback = new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server.stop(ignoreCompletionCallback());
+				try {
+					stopServer(server);
+				} catch (Exception ignored) { }
 			}
 		};
 
+		new Thread(serverEventloop).start();
 		timeProvider.setTime(0); // 00:00
 		startServer(server);
 		new StreamProducers.OfIterator<>(eventloop, asList("1", "3", "5").iterator())
@@ -250,30 +254,45 @@ public class LogFsTest {
 		startFuture.get();
 	}
 
-	private void startServer(HashFsServer server) throws Exception {
-		CompletionCallbackFuture startFuture = new CompletionCallbackFuture();
-		server.start(startFuture);
+	private void startServer(final HashFsServer server) throws Exception {
+		final CompletionCallbackFuture startFuture = new CompletionCallbackFuture();
+		serverEventloop.execute(new Runnable() {
+			@Override
+			public void run() {
+				server.start(startFuture);
+			}
+		});
 		startFuture.get();
 	}
 
-	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage, Path tmpStorage) {
-		return SimpleFsServer.buildInstance(eventloop, executor, serverStorage, tmpStorage)
-				.setListenAddress(address)
+	private void stopServer(final HashFsServer server) throws Exception {
+		final CompletionCallbackFuture stopFuture = new CompletionCallbackFuture();
+		serverEventloop.execute(new Runnable() {
+			@Override
+			public void run() {
+				server.stop(stopFuture);
+			}
+		});
+		stopFuture.get();
+	}
+
+	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {
+		return SimpleFsServer.build(eventloop, executor, serverStorage)
+				.listenAddress(address)
 				.build();
 	}
 
 	private HashFsServer createServer(ServerInfo serverInfo, List<ServerInfo> servers, Path serverStorage) {
-		return HashFsServer.buildInstance(eventloop, executor, serverStorage, tmpPath, serverInfo, new HashSet<>(servers))
-				.build();
+		return HashFsServer.newInstance(serverEventloop, executor, serverStorage, serverInfo, new HashSet<>(servers));
 	}
 
 	private HashFsClient createClient(List<ServerInfo> servers) {
-		return HashFsClient.buildInstance(eventloop, servers)
+		return HashFsClient.build(eventloop, servers)
 				.setMaxRetryAttempts(1)
 				.build();
 	}
 
 	private SimpleFsClient createClient(InetSocketAddress address) {
-		return SimpleFsClient.buildInstance(eventloop, address).build();
+		return SimpleFsClient.newInstance(eventloop, address);
 	}
 }

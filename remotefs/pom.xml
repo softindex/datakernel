@@ -4,50 +4,39 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>io.datakernel</groupId>
         <artifactId>datakernel</artifactId>
+        <groupId>io.datakernel</groupId>
         <version>2.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>aggregation-db</artifactId>
+    <artifactId>remotefs</artifactId>
 
-    <name>DataKernel: AggregationDB</name>
+    <name>DataKernel: RemoteFS</name>
     <description>
-        Unique database with the possibility to define custom aggregate functions.
+        Basis for building efficient, scalable remote file servers.
     </description>
 
     <dependencies>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>codegen</artifactId>
+            <artifactId>async-streams</artifactId>
             <version>${version}</version>
         </dependency>
         <dependency>
             <groupId>io.datakernel</groupId>
-            <artifactId>remotefs</artifactId>
+            <artifactId>serializer</artifactId>
             <version>${version}</version>
         </dependency>
 
         <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.jooq</groupId>
-            <artifactId>jooq</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.zaxxer</groupId>
-            <artifactId>HikariCP</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.carrotsearch</groupId>
-            <artifactId>hppc</artifactId>
+            <groupId>net.jpountz.lz4</groupId>
+            <artifactId>lz4</artifactId>
         </dependency>
     </dependencies>
+
 </project>

@@ -17,10 +17,14 @@
 package io.datakernel.aggregation_db;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
@@ -31,10 +35,12 @@ import org.slf4j.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 
+import static java.nio.file.StandardOpenOption.READ;
 import static org.slf4j.LoggerFactory.getLogger;
 
 /**
@@ -89,32 +95,47 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	@Override
 	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
 	                                         Class<T> recordClass, long id) {
-		StreamProducer<ByteBuf> streamFileReader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
-				path(id), 0L);
-
-		StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+		final StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE);
-
-		streamFileReader.streamTo(decompressor.getInput());
 		decompressor.getOutput().streamTo(deserializer.getInput());
+
+		AsyncFile.open(eventloop, executorService, path(id), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
+			@Override
+			public void onResult(AsyncFile file) {
+				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, 0L);
+				fileReader.streamTo(decompressor.getInput());
+			}
+
+			@Override
+			public void onException(Exception e) {
+				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(decompressor.getInput());
+			}
+		});
 
 		return deserializer.getOutput();
 	}
 
 	@Override
-	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass,
-	                            long id, final StreamProducer<T> producer, CompletionCallback callback) {
-		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
-		final StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
-				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
+	public <T> void chunkWriter(final List<String> keys, final List<String> fields, final Class<T> recordClass,
+	                            long id, final StreamProducer<T> producer, final CompletionCallback callback) {
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		final StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(id), false, true);
+		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
+		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
+				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
 		producer.streamTo(serializer.getInput());
 		serializer.getOutput().streamTo(compressor.getInput());
-		compressor.getOutput().streamTo(writer);
-		writer.setFlushCallback(callback);
+
+		AsyncFile.open(eventloop, executorService, path(id), StreamFileWriter.CREATE_OPTIONS,
+				new ForwardingResultCallback<AsyncFile>(callback) {
+					@Override
+					public void onResult(AsyncFile file) {
+						StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
+						compressor.getOutput().streamTo(writer);
+						writer.setFlushCallback(callback);
+					}
+				});
 	}
 }

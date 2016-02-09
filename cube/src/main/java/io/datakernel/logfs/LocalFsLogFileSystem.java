@@ -17,21 +17,21 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.file.AsyncFile;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
 import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
+import static java.nio.file.StandardOpenOption.READ;
 
 /**
  * Represents a file system for persisting logs. Stores files in a local file system.
@@ -129,16 +130,30 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	}
 
 	@Override
-	public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer) {
-		StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
-				path(logPartition, logFile), startPosition);
-		reader.streamTo(consumer);
+	public void read(String logPartition, LogFile logFile, final long startPosition, final StreamConsumer<ByteBuf> consumer) {
+		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
+			@Override
+			public void onResult(AsyncFile file) {
+				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, startPosition);
+				fileReader.streamTo(consumer);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+			}
+		});
 	}
 
 	@Override
-	public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-		StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(logPartition, logFile));
-		writer.setFlushCallback(callback);
-		producer.streamTo(writer);
+	public void write(String logPartition, LogFile logFile, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS, new ForwardingResultCallback<AsyncFile>(callback) {
+			@Override
+			public void onResult(AsyncFile file) {
+				StreamFileWriter fileWriter = StreamFileWriter.create(eventloop, file, true);
+				producer.streamTo(fileWriter);
+				fileWriter.setFlushCallback(callback);
+			}
+		});
 	}
 }

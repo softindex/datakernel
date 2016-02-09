@@ -31,10 +31,9 @@
         <module>cube</module>
         <module>rpc</module>
         <module>serializer</module>
-        <module>hashfs</module>
-        <module>simplefs</module>
         <module>boot</module>
         <module>uikernel</module>
+        <module>remotefs</module>
     </modules>
 
     <licenses>

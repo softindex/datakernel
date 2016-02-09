@@ -22,10 +22,7 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.StreamStatus;
+import io.datakernel.stream.*;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
 import io.datakernel.time.SettableCurrentTimeProvider;
@@ -152,11 +149,15 @@ public class LogStreamConsumer_ByteBufferTest {
 		final LogFileSystem fileSystem = new SimpleLogFileSystem(eventloop, executor, testDir, listWriter) {
 			@Override
 			public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-				StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executor, path(logPartition, logFile));
-				listWriter.add(writer);
-				writer.onProducerError(new Exception("Test Exception"));
-				producer.streamTo(writer);
-				writer.setFlushCallback(callback);
+				try {
+					StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, path(logPartition, logFile));
+					listWriter.add(writer);
+					writer.onProducerError(new Exception("Test Exception"));
+					producer.streamTo(writer);
+					writer.setFlushCallback(callback);
+				} catch (IOException e) {
+					callback.onException(e);
+				}
 			}
 		};
 
@@ -379,17 +380,25 @@ public class LogStreamConsumer_ByteBufferTest {
 
 		@Override
 		public void read(String logPartition, LogFile logFile, long startPosition, StreamConsumer<ByteBuf> consumer) {
-			StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
-					path(logPartition, logFile), startPosition);
-			reader.streamTo(consumer);
+			try {
+				StreamFileReader reader = StreamFileReader.readFileFrom(eventloop, executorService, 1024 * 1024,
+						path(logPartition, logFile), startPosition);
+				reader.streamTo(consumer);
+			} catch (IOException e) {
+				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
+			}
 		}
 
 		@Override
 		public void write(String logPartition, LogFile logFile, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-			StreamFileWriter writer = StreamFileWriter.createFile(eventloop, executorService, path(logPartition, logFile));
-			producer.streamTo(writer);
-			writer.setFlushCallback(callback);
-			listWriter.add(writer);
+			try {
+				StreamFileWriter writer = StreamFileWriter.create(eventloop, executorService, path(logPartition, logFile));
+				producer.streamTo(writer);
+				writer.setFlushCallback(callback);
+				listWriter.add(writer);
+			} catch (IOException e) {
+				callback.onException(e);
+			}
 		}
 	}
 

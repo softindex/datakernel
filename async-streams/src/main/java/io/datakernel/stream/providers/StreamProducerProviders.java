@@ -22,6 +22,7 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.StreamProducers;
 import io.datakernel.stream.file.StreamFileReader;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 
@@ -53,7 +54,11 @@ public class StreamProducerProviders {
 
 		@Override
 		public StreamProducer<ByteBuf> getProducer() {
-			return StreamFileReader.readFileFully(eventloop, executor, 256 * 1024, filePath);
+			try {
+				return StreamFileReader.readFileFully(eventloop, executor, 256 * 1024, filePath);
+			} catch (IOException e) {
+				return StreamProducers.closingWithError(eventloop, e);
+			}
 		}
 	}
 
