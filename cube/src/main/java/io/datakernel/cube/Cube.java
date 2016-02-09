@@ -228,7 +228,7 @@ public final class Cube implements ConcurrentJmxMBean {
 			if (aggregationMeasures.isEmpty())
 				continue;
 
-			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass, aggregationMeasures,
+			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass, aggregationMeasures, aggregationMeasures,
 					new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
 						@Override
 						public void onResult(List<AggregationChunk.NewChunk> chunks) {

@@ -110,8 +110,8 @@ public class AggregationGroupReducerTest {
 		};
 
 		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop,
-				aggregationChunkStorage, aggregationMetadataStorage, aggregationMetadata, null, aggregationClass,
-				keyFunction, aggregate, chunksCallback, aggregationChunkSize);
+				aggregationChunkStorage, aggregationMetadataStorage, aggregationMetadata.getKeys(),
+				aggregationMetadata.getFields(), null, aggregationClass, keyFunction, aggregate, chunksCallback, aggregationChunkSize);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),
@@ -198,8 +198,9 @@ public class AggregationGroupReducerTest {
 		};
 
 		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop,
-				aggregationChunkStorage, aggregationMetadataStorage, aggregationMetadata, null, aggregationClass,
-				keyFunction, aggregate, chunksCallback, aggregationChunkSize);
+				aggregationChunkStorage, aggregationMetadataStorage, aggregationMetadata.getKeys(),
+				aggregationMetadata.getFields(), null, aggregationClass, keyFunction, aggregate, chunksCallback,
+				aggregationChunkSize);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),

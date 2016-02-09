@@ -139,19 +139,22 @@ public class InvertedIndexTest {
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
+						InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS));
 
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("brown", 3),
 				new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
+						InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS));
 
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)))
-				.streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
+				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
+						InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS));
 
 		eventloop.run();
 

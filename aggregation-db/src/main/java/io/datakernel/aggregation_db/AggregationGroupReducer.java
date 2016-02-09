@@ -50,15 +50,15 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
-	                               AggregationMetadataStorage metadataStorage, AggregationMetadata aggregationMetadata,
+	                               AggregationMetadataStorage metadataStorage, List<String> keys, List<String> fields,
 	                               PartitioningStrategy partitioningStrategy, Class<?> recordClass,
 	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback, int chunkSize) {
 		super(eventloop);
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
-		this.keys = aggregationMetadata.getKeys();
-		this.fields = aggregationMetadata.getFields();
+		this.keys = keys;
+		this.fields = fields;
 		this.partitioningStrategy = partitioningStrategy;
 		this.recordClass = recordClass;
 		this.keyFunction = keyFunction;

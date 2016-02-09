@@ -78,21 +78,24 @@ public class InvertedIndexExample {
 		List<InvertedIndexRecord> firstList = asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3));
 		System.out.println(firstList);
-		StreamProducers.ofIterable(eventloop, firstList).streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
+		StreamProducers.ofIterable(eventloop, firstList).streamTo(aggregation.consumer(InvertedIndexRecord.class,
+				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexTest.InvertedIndexRecord.OUTPUT_FIELDS));
 		eventloop.run();
 
 		// second chunk of data
 		List<InvertedIndexRecord> secondList = asList(new InvertedIndexRecord("brown", 3),
 				new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1));
 		System.out.println(secondList);
-		StreamProducers.ofIterable(eventloop, secondList).streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
+		StreamProducers.ofIterable(eventloop, secondList).streamTo(aggregation.consumer(InvertedIndexRecord.class,
+				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexTest.InvertedIndexRecord.OUTPUT_FIELDS));
 		eventloop.run();
 
 		// third chunk of data
 		List<InvertedIndexRecord> thirdList = asList(new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10));
 		System.out.println(thirdList);
-		StreamProducers.ofIterable(eventloop, thirdList).streamTo(aggregation.consumer(InvertedIndexRecord.class, InvertedIndexRecord.INPUT_FIELDS));
+		StreamProducers.ofIterable(eventloop, thirdList).streamTo(aggregation.consumer(InvertedIndexRecord.class,
+				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexTest.InvertedIndexRecord.OUTPUT_FIELDS));
 		eventloop.run();
 
 		// Perform the query. We will just retrieve records for all keys.
