@@ -114,8 +114,8 @@ public class KeyValueTest {
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
 				aggregationStructure, temporaryFolder.newFolder().toPath());
 
-		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage, aggregationChunkStorage, aggregationMetadata,
-				aggregationStructure, keyValueProcessorFactory);
+		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
+				aggregationChunkStorage, aggregationMetadata, aggregationStructure, keyValueProcessorFactory);
 
 		StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1), new KeyValuePair(1, 1, 2)))
 				.streamTo(aggregation.consumer(KeyValuePair.class));

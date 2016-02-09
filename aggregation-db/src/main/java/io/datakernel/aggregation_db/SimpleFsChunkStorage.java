@@ -66,7 +66,7 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
 		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, keys, fields);
 		final StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
-				StreamBinarySerializer.MAX_SIZE, StreamBinarySerializer.MAX_SIZE, 1000, false);
+				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 
 		producer.streamTo(serializer.getInput());
 		serializer.getOutput().streamTo(compressor.getInput());

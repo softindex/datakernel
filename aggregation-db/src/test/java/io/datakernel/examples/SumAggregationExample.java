@@ -68,7 +68,7 @@ public class SumAggregationExample {
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
 				aggregationStructure, Paths.get(DATA_PATH));
 
-		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage,
+		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, aggregationStructure, summationProcessorFactory);
 
 		// first chunk of data

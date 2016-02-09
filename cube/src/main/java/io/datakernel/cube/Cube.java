@@ -47,7 +47,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
@@ -66,11 +66,13 @@ public final class Cube implements ConcurrentJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
 	private final Eventloop eventloop;
+	private final ExecutorService executorService;
 	private final DefiningClassLoader classLoader;
 	private final CubeMetadataStorage cubeMetadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
+	private int sorterBlockSize;
 	private boolean ignoreChunkReadingExceptions;
 
 	private final AggregationStructure structure;
@@ -85,24 +87,26 @@ public final class Cube implements ConcurrentJmxMBean {
 	 * Instantiates a cube with the specified structure, that runs in a given event loop,
 	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
 	 * and uses the specified parameters.
-	 *  @param eventloop                  event loop, in which the cube is to run
+	 * @param eventloop                  event loop, in which the cube is to run
 	 * @param classLoader                class loader for defining dynamic classes
 	 * @param cubeMetadataStorage storage for aggregations metadata
 	 * @param aggregationChunkStorage    storage for data chunks
 	 * @param structure                  structure of a cube
-	 * @param aggregationChunkSize       maximum size of aggregation chunk
 	 * @param sorterItemsInMemory        maximum number of records that can stay in memory while sorting
+	 * @param aggregationChunkSize       maximum size of aggregation chunk
 	 */
-	public Cube(Eventloop eventloop, DefiningClassLoader classLoader,
+	public Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	            CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory) {
+	            AggregationStructure structure, int sorterItemsInMemory, int sorterBlockSize, int aggregationChunkSize) {
 		this.eventloop = eventloop;
+		this.executorService = executorService;
 		this.classLoader = classLoader;
 		this.cubeMetadataStorage = cubeMetadataStorage;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.structure = structure;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
+		this.sorterBlockSize = sorterBlockSize;
 	}
 
 	public void setChildParentRelationships(Map<String, String> childParentRelationships) {
@@ -144,9 +148,9 @@ public final class Cube implements ConcurrentJmxMBean {
 	 */
 	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata, String partitioningKey) {
 		AggregationMetadataStorage aggregationMetadataStorage = cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
-		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage,
+		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, structure, new SummationProcessorFactory(classLoader),
-				partitioningKey, sorterItemsInMemory, aggregationChunkSize);
+				partitioningKey, sorterItemsInMemory, sorterBlockSize, aggregationChunkSize);
 		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
 		aggregations.put(aggregationId, aggregation);
 	}
@@ -494,11 +498,8 @@ public final class Cube implements ConcurrentJmxMBean {
 			Comparator fieldComparator = structure.createFieldComparator(query, resultClass);
 			Path path = Paths.get("sorterStorage", "%d.part");
 			BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, dimensions, measures);
-			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop,
-					Executors.newCachedThreadPool(), // TODO (dtkachenko)
-					bufferSerializer,
-					path,
-					64); // TODO (dtkachenko)
+			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
+					bufferSerializer, path, sorterBlockSize);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
 					fieldComparator, false, sorterItemsInMemory);
 			rawResultStream.getOutput().streamTo(sorter.getInput());
@@ -561,6 +562,19 @@ public final class Cube implements ConcurrentJmxMBean {
 	@JmxAttribute
 	public int getSorterItemsInMemory() {
 		return sorterItemsInMemory;
+	}
+
+	@JmxAttribute
+	public void setSorterBlockSize(int sorterBlockSize) {
+		this.sorterBlockSize = sorterBlockSize;
+		for (Aggregation aggregation : aggregations.values()) {
+			aggregation.setSorterBlockSize(sorterBlockSize);
+		}
+	}
+
+	@JmxAttribute
+	public int getSorterBlockSize() {
+		return sorterBlockSize;
 	}
 
 	@Override

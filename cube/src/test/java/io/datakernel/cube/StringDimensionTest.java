@@ -33,16 +33,19 @@ import io.datakernel.stream.StreamProducers;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class StringDimensionTest {
-	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, AggregationChunkStorage storage,
-	                           AggregationStructure structure) {
+	public static Cube newCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                           AggregationChunkStorage storage, AggregationStructure structure) {
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage,
-				storage, structure, 100_000, 1_000_000);
+		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, storage, structure,
+				Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
 		cube.addAggregation("detailedAggregation",
 				new AggregationMetadata(asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
 		return cube;
@@ -67,7 +70,7 @@ public class StringDimensionTest {
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = cubeStructureWithStringDimension(classLoader);
-		Cube cube = newCube(eventloop, classLoader, storage, structure);
+		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, structure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString1("str1", 2, 10, 20), new DataItemString1("str2", 3, 10, 20)))
 				.streamTo(cube.consumer(DataItemString1.class, DataItemString1.DIMENSIONS, DataItemString1.METRICS, new CubeTest.MyCommitCallback(cube)));
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString2("str2", 3, 10, 20), new DataItemString2("str1", 4, 10, 20)))

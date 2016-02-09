@@ -134,8 +134,8 @@ public class InvertedIndexTest {
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
 				structure, path);
 
-		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage, aggregationChunkStorage, aggregationMetadata,
-				structure, processorFactory);
+		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
+				aggregationChunkStorage, aggregationMetadata, structure, processorFactory);
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))

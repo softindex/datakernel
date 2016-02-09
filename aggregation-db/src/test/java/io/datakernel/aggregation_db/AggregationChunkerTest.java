@@ -124,10 +124,9 @@ public class AggregationChunkerTest {
 		assertTrue(list.size() == 1);
 		assertTrue(list.get(0).size() == 3);
 
-// TODO (dtkachenko): fix this test
-//		assertEquals(map.get(1L), asList(new KeyValuePair(3, 4, 6)));
-//		assertEquals(map.get(2L), asList(new KeyValuePair(3, 6, 7)));
-//		assertEquals(map.get(3L), asList(new KeyValuePair(1, 2, 1)));
+		assertEquals(new KeyValuePair(3, 4, 6), items.get(0));
+		assertEquals(new KeyValuePair(3, 6, 7), items.get(1));
+		assertEquals(new KeyValuePair(1, 2, 1), items.get(2));
 
 		assertEquals(StreamStatus.END_OF_STREAM, producer.getProducerStatus());
 		assertEquals(StreamStatus.END_OF_STREAM, aggregationChunker.getConsumerStatus());

@@ -105,12 +105,13 @@ public class CubeMeasureRemovalTest {
 						.build());
 	}
 
-	private static Cube getCube(Eventloop eventloop, DefiningClassLoader classLoader,
+	private static Cube getCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                            CubeMetadataStorage cubeMetadataStorage,
 	                            AggregationChunkStorage aggregationChunkStorage,
 	                            AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage,
-				aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
+		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+				cubeStructure, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
 		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS, LogItem.MEASURES));
 		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES));
 		cube.addAggregation("advertiser", new AggregationMetadata(asList("advertiser"), LogItem.MEASURES));
@@ -118,12 +119,13 @@ public class CubeMeasureRemovalTest {
 		return cube;
 	}
 
-	private static Cube getNewCube(Eventloop eventloop, DefiningClassLoader classLoader,
+	private static Cube getNewCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                               CubeMetadataStorage cubeMetadataStorage,
 	                               AggregationChunkStorage aggregationChunkStorage,
 	                               AggregationStructure cubeStructure) {
-		Cube cube = new Cube(eventloop, classLoader, cubeMetadataStorage,
-				aggregationChunkStorage, cubeStructure, 1_000_000, 1_000_000);
+		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+				cubeStructure, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
 		cube.addAggregation("detailed", new AggregationMetadata(LogItem.DIMENSIONS,
 				asList("impressions", "clicks", "conversions"))); // "revenue" measure is removed
 		cube.addAggregation("date", new AggregationMetadata(asList("date"),
@@ -195,7 +197,7 @@ public class CubeMeasureRemovalTest {
 				new CubeMetadataStorageSql(eventloop, executor, jooqConfiguration, "processId");
 		LogToCubeMetadataStorage logToCubeMetadataStorage =
 				getLogToCubeMetadataStorage(eventloop, executor, jooqConfiguration, cubeMetadataStorageSql);
-		Cube cube = getCube(eventloop, classLoader, cubeMetadataStorageSql,
+		Cube cube = getCube(eventloop, executor, classLoader, cubeMetadataStorageSql,
 				aggregationChunkStorage, structure);
 		LogManager<LogItem> logManager = getLogManager(eventloop, executor, classLoader, logsDir);
 		LogToCubeRunner<LogItem> logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
@@ -221,8 +223,7 @@ public class CubeMeasureRemovalTest {
 		// Initialize cube with new structure (removed measure)
 		structure = getNewStructure(classLoader);
 		aggregationChunkStorage = getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
-		cube = getNewCube(eventloop, classLoader, cubeMetadataStorageSql,
-				aggregationChunkStorage, structure);
+		cube = getNewCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
 		logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
 

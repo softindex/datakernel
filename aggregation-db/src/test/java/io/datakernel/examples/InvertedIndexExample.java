@@ -70,7 +70,7 @@ public class InvertedIndexExample {
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
 				structure, Paths.get(DATA_PATH));
 
-		Aggregation aggregation = new Aggregation(eventloop, classLoader, aggregationMetadataStorage,
+		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, structure, processorFactory);
 
 		// first chunk of data

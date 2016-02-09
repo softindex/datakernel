@@ -57,11 +57,12 @@ public class LogToCubeTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-	public static Cube newCube(Eventloop eventloop, DefiningClassLoader classLoader, CubeMetadataStorage cubeMetadataStorage,
-	                           AggregationChunkStorage aggregationChunkStorage,
+	public static Cube newCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                           CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
 	                           AggregationStructure aggregationStructure) {
-		return new Cube(eventloop, classLoader, cubeMetadataStorage, aggregationChunkStorage,
-				aggregationStructure, 1_000_000, 1_000_000);
+		return new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
+				aggregationStructure, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
 	}
 
 	public static AggregationStructure getStructure(DefiningClassLoader classLoader) {
@@ -80,15 +81,15 @@ public class LogToCubeTest {
 	public void testStubStorage() throws Exception {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
+		ExecutorService executor = Executors.newCachedThreadPool();
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
 		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure structure = getStructure(classLoader);
 		LogToCubeMetadataStorageStub logToCubeMetadataStorageStub = new LogToCubeMetadataStorageStub(cubeMetadataStorage);
-		Cube cube = newCube(eventloop, classLoader, cubeMetadataStorage, aggregationStorage, structure);
+		Cube cube = newCube(eventloop, executor, classLoader, cubeMetadataStorage, aggregationStorage, structure);
 		cube.addAggregation("pub", new AggregationMetadata(asList("pub"), asList("pubRequests")));
 		cube.addAggregation("adv", new AggregationMetadata(asList("adv"), asList("advRequests")));
 
-		ExecutorService executor = Executors.newCachedThreadPool();
 		Path dir = temporaryFolder.newFolder().toPath();
 		deleteRecursivelyQuietly(dir);
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, dir);

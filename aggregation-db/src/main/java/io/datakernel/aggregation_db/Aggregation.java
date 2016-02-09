@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
@@ -60,7 +60,12 @@ public class Aggregation {
 	private static final Logger logger = LoggerFactory.getLogger(Aggregation.class);
 	private static final Joiner JOINER = Joiner.on(", ");
 
+	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
+	public static final int DEFAULT_AGGREGATION_CHUNK_SIZE = 1_000_000;
+	public static final int DEFAULT_SORTER_BLOCK_SIZE = 256 * 1024;
+
 	private final Eventloop eventloop;
+	private final ExecutorService executorService;
 	private final DefiningClassLoader classLoader;
 	private final AggregationMetadataStorage metadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
@@ -68,6 +73,7 @@ public class Aggregation {
 	private final String partitioningKey;
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
+	private int sorterBlockSize;
 	private boolean ignoreChunkReadingExceptions;
 
 	private final AggregationStructure structure;
@@ -93,18 +99,21 @@ public class Aggregation {
 	 * @param aggregationChunkSize    maximum size of aggregation chunk
 	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
 	 */
-	public Aggregation(Eventloop eventloop, DefiningClassLoader classLoader, AggregationMetadataStorage metadataStorage,
-	                   AggregationChunkStorage aggregationChunkStorage, AggregationMetadata aggregationMetadata, AggregationStructure structure,
+	public Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                   AggregationMetadata aggregationMetadata, AggregationStructure structure,
 	                   ProcessorFactory processorFactory, String partitioningKey,
-	                   int sorterItemsInMemory, int aggregationChunkSize) {
+	                   int sorterItemsInMemory, int sorterBlockSize, int aggregationChunkSize) {
 		checkArgument(partitioningKey == null || aggregationMetadata.getKeys().contains(partitioningKey));
 		this.eventloop = eventloop;
+		this.executorService = executorService;
 		this.classLoader = classLoader;
 		this.metadataStorage = metadataStorage;
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.aggregationMetadata = aggregationMetadata;
 		this.partitioningKey = partitioningKey;
 		this.sorterItemsInMemory = sorterItemsInMemory;
+		this.sorterBlockSize = sorterBlockSize;
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.structure = structure;
 		this.processorFactory = processorFactory;
@@ -126,11 +135,13 @@ public class Aggregation {
 	 * @param structure               structure of an aggregation
 	 * @param processorFactory        factory used to instantiate reducer and preaggregators
 	 */
-	public Aggregation(Eventloop eventloop, DefiningClassLoader classLoader, AggregationMetadataStorage metadataStorage,
-	                   AggregationChunkStorage aggregationChunkStorage, AggregationMetadata aggregationMetadata, AggregationStructure structure,
+	public Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
+	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
+	                   AggregationMetadata aggregationMetadata, AggregationStructure structure,
 	                   ProcessorFactory processorFactory) {
-		this(eventloop, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata, structure,
-				processorFactory, null, 1_000_000, 1_000_000);
+		this(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata,
+				structure, processorFactory, null, DEFAULT_SORTER_ITEMS_IN_MEMORY, DEFAULT_SORTER_BLOCK_SIZE,
+				DEFAULT_AGGREGATION_CHUNK_SIZE);
 	}
 
 	public List<String> getAggregationFieldsForConsumer(List<String> fields) {
@@ -333,10 +344,8 @@ public class Aggregation {
 			Comparator keyComparator = structure.createKeyComparator(outputClass, resultKeys);
 			Path path = Paths.get("sorterStorage", "%d.part");
 			BufferSerializer bufferSerializer = structure.createBufferSerializer(outputClass, aggregationMetadata.getKeys(), aggregationFields);
-			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop,
-					Executors.newCachedThreadPool(), // TODO (dtkachenko)
-					bufferSerializer, path,
-					64); // TODO (dtkachenko)
+			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
+					bufferSerializer, path, sorterBlockSize);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
 					sorterItemsInMemory);
 			queryResultProducer.streamTo(sorter.getInput());
@@ -653,6 +662,14 @@ public class Aggregation {
 
 	public void setSorterItemsInMemory(int sorterItemsInMemory) {
 		this.sorterItemsInMemory = sorterItemsInMemory;
+	}
+
+	public int getSorterBlockSize() {
+		return sorterBlockSize;
+	}
+
+	public void setSorterBlockSize(int sorterBlockSize) {
+		this.sorterBlockSize = sorterBlockSize;
 	}
 
 	public boolean isIgnoreChunkReadingExceptions() {

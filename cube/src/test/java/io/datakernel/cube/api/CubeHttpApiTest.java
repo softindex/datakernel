@@ -89,7 +89,7 @@ public class CubeHttpApiTest {
 		final Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
 		AggregationStructure cubeStructure = CubeTest.cubeStructure(classLoader);
-		Cube cube = CubeTest.newCube(eventloop, classLoader, storage, cubeStructure);
+		Cube cube = CubeTest.newCube(eventloop, executor, classLoader, storage, cubeStructure);
 
 		final Gson gson = new GsonBuilder()
 				.registerTypeAdapter(AggregationQuery.QueryPredicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
