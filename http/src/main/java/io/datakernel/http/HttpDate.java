@@ -165,7 +165,7 @@ final class HttpDate {
 		bytes[pos++] = ',';
 		bytes[pos++] = ' ';
 
-		if (day < 10) {
+		if (day < 9) {
 			bytes[pos++] = '0';
 		}
 		day += 1;
