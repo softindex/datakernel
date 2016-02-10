@@ -29,7 +29,6 @@ import javax.sql.DataSource;
 import java.io.Closeable;
 import java.io.IOException;
 import java.sql.Connection;
-import java.util.List;
 import java.util.Timer;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -268,7 +267,7 @@ public final class ServiceAdapters {
 	public static ServiceAdapter<ExecutorService> forExecutorService() {
 		return new ServiceAdapter<ExecutorService>() {
 			@Override
-			public Service toService(final ExecutorService executorService, Executor executor) {
+			public Service toService(final ExecutorService executorService, final Executor executor) {
 				return new Service() {
 					@Override
 					public ListenableFuture<?> start() {
@@ -277,11 +276,15 @@ public final class ServiceAdapters {
 
 					@Override
 					public ListenableFuture<?> stop() {
-						List<Runnable> runnables = executorService.shutdownNow();
-						for (Runnable runnable : runnables) {
-							logger.warn("Remaining tasks {}", runnable);
-						}
-						return Futures.immediateFuture(null);
+						final SettableFuture<?> future = SettableFuture.create();
+						executor.execute(new Runnable() {
+							@Override
+							public void run() {
+								executorService.shutdown();
+								future.set(null);
+							}
+						});
+						return future;
 					}
 				};
 			}
