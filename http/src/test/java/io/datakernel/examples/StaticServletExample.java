@@ -22,7 +22,7 @@ import io.datakernel.http.MiddlewareServlet;
 import io.datakernel.http.StaticServletForFiles;
 
 import java.io.IOException;
-import java.net.URL;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static java.util.concurrent.Executors.newCachedThreadPool;
@@ -32,14 +32,12 @@ public class StaticServletExample {
 
 	public static void main(String[] args) throws IOException {
 
-		final URL resources = Paths.get("./test_data").toUri().toURL();
+		Path path = Paths.get("./test_data");
 
 		Eventloop eventloop = new Eventloop();
 		MiddlewareServlet main = new MiddlewareServlet();
 
-		System.out.println(resources);
-
-		main.setDefault(StaticServletForFiles.create(eventloop, newCachedThreadPool(), resources));
+		main.setDefault(StaticServletForFiles.create(eventloop, newCachedThreadPool(), path));
 
 		AsyncHttpServer staticFileServer = new AsyncHttpServer(eventloop, main);
 		staticFileServer.setListenPort(SERVER_PORT);

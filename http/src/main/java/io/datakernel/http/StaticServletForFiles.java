@@ -22,10 +22,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.file.File;
 
-import java.net.URL;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
 import static java.nio.file.StandardOpenOption.READ;
@@ -41,8 +39,7 @@ public final class StaticServletForFiles extends StaticServlet {
 		this.storage = storage;
 	}
 
-	public static StaticServletForFiles create(Eventloop eventloop, ExecutorService executor, URL url) {
-		Path path = Paths.get(url.getPath());
+	public static StaticServletForFiles create(Eventloop eventloop, ExecutorService executor, Path path) {
 		return new StaticServletForFiles(eventloop, executor, path);
 	}
 
