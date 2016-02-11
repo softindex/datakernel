@@ -114,7 +114,7 @@ public class HelloWorldGuiceTest {
 
 	@Test
 	public void test() throws Exception {
-		Injector injector = Guice.createInjector(new TestModule());
+		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		Socket socket0 = new Socket(), socket1 = new Socket();
 		try {
@@ -152,7 +152,7 @@ public class HelloWorldGuiceTest {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Injector injector = Guice.createInjector(new TestModule());
+		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try {
 			serviceGraph.startFuture().get();

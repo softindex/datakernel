@@ -19,9 +19,9 @@ package io.datakernel.guice;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.inject.*;
-import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.service.Service;
 import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.ServiceGraphModule;
 import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,7 +71,7 @@ public class TestStartTwice {
 
 	@Test
 	public void test() throws Exception {
-		Injector injector = Guice.createInjector(new TestModule());
+		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 
 		try {

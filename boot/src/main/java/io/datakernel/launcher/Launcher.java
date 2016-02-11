@@ -37,6 +37,8 @@ public abstract class Launcher {
 
 	protected String[] args;
 
+	private Stage stage;
+
 	private Module[] modules;
 
 	private File[] configs;
@@ -92,7 +94,8 @@ public abstract class Launcher {
 		return files;
 	}
 
-	protected void modules(Module... modules) {
+	protected void injector(Stage stage, Module... modules) {
+		this.stage = stage;
 		this.modules = modules;
 	}
 
@@ -180,7 +183,7 @@ public abstract class Launcher {
 			modules.add(new ConfigModule(config));
 		}
 
-		Injector injector = Guice.createInjector(Stage.PRODUCTION, modules);
+		Injector injector = Guice.createInjector(stage, modules);
 		injector.injectMembers(this);
 	}
 

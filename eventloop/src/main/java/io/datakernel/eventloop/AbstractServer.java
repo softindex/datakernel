@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
 
@@ -144,14 +145,16 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		onListen();
 		if (listenAddresses != null) {
 			serverSocketChannels = new ServerSocketChannel[listenAddresses.length];
-			try {
-				for (int i = 0; i < listenAddresses.length; i++) {
+			for (int i = 0; i < listenAddresses.length; i++) {
+				try {
 					serverSocketChannels[i] = eventloop.listen(listenAddresses[i], serverSocketSettings, this);
+				} catch (IOException exception) {
+					logger.error("Can't listen on {}", this, listenAddresses[i]);
+					close();
+					throw exception;
 				}
-			} catch (IOException exception) {
-				close();
-				throw exception;
 			}
+			logger.info("Listening on {}", Arrays.toString(listenAddresses));
 		}
 	}
 

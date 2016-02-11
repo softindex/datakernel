@@ -31,7 +31,6 @@ import io.datakernel.eventloop.EventloopServer;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.JmxMBeans;
 import io.datakernel.jmx.JmxRegistry;
-import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 import io.datakernel.worker.WorkerPoolObjects;
 import org.slf4j.Logger;
@@ -56,32 +55,23 @@ public final class ServiceGraphModule extends AbstractModule {
 	private static final Logger logger = getLogger(ServiceGraphModule.class);
 
 	private final Map<Class<?>, ServiceAdapter<?>> factoryMap = new LinkedHashMap<>();
+	private final Set<Key<?>> excludedKeys = new LinkedHashSet<>();
 	private final Map<Key<?>, ServiceAdapter<?>> keys = new LinkedHashMap<>();
 
 	private final SetMultimap<Key<?>, Key<?>> addedDependencies = HashMultimap.create();
 	private final SetMultimap<Key<?>, Key<?>> removedDependencies = HashMultimap.create();
 
+	private final Set<Key<?>> singletonKeys = new HashSet<>();
+	private final Set<Key<?>> workerKeys = new HashSet<>();
 	private final SetMultimap<Key<?>, Key<?>> workerDependencies = HashMultimap.create();
 
 	private final IdentityHashMap<Object, CachedService> services = new IdentityHashMap<>();
 
 	private final Executor executor;
 
-	private List<Listener> listeners = new ArrayList<>();
-
 	private WorkerPoolModule workerPoolModule;
 
 	private ServiceGraph serviceGraph;
-
-	public interface Listener {
-		void onSingletonStart(Key<?> key, Object singletonInstance);
-
-		void onSingletonStop(Key<?> key, Object singletonInstance);
-
-		void onWorkersStart(Key<?> key, WorkerPool workerPool, List<?> poolInstances);
-
-		void onWorkersStop(Key<?> key, WorkerPool workerPool, List<?> poolInstances);
-	}
 
 	private ServiceGraphModule() {
 		this.executor = new ThreadPoolExecutor(0, Integer.MAX_VALUE,
@@ -153,11 +143,6 @@ public final class ServiceGraphModule extends AbstractModule {
 		return "@" + ("NamedImpl".equals(simpleName) ? "Named" : simpleName) + (first ? "" : "(" + sb + ")");
 	}
 
-	public ServiceGraphModule addListener(Listener listener) {
-		listeners.add(listener);
-		return this;
-	}
-
 	/**
 	 * Puts an instance of class and its factory to the factoryMap
 	 *
@@ -181,6 +166,11 @@ public final class ServiceGraphModule extends AbstractModule {
 	 */
 	public <T> ServiceGraphModule registerForSpecificKey(Key<T> key, ServiceAdapter<T> factory) {
 		keys.put(key, factory);
+		return this;
+	}
+
+	public <T> ServiceGraphModule excludeSpecificKey(Key<T> key) {
+		excludedKeys.add(key);
 		return this;
 	}
 
@@ -208,11 +198,11 @@ public final class ServiceGraphModule extends AbstractModule {
 		return this;
 	}
 
-	private Service getPoolServiceOrNull(final WorkerPool workerPool, final Key<?> key, final List<?> instances) {
+	private Service getWorkersServiceOrNull(final Key<?> key, final List<?> instances) {
 		final List<Service> services = new ArrayList<>();
 		boolean found = false;
 		for (Object instance : instances) {
-			Service service = getServiceOrNull(true, key, instance);
+			Service service = getServiceOrNull(key, instance);
 			services.add(service);
 			if (service != null) {
 				found = true;
@@ -227,16 +217,7 @@ public final class ServiceGraphModule extends AbstractModule {
 				for (Service service : services) {
 					futures.add(service != null ? service.start() : null);
 				}
-				ListenableFuture<?> future = combineFutures(futures, directExecutor());
-				future.addListener(new Runnable() {
-					@Override
-					public void run() {
-						for (Listener listener : listeners) {
-							listener.onWorkersStart(key, workerPool, instances);
-						}
-					}
-				}, directExecutor());
-				return future;
+				return combineFutures(futures, directExecutor());
 			}
 
 			@Override
@@ -245,16 +226,7 @@ public final class ServiceGraphModule extends AbstractModule {
 				for (Service service : services) {
 					futures.add(service != null ? service.stop() : null);
 				}
-				ListenableFuture<?> future = combineFutures(futures, directExecutor());
-				future.addListener(new Runnable() {
-					@Override
-					public void run() {
-						for (Listener listener : listeners) {
-							listener.onWorkersStop(key, workerPool, instances);
-						}
-					}
-				}, directExecutor());
-				return future;
+				return combineFutures(futures, directExecutor());
 			}
 		};
 	}
@@ -286,11 +258,14 @@ public final class ServiceGraphModule extends AbstractModule {
 	}
 
 	@SuppressWarnings("unchecked")
-	private Service getServiceOrNull(boolean worker, Key<?> key, Object instance) {
+	private Service getServiceOrNull(Key<?> key, Object instance) {
 		checkNotNull(instance);
 		CachedService service = services.get(instance);
 		if (service != null) {
 			return service;
+		}
+		if (excludedKeys.contains(key)) {
+			return null;
 		}
 		ServiceAdapter<?> serviceAdapter = keys.get(key);
 		if (serviceAdapter == null) {
@@ -302,7 +277,7 @@ public final class ServiceGraphModule extends AbstractModule {
 		}
 		if (serviceAdapter != null) {
 			Service asyncService = ((ServiceAdapter<Object>) serviceAdapter).toService(instance, executor);
-			service = new CachedService(worker, key, instance, asyncService);
+			service = new CachedService(asyncService);
 			services.put(instance, service);
 			return service;
 		}
@@ -314,26 +289,16 @@ public final class ServiceGraphModule extends AbstractModule {
 			logger.warn("Unused services : {}", difference(keys.keySet(), injector.getAllBindings().keySet()));
 		}
 
-		for (Binding<?> binding : injector.getAllBindings().values()) {
-			Key<?> key = binding.getKey();
-			if (isSingleton(binding)) {
-				Object instance = injector.getInstance(key);
-				Service service = getServiceOrNull(false, key, instance);
-				graph.add(key, service);
-			}
+		for (Key<?> key : singletonKeys) {
+			Object instance = injector.getInstance(key);
+			Service service = getServiceOrNull(key, instance);
+			graph.add(key, service);
 		}
 
-		for (Binding<?> binding : injector.getAllBindings().values()) {
-			Key<?> key = binding.getKey();
-			if (WorkerPoolModule.isWorkerScope(binding)) {
-				WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
-				if (poolObjects != null) {
-					Service service = getPoolServiceOrNull(poolObjects.getWorkerPool(), key, poolObjects.getObjects());
-					graph.add(key, service);
-				} else {
-					logger.warn("Unused WorkerScope key: {}", key);
-				}
-			}
+		for (Key<?> key : workerKeys) {
+			WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
+			Service service = getWorkersServiceOrNull(key, poolObjects.getObjects());
+			graph.add(key, service);
 		}
 
 		for (Binding<?> binding : injector.getAllBindings().values()) {
@@ -349,25 +314,15 @@ public final class ServiceGraphModule extends AbstractModule {
 		jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats());
 
 		// register singletons
-		for (Binding<?> binding : injector.getAllBindings().values()) {
-			Key<?> key = binding.getKey();
-			if (isSingleton(binding)) {
-				Object instance = injector.getInstance(key);
-				if (instance != null) {
-					jmxRegistry.registerSingleton(key, instance);
-				}
-			}
+		for (Key<?> key : singletonKeys) {
+			Object instance = injector.getInstance(key);
+			jmxRegistry.registerSingleton(key, instance);
 		}
 
 		// register workers
-		for (Binding<?> binding : injector.getAllBindings().values()) {
-			Key<?> key = binding.getKey();
-			if (WorkerPoolModule.isWorkerScope(binding)) {
-				WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
-				if (poolObjects != null) {
-					jmxRegistry.registerWorkers(key, poolObjects.getObjects());
-				}
-			}
+		for (Key<?> key : workerKeys) {
+			WorkerPoolObjects poolObjects = workerPoolModule.getPoolObjects(key);
+			jmxRegistry.registerWorkers(key, poolObjects.getObjects());
 		}
 	}
 
@@ -407,13 +362,40 @@ public final class ServiceGraphModule extends AbstractModule {
 		}, new ProvisionListener() {
 			@Override
 			public <T> void onProvision(ProvisionInvocation<T> provision) {
-				provision.provision();
-				List<DependencyAndSource> chain = provision.getDependencyChain();
-				if (chain.size() >= 2) {
-					Key<?> key = chain.get(chain.size() - 2).getDependency().getKey();
-					Key<T> dependencyKey = provision.getBinding().getKey();
-					if (key.getTypeLiteral().getRawType() != ServiceGraph.class) {
-						workerDependencies.put(key, dependencyKey);
+				synchronized (ServiceGraphModule.this) {
+					if (serviceGraph != null) {
+						logger.warn("Service graph already started, ignoring {}", provision.getBinding().getKey());
+						return;
+					}
+					if (provision.provision() != null) {
+						workerKeys.add(provision.getBinding().getKey());
+					}
+					List<DependencyAndSource> chain = provision.getDependencyChain();
+					if (chain.size() >= 2) {
+						Key<?> key = chain.get(chain.size() - 2).getDependency().getKey();
+						Key<T> dependencyKey = provision.getBinding().getKey();
+						if (key.getTypeLiteral().getRawType() != ServiceGraph.class) {
+							workerDependencies.put(key, dependencyKey);
+						}
+					}
+				}
+			}
+		});
+		bindListener(new AbstractMatcher<Binding<?>>() {
+			@Override
+			public boolean matches(Binding<?> binding) {
+				return isSingleton(binding);
+			}
+		}, new ProvisionListener() {
+			@Override
+			public <T> void onProvision(ProvisionInvocation<T> provision) {
+				synchronized (ServiceGraphModule.this) {
+					if (serviceGraph != null) {
+						logger.warn("Service graph already started, ignoring {}", provision.getBinding().getKey());
+						return;
+					}
+					if (provision.provision() != null) {
+						singletonKeys.add(provision.getBinding().getKey());
 					}
 				}
 			}
@@ -449,17 +431,11 @@ public final class ServiceGraphModule extends AbstractModule {
 	}
 
 	private class CachedService implements Service {
-		private final boolean worker;
-		private final Key<?> key;
-		private final Object instance;
 		private final Service service;
 		private ListenableFuture<?> startFuture;
 		private ListenableFuture<?> stopFuture;
 
-		private CachedService(boolean worker, Key<?> key, Object instance, Service service) {
-			this.worker = worker;
-			this.key = key;
-			this.instance = instance;
+		private CachedService(Service service) {
 			this.service = service;
 		}
 
@@ -469,16 +445,6 @@ public final class ServiceGraphModule extends AbstractModule {
 			if (startFuture == null) {
 				startFuture = service.start();
 			}
-			if (!worker) {
-				startFuture.addListener(new Runnable() {
-					@Override
-					public void run() {
-						for (Listener listener : listeners) {
-							listener.onSingletonStart(key, instance);
-						}
-					}
-				}, directExecutor());
-			}
 			return startFuture;
 		}
 
@@ -487,16 +453,6 @@ public final class ServiceGraphModule extends AbstractModule {
 			checkState(startFuture != null);
 			if (stopFuture == null) {
 				stopFuture = service.stop();
-			}
-			if (!worker) {
-				startFuture.addListener(new Runnable() {
-					@Override
-					public void run() {
-						for (Listener listener : listeners) {
-							listener.onSingletonStop(key, instance);
-						}
-					}
-				}, directExecutor());
 			}
 			return stopFuture;
 		}

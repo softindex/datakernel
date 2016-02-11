@@ -19,6 +19,7 @@ package io.datakernel.example;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.Stage;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
@@ -33,23 +34,22 @@ import io.datakernel.service.ServiceGraphModule;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
-public class SimpleHttpLauncherExample {
+public class SimpleHttpLauncherExample extends Launcher {
 	public static void main(String[] args) throws Exception {
-		Launcher.run(ServicesLauncher.class, args);
+		Launcher.run(SimpleHttpLauncherExample.class, args);
 	}
 
-	public static class ServicesLauncher extends Launcher {
-		@Override
-		protected void configure() {
-			configs("launcher-example.properties");
-			modules(ServiceGraphModule.defaultInstance(),
-					new LauncherExampleModule());
-		}
+	@Override
+	protected void configure() {
+		configs("launcher-example.properties");
+		injector(Stage.PRODUCTION,
+				ServiceGraphModule.defaultInstance(),
+				new LauncherExampleModule());
+	}
 
-		@Override
-		protected void doRun() throws Exception {
-			awaitShutdown();
-		}
+	@Override
+	protected void doRun() throws Exception {
+		awaitShutdown();
 	}
 
 	public static class LauncherExampleModule extends AbstractModule {
