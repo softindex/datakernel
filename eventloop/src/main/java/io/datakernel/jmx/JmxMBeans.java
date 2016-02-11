@@ -36,9 +36,10 @@ import static io.datakernel.jmx.RefreshTaskPerPool.ExecutorAndStatsList;
 import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.*;
 import static java.lang.String.format;
+import static java.util.Arrays.asList;
 
 public final class JmxMBeans implements DynamicMBeanFactory {
-	private static final Logger LOGGER = LoggerFactory.getLogger(JmxMBeans.class);
+	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
 
 	private static final String ATTRIBUTE_NAME_FORMAT = "%s_%s";
 	private static final String ATTRIBUTE_DEFAULT_DESCRIPTION = "";
@@ -52,6 +53,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String SET_SMOOTHING_WINDOW_PARAMETER_NAME = "window";
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
 	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+
+	private static final Exception EXCEPTION = new Exception();
+	private static final Exception AGGREGATION_EXCEPTION = new AggregationException("");
+
+	private static final String NO_NAME_ATTR_KEY = "~noNameAttr~";
 
 	// CompositeData of Throwable
 	private static final String THROWABLE_COMPOSITE_TYPE_NAME = "CompositeDataOfThrowable";
@@ -156,7 +162,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Map<String, JmxStats<?>> nameToJmxStats = fetchNameToJmxStats(monitorable);
 		for (String statsName : nameToJmxStats.keySet()) {
 			JmxStats<?> stats = nameToJmxStats.get(statsName);
-			SortedMap<String, TypeAndValue> statsAttributes = stats.getAttributes();
+
+//			SortedMap<String, TypeAndValue> statsAttributes = stats.getAttributes();
+			// TODO(vmykhalko): fix this
+			SortedMap<String, TypeAndValue> statsAttributes = new TreeMap<>();
+
 			for (String statsAttributeName : statsAttributes.keySet()) {
 				TypeAndValue typeAndValue = statsAttributes.get(statsAttributeName);
 				String attrName = format(ATTRIBUTE_NAME_FORMAT, statsName, statsAttributeName);
@@ -170,13 +180,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		List<MBeanAttributeInfo> simpleAttrs = fetchSimpleAttributesInfo(monitorable.getClass());
 		attributes.addAll(simpleAttrs);
 
-		List<MBeanAttributeInfo> listAttrs = fetchListAttributesInfo(monitorable);
+		List<MBeanAttributeInfo> listAttrs = fetchListAttributesInfo(monitorable.getClass());
 		attributes.addAll(listAttrs);
 
-		List<MBeanAttributeInfo> arrayAttrs = fetchArrayAttributesInfo(monitorable);
+		List<MBeanAttributeInfo> arrayAttrs = fetchArrayAttributesInfo(monitorable.getClass());
 		attributes.addAll(arrayAttrs);
 
-		List<MBeanAttributeInfo> exceptionAttrs = fetchExceptionAttributesInfo(monitorable);
+		List<MBeanAttributeInfo> exceptionAttrs = fetchThrowableAttributesInfo(monitorable.getClass());
 		attributes.addAll(exceptionAttrs);
 
 		List<MBeanAttributeInfo> pojoAttrs = fetchPojoAttributesInfo(monitorable.getClass());
@@ -212,9 +222,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	/**
 	 * fetch attributes of type java.util.List
 	 */
-	private static List<MBeanAttributeInfo> fetchListAttributesInfo(Object monitorable) {
+	private static List<MBeanAttributeInfo> fetchListAttributesInfo(Class<?> clazz) {
 		List<MBeanAttributeInfo> attrList = new ArrayList<>();
-		Method[] methods = monitorable.getClass().getMethods();
+		Method[] methods = clazz.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfList(method)) {
 				String name = extractFieldNameFromGetter(method);
@@ -228,9 +238,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return attrList;
 	}
 
-	private static List<MBeanAttributeInfo> fetchArrayAttributesInfo(Object monitorable) {
+	private static List<MBeanAttributeInfo> fetchArrayAttributesInfo(Class<?> clazz) {
 		List<MBeanAttributeInfo> attrList = new ArrayList<>();
-		Method[] methods = monitorable.getClass().getMethods();
+		Method[] methods = clazz.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfArray(method)) {
 				String name = extractFieldNameFromGetter(method);
@@ -244,9 +254,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return attrList;
 	}
 
-	private static List<MBeanAttributeInfo> fetchExceptionAttributesInfo(Object monitorable) {
+	private static List<MBeanAttributeInfo> fetchThrowableAttributesInfo(Class<?> clazz) {
 		List<MBeanAttributeInfo> attrList = new ArrayList<>();
-		Method[] methods = monitorable.getClass().getMethods();
+		Method[] methods = clazz.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfThrowable(method)) {
 				String name = extractFieldNameFromGetter(method);
@@ -272,9 +282,24 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					attrList.add(addPrefixToAttrName(simpleAttr, currentPojoName));
 				}
 
+				List<MBeanAttributeInfo> listAttrs = fetchListAttributesInfo(currentPojoClass);
+				for (MBeanAttributeInfo listAttr : listAttrs) {
+					attrList.add(addPrefixToAttrName(listAttr, currentPojoName));
+				}
+
+				List<MBeanAttributeInfo> arrayAttrs = fetchArrayAttributesInfo(currentPojoClass);
+				for (MBeanAttributeInfo arrayAttr : arrayAttrs) {
+					attrList.add(addPrefixToAttrName(arrayAttr, currentPojoName));
+				}
+
 				List<MBeanAttributeInfo> pojoAttrs = fetchPojoAttributesInfo(currentPojoClass);
 				for (MBeanAttributeInfo pojoAttr : pojoAttrs) {
 					attrList.add(addPrefixToAttrName(pojoAttr, currentPojoName));
+				}
+
+				List<MBeanAttributeInfo> throwableAttrs = fetchThrowableAttributesInfo(currentPojoClass);
+				for (MBeanAttributeInfo throwableAttr : throwableAttrs) {
+					attrList.add(addPrefixToAttrName(throwableAttr, currentPojoName));
 				}
 			}
 		}
@@ -719,7 +744,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			Object attrValue = lastAttributesSnapshot.getAttribute(attribute);
 
 			if (attrValue instanceof Exception) {
-				throw new MBeanException((Exception) attrValue);
+				Exception attrException = (Exception) attrValue;
+				throw new MBeanException(EXCEPTION,
+						format("Exception with type \"%s\" and message \"%s\" occured during fetching attribute",
+								attrException.getClass().getName(), attrException.getMessage()));
 			}
 
 			return attrValue;
@@ -740,7 +768,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					statsAccumulator = jmxStatsType.newInstance();
 				} catch (InstantiationException | IllegalAccessException e) {
 					String errorMsg = "All JmxStats Implementations must have public constructor without parameters";
-					LOGGER.error(errorMsg, e);
+					logger.error(errorMsg, e);
 					continue;
 				}
 
@@ -751,11 +779,14 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				} catch (IllegalArgumentException | InvocationTargetException | IllegalAccessException e) {
 					String errorMsg =
 							format("Cannot fetch JmxStats with name \"%s\" during JmxStats accumulation", jmxStatsName);
-					LOGGER.error(errorMsg, e);
+					logger.error(errorMsg, e);
 					continue;
 				}
 
-				Map<String, TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
+//				Map<String, TypeAndValue> jmxStatsAttributes = statsAccumulator.getAttributes();
+				// TODO(vmykhalko): fix this
+				Map<String, TypeAndValue> jmxStatsAttributes = new HashMap<>();
+
 				for (String subAttrName : jmxStatsAttributes.keySet()) {
 					String attrName = jmxStatsName + "_" + subAttrName;
 					nameToAttribute.put(attrName, jmxStatsAttributes.get(subAttrName).getValue());
@@ -770,19 +801,25 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				try {
 					JmxMonitorableWrapper first = wrappers.get(0);
 					Object attrValue = first.getSimpleAttributeValue(attrName);
+					boolean accumulationFailed = false;
 					for (int i = 1; i < wrappers.size(); i++) {
 						Object currentAttrValue = wrappers.get(i).getSimpleAttributeValue(attrName);
 						if (!Objects.equals(attrValue, currentAttrValue)) {
-							throw new AggregationException();
+							accumulationFailed = true;
+							break;
 						}
 					}
-					nameToAttribute.put(attrName, attrValue);
-				} catch (AggregationException e) {
-					nameToAttribute.put(attrName, SIMPLE_TYPE_AGGREGATION_EXCEPTION);
+					if (!accumulationFailed) {
+						nameToAttribute.put(attrName, attrValue);
+					} else {
+						nameToAttribute.put(attrName, AGGREGATION_EXCEPTION);
+					}
 				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 					String errorMsg =
 							format("Cannot fetch simple-type attribute with name \"%s\"", attrName);
-					LOGGER.error(errorMsg, e);
+					// TODO (vmykhalko): is it true to use both logging and throwing RuntimeException ?
+					logger.error(errorMsg, e);
+					throw new RuntimeException(errorMsg, e);
 				}
 			}
 			return nameToAttribute;
@@ -806,7 +843,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 					String errorMsg =
 							format("Cannot fetch list attribute with name \"%s\"", listAttrName);
-					LOGGER.error(errorMsg, e);
+					logger.error(errorMsg, e);
 				}
 			}
 			return nameToAttribute;
@@ -831,7 +868,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 					String errorMsg =
 							format("Cannot fetch array attribute with name \"%s\"", arrayAttrName);
-					LOGGER.error(errorMsg, e);
+					logger.error(errorMsg, e);
 				}
 			}
 			return nameToAttribute;
@@ -855,17 +892,17 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				} catch (IllegalArgumentException | IllegalAccessException | InvocationTargetException e) {
 					String errorMsg =
 							format("Cannot fetch Throwable attribute with name \"%s\"", exceptionAttrName);
-					LOGGER.error(errorMsg, e);
+					logger.error(errorMsg, e);
 				} catch (OpenDataException e) {
 					String errorMsg = format("Cannot create CompositeData for Throwable attribute " +
 							"with name \"%s\"", exceptionAttrName);
-					LOGGER.error(errorMsg, e);
+					logger.error(errorMsg, e);
 				}
 			}
 			return nameToAttribute;
 		}
 
-		private CompositeData buildCompositeDataForThrowable(Throwable throwable) throws OpenDataException {
+		private static CompositeData buildCompositeDataForThrowable(Throwable throwable) throws OpenDataException {
 			Map<String, Object> items = new HashMap<>();
 			if (throwable == null) {
 				items.put(THROWABLE_TYPE_KEY, "");
@@ -1019,12 +1056,404 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		private AttributesSnapshot createFreshAttributesSnapshot() {
 			Map<String, Object> nameToAttribute = new HashMap<>();
-			nameToAttribute.putAll(aggregateAllJmxStatsAttributes());
-			nameToAttribute.putAll(aggregateAllSimpleTypeAttributes());
-			nameToAttribute.putAll(aggregateAllListAttributes());
-			nameToAttribute.putAll(aggregateAllArrayAttributes());
-			nameToAttribute.putAll(aggregateAllExceptionAttributes());
+
+			List<Object> monitorableInstances = new ArrayList<>();
+			for (JmxMonitorableWrapper wrapper : wrappers) {
+				monitorableInstances.add(wrapper.getMonitorable());
+			}
+
+			nameToAttribute.putAll(fetchAndAccumulateSimpleTypeAttrs(monitorableInstances));
+			nameToAttribute.putAll(fetchAndAccumulatePojoAttrs(monitorableInstances));
+			nameToAttribute.putAll(fetchAndAccumulateListAttrs(monitorableInstances));
+			nameToAttribute.putAll(fetchAndAccumulateArrayAttrs(monitorableInstances));
+			nameToAttribute.putAll(fetchAndAccumulateThrowableAttrs(monitorableInstances));
+			nameToAttribute.putAll(fetchAndAccumulateJmxStatsAttrs(monitorableInstances));
+
 			return new AttributesSnapshot(TIME_PROVIDER.currentTimeMillis(), nameToAttribute);
+		}
+
+		private static Map<String, Object> fetchAndAccumulateSimpleTypeAttrs(List<?> objects) {
+			// TODO (vmykhalko): add preconditions
+
+			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Object first = objects.get(0);
+			List<Method> getters = fetchSimpleTypeAttrGetters(first.getClass());
+			for (Method getter : getters) {
+				String attrName = extractFieldNameFromGetter(getter);
+				JmxAccumulator<Object> accumulator = JmxAccumulators.getEquivalenceAccumulator();
+				for (Object object : objects) {
+					Object currentValue = null;
+					try {
+						currentValue = getter.invoke(object);
+						accumulator.add(currentValue);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						logger.error(format("Cannot fetch attribute with name \"%s\" during accumulation", attrName), e);
+
+						// TODO(vmykhalko): is all this error-handling code essential ?
+						// because these exceptions are not business-logic, but programming error
+						// maybe just throw RuntimeException ?
+//						List<String> subAttrNames = fetchAttributeNames(accumulator);
+//						if (subAttrNames.size() == 1 && subAttrNames.get(0).equals(NO_NAME_ATTR_KEY)) {
+//							nameToAccumulatedAttr.put(attrName, e);
+//						} else {
+//							for (String subAttrName : subAttrNames) {
+//								nameToAccumulatedAttr.put(attrName + "_" + subAttrNames, e);
+//							}
+//						}
+
+						throw new RuntimeException(e);
+					}
+
+				}
+				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+			}
+
+			return nameToAccumulatedAttr;
+		}
+
+		private static List<Method> fetchSimpleTypeAttrGetters(Class<?> clazz) {
+			List<Method> getters = new ArrayList<>();
+			for (Method method : clazz.getMethods()) {
+				if (isGetterOfSimpleType(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+					getters.add(method);
+				}
+			}
+			return getters;
+		}
+
+		private static List<Method> fetchPojoAttrGetters(Class<?> clazz) {
+			List<Method> getters = new ArrayList<>();
+			for (Method method : clazz.getMethods()) {
+				if (isGetterOfPojo(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+					getters.add(method);
+				}
+			}
+			return getters;
+		}
+
+		private static List<Method> fetchListAttrGetters(Class<?> clazz) {
+			List<Method> getters = new ArrayList<>();
+			for (Method method : clazz.getMethods()) {
+				if (isGetterOfList(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+					getters.add(method);
+				}
+			}
+			return getters;
+		}
+
+		private static List<Method> fetchArrayAttrGetters(Class<?> clazz) {
+			List<Method> getters = new ArrayList<>();
+			for (Method method : clazz.getMethods()) {
+				if (isGetterOfArray(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+					getters.add(method);
+				}
+			}
+			return getters;
+		}
+
+		private static List<Method> fetchThrowableAttrGetters(Class<?> clazz) {
+			List<Method> getters = new ArrayList<>();
+			for (Method method : clazz.getMethods()) {
+				if (isGetterOfThrowable(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+					getters.add(method);
+				}
+			}
+			return getters;
+		}
+
+		private static List<Method> fetchJmxStatsAttrGetters(Class<?> clazz) {
+			List<Method> getters = new ArrayList<>();
+			for (Method method : clazz.getMethods()) {
+				if (isGetterOfJmxStats(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+					getters.add(method);
+				}
+			}
+			return getters;
+		}
+
+//		private static List<String> fetchAttributeNames(Object object) {
+//			List<Method> attributeGetters = fetchAllAttributeGetters(object);
+//			List<String> attrNames = new ArrayList<>();
+//			if (attributeGetters.size() == 1) {
+//				Method getter = attributeGetters.get(0);
+//				JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
+//				String attrName = attrAnnotation.skipName() ? NO_NAME_ATTR_KEY : extractFieldNameFromGetter(getter);
+//				attrNames.add(attrName);
+//			} else {
+//				for (Method getter : attributeGetters) {
+//					attrNames.add(extractFieldNameFromGetter(getter));
+//				}
+//			}
+//			return attrNames;
+//		}
+
+		/*
+		 * Collects attributes and convert them to be jmx compatible if necessary
+		 */
+		private static Map<String, Object> fetchAttrNameToValueFromAccumulator(JmxAccumulator accumulator) {
+			checkNotNull(accumulator);
+
+			List<Method> attributeGetters = fetchAllAttributeGetters(accumulator);
+			Map<String, Object> attrNameToValue = new HashMap<>();
+			if (attributeGetters.size() == 1) {
+				Method getter = attributeGetters.get(0);
+				JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
+				String attrName = attrAnnotation.skipName() ? NO_NAME_ATTR_KEY : extractFieldNameFromGetter(getter);
+				try {
+					Object value = getter.invoke(accumulator);
+					attrNameToValue.put(attrName, ensureJmxCompatibility(value));
+				} catch (IllegalAccessException e) {
+					logger.error(format("Cannot fetch attribute with name \"%s\"", attrName), e);
+					throw new RuntimeException(e);
+				} catch (InvocationTargetException e) {
+					if (e.getTargetException().getClass() == AggregationException.class) {
+						attrNameToValue.put(attrName, e.getTargetException());
+					} else {
+						throw new RuntimeException(e);
+					}
+				}
+			} else {
+				for (Method getter : attributeGetters) {
+					String attrName = extractFieldNameFromGetter(getter);
+					try {
+						Object value = getter.invoke(accumulator);
+						attrNameToValue.put(attrName, ensureJmxCompatibility(value));
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						logger.error(format("Cannot fetch attribute with name \"%s\"", attrName), e);
+						throw new RuntimeException(e);
+					}
+				}
+			}
+			return attrNameToValue;
+		}
+
+		private static List<Method> fetchAllAttributeGetters(Object object) {
+			checkNotNull(object);
+
+			List<Method> attributeGetters = new ArrayList<>();
+			for (Method method : object.getClass().getMethods()) {
+				if (isGetter(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+					attributeGetters.add(method);
+				}
+			}
+			return attributeGetters;
+		}
+
+		private static Object ensureJmxCompatibility(Object object) {
+			Class clazz = object.getClass();
+			if (isPrimitiveType(clazz) || isPrimitiveTypeWrapper(clazz) || isString(clazz)) {
+				return object;
+			} else if (isList(clazz)) {
+				return ensureListElementsJmxCompatibility((List<?>) object);
+			} else if (isArray(clazz)) {
+				return ensureListElementsJmxCompatibility(asList((Object[]) object));
+			} else if (isThrowable(clazz)) {
+				try {
+					return buildCompositeDataForThrowable((Throwable) object);
+				} catch (OpenDataException e) {
+					throw new RuntimeException(e);
+				}
+			} else {
+				// TODO (vmykhalko): add conversion for arbitrary pojo
+				return null;
+			}
+		}
+
+		private static Object[] ensureListElementsJmxCompatibility(List<?> list) {
+			List<Object> outputList = new ArrayList<>();
+			for (Object element : list) {
+				outputList.add(ensureJmxCompatibility(element));
+			}
+			return outputList.toArray(new Object[outputList.size()]);
+		}
+
+		private static Map<String, Object> fetchAndAccumulatePojoAttrs(List<?> objects) {
+			// TODO (vmykhalko): add preconditions
+
+			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Object first = objects.get(0);
+			List<Method> getters = fetchPojoAttrGetters(first.getClass());
+			for (Method getter : getters) {
+				String pojoName = extractFieldNameFromGetter(getter);
+				List<Object> currentPojos = new ArrayList<>(objects.size());
+				for (Object object : objects) {
+					try {
+						Object currentPojo = getter.invoke(object);
+						currentPojos.add(currentPojo);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						logger.error(format("Cannot fetch pojo attribute with name \"%s\"", pojoName), e);
+						throw new RuntimeException(e);
+					}
+				}
+
+				Map<String, Object> accumulatedSimpleTypeAttrsOfCurrentPojo =
+						fetchAndAccumulateSimpleTypeAttrs(currentPojos);
+				for (String subName : accumulatedSimpleTypeAttrsOfCurrentPojo.keySet()) {
+					nameToAccumulatedAttr.put(pojoName + "_" + subName,
+							accumulatedSimpleTypeAttrsOfCurrentPojo.get(subName));
+				}
+
+				Map<String, Object> accumulatedInnerPojoAttrsOfCurrentPojo =
+						fetchAndAccumulatePojoAttrs(currentPojos);
+				for (String subName : accumulatedInnerPojoAttrsOfCurrentPojo.keySet()) {
+					nameToAccumulatedAttr.put(pojoName + "_" + subName,
+							accumulatedInnerPojoAttrsOfCurrentPojo.get(subName));
+				}
+
+				Map<String, Object> accumulatedListAttrsOfCurrentPojo =
+						fetchAndAccumulateListAttrs(currentPojos);
+				for (String subName : accumulatedListAttrsOfCurrentPojo.keySet()) {
+					nameToAccumulatedAttr.put(pojoName + "_" + subName,
+							accumulatedListAttrsOfCurrentPojo.get(subName));
+				}
+
+				Map<String, Object> accumulatedArrayAttrsOfCurrentPojo =
+						fetchAndAccumulateArrayAttrs(currentPojos);
+				for (String subName : accumulatedArrayAttrsOfCurrentPojo.keySet()) {
+					nameToAccumulatedAttr.put(pojoName + "_" + subName,
+							accumulatedArrayAttrsOfCurrentPojo.get(subName));
+				}
+
+				Map<String, Object> accumulatedThrowableAttrsOfCurrentPojo =
+						fetchAndAccumulateThrowableAttrs(currentPojos);
+				for (String subName : accumulatedThrowableAttrsOfCurrentPojo.keySet()) {
+					nameToAccumulatedAttr.put(pojoName + "_" + subName,
+							accumulatedThrowableAttrsOfCurrentPojo.get(subName));
+				}
+
+				Map<String, Object> accumulatedJmxStatsAttrsOfCurrentPojo =
+						fetchAndAccumulateJmxStatsAttrs(currentPojos);
+				for (String subName : accumulatedJmxStatsAttrsOfCurrentPojo.keySet()) {
+					nameToAccumulatedAttr.put(pojoName + "_" + subName,
+							accumulatedJmxStatsAttrsOfCurrentPojo.get(subName));
+				}
+			}
+
+			return nameToAccumulatedAttr;
+		}
+
+		private static Map<String, Object> fetchAndAccumulateListAttrs(List<?> objects) {
+			// TODO (vmykhalko): add preconditions
+
+			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Object first = objects.get(0);
+			List<Method> getters = fetchListAttrGetters(first.getClass());
+			for (Method getter : getters) {
+				String attrName = extractFieldNameFromGetter(getter);
+				JmxAccumulator<List<?>> accumulator = JmxAccumulators.getListAccumulator();
+				for (Object object : objects) {
+					try {
+						List<?> currentList = (List<?>) getter.invoke(object);
+						accumulator.add(currentList);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						logger.error(
+								format("Cannot fetch list attribute with name \"%s\" during accumulation", attrName),
+								e);
+						throw new RuntimeException(e);
+					}
+
+				}
+				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+			}
+			return nameToAccumulatedAttr;
+		}
+
+		private static Map<String, Object> fetchAndAccumulateArrayAttrs(List<?> objects) {
+			// TODO (vmykhalko): add preconditions
+
+			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Object first = objects.get(0);
+			List<Method> getters = fetchArrayAttrGetters(first.getClass());
+			for (Method getter : getters) {
+				String attrName = extractFieldNameFromGetter(getter);
+				JmxAccumulator<Object[]> accumulator = JmxAccumulators.getArrayAccumulator();
+				for (Object object : objects) {
+					try {
+						Object[] currentArray = (Object[]) getter.invoke(object);
+						accumulator.add(currentArray);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						logger.error(
+								format("Cannot fetch array attribute with name \"%s\" during accumulation", attrName),
+								e);
+						throw new RuntimeException(e);
+					}
+
+				}
+				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+			}
+			return nameToAccumulatedAttr;
+		}
+
+		private static Map<String, Object> fetchAndAccumulateThrowableAttrs(List<?> objects) {
+			// TODO (vmykhalko): add preconditions
+
+			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Object first = objects.get(0);
+			List<Method> getters = fetchThrowableAttrGetters(first.getClass());
+			for (Method getter : getters) {
+				String attrName = extractFieldNameFromGetter(getter);
+				JmxAccumulator<Object> accumulator = JmxAccumulators.getEquivalenceAccumulator();
+				for (Object object : objects) {
+					try {
+						Throwable currentThrowable = (Throwable) getter.invoke(object);
+						accumulator.add(currentThrowable);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						logger.error(
+								format("Cannot fetch throwable attribute with name \"%s\" during accumulation",
+										attrName),
+								e);
+						throw new RuntimeException(e);
+					}
+				}
+				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+			}
+			return nameToAccumulatedAttr;
+		}
+
+		@SuppressWarnings("unchecked")
+		private static Map<String, Object> fetchAndAccumulateJmxStatsAttrs(List<?> objects) {
+			// TODO (vmykhalko): add preconditions
+
+			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Object first = objects.get(0);
+			List<Method> getters = fetchJmxStatsAttrGetters(first.getClass());
+			for (Method getter : getters) {
+				String attrName = extractFieldNameFromGetter(getter);
+				JmxAccumulator accumulator;
+				try {
+					JmxStats<?> firstObjectJmxStats = (JmxStats<?>) getter.invoke(first);
+					accumulator = JmxAccumulators.getJmxStatsAccumulatorFor(firstObjectJmxStats);
+				} catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
+					logger.error(format("Cannot start accumulation of JmxStats with name \"%s\"", attrName), e);
+					throw new RuntimeException(e);
+				}
+				for (Object object : objects) {
+					try {
+						JmxStats<?> currentJmxStats = (JmxStats<?>) getter.invoke(object);
+						accumulator.add(currentJmxStats);
+					} catch (IllegalAccessException | InvocationTargetException e) {
+						logger.error(
+								format("Cannot fetch JmxStats attribute with name \"%s\" during accumulation",
+										attrName),
+								e);
+						throw new RuntimeException(e);
+					}
+				}
+				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+			}
+			return nameToAccumulatedAttr;
+		}
+
+		private static void putAttrsFromAccumulator(Map<String, Object> nameToAccumulatedAttr,
+		                                            String attrName, JmxAccumulator<?> accumulator) {
+			Map<String, Object> subAttrs = fetchAttrNameToValueFromAccumulator(accumulator);
+			if (subAttrs.size() == 1 && subAttrs.containsKey(NO_NAME_ATTR_KEY)) {
+				nameToAccumulatedAttr.put(attrName, subAttrs.get(NO_NAME_ATTR_KEY));
+			} else {
+				for (String subName : subAttrs.keySet()) {
+					nameToAccumulatedAttr.put(attrName + "_" + subName, subAttrs.get(subName));
+				}
+			}
 		}
 
 		@Override
@@ -1105,6 +1534,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			// TODO (vmykhalko): according to RPC (stats per connection) use-case,
 			// TODO we should use getters but not cached version of stats
 			return jmxStatsList;
+		}
+
+		public ConcurrentJmxMBean getMonitorable() {
+			return monitorable;
 		}
 
 		public Object getSimpleAttributeValue(String attrName)

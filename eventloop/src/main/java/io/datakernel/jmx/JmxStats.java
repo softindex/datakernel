@@ -16,7 +16,7 @@
 
 package io.datakernel.jmx;
 
-public interface JmxStats<T extends JmxStats> extends JmxAttributeAccumulator<T> {
+public interface JmxStats<T extends JmxStats> extends JmxAccumulator<T> {
 
 	void refreshStats(long timestamp, double smoothingWindow);
 

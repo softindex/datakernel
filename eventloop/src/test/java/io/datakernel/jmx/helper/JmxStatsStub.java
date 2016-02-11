@@ -16,12 +16,8 @@
 
 package io.datakernel.jmx.helper;
 
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxStats;
-import io.datakernel.jmx.TypeAndValue;
-
-import javax.management.openmbean.SimpleType;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 public final class JmxStatsStub implements JmxStats<JmxStatsStub> {
 
@@ -37,10 +33,12 @@ public final class JmxStatsStub implements JmxStats<JmxStatsStub> {
 		++count;
 	}
 
+	@JmxAttribute
 	public long getSum() {
 		return sum;
 	}
 
+	@JmxAttribute
 	public int getCount() {
 		return count;
 	}
@@ -70,11 +68,11 @@ public final class JmxStatsStub implements JmxStats<JmxStatsStub> {
 		++refreshStatsInvocations;
 	}
 
-	@Override
-	public SortedMap<String, TypeAndValue> getAttributes() {
-		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
-		attributes.put("sum", new TypeAndValue(SimpleType.LONG, sum));
-		attributes.put("count", new TypeAndValue(SimpleType.INTEGER, count));
-		return attributes;
-	}
+//	@Override
+//	public SortedMap<String, TypeAndValue> getAttributes() {
+//		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
+//		attributes.put("sum", new TypeAndValue(SimpleType.LONG, sum));
+//		attributes.put("count", new TypeAndValue(SimpleType.INTEGER, count));
+//		return attributes;
+//	}
 }

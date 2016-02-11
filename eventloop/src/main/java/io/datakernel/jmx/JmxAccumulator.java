@@ -16,10 +16,18 @@
 
 package io.datakernel.jmx;
 
-import java.util.SortedMap;
-
-public interface JmxAttributeAccumulator<T> {
+/**
+ * Common interface for accumulating different type of values
+ * <p/>
+ * It should have one or more getter, annotated with @JmxAttribute annotation.
+ * Such methods are used for fetching values and are allowed to throw {@link AggregationException}
+ *
+ * @param <T> type of value to accumulate
+ */
+public interface JmxAccumulator<T> {
 	void add(T value);
 
-	SortedMap<String, TypeAndValue> getAttributes();
+	// TODO (vmykhalko): start here
+	// TODO (vmykhalko): is getAttributes() method essential ? if not this class can be renamed to JmxAccumulator
+//	SortedMap<String, TypeAndValue> getAttributes();
 }

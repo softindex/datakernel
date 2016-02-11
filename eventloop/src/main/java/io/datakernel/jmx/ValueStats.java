@@ -16,10 +16,6 @@
 
 package io.datakernel.jmx;
 
-import javax.management.openmbean.SimpleType;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
 import static java.lang.Math.*;
 
 /**
@@ -172,26 +168,12 @@ public final class ValueStats implements JmxStats<ValueStats> {
 		}
 	}
 
-	@Override
-	public SortedMap<String, TypeAndValue> getAttributes() {
-		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
-		attributes.put("smoothedAverage", new TypeAndValue(SimpleType.DOUBLE, getSmoothedAverage()));
-		attributes.put("smoothedStandardDeviation",
-				new TypeAndValue(SimpleType.DOUBLE, getSmoothedStandardDeviation()));
-		attributes.put("totalMin", new TypeAndValue(SimpleType.INTEGER, getTotalMin()));
-		attributes.put("totalMax", new TypeAndValue(SimpleType.INTEGER, getTotalMax()));
-		attributes.put("lastValue", new TypeAndValue(SimpleType.INTEGER, getLastValue()));
-		attributes.put("average", new TypeAndValue(SimpleType.DOUBLE, getAverage()));
-		attributes.put("smoothedMin", new TypeAndValue(SimpleType.DOUBLE, getSmoothedMin()));
-		attributes.put("smoothedMax", new TypeAndValue(SimpleType.DOUBLE, getSmoothedMax()));
-		return attributes;
-	}
-
 	/**
 	 * Returns last added value
 	 *
 	 * @return last added value
 	 */
+	@JmxAttribute
 	public int getLastValue() {
 		return lastValue;
 	}
@@ -201,6 +183,7 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	 *
 	 * @return smoothed average of added values
 	 */
+	@JmxAttribute
 	public double getSmoothedAverage() {
 		if (totalCount == 0) {
 			return 0.0;
@@ -214,6 +197,7 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	 *
 	 * @return smoothed standard deviation
 	 */
+	@JmxAttribute
 	public double getSmoothedStandardDeviation() {
 		if (totalCount == 0) {
 			return 0.0;
@@ -231,6 +215,7 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	 *
 	 * @return smoothed min of added values
 	 */
+	@JmxAttribute
 	public double getSmoothedMin() {
 		return smoothedMin;
 	}
@@ -240,6 +225,7 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	 *
 	 * @return smoothed max of added values
 	 */
+	@JmxAttribute
 	public double getSmoothedMax() {
 		return smoothedMax;
 	}
@@ -249,6 +235,7 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	 *
 	 * @return minimum of all added values
 	 */
+	@JmxAttribute
 	public int getTotalMin() {
 		return totalMin;
 	}
@@ -258,10 +245,12 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	 *
 	 * @return maximum of all added values
 	 */
+	@JmxAttribute
 	public int getTotalMax() {
 		return totalMax;
 	}
 
+	@JmxAttribute
 	public double getAverage() {
 		return totalCount != 0L ? totalSum / (double) totalCount : 0.0;
 	}

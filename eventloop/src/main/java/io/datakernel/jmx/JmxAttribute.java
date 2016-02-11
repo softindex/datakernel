@@ -27,4 +27,6 @@ public @interface JmxAttribute {
 //	String name() default "";
 //
 //	String description() default "";
+
+	boolean skipName() default false;
 }

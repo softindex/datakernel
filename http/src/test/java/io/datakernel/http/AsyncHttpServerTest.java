@@ -264,7 +264,7 @@ public class AsyncHttpServerTest {
 		thread.join();
 		ExceptionStats exceptionCounter = eventloop.getExceptionStats(new ExceptionMarker(SocketConnection.class, "ReadException"));
 		assertNotNull(exceptionCounter);
-		String[] exception = formatException(exceptionCounter.getThrowable());
+		String[] exception = formatException(exceptionCounter.getLastException());
 		assertTrue(exception != null && exception.length > 0);
 		assertTrue(exception[0], exception[0].contains("Too big HttpMessage"));
 	}

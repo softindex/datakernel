@@ -16,7 +16,6 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.jmx.helper.CompositeStatsStub;
 import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Test;
 
@@ -166,11 +165,11 @@ public class JmxMBeansStatsTest {
 	}
 
 	public static class MonitorableStub implements ConcurrentJmxMBean {
-		CompositeStatsStub groupedStats = new CompositeStatsStub();
+		CompoundStats groupedStats = new CompoundStats();
 		JmxStatsStub simpleStats = new JmxStatsStub();
 
 		@JmxAttribute
-		public CompositeStatsStub getGroupedStats() {
+		public CompoundStats getGroupedStats() {
 			return groupedStats;
 		}
 
@@ -182,6 +181,21 @@ public class JmxMBeansStatsTest {
 		@Override
 		public Executor getJmxExecutor() {
 			return Executors.newSingleThreadExecutor();
+		}
+	}
+
+	public static class CompoundStats {
+		private JmxStatsStub counterOne = new JmxStatsStub();
+		private JmxStatsStub counterTwo = new JmxStatsStub();
+
+		@JmxAttribute
+		public JmxStatsStub getCounterOne() {
+			return counterOne;
+		}
+
+		@JmxAttribute
+		public JmxStatsStub getCounterTwo() {
+			return counterTwo;
 		}
 	}
 }

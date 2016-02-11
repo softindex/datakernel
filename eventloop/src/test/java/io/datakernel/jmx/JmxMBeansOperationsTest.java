@@ -161,7 +161,7 @@ public class JmxMBeansOperationsTest {
 //	public static class NotAnnotatedService {
 //		private int count = 0;
 //
-//		public int getCount() {
+//		public int getTotal() {
 //			return count;
 //		}
 //
