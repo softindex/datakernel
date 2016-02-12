@@ -35,7 +35,6 @@ import static org.junit.Assert.*;
 
 public class JmxMBeansPOJOAttributeTest {
 
-	// TODO(vmykhalko): rename to itShouldCorrectlyHandleMBeansInCaseOfPojoWithSimpleAttrs and add more logic / checking
 	@Test
 	public void itShouldCorrectlyFetchAttrsInCaseOfPojoWithSimpleAttrs() throws Exception {
 		PojoWithSimpleAttributes pojo = new PojoWithSimpleAttributes(150, "first");
@@ -79,11 +78,6 @@ public class JmxMBeansPOJOAttributeTest {
 		}
 		assertEquals(1, exceptionsThrown);
 	}
-
-//	@Test
-//	public void test() {
-//		System.out.println("first" == new String("first"));
-//	}
 
 	@Test
 	public void itShouldCorrectlyFetchAttrsInCaseOfPojoWithAnotherPojo() throws Exception {

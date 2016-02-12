@@ -16,15 +16,92 @@
 
 package io.datakernel.jmx;
 
+import javax.management.openmbean.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class Utils {
 
 	private Utils() {}
+
+	private static final CompositeType DEFAULT_COMPOSITE_TYPE;
+	private static final TabularType DEFAULT_TABULAR_TYPE;
+
+	private static final Map<Class<?>, SimpleType<?>> clazzToSimpleType;
+
+	static {
+		clazzToSimpleType = new HashMap<>();
+		clazzToSimpleType.put(Boolean.class, SimpleType.BOOLEAN);
+		clazzToSimpleType.put(Byte.class, SimpleType.BYTE);
+		clazzToSimpleType.put(Short.class, SimpleType.SHORT);
+		clazzToSimpleType.put(Character.class, SimpleType.CHARACTER);
+		clazzToSimpleType.put(Integer.class, SimpleType.INTEGER);
+		clazzToSimpleType.put(Long.class, SimpleType.LONG);
+		clazzToSimpleType.put(Float.class, SimpleType.FLOAT);
+		clazzToSimpleType.put(Double.class, SimpleType.DOUBLE);
+		clazzToSimpleType.put(String.class, SimpleType.STRING);
+
+		try {
+			DEFAULT_COMPOSITE_TYPE = new CompositeType("EmptyCompositeData", "EmptyCompositeData",
+					new String[]{"key"}, new String[]{"key"}, new OpenType<?>[]{SimpleType.STRING});
+		} catch (OpenDataException e) {
+			throw new RuntimeException(e);
+		}
+
+		try {
+			DEFAULT_TABULAR_TYPE = new TabularType("EmptyTabularData", "EmptyTabularData",
+					DEFAULT_COMPOSITE_TYPE, new String[]{"key"});
+		} catch (OpenDataException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static OpenType<?> determineOpenTypeOfInstance(Object value) throws OpenDataException {
+		checkNotNull(value);
+
+		Class<?> valueClass = value.getClass();
+		if (clazzToSimpleType.containsKey(value.getClass())) {
+			return clazzToSimpleType.get(valueClass);
+		} else if (valueClass.isArray()) {
+			return createProperArrayType((Object[]) value);
+		} else if (value instanceof CompositeData) {
+			CompositeData compositeData = (CompositeData) value;
+			return compositeData.getCompositeType();
+		} else if (value instanceof TabularData) {
+			TabularData tabularData = (TabularData) value;
+			return tabularData.getTabularType();
+		} else {
+			throw new IllegalArgumentException("Cannot find OpenType for instance of class " + valueClass.getName());
+		}
+	}
+
+	private static OpenType<?> createProperArrayType(Object[] array) throws OpenDataException {
+		Class<?> arrayElementType = array.getClass().getComponentType();
+
+		if (clazzToSimpleType.containsKey(arrayElementType)) {
+			return new ArrayType<>(1, clazzToSimpleType.get(arrayElementType));
+		} else if (CompositeData.class.isAssignableFrom(arrayElementType)) {
+			if (array.length != 0) {
+				return new ArrayType<>(1, ((CompositeData) array[0]).getCompositeType());
+			} else {
+				return new ArrayType<>(1, DEFAULT_COMPOSITE_TYPE);
+			}
+		} else if (TabularData.class.isAssignableFrom(arrayElementType)) {
+			if (array.length != 0) {
+				return new ArrayType<>(1, ((TabularData) array[0]).getTabularType());
+			} else {
+				return new ArrayType<>(1, DEFAULT_TABULAR_TYPE);
+			}
+		} else if (arrayElementType.isArray()) {
+			throw new RuntimeException("Only one-dimentional arrays are supported");
+		} else {
+			throw new RuntimeException("There is no support for array with type: " + arrayElementType.getName());
+		}
+	}
 
 	public static String extractFieldNameFromGetter(Method method) {
 		checkArgument(isGetter(method));

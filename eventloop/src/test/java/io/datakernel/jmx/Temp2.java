@@ -20,23 +20,25 @@ import org.junit.Test;
 
 import javax.management.DynamicMBean;
 import javax.management.ObjectName;
+import javax.management.openmbean.ArrayType;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.SimpleType;
 import java.lang.management.ManagementFactory;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 
-public class Temp {
+public class Temp2 {
 
 	@Test
-	// TODO(vmykhalko): add unit test for this deep recursion case (mbean -> list -> pojo -> list -> pojo)
 	public void test() throws Exception {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new TempService()), false);
+//		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new TempService()), false);
 
 		ManagementFactory.getPlatformMBeanServer().registerMBean(
-				mbean, new ObjectName("io.check:type=TempService"));
+				new TempService(), new ObjectName("io.check:type=TempService"));
 
 		Thread.sleep(Long.MAX_VALUE);
 	}
@@ -51,8 +53,8 @@ public class Temp {
 //	public interface TempServiceMXBean {
 //		Map<String, Map<String, Person>> getCountryToPostIdToPerson();
 //	}
-//
-//
+
+
 //	public static final class TempService implements TempServiceMXBean {
 //
 //		@Override
@@ -72,54 +74,58 @@ public class Temp {
 //		}
 //	}
 
-//	public interface TempServiceMBean {
-//		Object[] getArr() throws OpenDataException;
-//	}
-//
-//	public static final class TempService implements TempServiceMBean {
-//
-//		@Override
-//		public Object[] getArr() throws OpenDataException {
-//			CompositeData data = CompositeDataBuilder.builder("qname")
-//					.add("count", SimpleType.INTEGER, 10)
-//					.add("desc", SimpleType.STRING, "John")
-//					.build();
-//			return new CompositeData[]{data};
-//		}
-//	}
+	public interface TempServiceMBean {
+		Object[] getArr() throws OpenDataException;
+	}
 
-	public static final class TempService implements ConcurrentJmxMBean {
-		private List<Person> persons =
-				asList(new Person(10, "Winston", asList(new Address("5th avenu", 15), new Address("Ford", 23))),
-						new Person(150, "Alberto", new ArrayList<Address>()),
-						new Person(305, "Lukas", asList(new Address("Google", 205))));
-		private List<Long> sequence = asList(15L, 25L, 85L, 125L, 500L);
-
-		@JmxAttribute
-		public List<Person> getPersons() {
-			return persons;
-		}
-
-		@JmxAttribute
-		public List<Long> getSequence() {
-			return sequence;
-		}
+	public static final class TempService implements TempServiceMBean {
 
 		@Override
-		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+		public Object[] getArr() throws OpenDataException {
+			CompositeData data = CompositeDataBuilder.builder("qname")
+					.add("count", SimpleType.INTEGER, 10)
+					.add("desc", SimpleType.STRING, "John")
+					.build();
+			CompositeData data2 = CompositeDataBuilder.builder("qname")
+					.add("arr", new ArrayType<>(1, data.getCompositeType()), new Object[0])
+//					.add("desc", SimpleType.STRING, "Mark")
+					.build();
+			return new CompositeData[]{data2};
 		}
 	}
+
+//	public static final class TempService implements ConcurrentJmxMBean {
+//		private List<Person> persons =
+//				asList(new Person(10, "Winston", asList("football", "bowling")),
+//						new Person(150, "Alberto", asList("computer games")),
+//						new Person(305, "Lukas", asList("tourism", "sport")));
+//		private List<Long> sequence = asList(15L, 25L, 85L, 125L, 500L);
+//
+//		@JmxAttribute
+//		public List<Person> getPersons() {
+//			return persons;
+//		}
+//
+//		@JmxAttribute
+//		public List<Long> getSequence() {
+//			return sequence;
+//		}
+//
+//		@Override
+//		public Executor getJmxExecutor() {
+//			return Executors.newSingleThreadExecutor();
+//		}
+//	}
 
 	public static final class Person {
 		private int id;
 		private String name;
-		private List<Address> addresses;
+		private List<String> hobbies;
 
-		public Person(int id, String name, List<Address> addresses) {
+		public Person(int id, String name, List<String> hobbies) {
 			this.id = id;
 			this.name = name;
-			this.addresses = addresses;
+			this.hobbies = hobbies;
 		}
 
 		@JmxAttribute
@@ -133,28 +139,10 @@ public class Temp {
 		}
 
 		@JmxAttribute
-		public List<Address> getAddresses() {
-			return addresses;
+		public List<String> getHobbies() {
+			return hobbies;
 		}
 	}
 
-	public static final class Address {
-		private String street;
-		private int number;
 
-		public Address(String street, int number) {
-			this.street = street;
-			this.number = number;
-		}
-
-		@JmxAttribute
-		public String getStreet() {
-			return street;
-		}
-
-		@JmxAttribute
-		public int getNumber() {
-			return number;
-		}
-	}
 }

@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 import javax.management.*;
 import javax.management.openmbean.*;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -53,6 +54,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final String SET_SMOOTHING_WINDOW_PARAMETER_NAME = "window";
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
 	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+
+	private static final String DEFAULT_COMPOSITE_DATA_NAME = "CompositeData";
 
 	private static final Exception EXCEPTION = new Exception();
 	private static final Exception AGGREGATION_EXCEPTION = new AggregationException("");
@@ -920,6 +923,21 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return new CompositeDataSupport(getCompositeTypeOfThrowable(), items);
 		}
 
+		private static CompositeData buildCompositeDataForPojo(Object pojo) throws OpenDataException {
+			// TODO(vmykhalko): implement
+			Map<String, Object> attrs = fetchAndAccumulateAllAttributes(asList(pojo));
+			CompositeDataBuilder.Builder builder = CompositeDataBuilder.builder(DEFAULT_COMPOSITE_DATA_NAME);
+			for (String attrName : attrs.keySet()) {
+				Object attrValue = attrs.get(attrName);
+				if (attrValue == null) {
+					builder.add(attrName, SimpleType.STRING, "null");
+				} else {
+					builder.add(attrName, determineOpenTypeOfInstance(attrValue), attrValue);
+				}
+			}
+			return builder.build();
+		}
+
 		@Override
 		public void setAttribute(final Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
 				MBeanException, ReflectionException {
@@ -1055,21 +1073,26 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		private AttributesSnapshot createFreshAttributesSnapshot() {
-			Map<String, Object> nameToAttribute = new HashMap<>();
-
 			List<Object> monitorableInstances = new ArrayList<>();
 			for (JmxMonitorableWrapper wrapper : wrappers) {
 				monitorableInstances.add(wrapper.getMonitorable());
 			}
 
-			nameToAttribute.putAll(fetchAndAccumulateSimpleTypeAttrs(monitorableInstances));
-			nameToAttribute.putAll(fetchAndAccumulatePojoAttrs(monitorableInstances));
-			nameToAttribute.putAll(fetchAndAccumulateListAttrs(monitorableInstances));
-			nameToAttribute.putAll(fetchAndAccumulateArrayAttrs(monitorableInstances));
-			nameToAttribute.putAll(fetchAndAccumulateThrowableAttrs(monitorableInstances));
-			nameToAttribute.putAll(fetchAndAccumulateJmxStatsAttrs(monitorableInstances));
+			return new AttributesSnapshot(
+					TIME_PROVIDER.currentTimeMillis(),
+					fetchAndAccumulateAllAttributes(monitorableInstances)
+			);
+		}
 
-			return new AttributesSnapshot(TIME_PROVIDER.currentTimeMillis(), nameToAttribute);
+		private static Map<String, Object> fetchAndAccumulateAllAttributes(List<?> objects) {
+			Map<String, Object> nameToAttribute = new HashMap<>();
+			nameToAttribute.putAll(fetchAndAccumulateSimpleTypeAttrs(objects));
+			nameToAttribute.putAll(fetchAndAccumulatePojoAttrs(objects));
+			nameToAttribute.putAll(fetchAndAccumulateListAttrs(objects));
+			nameToAttribute.putAll(fetchAndAccumulateArrayAttrs(objects));
+			nameToAttribute.putAll(fetchAndAccumulateThrowableAttrs(objects));
+			nameToAttribute.putAll(fetchAndAccumulateJmxStatsAttrs(objects));
+			return nameToAttribute;
 		}
 
 		private static Map<String, Object> fetchAndAccumulateSimpleTypeAttrs(List<?> objects) {
@@ -1254,17 +1277,42 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					throw new RuntimeException(e);
 				}
 			} else {
-				// TODO (vmykhalko): add conversion for arbitrary pojo
-				return null;
+				try {
+					return buildCompositeDataForPojo(object);
+				} catch (OpenDataException e) {
+					throw new RuntimeException(e);
+				}
 			}
 		}
 
 		private static Object[] ensureListElementsJmxCompatibility(List<?> list) {
 			List<Object> outputList = new ArrayList<>();
+			Class<?> listElementActualType = null;
 			for (Object element : list) {
-				outputList.add(ensureJmxCompatibility(element));
+				Object jmxCompatibleElement = ensureJmxCompatibility(element);
+				if (jmxCompatibleElement != null) {
+					Class<?> currentElementType = jmxCompatibleElement.getClass();
+					if (listElementActualType == null) {
+						listElementActualType = currentElementType;
+					} else if (listElementActualType != currentElementType) {
+						String errorMsg = "Error. At least two list element types are different";
+						logger.error(errorMsg);
+						throw new RuntimeException(errorMsg);
+					}
+				}
+				outputList.add(jmxCompatibleElement);
 			}
-			return outputList.toArray(new Object[outputList.size()]);
+
+			if (listElementActualType == null) {
+				return null;
+			}
+
+			Object[] array = (Object[]) Array.newInstance(listElementActualType, outputList.size());
+			for (int i = 0; i < outputList.size(); i++) {
+				Object object = outputList.get(i);
+				array[i] = object;
+			}
+			return array;
 		}
 
 		private static Map<String, Object> fetchAndAccumulatePojoAttrs(List<?> objects) {
@@ -1334,6 +1382,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		private static Map<String, Object> fetchAndAccumulateListAttrs(List<?> objects) {
 			// TODO (vmykhalko): add preconditions
+			checkArgument(objects.size() > 0);
 
 			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
 			Object first = objects.get(0);

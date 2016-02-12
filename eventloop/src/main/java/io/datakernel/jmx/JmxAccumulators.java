@@ -61,7 +61,9 @@ public final class JmxAccumulators {
 
 			@Override
 			public void add(List<?> list) {
-				listAccum.addAll(list);
+				if (list != null) {
+					listAccum.addAll(list);
+				}
 			}
 
 			@JmxAttribute(skipName = true)
@@ -77,7 +79,9 @@ public final class JmxAccumulators {
 
 			@Override
 			public void add(Object[] array) {
-				listAccum.addAll(asList(array));
+				if (array != null) {
+					listAccum.addAll(asList(array));
+				}
 			}
 
 			@JmxAttribute(skipName = true)
