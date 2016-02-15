@@ -6,10 +6,8 @@ package io.datakernel.aggregation_db.sql;
 
 import io.datakernel.aggregation_db.sql.tables.AggregationDbChunk;
 import io.datakernel.aggregation_db.sql.tables.AggregationDbRevision;
-import io.datakernel.aggregation_db.sql.tables.AggregationDbStructure;
 import io.datakernel.aggregation_db.sql.tables.records.AggregationDbChunkRecord;
 import io.datakernel.aggregation_db.sql.tables.records.AggregationDbRevisionRecord;
-import io.datakernel.aggregation_db.sql.tables.records.AggregationDbStructureRecord;
 
 import javax.annotation.Generated;
 
@@ -45,7 +43,6 @@ public class Keys {
 
 	public static final UniqueKey<AggregationDbChunkRecord> KEY_AGGREGATION_DB_CHUNK_PRIMARY = UniqueKeys0.KEY_AGGREGATION_DB_CHUNK_PRIMARY;
 	public static final UniqueKey<AggregationDbRevisionRecord> KEY_AGGREGATION_DB_REVISION_PRIMARY = UniqueKeys0.KEY_AGGREGATION_DB_REVISION_PRIMARY;
-	public static final UniqueKey<AggregationDbStructureRecord> KEY_AGGREGATION_DB_STRUCTURE_PRIMARY = UniqueKeys0.KEY_AGGREGATION_DB_STRUCTURE_PRIMARY;
 
 	// -------------------------------------------------------------------------
 	// FOREIGN KEY definitions
@@ -64,6 +61,5 @@ public class Keys {
 	private static class UniqueKeys0 extends AbstractKeys {
 		public static final UniqueKey<AggregationDbChunkRecord> KEY_AGGREGATION_DB_CHUNK_PRIMARY = createUniqueKey(AggregationDbChunk.AGGREGATION_DB_CHUNK, AggregationDbChunk.AGGREGATION_DB_CHUNK.ID);
 		public static final UniqueKey<AggregationDbRevisionRecord> KEY_AGGREGATION_DB_REVISION_PRIMARY = createUniqueKey(AggregationDbRevision.AGGREGATION_DB_REVISION, AggregationDbRevision.AGGREGATION_DB_REVISION.ID);
-		public static final UniqueKey<AggregationDbStructureRecord> KEY_AGGREGATION_DB_STRUCTURE_PRIMARY = createUniqueKey(AggregationDbStructure.AGGREGATION_DB_STRUCTURE, AggregationDbStructure.AGGREGATION_DB_STRUCTURE.ID);
 	}
 }

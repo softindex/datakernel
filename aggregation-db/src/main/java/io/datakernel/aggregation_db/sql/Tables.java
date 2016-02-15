@@ -6,7 +6,6 @@ package io.datakernel.aggregation_db.sql;
 
 import io.datakernel.aggregation_db.sql.tables.AggregationDbChunk;
 import io.datakernel.aggregation_db.sql.tables.AggregationDbRevision;
-import io.datakernel.aggregation_db.sql.tables.AggregationDbStructure;
 
 import javax.annotation.Generated;
 
@@ -33,9 +32,4 @@ public class Tables {
 	 * The table aggregation_db_revision
 	 */
 	public static final AggregationDbRevision AGGREGATION_DB_REVISION = io.datakernel.aggregation_db.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
-
-	/**
-	 * The table aggregation_db_structure
-	 */
-	public static final AggregationDbStructure AGGREGATION_DB_STRUCTURE = io.datakernel.aggregation_db.sql.tables.AggregationDbStructure.AGGREGATION_DB_STRUCTURE;
 }

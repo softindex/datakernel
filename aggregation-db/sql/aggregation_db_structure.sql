@@ -1,8 +1,0 @@
-CREATE TABLE `aggregation_db_structure` (
-  `id` VARCHAR(100) NOT NULL DEFAULT '',
-  `keys` VARCHAR(1000) NOT NULL DEFAULT '',
-  `inputFields` VARCHAR(1000) NOT NULL DEFAULT '',
-  `outputFields` VARCHAR(1000) NOT NULL,
-  `predicates` VARCHAR(1000) NULL DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE = InnoDB DEFAULT CHARSET=utf8;

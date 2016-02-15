@@ -44,7 +44,6 @@ import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
-import static io.datakernel.aggregation_db.sql.tables.AggregationDbStructure.AGGREGATION_DB_STRUCTURE;
 import static io.datakernel.aggregation_db.util.JooqUtils.onDuplicateKeyUpdateValues;
 import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 import static io.datakernel.async.AsyncCallbacks.runConcurrently;
@@ -141,7 +140,6 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 	public void truncateTables(DSLContext jooq) {
 		jooq.truncate(AGGREGATION_DB_CHUNK).execute();
-		jooq.truncate(AGGREGATION_DB_STRUCTURE).execute();
 		jooq.truncate(AGGREGATION_DB_REVISION).execute();
 	}
 
