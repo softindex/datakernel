@@ -22,10 +22,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -48,6 +45,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Sets.newHashSet;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Arrays.asList;
 
@@ -426,7 +424,7 @@ public class Aggregation {
 
 			boolean nextSequence = chunks.isEmpty() || chunk == null ||
 					getLast(chunks).getMaxPrimaryKey().compareTo(chunk.getMinPrimaryKey()) >= 0 ||
-					!getLast(chunks).getFields().equals(chunk.getFields());
+					!newHashSet(getLast(chunks).getFields()).equals(newHashSet(chunk.getFields()));
 
 			if (nextSequence && !chunks.isEmpty()) {
 				Class<?> chunksClass = structure.createRecordClass(getKeys(), chunks.get(0).getFields());
@@ -435,7 +433,7 @@ public class Aggregation {
 				producersClasses.add(chunksClass);
 
 				logger.info("Reading following chunks sequentially: {}", chunks);
-				StreamProducer producer = sequentialProducer(predicates, chunks, chunksClass);
+				StreamProducer producer = sequentialProducer(predicates, newArrayList(chunks), chunksClass);
 				producers.add(producer);
 
 				chunks.clear();
@@ -469,14 +467,17 @@ public class Aggregation {
 		return streamReducer.getOutput();
 	}
 
-	private StreamProducer sequentialProducer(AggregationQuery.QueryPredicates predicates,
-	                                          List<AggregationChunk> individualChunks, Class<?> sequenceClass) {
+	private StreamProducer sequentialProducer(final AggregationQuery.QueryPredicates predicates,
+	                                          List<AggregationChunk> individualChunks, final Class<?> sequenceClass) {
 		checkArgument(!individualChunks.isEmpty());
-		List<StreamProducer<Object>> producers = new ArrayList<>();
-		for (AggregationChunk chunk : individualChunks) {
-			producers.add(chunkReaderWithFilter(predicates, chunk, sequenceClass));
-		}
-		return StreamProducers.concat(eventloop, producers);
+		AsyncIterator<StreamProducer<Object>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(),
+				new AsyncFunction<AggregationChunk, StreamProducer<Object>>() {
+					@Override
+					public void apply(AggregationChunk chunk, ResultCallback<StreamProducer<Object>> producerCallback) {
+						producerCallback.onResult(chunkReaderWithFilter(predicates, chunk, sequenceClass));
+					}
+				});
+		return StreamProducers.concat(eventloop, producerAsyncIterator);
 	}
 
 	private StreamProducer chunkReaderWithFilter(AggregationQuery.QueryPredicates predicates,
@@ -498,7 +499,7 @@ public class Aggregation {
 	}
 
 	private Predicate createNotEqualsPredicate(Class<?> recordClass, List<AggregationQuery.QueryPredicateNotEquals> notEqualsPredicates) {
-		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class).setBytecodeSaveDir(Paths.get("./codegenOutput"));
+		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 		for (AggregationQuery.QueryPredicateNotEquals notEqualsPredicate : notEqualsPredicates) {
 			predicateDefAnd.add(cmpNe(

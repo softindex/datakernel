@@ -364,6 +364,30 @@ public final class AsyncIterators {
 		};
 	}
 
+	public static <F, T> AsyncIterator<T> transform(final Iterator<F> iterator, final AsyncFunction<F, T> asyncFunction) {
+		return new AsyncIterator<T>() {
+			@Override
+			public void next(final IteratorCallback<T> callback) {
+				if (iterator.hasNext()) {
+					F from = iterator.next();
+					asyncFunction.apply(from, new ResultCallback<T>() {
+						@Override
+						public void onResult(T to) {
+							callback.onNext(to);
+						}
+
+						@Override
+						public void onException(Exception exception) {
+							callback.onException(exception);
+						}
+					});
+				}
+				else
+					callback.onEnd();
+			}
+		};
+	}
+
 	/**
 	 * Creates a new AsyncIterable which is applying AsyncFunction from argument to asyncIterable and calls
 	 * callback with result of this function
