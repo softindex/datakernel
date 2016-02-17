@@ -20,9 +20,14 @@ import org.junit.Test;
 
 import javax.management.DynamicMBean;
 import javax.management.ObjectName;
+import javax.management.openmbean.ArrayType;
+import javax.management.openmbean.SimpleType;
 import java.lang.management.ManagementFactory;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -33,19 +38,121 @@ public class Temp {
 	@Test
 	// TODO(vmykhalko): add unit test for this deep recursion case (mbean -> list -> pojo -> list -> pojo)
 	public void test() throws Exception {
-		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new TempService()), false);
-
-		ManagementFactory.getPlatformMBeanServer().registerMBean(
-				mbean, new ObjectName("io.check:type=TempService"));
-
-		Thread.sleep(Long.MAX_VALUE);
+//		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new TempService()), false);
+//
+//		ManagementFactory.getPlatformMBeanServer().registerMBean(
+//				mbean, new ObjectName("io.check:type=TempService"));
+//
+//		Thread.sleep(Long.MAX_VALUE);
 	}
 
 	@Test
-	public void test2() {
-//		boolean result = Object[].class.isAssignableFrom(String[].class);
-		boolean result = Long.TYPE.equals(long.class);
-		System.out.println(result);
+	public void test2() throws Exception {
+////		boolean result = Object[].class.isAssignableFrom(String[].class);
+//		boolean result = Long.TYPE.equals(long.class);
+//		System.out.println(result);
+
+//		SomeGen<String> gen = new SomeGen<>("name");
+//
+//		Method method = gen.getClass().getMethod("getValue");
+//
+//		System.out.println(method);
+
+//		JmxAccumulator acc = JmxAccumulators.defaultLongAccumulator();
+//
+//		acc.add("String");
+//
+//		System.out.println("bingo");
+
+//		Object arr = new String[]{"abc", "essqv"};
+//		Class<?> clazz = String[].class;
+//		System.out.println(clazz.getComponentType().getName());
+
+//		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new TempService2(new Person("Nick", null))), false);
+//
+//		ManagementFactory.getPlatformMBeanServer().registerMBean(
+//				mbean, new ObjectName("io.check:type=TempService2"));
+//
+//		Thread.sleep(Long.MAX_VALUE);
+//
+//		ArrayType<?> arrType = new ArrayType<>(1, new ArrayType<>(1, new ArrayType<>(1, SimpleType.INTEGER)));
+//		System.out.println(arrType);
+
+		Method method = Something.class.getMethod("getMap");
+		Method methodT = SomethingT.class.getMethod("getMap");
+
+
+		ParameterizedType parameterizedType = (ParameterizedType) method.getGenericReturnType();
+		ParameterizedType parameterizedTypeT = (ParameterizedType) methodT.getGenericReturnType();
+
+		System.out.println(parameterizedType);
+		System.out.println(parameterizedTypeT);
+
+
+	}
+
+	public static class Something {
+
+		public Map<String, Long> getMap() {
+			return null;
+		}
+	}
+
+	public static class SomethingT<Q> {
+		public Map<Q, Q> getMap() {
+			return null;
+		}
+	}
+
+	public static class SomeGen<T> {
+		private T value;
+
+		public SomeGen(T value) {
+			this.value = value;
+		}
+
+		public T getValue() {
+			return value;
+		}
+	}
+
+	public static final class TempService2 implements ConcurrentJmxMBean {
+
+		private final Person person;
+
+		public TempService2(Person person) {
+			this.person = person;
+		}
+
+		@JmxAttribute
+		public Person getPerson() {
+			return person;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
+		}
+	}
+
+	public static final class Person {
+		private String name;
+		private String surname;
+
+		public Person(String name, String surname) {
+			this.name = name;
+			this.surname = surname;
+		}
+
+		@JmxAttribute
+		public String getName() {
+			return name;
+		}
+
+		@JmxAttribute
+		public String getSurname() {
+			return surname;
+		}
 	}
 
 //	public interface TempServiceMXBean {
@@ -88,73 +195,73 @@ public class Temp {
 //		}
 //	}
 
-	public static final class TempService implements ConcurrentJmxMBean {
-		private List<Person> persons =
-				asList(new Person(10, "Winston", asList(new Address("5th avenu", 15), new Address("Ford", 23))),
-						new Person(150, "Alberto", new ArrayList<Address>()),
-						new Person(305, "Lukas", asList(new Address("Google", 205))));
-		private List<Long> sequence = asList(15L, 25L, 85L, 125L, 500L);
-
-		@JmxAttribute
-		public List<Person> getPersons() {
-			return persons;
-		}
-
-		@JmxAttribute
-		public List<Long> getSequence() {
-			return sequence;
-		}
-
-		@Override
-		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
-		}
-	}
-
-	public static final class Person {
-		private int id;
-		private String name;
-		private List<Address> addresses;
-
-		public Person(int id, String name, List<Address> addresses) {
-			this.id = id;
-			this.name = name;
-			this.addresses = addresses;
-		}
-
-		@JmxAttribute
-		public int getId() {
-			return id;
-		}
-
-		@JmxAttribute
-		public String getName() {
-			return name;
-		}
-
-		@JmxAttribute
-		public List<Address> getAddresses() {
-			return addresses;
-		}
-	}
-
-	public static final class Address {
-		private String street;
-		private int number;
-
-		public Address(String street, int number) {
-			this.street = street;
-			this.number = number;
-		}
-
-		@JmxAttribute
-		public String getStreet() {
-			return street;
-		}
-
-		@JmxAttribute
-		public int getNumber() {
-			return number;
-		}
-	}
+//	public static final class TempService implements ConcurrentJmxMBean {
+//		private List<Person> persons =
+//				asList(new Person(10, "Winston", asList(new Address("5th avenu", 15), new Address("Ford", 23))),
+//						new Person(150, "Alberto", new ArrayList<Address>()),
+//						new Person(305, "Lukas", asList(new Address("Google", 205))));
+//		private List<Long> sequence = asList(15L, 25L, 85L, 125L, 500L);
+//
+//		@JmxAttribute
+//		public List<Person> getPersons() {
+//			return persons;
+//		}
+//
+//		@JmxAttribute
+//		public List<Long> getSequence() {
+//			return sequence;
+//		}
+//
+//		@Override
+//		public Executor getJmxExecutor() {
+//			return Executors.newSingleThreadExecutor();
+//		}
+//	}
+//
+//	public static final class Person {
+//		private int id;
+//		private String name;
+//		private List<Address> addresses;
+//
+//		public Person(int id, String name, List<Address> addresses) {
+//			this.id = id;
+//			this.name = name;
+//			this.addresses = addresses;
+//		}
+//
+//		@JmxAttribute
+//		public int getId() {
+//			return id;
+//		}
+//
+//		@JmxAttribute
+//		public String getName() {
+//			return name;
+//		}
+//
+//		@JmxAttribute
+//		public List<Address> getAddresses() {
+//			return addresses;
+//		}
+//	}
+//
+//	public static final class Address {
+//		private String street;
+//		private int number;
+//
+//		public Address(String street, int number) {
+//			this.street = street;
+//			this.number = number;
+//		}
+//
+//		@JmxAttribute
+//		public String getStreet() {
+//			return street;
+//		}
+//
+//		@JmxAttribute
+//		public int getNumber() {
+//			return number;
+//		}
+//	}
 }

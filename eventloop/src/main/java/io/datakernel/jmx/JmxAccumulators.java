@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static io.datakernel.jmx.Utils.*;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
 public final class JmxAccumulators {
@@ -92,22 +94,274 @@ public final class JmxAccumulators {
 	}
 
 	@SuppressWarnings("unchecked")
-	public static <T extends JmxStats<T>> JmxAccumulator<T> getJmxStatsAccumulatorFor(JmxStats<T> jmxStats)
+	public static JmxAccumulator<?> getJmxStatsAccumulatorFor(Class<?> jmxStatsClass)
 			throws IllegalAccessException, InstantiationException {
-		return (JmxStats<T>) jmxStats.getClass().newInstance();
+		checkArgument(JmxStats.class.isAssignableFrom(jmxStatsClass));
+		return (JmxAccumulator<?>) jmxStatsClass.newInstance();
 	}
 
-//	public static Jmx
+	public static JmxAccumulator<?> getDefaultAccumulatorFor(Class<?> clazz) {
+		if (isPrimitiveType(clazz) || isPrimitiveTypeWrapper(clazz) || isString(clazz) || isThrowable(clazz)) {
+			return getEquivalenceAccumulator();
+		} else if (isArray(clazz)) {
+			return getArrayAccumulator();
+		} else if (isList(clazz)) {
+			return getListAccumulator();
+		}
+		throw new RuntimeException("There is no accumulator for " + clazz.getName());
+	}
 
-//	// TODO(vmykhalko): refactor considering Utils
-//	private static boolean isSimpleType(Class<?> clazz) {
-//		return boolean.class.isAssignableFrom(clazz)
-//				|| byte.class.isAssignableFrom(clazz)
-//				|| short.class.isAssignableFrom(clazz)
-//				|| char.class.isAssignableFrom(clazz)
-//				|| int.class.isAssignableFrom(clazz)
-//				|| long.class.isAssignableFrom(clazz)
-//				|| float.class.isAssignableFrom(clazz)
-//				|| double.class.isAssignableFrom(clazz);
-//	}
+	// default accumulators
+
+	public static JmxAccumulator<Boolean> defaultBooleanAccumulator() {
+		return new JmxAccumulator<Boolean>() {
+			private boolean initialized = false;
+			private Boolean value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(Boolean value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public Boolean getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
+
+	public static JmxAccumulator<Byte> defaultByteAccumulator() {
+		return new JmxAccumulator<Byte>() {
+			private boolean initialized = false;
+			private Byte value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(Byte value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public Byte getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
+
+	public static JmxAccumulator<Short> defaultShortAccumulator() {
+		return new JmxAccumulator<Short>() {
+			private boolean initialized = false;
+			private Short value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(Short value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public Short getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
+
+	public static JmxAccumulator<Character> defaultCharacterAccumulator() {
+		return new JmxAccumulator<Character>() {
+			private boolean initialized = false;
+			private Character value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(Character value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public Character getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
+
+	public static JmxAccumulator<Integer> defaultIntegerAccumulator() {
+		return new JmxAccumulator<Integer>() {
+			private boolean initialized = false;
+			private Integer value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(Integer value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public Integer getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
+
+	public static JmxAccumulator<Long> defaultLongAccumulator() {
+		return new JmxAccumulator<Long>() {
+			private boolean initialized = false;
+			private Long value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(Long value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public Long getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
+
+	public static JmxAccumulator<Float> defaultFloatAccumulator() {
+		return new JmxAccumulator<Float>() {
+			private boolean initialized = false;
+			private Float value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(Float value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public Float getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
+
+	public static JmxAccumulator<Double> defaultDoubleAccumulator() {
+		return new JmxAccumulator<Double>() {
+			private boolean initialized = false;
+			private Double value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(Double value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public Double getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
+
+	public static JmxAccumulator<String> defaultStringAccumulator() {
+		return new JmxAccumulator<String>() {
+			private boolean initialized = false;
+			private String value = null;
+			private boolean allValuesAreSame = true;
+
+			@Override
+			public void add(String value) {
+				if (allValuesAreSame) {
+					if (!initialized) {
+						this.initialized = true;
+						this.value = value;
+					} else {
+						allValuesAreSame = Objects.equals(this.value, value);
+					}
+				}
+			}
+
+			@JmxAttribute(skipName = true)
+			public String getValue() throws AggregationException{
+				if (!allValuesAreSame) {
+					throw new AggregationException();
+				}
+				return value;
+			}
+		};
+	}
 }

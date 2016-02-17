@@ -19,6 +19,7 @@ package io.datakernel.jmx;
 import javax.management.openmbean.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -60,47 +61,60 @@ public final class Utils {
 		}
 	}
 
-	public static OpenType<?> determineOpenTypeOfInstance(Object value) throws OpenDataException {
-		checkNotNull(value);
+//	public static OpenType<?> determineOpenTypeOfInstance(Object value) throws OpenDataException {
+//		checkNotNull(value);
+//
+//		Class<?> valueClass = value.getClass();
+//		if (clazzToSimpleType.containsKey(value.getClass())) {
+//			return clazzToSimpleType.get(valueClass);
+//		} else if (valueClass.isArray()) {
+//			return createProperArrayType((Object[]) value);
+//		} else if (value instanceof CompositeData) {
+//			CompositeData compositeData = (CompositeData) value;
+//			return compositeData.getCompositeType();
+//		} else if (value instanceof TabularData) {
+//			TabularData tabularData = (TabularData) value;
+//			return tabularData.getTabularType();
+//		} else {
+//			throw new IllegalArgumentException("Cannot find OpenType for instance of class " + valueClass.getName());
+//		}
+//	}
+//
+//	private static OpenType<?> createProperArrayType(Object[] array) throws OpenDataException {
+//		Class<?> arrayElementType = array.getClass().getComponentType();
+//
+//		if (clazzToSimpleType.containsKey(arrayElementType)) {
+//			return new ArrayType<>(1, clazzToSimpleType.get(arrayElementType));
+//		} else if (CompositeData.class.isAssignableFrom(arrayElementType)) {
+//			if (array.length != 0) {
+//				return new ArrayType<>(1, ((CompositeData) array[0]).getCompositeType());
+//			} else {
+//				return new ArrayType<>(1, DEFAULT_COMPOSITE_TYPE);
+//			}
+//		} else if (TabularData.class.isAssignableFrom(arrayElementType)) {
+//			if (array.length != 0) {
+//				return new ArrayType<>(1, ((TabularData) array[0]).getTabularType());
+//			} else {
+//				return new ArrayType<>(1, DEFAULT_TABULAR_TYPE);
+//			}
+//		} else if (arrayElementType.isArray()) {
+//			throw new RuntimeException("Only one-dimentional arrays are supported");
+//		} else {
+//			throw new RuntimeException("There is no support for array with type: " + arrayElementType.getName());
+//		}
+//	}
 
-		Class<?> valueClass = value.getClass();
-		if (clazzToSimpleType.containsKey(value.getClass())) {
-			return clazzToSimpleType.get(valueClass);
-		} else if (valueClass.isArray()) {
-			return createProperArrayType((Object[]) value);
-		} else if (value instanceof CompositeData) {
-			CompositeData compositeData = (CompositeData) value;
-			return compositeData.getCompositeType();
-		} else if (value instanceof TabularData) {
-			TabularData tabularData = (TabularData) value;
-			return tabularData.getTabularType();
-		} else {
-			throw new IllegalArgumentException("Cannot find OpenType for instance of class " + valueClass.getName());
-		}
-	}
+//	public static OpenType<?> determineOpenType() {
+//
+//	}
 
-	private static OpenType<?> createProperArrayType(Object[] array) throws OpenDataException {
-		Class<?> arrayElementType = array.getClass().getComponentType();
+//	public static ArrayType<?> arrayTypeFor(ParameterizedType type) {
+//
+//	}
 
-		if (clazzToSimpleType.containsKey(arrayElementType)) {
-			return new ArrayType<>(1, clazzToSimpleType.get(arrayElementType));
-		} else if (CompositeData.class.isAssignableFrom(arrayElementType)) {
-			if (array.length != 0) {
-				return new ArrayType<>(1, ((CompositeData) array[0]).getCompositeType());
-			} else {
-				return new ArrayType<>(1, DEFAULT_COMPOSITE_TYPE);
-			}
-		} else if (TabularData.class.isAssignableFrom(arrayElementType)) {
-			if (array.length != 0) {
-				return new ArrayType<>(1, ((TabularData) array[0]).getTabularType());
-			} else {
-				return new ArrayType<>(1, DEFAULT_TABULAR_TYPE);
-			}
-		} else if (arrayElementType.isArray()) {
-			throw new RuntimeException("Only one-dimentional arrays are supported");
-		} else {
-			throw new RuntimeException("There is no support for array with type: " + arrayElementType.getName());
-		}
+	public static OpenType<?> openTypeForAttribute(Method method) {
+		ParameterizedType pType = (ParameterizedType) method.getGenericReturnType();
+
 	}
 
 	public static String extractFieldNameFromGetter(Method method) {
@@ -175,6 +189,10 @@ public final class Utils {
 		return Object[].class.isAssignableFrom(clazz);
 	}
 
+	public static boolean isMap(Class<?> clazz) {
+		return Map.class.isAssignableFrom(clazz);
+	}
+
 	public static boolean isThrowable(Class<?> clazz) {
 		return Throwable.class.isAssignableFrom(clazz);
 	}
@@ -195,6 +213,12 @@ public final class Utils {
 		boolean returnsArray = Object[].class.isAssignableFrom(method.getReturnType());
 		boolean hasNoArgs = method.getParameterTypes().length == 0;
 		return isGetter(method) && returnsArray && hasNoArgs;
+	}
+
+	public static boolean isGetterOfMap(Method method) {
+		boolean returnsMap = Map.class.isAssignableFrom(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsMap && hasNoArgs;
 	}
 
 	public static boolean isGetterOfThrowable(Method method) {

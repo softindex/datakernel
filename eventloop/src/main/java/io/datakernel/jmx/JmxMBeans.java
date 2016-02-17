@@ -195,6 +195,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		List<MBeanAttributeInfo> pojoAttrs = fetchPojoAttributesInfo(monitorable.getClass());
 		attributes.addAll(pojoAttrs);
 
+		List<MBeanAttributeInfo> mapAttrs = fetchMapAttributesInfo(monitorable.getClass());
+		attributes.addAll(mapAttrs);
+
 		if (enableRefresh) {
 			addAttributesForRefreshControl(attributes);
 		}
@@ -246,6 +249,22 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Method[] methods = clazz.getMethods();
 		for (Method method : methods) {
 			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfArray(method)) {
+				String name = extractFieldNameFromGetter(method);
+				String type = String[].class.getName();
+				MBeanAttributeInfo attrInfo =
+						new MBeanAttributeInfo(name, type, ATTRIBUTE_DEFAULT_DESCRIPTION,
+								true, false, false);
+				attrList.add(attrInfo);
+			}
+		}
+		return attrList;
+	}
+
+	private static List<MBeanAttributeInfo> fetchMapAttributesInfo(Class<?> clazz) {
+		List<MBeanAttributeInfo> attrList = new ArrayList<>();
+		Method[] methods = clazz.getMethods();
+		for (Method method : methods) {
+			if (method.isAnnotationPresent(JmxAttribute.class) && isGetterOfMap(method)) {
 				String name = extractFieldNameFromGetter(method);
 				String type = String[].class.getName();
 				MBeanAttributeInfo attrInfo =
@@ -938,6 +957,19 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return builder.build();
 		}
 
+		private static CompositeData buildCompositeDataFromMap(Map<String, ?> map) {
+			try {
+				CompositeDataBuilder.Builder builder = CompositeDataBuilder.builder("CompositeData");
+				for (String key : map.keySet()) {
+					Object value = map.get(key);
+					builder.add(key, determineOpenTypeOfInstance(value), value);
+				}
+				return builder.build();
+			} catch (OpenDataException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
 		@Override
 		public void setAttribute(final Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
 				MBeanException, ReflectionException {
@@ -1092,46 +1124,93 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			nameToAttribute.putAll(fetchAndAccumulateArrayAttrs(objects));
 			nameToAttribute.putAll(fetchAndAccumulateThrowableAttrs(objects));
 			nameToAttribute.putAll(fetchAndAccumulateJmxStatsAttrs(objects));
+			nameToAttribute.putAll(fetchAndAccumulateMapAttrs(objects));
 			return nameToAttribute;
 		}
 
-		private static Map<String, Object> fetchAndAccumulateSimpleTypeAttrs(List<?> objects) {
+		private static Map<String, TypeAndValue> fetchAndAccumulateSimpleTypeAttrs(List<?> objects) {
 			// TODO (vmykhalko): add preconditions
 
-			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Map<String, TypeAndValue> nameToAccumulatedAttr = new HashMap<>();
 			Object first = objects.get(0);
 			List<Method> getters = fetchSimpleTypeAttrGetters(first.getClass());
 			for (Method getter : getters) {
 				String attrName = extractFieldNameFromGetter(getter);
-				JmxAccumulator<Object> accumulator = JmxAccumulators.getEquivalenceAccumulator();
+				List<Object> values = new ArrayList<>();
 				for (Object object : objects) {
-					Object currentValue = null;
+					Object currentValue;
 					try {
 						currentValue = getter.invoke(object);
-						accumulator.add(currentValue);
+						values.add(currentValue);
 					} catch (IllegalAccessException | InvocationTargetException e) {
 						logger.error(format("Cannot fetch attribute with name \"%s\" during accumulation", attrName), e);
-
-						// TODO(vmykhalko): is all this error-handling code essential ?
-						// because these exceptions are not business-logic, but programming error
-						// maybe just throw RuntimeException ?
-//						List<String> subAttrNames = fetchAttributeNames(accumulator);
-//						if (subAttrNames.size() == 1 && subAttrNames.get(0).equals(NO_NAME_ATTR_KEY)) {
-//							nameToAccumulatedAttr.put(attrName, e);
-//						} else {
-//							for (String subAttrName : subAttrNames) {
-//								nameToAccumulatedAttr.put(attrName + "_" + subAttrNames, e);
-//							}
-//						}
-
 						throw new RuntimeException(e);
 					}
 
 				}
-				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+				nameToAccumulatedAttr.putAll(
+						addPrefixToKeys(accumulateSimpleTypeAttrs(values, getter.getReturnType()), attrName));
 			}
-
 			return nameToAccumulatedAttr;
+		}
+
+		private static Map<String, TypeAndValue> accumulateSimpleTypeAttrs(List<?> attrs, Class<?> simpleTypeClass) {
+			JmxAccumulator accumulator = accumulatorForSimpleType(simpleTypeClass);
+			for (Object attr : attrs) {
+				accumulator.add(attr);
+			}
+			return fetchAttrNameToValueFromAccumulator(accumulator);
+		}
+
+		private static JmxAccumulator accumulatorForSimpleType(Class<?> returnType) {
+			if (returnType == boolean.class || returnType == Boolean.class) {
+				return JmxAccumulators.defaultBooleanAccumulator();
+			} else if (returnType == byte.class || returnType == Byte.class) {
+				return JmxAccumulators.defaultByteAccumulator();
+			} else if (returnType == short.class || returnType == Short.class) {
+				return JmxAccumulators.defaultShortAccumulator();
+			} else if (returnType == char.class || returnType == Character.class) {
+				return JmxAccumulators.defaultCharacterAccumulator();
+			} else if (returnType == int.class || returnType == Integer.class) {
+				return JmxAccumulators.defaultIntegerAccumulator();
+			} else if (returnType == long.class || returnType == Long.class) {
+				return JmxAccumulators.defaultLongAccumulator();
+			} else if (returnType == float.class || returnType == Float.class) {
+				return JmxAccumulators.defaultFloatAccumulator();
+			} else if (returnType == double.class || returnType == Double.class) {
+				return JmxAccumulators.defaultDoubleAccumulator();
+			} else if (returnType == String.class) {
+				return JmxAccumulators.defaultStringAccumulator();
+			}
+			throw new IllegalArgumentException("There is no accumulator for " + returnType.getName());
+		}
+
+		private static SimpleType<?> simpleTypeOf(Class<?> clazz) throws IllegalArgumentException {
+			if (clazz == boolean.class || clazz == Boolean.class) {
+				return SimpleType.BOOLEAN;
+			} else if (clazz == byte.class || clazz == Byte.class) {
+				return SimpleType.BYTE;
+			} else if (clazz == short.class || clazz == Short.class) {
+				return SimpleType.SHORT;
+			} else if (clazz == char.class || clazz == Character.class) {
+				return SimpleType.CHARACTER;
+			} else if (clazz == int.class || clazz == Integer.class) {
+				return SimpleType.INTEGER;
+			} else if (clazz == long.class || clazz == Long.class) {
+				return SimpleType.LONG;
+			} else if (clazz == float.class || clazz == Float.class) {
+				return SimpleType.FLOAT;
+			} else if (clazz == double.class || clazz == Double.class) {
+				return SimpleType.DOUBLE;
+			} else if (clazz == String.class) {
+				return SimpleType.STRING;
+			} else {
+				throw new IllegalArgumentException("There is no SimpleType for " + clazz.getName());
+			}
+		}
+
+		private static boolean isSimpleType(Class<?> clazz) {
+			return isPrimitiveType(clazz) || isPrimitiveTypeWrapper(clazz) || isString(clazz);
 		}
 
 		private static List<Method> fetchSimpleTypeAttrGetters(Class<?> clazz) {
@@ -1174,6 +1253,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return getters;
 		}
 
+		private static List<Method> fetchMapAttrGetters(Class<?> clazz) {
+			List<Method> getters = new ArrayList<>();
+			for (Method method : clazz.getMethods()) {
+				if (isGetterOfMap(method) && method.isAnnotationPresent(JmxAttribute.class)) {
+					getters.add(method);
+				}
+			}
+			return getters;
+		}
+
 		private static List<Method> fetchThrowableAttrGetters(Class<?> clazz) {
 			List<Method> getters = new ArrayList<>();
 			for (Method method : clazz.getMethods()) {
@@ -1194,34 +1283,71 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return getters;
 		}
 
-//		private static List<String> fetchAttributeNames(Object object) {
-//			List<Method> attributeGetters = fetchAllAttributeGetters(object);
-//			List<String> attrNames = new ArrayList<>();
-//			if (attributeGetters.size() == 1) {
-//				Method getter = attributeGetters.get(0);
-//				JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
-//				String attrName = attrAnnotation.skipName() ? NO_NAME_ATTR_KEY : extractFieldNameFromGetter(getter);
-//				attrNames.add(attrName);
-//			} else {
-//				for (Method getter : attributeGetters) {
-//					attrNames.add(extractFieldNameFromGetter(getter));
-//				}
-//			}
-//			return attrNames;
-//		}
-
 		/*
 		 * Collects attributes and convert them to be jmx compatible if necessary
 		 */
-		private static Map<String, Object> fetchAttrNameToValueFromAccumulator(JmxAccumulator accumulator) {
+		private static Map<String, TypeAndValue> fetchAttrNameToValueFromAccumulator(JmxAccumulator accumulator) {
+			checkNotNull(accumulator);
+
+			try {
+				List<Method> attributeGetters = fetchAllAttributeGetters(accumulator);
+				Map<String, TypeAndValue> attrNameToTypeAndValue = new HashMap<>();
+				if (attributeGetters.size() == 1) {
+					Method getter = attributeGetters.get(0);
+					JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
+					String attrName = attrAnnotation.skipName() ? NO_NAME_ATTR_KEY : extractFieldNameFromGetter(getter);
+					attrNameToTypeAndValue.put(attrName, fetchTypeAndValueFromAccumulatorGetter(getter, accumulator));
+				} else {
+					for (Method getter : attributeGetters) {
+						String attrName = extractFieldNameFromGetter(getter);
+						attrNameToTypeAndValue.put(attrName, fetchTypeAndValueFromAccumulatorGetter(getter, accumulator));
+					}
+				}
+				return attrNameToTypeAndValue;
+			} catch (IllegalAccessException | OpenDataException | InvocationTargetException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		private static TypeAndValue fetchTypeAndValueFromAccumulatorGetter(Method getter, JmxAccumulator<?> accumulator)
+				throws InvocationTargetException, IllegalAccessException, OpenDataException {
+			Object value = getter.invoke(accumulator);
+			Class<?> returnType = getter.getReturnType();
+			OpenType<?> attrType;
+			Object compatibleValue;
+			if (isSimpleType(returnType)) {
+				attrType = simpleTypeOf(returnType);
+				compatibleValue = value;
+			} else if (isThrowable(returnType)) {
+				CompositeData compositeData = buildCompositeDataForThrowable((Throwable) value);
+				attrType = compositeData.getCompositeType();
+				compatibleValue = compositeData;
+			} else if (isArray(returnType)) {
+				Class<?> arrayElementType = returnType.getComponentType();
+				if (isArray(arrayElementType)) {
+					throw new RuntimeException(
+							"There is no support for multi-dimensional arrays in JmxAccumulator");
+				}
+				if (!isSimpleType(arrayElementType)) {
+					throw new RuntimeException("Only arrays with Strings, primitives or their wrappers " +
+							"are supported in JmxAccumulator");
+				}
+				attrType = new ArrayType<>(1, simpleTypeOf(arrayElementType));
+				compatibleValue = value;
+			} else {
+				throw new RuntimeException("Only primitives, wrappers, Strings, " +
+						"Throwables and arrays are supported in JmxAccumulator");
+			}
+			return new TypeAndValue(attrType, compatibleValue);
+		}
+
+		private static Map<String, Object> fetchAttrNameToValueFromAccumulatorIgnoreSkipName(JmxAccumulator accumulator) {
 			checkNotNull(accumulator);
 
 			List<Method> attributeGetters = fetchAllAttributeGetters(accumulator);
 			Map<String, Object> attrNameToValue = new HashMap<>();
-			if (attributeGetters.size() == 1) {
-				Method getter = attributeGetters.get(0);
-				JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
-				String attrName = attrAnnotation.skipName() ? NO_NAME_ATTR_KEY : extractFieldNameFromGetter(getter);
+			for (Method getter : attributeGetters) {
+				String attrName = extractFieldNameFromGetter(getter);
 				try {
 					Object value = getter.invoke(accumulator);
 					attrNameToValue.put(attrName, ensureJmxCompatibility(value));
@@ -1229,20 +1355,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					logger.error(format("Cannot fetch attribute with name \"%s\"", attrName), e);
 					throw new RuntimeException(e);
 				} catch (InvocationTargetException e) {
-					if (e.getTargetException().getClass() == AggregationException.class) {
-						attrNameToValue.put(attrName, e.getTargetException());
+					if (e.getCause().getClass() == AggregationException.class) {
+						attrNameToValue.put(attrName, null);
 					} else {
-						throw new RuntimeException(e);
-					}
-				}
-			} else {
-				for (Method getter : attributeGetters) {
-					String attrName = extractFieldNameFromGetter(getter);
-					try {
-						Object value = getter.invoke(accumulator);
-						attrNameToValue.put(attrName, ensureJmxCompatibility(value));
-					} catch (IllegalAccessException | InvocationTargetException e) {
-						logger.error(format("Cannot fetch attribute with name \"%s\"", attrName), e);
 						throw new RuntimeException(e);
 					}
 				}
@@ -1262,45 +1377,100 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return attributeGetters;
 		}
 
-		private static Object ensureJmxCompatibility(Object object) {
-			Class clazz = object.getClass();
+		private static TypeAndValue ensureJmxCompatibility(Object value) {
+			checkNotNull(value);
+
+			Class clazz = value.getClass();
 			if (isPrimitiveType(clazz) || isPrimitiveTypeWrapper(clazz) || isString(clazz)) {
-				return object;
+				return new TypeAndValue(simpleTypeOf(clazz), value);
 			} else if (isList(clazz)) {
-				return ensureListElementsJmxCompatibility((List<?>) object);
-			} else if (isArray(clazz)) {
-				return ensureListElementsJmxCompatibility(asList((Object[]) object));
-			} else if (isThrowable(clazz)) {
+				return jmxCompatibleArrayOf((List<?>) value);
+			} else if (isMap(clazz)) {
+				return tabularDataOf((Map<?, ?> value))
+			}else if (isThrowable(clazz)) {
 				try {
-					return buildCompositeDataForThrowable((Throwable) object);
+					return buildCompositeDataForThrowable((Throwable) value);
 				} catch (OpenDataException e) {
 					throw new RuntimeException(e);
 				}
 			} else {
 				try {
-					return buildCompositeDataForPojo(object);
+					return buildCompositeDataForPojo(value);
 				} catch (OpenDataException e) {
 					throw new RuntimeException(e);
 				}
 			}
 		}
 
-		private static Object[] ensureListElementsJmxCompatibility(List<?> list) {
-			List<Object> outputList = new ArrayList<>();
-			Class<?> listElementActualType = null;
+		private static boolean containsAtLeastOneNonEmptyElement(List<?> list) {
+			return findFirstNotEmptyElementInList(list) != null;
+		}
+
+		private static boolean containsAtLeastOneNonEmptyElement(Map<?, ?> map) {
+			return findFirstNotEmptyElementInMap(map) != null;
+		}
+
+		private static Object findFirstNotEmptyElementInList(List<?> list) {
+			if (list == null) {
+				return null;
+			}
 			for (Object element : list) {
-				Object jmxCompatibleElement = ensureJmxCompatibility(element);
-				if (jmxCompatibleElement != null) {
-					Class<?> currentElementType = jmxCompatibleElement.getClass();
-					if (listElementActualType == null) {
-						listElementActualType = currentElementType;
-					} else if (listElementActualType != currentElementType) {
-						String errorMsg = "Error. At least two list element types are different";
-						logger.error(errorMsg);
-						throw new RuntimeException(errorMsg);
+				if (element != null) {
+					if (element instanceof List) {
+						return findFirstNotEmptyElementInList((List<?>) element) != null ? element : null;
+					} else if (element instanceof Map) {
+						return findFirstNotEmptyElementInMap((Map<?, ?>) element) != null ? element : null;
+					} else {
+						return element;
 					}
 				}
-				outputList.add(jmxCompatibleElement);
+			}
+			return null;
+		}
+
+		private static Object findFirstNotEmptyElementInMap(Map<?, ?> map) {
+			if (map == null) {
+				return null;
+			}
+			for (Map.Entry<?, ?> entry : map.entrySet()) {
+				Object key = entry.getKey();
+				Object value = entry.getValue();
+				if (key != null && value != null) {
+					if (value instanceof List) {
+						return findFirstNotEmptyElementInList((List<?>) value) != null ? value : null;
+					} else if (value instanceof Map) {
+						return findFirstNotEmptyElementInMap((Map<?, ?>) value) != null ? value : null;
+					} else {
+						return value;
+					}
+				}
+			}
+			return null;
+		}
+
+		private static TypeAndValue jmxCompatibleArrayOf(List<?> list) {
+			// TODO(vmykhalko): start here (17.02.2016)
+			// TODO(vmykhalko): try to filter empty element in some way
+			List<Object> outputList = new ArrayList<>();
+			Object firstNonEmptyElement = findFirstNotEmptyElementInList(list);
+			OpenType<?> openType = ensureJmxCompatibility(firstNonEmptyElement).getType();
+			Class<?> listElementActualType = null;
+			for (Object element : list) {
+				if (element != null) {
+					TypeAndValue jmxCompatibleElement = ensureJmxCompatibility(element);
+
+//					if (jmxCompatibleElement != null) {
+//						Class<?> currentElementType = jmxCompatibleElement.getClass();
+//						if (listElementActualType == null) {
+//							listElementActualType = currentElementType;
+//						} else if (listElementActualType != currentElementType) {
+//							String errorMsg = "Error. At least two list element types are different";
+//							logger.error(errorMsg);
+//							throw new RuntimeException(errorMsg);
+//						}
+//					}
+//					outputList.add(jmxCompatibleElement);
+				}
 			}
 
 			if (listElementActualType == null) {
@@ -1315,10 +1485,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return array;
 		}
 
-		private static Map<String, Object> fetchAndAccumulatePojoAttrs(List<?> objects) {
+		private static Map<String, TypeAndValue> fetchAndAccumulatePojoAttrs(List<?> objects) {
 			// TODO (vmykhalko): add preconditions
 
-			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Map<String, TypeAndValue> nameToAccumulatedAttr = new HashMap<>();
 			Object first = objects.get(0);
 			List<Method> getters = fetchPojoAttrGetters(first.getClass());
 			for (Method getter : getters) {
@@ -1334,53 +1504,38 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					}
 				}
 
-				Map<String, Object> accumulatedSimpleTypeAttrsOfCurrentPojo =
-						fetchAndAccumulateSimpleTypeAttrs(currentPojos);
-				for (String subName : accumulatedSimpleTypeAttrsOfCurrentPojo.keySet()) {
-					nameToAccumulatedAttr.put(pojoName + "_" + subName,
-							accumulatedSimpleTypeAttrsOfCurrentPojo.get(subName));
-				}
-
-				Map<String, Object> accumulatedInnerPojoAttrsOfCurrentPojo =
-						fetchAndAccumulatePojoAttrs(currentPojos);
-				for (String subName : accumulatedInnerPojoAttrsOfCurrentPojo.keySet()) {
-					nameToAccumulatedAttr.put(pojoName + "_" + subName,
-							accumulatedInnerPojoAttrsOfCurrentPojo.get(subName));
-				}
-
-				Map<String, Object> accumulatedListAttrsOfCurrentPojo =
-						fetchAndAccumulateListAttrs(currentPojos);
-				for (String subName : accumulatedListAttrsOfCurrentPojo.keySet()) {
-					nameToAccumulatedAttr.put(pojoName + "_" + subName,
-							accumulatedListAttrsOfCurrentPojo.get(subName));
-				}
-
-				Map<String, Object> accumulatedArrayAttrsOfCurrentPojo =
-						fetchAndAccumulateArrayAttrs(currentPojos);
-				for (String subName : accumulatedArrayAttrsOfCurrentPojo.keySet()) {
-					nameToAccumulatedAttr.put(pojoName + "_" + subName,
-							accumulatedArrayAttrsOfCurrentPojo.get(subName));
-				}
-
-				Map<String, Object> accumulatedThrowableAttrsOfCurrentPojo =
-						fetchAndAccumulateThrowableAttrs(currentPojos);
-				for (String subName : accumulatedThrowableAttrsOfCurrentPojo.keySet()) {
-					nameToAccumulatedAttr.put(pojoName + "_" + subName,
-							accumulatedThrowableAttrsOfCurrentPojo.get(subName));
-				}
-
-				Map<String, Object> accumulatedJmxStatsAttrsOfCurrentPojo =
-						fetchAndAccumulateJmxStatsAttrs(currentPojos);
-				for (String subName : accumulatedJmxStatsAttrsOfCurrentPojo.keySet()) {
-					nameToAccumulatedAttr.put(pojoName + "_" + subName,
-							accumulatedJmxStatsAttrsOfCurrentPojo.get(subName));
-				}
+				nameToAccumulatedAttr.putAll(addPrefixToKeys(accumulatePojos(currentPojos), pojoName));
 			}
 
 			return nameToAccumulatedAttr;
 		}
 
-		private static Map<String, Object> fetchAndAccumulateListAttrs(List<?> objects) {
+		private static Map<String, TypeAndValue> addPrefixToKeys(Map<String, TypeAndValue> map, String prefix) {
+			Map<String, TypeAndValue> mapWithPrefixes = new HashMap<>(map.size());
+			if (map.size() == 1 && map.containsKey(NO_NAME_ATTR_KEY)) {
+				mapWithPrefixes.put(prefix, map.get(NO_NAME_ATTR_KEY));
+			} else {
+				for (String key : map.keySet()) {
+					mapWithPrefixes.put(prefix + "_" + key, map.get(key));
+				}
+			}
+			return mapWithPrefixes;
+		}
+
+		private static Map<String, TypeAndValue> accumulatePojos(List<Object> pojos) {
+			Map<String, TypeAndValue> nameToAccumulatedAttr = new HashMap<>();
+
+			nameToAccumulatedAttr.putAll(fetchAndAccumulateSimpleTypeAttrs(pojos));
+			nameToAccumulatedAttr.putAll(fetchAndAccumulatePojoAttrs(pojos));
+			nameToAccumulatedAttr.putAll(fetchAndAccumulateListAttrs(pojos));
+			nameToAccumulatedAttr.putAll(fetchAndAccumulateThrowableAttrs(pojos));
+			nameToAccumulatedAttr.putAll(fetchAndAccumulateJmxStatsAttrs(pojos));
+			nameToAccumulatedAttr.putAll(fetchAndAccumulateMapAttrs(pojos));
+
+			return nameToAccumulatedAttr;
+		}
+
+		private static Map<String, TypeAndValue> fetchAndAccumulateListAttrs(List<?> objects) {
 			// TODO (vmykhalko): add preconditions
 			checkArgument(objects.size() > 0);
 
@@ -1389,23 +1544,38 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			List<Method> getters = fetchListAttrGetters(first.getClass());
 			for (Method getter : getters) {
 				String attrName = extractFieldNameFromGetter(getter);
-				JmxAccumulator<List<?>> accumulator = JmxAccumulators.getListAccumulator();
+				List<Object> flattenedList = new ArrayList<>();
 				for (Object object : objects) {
 					try {
 						List<?> currentList = (List<?>) getter.invoke(object);
-						accumulator.add(currentList);
+						if (currentList != null && currentList.size() > 0) {
+							flattenedList.addAll(currentList);
+						}
 					} catch (IllegalAccessException | InvocationTargetException e) {
-						logger.error(
-								format("Cannot fetch list attribute with name \"%s\" during accumulation", attrName),
-								e);
 						throw new RuntimeException(e);
 					}
 
 				}
-				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+
+				if (!containsAtLeastOneNonEmptyElement(flattenedList)) {
+					// if all lists are empty we can't determine OpenType, so let's assume it's empty list of Strings
+					TypeAndValue empty = new TypeAndValue(new ArrayType<>(1, SimpleType.STRING), new String[0]);
+					nameToAccumulatedAttr.put(attrName, empty);
+				} else {
+					// TODO (vmykhalko): check for absence of empty map and lists here
+					Object jmxCompatibleValue = jmxCompatibleArrayOf(flattenedList);
+					OpenType<?> type = determineOpenTypeOfInstance(jmxCompatibleValue);
+
+				}
+
+
+
+				nameToAccumulatedAttr.putAll(extractAttrsFromAccumulator(attrName, accumulator));
 			}
 			return nameToAccumulatedAttr;
 		}
+
+//		private static OpenType<?>
 
 		private static Map<String, Object> fetchAndAccumulateArrayAttrs(List<?> objects) {
 			// TODO (vmykhalko): add preconditions
@@ -1428,9 +1598,172 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					}
 
 				}
-				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+				nameToAccumulatedAttr.putAll(extractAttrsFromAccumulator(attrName, accumulator));
 			}
 			return nameToAccumulatedAttr;
+		}
+
+		private static Map<String, Object> fetchAndAccumulateMapAttrs(List<?> objects) {
+			// TODO (vmykhalko): add preconditions
+			checkArgument(objects.size() > 0);
+
+			Map<String, Object> nameToAccumulatedAttr = new HashMap<>();
+			Object first = objects.get(0);
+			List<Method> getters = fetchMapAttrGetters(first.getClass());
+			for (Method getter : getters) {
+				String attrName = extractFieldNameFromGetter(getter);
+				Map<?, ?> firstNotEmptyMap = findFirstNotEmptyMap(objects, getter);
+				Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(objects, getter);
+				Class<?> mapValueClass = checkNotNull(extractOneValueFromMap(firstNotEmptyMap)).getClass();
+
+				if (JmxStats.class.isAssignableFrom(mapValueClass)) {
+					List<CompositeData> compositeDataList = new ArrayList<>();
+					for (Object key : groupedByKey.keySet()) {
+						List<JmxStats<?>> jmxStatsList = new ArrayList<>();
+						for (Object jmxStats : groupedByKey.get(key)) {
+							jmxStatsList.add((JmxStats<?>) jmxStats);
+						}
+						JmxAccumulator<?> accumulator = accumulateJmxStatsAttrs(jmxStatsList);
+						Map<String, TypeAndValue> nameToAccumulatedAttrForCurrentMapValue = new HashMap<>();
+						nameToAccumulatedAttrForCurrentMapValue.put("_key", key.toString());
+						nameToAccumulatedAttrForCurrentMapValue.putAll(fetchAttrNameToValueFromAccumulator(accumulator));
+						CompositeData compositeData = buildCompositeDataFromMap(nameToAccumulatedAttrForCurrentMapValue);
+						compositeDataList.add(compositeData);
+					}
+
+					check(compositeDataList.size() > 0);
+
+					try {
+						TabularType tabularType = new TabularType("TabularType", "TabularType",
+								compositeDataList.get(0).getCompositeType(), new String[]{"_key"});
+						TabularDataSupport tabularDataSupport = new TabularDataSupport(tabularType);
+						for (CompositeData compositeData : compositeDataList) {
+							tabularDataSupport.put(compositeData);
+						}
+						nameToAccumulatedAttr.put(attrName, tabularDataSupport);
+					} catch (OpenDataException e) {
+						throw new RuntimeException(e);
+					}
+
+				} else if (isPrimitiveType(mapValueClass) || isPrimitiveTypeWrapper(mapValueClass)
+						|| isString(mapValueClass) || isThrowable(mapValueClass)) {
+					List<CompositeData> compositeDataList = new ArrayList<>();
+					for (Object key : groupedByKey.keySet()) {
+						List<Object> values = new ArrayList<>();
+						for (Object value : groupedByKey.get(key)) {
+							values.add(value);
+						}
+						JmxAccumulator<?> accumulator = accumulateSimpleTypeAttrs(values);
+						Map<String, Object> nameToAccumulatedAttrForCurrentMapValue = new HashMap<>();
+						nameToAccumulatedAttrForCurrentMapValue.put("_key", key.toString());
+						nameToAccumulatedAttrForCurrentMapValue.putAll(fetchAttrNameToValueFromAccumulatorIgnoreSkipName(accumulator));
+						CompositeData compositeData = buildCompositeDataFromMap(nameToAccumulatedAttrForCurrentMapValue);
+						compositeDataList.add(compositeData);
+					}
+
+					check(compositeDataList.size() > 0);
+
+					try {
+						TabularType tabularType = new TabularType("TabularType", "TabularType",
+								compositeDataList.get(0).getCompositeType(), new String[]{"_key"});
+						TabularDataSupport tabularDataSupport = new TabularDataSupport(tabularType);
+						for (CompositeData compositeData : compositeDataList) {
+							tabularDataSupport.put(compositeData);
+						}
+						nameToAccumulatedAttr.put(attrName, tabularDataSupport);
+					} catch (OpenDataException e) {
+						throw new RuntimeException(e);
+					}
+				} else {
+					List<CompositeData> compositeDataList = new ArrayList<>();
+					for (Object key : groupedByKey.keySet()) {
+						List<Object> values = new ArrayList<>();
+						for (Object value : groupedByKey.get(key)) {
+							values.add(value);
+						}
+						JmxAccumulator<?> accumulator = accumulateSimpleTypeAttrs(values);
+						Map<String, Object> nameToAccumulatedAttrForCurrentMapValue = new HashMap<>();
+						nameToAccumulatedAttrForCurrentMapValue.put("_key", key.toString());
+						nameToAccumulatedAttrForCurrentMapValue.putAll(fetchAttrNameToValueFromAccumulatorIgnoreSkipName(accumulator));
+						CompositeData compositeData = buildCompositeDataFromMap(nameToAccumulatedAttrForCurrentMapValue);
+						compositeDataList.add(compositeData);
+					}
+
+					check(compositeDataList.size() > 0);
+
+					try {
+						TabularType tabularType = new TabularType("TabularType", "TabularType",
+								compositeDataList.get(0).getCompositeType(), new String[]{"_key"});
+						TabularDataSupport tabularDataSupport = new TabularDataSupport(tabularType);
+						for (CompositeData compositeData : compositeDataList) {
+							tabularDataSupport.put(compositeData);
+						}
+						nameToAccumulatedAttr.put(attrName, tabularDataSupport);
+					} catch (OpenDataException e) {
+						throw new RuntimeException(e);
+					}
+				} // TODO (vmykhalko) add if-else case for array and list
+
+
+//				for (Object object : objects) {
+//					try {
+//						List<?> currentList = (List<?>) getter.invoke(object);
+//						accumulator.add(currentList);
+//					} catch (IllegalAccessException | InvocationTargetException e) {
+//						logger.error(
+//								format("Cannot fetch list attribute with name \"%s\" during accumulation", attrName),
+//								e);
+//						throw new RuntimeException(e);
+//					}
+//
+//				}
+//				extractAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+			}
+			return nameToAccumulatedAttr;
+		}
+
+		private static Object extractOneValueFromMap(Map<?, ?> map) {
+			Iterator<?> iterator = map.values().iterator();
+			return iterator.next();
+		}
+
+		private static Map<?, ?> findFirstNotEmptyMap(List<?> objects, Method mapGetter) {
+			for (Object object : objects) {
+				try {
+					Map<?, ?> map = (Map<?, ?>) mapGetter.invoke(object);
+					if (map != null && map.size() > 0) {
+						return map;
+					}
+				} catch (IllegalAccessException | InvocationTargetException e) {
+					throw new RuntimeException(e);
+				}
+			}
+			return null;
+		}
+
+		private static Map<Object, List<Object>> fetchMapsAndGroupEntriesByKey(List<?> objects, Method mapGetter) {
+			List<Map<?, ?>> listOfMaps = new ArrayList<>();
+			for (Object object : objects) {
+				try {
+					Map<?, ?> map = (Map<?, ?>) mapGetter.invoke(object);
+					if (map != null && map.size() > 0) {
+						listOfMaps.add(map);
+					}
+				} catch (IllegalAccessException | InvocationTargetException e) {
+					throw new RuntimeException(e);
+				}
+			}
+
+			Map<Object, List<Object>> grouped = new HashMap<>();
+			for (Map<?, ?> currentMap : listOfMaps) {
+				for (Object key : currentMap.keySet()) {
+					if (!grouped.containsKey(key)) {
+						grouped.put(key, new ArrayList<>());
+					}
+					grouped.get(key).add(currentMap.get(key));
+				}
+			}
+			return grouped;
 		}
 
 		private static Map<String, Object> fetchAndAccumulateThrowableAttrs(List<?> objects) {
@@ -1454,12 +1787,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						throw new RuntimeException(e);
 					}
 				}
-				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+				nameToAccumulatedAttr.putAll(extractAttrsFromAccumulator(attrName, accumulator));
 			}
 			return nameToAccumulatedAttr;
 		}
 
-		@SuppressWarnings("unchecked")
 		private static Map<String, Object> fetchAndAccumulateJmxStatsAttrs(List<?> objects) {
 			// TODO (vmykhalko): add preconditions
 
@@ -1468,18 +1800,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			List<Method> getters = fetchJmxStatsAttrGetters(first.getClass());
 			for (Method getter : getters) {
 				String attrName = extractFieldNameFromGetter(getter);
-				JmxAccumulator accumulator;
-				try {
-					JmxStats<?> firstObjectJmxStats = (JmxStats<?>) getter.invoke(first);
-					accumulator = JmxAccumulators.getJmxStatsAccumulatorFor(firstObjectJmxStats);
-				} catch (InvocationTargetException | InstantiationException | IllegalAccessException e) {
-					logger.error(format("Cannot start accumulation of JmxStats with name \"%s\"", attrName), e);
-					throw new RuntimeException(e);
-				}
+				List<JmxStats<?>> jmxStatsList = new ArrayList<>();
 				for (Object object : objects) {
 					try {
 						JmxStats<?> currentJmxStats = (JmxStats<?>) getter.invoke(object);
-						accumulator.add(currentJmxStats);
+						jmxStatsList.add(currentJmxStats);
 					} catch (IllegalAccessException | InvocationTargetException e) {
 						logger.error(
 								format("Cannot fetch JmxStats attribute with name \"%s\" during accumulation",
@@ -1488,21 +1813,50 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						throw new RuntimeException(e);
 					}
 				}
-				putAttrsFromAccumulator(nameToAccumulatedAttr, attrName, accumulator);
+				nameToAccumulatedAttr.putAll(
+						extractAttrsFromAccumulator(attrName, accumulateJmxStatsAttrs(jmxStatsList)));
 			}
 			return nameToAccumulatedAttr;
 		}
 
-		private static void putAttrsFromAccumulator(Map<String, Object> nameToAccumulatedAttr,
-		                                            String attrName, JmxAccumulator<?> accumulator) {
-			Map<String, Object> subAttrs = fetchAttrNameToValueFromAccumulator(accumulator);
+		@SuppressWarnings("unchecked")
+		private static JmxAccumulator<?> accumulateJmxStatsAttrs(List<JmxStats<?>> jmxStatsList) {
+			checkArgument(jmxStatsList.size() > 0);
+
+			JmxAccumulator accumulator;
+			try {
+				JmxStats<?> firstStats = jmxStatsList.get(0);
+				accumulator = JmxAccumulators.getJmxStatsAccumulatorFor(firstStats.getClass());
+			} catch (InstantiationException | IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
+			for (JmxStats<?> jmxStats : jmxStatsList) {
+				accumulator.add(jmxStats);
+			}
+			return accumulator;
+		}
+
+		private static JmxAccumulator<?> accumulateSimpleTypeAttrs(List<?> values) {
+			JmxAccumulator<Object> accumulator = JmxAccumulators.getEquivalenceAccumulator();
+			for (Object value : values) {
+				accumulator.add(value);
+			}
+			return accumulator;
+		}
+
+		private static Map<String, TypeAndValue> extractAttrsFromAccumulator(
+				String attrName, JmxAccumulator<?> accumulator) {
+
+			Map<String, TypeAndValue> subAttrs = fetchAttrNameToValueFromAccumulator(accumulator);
+			Map<String, TypeAndValue> attrs = new HashMap<>();
 			if (subAttrs.size() == 1 && subAttrs.containsKey(NO_NAME_ATTR_KEY)) {
-				nameToAccumulatedAttr.put(attrName, subAttrs.get(NO_NAME_ATTR_KEY));
+				attrs.put(attrName, subAttrs.get(NO_NAME_ATTR_KEY));
 			} else {
 				for (String subName : subAttrs.keySet()) {
-					nameToAccumulatedAttr.put(attrName + "_" + subName, subAttrs.get(subName));
+					attrs.put(attrName + "_" + subName, subAttrs.get(subName));
 				}
 			}
+			return attrs;
 		}
 
 		@Override
