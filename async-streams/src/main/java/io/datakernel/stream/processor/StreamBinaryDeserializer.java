@@ -182,8 +182,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						dataSize = 0;
 					}
 					nextBuf.position(off);
-					//noinspection AssertWithSideEffects
-					assert jmxItems != ++jmxItems;
+					++jmxItems;
 					downstreamDataReceiver.onData(item);
 				}
 

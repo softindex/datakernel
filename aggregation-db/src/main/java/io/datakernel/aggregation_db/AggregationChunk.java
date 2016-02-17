@@ -101,12 +101,13 @@ public class AggregationChunk {
 
 	@Override
 	public String toString() {
-		return MoreObjects.toStringHelper(this)
-				.add("revisionId", revisionId)
-				.add("chunkId", chunkId)
-				.add("minPrimaryKey", minPrimaryKey)
-				.add("maxPrimaryKey", maxPrimaryKey)
-				.add("count", count)
-				.toString();
+		return "{" +
+				"revision=" + revisionId +
+				", id=" + chunkId +
+				", fields=" + fields +
+				", minKey=" + minPrimaryKey +
+				", maxKey=" + maxPrimaryKey +
+				", count=" + count +
+				'}';
 	}
 }
