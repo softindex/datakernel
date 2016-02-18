@@ -433,11 +433,8 @@ public class Aggregation {
 			AggregationChunk chunk = (i != individualChunks.size()) ? individualChunks.get(i) : null;
 
 			boolean nextSequence = chunks.isEmpty() || chunk == null ||
-					getLast(chunks).getMaxPrimaryKey().compareTo(chunk.getMinPrimaryKey()) >= 0;
-
-			if (!nextSequence)
-				nextSequence = !intersection(newHashSet(getLast(chunks).getFields()), fieldsSet)
-						.equals(intersection(newHashSet(chunk.getFields()), fieldsSet));
+					getLast(chunks).getMaxPrimaryKey().compareTo(chunk.getMinPrimaryKey()) >= 0 ||
+					!newHashSet(getLast(chunks).getFields()).equals(newHashSet(chunk.getFields()));
 
 			if (nextSequence && !chunks.isEmpty()) {
 				List<String> sequenceFields = chunks.get(0).getFields();
