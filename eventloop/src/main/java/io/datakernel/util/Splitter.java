@@ -58,6 +58,11 @@ public final class Splitter {
 			currentSubStringStart = currentSeparatorPosition + 1;
 		}
 		splittedSubStrings[separatorsPositions.size()] = input.substring(currentSubStringStart, input.length());
+		if (shallTrim) {
+			for (int i = 0; i < splittedSubStrings.length; i++) {
+				splittedSubStrings[i] = splittedSubStrings[i].trim();
+			}
+		}
 		return splittedSubStrings;
 	}
 
@@ -82,6 +87,11 @@ public final class Splitter {
 			currentSubStringStart = currentSeparatorPosition + 1;
 		}
 		splitSubStrings.add(input.substring(currentSubStringStart, input.length()));
+		if (shallTrim) {
+			for (int i = 0; i < splitSubStrings.size(); i++) {
+				splitSubStrings.set(i, splitSubStrings.get(i).trim());
+			}
+		}
 		return splitSubStrings;
 	}
 

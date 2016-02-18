@@ -18,6 +18,9 @@ package io.datakernel.util;
 
 import org.junit.Test;
 
+import java.net.HttpCookie;
+import java.nio.file.Paths;
+
 import static org.junit.Assert.assertEquals;
 
 public class JoinerTest {
@@ -33,6 +36,16 @@ public class JoinerTest {
 
 		assertEquals("data1.data2.data3", resultOne);
 		assertEquals("data1!!!data2!!!data3", resultTwo);
+	}
+
+	@Test
+	public void itShouldJoinObjects() {
+		Object[] input = new Object[]{"data", Paths.get("file.txt"), 1, new HttpCookie("name", "value")};
+		Joiner joinerOne = Joiner.on(", ");
+
+		String resultOne = joinerOne.join(input);
+
+		assertEquals("data, file.txt, 1, name=\"value\"", resultOne);
 	}
 
 	@Test

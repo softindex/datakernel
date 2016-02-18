@@ -18,6 +18,8 @@ package io.datakernel.util;
 
 import org.junit.Test;
 
+import java.util.List;
+
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
@@ -67,5 +69,45 @@ public class SplitterTest {
 
 		int separatorsAmount = 4;
 		assertEquals(separatorsAmount + 1, subStrings.length);
+	}
+
+	@Test
+	public void testSplitToList() {
+		String separators = ";,.";
+		String input = "aaa,bbb;ccc.ddd";
+		Splitter splitter = Splitter.onAnyOf(separators);
+
+		List<String> result = splitter.splitToList(input);
+
+		assertEquals(4, result.size());
+		assertEquals("aaa", result.get(0));
+		assertEquals("bbb", result.get(1));
+		assertEquals("ccc", result.get(2));
+		assertEquals("ddd", result.get(3));
+	}
+
+	@Test
+	public void testTrim() {
+		String separators = ";,.";
+		String input = "aaa, bbb;    ccc    .      ddd   ";
+		Splitter splitter = Splitter.onAnyOf(separators)
+				.trimResults();
+
+		List<String> list = splitter.splitToList(input);
+
+		assertEquals(4, list.size());
+		assertEquals("aaa", list.get(0));
+		assertEquals("bbb", list.get(1));
+		assertEquals("ccc", list.get(2));
+		assertEquals("ddd", list.get(3));
+
+		String[] array = splitter.split(input);
+
+		assertEquals(4, array.length);
+		assertEquals("aaa", array[0]);
+		assertEquals("bbb", array[1]);
+		assertEquals("ccc", array[2]);
+		assertEquals("ddd", array[3]);
+
 	}
 }
