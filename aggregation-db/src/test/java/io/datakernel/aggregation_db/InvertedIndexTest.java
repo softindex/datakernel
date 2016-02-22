@@ -160,7 +160,7 @@ public class InvertedIndexTest {
 
 		AggregationQuery query = new AggregationQuery()
 				.keys(InvertedIndexRecord.KEYS)
-				.fields(InvertedIndexRecord.INPUT_FIELDS);
+				.fields(InvertedIndexRecord.OUTPUT_FIELDS);
 
 		StreamConsumers.ToList<InvertedIndexQueryResult> consumerToList = StreamConsumers.toList(eventloop);
 		aggregation.query(query, InvertedIndexQueryResult.class).streamTo(consumerToList);
