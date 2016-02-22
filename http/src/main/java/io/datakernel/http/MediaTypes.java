@@ -38,6 +38,7 @@ public final class MediaTypes {
 	public static final MediaType ANY_AUDIO = register("audio/*");
 	public static final MediaType ANY_VIDEO = register("video/*");
 
+	public static final MediaType X_WWW_FORM_URLENCODED = register("application/x-www-form-urlencoded");
 	public static final MediaType ATOM = register("application/atom+xml", "atom");
 	public static final MediaType EDI_X12 = register("application/EDI-X12");
 	public static final MediaType EDI_EDIFACT = register("application/EDIFACT");

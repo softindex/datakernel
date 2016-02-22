@@ -24,6 +24,7 @@ import java.util.*;
 
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
+import static io.datakernel.http.HttpMethod.POST;
 import static io.datakernel.http.HttpUtils.nullToEmpty;
 import static io.datakernel.util.ByteBufStrings.*;
 
@@ -206,7 +207,27 @@ public final class HttpRequest extends HttpMessage {
 	// internal
 	public Map<String, String> getParameters() {
 		assert !recycled;
+		if (method == POST && getContentType() != null
+				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
+				&& body.position() != body.limit()) {
+			return ensurePostParameters();
+		}
 		return url.getParameters();
+	}
+
+	private Map<String, String> ensurePostParameters() {
+		Map<String, String> parameters = url.getParameters();
+		parameters.putAll(HttpUtils.parse(decodeAscii(getBody())));
+		return parameters;
+	}
+
+	public String getParameter(String name) {
+		assert !recycled;
+		if (method == POST && getContentType() != null
+				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED) {
+			return ensurePostParameters().get(name);
+		}
+		return url.getParameter(name);
 	}
 
 	int getPos() {
@@ -249,11 +270,6 @@ public final class HttpRequest extends HttpMessage {
 	private final static int LONGEST_HTTP_METHOD_SIZE = 12;
 	private static final byte[] HTTP_1_1 = encodeAscii(" HTTP/1.1");
 	private static final int HTTP_1_1_SIZE = HTTP_1_1.length;
-
-	public String getParameter(String name) {
-		assert !recycled;
-		return url.getParameter(name);
-	}
 
 	public String getUrlParameter(String key) {
 		return urlParameters == null ? null : urlParameters.get(key);

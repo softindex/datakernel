@@ -17,6 +17,7 @@
 package io.datakernel.util;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
@@ -25,6 +26,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 public final class Splitter {
 	private final CharSequenceWrapper separators;
 	private boolean shallTrim;
+	private boolean omitEmptyStrings;
 
 	private Splitter(CharSequence separators) {
 		checkArgument(separators != null && separators.length() > 0);
@@ -42,31 +44,14 @@ public final class Splitter {
 	// TODO (vmykhalko): replace with static methods with appropriate parameters and move to Utils class
 	public String[] split(String input) {
 		// TODO (vmykhalko): inefficient implementation, make sure no garbage is created at all
-		List<Integer> separatorsPositions = new ArrayList<>(input.length());
-		for (int i = 0; i < input.length(); i++) {
-			char currentChar = input.charAt(i);
-			if (separators.contains(currentChar)) {
-				separatorsPositions.add(i);
-			}
-		}
-
-		String[] splittedSubStrings = new String[separatorsPositions.size() + 1];
-		int currentSubStringStart = 0;
-		for (int i = 0; i < separatorsPositions.size(); i++) {
-			int currentSeparatorPosition = separatorsPositions.get(i);
-			splittedSubStrings[i] = input.substring(currentSubStringStart, currentSeparatorPosition);
-			currentSubStringStart = currentSeparatorPosition + 1;
-		}
-		splittedSubStrings[separatorsPositions.size()] = input.substring(currentSubStringStart, input.length());
-		if (shallTrim) {
-			for (int i = 0; i < splittedSubStrings.length; i++) {
-				splittedSubStrings[i] = splittedSubStrings[i].trim();
-			}
-		}
-		return splittedSubStrings;
+		List<String> list = splitToList(input);
+		return list.toArray(new String[list.size()]);
 	}
 
 	public List<String> splitToList(String input) {
+		if (input.isEmpty()) {
+			return Collections.emptyList();
+		}
 		List<Integer> separatorsPositions = new ArrayList<>(input.length());
 		for (int i = 0; i < input.length(); i++) {
 			char currentChar = input.charAt(i);
@@ -75,7 +60,9 @@ public final class Splitter {
 			}
 		}
 
-		List<String> splitSubStrings = new ArrayList<>(separatorsPositions.size() + 1);
+
+
+		List<String> splitSubStrings = new ArrayList<>();
 		int currentSubStringStart = 0;
 		for (Integer separatorsPosition : separatorsPositions) {
 			int currentSeparatorPosition = separatorsPosition;
@@ -83,20 +70,28 @@ public final class Splitter {
 			if (shallTrim) {
 				result = result.trim();
 			}
-			splitSubStrings.add(result);
+			if (!omitEmptyStrings || !result.isEmpty()) {
+				splitSubStrings.add(result);
+			}
 			currentSubStringStart = currentSeparatorPosition + 1;
 		}
-		splitSubStrings.add(input.substring(currentSubStringStart, input.length()));
+		String last = input.substring(currentSubStringStart, input.length());
 		if (shallTrim) {
-			for (int i = 0; i < splitSubStrings.size(); i++) {
-				splitSubStrings.set(i, splitSubStrings.get(i).trim());
-			}
+			last = last.trim();
+		}
+		if (!omitEmptyStrings || !last.isEmpty()) {
+			splitSubStrings.add(last);
 		}
 		return splitSubStrings;
 	}
 
 	public Splitter trimResults() {
 		this.shallTrim = true;
+		return this;
+	}
+
+	public Splitter omitEmptyStrings() {
+		this.omitEmptyStrings = true;
 		return this;
 	}
 

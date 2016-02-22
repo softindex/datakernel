@@ -34,7 +34,7 @@ import static io.datakernel.util.ByteBufStrings.*;
  */
 public final class HttpUtils {
 	private static final Splitter commaSplitter = Splitter.on(',').trimResults();
-	private static final Splitter querySplitter = Splitter.on('&');
+	private static final Splitter querySplitter = Splitter.on('&').trimResults().omitEmptyStrings();
 	private static final String ENCODING = "UTF-8";
 
 	private static Pattern VALID_IPV4_PATTERN =

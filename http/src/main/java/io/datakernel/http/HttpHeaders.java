@@ -234,6 +234,11 @@ public final class HttpHeaders {
 		public void writeTo(ByteBuf buf) {
 			ContentType.render(type, buf);
 		}
+
+		@Override
+		public String toString() {
+			return type.toString();
+		}
 	}
 
 	private static final class ValueOfAcceptContentTypes extends Value {
