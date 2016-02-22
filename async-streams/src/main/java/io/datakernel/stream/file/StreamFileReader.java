@@ -173,6 +173,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					doFlush();
 				}
 			});
+			logger.trace("{}: posted flush", this);
 		}
 	}
 
@@ -189,7 +190,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 
 	@Override
 	protected void onStarted() {
-		logger.info("Starting working on file {}", asyncFile);
+		logger.info("{}: started reading", this);
 		postFlush();
 	}
 
@@ -203,9 +204,21 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 		logger.error("{}: onError", this, e);
 	}
 
-	private void doCleanup(CompletionCallback callback) {
-		logger.info("Closing file at path {}", asyncFile);
-		asyncFile.close(callback);
+	protected void doCleanup(final CompletionCallback callback) {
+		logger.info("{}: finished reading", this);
+		asyncFile.close(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				logger.trace("{}: closed file", this);
+				callback.onComplete();
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				logger.error("{}: failed to close file", this, exception);
+				callback.onException(exception);
+			}
+		});
 	}
 
 	private static AsyncFile getAsyncFile(Eventloop eventloop, ExecutorService executor, Path path) throws IOException {
@@ -216,7 +229,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 	public String toString() {
 		return "StreamFileReader{" + asyncFile +
 				", pos=" + position +
-				", len=" + length +
+				(length == Long.MAX_VALUE ? "" : ", len=" + length) +
 				(pendingAsyncOperation ? ", pendingAsyncOperation" : "") +
 				'}';
 	}

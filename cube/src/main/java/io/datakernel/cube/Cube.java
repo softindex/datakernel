@@ -153,6 +153,7 @@ public final class Cube implements ConcurrentJmxMBean {
 				partitioningKey, sorterItemsInMemory, sorterBlockSize, aggregationChunkSize);
 		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
 		aggregations.put(aggregationId, aggregation);
+		logger.info("Added aggregation {} for id '{}'", aggregation, aggregationId);
 	}
 
 	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata) {
@@ -211,7 +212,7 @@ public final class Cube implements ConcurrentJmxMBean {
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> dimensions, List<String> measures,
 	                                      AggregationQuery.QueryPredicates predicates,
 	                                      final ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>> callback) {
-		logger.trace("Started building StreamConsumer for populating cube {}.", this);
+		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensions, measures);
 
 		final StreamSplitter<T> streamSplitter = new StreamSplitter<>(eventloop);
 		final Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks = LinkedHashMultimap.create();
@@ -318,8 +319,6 @@ public final class Cube implements ConcurrentJmxMBean {
 	 * @return producer that streams query results
 	 */
 	public <T> StreamProducer<T> query(Class<T> resultClass, AggregationQuery query) {
-		logger.trace("Started building StreamProducer for query.");
-
 		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
 
 		Map<Aggregation, List<String>> aggregationsToAppliedPredicateKeys = findAggregationsForQuery(query);
@@ -365,15 +364,12 @@ public final class Cube implements ConcurrentJmxMBean {
 		} else
 			logger.info("Built query plan for {}: {}", query, queryPlan);
 
-		final StreamProducer<T> orderedResultStream = getOrderedResultStream(query, resultClass, streamReducer,
+		return getOrderedResultStream(query, resultClass, streamReducer,
 				query.getResultKeys(), query.getResultFields());
-
-		logger.trace("Finished building StreamProducer for query.");
-
-		return orderedResultStream;
 	}
 
 	public void loadChunks(CompletionCallback callback) {
+		logger.info("Loading chunks");
 		loadChunks(new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
@@ -386,16 +382,17 @@ public final class Cube implements ConcurrentJmxMBean {
 				}
 			});
 		} else {
+			logger.info("Loading chunks completed");
 			callback.onComplete();
 		}
 	}
 
-	public void consolidate(int maxChunksToConsolidate, String consolidatorId, ResultCallback<Boolean> callback) {
-		consolidate(maxChunksToConsolidate, consolidatorId, false,
-				new ArrayList<>(this.aggregations.values()).iterator(), callback);
+	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
+		logger.info("Launching consolidation");
+		consolidate(maxChunksToConsolidate, false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	private void consolidate(final int maxChunksToConsolidate, final String consolidatorId, final boolean found,
+	private void consolidate(final int maxChunksToConsolidate, final boolean found,
 	                         final Iterator<Aggregation> iterator, final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
@@ -405,13 +402,13 @@ public final class Cube implements ConcurrentJmxMBean {
 					aggregation.consolidate(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 						@Override
 						public void onResult(Boolean result) {
-							consolidate(maxChunksToConsolidate, consolidatorId, result || found, iterator, callback);
+							consolidate(maxChunksToConsolidate, result || found, iterator, callback);
 						}
 
 						@Override
 						public void onException(Exception exception) {
 							logger.error("Consolidating aggregation '{}' failed", aggregation, exception);
-							consolidate(maxChunksToConsolidate, consolidatorId, found, iterator, callback);
+							consolidate(maxChunksToConsolidate, found, iterator, callback);
 						}
 					});
 				} else {

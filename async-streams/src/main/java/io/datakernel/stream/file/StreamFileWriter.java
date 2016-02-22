@@ -97,13 +97,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	}
 
 	@Override
-	public String toString() {
-		return "StreamFileWriter{" +
-				"asyncFile=" + asyncFile +
-				'}';
-	}
-
-	@Override
 	public StreamDataReceiver<ByteBuf> getDataReceiver() {
 		return this;
 	}
@@ -118,7 +111,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				logger.trace("Completed writing in file {}", asyncFile);
+				logger.trace("{}: completed flush", StreamFileWriter.this);
 				position += length;
 				buf.recycle();
 				pendingAsyncOperation = false;
@@ -130,7 +123,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 			@Override
 			public void onException(final Exception e) {
-				logger.error("Failed to write data in file", e);
+				logger.error("{}: failed to flush", StreamFileWriter.this, e);
 				buf.recycle();
 				doCleanup(false, new SimpleCompletionCallback() {
 					@Override
@@ -145,7 +138,6 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	private void postFlush() {
 		if (!queue.isEmpty() && !pendingAsyncOperation) {
-			logger.trace("Writing in file {}", asyncFile);
 			pendingAsyncOperation = true;
 			eventloop.post(new Runnable() {
 				@Override
@@ -153,6 +145,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 					doFlush();
 				}
 			});
+			logger.trace("{}: posted flush", this);
 		}
 		if (getConsumerStatus() == END_OF_STREAM && queue.isEmpty() && !pendingAsyncOperation) {
 			pendingAsyncOperation = true;
@@ -160,6 +153,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 				@Override
 				public void onComplete() {
 					pendingAsyncOperation = false;
+					logger.info("{}: finished writing", StreamFileWriter.this);
 					if (flushCallback != null) {
 						flushCallback.onComplete();
 					}
@@ -189,7 +183,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 
 	@Override
 	protected void onStarted() {
-		logger.trace("Started writing to file {}", asyncFile);
+		logger.info("{}: started writing", this);
 	}
 
 	@Override
@@ -219,5 +213,13 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 					flushCallback.onException(e);
 			}
 		});
+	}
+
+	@Override
+	public String toString() {
+		return "StreamFileWriter{" +
+				"asyncFile=" + asyncFile +
+				", position=" + position +
+				'}';
 	}
 }

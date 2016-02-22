@@ -525,13 +525,13 @@ public class CubeTest {
 		eventloop.run();
 
 		ResultCallbackFuture<Boolean> future = new ResultCallbackFuture<>();
-		cube.consolidate(100, "consolidator", future);
+		cube.consolidate(100, future);
 
 		eventloop.run();
 		assertEquals(true, future.get());
 
 		future = new ResultCallbackFuture<>();
-		cube.consolidate(100, "consolidator", future);
+		cube.consolidate(100, future);
 
 		eventloop.run();
 		assertEquals(true, future.get());

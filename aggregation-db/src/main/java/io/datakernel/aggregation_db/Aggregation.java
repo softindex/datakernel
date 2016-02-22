@@ -84,6 +84,8 @@ public class Aggregation {
 
 	private int lastRevisionId;
 
+	private ListenableCompletionCallback loadChunksCallback;
+
 	/**
 	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
 	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
@@ -275,6 +277,9 @@ public class Aggregation {
 	@SuppressWarnings("unchecked")
 	public <T> StreamConsumer<T> consumer(Class<T> inputClass, List<String> inputFields, List<String> outputFields,
 	                                      ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+		logger.info("Started consuming data in aggregation {}. Input fields: {}. Output fields: {}",
+				this, inputFields, outputFields);
+
 		if (inputFields == null)
 			inputFields = getFields();
 
@@ -638,22 +643,44 @@ public class Aggregation {
 	}
 
 	public void loadChunks(final CompletionCallback callback) {
-		metadataStorage.loadChunks(lastRevisionId, new ForwardingResultCallback<LoadedChunks>(callback) {
+		if (loadChunksCallback != null) {
+			logger.info("Loading chunks for aggregation {} is already started. Added callback", this);
+			loadChunksCallback.addCallback(callback);
+			return;
+		}
+
+		logger.info("Loading chunks for aggregation {}", this);
+		loadChunksCallback = new ListenableCompletionCallback();
+		loadChunksCallback.addCallback(callback);
+		metadataStorage.loadChunks(lastRevisionId, new ResultCallback<LoadedChunks>() {
 			@Override
 			public void onResult(LoadedChunks loadedChunks) {
 				for (AggregationChunk newChunk : loadedChunks.newChunks) {
 					addToIndex(newChunk);
-					logger.info("Added chunk {} to index", newChunk);
+					logger.trace("Added chunk {} to index", newChunk);
 				}
 				for (Long consolidatedChunkId : loadedChunks.consolidatedChunkIds) {
 					AggregationChunk chunk = chunks.get(consolidatedChunkId);
 					if (chunk != null) {
 						removeFromIndex(chunk);
-						logger.info("Removed chunk {} from index", chunk);
+						logger.trace("Removed chunk {} from index", chunk);
 					}
 				}
 				Aggregation.this.lastRevisionId = loadedChunks.lastRevisionId;
-				callback.onComplete();
+				logger.info("Loading chunks for aggregation {} completed. " +
+						"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
+						Aggregation.this, loadedChunks.newChunks.size(), loadedChunks.consolidatedChunkIds.size(),
+						loadedChunks.lastRevisionId);
+
+				loadChunksCallback.onComplete();
+				loadChunksCallback = null;
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				logger.error("Loading chunks for aggregation {} failed", this, exception);
+				loadChunksCallback.onException(exception);
+				loadChunksCallback = null;
 			}
 		});
 	}

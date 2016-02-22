@@ -47,7 +47,7 @@ public final class AsyncFile implements File {
 	private final ExecutorService executor;
 	private final AsynchronousFileChannel channel;
 
-	private final String name;
+	private final Path path;
 
 	/**
 	 * Creates a new instance of AsyncFile
@@ -55,14 +55,13 @@ public final class AsyncFile implements File {
 	 * @param eventloop event loop in which a file will be used
 	 * @param executor  executor for running tasks in other thread
 	 * @param channel   an asynchronous channel for reading, writing, and manipulating a file.
-	 * @param name      name of the file
+	 * @param path      path of the file
 	 */
-	private AsyncFile(Eventloop eventloop, ExecutorService executor,
-	                  AsynchronousFileChannel channel, String name) {
+	private AsyncFile(Eventloop eventloop, ExecutorService executor, AsynchronousFileChannel channel, Path path) {
 		this.eventloop = checkNotNull(eventloop);
 		this.executor = checkNotNull(executor);
 		this.channel = checkNotNull(channel);
-		this.name = checkNotNull(name);
+		this.path = checkNotNull(path);
 	}
 
 	/**
@@ -76,7 +75,7 @@ public final class AsyncFile implements File {
 	public static AsyncFile open(final Eventloop eventloop, final ExecutorService executor,
 	                             final Path path, final OpenOption[] openOptions) throws IOException {
 		AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, openOptions);
-		return new AsyncFile(eventloop, executor, channel, path.getFileName().toString());
+		return new AsyncFile(eventloop, executor, channel, path);
 	}
 
 	/**
@@ -95,7 +94,7 @@ public final class AsyncFile implements File {
 			@Override
 			public T call() throws Exception {
 				AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, openOptions);
-				return (T) new AsyncFile(eventloop, executor, channel, path.getFileName().toString());
+				return (T) new AsyncFile(eventloop, executor, channel, path);
 			}
 		}, callback);
 	}
@@ -558,6 +557,6 @@ public final class AsyncFile implements File {
 
 	@Override
 	public String toString() {
-		return name;
+		return path.toString();
 	}
 }

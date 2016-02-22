@@ -32,17 +32,15 @@ public final class CubeConsolidatorService implements EventloopService {
 	private final Cube cube;
 	private final long nothingToConsolidateSleepTimeMillis;
 	private final int maxChunksToConsolidate;
-	private final String processId;
 
 	private ScheduledRunnable consolidationTask;
 
 	public CubeConsolidatorService(Eventloop eventloop, Cube cube, long nothingToConsolidateSleepTimeMillis,
-	                               int maxChunksToConsolidate, String processId) {
+	                               int maxChunksToConsolidate) {
 		this.eventloop = eventloop;
 		this.cube = cube;
 		this.nothingToConsolidateSleepTimeMillis = nothingToConsolidateSleepTimeMillis;
 		this.maxChunksToConsolidate = maxChunksToConsolidate;
-		this.processId = processId;
 	}
 
 	@Override
@@ -54,7 +52,7 @@ public final class CubeConsolidatorService implements EventloopService {
 		cube.loadChunks(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				cube.consolidate(maxChunksToConsolidate, processId, new ResultCallback<Boolean>() {
+				cube.consolidate(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 					@Override
 					public void onResult(Boolean consolidated) {
 						if (consolidated) {
