@@ -16,22 +16,6 @@
 
 package io.datakernel.jmx;
 
-import javax.management.openmbean.OpenType;
-
-public final class TypeAndValue {
-	private final OpenType<?> type;
-	private final Object value;
-
-	public TypeAndValue(OpenType<?> type, Object value) {
-		this.type = type;
-		this.value = value;
-	}
-
-	public OpenType<?> getType() {
-		return type;
-	}
-
-	public Object getValue() {
-		return value;
-	}
+interface ValueFetcher {
+	Object fetchFrom(Object source);
 }

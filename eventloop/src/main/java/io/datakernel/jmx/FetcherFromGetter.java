@@ -16,18 +16,24 @@
 
 package io.datakernel.jmx;
 
-/**
- * Common interface for accumulating different type of values
- * <p/>
- * It should have one or more getter, annotated with @JmxAttribute annotation.
- * Such methods are used for fetching values and are allowed to throw {@link AggregationException}
- *
- * @param <T> type of value to accumulate
- */
-public interface JmxAccumulator<T> {
-	void add(T value);
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
-	// TODO (vmykhalko): start here
-	// TODO (vmykhalko): is getAttributes() method essential ? if not this class can be renamed to JmxAccumulator
-//	SortedMap<String, TypeAndValue> getAttributes();
+import static io.datakernel.util.Preconditions.checkNotNull;
+
+class FetcherFromGetter implements ValueFetcher {
+	private final Method getter;
+
+	public FetcherFromGetter(Method getter) {
+		this.getter = checkNotNull(getter);
+	}
+
+	@Override
+	public Object fetchFrom(Object source) {
+		try {
+			return getter.invoke(source);
+		} catch (IllegalAccessException | InvocationTargetException e) {
+			throw new RuntimeException(e);
+		}
+	}
 }

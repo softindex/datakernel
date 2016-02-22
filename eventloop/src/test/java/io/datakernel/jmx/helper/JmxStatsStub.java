@@ -67,12 +67,4 @@ public final class JmxStatsStub implements JmxStats<JmxStatsStub> {
 		lastSmoothingWindow = smoothingWindow;
 		++refreshStatsInvocations;
 	}
-
-//	@Override
-//	public SortedMap<String, TypeAndValue> getAttributes() {
-//		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
-//		attributes.put("sum", new TypeAndValue(SimpleType.LONG, sum));
-//		attributes.put("count", new TypeAndValue(SimpleType.INTEGER, count));
-//		return attributes;
-//	}
 }

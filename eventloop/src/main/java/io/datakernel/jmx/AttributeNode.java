@@ -22,7 +22,9 @@ import java.util.Map;
 
 interface AttributeNode {
 	String getName();
+
 	OpenType<?> getOpenType();
+	Map<String, OpenType<?>> getFlattenedOpenTypes();
 
 	Map<String, Object> aggregateAllAttributes(List<?> pojos);
 
@@ -34,5 +36,6 @@ interface AttributeNode {
 	 */
 	Object aggregateAttribute(List<?> pojos, String attrName);
 
-//	void refreshStats(List<?> objects);
+	void refresh(List<?> pojos, long timestamp, double smoothingWindow);
+	boolean isRefreshable();
 }

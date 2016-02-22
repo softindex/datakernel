@@ -56,9 +56,6 @@ public class ExceptionStatsTest {
 		Object causedObject = "cause";
 		long timestamp = 1000L;
 		stats.recordException(exception, causedObject, timestamp);
-//
-//		SortedMap<String, TypeAndValue> attributes = stats.getAttributes();
-//		assertEquals(3, attributes.size());
 
 		assertEquals(exception, stats.getLastException());
 		assertEquals(timestamp, stats.getLastExceptionTimestamp());
@@ -93,9 +90,6 @@ public class ExceptionStatsTest {
 		accumulator.add(stats_3);
 
 //		// check
-//		SortedMap<String, TypeAndValue> attributes = accumulator.getAttributes();
-//		assertEquals(3, attributes.size());
-
 		// exception in stats_2 has most recent timestamp
 		assertEquals(exception_2, accumulator.getLastException());
 		assertEquals(timestamp_2, accumulator.getLastExceptionTimestamp());

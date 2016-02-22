@@ -16,16 +16,20 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Test;
 
 import javax.management.DynamicMBean;
 import javax.management.ObjectName;
 import javax.management.openmbean.ArrayType;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.SimpleType;
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -58,7 +62,6 @@ public class Temp {
 //
 //		System.out.println(method);
 
-//		JmxAccumulator acc = JmxAccumulators.defaultLongAccumulator();
 //
 //		acc.add("String");
 //
@@ -78,17 +81,111 @@ public class Temp {
 //		ArrayType<?> arrType = new ArrayType<>(1, new ArrayType<>(1, new ArrayType<>(1, SimpleType.INTEGER)));
 //		System.out.println(arrType);
 
-		Method method = Something.class.getMethod("getMap");
-		Method methodT = SomethingT.class.getMethod("getMap");
+//		Method method = Something.class.getMethod("getMap");
+//		Method methodT = SomethingT.class.getMethod("getMap");
+//
+//
+//		ParameterizedType parameterizedType = (ParameterizedType) method.getGenericReturnType();
+//		ParameterizedType parameterizedTypeT = (ParameterizedType) methodT.getGenericReturnType();
+//
+//		System.out.println(parameterizedType);
+//		System.out.println(parameterizedTypeT);
+
+		Method method = SomethingL.class.getMethod("getList");
+
+		System.out.println(method);
 
 
-		ParameterizedType parameterizedType = (ParameterizedType) method.getGenericReturnType();
-		ParameterizedType parameterizedTypeT = (ParameterizedType) methodT.getGenericReturnType();
+	}
 
-		System.out.println(parameterizedType);
-		System.out.println(parameterizedTypeT);
+	@Test
+	public void test3() throws NoSuchMethodException, OpenDataException {
+//		Method method = Temp3.class.getMethod("getter");
+//		System.out.println(method);
+		ArrayType arrayType = new ArrayType(1, new ArrayType<>(1, SimpleType.STRING));
+		CompositeData cd = CompositeDataBuilder.builder("bingo").add("count", SimpleType.INTEGER, 10).build();
+		System.out.println(arrayType.getClassName());
 
 
+
+//		PojoAttributeNode root = JmxMBeans.createAttributesTree(TempService.class);
+//		JmxStatsStub stats_1 = new JmxStatsStub();
+//		stats_1.recordValue(100);
+//		JmxStatsStub stats_2 = new JmxStatsStub();
+//		stats_2.recordValue(120);
+//
+//		Map<String, JmxStatsStub> map_1 = new HashMap<>();
+//		map_1.put("key-1", stats_1);
+//		map_1.put("key-2", stats_2);
+//
+//
+//		JmxStatsStub stats_2_1 = new JmxStatsStub();
+//		stats_2_1.recordValue(130);
+//		JmxStatsStub stats_3 = new JmxStatsStub();
+//		stats_3.recordValue(1000);
+//
+//		Map<String, JmxStatsStub> map_2 = new HashMap<>();
+//		map_2.put("key-2", stats_2_1);
+//		map_2.put("key-3", stats_3);
+//
+//		Object object = root.aggregateAllAttributes(asList(new TempService(map_1), new TempService(map_2)));
+//		System.out.println(object);
+	}
+
+	public static final class TempService {
+		private final Map<String, JmxStatsStub> map;
+
+		public TempService(Map<String, JmxStatsStub> map) {
+			this.map = map;
+		}
+
+		@JmxAttribute
+		public Map<String, JmxStatsStub> getMapAttr() {
+			return map;
+		}
+
+		//		@JmxAttribute
+//		public List<PojoOne> getListAttr() {
+//			return asList(new PojoOne("Star Wars", 10), new PojoOne("Lukas Films", 250));
+//		}
+//		@JmxAttribute
+//		public long getCount() {
+//			return count;
+//		}
+//
+//		@JmxAttribute
+//		public PojoOne getPojoOneInstance() {
+//			return new PojoOne();
+//		}
+
+
+	}
+
+	public static final class PojoOne {
+		private final String info;
+		private final int id;
+
+		public PojoOne(String info, int id) {
+			this.info = info;
+			this.id = id;
+		}
+
+		@JmxAttribute
+		public String getInfo() {
+			return info;
+		}
+
+		@JmxAttribute
+		public int getId() {
+			return id;
+		}
+	}
+
+	public static final class Temp3 {
+
+		public JmxStatsStub getter() {
+			return null;
+		}
 	}
 
 	public static class Something {
@@ -100,6 +197,12 @@ public class Temp {
 
 	public static class SomethingT<Q> {
 		public Map<Q, Q> getMap() {
+			return null;
+		}
+	}
+
+	public static class SomethingL {
+		public List<List<String>> getList() {
 			return null;
 		}
 	}

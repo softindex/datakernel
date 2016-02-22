@@ -61,62 +61,6 @@ public final class Utils {
 		}
 	}
 
-//	public static OpenType<?> determineOpenTypeOfInstance(Object value) throws OpenDataException {
-//		checkNotNull(value);
-//
-//		Class<?> valueClass = value.getClass();
-//		if (clazzToSimpleType.containsKey(value.getClass())) {
-//			return clazzToSimpleType.get(valueClass);
-//		} else if (valueClass.isArray()) {
-//			return createProperArrayType((Object[]) value);
-//		} else if (value instanceof CompositeData) {
-//			CompositeData compositeData = (CompositeData) value;
-//			return compositeData.getCompositeType();
-//		} else if (value instanceof TabularData) {
-//			TabularData tabularData = (TabularData) value;
-//			return tabularData.getTabularType();
-//		} else {
-//			throw new IllegalArgumentException("Cannot find OpenType for instance of class " + valueClass.getName());
-//		}
-//	}
-//
-//	private static OpenType<?> createProperArrayType(Object[] array) throws OpenDataException {
-//		Class<?> arrayElementType = array.getClass().getComponentType();
-//
-//		if (clazzToSimpleType.containsKey(arrayElementType)) {
-//			return new ArrayType<>(1, clazzToSimpleType.get(arrayElementType));
-//		} else if (CompositeData.class.isAssignableFrom(arrayElementType)) {
-//			if (array.length != 0) {
-//				return new ArrayType<>(1, ((CompositeData) array[0]).getCompositeType());
-//			} else {
-//				return new ArrayType<>(1, DEFAULT_COMPOSITE_TYPE);
-//			}
-//		} else if (TabularData.class.isAssignableFrom(arrayElementType)) {
-//			if (array.length != 0) {
-//				return new ArrayType<>(1, ((TabularData) array[0]).getTabularType());
-//			} else {
-//				return new ArrayType<>(1, DEFAULT_TABULAR_TYPE);
-//			}
-//		} else if (arrayElementType.isArray()) {
-//			throw new RuntimeException("Only one-dimentional arrays are supported");
-//		} else {
-//			throw new RuntimeException("There is no support for array with type: " + arrayElementType.getName());
-//		}
-//	}
-
-//	public static OpenType<?> determineOpenType() {
-//
-//	}
-
-//	public static ArrayType<?> arrayTypeFor(ParameterizedType type) {
-//
-//	}
-
-	public static OpenType<?> openTypeForAttribute(Method method) {
-		ParameterizedType pType = (ParameterizedType) method.getGenericReturnType();
-
-	}
-
 	public static String extractFieldNameFromGetter(Method method) {
 		checkArgument(isGetter(method));
 
@@ -130,6 +74,10 @@ public final class Utils {
 		boolean returnsJmxStats = JmxStats.class.isAssignableFrom(method.getReturnType());
 		boolean hasNoArgs = method.getParameterTypes().length == 0;
 		return isGetter(method) && returnsJmxStats && hasNoArgs;
+	}
+
+	public static boolean isJmxStats(Class<?> clazz) {
+		return JmxStats.class.isAssignableFrom(clazz);
 	}
 
 	public static boolean isGetterOfSimpleType(Method method) {

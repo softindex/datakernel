@@ -26,13 +26,15 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 
 abstract class AbstractAttributeNode implements AttributeNode {
 	private final String name;
-	private final Method getter;
-	private final OpenType<?> openType;
+//	private final Method getter;
+//	private final Class<?> returnType;
+//	private final OpenType<?> openType;
 
-	public AbstractAttributeNode(String name, Method getter, OpenType<?> openType) {
+	public AbstractAttributeNode(String name) {
 		this.name = checkNotNull(name);
-		this.getter = checkNotNull(getter);
-		this.openType = checkNotNull(openType);
+//		this.getter = checkNotNull(getter);
+//		this.returnType = getter.getReturnType();
+//		this.openType = checkNotNull(openType);
 	}
 
 	@Override
@@ -40,18 +42,22 @@ abstract class AbstractAttributeNode implements AttributeNode {
 		return name;
 	}
 
-	@Override
-	public final OpenType<?> getOpenType() {
-		return openType;
-	}
+//	@Override
+//	public final OpenType<?> getOpenType() {
+//		return openType;
+//	}
 
-	protected Object fetchValueFrom(Object pojo) {
-		try {
-			return getter.invoke(pojo);
-		} catch (IllegalAccessException | InvocationTargetException e) {
-			throw new RuntimeException(e);
-		}
-	}
+//	protected Object fetchValueFrom(Object pojo) {
+//		try {
+//			return getter.invoke(pojo);
+//		} catch (IllegalAccessException | InvocationTargetException e) {
+//			throw new RuntimeException(e);
+//		}
+//	}
+//
+//	protected Class<?> getNodeElementType() {
+//		return returnType;
+//	}
 
 	/**
 	 * Throws Exception If list is null, empty or at least one element of list is null

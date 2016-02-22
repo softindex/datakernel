@@ -16,7 +16,10 @@
 
 package io.datakernel.jmx;
 
-public interface JmxStats<T extends JmxStats> {
-	void add(T value);
-	void refreshStats(long timestamp, double smoothingWindow);
+final class DirectFetcher implements ValueFetcher {
+
+	@Override
+	public Object fetchFrom(Object source) {
+		return source;
+	}
 }

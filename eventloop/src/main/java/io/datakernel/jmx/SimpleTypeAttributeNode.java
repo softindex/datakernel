@@ -16,16 +16,36 @@
 
 package io.datakernel.jmx;
 
-import javax.management.openmbean.SimpleType;
-import java.lang.reflect.Method;
+import javax.management.openmbean.OpenType;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
+import static io.datakernel.jmx.OpenTypeUtils.simpleTypeOf;
+import static io.datakernel.util.Preconditions.checkArgument;
 
 final class SimpleTypeAttributeNode extends AbstractAttributeNode {
+	private final ValueFetcher fetcher;
+	private final OpenType<?> openType;
+	private final Map<String, OpenType<?>> nameToOpenType;
 
-	public SimpleTypeAttributeNode(String name, Method getter, SimpleType<?> simpleType) {
-		super(name, getter, simpleType);
+	public SimpleTypeAttributeNode(String name, ValueFetcher fetcher, Class<?> attributeType) {
+		super(name);
+		this.fetcher = fetcher;
+		this.openType = simpleTypeOf(attributeType);
+		this.nameToOpenType = createMapWithOneEntry(name, openType);
+	}
+
+	@Override
+	public OpenType<?> getOpenType() {
+		return openType;
+	}
+
+	@Override
+	public Map<String, OpenType<?>> getFlattenedOpenTypes() {
+		return nameToOpenType;
 	}
 
 	@Override
@@ -38,19 +58,29 @@ final class SimpleTypeAttributeNode extends AbstractAttributeNode {
 	@Override
 	public Object aggregateAttribute(List<?> pojos, String attrName) {
 		checkPojos(pojos);
+		checkArgument(attrName == null || attrName.isEmpty());
 
 		// we ignore attrName here because this is leaf-node
-
 		Object firstPojo = pojos.get(0);
-		Object firstValue = fetchValueFrom(firstPojo);
+		Object firstValue = fetcher.fetchFrom(firstPojo);
 		for (int i = 1; i < pojos.size(); i++) {
 			Object currentPojo = pojos.get(i);
-			Object currentValue = fetchValueFrom(currentPojo);
-			if (!firstValue.equals(currentValue)) {
+			Object currentValue = fetcher.fetchFrom(currentPojo);
+			if (!Objects.equals(firstValue, currentValue)) {
 				// TODO (vmykhalko): maybe throw AggregationException instead ?
 				return null;
 			}
 		}
 		return firstValue;
+	}
+
+	@Override
+	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public boolean isRefreshable() {
+		return false;
 	}
 }

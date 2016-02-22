@@ -19,6 +19,7 @@ package io.datakernel.jmx;
 import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -26,53 +27,42 @@ import java.util.Map;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.Arrays.asList;
 
-
-final class PojoAttributeNode extends AbstractAttributeNode {
-	private static final String ATTRIBUTE_NAME_SEPARATOR = "_";
+// TODO(vmykhalko): pojoNode and jmxStatsNode seem to have a lot in common. Maybe extract abstract class ?
+final class JmxStatsAttributeNode extends AbstractAttributeNode {
 	private static final String COMPOSITE_TYPE_DEFAULT_NAME = "CompositeType";
 	private final Map<String, AttributeNode> nameToSubNode;
-	private final List<AttributeNode> refreshableSubNodes;
 	private final ValueFetcher fetcher;
+	private final Class<?> jmxStatsClass;
 	private final CompositeType compositeType;
 	private final Map<String, OpenType<?>> nameToOpenType;
-	private final boolean refreshable;
 
-	// TODO(vmykhalko): treat "" as absence of node name
-	public PojoAttributeNode(String name, ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
+
+	public JmxStatsAttributeNode(String name, ValueFetcher fetcher, Class<?> jmxStatsClass,
+	                             List<? extends AttributeNode> subNodes) {
 		super(name);
 
-		this.fetcher = fetcher;
+		this.fetcher = checkNotNull(fetcher);
+		this.jmxStatsClass = checkNotNull(jmxStatsClass);
 		this.compositeType = createCompositeType(subNodes);
 		this.nameToOpenType = createNameToOpenTypeMap(name, subNodes);
-		this.refreshableSubNodes = filterRefreshableSubNodes(subNodes);
-		this.refreshable = refreshableSubNodes.size() > 0;
+
 		nameToSubNode = new HashMap<>(subNodes.size());
 		for (AttributeNode subNode : subNodes) {
 			checkNotNull(subNode);
 			String subNodeName = checkNotNull(subNode.getName());
 			nameToSubNode.put(subNodeName, subNode);
-
 		}
-	}
-
-	private static List<AttributeNode> filterRefreshableSubNodes(List<? extends AttributeNode> subNodes) {
-		List<AttributeNode> refreshableSubNodes = new ArrayList<>();
-		for (AttributeNode subNode : subNodes) {
-			if (subNode.isRefreshable()) {
-				refreshableSubNodes.add(subNode);
-			}
-		}
-		return refreshableSubNodes;
 	}
 
 	private static Map<String, OpenType<?>> createNameToOpenTypeMap(String nodeName,
 	                                                                List<? extends AttributeNode> subNodes) {
 		Map<String, OpenType<?>> nameToOpenType = new HashMap<>();
+		String prefix = nodeName.isEmpty() ? "" : nodeName + "_";
 		for (AttributeNode subNode : subNodes) {
 			Map<String, OpenType<?>> currentSubNodeMap = subNode.getFlattenedOpenTypes();
 			for (String subNodeAttrName : currentSubNodeMap.keySet()) {
-				String prefix = nodeName.isEmpty() ? "" : nodeName + "_";
 				nameToOpenType.put(prefix + subNodeAttrName, currentSubNodeMap.get(subNodeAttrName));
 			}
 		}
@@ -85,11 +75,12 @@ final class PojoAttributeNode extends AbstractAttributeNode {
 		for (AttributeNode subNode : subNodes) {
 			// TODO(vmykhalko): subNode actually can have empty name, handle this case
 			// TODO(vmykhalko): maybe empty name [@JmxAttribute(name = "")] should be allowed only for pojo ?
-			Map<String, OpenType<?>> subNodeFlattenedTypes = subNode.getFlattenedOpenTypes();
-			for (String attrName : subNodeFlattenedTypes.keySet()) {
-				itemNames.add(attrName);
-				itemTypes.add(subNodeFlattenedTypes.get(attrName));
-			}
+
+			// it's not flatten!!!   maybe use method: getFlattenedOpenTypes ?
+			String subNodeName = subNode.getName();
+			checkArgument(!subNodeName.isEmpty());
+			itemNames.add(subNodeName);
+			itemTypes.add(subNode.getOpenType());
 		}
 		String[] itemNamesArr = itemNames.toArray(new String[itemNames.size()]);
 		OpenType<?>[] itemTypesArr = itemTypes.toArray(new OpenType<?>[itemTypes.size()]);
@@ -104,69 +95,65 @@ final class PojoAttributeNode extends AbstractAttributeNode {
 	}
 
 	@Override
-	public OpenType<?> getOpenType() {
-		return compositeType;
-	}
-
-	@Override
 	public Map<String, OpenType<?>> getFlattenedOpenTypes() {
 		return nameToOpenType;
 	}
 
 	@Override
+	public OpenType<?> getOpenType() {
+		return compositeType;
+	}
+
+	@Override
 	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
+		JmxStats accumulator = null;
+		try {
+			accumulator = (JmxStats) jmxStatsClass.newInstance();
+		} catch (InstantiationException | IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+		for (Object pojo : pojos) {
+			accumulator.add(fetcher.fetchFrom(pojo));
+		}
+
 		Map<String, Object> attrs = new HashMap<>();
-		List<Object> innerPojos = fetchInnerPojos(pojos);
+		List<?> accumulatorInList = asList(accumulator);
 		String prefix = getName().isEmpty() ? "" : getName() + "_";
 		for (AttributeNode attributeNode : nameToSubNode.values()) {
-			Map<String, Object> subAttrs = attributeNode.aggregateAllAttributes(innerPojos);
+			Map<String, Object> subAttrs = attributeNode.aggregateAllAttributes(accumulatorInList);
 			for (String subAttrName : subAttrs.keySet()) {
 				attrs.put(prefix + subAttrName, subAttrs.get(subAttrName));
 			}
 		}
 		return attrs;
+
 	}
 
 	@Override
 	public Object aggregateAttribute(List<?> pojos, String attrName) {
-		String attrGroupName = attrName;
-		String subAttrName = null;
-		if (attrName.contains(ATTRIBUTE_NAME_SEPARATOR)) {
-			int indexOfSeparator = attrName.indexOf(ATTRIBUTE_NAME_SEPARATOR);
-			attrGroupName = attrName.substring(0, indexOfSeparator);
-			subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
+		Map<String, Object> allAttrs = aggregateAllAttributes(pojos);
+		if (getName().isEmpty()) {
+			return allAttrs.get(attrName);
+		} else {
+			for (String fullAttrName : allAttrs.keySet()) {
+				String subAttrName = fullAttrName.substring(getName().length() + 1);
+				if (subAttrName.equals(attrName)) {
+					return allAttrs.get(fullAttrName);
+				}
+			}
+			throw new RuntimeException("Attribute \"" + attrName + "\" not found");
 		}
-
-		if (!nameToSubNode.containsKey(attrGroupName)) {
-			throw new IllegalArgumentException("There is no attribute with name: " + attrGroupName);
-		}
-
-		try {
-			return nameToSubNode.get(attrGroupName).aggregateAttribute(fetchInnerPojos(pojos), subAttrName);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException(e);
-		}
-	}
-
-	private List<Object> fetchInnerPojos(List<?> outerPojos) {
-		List<Object> innerPojos = new ArrayList<>(outerPojos.size());
-		for (Object outerPojo : outerPojos) {
-			innerPojos.add(fetcher.fetchFrom(outerPojo));
-		}
-		return innerPojos;
 	}
 
 	@Override
 	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
-		List<Object> innerPojos = fetchInnerPojos(pojos);
-		for (AttributeNode refreshableSubNode : refreshableSubNodes) {
-			refreshableSubNode.refresh(innerPojos, timestamp, smoothingWindow);
+		for (Object pojo : pojos) {
+			((JmxStats<?>)fetcher.fetchFrom(pojo)).refreshStats(timestamp, smoothingWindow);
 		}
 	}
 
 	@Override
 	public boolean isRefreshable() {
-		return refreshable;
+		return true;
 	}
 }
