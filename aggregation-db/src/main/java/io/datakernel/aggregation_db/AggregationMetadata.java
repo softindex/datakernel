@@ -270,6 +270,37 @@ public class AggregationMetadata {
 		return new ArrayList<>(result);
 	}
 
+	public List<ConsolidationDebugInfo> getConsolidationDebugInfo() {
+		List<ConsolidationDebugInfo> infos = newArrayList();
+		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
+
+		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			PrimaryKey key = segmentEntry.getKey();
+			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+			int overlaps = segment.getSet().size() + segment.getClosingSet().size();
+			Set<AggregationChunk> segmentSet = segment.getSet();
+			Set<AggregationChunk> segmentClosingSet = segment.getClosingSet();
+			infos.add(new ConsolidationDebugInfo(key, segmentSet, segmentClosingSet, overlaps));
+		}
+
+		return infos;
+	}
+
+	public static class ConsolidationDebugInfo {
+		public final PrimaryKey key;
+		public final Set<AggregationChunk> segmentSet;
+		public final Set<AggregationChunk> segmentClosingSet;
+		public final int overlaps;
+
+		public ConsolidationDebugInfo(PrimaryKey key, Set<AggregationChunk> segmentSet,
+		                         Set<AggregationChunk> segmentClosingSet, int overlaps) {
+			this.key = key;
+			this.segmentSet = segmentSet;
+			this.segmentClosingSet = segmentClosingSet;
+			this.overlaps = overlaps;
+		}
+	}
+
 	@VisibleForTesting
 	public static boolean chunkMightContainQueryValues(PrimaryKey minQueryKey, PrimaryKey maxQueryKey,
 	                                                   PrimaryKey minChunkKey, PrimaryKey maxChunkKey) {

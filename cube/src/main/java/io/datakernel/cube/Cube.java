@@ -54,6 +54,7 @@ import static com.google.common.base.Predicates.in;
 import static com.google.common.base.Predicates.not;
 import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Lists.newArrayList;
+import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.sort;
 
@@ -513,6 +514,16 @@ public final class Cube implements ConcurrentJmxMBean {
 	private boolean queryRequiresSorting(AggregationQuery query) {
 		int orderings = query.getOrderings().size();
 		return orderings != 0;
+	}
+
+	public Map<String, List<AggregationMetadata.ConsolidationDebugInfo>> getConsolidationDebugInfo() {
+		Map<String, List<AggregationMetadata.ConsolidationDebugInfo>> m = newHashMap();
+
+		for (Map.Entry<String, Aggregation> aggregationEntry : aggregations.entrySet()) {
+			m.put(aggregationEntry.getKey(), aggregationEntry.getValue().getConsolidationDebugInfo());
+		}
+
+		return m;
 	}
 
 	@Override

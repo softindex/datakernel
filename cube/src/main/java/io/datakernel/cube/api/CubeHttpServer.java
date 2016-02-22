@@ -47,6 +47,8 @@ public final class CubeHttpServer {
 
 		servlet.get(REPORTING_QUERY_REQUEST_PATH, new ReportingQueryHandler(gson, cube, eventloop, classLoader));
 
+		servlet.get("/consolidation-debug", new ConsolidationDebugServlet(cube));
+
 		return servlet;
 	}
 

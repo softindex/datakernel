@@ -685,6 +685,10 @@ public class Aggregation {
 		});
 	}
 
+	public List<AggregationMetadata.ConsolidationDebugInfo> getConsolidationDebugInfo() {
+		return aggregationMetadata.getConsolidationDebugInfo();
+	}
+
 	public int getAggregationChunkSize() {
 		return aggregationChunkSize;
 	}
