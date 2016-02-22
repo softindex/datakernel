@@ -17,6 +17,7 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
@@ -26,8 +27,6 @@ import io.datakernel.stream.processor.StreamSerializer;
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
-
-import static com.google.common.base.Preconditions.checkNotNull;
 
 /**
  * It is wrapper for  Binary protocol which deserializes received stream to type of input object,
@@ -194,13 +193,16 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		}
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "SuspiciousMethodCalls"})
 	@Override
 	public void onData(I item) {
 		Class<?> type = item.getClass();
 		MessagingHandler<I, O> handler = (MessagingHandler<I, O>) handlers.get(type);
-		checkNotNull(handler, "No handler for message type: %s", type);
-		handler.onMessage(item, this);
+		if (handler == null) {
+			onReadException(new SimpleException("No handler for message type: " + type.toString()));
+		} else {
+			handler.onMessage(item, this);
+		}
 	}
 
 	@Override

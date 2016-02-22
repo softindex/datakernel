@@ -212,7 +212,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		setStatus(CLOSED_WITH_ERROR);
 		error = e;
 		downstreamDataReceiver = new DataReceiverAfterClose<>();
-		logger.trace("StreamProducer {} closed with error {}", this, error.toString());
+		logger.error("StreamProducer {} closed with error {}", this, error.toString());
 		if (sendToConsumer && downstreamConsumer != null) {
 			downstreamConsumer.onProducerError(e);
 		}

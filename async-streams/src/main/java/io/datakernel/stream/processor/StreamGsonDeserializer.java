@@ -17,6 +17,7 @@
 package io.datakernel.stream.processor;
 
 import com.google.gson.Gson;
+import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -105,10 +106,18 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 					}
 					srcBuf.advance(1);
 
-					T item = gson.fromJson(bufferReader, type);
-					//noinspection AssertWithSideEffects
-					assert jmxItems != ++jmxItems;
-					downstreamDataReceiver.onData(item);
+					/*
+					 *   As far as we could receive broken messages
+					 *   and there is no guarantee we could handle them
+					 */
+					try {
+						T item = gson.fromJson(bufferReader, type);
+						//noinspection AssertWithSideEffects
+						assert jmxItems != ++jmxItems;
+						downstreamDataReceiver.onData(item);
+					} catch (Exception e) {
+						onError(new SimpleException("Can not serialize item of type: " + type));
+					}
 				}
 
 				if (getProducerStatus().isClosed()) {
