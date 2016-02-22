@@ -16,50 +16,15 @@
 
 package io.datakernel.jmx;
 
-import javax.management.openmbean.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
 import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
-public final class Utils {
+final class Utils {
 
 	private Utils() {}
-
-	private static final CompositeType DEFAULT_COMPOSITE_TYPE;
-	private static final TabularType DEFAULT_TABULAR_TYPE;
-
-	private static final Map<Class<?>, SimpleType<?>> clazzToSimpleType;
-
-	static {
-		clazzToSimpleType = new HashMap<>();
-		clazzToSimpleType.put(Boolean.class, SimpleType.BOOLEAN);
-		clazzToSimpleType.put(Byte.class, SimpleType.BYTE);
-		clazzToSimpleType.put(Short.class, SimpleType.SHORT);
-		clazzToSimpleType.put(Character.class, SimpleType.CHARACTER);
-		clazzToSimpleType.put(Integer.class, SimpleType.INTEGER);
-		clazzToSimpleType.put(Long.class, SimpleType.LONG);
-		clazzToSimpleType.put(Float.class, SimpleType.FLOAT);
-		clazzToSimpleType.put(Double.class, SimpleType.DOUBLE);
-		clazzToSimpleType.put(String.class, SimpleType.STRING);
-
-		try {
-			DEFAULT_COMPOSITE_TYPE = new CompositeType("EmptyCompositeData", "EmptyCompositeData",
-					new String[]{"key"}, new String[]{"key"}, new OpenType<?>[]{SimpleType.STRING});
-		} catch (OpenDataException e) {
-			throw new RuntimeException(e);
-		}
-
-		try {
-			DEFAULT_TABULAR_TYPE = new TabularType("EmptyTabularData", "EmptyTabularData",
-					DEFAULT_COMPOSITE_TYPE, new String[]{"key"});
-		} catch (OpenDataException e) {
-			throw new RuntimeException(e);
-		}
-	}
 
 	public static String extractFieldNameFromGetter(Method method) {
 		checkArgument(isGetter(method));

@@ -24,9 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
-
 
 final class PojoAttributeNode extends AbstractAttributeNode {
 	private static final String ATTRIBUTE_NAME_SEPARATOR = "_";

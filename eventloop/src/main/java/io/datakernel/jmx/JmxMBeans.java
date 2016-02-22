@@ -24,7 +24,10 @@ import org.slf4j.LoggerFactory;
 import javax.management.*;
 import javax.management.openmbean.OpenType;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
@@ -52,7 +55,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	public static final long SNAPSHOT_UPDATE_DEFAULT_PERIOD = 200L; // milliseconds
 	private static final CurrentTimeProvider TIME_PROVIDER = CurrentTimeProviderSystem.instance();
 	private final long snapshotUpdatePeriod;
-//
+
+	//
 	private JmxMBeans(long snapshotUpdatePeriod) {
 		this.snapshotUpdatePeriod = snapshotUpdatePeriod;
 	}
@@ -490,7 +494,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 
 			Object attrValue = rootNode.aggregateAttribute(mbeans, attribute);
-
 
 //			if (attrValue instanceof Exception) {
 //				Exception attrException = (Exception) attrValue;

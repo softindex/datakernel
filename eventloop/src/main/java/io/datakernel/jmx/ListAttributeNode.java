@@ -94,7 +94,7 @@ final class ListAttributeNode extends AbstractAttributeNode {
 		} else {
 			try {
 				Class<?> elementClass = classOf(arrayType.getElementOpenType());
-				Object[] array = (Object[])Array.newInstance(elementClass, attributesFromAllElements.size());
+				Object[] array = (Object[]) Array.newInstance(elementClass, attributesFromAllElements.size());
 				for (int i = 0; i < attributesFromAllElements.size(); i++) {
 					Map<String, Object> attributesFromElement = attributesFromAllElements.get(i);
 					array[i] = jmxCompatibleObjectOf(arrayElementOpenType, attributesFromElement);
@@ -105,7 +105,6 @@ final class ListAttributeNode extends AbstractAttributeNode {
 			}
 		}
 	}
-
 
 	private static Object jmxCompatibleObjectOf(OpenType<?> openType, Map<String, Object> attributes)
 			throws OpenDataException {

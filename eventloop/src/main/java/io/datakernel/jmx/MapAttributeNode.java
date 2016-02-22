@@ -38,7 +38,6 @@ final class MapAttributeNode extends AbstractAttributeNode {
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean refreshable;
 
-
 	public MapAttributeNode(String name, ValueFetcher fetcher, AttributeNode subNode) {
 		super(name);
 
@@ -67,7 +66,7 @@ final class MapAttributeNode extends AbstractAttributeNode {
 		}
 		String[] columnNamesArr = columnNames.toArray(new String[columnNames.size()]);
 		OpenType<?>[] columnTypesArr = columnTypes.toArray(new OpenType<?>[columnTypes.size()]);
-		
+
 		try {
 			return new TabularType(
 					TABULAR_TYPE_NAME,

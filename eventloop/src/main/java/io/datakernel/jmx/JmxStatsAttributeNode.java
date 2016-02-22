@@ -19,7 +19,6 @@ package io.datakernel.jmx;
 import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +36,6 @@ final class JmxStatsAttributeNode extends AbstractAttributeNode {
 	private final Class<?> jmxStatsClass;
 	private final CompositeType compositeType;
 	private final Map<String, OpenType<?>> nameToOpenType;
-
 
 	public JmxStatsAttributeNode(String name, ValueFetcher fetcher, Class<?> jmxStatsClass,
 	                             List<? extends AttributeNode> subNodes) {
@@ -113,7 +111,7 @@ final class JmxStatsAttributeNode extends AbstractAttributeNode {
 			throw new RuntimeException(e);
 		}
 		for (Object pojo : pojos) {
-			accumulator.add(fetcher.fetchFrom(pojo));
+			accumulator.add((JmxStats) fetcher.fetchFrom(pojo));
 		}
 
 		Map<String, Object> attrs = new HashMap<>();
@@ -148,7 +146,7 @@ final class JmxStatsAttributeNode extends AbstractAttributeNode {
 	@Override
 	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
 		for (Object pojo : pojos) {
-			((JmxStats<?>)fetcher.fetchFrom(pojo)).refreshStats(timestamp, smoothingWindow);
+			((JmxStats<?>) fetcher.fetchFrom(pojo)).refreshStats(timestamp, smoothingWindow);
 		}
 	}
 

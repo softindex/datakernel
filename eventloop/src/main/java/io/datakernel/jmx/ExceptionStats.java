@@ -16,6 +16,11 @@
 
 package io.datakernel.jmx;
 
+import java.util.List;
+import java.util.Objects;
+
+import static java.util.Arrays.asList;
+
 public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	private Throwable throwable;
 	private Object causeObject;
@@ -54,11 +59,6 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	}
 
 	@JmxAttribute
-	public Throwable getLastException() {
-		return throwable;
-	}
-
-	@JmxAttribute
 	public long getLastExceptionTimestamp() {
 		return timestamp;
 	}
@@ -66,5 +66,25 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	@JmxAttribute
 	public int getTotal() {
 		return count;
+	}
+
+	@JmxAttribute
+	public String getLastExceptionType() {
+		return throwable != null ? throwable.getClass().getName() : "";
+	}
+
+	@JmxAttribute
+	public String getLastExceptionMessage() {
+		return throwable != null ? throwable.getMessage() : "";
+	}
+
+	@JmxAttribute
+	String getLastExceptionCause() {
+		return Objects.toString(causeObject);
+	}
+
+	@JmxAttribute
+	public List<String> getLastExceptionStackTrace() {
+		return asList(MBeanFormat.formatException(throwable));
 	}
 }

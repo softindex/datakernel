@@ -4,7 +4,6 @@ import javax.management.openmbean.*;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.String.format;
 
 final class OpenTypeUtils {

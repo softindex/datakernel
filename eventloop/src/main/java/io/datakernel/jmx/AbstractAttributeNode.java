@@ -16,9 +16,6 @@
 
 package io.datakernel.jmx;
 
-import javax.management.openmbean.OpenType;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
