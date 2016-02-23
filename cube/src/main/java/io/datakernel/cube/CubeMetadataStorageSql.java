@@ -293,41 +293,32 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	                                      final AggregationMetadata aggregationMetadata,
 	                                      final List<AggregationChunk> originalChunks,
 	                                      final List<AggregationChunk.NewChunk> consolidatedChunks) {
-		final Connection connection = jooqConfiguration.connectionProvider().acquire();
-		final Configuration configurationWithConnection = jooqConfiguration.derive(connection);
-		DSLContext jooq = DSL.using(configurationWithConnection);
-		try {
-			getCubeLock(jooq);
-			jooq.transaction(new TransactionalRunnable() {
-				@Override
-				public void run(Configuration jooqConfiguration) throws Exception {
-					DSLContext jooq = DSL.using(configurationWithConnection);
+		executeExclusiveTransaction(new TransactionalRunnable() {
+			@Override
+			public void run(Configuration configuration) throws Exception {
+				DSLContext jooq = DSL.using(configuration);
 
-					final int revisionId = nextRevisionId(jooq);
+				final int revisionId = nextRevisionId(jooq);
 
-					jooq.update(AGGREGATION_DB_CHUNK)
-							.set(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID, revisionId)
-							.set(AGGREGATION_DB_CHUNK.CONSOLIDATION_COMPLETED, currentTimestamp())
-							.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(originalChunks,
-									new Function<AggregationChunk, Long>() {
-										@Override
-										public Long apply(AggregationChunk chunk) {
-											return chunk.getChunkId();
-										}
-									}))))
-							.execute();
+				jooq.update(AGGREGATION_DB_CHUNK)
+						.set(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID, revisionId)
+						.set(AGGREGATION_DB_CHUNK.CONSOLIDATION_COMPLETED, currentTimestamp())
+						.where(AGGREGATION_DB_CHUNK.ID.in(newArrayList(Iterables.transform(originalChunks,
+								new Function<AggregationChunk, Long>() {
+									@Override
+									public Long apply(AggregationChunk chunk) {
+										return chunk.getChunkId();
+									}
+								}))))
+						.execute();
 
-					Map<AggregationMetadata, String> idMap = new HashMap<>();
-					idMap.put(aggregationMetadata, aggregationId);
-					Multimap<AggregationMetadata, AggregationChunk.NewChunk> chunks = HashMultimap.create();
-					chunks.putAll(aggregationMetadata, consolidatedChunks);
-					doSaveNewChunks(jooq, revisionId, idMap, chunks);
-				}
-			});
-		} finally {
-			releaseCubeLock(jooq);
-			jooqConfiguration.connectionProvider().release(connection);
-		}
+				Map<AggregationMetadata, String> idMap = new HashMap<>();
+				idMap.put(aggregationMetadata, aggregationId);
+				Multimap<AggregationMetadata, AggregationChunk.NewChunk> chunks = HashMultimap.create();
+				chunks.putAll(aggregationMetadata, consolidatedChunks);
+				doSaveNewChunks(jooq, revisionId, idMap, chunks);
+			}
+		});
 	}
 
 	public void doStartConsolidation(final DSLContext jooq,
@@ -343,13 +334,32 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				.execute();
 	}
 
-	public void getCubeLock(DSLContext jooq) {
-		Result<Record> result = jooq.fetch("SELECT GET_LOCK('" + LOCK_NAME + "', " + lockTimeoutSeconds + ")");
-		if (!isValidLockingResult(result))
-			throw new DataAccessException("Obtaining lock '" + LOCK_NAME + "' failed");
+	public void executeExclusiveTransaction(TransactionalRunnable transactionalRunnable) {
+		Connection connection = jooqConfiguration.connectionProvider().acquire();
+		Configuration configurationWithConnection = jooqConfiguration.derive(connection);
+		DSLContext jooq = DSL.using(configurationWithConnection);
+		boolean gotLock = false;
+		try {
+			gotLock = getCubeLock(jooq);
+			jooq.transaction(transactionalRunnable);
+		} finally {
+			if (gotLock)
+				releaseCubeLock(jooq);
+
+			jooqConfiguration.connectionProvider().release(connection);
+		}
 	}
 
-	public void releaseCubeLock(DSLContext jooq) {
+	private boolean getCubeLock(DSLContext jooq) {
+		Result<Record> result = jooq.fetch("SELECT GET_LOCK('" + LOCK_NAME + "', " + lockTimeoutSeconds + ")");
+
+		if (!isValidLockingResult(result))
+			throw new DataAccessException("Obtaining lock '" + LOCK_NAME + "' failed");
+
+		return true;
+	}
+
+	private void releaseCubeLock(DSLContext jooq) {
 		try {
 			Result<Record> result = jooq.fetch("SELECT RELEASE_LOCK('" + LOCK_NAME + "')");
 			if (!isValidLockingResult(result))

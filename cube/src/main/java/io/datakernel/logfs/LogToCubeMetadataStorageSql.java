@@ -134,45 +134,35 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	                        final Map<String, LogPosition> oldPositions,
 	                        final Map<String, LogPosition> newPositions,
 	                        final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
-		final Connection connection = jooqConfiguration.connectionProvider().acquire();
-		final Configuration configurationWithConnection = jooqConfiguration.derive(connection);
-		DSLContext jooq = DSL.using(configurationWithConnection);
-		try {
-			cubeMetadataStorage.getCubeLock(jooq);
-			jooq.transaction(new TransactionalRunnable() {
-				@Override
-				public void run(Configuration configuration) throws Exception {
-					DSLContext jooq = DSL.using(configurationWithConnection);
+		cubeMetadataStorage.executeExclusiveTransaction(new TransactionalRunnable() {
+			@Override
+			public void run(Configuration configuration) throws Exception {
+				DSLContext jooq = DSL.using(configuration);
 
-					for (String partition : newPositions.keySet()) {
-						LogPosition logPosition = newPositions.get(partition);
-						logger.info("Finished reading log '{}' for partition '{}' at position {}", log, partition, logPosition);
+				for (String partition : newPositions.keySet()) {
+					LogPosition logPosition = newPositions.get(partition);
+					logger.info("Finished reading log '{}' for partition '{}' at position {}", log, partition, logPosition);
 
-						if (logPosition.getLogFile() == null)
-							continue;
+					if (logPosition.getLogFile() == null)
+						continue;
 
-						jooq.insertInto(AGGREGATION_DB_LOG)
-								.set(new AggregationDbLogRecord(
-										log,
-										partition,
-										logPosition.getLogFile().getName(),
-										logPosition.getLogFile().getN(),
-										logPosition.getPosition()))
-								.onDuplicateKeyUpdate()
-								.set(AGGREGATION_DB_LOG.FILE, logPosition.getLogFile().getName())
-								.set(AGGREGATION_DB_LOG.FILE_INDEX, logPosition.getLogFile().getN())
-								.set(AGGREGATION_DB_LOG.POSITION, logPosition.getPosition())
-								.execute();
-					}
-
-					if (!newChunks.isEmpty())
-						cubeMetadataStorage.doSaveNewChunks(jooq, idMap, newChunks);
+					jooq.insertInto(AGGREGATION_DB_LOG)
+							.set(new AggregationDbLogRecord(
+									log,
+									partition,
+									logPosition.getLogFile().getName(),
+									logPosition.getLogFile().getN(),
+									logPosition.getPosition()))
+							.onDuplicateKeyUpdate()
+							.set(AGGREGATION_DB_LOG.FILE, logPosition.getLogFile().getName())
+							.set(AGGREGATION_DB_LOG.FILE_INDEX, logPosition.getLogFile().getN())
+							.set(AGGREGATION_DB_LOG.POSITION, logPosition.getPosition())
+							.execute();
 				}
-			});
-		} finally {
-			cubeMetadataStorage.releaseCubeLock(jooq);
-			jooqConfiguration.connectionProvider().release(connection);
-		}
-	}
 
+				if (!newChunks.isEmpty())
+					cubeMetadataStorage.doSaveNewChunks(jooq, idMap, newChunks);
+			}
+		});
+	}
 }
