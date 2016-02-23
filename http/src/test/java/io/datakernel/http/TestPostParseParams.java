@@ -18,11 +18,14 @@ package io.datakernel.http;
 
 import org.junit.Test;
 
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.Charset;
 import java.util.Map;
 
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
+import static io.datakernel.util.ByteBufStrings.wrapUTF8;
 import static org.junit.Assert.assertEquals;
 
 public class TestPostParseParams {
@@ -32,10 +35,25 @@ public class TestPostParseParams {
 				.header(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
 				.body(wrapAscii("hello=world&value=1234"));
 
-		Map<String, String> params = request.getParameters();
+		Map<String, String> params = request.getPostParameters();
 
 		assertEquals(2, params.size());
 		assertEquals("world", params.get("hello"));
 		assertEquals("1234", params.get("value"));
 	}
+
+	@Test
+	public void testParametersEncoded() throws UnsupportedEncodingException {
+		HttpRequest request = HttpRequest.post("http://127.0.0.1")
+				.header(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
+				.body(wrapUTF8("привет=мир&value=1234&koi8=п©я─п╦п╡п╣я┌ п╪п╦я─"));
+
+		Map<String, String> params = request.getPostParameters();
+
+		assertEquals(3, params.size());
+		assertEquals("мир", params.get("привет"));
+		assertEquals("1234", params.get("value"));
+		assertEquals("привет мир", new String(params.get("koi8").getBytes(Charset.forName("KOI8-R"))));
+	}
+
 }

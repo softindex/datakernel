@@ -38,6 +38,7 @@ public final class HttpRequest extends HttpMessage {
 	private HttpUri url;
 	private InetAddress remoteAddress;
 	private Map<String, String> urlParameters;
+	private Map<String, String> bodyParameters;
 	private int pos;
 
 	private HttpRequest(HttpMethod method) {
@@ -54,7 +55,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public static HttpRequest post(String url) {
-		return create(HttpMethod.POST).url(url);
+		return create(POST).url(url);
 	}
 
 	// common builder methods
@@ -207,26 +208,29 @@ public final class HttpRequest extends HttpMessage {
 	// internal
 	public Map<String, String> getParameters() {
 		assert !recycled;
-		if (method == POST && getContentType() != null
-				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
-				&& body.position() != body.limit()) {
-			return ensurePostParameters();
-		}
 		return url.getParameters();
 	}
 
-	private Map<String, String> ensurePostParameters() {
-		Map<String, String> parameters = url.getParameters();
-		parameters.putAll(HttpUtils.parse(decodeAscii(getBody())));
-		return parameters;
+	public Map<String, String> getPostParameters() {
+		assert !recycled;
+		if (method == POST && getContentType() != null
+				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
+				&& body.position() != body.limit()) {
+			if (bodyParameters == null) {
+				bodyParameters = HttpUtils.parse(decodeUTF8(getBody()));
+			}
+			return bodyParameters;
+		} else {
+			return Collections.emptyMap();
+		}
+	}
+
+	public String getPostParameter(String name) {
+		return getPostParameters().get(name);
 	}
 
 	public String getParameter(String name) {
 		assert !recycled;
-		if (method == POST && getContentType() != null
-				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED) {
-			return ensurePostParameters().get(name);
-		}
 		return url.getParameter(name);
 	}
 
