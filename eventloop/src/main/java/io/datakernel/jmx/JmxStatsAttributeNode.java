@@ -29,8 +29,10 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 // TODO(vmykhalko): pojoNode and jmxStatsNode seem to have a lot in common. Maybe extract abstract class ?
-final class JmxStatsAttributeNode extends AbstractAttributeNode {
+final class JmxStatsAttributeNode implements AttributeNode {
 	private static final String COMPOSITE_TYPE_DEFAULT_NAME = "CompositeType";
+
+	private final String name;
 	private final Map<String, AttributeNode> nameToSubNode;
 	private final ValueFetcher fetcher;
 	private final Class<?> jmxStatsClass;
@@ -39,8 +41,7 @@ final class JmxStatsAttributeNode extends AbstractAttributeNode {
 
 	public JmxStatsAttributeNode(String name, ValueFetcher fetcher, Class<?> jmxStatsClass,
 	                             List<? extends AttributeNode> subNodes) {
-		super(name);
-
+		this.name = name;
 		this.fetcher = checkNotNull(fetcher);
 		this.jmxStatsClass = checkNotNull(jmxStatsClass);
 		this.compositeType = createCompositeType(subNodes);
@@ -50,8 +51,10 @@ final class JmxStatsAttributeNode extends AbstractAttributeNode {
 		for (AttributeNode subNode : subNodes) {
 			checkNotNull(subNode);
 			String subNodeName = checkNotNull(subNode.getName());
+			checkArgument(!subNodeName.isEmpty(), "In JmxStats empty attribute names are not allowed");
 			nameToSubNode.put(subNodeName, subNode);
 		}
+
 	}
 
 	private static Map<String, OpenType<?>> createNameToOpenTypeMap(String nodeName,
@@ -71,14 +74,11 @@ final class JmxStatsAttributeNode extends AbstractAttributeNode {
 		List<String> itemNames = new ArrayList<>();
 		List<OpenType<?>> itemTypes = new ArrayList<>();
 		for (AttributeNode subNode : subNodes) {
-			// TODO(vmykhalko): subNode actually can have empty name, handle this case
-			// TODO(vmykhalko): maybe empty name [@JmxAttribute(name = "")] should be allowed only for pojo ?
-
-			// it's not flatten!!!   maybe use method: getFlattenedOpenTypes ?
-			String subNodeName = subNode.getName();
-			checkArgument(!subNodeName.isEmpty());
-			itemNames.add(subNodeName);
-			itemTypes.add(subNode.getOpenType());
+			Map<String, OpenType<?>> subNodeFlattenedTypes = subNode.getFlattenedOpenTypes();
+			for (String attrName : subNodeFlattenedTypes.keySet()) {
+				itemNames.add(attrName);
+				itemTypes.add(subNodeFlattenedTypes.get(attrName));
+			}
 		}
 		String[] itemNamesArr = itemNames.toArray(new String[itemNames.size()]);
 		OpenType<?>[] itemTypesArr = itemTypes.toArray(new OpenType<?>[itemTypes.size()]);
@@ -95,6 +95,11 @@ final class JmxStatsAttributeNode extends AbstractAttributeNode {
 	@Override
 	public Map<String, OpenType<?>> getFlattenedOpenTypes() {
 		return nameToOpenType;
+	}
+
+	@Override
+	public String getName() {
+		return name;
 	}
 
 	@Override
@@ -116,7 +121,7 @@ final class JmxStatsAttributeNode extends AbstractAttributeNode {
 
 		Map<String, Object> attrs = new HashMap<>();
 		List<?> accumulatorInList = asList(accumulator);
-		String prefix = getName().isEmpty() ? "" : getName() + "_";
+		String prefix = name.isEmpty() ? "" : name + "_";
 		for (AttributeNode attributeNode : nameToSubNode.values()) {
 			Map<String, Object> subAttrs = attributeNode.aggregateAllAttributes(accumulatorInList);
 			for (String subAttrName : subAttrs.keySet()) {

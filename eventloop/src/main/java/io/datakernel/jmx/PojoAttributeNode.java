@@ -24,11 +24,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-final class PojoAttributeNode extends AbstractAttributeNode {
+final class PojoAttributeNode implements AttributeNode{
 	private static final String ATTRIBUTE_NAME_SEPARATOR = "_";
 	private static final String COMPOSITE_TYPE_DEFAULT_NAME = "CompositeType";
+
+	private final String name;
 	private final Map<String, AttributeNode> nameToSubNode;
 	private final List<AttributeNode> refreshableSubNodes;
 	private final ValueFetcher fetcher;
@@ -38,19 +41,23 @@ final class PojoAttributeNode extends AbstractAttributeNode {
 
 	// TODO(vmykhalko): treat "" as absence of node name
 	public PojoAttributeNode(String name, ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
-		super(name);
-
+		this.name = name;
 		this.fetcher = fetcher;
 		this.compositeType = createCompositeType(subNodes);
 		this.nameToOpenType = createNameToOpenTypeMap(name, subNodes);
 		this.refreshableSubNodes = filterRefreshableSubNodes(subNodes);
 		this.refreshable = refreshableSubNodes.size() > 0;
-		nameToSubNode = new HashMap<>(subNodes.size());
-		for (AttributeNode subNode : subNodes) {
-			checkNotNull(subNode);
-			String subNodeName = checkNotNull(subNode.getName());
-			nameToSubNode.put(subNodeName, subNode);
 
+		nameToSubNode = new HashMap<>(subNodes.size());
+		if (subNodes.size() == 1 && subNodes.get(0).getName().equals("")) {
+			nameToSubNode.put("", subNodes.get(0));
+		} else {
+			for (AttributeNode subNode : subNodes) {
+				checkNotNull(subNode);
+				String subNodeName = checkNotNull(subNode.getName());
+				checkArgument(!subNodeName.isEmpty(), "Attribute name can be empty only in case of one attribute per class");
+				nameToSubNode.put(subNodeName, subNode);
+			}
 		}
 	}
 
@@ -102,6 +109,11 @@ final class PojoAttributeNode extends AbstractAttributeNode {
 	}
 
 	@Override
+	public String getName() {
+		return name;
+	}
+
+	@Override
 	public OpenType<?> getOpenType() {
 		return compositeType;
 	}
@@ -115,7 +127,7 @@ final class PojoAttributeNode extends AbstractAttributeNode {
 	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
 		Map<String, Object> attrs = new HashMap<>();
 		List<Object> innerPojos = fetchInnerPojos(pojos);
-		String prefix = getName().isEmpty() ? "" : getName() + "_";
+		String prefix = name.isEmpty() ? "" : name + "_";
 		for (AttributeNode attributeNode : nameToSubNode.values()) {
 			Map<String, Object> subAttrs = attributeNode.aggregateAllAttributes(innerPojos);
 			for (String subAttrName : subAttrs.keySet()) {
@@ -127,6 +139,11 @@ final class PojoAttributeNode extends AbstractAttributeNode {
 
 	@Override
 	public Object aggregateAttribute(List<?> pojos, String attrName) {
+		if (nameToSubNode.size() == 1 && nameToSubNode.containsKey("")) {
+			return nameToSubNode.values().iterator().next().aggregateAttribute(fetchInnerPojos(pojos), attrName);
+		}
+
+
 		String attrGroupName = attrName;
 		String subAttrName = null;
 		if (attrName.contains(ATTRIBUTE_NAME_SEPARATOR)) {
@@ -134,6 +151,7 @@ final class PojoAttributeNode extends AbstractAttributeNode {
 			attrGroupName = attrName.substring(0, indexOfSeparator);
 			subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
 		}
+
 
 		if (!nameToSubNode.containsKey(attrGroupName)) {
 			throw new IllegalArgumentException("There is no attribute with name: " + attrGroupName);

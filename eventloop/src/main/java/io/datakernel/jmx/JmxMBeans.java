@@ -52,21 +52,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
 	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
-	public static final long SNAPSHOT_UPDATE_DEFAULT_PERIOD = 200L; // milliseconds
 	private static final CurrentTimeProvider TIME_PROVIDER = CurrentTimeProviderSystem.instance();
-	private final long snapshotUpdatePeriod;
 
-	//
-	private JmxMBeans(long snapshotUpdatePeriod) {
-		this.snapshotUpdatePeriod = snapshotUpdatePeriod;
-	}
+	private JmxMBeans() {}
 
 	public static JmxMBeans factory() {
-		return new JmxMBeans(SNAPSHOT_UPDATE_DEFAULT_PERIOD);
-	}
-
-	public static JmxMBeans factory(long snapshotUpdatePeriod) {
-		return new JmxMBeans(snapshotUpdatePeriod);
+		return new JmxMBeans();
 	}
 
 	@Override
@@ -84,7 +75,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(first.getClass());
 
 		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(
-				mBeanInfo, monitorables, rootNode, opkeyToMethod, snapshotUpdatePeriod, enableRefresh
+				mBeanInfo, monitorables, rootNode, opkeyToMethod, enableRefresh
 		);
 
 		if (enableRefresh) {
@@ -104,7 +95,15 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		List<Method> getters = extractAttributeGettersFrom(clazz);
 		List<AttributeNode> attrNodes = new ArrayList<>();
 		for (Method getter : getters) {
-			String attrName = extractFieldNameFromGetter(getter);
+			String attrName;
+			JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
+			String attrAnnotationName = attrAnnotation.name();
+			if (attrAnnotationName.equals(JmxAttribute.USE_GETTER_NAME)) {
+				attrName = extractFieldNameFromGetter(getter);
+			} else {
+				attrName = attrAnnotationName;
+			}
+			checkArgument(!attrName.contains("_"), "@JmxAttribute with name \"%s\" contains underscores", attrName);
 			Type returnType = getter.getGenericReturnType();
 			attrNodes.add(createAttributeNodeFor(attrName, returnType, getter));
 		}
@@ -403,33 +402,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		// refresh
 		private boolean refreshEnabled;
-		private final long snapshotUpdatePeriod;
 		private volatile double refreshPeriod;
 		private volatile double smoothingWindow;
 
-//		private final Map<String, Class<? extends JmxStats<?>>> nameToJmxStatsType;
-//		private final Map<String, MBeanAttributeInfo> nameToSimpleAttribute;
-//		private final Set<String> listAttributes;
-//		private final Set<String> arrayAttributes;
-//		private final Set<String> exceptionAttributes;
-//
-//		private volatile AttributesSnapshot lastAttributesSnapshot;
-//
-//		private final long snapshotUpdatePeriod;
-//
-//		// refresh
-//		private volatile double refreshPeriod;
-//		private volatile double smoothingWindow;
-//		private boolean refreshEnabled;
-
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends ConcurrentJmxMBean> mbeans,
 		                              PojoAttributeNode rootNode, Map<OperationKey, Method> opkeyToMethod,
-		                              long snapshotUpdatePeriod, boolean refreshEnabled) {
+		                              boolean refreshEnabled) {
 			this.mBeanInfo = mBeanInfo;
 			this.mbeans = mbeans;
 			this.rootNode = rootNode;
 			this.opkeyToMethod = opkeyToMethod;
-			this.snapshotUpdatePeriod = snapshotUpdatePeriod;
 			this.refreshEnabled = refreshEnabled;
 		}
 
@@ -495,6 +477,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			Object attrValue = rootNode.aggregateAttribute(mbeans, attribute);
 
+			// TODO(vmykhalko): is support of AggregationException needed ?
 //			if (attrValue instanceof Exception) {
 //				Exception attrException = (Exception) attrValue;
 //				throw new MBeanException(EXCEPTION,
@@ -508,42 +491,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		@Override
 		public void setAttribute(final Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
 				MBeanException, ReflectionException {
-//			MBeanAttributeInfo attrInfo = nameToSimpleAttribute.get(attribute.getName());
-//			if (attrInfo == null) {
-//				throw new AttributeNotFoundException(format("There is no attribute with name \"%s\"", attribute));
-//			}
-//			if (!attrInfo.isWritable()) {
-//				throw new AttributeNotFoundException(format("Attribute with name \"%s\" is not writable", attribute));
-//			}
-//
-//			final CountDownLatch latch = new CountDownLatch(wrappers.size());
-//			final AtomicReference<Exception> exceptionReference = new AtomicReference<>();
-//			for (final JmxMonitorableWrapper wrapper : wrappers) {
-//				Executor executor = wrapper.getExecutor();
-//				executor.execute(new Runnable() {
-//					@Override
-//					public void run() {
-//						try {
-//							wrapper.setSimpleAttribute(attribute.getName(), attribute.getValue());
-//							latch.countDown();
-//						} catch (Exception e) {
-//							exceptionReference.set(e);
-//							latch.countDown();
-//						}
-//					}
-//				});
-//			}
-//
-//			try {
-//				latch.await();
-//			} catch (InterruptedException e) {
-//				throw new MBeanException(e);
-//			}
-//
-//			Exception exception = exceptionReference.get();
-//			if (exception != null) {
-//				throw new MBeanException(exception);
-//			}
 		}
 
 		@Override

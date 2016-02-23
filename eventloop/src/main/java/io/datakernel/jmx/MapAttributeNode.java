@@ -26,12 +26,13 @@ import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
-final class MapAttributeNode extends AbstractAttributeNode {
+final class MapAttributeNode implements AttributeNode {
 	private static final String KEY_COLUMN_NAME = "_key";
 	private static final String VALUE_COLUMN_NAME = "value";
 	private static final String ROW_TYPE_NAME = "RowType";
 	private static final String TABULAR_TYPE_NAME = "TabularType";
 
+	private final String name;
 	private final ValueFetcher fetcher;
 	private final AttributeNode subNode;
 	private final TabularType tabularType;
@@ -39,8 +40,8 @@ final class MapAttributeNode extends AbstractAttributeNode {
 	private final boolean refreshable;
 
 	public MapAttributeNode(String name, ValueFetcher fetcher, AttributeNode subNode) {
-		super(name);
-
+		checkArgument(name != null && !name.isEmpty(), "Map JmxAttribute cannot have empty name");
+		this.name = name;
 		this.tabularType = createTabularType(subNode);
 		this.nameToOpenType = createMapWithOneEntry(name, tabularType);
 		this.fetcher = fetcher;
@@ -80,6 +81,11 @@ final class MapAttributeNode extends AbstractAttributeNode {
 	}
 
 	@Override
+	public String getName() {
+		return name;
+	}
+
+	@Override
 	public OpenType<?> getOpenType() {
 		return tabularType;
 	}
@@ -98,7 +104,8 @@ final class MapAttributeNode extends AbstractAttributeNode {
 
 	@Override
 	public Object aggregateAttribute(List<?> pojos, String attrName) {
-		checkPojos(pojos);
+		// TODO(vmykhalko): is this check needed ?
+//		checkPojos(pojos);
 		checkArgument(attrName == null || attrName.isEmpty());
 
 		Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(pojos);

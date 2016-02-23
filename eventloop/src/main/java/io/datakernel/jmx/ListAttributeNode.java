@@ -28,7 +28,8 @@ import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
-final class ListAttributeNode extends AbstractAttributeNode {
+final class ListAttributeNode implements AttributeNode {
+	private final String name;
 	private final ValueFetcher fetcher;
 	private final AttributeNode subNode;
 	private final ArrayType<?> arrayType;
@@ -36,7 +37,8 @@ final class ListAttributeNode extends AbstractAttributeNode {
 	private final boolean refreshable;
 
 	public ListAttributeNode(String name, ValueFetcher fetcher, AttributeNode subNode) {
-		super(name);
+		checkArgument(name != null && !name.isEmpty(), "List JmxAttribute cannot have empty name");
+		this.name = name;
 		this.fetcher = fetcher;
 		this.subNode = subNode;
 		this.arrayType = createArrayType(subNode);
@@ -60,8 +62,13 @@ final class ListAttributeNode extends AbstractAttributeNode {
 	@Override
 	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
 		Map<String, Object> attrs = new HashMap<>(1);
-		attrs.put(getName(), aggregateAttribute(pojos, null));
+		attrs.put(name, aggregateAttribute(pojos, null));
 		return attrs;
+	}
+
+	@Override
+	public String getName() {
+		return name;
 	}
 
 	@Override
@@ -71,7 +78,8 @@ final class ListAttributeNode extends AbstractAttributeNode {
 
 	@Override
 	public Object aggregateAttribute(List<?> pojos, String attrName) {
-		checkPojos(pojos);
+		// TODO(vmykhalko): is this check needed ?
+//		checkPojos(pojos);
 		checkArgument(attrName == null || attrName.isEmpty());
 
 		List<Map<String, Object>> attributesFromAllElements = new ArrayList<>();

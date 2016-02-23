@@ -23,6 +23,8 @@ import java.util.Map;
 interface AttributeNode {
 	String getName();
 
+//	boolean containsAttribute(String attrName);
+
 	OpenType<?> getOpenType();
 
 	Map<String, OpenType<?>> getFlattenedOpenTypes();
