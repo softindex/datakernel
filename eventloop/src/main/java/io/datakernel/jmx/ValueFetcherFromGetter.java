@@ -16,10 +16,24 @@
 
 package io.datakernel.jmx;
 
-final class DirectFetcher implements ValueFetcher {
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
+
+class ValueFetcherFromGetter implements ValueFetcher {
+	private final Method getter;
+
+	public ValueFetcherFromGetter(Method getter) {
+		this.getter = checkNotNull(getter);
+	}
 
 	@Override
 	public Object fetchFrom(Object source) {
-		return source;
+		try {
+			return getter.invoke(source);
+		} catch (IllegalAccessException | InvocationTargetException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }

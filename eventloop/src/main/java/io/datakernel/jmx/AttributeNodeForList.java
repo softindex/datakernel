@@ -28,7 +28,7 @@ import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
-final class ListAttributeNode implements AttributeNode {
+final class AttributeNodeForList implements AttributeNode {
 	private final String name;
 	private final ValueFetcher fetcher;
 	private final AttributeNode subNode;
@@ -36,7 +36,7 @@ final class ListAttributeNode implements AttributeNode {
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean refreshable;
 
-	public ListAttributeNode(String name, ValueFetcher fetcher, AttributeNode subNode) {
+	public AttributeNodeForList(String name, ValueFetcher fetcher, AttributeNode subNode) {
 		checkArgument(name != null && !name.isEmpty(), "List JmxAttribute cannot have empty name");
 		this.name = name;
 		this.fetcher = fetcher;

@@ -26,13 +26,13 @@ import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
 import static io.datakernel.jmx.OpenTypeUtils.simpleTypeOf;
 import static io.datakernel.util.Preconditions.checkArgument;
 
-final class SimpleTypeAttributeNode implements AttributeNode {
+final class AttributeNodeForSimpleType implements AttributeNode {
 	private final String name;
 	private final ValueFetcher fetcher;
 	private final OpenType<?> openType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 
-	public SimpleTypeAttributeNode(String name, ValueFetcher fetcher, Class<?> attributeType) {
+	public AttributeNodeForSimpleType(String name, ValueFetcher fetcher, Class<?> attributeType) {
 		checkArgument(name != null && !name.isEmpty(), "SimpleType JmxAttribute cannot have empty name");
 		this.name = name;
 		this.fetcher = fetcher;

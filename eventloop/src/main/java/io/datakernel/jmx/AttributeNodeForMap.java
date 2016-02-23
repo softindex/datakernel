@@ -26,7 +26,7 @@ import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.util.Arrays.asList;
 
-final class MapAttributeNode implements AttributeNode {
+final class AttributeNodeForMap implements AttributeNode {
 	private static final String KEY_COLUMN_NAME = "_key";
 	private static final String VALUE_COLUMN_NAME = "value";
 	private static final String ROW_TYPE_NAME = "RowType";
@@ -39,7 +39,7 @@ final class MapAttributeNode implements AttributeNode {
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean refreshable;
 
-	public MapAttributeNode(String name, ValueFetcher fetcher, AttributeNode subNode) {
+	public AttributeNodeForMap(String name, ValueFetcher fetcher, AttributeNode subNode) {
 		checkArgument(name != null && !name.isEmpty(), "Map JmxAttribute cannot have empty name");
 		this.name = name;
 		this.tabularType = createTabularType(subNode);

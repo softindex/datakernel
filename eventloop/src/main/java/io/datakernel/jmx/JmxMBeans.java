@@ -70,7 +70,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		// all objects are of same type, so we can extract info from any of them
 		ConcurrentJmxMBean first = monitorables.get(0);
-		PojoAttributeNode rootNode = createAttributesTree(first.getClass());
+		AttributeNodeForPojo rootNode = createAttributesTree(first.getClass());
 		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, first.getClass(), enableRefresh);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(first.getClass());
 
@@ -85,9 +85,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return mbean;
 	}
 
-	public static PojoAttributeNode createAttributesTree(Class<?> clazz) {
+	public static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
 		List<AttributeNode> subNodes = createNodesFor(clazz);
-		PojoAttributeNode root = new PojoAttributeNode("", new DirectFetcher(), subNodes);
+		AttributeNodeForPojo root = new AttributeNodeForPojo("", new ValueFetcherDirect(), subNodes);
 		return root;
 	}
 
@@ -128,12 +128,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static AttributeNode createAttributeNodeFor(String attrName, Type attrType, Method getter) {
-		ValueFetcher fetcher = getter != null ? new FetcherFromGetter(getter) : new DirectFetcher();
+		ValueFetcher fetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 		if (attrType instanceof Class) {
 			// 3 cases: simple-type, JmxStats, POJO
 			Class<?> returnClass = (Class<?>) attrType;
 			if (isSimpleType(returnClass)) {
-				return new SimpleTypeAttributeNode(attrName, fetcher, returnClass);
+				return new AttributeNodeForSimpleType(attrName, fetcher, returnClass);
 			} else if (isJmxStats(returnClass)) {
 				// JmxStats case
 				List<AttributeNode> subNodes = createNodesFor(returnClass);
@@ -145,7 +145,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					return null;
 				}
 
-				return new JmxStatsAttributeNode(attrName, fetcher, returnClass, subNodes);
+				return new AttributeNodeForJmxStats(attrName, fetcher, returnClass, subNodes);
 			} else {
 				// POJO case
 				List<AttributeNode> subNodes = createNodesFor(returnClass);
@@ -156,7 +156,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					return null;
 				}
 
-				return new PojoAttributeNode(attrName, fetcher, subNodes);
+				return new AttributeNodeForPojo(attrName, fetcher, subNodes);
 			}
 		} else if (attrType instanceof ParameterizedType) {
 			return createNodeForParametrizedType(attrName, (ParameterizedType) attrType, getter);
@@ -179,24 +179,24 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private static ListAttributeNode createListAttributeNodeFor(String attrName, Method getter, Type listElementType) {
+	private static AttributeNodeForList createListAttributeNodeFor(String attrName, Method getter, Type listElementType) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		if (listElementType instanceof Class<?>) {
-			return new ListAttributeNode(attrName, fetcher, createAttributeNodeFor("", listElementType, null));
+			return new AttributeNodeForList(attrName, fetcher, createAttributeNodeFor("", listElementType, null));
 		} else if (listElementType instanceof ParameterizedType) {
-			return new ListAttributeNode(attrName, fetcher,
+			return new AttributeNodeForList(attrName, fetcher,
 					createNodeForParametrizedType("", (ParameterizedType) listElementType, null));
 		} else {
 			throw new RuntimeException();
 		}
 	}
 
-	private static MapAttributeNode createMapAttributeNodeFor(String attrName, Method getter, Type valueType) {
+	private static AttributeNodeForMap createMapAttributeNodeFor(String attrName, Method getter, Type valueType) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		if (valueType instanceof Class<?>) {
-			return new MapAttributeNode(attrName, fetcher, createAttributeNodeFor("", valueType, null));
+			return new AttributeNodeForMap(attrName, fetcher, createAttributeNodeFor("", valueType, null));
 		} else if (valueType instanceof ParameterizedType) {
-			return new MapAttributeNode(attrName, fetcher,
+			return new AttributeNodeForMap(attrName, fetcher,
 					createNodeForParametrizedType("", (ParameterizedType) valueType, null));
 		} else {
 			throw new RuntimeException();
@@ -208,7 +208,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static ValueFetcher createAppropriateFetcher(Method getter) {
-		return getter != null ? new FetcherFromGetter(getter) : new DirectFetcher();
+		return getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 	}
 
 	private static MBeanOperationInfo[] extractOperationsInfo(Class<?> monitorableClass, boolean enableRefresh)
@@ -299,7 +299,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return true;
 	}
 
-	private static MBeanInfo createMBeanInfo(PojoAttributeNode rootNode, Class<?> monitorableClass,
+	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode, Class<?> monitorableClass,
 	                                         boolean enableRefresh)
 			throws InvocationTargetException, IllegalAccessException {
 		String monitorableName = "";
@@ -315,7 +315,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				null); //notifications
 	}
 
-	private static MBeanAttributeInfo[] extractAttributesInfo(PojoAttributeNode rootNode) {
+	private static MBeanAttributeInfo[] extractAttributesInfo(AttributeNodeForPojo rootNode) {
 		Map<String, OpenType<?>> nameToType = rootNode.getFlattenedOpenTypes();
 		List<MBeanAttributeInfo> attrsInfo = new ArrayList<>();
 		for (String attrName : nameToType.keySet()) {
@@ -397,7 +397,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final class DynamicMBeanAggregator implements DynamicMBean {
 		private final MBeanInfo mBeanInfo;
 		private final List<? extends ConcurrentJmxMBean> mbeans;
-		private final PojoAttributeNode rootNode;
+		private final AttributeNodeForPojo rootNode;
 		private final Map<OperationKey, Method> opkeyToMethod;
 
 		// refresh
@@ -406,7 +406,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private volatile double smoothingWindow;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends ConcurrentJmxMBean> mbeans,
-		                              PojoAttributeNode rootNode, Map<OperationKey, Method> opkeyToMethod,
+		                              AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod,
 		                              boolean refreshEnabled) {
 			this.mBeanInfo = mBeanInfo;
 			this.mbeans = mbeans;
