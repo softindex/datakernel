@@ -72,6 +72,7 @@ public final class LogCommitTransaction<T> {
 			@Override
 			public void onException(Exception exception) {
 				logger.error("Commit callback onException called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks, exception);
+				callback.onException(exception);
 			}
 		};
 	}

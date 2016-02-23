@@ -132,7 +132,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 					@Override
 					public void onException(Exception e) {
-						logger.error("Saving chunks to aggregation storage {} failed", storage, e);
+						logger.error("Streaming to chunker failed", e);
 						closeWithError(e);
 						operationCallback.onException(e);
 					}

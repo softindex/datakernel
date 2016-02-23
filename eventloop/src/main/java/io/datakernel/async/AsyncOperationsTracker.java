@@ -40,7 +40,9 @@ public final class AsyncOperationsTracker<T> {
 
 		@Override
 		public void onException(Exception e) {
+			--operations;
 			exception = e;
+			returnResultsIfNeeded();
 		}
 	};
 
