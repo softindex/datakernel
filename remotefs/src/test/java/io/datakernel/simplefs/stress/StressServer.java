@@ -16,9 +16,12 @@
 
 package io.datakernel.simplefs.stress;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.simplefs.SimpleFsServer;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -30,6 +33,11 @@ import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
+
+	static {
+		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.INFO);
+	}
+
 	public static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");
 	public static final int PORT = 5560;
 

@@ -254,6 +254,7 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 
 	@Override
 	public void shutdownReader() {
+		socketReader.streamTo(StreamConsumers.<ByteBuf>idle(eventloop));
 	}
 
 	@Override

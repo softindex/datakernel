@@ -171,6 +171,10 @@ public class ServerProtocol<S extends FsServer> extends AbstractServer<ServerPro
 
 						logger.trace("Responding ok to file download: {}. File size", size);
 						messaging.sendMessage(new FsResponses.Ready(size));
+
+						// preventing output stream from being explicitly closed
+						messaging.shutdownReader();
+
 						server.download(item.filePath, item.startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
 							@Override
 							public void onResult(StreamProducer<ByteBuf> result) {
