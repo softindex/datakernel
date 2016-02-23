@@ -33,7 +33,6 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	private final Map<String, OpenType<?>> nameToOpenType;
 
 	public AttributeNodeForSimpleType(String name, ValueFetcher fetcher, Class<?> attributeType) {
-		checkArgument(name != null && !name.isEmpty(), "SimpleType JmxAttribute cannot have empty name");
 		this.name = name;
 		this.fetcher = fetcher;
 		this.openType = simpleTypeOf(attributeType);

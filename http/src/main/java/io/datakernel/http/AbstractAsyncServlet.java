@@ -22,6 +22,8 @@ import io.datakernel.jmx.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -41,7 +43,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 	private EventStats requests = new EventStats();
 	private EventStats requestsThrottled = new EventStats();
 	private final ExceptionStats exceptions = new ExceptionStats();
-	private final HttpCodeStats httpCodeStats = new HttpCodeStats();
+	private final Map<Integer, HttpStats> httpCodeStats = new HashMap<>();
 
 	protected AbstractAsyncServlet(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -208,18 +210,11 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 	}
 
 	@JmxAttribute
-	public final HttpCodeStats getHttpCodeStats() {
+	public final Map<Integer, HttpStats> getHttpCodeStats() {
 		return httpCodeStats;
 	}
 
-	public static final class HttpCodeStats extends MapStats<Integer, HttpStats> {
-		@Override
-		protected HttpStats createJmxStatsInstance() {
-			return new HttpStats();
-		}
-	}
-
-	public static final class HttpStats extends AbstractCompositeStats<HttpStats> {
+	public static final class HttpStats {
 		private ValueStats timings = new ValueStats();
 		private EventStats requests = new EventStats();
 

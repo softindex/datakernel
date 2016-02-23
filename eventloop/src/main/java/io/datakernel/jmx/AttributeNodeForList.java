@@ -37,7 +37,6 @@ final class AttributeNodeForList implements AttributeNode {
 	private final boolean refreshable;
 
 	public AttributeNodeForList(String name, ValueFetcher fetcher, AttributeNode subNode) {
-		checkArgument(name != null && !name.isEmpty(), "List JmxAttribute cannot have empty name");
 		this.name = name;
 		this.fetcher = fetcher;
 		this.subNode = subNode;

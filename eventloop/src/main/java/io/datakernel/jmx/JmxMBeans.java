@@ -133,7 +133,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			// 3 cases: simple-type, JmxStats, POJO
 			Class<?> returnClass = (Class<?>) attrType;
 			if (isSimpleType(returnClass)) {
-				return new AttributeNodeForSimpleType(attrName, fetcher, returnClass);
+				try {
+					return new AttributeNodeForSimpleType(attrName, fetcher, returnClass);
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
 			} else if (isJmxStats(returnClass)) {
 				// JmxStats case
 				List<AttributeNode> subNodes = createNodesFor(returnClass);

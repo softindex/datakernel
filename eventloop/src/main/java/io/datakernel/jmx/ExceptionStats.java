@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -85,6 +86,10 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 
 	@JmxAttribute
 	public List<String> getLastExceptionStackTrace() {
-		return asList(MBeanFormat.formatException(throwable));
+		if (throwable != null) {
+			return asList(MBeanFormat.formatException(throwable));
+		} else {
+			return new ArrayList<>();
+		}
 	}
 }

@@ -886,7 +886,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		stats.resetStats();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(name = "")
 	public EventloopStats getEventloopStats() {
 		return stats;
 	}

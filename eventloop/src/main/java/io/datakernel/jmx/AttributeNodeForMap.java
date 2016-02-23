@@ -40,7 +40,6 @@ final class AttributeNodeForMap implements AttributeNode {
 	private final boolean refreshable;
 
 	public AttributeNodeForMap(String name, ValueFetcher fetcher, AttributeNode subNode) {
-		checkArgument(name != null && !name.isEmpty(), "Map JmxAttribute cannot have empty name");
 		this.name = name;
 		this.tabularType = createTabularType(subNode);
 		this.nameToOpenType = createMapWithOneEntry(name, tabularType);
