@@ -22,10 +22,13 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
-import io.datakernel.rpc.client.jmx.*;
+import io.datakernel.rpc.client.jmx.RpcConnectStats;
+import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.client.sender.RpcStrategy;
@@ -84,8 +87,8 @@ public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 
 	private final RpcRequestStats generalRequestsStats;
 	private final RpcConnectStats generalConnectsStats;
-	private final MapStats<Class<?>, RpcRequestStats> requestStatsPerClass;
-	private final MapStats<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress;
+	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass;
+	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress;
 
 	private RpcClient(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -93,8 +96,8 @@ public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 		// JMX
 		this.generalRequestsStats = new RpcRequestStats();
 		this.generalConnectsStats = new RpcConnectStats();
-		this.requestStatsPerClass = new ClassToRequestStats();
-		this.connectsStatsPerAddress = new AddressToConnectStats(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
+		this.requestStatsPerClass = new HashMap<>();
+		this.connectsStatsPerAddress = new HashMap<>(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
 	}
 
 	public static RpcClient create(final Eventloop eventloop) {
@@ -399,24 +402,24 @@ public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 		}
 	}
 
-	@JmxAttribute
+	@JmxAttribute(name = "requests")
 	public RpcRequestStats getGeneralRequestsStats() {
 		return generalRequestsStats;
 	}
 
 	@JmxAttribute
-	public MapStats<Class<?>, RpcRequestStats> getRequestsStatsPerClass() {
+	public Map<Class<?>, RpcRequestStats> getRequestsStatsPerClass() {
 		return requestStatsPerClass;
 	}
 
 	@JmxAttribute
-	public MapStats<InetSocketAddress, RpcConnectStats> getConnectsStatsPerAddress() {
+	public Map<InetSocketAddress, RpcConnectStats> getConnectsStatsPerAddress() {
 		return connectsStatsPerAddress;
 	}
 
 	@JmxAttribute
-	public MapStats<InetSocketAddress, RpcRequestStats> getRequestStatsPerAddress() {
-		MapStats<InetSocketAddress, RpcRequestStats> requestStatsPerAddress = new AddressToRequestStats();
+	public Map<InetSocketAddress, RpcRequestStats> getRequestStatsPerAddress() {
+		Map<InetSocketAddress, RpcRequestStats> requestStatsPerAddress = new HashMap<>();
 		for (InetSocketAddress address : addresses) {
 			RpcClientConnection connection = connections.get(address);
 			if (connection != null) {
@@ -428,8 +431,8 @@ public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 	}
 
 	@JmxAttribute
-	public JmxStats<?> getActiveConnectionsCount() {
-		return JmxStatsWrappers.forSummableValue(connections.size());
+	public int getActiveConnectionsCount() {
+		return connections.size();
 	}
 
 	private RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
