@@ -84,9 +84,11 @@ final class AttributeNodeForList implements AttributeNode {
 		List<Map<String, Object>> attributesFromAllElements = new ArrayList<>();
 		for (Object pojo : pojos) {
 			List<?> currentList = (List<?>) fetcher.fetchFrom(pojo);
-			for (Object element : currentList) {
-				Map<String, Object> attributesFromElement = subNode.aggregateAllAttributes(asList(element));
-				attributesFromAllElements.add(attributesFromElement);
+			if (currentList != null) {
+				for (Object element : currentList) {
+					Map<String, Object> attributesFromElement = subNode.aggregateAllAttributes(asList(element));
+					attributesFromAllElements.add(attributesFromElement);
+				}
 			}
 		}
 
@@ -131,8 +133,10 @@ final class AttributeNodeForList implements AttributeNode {
 		if (refreshable) {
 			for (Object pojo : pojos) {
 				List<?> currentList = (List<?>) fetcher.fetchFrom(pojo);
-				for (Object element : currentList) {
-					subNode.refresh(asList(element), timestamp, smoothingWindow);
+				if (currentList != null) {
+					for (Object element : currentList) {
+						subNode.refresh(asList(element), timestamp, smoothingWindow);
+					}
 				}
 			}
 		}

@@ -123,7 +123,11 @@ final class AttributeNodeForMap implements AttributeNode {
 
 	private CompositeData createTabularDataRow(String key, Map<String, Object> attributes) throws OpenDataException {
 		Map<String, Object> allAttributes = new HashMap<>(attributes.size() + 1);
-		allAttributes.putAll(attributes);
+		if (attributes.size() == 1 && attributes.keySet().iterator().next().equals("")) {
+			allAttributes.put(VALUE_COLUMN_NAME, attributes.values().iterator().next());
+		} else {
+			allAttributes.putAll(attributes);
+		}
 		allAttributes.put(KEY_COLUMN_NAME, key);
 		return new CompositeDataSupport(tabularType.getRowType(), allAttributes);
 	}
