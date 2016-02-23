@@ -23,6 +23,8 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.*;
 import io.datakernel.stream.processor.StreamDeserializer;
 import io.datakernel.stream.processor.StreamSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
@@ -37,6 +39,9 @@ import java.util.HashMap;
  */
 public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection implements Messaging<O>, StreamDataReceiver<I> {
 	private MessagingStarter<O> starter;
+
+	private static final Logger logger = LoggerFactory.getLogger(StreamMessagingConnection.class);
+
 	protected final HashMap<Class<? extends I>, MessagingHandler<? extends I, O>> handlers = new HashMap<>();
 
 	private StreamConsumer<ByteBuf> currentConsumer;
@@ -199,7 +204,9 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		Class<?> type = item.getClass();
 		MessagingHandler<I, O> handler = (MessagingHandler<I, O>) handlers.get(type);
 		if (handler == null) {
-			onReadException(new SimpleException("No handler for message type: " + type.toString()));
+			SimpleException e = new SimpleException("No handler for message type: " + type.toString());
+			logger.error("No handler for message type: {}", type, e);
+			onReadException(e);
 		} else {
 			handler.onMessage(item, this);
 		}
