@@ -16,24 +16,14 @@
 
 package io.datakernel.jmx;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import static io.datakernel.util.Preconditions.checkNotNull;
-
-final class ValueFetcherFromGetter implements ValueFetcher {
-	private final Method getter;
-
-	public ValueFetcherFromGetter(Method getter) {
-		this.getter = checkNotNull(getter);
-	}
-
-	@Override
-	public Object fetchFrom(Object source) {
-		try {
-			return getter.invoke(source);
-		} catch (IllegalAccessException | InvocationTargetException e) {
-			throw new RuntimeException(e);
-		}
-	}
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface JmxRefreshSettings {
+	double smoothingWindow();
+	double period();
 }

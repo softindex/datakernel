@@ -69,23 +69,38 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		checkArgument(allObjectsAreOfSameType(monitorables));
 
 		// all objects are of same type, so we can extract info from any of them
-		ConcurrentJmxMBean first = monitorables.get(0);
-		AttributeNodeForPojo rootNode = createAttributesTree(first.getClass());
-		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, first.getClass(), enableRefresh);
-		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(first.getClass());
+		Class<? extends ConcurrentJmxMBean> mbeanClass = monitorables.get(0).getClass();
+		AttributeNodeForPojo rootNode = createAttributesTree(mbeanClass);
+		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, mbeanClass, enableRefresh);
+		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(mbeanClass);
 
 		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(
 				mBeanInfo, monitorables, rootNode, opkeyToMethod, enableRefresh
 		);
 
 		if (enableRefresh) {
-			mbean.startRefreshing(DEFAULT_REFRESH_PERIOD, DEFAULT_SMOOTHING_WINDOW);
+			startRefreshing(mbeanClass, mbean);
 		}
 
 		return mbean;
 	}
 
-	public static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
+	private static void startRefreshing(Class<? extends ConcurrentJmxMBean> mbeanClass, DynamicMBeanAggregator mbean) {
+		double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
+		double refreshPeriod = DEFAULT_REFRESH_PERIOD;
+		if (mbeanClass.isAnnotationPresent(JmxRefreshSettings.class)) {
+			JmxRefreshSettings refreshSettings = mbeanClass.getAnnotation(JmxRefreshSettings.class);
+			double customSmoothingWindow = refreshSettings.smoothingWindow();
+			double customRefreshPeriod = refreshSettings.period();
+			checkArgument(customRefreshPeriod > 0.0, "refresh period must be positive");
+			checkArgument(customSmoothingWindow > 0.0, "smoothing window must be positive");
+			smoothingWindow = customSmoothingWindow;
+			refreshPeriod = customRefreshPeriod;
+		}
+		mbean.startRefreshing(refreshPeriod, smoothingWindow);
+	}
+
+	public static AttributeNodeForPojo createAttributesTree(Class<? extends ConcurrentJmxMBean> clazz) {
 		List<AttributeNode> subNodes = createNodesFor(clazz);
 		AttributeNodeForPojo root = new AttributeNodeForPojo("", new ValueFetcherDirect(), subNodes);
 		return root;
@@ -215,7 +230,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 	}
 
-	private static MBeanOperationInfo[] extractOperationsInfo(Class<?> monitorableClass, boolean enableRefresh)
+	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> monitorableClass, boolean enableRefresh)
 			throws InvocationTargetException, IllegalAccessException {
 		// TODO(vmykhalko): refactor this method
 		List<MBeanOperationInfo> operations = new ArrayList<>();
@@ -303,13 +318,14 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return true;
 	}
 
-	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode, Class<?> monitorableClass,
+	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode,
+	                                         Class<? extends ConcurrentJmxMBean> monitorableClass,
 	                                         boolean enableRefresh)
 			throws InvocationTargetException, IllegalAccessException {
 		String monitorableName = "";
 		String monitorableDescription = "";
-		MBeanAttributeInfo[] attributes = extractAttributesInfo(rootNode);
-		MBeanOperationInfo[] operations = extractOperationsInfo(monitorableClass, enableRefresh);
+		MBeanAttributeInfo[] attributes = fetchAttributesInfo(rootNode, enableRefresh);
+		MBeanOperationInfo[] operations = fetchOperationsInfo(monitorableClass, enableRefresh);
 		return new MBeanInfo(
 				monitorableName,
 				monitorableDescription,
@@ -319,17 +335,35 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				null); //notifications
 	}
 
-	private static MBeanAttributeInfo[] extractAttributesInfo(AttributeNodeForPojo rootNode) {
+	private static MBeanAttributeInfo[] fetchAttributesInfo(AttributeNodeForPojo rootNode, boolean refreshEnabled) {
 		Map<String, OpenType<?>> nameToType = rootNode.getFlattenedOpenTypes();
 		List<MBeanAttributeInfo> attrsInfo = new ArrayList<>();
 		for (String attrName : nameToType.keySet()) {
 			String attrType = nameToType.get(attrName).getClassName();
 			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType, attrName, true, false, false));
 		}
+
+		if (refreshEnabled) {
+			attrsInfo.addAll(createAttributesForRefreshControl());
+		}
+
 		return attrsInfo.toArray(new MBeanAttributeInfo[attrsInfo.size()]);
 	}
 
-	// TODO(vmykhalko): refactor this method (it has common code with  extractOperationsInfo()
+	private static List<MBeanAttributeInfo> createAttributesForRefreshControl() {
+		List<MBeanAttributeInfo> refreshAttrs = new ArrayList<>();
+		MBeanAttributeInfo refreshPeriodAttr =
+				new MBeanAttributeInfo(REFRESH_PERIOD_ATTRIBUTE_NAME, "double", REFRESH_PERIOD_ATTRIBUTE_NAME,
+						true, false, false);
+		refreshAttrs.add(refreshPeriodAttr);
+		MBeanAttributeInfo smoothingWindowAttr =
+				new MBeanAttributeInfo(SMOOTHING_WINDOW_ATTRIBUTE_NAME, "double", SMOOTHING_WINDOW_ATTRIBUTE_NAME,
+						true, false, false);
+		refreshAttrs.add(smoothingWindowAttr);
+		return refreshAttrs;
+	}
+
+	// TODO(vmykhalko): refactor this method (it has common code with  fetchOperationsInfo()
 	private static Map<OperationKey, Method> fetchOpkeyToMethod(Class<? extends ConcurrentJmxMBean> mbeanClass) {
 		Map<OperationKey, Method> opkeyToMethod = new HashMap<>();
 		Method[] methods = mbeanClass.getMethods();
