@@ -143,39 +143,43 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static AttributeNode createAttributeNodeFor(String attrName, Type attrType, Method getter) {
-		ValueFetcher fetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
+		ValueFetcher defaultFetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 		if (attrType instanceof Class) {
 			// 3 cases: simple-type, JmxStats, POJO
 			Class<?> returnClass = (Class<?>) attrType;
 			if (isSimpleType(returnClass)) {
 				try {
-					return new AttributeNodeForSimpleType(attrName, fetcher, returnClass);
+					return new AttributeNodeForSimpleType(attrName, defaultFetcher, returnClass);
 				} catch (Exception e) {
 					throw new RuntimeException(e);
 				}
+			} else if (returnClass.isArray()) {
+				Class<?> elementType = returnClass.getComponentType();
+				checkNotNull(getter, "Arrays can be used only directly in POJO, JmxStats or JmxMBeans");
+				ValueFetcher fetcher = new ValueFetcherFromGetterArrayAdapter(getter);
+				return createListAttributeNodeFor(attrName, fetcher, elementType);
 			} else if (isJmxStats(returnClass)) {
 				// JmxStats case
 				List<AttributeNode> subNodes = createNodesFor(returnClass);
 
 				if (subNodes.size() == 0) {
-					logger.warn(format(
+					throw new IllegalArgumentException(format(
 							"JmxStats of type \"%s\" does not have JmxAttributes",
 							returnClass.getName()));
-					return null;
 				}
 
-				return new AttributeNodeForJmxStats(attrName, fetcher, returnClass, subNodes);
+				return new AttributeNodeForJmxStats(attrName, defaultFetcher, returnClass, subNodes);
 			} else {
 				// POJO case
 				List<AttributeNode> subNodes = createNodesFor(returnClass);
 
 				if (subNodes.size() == 0) {
-					logger.warn(format(
-							"Type \"%s\" seems to be POJO but does not have JmxAttributes", returnClass.getName()));
-					return null;
+					throw new IllegalArgumentException(format(
+							"Type \"%s\" seems to be POJO but does not have JmxAttributes",
+							returnClass.getName()));
 				}
 
-				return new AttributeNodeForPojo(attrName, fetcher, subNodes);
+				return new AttributeNodeForPojo(attrName, defaultFetcher, subNodes);
 			}
 		} else if (attrType instanceof ParameterizedType) {
 			return createNodeForParametrizedType(attrName, (ParameterizedType) attrType, getter);
@@ -186,20 +190,21 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static AttributeNode createNodeForParametrizedType(String attrName, ParameterizedType pType,
 	                                                           Method getter) {
+		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		Class<?> rawType = (Class<?>) pType.getRawType();
 		if (rawType == List.class) {
 			Type listElementType = pType.getActualTypeArguments()[0];
-			return createListAttributeNodeFor(attrName, getter, listElementType);
+			return createListAttributeNodeFor(attrName, fetcher, listElementType);
 		} else if (rawType == Map.class) {
 			Type valueType = pType.getActualTypeArguments()[1];
-			return createMapAttributeNodeFor(attrName, getter, valueType);
+			return createMapAttributeNodeFor(attrName, fetcher, valueType);
 		} else {
 			throw new RuntimeException("There is no support for Generic classes other than List or Map");
 		}
 	}
 
-	private static AttributeNodeForList createListAttributeNodeFor(String attrName, Method getter, Type listElementType) {
-		ValueFetcher fetcher = createAppropriateFetcher(getter);
+	private static AttributeNodeForList createListAttributeNodeFor(String attrName, ValueFetcher fetcher,
+	                                                               Type listElementType) {
 		if (listElementType instanceof Class<?>) {
 			return new AttributeNodeForList(attrName, fetcher, createAttributeNodeFor("", listElementType, null));
 		} else if (listElementType instanceof ParameterizedType) {
@@ -210,8 +215,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private static AttributeNodeForMap createMapAttributeNodeFor(String attrName, Method getter, Type valueType) {
-		ValueFetcher fetcher = createAppropriateFetcher(getter);
+	private static AttributeNodeForMap createMapAttributeNodeFor(String attrName, ValueFetcher fetcher,
+	                                                             Type valueType) {
 		if (valueType instanceof Class<?>) {
 			return new AttributeNodeForMap(attrName, fetcher, createAttributeNodeFor("", valueType, null));
 		} else if (valueType instanceof ParameterizedType) {
