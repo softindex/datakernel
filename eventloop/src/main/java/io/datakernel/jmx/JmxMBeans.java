@@ -153,6 +153,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				} catch (Exception e) {
 					throw new RuntimeException(e);
 				}
+			} else if (isThrowable(returnClass)) {
+				return new AttributeNodeForThrowable(attrName, defaultFetcher);
 			} else if (returnClass.isArray()) {
 				Class<?> elementType = returnClass.getComponentType();
 				checkNotNull(getter, "Arrays can be used only directly in POJO, JmxStats or JmxMBeans");
