@@ -98,7 +98,7 @@ public class AggregationChunkerTest {
 			}
 		};
 
-		final List<AggregationChunk> chunksToConsolidate = aggregationMetadata.findChunksWithMostOverlaps();
+		final List<AggregationChunk> chunksToConsolidate = aggregationMetadata.findChunksGroupWithMostOverlaps();
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
@@ -188,7 +188,7 @@ public class AggregationChunkerTest {
 			}
 		};
 
-		final List<AggregationChunk> chunksToConsolidate = aggregationMetadata.findChunksWithMostOverlaps();
+		final List<AggregationChunk> chunksToConsolidate = aggregationMetadata.findChunksGroupWithMostOverlaps();
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {
@@ -292,7 +292,7 @@ public class AggregationChunkerTest {
 			}
 		};
 
-		final List<AggregationChunk> chunksToConsolidate = aggregationMetadata.findChunksWithMostOverlaps();
+		final List<AggregationChunk> chunksToConsolidate = aggregationMetadata.findChunksGroupWithMostOverlaps();
 
 		List<String> fields = new ArrayList<>();
 		for (AggregationChunk chunk : chunksToConsolidate) {

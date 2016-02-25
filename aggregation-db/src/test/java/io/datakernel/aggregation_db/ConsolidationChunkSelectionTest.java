@@ -45,10 +45,10 @@ public class ConsolidationChunkSelectionTest {
 			am.addToIndex(chunk);
 		}
 
-		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100);
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100, 1.0);
 		assertEquals(chunks, newHashSet(selectedChunks));
 
-		selectedChunks = am.findChunksForConsolidation(5);
+		selectedChunks = am.findChunksForConsolidation(5, 1.0);
 		assertEquals(5, selectedChunks.size());
 
 		Set<Integer> trimmedChunkCounts = newHashSet();
@@ -56,6 +56,32 @@ public class ConsolidationChunkSelectionTest {
 			trimmedChunkCounts.add(chunk.getCount());
 		}
 		assertEquals(newHashSet(4, 5, 6, 7, 8), trimmedChunkCounts);
+	}
+
+	@Test
+	public void testMinKeyStrategy() throws Exception {
+		AggregationMetadata am = new AggregationMetadata(singletonList(""), new ArrayList<String>());
+
+		Set<AggregationChunk> chunks1 = newHashSet();
+		chunks1.add(createTestChunk(1, 1, 2));
+		chunks1.add(createTestChunk(2, 1, 2));
+		chunks1.add(createTestChunk(3, 1, 4));
+		chunks1.add(createTestChunk(4, 3, 4));
+
+		Set<AggregationChunk> chunks2 = newHashSet();
+		chunks2.add(createTestChunk(9, 9, 10));
+		chunks2.add(createTestChunk(10, 9, 10));
+		chunks2.add(createTestChunk(11, 10, 11));
+		chunks2.add(createTestChunk(12, 10, 13));
+		chunks2.add(createTestChunk(13, 12, 13));
+
+		Set<AggregationChunk> allChunks = newHashSet(concat(chunks1, chunks2));
+		for (AggregationChunk chunk : allChunks) {
+			am.addToIndex(chunk);
+		}
+
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100, 0.0);
+		assertEquals(chunks1, newHashSet(selectedChunks));
 	}
 
 	@SuppressWarnings("unchecked")

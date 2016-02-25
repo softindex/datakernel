@@ -575,8 +575,8 @@ public class Aggregation {
 		return (Predicate) builder.newInstance();
 	}
 
-	public void consolidate(int maxChunksToConsolidate, final ResultCallback<Boolean> callback) {
-		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate);
+	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, final ResultCallback<Boolean> callback) {
+		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate, preferHotSegmentsCoef);
 
 		if (chunks.isEmpty()) {
 			callback.onResult(false);

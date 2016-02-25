@@ -45,6 +45,7 @@ public class AggregationMetadata {
 	private final RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
 	private static final int EQUALS_QUERIES_THRESHOLD = 1_000;
+	private static final Random RANDOM = new Random();
 
 	public AggregationMetadata(Collection<String> keys, Collection<String> fields) {
 		this(keys, fields, null);
@@ -306,13 +307,13 @@ public class AggregationMetadata {
 		return segment.getSet().size() + segment.getClosingSet().size();
 	}
 
-	public List<AggregationChunk> findChunksWithMostOverlaps() {
+	public List<AggregationChunk> findChunksGroupWithMostOverlaps() {
 		int maxOverlaps = 2;
 		Set<AggregationChunk> result = new HashSet<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
 		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
 			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
-			int overlaps = segment.getSet().size() + segment.getClosingSet().size();
+			int overlaps = getNumberOfOverlaps(segment);
 			if (overlaps >= maxOverlaps) {
 				maxOverlaps = overlaps;
 				result.clear();
@@ -323,8 +324,29 @@ public class AggregationMetadata {
 		return new ArrayList<>(result);
 	}
 
-	public List<AggregationChunk> findChunksForConsolidation(int maxChunks) {
-		List<AggregationChunk> chunks = findChunksWithMostOverlaps();
+	public List<AggregationChunk> findChunksGroupWithMinKey() {
+		int minOverlaps = 2;
+		Set<AggregationChunk> result = new HashSet<>();
+		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
+		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+			int overlaps = getNumberOfOverlaps(segment);
+			if (overlaps >= minOverlaps) {
+				result.addAll(segment.getSet());
+				result.addAll(segment.getClosingSet());
+				break;
+			}
+		}
+		return new ArrayList<>(result);
+	}
+
+	public boolean useHotSegmentStrategy(double preferHotSegmentsCoef) {
+		return RANDOM.nextDouble() <= preferHotSegmentsCoef;
+	}
+
+	public List<AggregationChunk> findChunksForConsolidation(int maxChunks, double preferHotSegmentsCoef) {
+		List<AggregationChunk> chunks = useHotSegmentStrategy(preferHotSegmentsCoef) ?
+				findChunksGroupWithMostOverlaps() : findChunksGroupWithMinKey();
 
 		if (chunks.isEmpty() || chunks.size() == maxChunks)
 			return chunks;
