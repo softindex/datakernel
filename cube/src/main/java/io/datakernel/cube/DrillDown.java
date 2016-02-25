@@ -19,19 +19,20 @@ package io.datakernel.cube;
 import com.google.common.base.MoreObjects;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
-public final class AvailableDrillDowns {
-	private final Set<List<String>> drillDowns;
+public final class DrillDown {
+	private final List<String> chain;
 	private final Set<String> measures;
 
-	public AvailableDrillDowns(Set<List<String>> drillDowns, Set<String> measures) {
-		this.drillDowns = drillDowns;
+	public DrillDown(List<String> chain, Set<String> measures) {
+		this.chain = chain;
 		this.measures = measures;
 	}
 
-	public Set<List<String>> getDrillDowns() {
-		return drillDowns;
+	public List<String> getChain() {
+		return chain;
 	}
 
 	public Set<String> getMeasures() {
@@ -42,24 +43,20 @@ public final class AvailableDrillDowns {
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-
-		AvailableDrillDowns that = (AvailableDrillDowns) o;
-
-		if (drillDowns != null ? !drillDowns.equals(that.drillDowns) : that.drillDowns != null) return false;
-		return !(measures != null ? !measures.equals(that.measures) : that.measures != null);
+		DrillDown drillDown1 = (DrillDown) o;
+		return Objects.equals(chain, drillDown1.chain) &&
+				Objects.equals(measures, drillDown1.measures);
 	}
 
 	@Override
 	public int hashCode() {
-		int result = drillDowns != null ? drillDowns.hashCode() : 0;
-		result = 31 * result + (measures != null ? measures.hashCode() : 0);
-		return result;
+		return Objects.hash(chain, measures);
 	}
 
 	@Override
 	public String toString() {
 		return MoreObjects.toStringHelper(this)
-				.add("drillDowns", drillDowns)
+				.add("chain", chain)
 				.add("measures", measures)
 				.toString();
 	}

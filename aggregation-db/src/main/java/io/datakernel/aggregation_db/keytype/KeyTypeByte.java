@@ -16,17 +16,11 @@
 
 package io.datakernel.aggregation_db.keytype;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenByte;
 
-public class KeyTypeByte extends KeyType implements KeyTypeEnumerable {
-	public KeyTypeByte() {
-		this(null);
-	}
-
-	public KeyTypeByte(Object restrictedValue) {
+public final class KeyTypeByte extends KeyType implements KeyTypeEnumerable {
+	KeyTypeByte(Object restrictedValue) {
 		super(byte.class, restrictedValue);
 	}
 
@@ -36,13 +30,8 @@ public class KeyTypeByte extends KeyType implements KeyTypeEnumerable {
 	}
 
 	@Override
-	public JsonPrimitive toJson(Object value) {
-		return new JsonPrimitive((Number) value);
-	}
-
-	@Override
-	public Object fromJson(JsonElement value) {
-		return value.getAsByte();
+	public Object fromString(String str) {
+		return Byte.parseByte(str);
 	}
 
 	@Override

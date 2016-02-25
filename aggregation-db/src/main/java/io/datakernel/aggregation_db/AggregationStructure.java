@@ -88,8 +88,8 @@ public class AggregationStructure {
 		return fields;
 	}
 
-	public FieldType getFieldType(String outputField) {
-		return fields.get(outputField);
+	public FieldType getFieldType(String field) {
+		return fields.get(field);
 	}
 
 	public boolean containsField(String field) {
@@ -109,30 +109,6 @@ public class AggregationStructure {
 		builder.method("toString", asString(keys));
 
 		return builder.defineClass();
-	}
-
-	public Comparator createFieldComparator(AggregationQuery query, Class<?> fieldClass) {
-		logger.trace("Creating field comparator for query {}", query.toString());
-		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
-		ExpressionComparator comparator = comparator();
-		List<AggregationQuery.QueryOrdering> orderings = query.getOrderings();
-
-		for (AggregationQuery.QueryOrdering ordering : orderings) {
-			boolean isAsc = ordering.isAsc();
-			String field = ordering.getPropertyName();
-			if (isAsc)
-				comparator.add(
-						getter(cast(arg(0), fieldClass), field),
-						getter(cast(arg(1), fieldClass), field));
-			else
-				comparator.add(
-						getter(cast(arg(1), fieldClass), field),
-						getter(cast(arg(0), fieldClass), field));
-		}
-
-		builder.method("compare", comparator);
-
-		return builder.newInstance();
 	}
 
 	public Comparator createKeyComparator(Class<?> recordClass, List<String> keys) {
@@ -199,44 +175,6 @@ public class AggregationStructure {
 		}
 		builder.method("toString", asString(newArrayList(concat(resultKeys, resultFields))));
 		return builder.defineClass();
-	}
-
-	public StreamReducers.Reducer mergeFieldsReducer(Class<?> inputClass, Class<?> outputClass,
-	                                                 List<String> keys, List<String> recordFields) {
-		logger.trace("Creating merge fields reducer for keys {}, fields {}", keys, recordFields);
-		AsmBuilder builder = new AsmBuilder(classLoader, StreamReducers.Reducer.class);
-
-		Expression accumulator1 = let(constructor(outputClass));
-		ExpressionSequence onFirstItemDef = sequence(accumulator1);
-		for (String key : keys) {
-			onFirstItemDef.add(set(
-					getter(accumulator1, key),
-					getter(cast(arg(2), inputClass), key)));
-		}
-		for (String field : recordFields) {
-			onFirstItemDef.add(set(
-					getter(accumulator1, field),
-					getter(cast(arg(2), inputClass), field)));
-		}
-		onFirstItemDef.add(accumulator1);
-		builder.method("onFirstItem", onFirstItemDef);
-
-		Expression accumulator2 = let(cast(arg(3), outputClass));
-		ExpressionSequence onNextItemDef = sequence(accumulator2);
-		for (String field : recordFields) {
-			onNextItemDef.add(set(
-					getter(accumulator2, field),
-					add(
-							getter(cast(arg(2), inputClass), field),
-							getter(cast(arg(3), outputClass), field)
-					)));
-		}
-		onNextItemDef.add(accumulator2);
-		builder.method("onNextItem", onNextItemDef);
-
-		builder.method("onComplete", call(arg(0), "onData", arg(2)));
-
-		return (StreamReducers.Reducer) builder.newInstance();
 	}
 
 	public <T> BufferSerializer<T> createBufferSerializer(Class<T> recordClass, List<String> keys, List<String> fields) {

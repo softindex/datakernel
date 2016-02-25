@@ -19,9 +19,10 @@ package io.datakernel.cube.bean;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 
 import java.util.Map;
+
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 
 public class DataItemResult3 {
 	public int key1;
@@ -57,9 +58,9 @@ public class DataItemResult3 {
 			.build();
 
 	public static final Map<String, FieldType> METRICS = ImmutableMap.<String, FieldType>builder()
-			.put("metric1", new FieldTypeLong())
-			.put("metric2", new FieldTypeLong())
-			.put("metric3", new FieldTypeLong())
+			.put("metric1", longSum())
+			.put("metric2", longSum())
+			.put("metric3", longSum())
 			.build();
 
 	@Override

@@ -14,23 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation_db.fieldtype;
+package io.datakernel.cube.api;
 
-import io.datakernel.serializer.asm.SerializerGen;
-import io.datakernel.serializer.asm.SerializerGenList;
+import io.datakernel.cube.api.ReportingQuery;
+import io.datakernel.util.Function;
 
-import java.util.List;
-
-public class FieldTypeList extends FieldType {
-	private final FieldType listElementType;
-
-	public FieldTypeList(FieldType listElementType) {
-		super(List.class);
-		this.listElementType = listElementType;
-	}
-
-	@Override
-	public SerializerGen serializerGen() {
-		return new SerializerGenList(listElementType.serializerGen());
-	}
+public interface RequestProcessor<I> extends Function<I, ReportingQuery> {
 }

@@ -18,8 +18,6 @@ package io.datakernel.aggregation_db;
 
 import java.util.*;
 
-import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Collections.unmodifiableList;
 
 /**
@@ -28,94 +26,35 @@ import static java.util.Collections.unmodifiableList;
 public final class AggregationQuery {
 	private List<String> keys = new ArrayList<>();
 	private List<String> fields = new ArrayList<>();
-	private QueryPredicates predicates = new QueryPredicates();
-	private List<QueryOrdering> orderings = new ArrayList<>();
-
-	/**
-	 * Represents a query result ordering. Contains a propertyName name and ordering (ascending or descending).
-	 */
-	public static final class QueryOrdering {
-		private final String propertyName;
-		private final boolean desc;
-
-		private QueryOrdering(String propertyName, boolean desc) {
-			this.propertyName = propertyName;
-			this.desc = desc;
-		}
-
-		public static QueryOrdering asc(String field) {
-			return new QueryOrdering(field, false);
-		}
-
-		public static QueryOrdering desc(String field) {
-			return new QueryOrdering(field, true);
-		}
-
-		public String getPropertyName() {
-			return propertyName;
-		}
-
-		public boolean isAsc() {
-			return !isDesc();
-		}
-
-		public boolean isDesc() {
-			return desc;
-		}
-
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-
-			QueryOrdering that = (QueryOrdering) o;
-
-			if (desc != that.desc) return false;
-			if (!propertyName.equals(that.propertyName)) return false;
-
-			return true;
-		}
-
-		@Override
-		public int hashCode() {
-			int result = propertyName.hashCode();
-			result = 31 * result + (desc ? 1 : 0);
-			return result;
-		}
-
-		@Override
-		public String toString() {
-			return propertyName + " " + (desc ? "desc" : "asc");
-		}
-	}
+	private Predicates predicates = new Predicates();
 
 	/**
 	 * Represents a mapping between key name and {@code QueryPredicate} instance.
 	 */
-	public static class QueryPredicates {
-		private final Map<String, QueryPredicate> map;
+	public static class Predicates {
+		private final Map<String, Predicate> map;
 
-		public QueryPredicates() {
+		public Predicates() {
 			this.map = new LinkedHashMap<>();
 		}
 
-		private QueryPredicates(Map<String, QueryPredicate> predicates) {
+		private Predicates(Map<String, Predicate> predicates) {
 			this.map = predicates;
 		}
 
-		public static QueryPredicates fromMap(Map<String, QueryPredicate> predicates) {
-			return new QueryPredicates(predicates);
+		public static Predicates fromMap(Map<String, Predicate> predicates) {
+			return new Predicates(predicates);
 		}
 
-		public Map<String, QueryPredicate> asUnmodifiableMap() {
+		public Map<String, Predicate> asUnmodifiableMap() {
 			return Collections.unmodifiableMap(map);
 		}
 
-		public Map<String, QueryPredicate> asMap() {
+		public Map<String, Predicate> asMap() {
 			return map;
 		}
 
-		public Collection<QueryPredicate> asCollection() {
+		public Collection<Predicate> asCollection() {
 			return map.values();
 		}
 
@@ -123,29 +62,29 @@ public final class AggregationQuery {
 			return map.keySet();
 		}
 
-		public QueryPredicates add(QueryPredicate predicate) {
+		public Predicates add(Predicate predicate) {
 			map.put(predicate.key, predicate);
 			return this;
 		}
 
-		public QueryPredicates eq(String key, Object value) {
-			return add(new QueryPredicateEq(key, value));
+		public Predicates eq(String key, Object value) {
+			return add(new PredicateEq(key, value));
 		}
 
-		public QueryPredicates eq(Map<String, Object> predicates) {
+		public Predicates eq(Map<String, Object> predicates) {
 			for (String key : predicates.keySet()) {
 				Object value = predicates.get(key);
-				add(new QueryPredicateEq(key, value));
+				add(new PredicateEq(key, value));
 			}
 			return this;
 		}
 
-		public QueryPredicates between(String key, Object from, Object to) {
-			return add(new QueryPredicateBetween(key, from, to));
+		public Predicates between(String key, Object from, Object to) {
+			return add(new PredicateBetween(key, from, to));
 		}
 
-		public QueryPredicates ne(String key, Object value) {
-			return add(new QueryPredicateNotEquals(key, value));
+		public Predicates ne(String key, Object value) {
+			return add(new PredicateNotEquals(key, value));
 		}
 
 		@Override
@@ -153,7 +92,7 @@ public final class AggregationQuery {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 
-			QueryPredicates that = (QueryPredicates) o;
+			Predicates that = (Predicates) o;
 
 			if (!map.equals(that.map)) return false;
 
@@ -174,10 +113,10 @@ public final class AggregationQuery {
 	/**
 	 * Represents a query predicate.
 	 */
-	public static abstract class QueryPredicate {
+	public static abstract class Predicate {
 		public final String key;
 
-		protected QueryPredicate(String key) {
+		protected Predicate(String key) {
 			this.key = key;
 		}
 	}
@@ -187,10 +126,10 @@ public final class AggregationQuery {
 	 * Defined by name of key and value,
 	 * so that result records should have the value of the specified key equal to given value.
 	 */
-	public static class QueryPredicateEq extends QueryPredicate {
+	public static class PredicateEq extends Predicate {
 		public final Object value;
 
-		public QueryPredicateEq(String key, Object value) {
+		public PredicateEq(String key, Object value) {
 			super(key);
 			this.value = value;
 		}
@@ -200,7 +139,7 @@ public final class AggregationQuery {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 
-			QueryPredicateEq that = (QueryPredicateEq) o;
+			PredicateEq that = (PredicateEq) o;
 
 			if (!value.equals(that.value)) return false;
 
@@ -223,11 +162,11 @@ public final class AggregationQuery {
 	 * Defined by name of key and two values: 'from' and 'to',
 	 * so that result records should have the value of the specified key in range [from; to] (range is inclusive!).
 	 */
-	public static class QueryPredicateBetween extends QueryPredicate {
+	public static class PredicateBetween extends Predicate {
 		public final Object from;
 		public final Object to;
 
-		public QueryPredicateBetween(String key, Object from, Object to) {
+		public PredicateBetween(String key, Object from, Object to) {
 			super(key);
 			this.from = from;
 			this.to = to;
@@ -238,7 +177,7 @@ public final class AggregationQuery {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
 
-			QueryPredicateBetween that = (QueryPredicateBetween) o;
+			PredicateBetween that = (PredicateBetween) o;
 
 			if (!from.equals(that.from)) return false;
 			if (!to.equals(that.to)) return false;
@@ -264,10 +203,10 @@ public final class AggregationQuery {
 	 * Defined by name of key and value, so that result records should have the value of the specified key not equal to given value.
 	 * Implemented through post-filtering of records read from physical storage.
 	 */
-	public static class QueryPredicateNotEquals extends QueryPredicate {
+	public static class PredicateNotEquals extends Predicate {
 		public final Object value;
 
-		public QueryPredicateNotEquals(String key, Object value) {
+		public PredicateNotEquals(String key, Object value) {
 			super(key);
 			this.value = value;
 		}
@@ -276,7 +215,7 @@ public final class AggregationQuery {
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-			QueryPredicateNotEquals that = (QueryPredicateNotEquals) o;
+			PredicateNotEquals that = (PredicateNotEquals) o;
 			return Objects.equals(value, that.value);
 		}
 
@@ -299,23 +238,10 @@ public final class AggregationQuery {
 		this.fields.addAll(fields);
 	}
 
-	public AggregationQuery(List<String> keys, List<String> fields, QueryPredicates predicates) {
+	public AggregationQuery(List<String> keys, List<String> fields, Predicates predicates) {
 		this.keys.addAll(keys);
 		this.fields.addAll(fields);
 		this.predicates = predicates;
-	}
-
-	public AggregationQuery(List<String> keys, List<String> fields, QueryPredicates predicates,
-	                        List<QueryOrdering> orderings) {
-		this.keys = keys;
-		this.fields = fields;
-		this.predicates = predicates;
-		this.orderings = orderings;
-	}
-
-	public AggregationQuery copyWithDuplicatedPredicatesAndKeys() {
-		return new AggregationQuery(newArrayList(this.keys), this.fields,
-				QueryPredicates.fromMap(newHashMap(this.predicates.map)), this.orderings);
 	}
 
 	public List<String> getResultKeys() {
@@ -333,19 +259,8 @@ public final class AggregationQuery {
 		return new ArrayList<>(result);
 	}
 
-	public List<String> getAllFields() {
-		LinkedHashSet<String> result = new LinkedHashSet<>();
-		result.addAll(this.fields);
-		result.addAll(getOrderingFields());
-		return new ArrayList<>(result);
-	}
-
-	public QueryPredicates getPredicates() {
+	public Predicates getPredicates() {
 		return predicates;
-	}
-
-	public List<QueryOrdering> getOrderings() {
-		return unmodifiableList(orderings);
 	}
 
 	public AggregationQuery key(String key) {
@@ -378,57 +293,39 @@ public final class AggregationQuery {
 		return this;
 	}
 
-	public AggregationQuery orderAsc(String propertyName) {
-		this.orderings.add(QueryOrdering.asc(propertyName));
-		return this;
-	}
-
-	public AggregationQuery orderDesc(String propertyName) {
-		this.orderings.add(QueryOrdering.desc(propertyName));
-		return this;
-	}
-
-	public AggregationQuery predicates(QueryPredicates predicates) {
+	public AggregationQuery predicates(Predicates predicates) {
 		this.predicates = predicates;
 		return this;
 	}
 
-	public AggregationQuery predicates(List<QueryPredicate> predicates) {
-		this.predicates = new QueryPredicates();
-		for (QueryPredicate predicate : predicates) {
+	public AggregationQuery predicates(List<Predicate> predicates) {
+		this.predicates = new Predicates();
+		for (Predicate predicate : predicates) {
 			this.predicates.add(predicate);
 		}
 		return this;
 	}
 
-	public AggregationQuery addPredicates(List<QueryPredicate> predicates) {
-		for (QueryPredicate predicate : predicates) {
+	public AggregationQuery addPredicates(List<Predicate> predicates) {
+		for (Predicate predicate : predicates) {
 			this.predicates.add(predicate);
 		}
 		return this;
 	}
 
 	public AggregationQuery eq(String key, Object value) {
-		this.predicates.add(new QueryPredicateEq(key, value));
+		this.predicates.add(new PredicateEq(key, value));
 		return this;
 	}
 
 	public AggregationQuery ne(String key, Object value) {
-		this.predicates.add(new QueryPredicateNotEquals(key, value));
+		this.predicates.add(new PredicateNotEquals(key, value));
 		return this;
 	}
 
 	public AggregationQuery between(String key, Object from, Object to) {
-		this.predicates.add(new QueryPredicateBetween(key, from, to));
+		this.predicates.add(new PredicateBetween(key, from, to));
 		return this;
-	}
-
-	public Set<String> getOrderingFields() {
-		LinkedHashSet<String> result = new LinkedHashSet<>();
-		for (QueryOrdering ordering : orderings) {
-			result.add(ordering.propertyName);
-		}
-		return result;
 	}
 
 	@Override
@@ -437,7 +334,6 @@ public final class AggregationQuery {
 				"keys=" + keys +
 				", fields=" + fields +
 				", predicates=" + predicates +
-				", orderings=" + orderings +
 				'}';
 	}
 
@@ -450,7 +346,6 @@ public final class AggregationQuery {
 
 		if (!keys.equals(query.keys)) return false;
 		if (!fields.equals(query.fields)) return false;
-		if (!orderings.equals(query.orderings)) return false;
 		if (!predicates.equals(query.predicates)) return false;
 
 		return true;
@@ -461,7 +356,6 @@ public final class AggregationQuery {
 		int result = keys.hashCode();
 		result = 31 * result + fields.hashCode();
 		result = 31 * result + predicates.hashCode();
-		result = 31 * result + orderings.hashCode();
 		return result;
 	}
 }

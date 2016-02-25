@@ -16,8 +16,6 @@
 
 package io.datakernel.aggregation_db.keytype;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
 import io.datakernel.serializer.asm.SerializerGen;
 
 import java.util.Comparator;
@@ -48,9 +46,11 @@ public abstract class KeyType implements Comparator<Object> {
 		return restrictedValue;
 	}
 
-	public abstract JsonPrimitive toJson(Object value);
+	public Object getPrintable(Object value) {
+		return value;
+	}
 
-	public abstract Object fromJson(JsonElement value);
+	public abstract Object fromString(String str);
 
 	@Override
 	public String toString() {

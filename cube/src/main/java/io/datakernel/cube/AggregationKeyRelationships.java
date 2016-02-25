@@ -21,6 +21,7 @@ import com.google.common.collect.Multimap;
 
 import java.util.*;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.newHashSet;
 
 public class AggregationKeyRelationships {
@@ -37,15 +38,6 @@ public class AggregationKeyRelationships {
 		}
 	}
 
-	public Set<List<String>> buildDrillDownChains(Set<String> usedDimensions, Set<String> availableDimensions) {
-		Set<List<String>> drillDowns = newHashSet();
-		for (String dimension : availableDimensions) {
-			List<String> drillDown = buildDrillDownChain(usedDimensions, dimension);
-			drillDowns.add(drillDown);
-		}
-		return drillDowns;
-	}
-
 	public List<String> buildDrillDownChain(Set<String> usedDimensions, String dimension) {
 		LinkedList<String> drillDown = new LinkedList<>();
 		drillDown.add(dimension);
@@ -56,6 +48,49 @@ public class AggregationKeyRelationships {
 			child = parent;
 		}
 		return drillDown;
+	}
+
+	public Set<List<String>> buildDrillDownChains(Set<String> usedDimensions, Iterable<String> availableDimensions) {
+		Set<List<String>> drillDowns = newHashSet();
+		for (String dimension : availableDimensions) {
+			List<String> drillDown = buildDrillDownChain(usedDimensions, dimension);
+			drillDowns.add(drillDown);
+		}
+		return drillDowns;
+	}
+
+	public Set<List<String>> buildLongestChains(Set<List<String>> allChains) {
+		List<List<String>> chainsList = newArrayList(allChains);
+		Set<List<String>> longestChains = newHashSet();
+
+		outer: for (int i = 0; i < chainsList.size(); ++i) {
+			List<String> chain1 = chainsList.get(i);
+
+			for (int j = 0; j < chainsList.size(); ++j) {
+				if (i == j) continue;
+
+				List<String> chain2 = chainsList.get(j);
+				if (startsWith(chain2, chain1))
+					continue outer;
+			}
+
+			if (chain1.size() > 1)
+				longestChains.add(chain1);
+		}
+
+		return longestChains;
+	}
+
+	private static boolean startsWith(List<String> list, List<String> prefix) {
+		if (prefix.size() >= list.size())
+			return false;
+
+		for (int i = 0; i < prefix.size(); ++i) {
+			if (!list.get(i).equals(prefix.get(i)))
+				return false;
+		}
+
+		return true;
 	}
 
 	public Set<String> findChildren(String parent) {

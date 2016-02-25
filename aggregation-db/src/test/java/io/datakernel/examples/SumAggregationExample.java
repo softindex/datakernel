@@ -19,11 +19,7 @@ package io.datakernel.examples;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeDouble;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.aggregation_db.keytype.KeyTypeInt;
-import io.datakernel.aggregation_db.keytype.KeyTypeLong;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -34,6 +30,10 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.doubleSum;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.longKey;
 import static java.util.Arrays.asList;
 
 /**
@@ -46,22 +46,20 @@ public class SumAggregationExample {
 		ExecutorService executorService = Executors.newCachedThreadPool();
 		Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		ProcessorFactory summationProcessorFactory = new SummationProcessorFactory(classLoader);
 
 		// to simplify this example we will just use a no-op metadata storage
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 
 		// define the index structure (names and types of record properties) and metadata
-		AggregationMetadata aggregationMetadata = new AggregationMetadata(
-				DataRecord.KEYS, DataRecord.FIELDS);
+		AggregationMetadata aggregationMetadata = new AggregationMetadata(DataRecord.KEYS, DataRecord.FIELDS);
 		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("key1", new KeyTypeInt())
-						.put("key2", new KeyTypeLong())
+						.put("key1", intKey())
+						.put("key2", longKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("value1", new FieldTypeLong())
-						.put("value2", new FieldTypeDouble())
+						.put("value1", longSum())
+						.put("value2", doubleSum())
 						.build());
 
 		// local file system storage for data
@@ -69,7 +67,7 @@ public class SumAggregationExample {
 				aggregationStructure, Paths.get(DATA_PATH));
 
 		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
-				aggregationChunkStorage, aggregationMetadata, aggregationStructure, summationProcessorFactory);
+				aggregationChunkStorage, aggregationMetadata, aggregationStructure);
 
 		// first chunk of data
 		System.out.println("Input data:");

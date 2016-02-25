@@ -17,8 +17,10 @@
 package io.datakernel.examples;
 
 import com.google.common.base.MoreObjects;
+import com.google.common.collect.ImmutableMap;
 
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Arrays.asList;
 
@@ -40,6 +42,10 @@ public class InvertedIndexRecord {
 	public static final List<String> KEYS = asList("word");
 
 	public static final List<String> INPUT_FIELDS = asList("documentId");
+
+	public static final List<String> OUTPUT_FIELDS = asList("documents");
+
+	public static final Map<String, String> OUTPUT_TO_INPUT_FIELDS = ImmutableMap.of("documents", "documentId");
 
 	@Override
 	public boolean equals(Object o) {

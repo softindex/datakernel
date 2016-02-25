@@ -16,19 +16,13 @@
 
 package io.datakernel.aggregation_db.keytype;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenEnum;
 
-public class KeyTypeEnum<T extends Enum<T>> extends KeyType {
+public final class KeyTypeEnum<T extends Enum<T>> extends KeyType {
 	private Class<T> enumClass;
 
-	public KeyTypeEnum(Class<T> enumClass) {
-		this(enumClass, null);
-	}
-
-	public KeyTypeEnum(Class<T> enumClass, Object restrictedValue) {
+	KeyTypeEnum(Class<T> enumClass, Object restrictedValue) {
 		super(enumClass, restrictedValue);
 		this.enumClass = enumClass;
 	}
@@ -39,13 +33,13 @@ public class KeyTypeEnum<T extends Enum<T>> extends KeyType {
 	}
 
 	@Override
-	public JsonPrimitive toJson(Object value) {
-		return new JsonPrimitive(((Enum<?>) value).name());
+	public Object getPrintable(Object value) {
+		return ((Enum<?>) value).name();
 	}
 
 	@Override
-	public Object fromJson(JsonElement value) {
-		return Enum.valueOf(enumClass, value.getAsString());
+	public Object fromString(String str) {
+		return Enum.valueOf(enumClass, str);
 	}
 
 	@SuppressWarnings("unchecked")

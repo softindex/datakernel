@@ -19,9 +19,7 @@ package io.datakernel.cube;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.TestPubRequest;
@@ -37,8 +35,6 @@ import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -46,14 +42,14 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class LogToCubeTest {
-	private static final Logger logger = LoggerFactory.getLogger(LogToCubeTest.class);
-
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
@@ -68,12 +64,12 @@ public class LogToCubeTest {
 	public static AggregationStructure getStructure(DefiningClassLoader classLoader) {
 		return new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("pub", new KeyTypeInt())
-						.put("adv", new KeyTypeInt())
+						.put("pub", intKey())
+						.put("adv", intKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("pubRequests", new FieldTypeLong())
-						.put("advRequests", new FieldTypeLong())
+						.put("pubRequests", longSum())
+						.put("advRequests", longSum())
 						.build());
 	}
 
@@ -120,7 +116,7 @@ public class LogToCubeTest {
 		eventloop.run();
 
 		StreamConsumers.ToList<TestAdvResult> consumerToList = StreamConsumers.toList(eventloop);
-		cube.query(TestAdvResult.class, new AggregationQuery(asList("adv"), asList("advRequests")))
+		cube.query(TestAdvResult.class, new CubeQuery(asList("adv"), asList("advRequests")))
 				.streamTo(consumerToList);
 		eventloop.run();
 

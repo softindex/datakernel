@@ -14,18 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation_db.fieldtype;
+package io.datakernel.cube.api;
 
-import io.datakernel.serializer.asm.SerializerGen;
-import io.datakernel.serializer.asm.SerializerGenFloat;
 
-public class FieldTypeFloat extends FieldType {
-	public FieldTypeFloat() {
-		super(float.class);
-	}
+import com.google.common.base.Function;
 
-	@Override
-	public SerializerGen serializerGen() {
-		return new SerializerGenFloat();
-	}
+public interface ResultProcessor<O> extends Function<QueryResult, O> {
+
 }

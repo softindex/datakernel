@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db.fieldtype;
 
+import io.datakernel.aggregation_db.processor.FieldProcessor;
 import io.datakernel.serializer.asm.SerializerGen;
 
 /**
@@ -37,22 +38,11 @@ public abstract class FieldType {
 		return dataType;
 	}
 
+	public abstract FieldProcessor fieldProcessor();
+
 	public abstract SerializerGen serializerGen();
 
-	@Override
-	public boolean equals(Object o) {
-		if (this == o) return true;
-		if (o == null || getClass() != o.getClass()) return false;
-
-		FieldType that = (FieldType) o;
-
-		if (!dataType.equals(that.dataType)) return false;
-
-		return true;
-	}
-
-	@Override
-	public int hashCode() {
-		return dataType.hashCode();
+	public Object getPrintable(Object value) {
+		return value;
 	}
 }

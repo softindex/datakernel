@@ -18,14 +18,12 @@ package io.datakernel.aggregation_db;
 
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.examples.KeyValuePair;
 import io.datakernel.stream.*;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,7 +33,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.aggregation_db.KeyValueTest.KeyValuePair;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intSum;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -53,11 +53,11 @@ public class AggregationChunkerTest {
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
 		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("key", new KeyTypeInt())
+						.put("key", intKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("value", new FieldTypeInt())
-						.put("timestamp", new FieldTypeLong())
+						.put("value", intSum())
+						.put("timestamp", longSum())
 						.build());
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 
@@ -144,11 +144,11 @@ public class AggregationChunkerTest {
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
 		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("key", new KeyTypeInt())
+						.put("key", intKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("value", new FieldTypeInt())
-						.put("timestamp", new FieldTypeLong())
+						.put("value", intSum())
+						.put("timestamp", longSum())
 						.build());
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
@@ -242,11 +242,11 @@ public class AggregationChunkerTest {
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
 		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("key", new KeyTypeInt())
+						.put("key", intKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("value", new FieldTypeInt())
-						.put("timestamp", new FieldTypeLong())
+						.put("value", intSum())
+						.put("timestamp", longSum())
 						.build());
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {

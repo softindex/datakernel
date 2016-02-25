@@ -25,6 +25,7 @@ import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.processor.AbstractStreamSplitter;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents a logic for input records pre-processing and splitting across multiple cube inputs.
@@ -55,16 +56,23 @@ public abstract class AggregatorSplitter<T> extends AbstractStreamSplitter<T> {
 		return addOutput(new OutputProducer<T>());
 	}
 
-	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions, List<String> measures) {
-		return addOutput(aggregationItemType, dimensions, measures, null);
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
+	                                                    List<String> measures) {
+		return addOutput(aggregationItemType, dimensions, measures, null, null);
+	}
+
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
+	                                                    List<String> measures, Map<String, String> outputToInputFields) {
+		return addOutput(aggregationItemType, dimensions, measures, outputToInputFields, null);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions, List<String> measures,
-	                                              AggregationQuery.QueryPredicates predicates) {
+	protected final <O> StreamDataReceiver<O> addOutput(Class<O> aggregationItemType, List<String> dimensions,
+	                                                    List<String> measures, Map<String, String> outputToInputFields,
+	                                                    AggregationQuery.Predicates predicates) {
 		StreamProducer streamProducer = newOutput();
-		StreamConsumer streamConsumer = cube.consumer(aggregationItemType, dimensions, measures, predicates,
-				transaction.addCommitCallback());
+		StreamConsumer streamConsumer = cube.consumer(aggregationItemType, dimensions, measures, outputToInputFields,
+				predicates, transaction.addCommitCallback());
 		streamProducer.streamTo(streamConsumer);
 		return streamConsumer.getDataReceiver();
 	}

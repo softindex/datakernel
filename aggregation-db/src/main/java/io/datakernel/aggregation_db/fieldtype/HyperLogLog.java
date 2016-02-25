@@ -19,7 +19,7 @@ package io.datakernel.aggregation_db.fieldtype;
 import static java.lang.Math.exp;
 import static java.lang.Math.log;
 
-public final class HyperLogLog {
+public final class HyperLogLog implements Comparable<HyperLogLog> {
 	private final byte[] registers;
 
 	public HyperLogLog(int registers) {
@@ -123,5 +123,10 @@ public final class HyperLogLog {
 		}
 
 		return (int) estimate;
+	}
+
+	@Override
+	public int compareTo(HyperLogLog that) {
+		return Integer.compare(this.estimate(), that.estimate());
 	}
 }

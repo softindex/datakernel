@@ -21,11 +21,7 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeDouble;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeLong;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.aggregation_db.keytype.KeyTypeDate;
-import io.datakernel.aggregation_db.keytype.KeyTypeInt;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
@@ -52,6 +48,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static com.google.common.base.Charsets.UTF_8;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.doubleSum;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.cube.TestUtils.deleteRecursivelyQuietly;
 import static java.util.Arrays.asList;
 
@@ -84,16 +84,16 @@ public class CubeExample {
 	public static AggregationStructure getStructure(DefiningClassLoader classLoader) {
 		return new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("date", new KeyTypeDate())
-						.put("advertiser", new KeyTypeInt())
-						.put("campaign", new KeyTypeInt())
-						.put("banner", new KeyTypeInt())
+						.put("date", dateKey())
+						.put("advertiser", intKey())
+						.put("campaign", intKey())
+						.put("banner", intKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("impressions", new FieldTypeLong())
-						.put("clicks", new FieldTypeLong())
-						.put("conversions", new FieldTypeLong())
-						.put("revenue", new FieldTypeDouble())
+						.put("impressions", longSum())
+						.put("clicks", longSum())
+						.put("conversions", longSum())
+						.put("revenue", doubleSum())
 						.build());
 	}
 

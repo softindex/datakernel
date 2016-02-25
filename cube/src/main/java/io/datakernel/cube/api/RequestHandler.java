@@ -14,18 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation_db.fieldtype;
+package io.datakernel.cube.api;
 
-import io.datakernel.serializer.asm.SerializerGen;
-import io.datakernel.serializer.asm.SerializerGenInt;
+import io.datakernel.async.ResultCallback;
 
-public class FieldTypeInt extends FieldType {
-	public FieldTypeInt() {
-		super(int.class);
-	}
-
-	@Override
-	public SerializerGen serializerGen() {
-		return new SerializerGenInt(true);
-	}
+public interface RequestHandler<I, O> {
+	void process(I request, ResultCallback<O> resultCallback);
 }

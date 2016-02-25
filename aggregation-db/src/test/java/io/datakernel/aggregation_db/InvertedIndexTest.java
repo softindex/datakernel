@@ -19,60 +19,29 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeList;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.aggregation_db.keytype.KeyTypeString;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.examples.InvertedIndexRecord;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intList;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 
 public class InvertedIndexTest {
-	private static final Logger logger = LoggerFactory.getLogger(InvertedIndexTest.class);
-
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
-
-	public static class InvertedIndexRecord {
-		public String word;
-		public Integer documentId;
-
-		public InvertedIndexRecord() {
-		}
-
-		public InvertedIndexRecord(String word, Integer documentId) {
-			this.word = word;
-			this.documentId = documentId;
-		}
-
-		public static final List<String> KEYS = asList("word");
-
-		public static final List<String> INPUT_FIELDS = asList("documentId");
-
-		public static final List<String> OUTPUT_FIELDS = asList("documents");
-
-		@Override
-		public String toString() {
-			return MoreObjects.toStringHelper(this)
-					.add("word", word)
-					.add("documentId", documentId)
-					.toString();
-		}
-	}
 
 	public static class InvertedIndexQueryResult {
 		public String word;
@@ -122,39 +91,38 @@ public class InvertedIndexTest {
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);
-		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("word", new KeyTypeString())
+						.put("word", stringKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("documents", new FieldTypeList(new FieldTypeInt()))
+						.put("documents", intList())
 						.build());
 		Path path = temporaryFolder.newFolder().toPath();
 		AggregationChunkStorage aggregationChunkStorage = new LocalFsChunkStorage(eventloop, executorService,
 				structure, path);
 
 		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
-				aggregationChunkStorage, aggregationMetadata, structure, processorFactory);
+				aggregationChunkStorage, aggregationMetadata, structure);
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3)))
 				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS));
+						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
 
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("brown", 3),
 				new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1)))
 				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS));
+						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
 
 		eventloop.run();
 
 		StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("quick", 1),
 				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10)))
 				.streamTo(aggregation.consumer(InvertedIndexRecord.class,
-						InvertedIndexRecord.INPUT_FIELDS, InvertedIndexRecord.OUTPUT_FIELDS));
+						InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
 
 		eventloop.run();
 

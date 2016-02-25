@@ -19,14 +19,14 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.Function;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeList;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.keytype.KeyTypeString;
+import io.datakernel.aggregation_db.processor.ProcessorFactory;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.examples.InvertedIndexRecord;
 import io.datakernel.stream.*;
 import org.junit.Rule;
 import org.junit.Test;
@@ -36,7 +36,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.aggregation_db.InvertedIndexTest.InvertedIndexRecord;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intList;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -53,14 +54,14 @@ public class AggregationGroupReducerTest {
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);
-		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("word", new KeyTypeString())
+						.put("word", stringKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("documents", new FieldTypeList(new FieldTypeInt()))
+						.put("documents", intList())
 						.build());
+		ProcessorFactory processorFactory = new ProcessorFactory(classLoader, structure);
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final List items = new ArrayList();
@@ -93,7 +94,7 @@ public class AggregationGroupReducerTest {
 				aggregationMetadata.getKeys());
 
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, aggregationMetadata.getKeys(),
-				InvertedIndexRecord.INPUT_FIELDS, aggregationMetadata.getFields());
+				InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS);
 
 		int aggregationChunkSize = 2;
 		final List<List<AggregationChunk.NewChunk>> listCallback = new ArrayList<>();
@@ -140,14 +141,14 @@ public class AggregationGroupReducerTest {
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);
-		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 		AggregationStructure structure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("word", new KeyTypeString())
+						.put("word", stringKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("documents", new FieldTypeList(new FieldTypeInt()))
+						.put("documents", intList())
 						.build());
+		ProcessorFactory processorFactory = new ProcessorFactory(classLoader, structure);
 
 		final List<StreamConsumer> listConsumers = new ArrayList<>();
 		final List items = new ArrayList();
@@ -173,7 +174,6 @@ public class AggregationGroupReducerTest {
 		};
 
 		Class<InvertedIndexRecord> inputClass = InvertedIndexRecord.class;
-		List<String> inputFields = InvertedIndexRecord.INPUT_FIELDS;
 		Class<?> keyClass = structure.createKeyClass(aggregationMetadata.getKeys());
 		Class<?> aggregationClass = structure.createRecordClass(aggregationMetadata.getKeys(), aggregationMetadata.getFields());
 
@@ -181,7 +181,7 @@ public class AggregationGroupReducerTest {
 				aggregationMetadata.getKeys());
 
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, aggregationMetadata.getKeys(),
-				inputFields, aggregationMetadata.getFields());
+				InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS);
 
 		int aggregationChunkSize = 2;
 		final List<List<AggregationChunk.NewChunk>> listCallback = new ArrayList<>();

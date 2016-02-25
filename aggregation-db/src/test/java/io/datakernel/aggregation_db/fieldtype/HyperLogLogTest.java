@@ -22,9 +22,8 @@ import org.junit.Test;
 import static java.lang.Math.abs;
 
 public class HyperLogLogTest {
-
 	@Test
-	public void test1() {
+	public void test() {
 		doTest(0, 64, 0);
 		doTest(0, 128, 0);
 		doTest(0, 256, 0);
@@ -52,7 +51,6 @@ public class HyperLogLogTest {
 //		doTest(1_000_000_000, 64, 0.08);
 //		doTest(1_000_000_000, 128, 0.07);
 //		doTest(1_000_000_000, 256, 0.04);
-
 	}
 
 	private static final int TEST_RUNS = 100;

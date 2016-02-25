@@ -18,6 +18,7 @@ package io.datakernel.cube.api;
 
 import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.Expressions;
+import io.datakernel.util.Function;
 
 import java.util.Set;
 
@@ -161,6 +162,10 @@ public final class ReportingDSL {
 
 	public static ReportingDSLExpression percent(ReportingDSLExpression reportingExpression) {
 		return multiply(reportingExpression, 100);
+	}
+
+	public static ReportingDSLExpression preprocess(String measure, Function<Expression, Expression> function) {
+		return new ReportingDSLExpression(function.apply(getter(self(), measure)), newHashSet(measure));
 	}
 
 	/* Utility methods */

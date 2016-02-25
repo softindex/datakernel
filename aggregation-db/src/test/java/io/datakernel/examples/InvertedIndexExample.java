@@ -19,10 +19,7 @@ package io.datakernel.examples;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeInt;
-import io.datakernel.aggregation_db.fieldtype.FieldTypeList;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.aggregation_db.keytype.KeyTypeString;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumers;
@@ -33,6 +30,8 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intList;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.stringKey;
 import static java.util.Arrays.asList;
 
 /**
@@ -45,7 +44,6 @@ public class InvertedIndexExample {
 		ExecutorService executorService = Executors.newCachedThreadPool();
 		Eventloop eventloop = new Eventloop();
 		DefiningClassLoader classLoader = new DefiningClassLoader();
-		ProcessorFactory processorFactory = new InvertedIndexProcessorFactory(classLoader);
 
 		// to simplify this example we will just use a no-op metadata storage
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
@@ -60,10 +58,10 @@ public class InvertedIndexExample {
 		 */
 		AggregationStructure structure = new AggregationStructure(classLoader,
 				ImmutableMap.<String, KeyType>builder()
-						.put("word", new KeyTypeString())
+						.put("word", stringKey())
 						.build(),
 				ImmutableMap.<String, FieldType>builder()
-						.put("documents", new FieldTypeList(new FieldTypeInt()))
+						.put("documents", intList())
 						.build());
 
 		// local file system storage for data
@@ -71,7 +69,7 @@ public class InvertedIndexExample {
 				structure, Paths.get(DATA_PATH));
 
 		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
-				aggregationChunkStorage, aggregationMetadata, structure, processorFactory);
+				aggregationChunkStorage, aggregationMetadata, structure);
 
 		// first chunk of data
 		System.out.println("Input data:");
@@ -79,7 +77,7 @@ public class InvertedIndexExample {
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3));
 		System.out.println(firstList);
 		StreamProducers.ofIterable(eventloop, firstList).streamTo(aggregation.consumer(InvertedIndexRecord.class,
-				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexTest.InvertedIndexRecord.OUTPUT_FIELDS));
+				InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
 		eventloop.run();
 
 		// second chunk of data
@@ -87,7 +85,7 @@ public class InvertedIndexExample {
 				new InvertedIndexRecord("lazy", 4), new InvertedIndexRecord("dog", 1));
 		System.out.println(secondList);
 		StreamProducers.ofIterable(eventloop, secondList).streamTo(aggregation.consumer(InvertedIndexRecord.class,
-				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexTest.InvertedIndexRecord.OUTPUT_FIELDS));
+				InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
 		eventloop.run();
 
 		// third chunk of data
@@ -95,7 +93,7 @@ public class InvertedIndexExample {
 				new InvertedIndexRecord("fox", 4), new InvertedIndexRecord("brown", 10));
 		System.out.println(thirdList);
 		StreamProducers.ofIterable(eventloop, thirdList).streamTo(aggregation.consumer(InvertedIndexRecord.class,
-				InvertedIndexRecord.INPUT_FIELDS, InvertedIndexTest.InvertedIndexRecord.OUTPUT_FIELDS));
+				InvertedIndexRecord.OUTPUT_FIELDS, InvertedIndexRecord.OUTPUT_TO_INPUT_FIELDS));
 		eventloop.run();
 
 		// Perform the query. We will just retrieve records for all keys.

@@ -25,8 +25,8 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import java.lang.reflect.Type;
 import java.util.Map;
 
-public final class QueryPredicatesGsonSerializer implements JsonSerializer<AggregationQuery.QueryPredicates>,
-		JsonDeserializer<AggregationQuery.QueryPredicates> {
+public final class QueryPredicatesGsonSerializer implements JsonSerializer<AggregationQuery.Predicates>,
+		JsonDeserializer<AggregationQuery.Predicates> {
 	private final AggregationStructure structure;
 
 	public QueryPredicatesGsonSerializer(AggregationStructure structure) {
@@ -35,22 +35,23 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 
 	private JsonPrimitive encodeKey(String key, Object value) {
 		KeyType keyType = structure.getKeyType(key);
-		return keyType.toJson(value);
+		Object printable = keyType.getPrintable(value);
+		return printable instanceof Number ? new JsonPrimitive((Number) printable) : new JsonPrimitive(printable.toString());
 	}
 
 	private Object parseKey(String key, JsonElement value) {
 		KeyType keyType = structure.getKeyType(key);
-		return keyType.fromJson(value);
+		return keyType.fromString(value.getAsString());
 	}
 
 	@SuppressWarnings("ConstantConditions")
 	@Override
-	public AggregationQuery.QueryPredicates deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+	public AggregationQuery.Predicates deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
 		if (!(json instanceof JsonObject))
 			throw new QueryException("Incorrect filters format. Should be represented as a JSON object");
 
 		JsonObject predicates = (JsonObject) json;
-		AggregationQuery.QueryPredicates queryPredicates = new AggregationQuery.QueryPredicates();
+		AggregationQuery.Predicates queryPredicates = new AggregationQuery.Predicates();
 
 		for (Map.Entry<String, JsonElement> entry : predicates.entrySet()) {
 			JsonElement value = entry.getValue();
@@ -72,16 +73,16 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 	}
 
 	@Override
-	public JsonElement serialize(AggregationQuery.QueryPredicates queryPredicates, Type typeOfSrc, JsonSerializationContext context) {
+	public JsonElement serialize(AggregationQuery.Predicates queryPredicates, Type typeOfSrc, JsonSerializationContext context) {
 		JsonObject predicates = new JsonObject();
 
-		for (AggregationQuery.QueryPredicate queryPredicate : queryPredicates.asCollection()) {
-			if (queryPredicate instanceof AggregationQuery.QueryPredicateEq) {
-				Object value = ((AggregationQuery.QueryPredicateEq) queryPredicate).value;
+		for (AggregationQuery.Predicate queryPredicate : queryPredicates.asCollection()) {
+			if (queryPredicate instanceof AggregationQuery.PredicateEq) {
+				Object value = ((AggregationQuery.PredicateEq) queryPredicate).value;
 				predicates.add(queryPredicate.key, encodeKey(queryPredicate.key, value));
-			} else if (queryPredicate instanceof AggregationQuery.QueryPredicateBetween) {
-				Object from = ((AggregationQuery.QueryPredicateBetween) queryPredicate).from;
-				Object to = ((AggregationQuery.QueryPredicateBetween) queryPredicate).to;
+			} else if (queryPredicate instanceof AggregationQuery.PredicateBetween) {
+				Object from = ((AggregationQuery.PredicateBetween) queryPredicate).from;
+				Object to = ((AggregationQuery.PredicateBetween) queryPredicate).to;
 
 				JsonArray betweenPredicate = new JsonArray();
 				betweenPredicate.add(new JsonPrimitive("between"));
