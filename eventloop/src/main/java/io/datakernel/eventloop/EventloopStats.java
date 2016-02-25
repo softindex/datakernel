@@ -78,6 +78,8 @@ public final class EventloopStats {
 	private final ValueStats concurrentTasksTime = new ValueStats();
 	private final ValueStats scheduledTasksTime = new ValueStats();
 
+	private final ExceptionStats fatalErrors = new ExceptionStats();
+
 	private final Map<ExceptionMarker, ExceptionStats> exceptions = new HashMap<>();
 	private final Map<Class<? extends Throwable>, ExceptionStats> severeExceptions = new HashMap<>();
 
@@ -141,6 +143,10 @@ public final class EventloopStats {
 		if (sw != null)
 			scheduledTasksTime.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
 		scheduledTasks.recordEvents(newTasks);
+	}
+
+	public void recordFatalError(Throwable throwable, Object causedObject, long timestamp) {
+		fatalErrors.recordException(throwable, causedObject, timestamp);
 	}
 
 	public ExceptionStats getExceptionStats(ExceptionMarker marker) {
@@ -315,4 +321,8 @@ public final class EventloopStats {
 		return severeExceptions;
 	}
 
+	@JmxAttribute
+	public ExceptionStats getFatalErrors() {
+		return fatalErrors;
+	}
 }
