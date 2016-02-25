@@ -31,7 +31,7 @@ public class EventStatsTest {
 		double smoothingWindow = 1.0;
 		EventStats eventStats = new EventStats();
 		long currentTimestamp = 0;
-		int events = 100;
+		int events = 1000;
 		double rate = 20.0;
 		double period = 1.0 / rate;
 		int periodInMillis = (int) (period * 1000);
@@ -40,7 +40,6 @@ public class EventStatsTest {
 			eventStats.recordEvent();
 			eventStats.refreshStats(currentTimestamp, smoothingWindow);
 			currentTimestamp += periodInMillis;
-//			System.out.println(i + ": " + eventStats.getSmoothedRate());
 		}
 
 		double acceptableError = 1E-5;
@@ -52,7 +51,7 @@ public class EventStatsTest {
 		EventStats eventStats = new EventStats();
 		double smoothingWindow = 1.0;
 		long currentTimestamp = 0;
-		int events = 100;
+		int events = 1000;
 		double rate = 20.0;
 		double period = 1.0 / rate;
 		int periodInMillis = (int) (period * 1000);
@@ -61,7 +60,6 @@ public class EventStatsTest {
 			eventStats.recordEvent();
 			currentTimestamp += periodInMillis;
 			eventStats.refreshStats(currentTimestamp, smoothingWindow);
-//			System.out.println(i + ": " + eventsCounter.getSmoothedRate());
 		}
 		double rateBeforeReset = eventStats.getSmoothedRate();
 		eventStats.resetStats();
@@ -82,7 +80,6 @@ public class EventStatsTest {
 
 		for (int i = 0; i < events; i++) {
 			eventStats.recordEvent();
-//			System.out.println(i + ": " + eventsCounter.toString());
 		}
 
 		eventStats.refreshStats(currentTimestamp, smoothingWindow);
@@ -91,75 +88,59 @@ public class EventStatsTest {
 	}
 
 	@Test
-	public void itShouldBehaveProperlyWhenNoEventsOccurredBetweenRefreshes() {
-		double smoothingWindow = 0.25;
-		EventStats eventStats = new EventStats();
+	public void itShouldConvergeProperlyWhenNoEventsOccurredBetweenRefreshes() {
+		EventStats stats = new EventStats();
+		int iterations = 1000;
 		long currentTimestamp = 0;
-		int events = 100;
-		double rate = 20.0;
-		double period = 1.0 / rate;
-		int periodInMillis = (int) (period * 1000);
-		double acceptableError = 1E-2;
-
-		// 1st part
-		for (int i = 0; i < events; i++) {
-			eventStats.recordEvent();
-			currentTimestamp += periodInMillis;
-			eventStats.refreshStats(currentTimestamp, smoothingWindow);
-//			System.out.println("1st   " + i + ": " + eventStats.getSmoothedRate());
+		final int period = 200;
+		for (int i = 0; i < iterations; i++) {
+			// event occurs only once per two refreshes
+			int eventsPerRefresh = i % 2;
+			stats.recordEvents(eventsPerRefresh);
+			currentTimestamp += period;
+			stats.refreshStats(currentTimestamp, 10.0);
 		}
-		assertEquals(rate, eventStats.getSmoothedRate(), acceptableError);
 
-		// 2nd part
-		for (int i = 0; i < events; i++) {
-			// no events occur between refreshes
-			currentTimestamp += periodInMillis;
-			eventStats.refreshStats(currentTimestamp, smoothingWindow);
-//			System.out.println("2nd   " + i + ": " + eventStats.getSmoothedRate());
-		}
-		// record one event to enable update
-		eventStats.recordEvent();
-		currentTimestamp += periodInMillis;
-		eventStats.refreshStats(currentTimestamp, smoothingWindow);
-		// time_passed = period * number_of_events_in_last_loop
-		double almostZeroRate = 1.0 / (period * events);
-		assertEquals(almostZeroRate, eventStats.getSmoothedRate(), acceptableError);
-
-		// 3rd part
-		for (int i = 0; i < events; i++) {
-			eventStats.recordEvent();
-			currentTimestamp += periodInMillis;
-			eventStats.refreshStats(currentTimestamp, smoothingWindow);
-//			System.out.println("3rd   " + i + ": " + eventStats.getSmoothedRate());
-		}
-		assertEquals(rate, eventStats.getSmoothedRate(), acceptableError);
-
+		assertEquals(500, stats.getTotalCount());
+		double acceptableError = 0.25;
+		assertEquals(2.5, stats.getSmoothedRate(), acceptableError);
 	}
 
-//	@Test
-//	public void example() {
-//		EventStats eventStats = new EventStats();
-//		long currentTimestamp = 0;
-//		double smoothingWindow = 1.0;
-//		int events = 1000;
-//		int minPeriod = 100;
-//		int maxPeriod = 500;
-//
-//		for (int i = 0; i < events; i++) {
-//			eventStats.recordEvent();
-//			int periodInMillis = uniformRandom(minPeriod, maxPeriod);
-//			// after 100 iterations passed, smoothed rate should be increased
-//			if (i > 100 && i < 200) {
-//				periodInMillis = 10;
-//			}
-//			currentTimestamp += periodInMillis;
-//			eventStats.refreshStats(currentTimestamp, smoothingWindow);
-//			System.out.println(i + ":   currentPeriodInMillis:  " + periodInMillis + "   eventsStats:   "
-//					+ eventStats.toString());
-//		}
-//	}
+	@Test
+	public void itShouldConvergeProperlyWhenPeriodIsNotStableButPeriodExpectationIsStable() {
+		EventStats stats = new EventStats();
+		int iterations = 1000;
+		long currentTimestamp = 0;
+		final int period = 200;
+		for (int i = 0; i < iterations; i++) {
+			stats.recordEvents(1);
+			int currentPeriod = period + uniformRandom(-50, 50);
+			currentTimestamp += currentPeriod;
+			stats.refreshStats(currentTimestamp, 10.0);
+		}
+
+		assertEquals(1000, stats.getTotalCount());
+		double acceptableError = 0.25;
+		assertEquals(5.0, stats.getSmoothedRate(), acceptableError);
+	}
+
+	@Test
+	public void itShouldConvergeProperlyWhenAmountOfEventsPerPeriodIsNotStableButExpectationOfAmountOfEventIsStable() {
+		EventStats stats = new EventStats();
+		int iterations = 10000;
+		long currentTimestamp = 0;
+		final int period = 200;
+		for (int i = 0; i < iterations; i++) {
+			stats.recordEvents(uniformRandom(0, 10));
+			currentTimestamp += period;
+			stats.refreshStats(currentTimestamp, 50.0);
+		}
+
+		double acceptableError = 2.0;
+		assertEquals(25.0, stats.getSmoothedRate(), acceptableError);
+	}
 
 	public static int uniformRandom(int min, int max) {
-		return min + (Math.abs(RANDOM.nextInt()) % (max + 1));
+		return min + Math.abs(RANDOM.nextInt()) % (max - min + 1);
 	}
 }
