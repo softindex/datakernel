@@ -27,7 +27,7 @@ import static io.datakernel.util.ByteBufStrings.*;
 // RFC 6265
 public final class HttpCookie {
 	private abstract static class AvHandler {
-		protected abstract void handle(HttpCookie cookie, byte[] bytes, int start, int end);
+		protected abstract void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws HttpParseException;
 	}
 
 	private static final byte[] EXPIRES = encodeAscii("Expires");
@@ -63,49 +63,53 @@ public final class HttpCookie {
 		this.name = name;
 	}
 
-	static void parse(String cookieString, List<HttpCookie> cookies) {
+	static void parse(String cookieString, List<HttpCookie> cookies) throws HttpParseException {
 		byte[] bytes = encodeAscii(cookieString);
 		parse(bytes, 0, bytes.length, cookies);
 	}
 
-	static void parse(ByteBuf buf, List<HttpCookie> cookies) {
+	static void parse(ByteBuf buf, List<HttpCookie> cookies) throws HttpParseException {
 		parse(buf.array(), buf.position(), buf.limit(), cookies);
 	}
 
-	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
-		HttpCookie cookie = new HttpCookie("", "");
-		while (pos < end) {
-			pos = skipSpaces(bytes, pos, end);
-			int keyStart = pos;
-			while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
-				pos++;
-			}
-			int valueEnd = pos;
-			int equalSign = -1;
-			for (int i = keyStart; i < valueEnd; i++) {
-				if (bytes[i] == '=') {
-					equalSign = i;
-					break;
+	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws HttpParseException {
+		try {
+			HttpCookie cookie = new HttpCookie("", "");
+			while (pos < end) {
+				pos = skipSpaces(bytes, pos, end);
+				int keyStart = pos;
+				while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
+					pos++;
 				}
-			}
-			AvHandler handler = getCookieHandler(hashCodeLowerCaseAscii
-					(bytes, keyStart, (equalSign == -1 ? valueEnd : equalSign) - keyStart));
-			if (equalSign == -1 && handler == null) {
-				cookie.setExtension(decodeAscii(bytes, keyStart, valueEnd - keyStart));
-			} else if (handler == null) {
-				String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
-				String value;
-				if (bytes[equalSign + 1] == '\"' && bytes[valueEnd - 1] == '\"') {
-					value = decodeAscii(bytes, equalSign + 2, valueEnd - equalSign - 3);
+				int valueEnd = pos;
+				int equalSign = -1;
+				for (int i = keyStart; i < valueEnd; i++) {
+					if (bytes[i] == '=') {
+						equalSign = i;
+						break;
+					}
+				}
+				AvHandler handler = getCookieHandler(hashCodeLowerCaseAscii
+						(bytes, keyStart, (equalSign == -1 ? valueEnd : equalSign) - keyStart));
+				if (equalSign == -1 && handler == null) {
+					cookie.setExtension(decodeAscii(bytes, keyStart, valueEnd - keyStart));
+				} else if (handler == null) {
+					String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
+					String value;
+					if (bytes[equalSign + 1] == '\"' && bytes[valueEnd - 1] == '\"') {
+						value = decodeAscii(bytes, equalSign + 2, valueEnd - equalSign - 3);
+					} else {
+						value = decodeAscii(bytes, equalSign + 1, valueEnd - equalSign - 1);
+					}
+					cookie = new HttpCookie(key, value);
+					cookies.add(cookie);
 				} else {
-					value = decodeAscii(bytes, equalSign + 1, valueEnd - equalSign - 1);
+					handler.handle(cookie, bytes, equalSign + 1, valueEnd);
 				}
-				cookie = new HttpCookie(key, value);
-				cookies.add(cookie);
-			} else {
-				handler.handle(cookie, bytes, equalSign + 1, valueEnd);
+				pos = valueEnd + 1;
 			}
-			pos = valueEnd + 1;
+		} catch (Exception e) {
+			throw new HttpParseException();
 		}
 	}
 
@@ -137,43 +141,47 @@ public final class HttpCookie {
 		return pos;
 	}
 
-	static void parseSimple(String string, List<HttpCookie> cookies) {
+	static void parseSimple(String string, List<HttpCookie> cookies) throws HttpParseException {
 		byte[] bytes = encodeAscii(string);
 		parseSimple(bytes, 0, bytes.length, cookies);
 	}
 
-	static void parseSimple(byte[] bytes, int pos, int end, List<HttpCookie> cookies) {
-		while (pos < end) {
-			pos = skipSpaces(bytes, pos, end);
-			int keyStart = pos;
-			while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
-				pos++;
-			}
-			int valueEnd = pos;
-			int equalSign = -1;
-			for (int i = keyStart; i < valueEnd; i++) {
-				if (bytes[i] == '=') {
-					equalSign = i;
-					break;
+	static void parseSimple(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws HttpParseException {
+		try {
+			while (pos < end) {
+				pos = skipSpaces(bytes, pos, end);
+				int keyStart = pos;
+				while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
+					pos++;
 				}
-			}
+				int valueEnd = pos;
+				int equalSign = -1;
+				for (int i = keyStart; i < valueEnd; i++) {
+					if (bytes[i] == '=') {
+						equalSign = i;
+						break;
+					}
+				}
 
-			if (equalSign == -1) {
-				String key = decodeAscii(bytes, keyStart, valueEnd - keyStart);
-				cookies.add(new HttpCookie(key));
-			} else {
-				String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
-				String value;
-				if (bytes[equalSign + 1] == '\"' && bytes[valueEnd - 1] == '\"') {
-					value = decodeAscii(bytes, equalSign + 2, valueEnd - equalSign - 3);
+				if (equalSign == -1) {
+					String key = decodeAscii(bytes, keyStart, valueEnd - keyStart);
+					cookies.add(new HttpCookie(key));
 				} else {
-					value = decodeAscii(bytes, equalSign + 1, valueEnd - equalSign - 1);
+					String key = decodeAscii(bytes, keyStart, equalSign - keyStart);
+					String value;
+					if (bytes[equalSign + 1] == '\"' && bytes[valueEnd - 1] == '\"') {
+						value = decodeAscii(bytes, equalSign + 2, valueEnd - equalSign - 3);
+					} else {
+						value = decodeAscii(bytes, equalSign + 1, valueEnd - equalSign - 1);
+					}
+
+					cookies.add(new HttpCookie(key, value));
 				}
 
-				cookies.add(new HttpCookie(key, value));
+				pos = valueEnd + 1;
 			}
-
-			pos = valueEnd + 1;
+		} catch (Exception e) {
+			throw new HttpParseException();
 		}
 	}
 
@@ -238,7 +246,7 @@ public final class HttpCookie {
 			case EXPIRES_HC:
 				return new AvHandler() {
 					@Override
-					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws HttpParseException {
 						cookie.setExpirationDate(parseExpirationDate(bytes, start, end));
 					}
 				};
@@ -282,7 +290,7 @@ public final class HttpCookie {
 		return null;
 	}
 
-	private static Date parseExpirationDate(byte[] bytes, int start, int end) {
+	private static Date parseExpirationDate(byte[] bytes, int start, int end) throws HttpParseException {
 		assert end - start <= 29;
 		long timestamp = HttpDate.parse(bytes, start);
 		return new Date(timestamp);

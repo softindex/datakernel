@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
@@ -46,11 +45,11 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	private static final byte[] TRANSFER_ENCODING_CHUNKED = encodeAscii("chunked");
 	protected static final int UNKNOWN_LENGTH = -1;
 
-	public static final SimpleException HEADER_NAME_ABSENT = new SimpleException("Header name is absent");
-	public static final SimpleException TOO_BIG_HTTP_MESSAGE = new SimpleException("Too big HttpMessage");
-	public static final SimpleException MALFORMED_CHUNK = new SimpleException("Malformed chunk");
-	public static final SimpleException TOO_LONG_HEADER = new SimpleException("Header line exceeds max header size");
-	public static final SimpleException TOO_MANY_HEADERS = new SimpleException("Too many headers");
+	public static final HttpParseException HEADER_NAME_ABSENT = new HttpParseException("Header name is absent");
+	public static final HttpParseException TOO_BIG_HTTP_MESSAGE = new HttpParseException("Too big HttpMessage");
+	public static final HttpParseException MALFORMED_CHUNK = new HttpParseException("Malformed chunk");
+	public static final HttpParseException TOO_LONG_HEADER = new HttpParseException("Header line exceeds max header size");
+	public static final HttpParseException TOO_MANY_HEADERS = new HttpParseException("Too many headers");
 
 	protected boolean keepAlive = true;
 
@@ -85,7 +84,6 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 * @param eventloop          eventloop which will handle its I/O operations
 	 * @param socketChannel      socket for this connection
 	 * @param connectionsList    pool in which will stored this connection
-	 * @param maxHttpMessageSize
 	 */
 	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, socketChannel);
@@ -143,7 +141,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		return null;
 	}
 
-	private void onHeader(ByteBuf line) {
+	private void onHeader(ByteBuf line) throws HttpParseException {
 		int pos = line.position();
 		int hashCode = 1;
 		while (pos < line.limit()) {
@@ -156,7 +154,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			pos++;
 		}
 		check(pos != line.limit(), HEADER_NAME_ABSENT);
-		HttpHeader httpHeader = parseHeader(line.array(), line.position(), pos - line.position(), hashCode);
+		HttpHeader httpHeader = HttpHeaders.of(line.array(), line.position(), pos - line.position(), hashCode);
 		pos++;
 
 		// RFC 2616, section 19.3 Tolerant Applications
@@ -172,9 +170,9 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 *
 	 * @param line received line of header.
 	 */
-	protected abstract void onFirstLine(ByteBuf line);
+	protected abstract void onFirstLine(ByteBuf line) throws HttpParseException;
 
-	protected void onHeader(HttpHeader header, final ByteBuf value) {
+	protected void onHeader(HttpHeader header, final ByteBuf value) throws HttpParseException {
 		assert isRegistered();
 		assert eventloop.inEventloopThread();
 
@@ -188,7 +186,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		}
 	}
 
-	private void readBody() {
+	private void readBody() throws HttpParseException {
 		assert isRegistered();
 		assert eventloop.inEventloopThread();
 
@@ -212,7 +210,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	}
 
 	@SuppressWarnings("ConstantConditions")
-	private void readChunks() {
+	private void readChunks() throws HttpParseException {
 		assert isRegistered();
 		assert eventloop.inEventloopThread();
 
@@ -283,14 +281,12 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		}
 		try {
 			doRead();
-		} catch (SimpleException e) {
+		} catch (HttpParseException e) {
 			onReadException(e);
-		} catch (Exception e) {
-			onInternalException(e);
 		}
 	}
 
-	private void doRead() {
+	private void doRead() throws HttpParseException {
 		if (reading < BODY) {
 			while (true) {
 				assert isRegistered();
@@ -328,7 +324,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		readBody();
 	}
 
-	private static void check(boolean expression, SimpleException e) {
+	private static void check(boolean expression, HttpParseException e) throws HttpParseException {
 		if (!expression) {
 			throw e;
 		}

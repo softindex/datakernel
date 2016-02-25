@@ -36,7 +36,7 @@ public final class MediaType extends CaseInsensitiveTokenMap.Token {
 
 	public static MediaType of(String mime) {
 		byte[] bytes = encodeAscii(mime);
-		return MediaTypes.parse(bytes, 0, bytes.length, hashCodeLowerCaseAscii(bytes));
+		return MediaTypes.of(bytes, 0, bytes.length, hashCodeLowerCaseAscii(bytes));
 	}
 
 	int size() {

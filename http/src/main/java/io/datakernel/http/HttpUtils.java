@@ -192,7 +192,7 @@ public final class HttpUtils {
 	 * @param enc   encoding of this string
 	 * @return collection with keys - name of parameter, value - value of it.
 	 */
-	public static Map<String, String> parse(String query, String enc) {
+	public static Map<String, String> parse(String query, String enc) throws HttpParseException {
 		LinkedHashMap<String, String> qps = new LinkedHashMap<>();
 		for (String pair : querySplitter.splitToList(query)) {
 			int pos = pair.indexOf('=');
@@ -220,7 +220,7 @@ public final class HttpUtils {
 	 * @param query string with URL for parsing
 	 * @return collection with keys - name of parameter, value - value of it.
 	 */
-	public static Map<String, String> parse(String query) {
+	public static Map<String, String> parse(String query) throws HttpParseException {
 		return parse(query, ENCODING);
 	}
 
@@ -282,11 +282,11 @@ public final class HttpUtils {
 	 * @param enc the name of a supported character encoding
 	 * @return the newly decoded String
 	 */
-	private static String decode(String s, String enc) {
+	private static String decode(String s, String enc) throws HttpParseException {
 		try {
 			return URLDecoder.decode(s, enc);
 		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException(e);
+			throw new HttpParseException(e);
 		}
 	}
 }

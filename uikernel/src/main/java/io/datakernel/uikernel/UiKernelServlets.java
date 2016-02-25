@@ -51,7 +51,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet read(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, final Callback callback) {
 				try {
 					Map<String, String> parameters = request.getParameters();
 					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
@@ -68,7 +68,7 @@ public class UiKernelServlets {
 						}
 					});
 				} catch (Exception ignored) {
-					callback.onResult(HttpResponse.create(BAD_REQUEST));
+					callback.onHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -77,7 +77,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet get(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, final Callback callback) {
 				try {
 					Map<String, String> parameters = request.getParameters();
 					ReadSettings<K> settings = ReadSettings.from(gson, parameters);
@@ -94,8 +94,8 @@ public class UiKernelServlets {
 							callback.onResult(HttpResponse.notFound404());
 						}
 					});
-				} catch (NumberFormatException ignored) {
-					callback.onResult(HttpResponse.create(BAD_REQUEST));
+				} catch (Exception e) {
+					callback.onHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -104,7 +104,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet create(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, final Callback callback) {
 				try {
 					String json = ByteBufStrings.decodeUTF8(request.getBody());
 					R obj = gson.fromJson(json, model.getRecordType());
@@ -121,7 +121,7 @@ public class UiKernelServlets {
 						}
 					});
 				} catch (Exception ignored) {
-					callback.onResult(HttpResponse.create(BAD_REQUEST));
+					callback.onHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -130,7 +130,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet update(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, final Callback callback) {
 				try {
 					String json = ByteBufStrings.decodeUTF8(request.getBody());
 					List<R> list = deserializeUpdateRequest(gson, json, model.getRecordType(), model.getIdType());
@@ -147,7 +147,7 @@ public class UiKernelServlets {
 						}
 					});
 				} catch (Exception ignored) {
-					callback.onResult(HttpResponse.create(BAD_REQUEST));
+					callback.onHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};
@@ -156,7 +156,7 @@ public class UiKernelServlets {
 	public static <K, R extends AbstractRecord<K>> AsyncHttpServlet delete(final GridModel<K, R> model, final Gson gson) {
 		return new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, final Callback callback) {
 				try {
 					K id = gson.fromJson(request.getUrlParameter("id"), model.getIdType());
 					model.delete(id, new ResultCallback<DeleteResponse>() {
@@ -177,7 +177,7 @@ public class UiKernelServlets {
 						}
 					});
 				} catch (Exception ignored) {
-					callback.onResult(HttpResponse.create(BAD_REQUEST));
+					callback.onHttpError(new HttpServletError(BAD_REQUEST));
 				}
 			}
 		};

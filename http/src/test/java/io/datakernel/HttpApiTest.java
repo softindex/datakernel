@@ -69,7 +69,7 @@ public class HttpApiTest {
 		eventloop = new Eventloop();
 		server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) throws HttpParseException {
 				testRequest(request);
 				HttpResponse response = createResponse();
 				callback.onResult(response);
@@ -108,7 +108,11 @@ public class HttpApiTest {
 		client.execute(request, 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				testResponse(result);
+				try {
+					testResponse(result);
+				} catch (HttpParseException e) {
+					fail("Invalid response");
+				}
 				server.close();
 				client.close();
 			}
@@ -146,7 +150,7 @@ public class HttpApiTest {
 		return request;
 	}
 
-	private void testResponse(HttpResponse response) {
+	private void testResponse(HttpResponse response) throws HttpParseException {
 		assertEquals(responseContentType.toString(), response.getContentType().toString());
 		assertEquals(responseCookies.toString(), response.parseCookies().toString());
 		assertEquals(responseDate.toString(), response.getDate().toString());
@@ -155,7 +159,7 @@ public class HttpApiTest {
 		assertEquals(lastModified.toString(), response.parseLastModified().toString());
 	}
 
-	private void testRequest(HttpRequest request) {
+	private void testRequest(HttpRequest request) throws HttpParseException {
 		assertEquals(requestAcceptContentTypes.toString(), request.parseAccept().toString());
 		assertEquals(requestAcceptCharsets.toString(), request.parseAcceptCharsets().toString());
 		assertEquals(requestDate.toString(), request.getDate().toString());

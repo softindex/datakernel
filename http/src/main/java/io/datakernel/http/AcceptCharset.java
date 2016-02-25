@@ -68,51 +68,55 @@ public final class AcceptCharset {
 		return q;
 	}
 
-	static List<AcceptCharset> parse(byte[] bytes, int pos, int len) {
+	static List<AcceptCharset> parse(byte[] bytes, int pos, int len) throws HttpParseException {
 		List<AcceptCharset> chs = new ArrayList<>();
 		parse(bytes, pos, len, chs);
 		return chs;
 	}
 
-	static void parse(byte[] bytes, int pos, int len, List<AcceptCharset> list) {
-		int end = pos + len;
+	static void parse(byte[] bytes, int pos, int len, List<AcceptCharset> list) throws HttpParseException {
+		try {
+			int end = pos + len;
 
-		while (pos < end) {
-			// parsing charset
-			pos = skipSpaces(bytes, pos, end);
-			int start = pos;
-			while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
-				pos++;
-			}
-			HttpCharset charset = HttpCharset.parse(bytes, start, pos - start);
-
-			if (pos < end) {
-				if (bytes[pos++] == ',') {
-					list.add(AcceptCharset.of(charset));
-				} else {
-					int q = DEFAULT_Q;
-					pos = skipSpaces(bytes, pos, end);
-					start = pos;
-					while (pos < end && bytes[pos] != ',') {
-						if (bytes[pos] == '=' && equalsLowerCaseAscii(Q_KEY, bytes, start, pos - start)) {
-							start = ++pos;
-							while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
-								pos++;
-							}
-							q = parseQ(bytes, start, pos - start);
-							pos--;
-						} else if (bytes[pos] == ';') {
-							pos = skipSpaces(bytes, pos + 1, end);
-							start = pos;
-						}
-						pos++;
-					}
-					list.add(AcceptCharset.of(charset, q));
+			while (pos < end) {
+				// parsing charset
+				pos = skipSpaces(bytes, pos, end);
+				int start = pos;
+				while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
 					pos++;
 				}
-			} else {
-				list.add(AcceptCharset.of(charset));
+				HttpCharset charset = HttpCharset.parse(bytes, start, pos - start);
+
+				if (pos < end) {
+					if (bytes[pos++] == ',') {
+						list.add(AcceptCharset.of(charset));
+					} else {
+						int q = DEFAULT_Q;
+						pos = skipSpaces(bytes, pos, end);
+						start = pos;
+						while (pos < end && bytes[pos] != ',') {
+							if (bytes[pos] == '=' && equalsLowerCaseAscii(Q_KEY, bytes, start, pos - start)) {
+								start = ++pos;
+								while (pos < end && !(bytes[pos] == ';' || bytes[pos] == ',')) {
+									pos++;
+								}
+								q = parseQ(bytes, start, pos - start);
+								pos--;
+							} else if (bytes[pos] == ';') {
+								pos = skipSpaces(bytes, pos + 1, end);
+								start = pos;
+							}
+							pos++;
+						}
+						list.add(AcceptCharset.of(charset, q));
+						pos++;
+					}
+				} else {
+					list.add(AcceptCharset.of(charset));
+				}
 			}
+		} catch (Exception e) {
+			throw new HttpParseException();
 		}
 	}
 

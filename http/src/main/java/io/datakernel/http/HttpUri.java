@@ -16,8 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SimpleException;
-
 import java.util.Map;
 
 import static java.lang.Integer.parseInt;
@@ -48,8 +46,12 @@ public final class HttpUri {
 	 * @param uri URI for parsing
 	 * @return new URI
 	 */
-	public static HttpUri ofPartialUrl(String uri) {
-		return new HttpUri(uri, false);
+	static HttpUri parseUrl(String uri) throws HttpParseException {
+		try {
+			return new HttpUri(uri, false);
+		} catch (Exception e) {
+			throw new HttpParseException(e);
+		}
 	}
 
 	private final String uri;
@@ -66,7 +68,7 @@ public final class HttpUri {
 		int index = uri.indexOf(SCHEMA_DELIM);
 		if (index < 0 || index > 5) {
 			if (strict)
-				throw new SimpleException("Partial URI is not allowed: " + uri);
+				throw new IllegalArgumentException("Partial URI is not allowed: " + uri);
 			hostPort = null;
 			host = null;
 			port = -1;
@@ -74,7 +76,7 @@ public final class HttpUri {
 		} else {
 			String schema = uri.substring(0, index);
 			if (!schema.equals(HTTP))
-				throw new SimpleException("Unsupported schema: " + schema);
+				throw new IllegalArgumentException("Unsupported schema: " + schema);
 			index += SCHEMA_DELIM.length();
 			int slash = uri.indexOf('/', index);
 			hostPort = (slash == -1) ? uri.substring(index) : uri.substring(index, slash);
@@ -145,24 +147,20 @@ public final class HttpUri {
 		return query;
 	}
 
-	public String getParameter(String name) {
+	public String getParameter(String name) throws HttpParseException {
 		parseParams();
 		return params.get(name);
 	}
 
-	public Map<String, String> getParameters() {
+	public Map<String, String> getParameters() throws HttpParseException {
 		parseParams();
 		return params;
 	}
 
-	private void parseParams() {
+	private void parseParams() throws HttpParseException {
 		if (params != null)
 			return;
-		try {
-			params = HttpUtils.parse(query);
-		} catch (IllegalArgumentException e) {
-			throw new SimpleException(e);
-		}
+		params = HttpUtils.parse(query);
 	}
 
 	@Override

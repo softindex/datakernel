@@ -20,7 +20,6 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.Stage;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -47,7 +46,7 @@ public class LauncherExample extends Launcher {
 	@Override
 	protected void configure() {
 		configs("launcher-example.properties");
-		injector(Stage.DEVELOPMENT,
+		injector(Stage.PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
 				new LauncherExampleModule());
 	}
@@ -98,7 +97,7 @@ public class LauncherExample extends Launcher {
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request,
-				                       ResultCallback<HttpResponse> callback) {
+				                       Callback callback) {
 					HttpResponse httpResponse = HttpResponse.create(200);
 					httpResponse.body(ByteBuf.wrap(encodeAscii(
 							"Worker server #" + workerId + ". Message: " + responseMessage + "\n")));

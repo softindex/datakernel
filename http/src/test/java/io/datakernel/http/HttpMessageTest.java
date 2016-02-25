@@ -25,7 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static io.datakernel.http.HttpHeaders.parse;
+import static io.datakernel.http.HttpHeaders.of;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.*;
@@ -91,8 +91,8 @@ public class HttpMessageTest {
 	@Test
 	public void testMultiHeaders() {
 		HttpResponse h = HttpResponse.create(200);
-		HttpHeader h1 = parse("h1");
-		HttpHeader h2 = parse("h2");
+		HttpHeader h1 = of("h1");
+		HttpHeader h2 = of("h2");
 
 		assertTrue(h.getHeaders().isEmpty());
 		assertNull(getHeaderValue(h, h1));

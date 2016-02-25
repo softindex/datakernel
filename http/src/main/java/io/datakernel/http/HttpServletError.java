@@ -14,8 +14,33 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.net;
+package io.datakernel.http;
 
-public interface MessagingEndOfStream {
-	void onEndOfStream();
+import io.datakernel.async.SimpleException;
+
+public class HttpServletError extends SimpleException {
+	private final int code;
+
+	public HttpServletError(int code) {
+		this.code = code;
+	}
+
+	public HttpServletError(int code, String message) {
+		super(message);
+		this.code = code;
+	}
+
+	public HttpServletError(int code, String message, Throwable cause) {
+		super(message, cause);
+		this.code = code;
+	}
+
+	public HttpServletError(int code, Throwable cause) {
+		super(cause);
+		this.code = code;
+	}
+
+	public int getCode() {
+		return code;
+	}
 }

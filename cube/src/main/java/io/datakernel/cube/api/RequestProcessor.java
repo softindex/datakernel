@@ -16,8 +16,8 @@
 
 package io.datakernel.cube.api;
 
-import io.datakernel.cube.api.ReportingQuery;
-import io.datakernel.util.Function;
+import io.datakernel.http.HttpParseException;
 
-public interface RequestProcessor<I> extends Function<I, ReportingQuery> {
+public interface RequestProcessor<I> {
+	ReportingQuery apply(I input) throws HttpParseException;
 }

@@ -35,12 +35,12 @@ public class ContentTypeTest {
 	public void testMediaType() {
 		byte[] mediaType = encodeAscii("application/json");
 		int hash = hashCodeLowerCaseAscii(mediaType);
-		MediaType actual = MediaTypes.parse(mediaType, 0, mediaType.length, hash);
+		MediaType actual = MediaTypes.of(mediaType, 0, mediaType.length, hash);
 		assertTrue(JSON == actual);
 	}
 
 	@Test
-	public void testContentTypeParse() {
+	public void testContentTypeParse() throws HttpParseException {
 		byte[] contentType = encodeAscii("text/plain;param=value; url-form=www;CHARSET=UTF-8; a=v");
 		ContentType actual = ContentType.parse(contentType, 0, contentType.length);
 		assertTrue(MediaTypes.PLAIN_TEXT == actual.getMediaType());

@@ -153,7 +153,7 @@ public final class HttpResponse extends HttpMessage {
 		return 0;
 	}
 
-	public Date parseExpires() {
+	public Date parseExpires() throws HttpParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(EXPIRES);
 		if (header != null)
@@ -161,7 +161,7 @@ public final class HttpResponse extends HttpMessage {
 		return null;
 	}
 
-	public Date parseLastModified() {
+	public Date parseLastModified() throws HttpParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(LAST_MODIFIED);
 		if (header != null)
@@ -170,7 +170,7 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	@Override
-	public List<HttpCookie> parseCookies() {
+	public List<HttpCookie> parseCookies() throws HttpParseException {
 		assert !recycled;
 		List<HttpCookie> cookies = new ArrayList<>();
 		List<Value> headers = getHeaderValues(SET_COOKIE);

@@ -44,44 +44,48 @@ public final class ContentType {
 		return lookup(mime, HttpCharset.of(charset));
 	}
 
-	static ContentType parse(byte[] bytes, int pos, int length) {
-		// parsing media type
-		int end = pos + length;
+	static ContentType parse(byte[] bytes, int pos, int length) throws HttpParseException {
+		try {
+			// parsing media type
+			int end = pos + length;
 
-		pos = skipSpaces(bytes, pos, end);
-		int start = pos;
-		int lowerCaseHashCode = 1;
-		while (pos < end && bytes[pos] != ';') {
-			byte b = bytes[pos];
-			if (b >= 'A' && b <= 'Z') {
-				b += 'a' - 'A';
-			}
-			lowerCaseHashCode = lowerCaseHashCode * 31 + b;
-			pos++;
-		}
-		MediaType type = MediaTypes.parse(bytes, start, pos - start, lowerCaseHashCode);
-		pos++;
-
-		// parsing parameters if any (interested in 'charset' only)
-		HttpCharset charset = null;
-		if (pos < end) {
 			pos = skipSpaces(bytes, pos, end);
-			start = pos;
-			while (pos < end) {
-				if (bytes[pos] == '=' && ByteBufStrings.equalsLowerCaseAscii(CHARSET_KEY, bytes, start, pos - start)) {
-					pos++;
-					start = pos;
-					while (pos < end && bytes[pos] != ';') {
-						pos++;
-					}
-					charset = HttpCharset.parse(bytes, start, pos - start);
-				} else if (bytes[pos] == ';' && pos + 1 < end) {
-					start = skipSpaces(bytes, pos + 1, end);
+			int start = pos;
+			int lowerCaseHashCode = 1;
+			while (pos < end && bytes[pos] != ';') {
+				byte b = bytes[pos];
+				if (b >= 'A' && b <= 'Z') {
+					b += 'a' - 'A';
 				}
+				lowerCaseHashCode = lowerCaseHashCode * 31 + b;
 				pos++;
 			}
+			MediaType type = MediaTypes.of(bytes, start, pos - start, lowerCaseHashCode);
+			pos++;
+
+			// parsing parameters if any (interested in 'charset' only)
+			HttpCharset charset = null;
+			if (pos < end) {
+				pos = skipSpaces(bytes, pos, end);
+				start = pos;
+				while (pos < end) {
+					if (bytes[pos] == '=' && ByteBufStrings.equalsLowerCaseAscii(CHARSET_KEY, bytes, start, pos - start)) {
+						pos++;
+						start = pos;
+						while (pos < end && bytes[pos] != ';') {
+							pos++;
+						}
+						charset = HttpCharset.parse(bytes, start, pos - start);
+					} else if (bytes[pos] == ';' && pos + 1 < end) {
+						start = skipSpaces(bytes, pos + 1, end);
+					}
+					pos++;
+				}
+			}
+			return lookup(type, charset);
+		} catch (Exception e) {
+			throw new HttpParseException();
 		}
-		return lookup(type, charset);
 	}
 
 	static void render(ContentType type, ByteBuf buf) {

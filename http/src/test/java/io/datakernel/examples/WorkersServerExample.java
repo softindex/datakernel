@@ -16,7 +16,6 @@
 
 package io.datakernel.examples;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
@@ -44,7 +43,7 @@ public class WorkersServerExample {
 	public static AsyncHttpServer echoServer(Eventloop eventloop, final int workerN) {
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.create().body(
 						encodeAscii("Hello world: worker #" + workerN));
 				callback.onResult(content);

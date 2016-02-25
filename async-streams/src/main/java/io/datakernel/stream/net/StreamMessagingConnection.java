@@ -26,7 +26,6 @@ import io.datakernel.stream.processor.StreamSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 
@@ -57,10 +56,10 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	private StreamProducer<ByteBuf> socketReader;
 	private StreamConsumer<ByteBuf> socketWriter;
 
-	private MessagingEndOfStream messagingReadEndOfStream;
-	private MessagingException messagingReadException;
+	private MessagingEndOfStreamHandler messagingReadEndOfStreamHandler;
+	private MessagingExceptionHandler messagingReadExceptionHandler;
 
-	private CompletionCallback completionCallback;
+	private CompletionCallback writeCompletionCallback;
 
 	/**
 	 * Creates a new instance of BinaryProtocolMessaging
@@ -90,13 +89,13 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 		return this;
 	}
 
-	public StreamMessagingConnection<I, O> addReadEndOfStream(MessagingEndOfStream messagingEndOfStream) {
-		this.messagingReadEndOfStream = messagingEndOfStream;
+	public StreamMessagingConnection<I, O> addReadEndOfStreamHandler(MessagingEndOfStreamHandler messagingReadEndOfStreamHandler) {
+		this.messagingReadEndOfStreamHandler = messagingReadEndOfStreamHandler;
 		return this;
 	}
 
-	public StreamMessagingConnection<I, O> addReadException(MessagingException messagingReadException) {
-		this.messagingReadException = messagingReadException;
+	public StreamMessagingConnection<I, O> addReadExceptionHandler(MessagingExceptionHandler messagingReadExceptionHandler) {
+		this.messagingReadExceptionHandler = messagingReadExceptionHandler;
 		return this;
 	}
 
@@ -145,32 +144,32 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	@Override
 	protected void onReadEndOfStream() {
 		super.onReadEndOfStream();
-		if (messagingReadEndOfStream != null) {
-			messagingReadEndOfStream.onEndOfStream();
+		if (messagingReadEndOfStreamHandler != null) {
+			messagingReadEndOfStreamHandler.onEndOfStream();
 		}
 	}
 
 	@Override
 	protected void onReadException(Exception e) {
 		super.onReadException(e);
-		if (messagingReadException != null) {
-			messagingReadException.onException(e);
+		if (messagingReadExceptionHandler != null) {
+			messagingReadExceptionHandler.onException(e);
 		}
 	}
 
 	@Override
 	protected void onWriteException(Exception e) {
 		super.onWriteException(e);
-		if (completionCallback != null) {
-			completionCallback.onException(e);
-		}
 	}
 
 	@Override
-	protected void onInternalException(Exception e) {
-		super.onInternalException(e);
-		if (completionCallback != null) {
-			completionCallback.onException(e);
+	public void onClosed() {
+		super.onClosed();
+		if (writeCompletionCallback != null && socketWriter.getConsumerStatus().isClosed()) {
+			if (socketWriter.getConsumerStatus() == StreamStatus.END_OF_STREAM)
+				writeCompletionCallback.onComplete();
+			else
+				writeCompletionCallback.onException(socketWriter.getConsumerException());
 		}
 	}
 
@@ -218,16 +217,8 @@ public class StreamMessagingConnection<I, O> extends TcpStreamSocketConnection i
 	}
 
 	@Override
-	protected void shutdownOutput() throws IOException {
-		super.shutdownOutput();
-		if (completionCallback != null && socketWriter.getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-			completionCallback.onComplete();
-		}
-	}
-
-	@Override
 	public void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback) {
-		this.completionCallback = completionCallback;
+		this.writeCompletionCallback = completionCallback;
 		streamSerializer.flush();
 		producer.streamTo(socketWriter);
 	}

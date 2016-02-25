@@ -16,6 +16,6 @@
 
 package io.datakernel.stream.net;
 
-public interface MessagingException {
-	void onException(Exception e);
+public interface MessagingEndOfStreamHandler {
+	void onEndOfStream();
 }

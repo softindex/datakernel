@@ -58,7 +58,7 @@ public class HttpCharsetTest {
 	}
 
 	@Test
-	public void testAcceptCharset() {
+	public void testAcceptCharset() throws HttpParseException {
 		byte[] bytes = encodeAscii("iso-8859-5, unicode-1-1;q=0.8");
 		List<AcceptCharset> charsets = AcceptCharset.parse(bytes, 0, bytes.length);
 		assertEquals(2, charsets.size());

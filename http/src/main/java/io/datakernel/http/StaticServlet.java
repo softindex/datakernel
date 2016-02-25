@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.annotation.Nullable;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 
@@ -48,7 +48,7 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 		return type;
 	}
 
-	protected abstract void doServeAsync(String name, ForwardingResultCallback<ByteBuf> callback);
+	protected abstract void doServeAsync(String name, ResultCallback<ByteBuf> callback);
 
 	protected HttpResponse createHttpResponse(ByteBuf buf, String path) {
 		return HttpResponse.create(200)
@@ -57,7 +57,7 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 	}
 
 	@Override
-	public final void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+	public final void serveAsync(final HttpRequest request, final Callback callback) {
 		String path = request.getRelativePath();
 		if (request.getMethod() == HttpMethod.GET && path.equals("/")) {
 			path = DEFAULT_INDEX_FILE_NAME;
@@ -66,10 +66,18 @@ public abstract class StaticServlet implements AsyncHttpServlet {
 			path = path.substring(1); // removing initial '/'
 		}
 		final String finalPath = path;
-		doServeAsync(path, new ForwardingResultCallback<ByteBuf>(callback) {
+		doServeAsync(path, new ResultCallback<ByteBuf>() {
 			@Override
-			public void onResult(ByteBuf buf) {
-				callback.onResult(createHttpResponse(buf, finalPath));
+			public void onResult(@Nullable ByteBuf buf) {
+				if (buf == null)
+					callback.onHttpError(new HttpServletError(404, finalPath));
+				else
+					callback.onResult(createHttpResponse(buf, finalPath));
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				callback.onHttpError(new HttpServletError(500, finalPath, exception));
 			}
 		});
 	}

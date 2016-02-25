@@ -51,7 +51,7 @@ public class HttpTolerantApplicationTest {
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final Callback callback) {
 				primaryEventloop.post(new Runnable() {
 					@Override
 					public void run() {

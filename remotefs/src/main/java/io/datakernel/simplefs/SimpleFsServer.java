@@ -200,7 +200,7 @@ public final class SimpleFsServer extends FsServer implements EventloopService {
 		fileSystem.get(fileName, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
 			public void onResult(AsyncFile result) {
-				logger.trace("Opened file for streaming:", result);
+				logger.trace("Opened file for streaming: {}", result);
 				StreamFileReader reader = readFileFrom(eventloop, result, bufferSize, startPosition);
 				callback.onResult(reader);
 			}

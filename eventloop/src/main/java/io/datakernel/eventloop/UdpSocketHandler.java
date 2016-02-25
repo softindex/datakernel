@@ -71,7 +71,7 @@ public abstract class UdpSocketHandler extends SocketConnection {
 				buf = null;
 			}
 		} catch (IOException e) {
-			onInternalException(e);
+			onReadException(e);
 		} finally {
 			if (buf != null)
 				buf.recycle();
@@ -112,7 +112,7 @@ public abstract class UdpSocketHandler extends SocketConnection {
 			try {
 				sent = channel.send(buf, packet.getSocketAddress());
 			} catch (IOException e) {
-				onInternalException(e);
+				onWriteException(e);
 				return;
 			}
 
@@ -131,11 +131,7 @@ public abstract class UdpSocketHandler extends SocketConnection {
 		}
 
 		if (writeQueue.isEmpty()) {
-			try {
-				onWriteFlushed();
-			} catch (Exception e) {
-				onInternalException(e);
-			}
+			onWriteFlushed();
 			writeInterest(false);
 		} else {
 			writeInterest(true);

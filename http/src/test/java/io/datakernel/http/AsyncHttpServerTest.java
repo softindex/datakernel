@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -53,7 +52,7 @@ public class AsyncHttpServerTest {
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				callback.onResult(content);
 			}
@@ -63,7 +62,7 @@ public class AsyncHttpServerTest {
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.post(new Runnable() {
 					@Override
@@ -79,7 +78,7 @@ public class AsyncHttpServerTest {
 		final Random random = new Random();
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new Runnable() {
 					@Override
@@ -239,7 +238,7 @@ public class AsyncHttpServerTest {
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				eventloop.post(new Runnable() {
 					@Override

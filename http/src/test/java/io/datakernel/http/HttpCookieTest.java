@@ -17,20 +17,17 @@
 package io.datakernel.http;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.util.ByteBufStrings;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.*;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static org.junit.Assert.*;
 
 public class HttpCookieTest {
 
 	@Test
-	public void testParser() {
+	public void testParser() throws HttpParseException {
 		String cookieString = "name1=\"value1\"; expires=Thu, 01 Jan 2015 00:00:00 GMT; Secure; name2=value2; HttpOnly";
 		List<HttpCookie> httpCookies = new ArrayList<>();
 		HttpCookie.parse(cookieString, httpCookies);

@@ -18,7 +18,6 @@ package io.datakernel.cube.api;
 
 import com.google.gson.*;
 import io.datakernel.aggregation_db.PrimaryKey;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.Cube;
 import io.datakernel.http.*;
 
@@ -49,7 +48,7 @@ public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 	}
 
 	@Override
-	public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+	public void serveAsync(HttpRequest request, Callback callback) {
 		callback.onResult(HttpResponse
 				.create()
 				.contentType(ContentType.of(MediaTypes.JSON))

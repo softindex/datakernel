@@ -21,7 +21,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.datakernel.util.ByteBufStrings.*;
+import static io.datakernel.util.ByteBufStrings.decodeAscii;
+import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.nio.charset.Charset.forName;
 
 // maximum of 40 characters, us-ascii, see rfc2978,
@@ -64,12 +65,7 @@ final class HttpCharset extends CaseInsensitiveTokenMap.Token {
 	}
 
 	static HttpCharset parse(byte[] bytes, int pos, int length) {
-		int hash = hashCodeLowerCaseAscii(bytes, pos, length);
-		HttpCharset charset = charsets.get(bytes, pos, length, hash);
-		if (charset == null) {
-			charset = new HttpCharset(bytes, pos, length, null, hash);
-		}
-		return charset;
+		return charsets.getOrCreate(bytes, pos, length);
 	}
 
 	static int render(HttpCharset charset, byte[] container, int pos) {

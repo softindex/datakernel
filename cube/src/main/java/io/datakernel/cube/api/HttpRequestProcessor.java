@@ -21,6 +21,7 @@ import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.cube.CubeQuery;
+import io.datakernel.http.HttpParseException;
 import io.datakernel.http.HttpRequest;
 
 import java.util.List;
@@ -39,7 +40,7 @@ public final class HttpRequestProcessor implements RequestProcessor<HttpRequest>
 	}
 
 	@Override
-	public ReportingQuery apply(HttpRequest request) {
+	public ReportingQuery apply(HttpRequest request) throws HttpParseException {
 		List<String> dimensions = parseListOfStrings(request.getParameter(DIMENSIONS_PARAM));
 		List<String> measures = parseMeasures(request.getParameter(MEASURES_PARAM));
 		List<String> attributes = parseListOfStrings(request.getParameter(ATTRIBUTES_PARAM));

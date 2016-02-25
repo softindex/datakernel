@@ -23,16 +23,12 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.HttpRequest;
-import io.datakernel.http.HttpResponse;
+import io.datakernel.http.*;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static io.datakernel.cube.api.CommonUtils.response400;
-import static io.datakernel.cube.api.CommonUtils.response500;
-
-public final class HttpRequestHandler implements RequestHandler<HttpRequest, HttpResponse> {
+public final class HttpRequestHandler implements RequestHandler {
 	private static final Logger logger = LoggerFactory.getLogger(HttpRequestHandler.class);
 
 	private final HttpRequestProcessor httpRequestProcessor;
@@ -47,7 +43,7 @@ public final class HttpRequestHandler implements RequestHandler<HttpRequest, Htt
 	}
 
 	@Override
-	public void process(final HttpRequest httpRequest, final ResultCallback<HttpResponse> resultCallback) {
+	public void process(final HttpRequest httpRequest, final AsyncHttpServlet.Callback resultCallback) throws HttpParseException {
 		try {
 			final Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
 			final ReportingQuery reportingQuery = httpRequestProcessor.apply(httpRequest);
@@ -62,25 +58,22 @@ public final class HttpRequestHandler implements RequestHandler<HttpRequest, Htt
 						resultCallback.onResult(httpResponse);
 					} catch (Exception e) {
 						logger.error("Exception occurred while processing results", e);
-						resultCallback.onResult(response500("Unknown server error"));
+						resultCallback.onHttpError(new HttpServletError(500, e));
 					}
 				}
 
 				@Override
-				public void onException(Exception exception) {
-					logger.error("Executing query {} failed.", reportingQuery, exception);
-					resultCallback.onResult(response500("Unknown server error"));
+				public void onException(Exception e) {
+					logger.error("Executing query {} failed.", reportingQuery, e);
+					resultCallback.onHttpError(new HttpServletError(500, e));
 				}
 			});
 		} catch (QueryException e) {
 			logger.info("Request {} could not be processed because of error: {}", httpRequest, e.getMessage());
-			resultCallback.onResult(response400(e.getMessage()));
+			resultCallback.onHttpError(new HttpServletError(400, e));
 		} catch (JsonParseException e) {
 			logger.info("Failed to parse JSON in request {}", httpRequest);
-			resultCallback.onResult(response400("Failed to parse JSON request"));
-		} catch (RuntimeException e) {
-			logger.error("Unknown exception occurred while processing request {}", httpRequest, e);
-			resultCallback.onResult(response500("Unknown server error"));
+			resultCallback.onHttpError(new HttpServletError(400, e));
 		}
 	}
 }

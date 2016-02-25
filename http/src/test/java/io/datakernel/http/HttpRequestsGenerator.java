@@ -117,7 +117,7 @@ public final class HttpRequestsGenerator {
 		public static void usage() {
 			System.err.println(HttpRequestsGenerator.class.getSimpleName() + " [options]\n" +
 					"\t-n    - amount requests per second (default:" + defaultRequestsPerSecond + ")\n" +
-					"\t-s    - time of process in seconds (0 - permanent proccess, default:" + defaultProcessTimeSeconds + ")\n" +
+					"\t-s    - time of process in seconds (0 - permanent process, default:" + defaultProcessTimeSeconds + ")\n" +
 					"\t-t    - timeout for wait response in millis (default:" + defaultTimeoutResponse + " ms)\n" +
 					"\t-u    - target url for send requests\n" +
 					"\t-d    - display responses\n" +

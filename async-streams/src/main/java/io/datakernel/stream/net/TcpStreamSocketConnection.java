@@ -56,7 +56,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 		@Override
 		protected void onError(Exception e) {
-			onInternalException(e);
+			TcpStreamSocketConnection.this.close();
 		}
 
 		@Override
@@ -100,7 +100,7 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 
 		@Override
 		protected void onError(Exception e) {
-			onInternalException(e);
+			TcpStreamSocketConnection.this.close();
 		}
 
 		/**
@@ -206,17 +206,12 @@ public abstract class TcpStreamSocketConnection extends TcpSocketConnection {
 	@Override
 	protected void onRead(ByteBuf buf) {
 		assert eventloop.inEventloopThread();
-		try {
-			socketReader.send(buf);
-			onRead();
-		} catch (Exception e) {
-			onInternalException(e);
-		}
+		socketReader.send(buf);
+		onRead();
 	}
 
 	@Override
 	protected void onRead() {
-
 	}
 
 	@Override

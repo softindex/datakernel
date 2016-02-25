@@ -16,8 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
@@ -121,13 +119,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param line received line of header.
 	 */
 	@Override
-	protected void onFirstLine(ByteBuf line) {
+	protected void onFirstLine(ByteBuf line) throws HttpParseException {
 		assert isRegistered();
 		assert eventloop.inEventloopThread();
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null)
-			throw new SimpleException("Unknown HTTP method");
+			throw new HttpParseException("Unknown HTTP method");
 
 		request = HttpRequest.create(method);
 
@@ -139,7 +137,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			this.headerChars[i] = (char) b;
 		}
 
-		request.url(HttpUri.ofPartialUrl(new String(headerChars, 0, i))); // TODO ?
+		request.url(HttpUri.parseUrl(new String(headerChars, 0, i))); // TODO ?
 
 		if (method == GET || method == DELETE) {
 			contentLength = 0;
@@ -153,7 +151,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param value  value of received header
 	 */
 	@Override
-	protected void onHeader(HttpHeader header, final ByteBuf value) {
+	protected void onHeader(HttpHeader header, final ByteBuf value) throws HttpParseException {
 		super.onHeader(header, value);
 		request.addHeader(header, value);
 	}
@@ -180,30 +178,34 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		reading = NOTHING;
 		request.body(bodyBuf);
 		request.remoteAddress(remoteAddress);
-		servlet.serveAsync(request, new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(final HttpResponse httpResponse) {
-				assert eventloop.inEventloopThread();
-				if (isRegistered()) {
-					writeHttpResult(httpResponse);
-				} else {
-					// connection is closed, but bufs are not recycled, let's recycle them now
-					recycleBufs();
-					httpResponse.recycleBufs();
+		try {
+			servlet.serveAsync(request, new AsyncHttpServlet.Callback() {
+				@Override
+				public void onResult(final HttpResponse httpResponse) {
+					assert eventloop.inEventloopThread();
+					if (isRegistered()) {
+						writeHttpResult(httpResponse);
+					} else {
+						// connection is closed, but bufs are not recycled, let's recycle them now
+						recycleBufs();
+						httpResponse.recycleBufs();
+					}
 				}
-			}
 
-			@Override
-			public void onException(final Exception e) {
-				assert eventloop.inEventloopThread();
-				if (isRegistered()) {
-					writeException(e);
-				} else {
-					// connection is closed, but bufs are not recycled, let's recycle them now
-					recycleBufs();
+				@Override
+				public void onHttpError(HttpServletError httpServletError) {
+					assert eventloop.inEventloopThread();
+					if (isRegistered()) {
+						writeException(httpServletError);
+					} else {
+						// connection is closed, but bufs are not recycled, let's recycle them now
+						recycleBufs();
+					}
 				}
-			}
-		});
+			});
+		} catch (HttpParseException e) {
+			writeException(new HttpServletError(400, e));
+		}
 	}
 
 	@Override
@@ -247,16 +249,14 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
-	private void writeException(Exception e) {
+	private void writeException(HttpServletError e) {
 		writeHttpResult(formatException(e));
 	}
 
-	private HttpResponse formatException(Exception e) {
-		int status = 500;
-		ByteBuf message;
+	private HttpResponse formatException(HttpServletError e) {
 		logger.error("Error processing http request", e);
-		message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);
-		return HttpResponse.create(status).noCache().body(message);
+		ByteBuf message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);
+		return HttpResponse.create(e.getCode()).noCache().body(message);
 	}
 
 	private void recycleBufs() {

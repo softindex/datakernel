@@ -42,7 +42,7 @@ public final class CubeHttpServer {
 
 		servlet.get(QUERY_REQUEST_PATH, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) throws HttpParseException {
 				handler.process(request, callback);
 			}
 		});

@@ -16,18 +16,26 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
-
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across HTTP.
  * Receives {@link HttpRequest},  creates {@link HttpResponse} and sends it.
  */
 public interface AsyncHttpServlet {
+	interface Callback {
+		void onResult(HttpResponse httpResponse);
+
+		void onHttpError(HttpServletError httpServletError);
+	}
+
+	interface HttpErrorFormatter {
+		HttpResponse formatHttpError(HttpServletError httpServletError);
+	}
+
 	/**
 	 * Handles the received {@link HttpRequest},  creating the {@link HttpResponse} and responds to client with ResultCallback
 	 *
 	 * @param request  received request
 	 * @param callback ResultCallback for handling result
 	 */
-	void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback);
+	void serveAsync(HttpRequest request, Callback callback) throws HttpParseException;
 }

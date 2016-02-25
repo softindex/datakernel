@@ -20,7 +20,6 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.Stage;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
@@ -71,7 +70,7 @@ public class SimpleHttpLauncherExample extends Launcher {
 		AsyncHttpServer workerHttpServer(Eventloop eventloop, final Config config) {
 			AsyncHttpServer httpServer = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
-				public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				public void serveAsync(HttpRequest request, Callback callback) {
 					String responseMessage = config.get(ConfigConverters.ofString(), "responseMessage", DEFAULT_RESPONSE_MESSAGE);
 					HttpResponse content = HttpResponse.create().body(ByteBuf.wrap(encodeAscii(
 							"Message: " + responseMessage + "\n")));

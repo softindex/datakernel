@@ -20,6 +20,7 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncTask;
 import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SimpleException;
 import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -524,9 +525,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 			try {
 				acceptCallback.onAccept(socketChannel);
-			} catch (Exception e) {
+			} catch (Throwable e) {
 				updateExceptionStats(ACCEPT_MARKER, e, acceptCallback);
-				logger.error(ACCEPT_MARKER.getMarker(), "onAccept exception {}", socketChannel, e);
+				logger.error(ACCEPT_MARKER.getMarker(), "Fatal Error: onAccept {}", socketChannel, e);
 				closeQuietly(socketChannel);
 			}
 		}
@@ -541,16 +542,26 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		assert inEventloopThread();
 		ConnectCallback connectCallback = (ConnectCallback) key.attachment();
 		SocketChannel socketChannel = (SocketChannel) key.channel();
+		boolean connected;
 		try {
-			if (!socketChannel.finishConnect())
-				return;
-			connectCallback.onConnect(socketChannel);
+			connected = socketChannel.finishConnect();
 		} catch (Exception e) {
 			updateExceptionStats(CONNECT_MARKER, e, connectCallback);
 			logger.warn(CONNECT_MARKER.getMarker(), "Could not finish connect to {}", socketChannel, e);
-			key.cancel();
 			closeQuietly(socketChannel);
 			connectCallback.onException(e);
+			return;
+		}
+
+		try {
+			if (connected) {
+				connectCallback.onConnect(socketChannel);
+			} else {
+				connectCallback.onException(new SimpleException("Not connected"));
+			}
+		} catch (Throwable e) {
+			logger.error("Fatal Error: onConnect {}", socketChannel, e);
+			closeQuietly(socketChannel);
 		}
 	}
 
@@ -566,7 +577,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			connection.onReadReady();
 		} catch (Throwable e) {
 			updateExceptionStats(READ_MARKER, e, connection);
-			logger.error(READ_MARKER.getMarker(), "Could not finish read to {}", connection, e);
+			logger.error(READ_MARKER.getMarker(), "Fatal Error: onReadReady {}", connection, e);
+			closeQuietly(key.channel());
 		}
 	}
 
@@ -582,7 +594,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			connection.onWriteReady();
 		} catch (Throwable e) {
 			updateExceptionStats(WRITE_MARKER, e, connection);
-			logger.error(WRITE_MARKER.getMarker(), "Could not finish write to {}", connection);
+			logger.error(WRITE_MARKER.getMarker(), "Fatal Error: onWriteReady {}", connection);
+			closeQuietly(key.channel());
 		}
 	}
 
@@ -591,10 +604,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			return;
 		try {
 			closeable.close();
-		} catch (Exception e) {
-			updateExceptionStats(CLOSE_MARKER, e, closeable);
-			if (logger.isWarnEnabled())
-				logger.warn(CLOSE_MARKER.getMarker(), "Exception thrown while closing {}", closeable, e.toString());
+		} catch (Throwable ignored) {
 		}
 	}
 

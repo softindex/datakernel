@@ -111,13 +111,6 @@ public abstract class SocketConnection {
 		interests(ops(readInterest, writeInterest));
 	}
 
-	protected void onInternalException(Exception e) {
-		if (logger.isErrorEnabled())
-			logger.error("onInternalException in {}", this, e);
-		eventloop.updateExceptionStats(INTERNAL_MARKER, e, this);
-		close();
-	}
-
 	protected void onReadException(Exception e) {
 		if (logger.isWarnEnabled())
 			logger.warn("onReadException in {} : {}", this, e.toString());
@@ -170,12 +163,7 @@ public abstract class SocketConnection {
 		if (key == null) return;
 		closeChannel();
 		key = null;
-		try {
-			onClosed();
-		} catch (Throwable e) {
-			logger.error("onClosed() error in {}", this, e);
-			eventloop.updateExceptionStats(CLOSE_MARKER, e, toString());
-		}
+		onClosed();
 	}
 
 	private void closeChannel() {
