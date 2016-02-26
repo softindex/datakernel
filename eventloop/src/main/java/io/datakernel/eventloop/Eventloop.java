@@ -551,7 +551,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				return;
 			connectCallback.onConnect(socketChannel);
 		} catch (Exception e) {
-			stats.recordFatalError(e, connectCallback, currentTimeMillis());
+			// TODO(vmykhalko): rework error onConnect() error handling later
+//			stats.recordFatalError(e, connectCallback, currentTimeMillis());
 			updateExceptionStats(CONNECT_MARKER, e, connectCallback);
 			logger.warn(CONNECT_MARKER.getMarker(), "Could not finish connect to {}", socketChannel, e);
 			key.cancel();

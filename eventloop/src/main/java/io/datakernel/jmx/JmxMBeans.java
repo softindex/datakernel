@@ -88,16 +88,27 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static void startRefreshing(Class<? extends ConcurrentJmxMBean> mbeanClass, DynamicMBeanAggregator mbean) {
 		double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 		double refreshPeriod = DEFAULT_REFRESH_PERIOD;
-		if (mbeanClass.isAnnotationPresent(JmxRefreshSettings.class)) {
-			JmxRefreshSettings refreshSettings = mbeanClass.getAnnotation(JmxRefreshSettings.class);
-			double customSmoothingWindow = refreshSettings.smoothingWindow();
-			double customRefreshPeriod = refreshSettings.period();
+		JmxRefreshSettings settings = fetchRefreshSettingsIfExists(mbeanClass);
+		if (settings != null) {
+			double customSmoothingWindow = settings.smoothingWindow();
+			double customRefreshPeriod = settings.period();
 			checkArgument(customRefreshPeriod > 0.0, "refresh period must be positive");
 			checkArgument(customSmoothingWindow > 0.0, "smoothing window must be positive");
 			smoothingWindow = customSmoothingWindow;
 			refreshPeriod = customRefreshPeriod;
 		}
 		mbean.startRefreshing(refreshPeriod, smoothingWindow);
+	}
+
+	private static JmxRefreshSettings fetchRefreshSettingsIfExists(Class<?> clazz) {
+		Class<?> currentClass = clazz;
+		while (currentClass != null) {
+			if (currentClass.isAnnotationPresent(JmxRefreshSettings.class)) {
+				return currentClass.getAnnotation(JmxRefreshSettings.class);
+			}
+			currentClass = currentClass.getSuperclass();
+		}
+		return null;
 	}
 
 	public static AttributeNodeForPojo createAttributesTree(Class<? extends ConcurrentJmxMBean> clazz) {
