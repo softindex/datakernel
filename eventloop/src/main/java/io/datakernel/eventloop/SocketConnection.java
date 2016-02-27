@@ -16,10 +16,10 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.channels.Channel;
 import java.nio.channels.SelectableChannel;
 import java.nio.channels.SelectionKey;
@@ -42,12 +42,6 @@ public abstract class SocketConnection {
 	protected long lifeTime;
 	protected long readTime;
 	protected long writeTime;
-
-	// JMX
-	private static final ExceptionMarker INTERNAL_MARKER = new ExceptionMarker(SocketConnection.class, "InternalException");
-	private static final ExceptionMarker READ_MARKER = new ExceptionMarker(SocketConnection.class, "ReadException");
-	private static final ExceptionMarker WRITE_MARKER = new ExceptionMarker(SocketConnection.class, "WriteException");
-	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(SocketConnection.class, "CloseException");
 
 	protected SocketConnection(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -112,16 +106,12 @@ public abstract class SocketConnection {
 	}
 
 	protected void onReadException(Exception e) {
-		if (logger.isWarnEnabled())
-			logger.warn("onReadException in {} : {}", this, e.toString());
-		eventloop.updateExceptionStats(READ_MARKER, e, this);
+		eventloop.recordIoError(e, this);
 		close();
 	}
 
 	protected void onWriteException(Exception e) {
-		if (logger.isWarnEnabled())
-			logger.warn("onWriteException in {} : {}", this, e.toString());
-		eventloop.updateExceptionStats(WRITE_MARKER, e, this);
+		eventloop.recordIoError(e, this);
 		close();
 	}
 
@@ -172,9 +162,8 @@ public abstract class SocketConnection {
 			return;
 		try {
 			channel.close();
-		} catch (Throwable e) {
-			logger.error("close error in {} : {}", this, e.toString());
-			eventloop.updateExceptionStats(CLOSE_MARKER, e, toString());
+		} catch (IOException e) {
+			eventloop.recordIoError(e, toString());
 		}
 	}
 

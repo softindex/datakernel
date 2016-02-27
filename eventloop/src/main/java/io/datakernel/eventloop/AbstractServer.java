@@ -25,7 +25,6 @@ import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.util.ExceptionMarker;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -51,9 +50,6 @@ import static org.slf4j.LoggerFactory.getLogger;
  */
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, ConcurrentJmxMBean {
 	private static final Logger logger = getLogger(AbstractServer.class);
-
-	private static final ExceptionMarker PREPARE_SOCKET_MARKER = new ExceptionMarker(PrimaryServer.class, "PrepareSocketException");
-	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(PrimaryServer.class, "CloseException");
 
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
 
@@ -214,7 +210,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			closeException.recordException(e, closeable, eventloop.currentTimeMillis());
 
 			if (logger.isWarnEnabled()) {
-				logger.warn(CLOSE_MARKER.getMarker(), "Exception thrown while closing {}", closeable, e);
+				logger.warn("Exception thrown while closing {}", closeable, e);
 			}
 		}
 	}
@@ -236,7 +232,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			prepareSocketException.recordException(e, socketChannel, eventloop.currentTimeMillis());
 
 			if (logger.isErrorEnabled()) {
-				logger.error(PREPARE_SOCKET_MARKER.getMarker(), "Exception thrown while apply settings socket {}", socketChannel, e);
+				logger.error("Exception thrown while apply settings socket {}", socketChannel, e);
 			}
 		}
 	}

@@ -74,6 +74,10 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		return throwable != null ? throwable.getClass().getName() : "";
 	}
 
+	public Throwable getLastException() {
+		return throwable;
+	}
+
 	@JmxAttribute
 	public String getLastExceptionMessage() {
 		return throwable != null ? throwable.getMessage() : "";

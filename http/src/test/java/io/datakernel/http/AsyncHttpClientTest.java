@@ -77,7 +77,7 @@ public class AsyncHttpClientTest {
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
-	@Test(expected = HttpTimeoutException.class)
+	@Test(expected = TimeoutException.class)
 	public void testTimeout() throws Throwable {
 		final int TIMEOUT = 100;
 		final Eventloop eventloop = new Eventloop();

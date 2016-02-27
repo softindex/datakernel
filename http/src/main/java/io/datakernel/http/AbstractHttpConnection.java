@@ -21,9 +21,6 @@ import io.datakernel.bytebuf.ByteBufQueue;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.util.ByteBufStrings;
-import io.datakernel.util.ExceptionMarker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.channels.SocketChannel;
 
@@ -35,8 +32,6 @@ import static io.datakernel.util.ByteBufStrings.*;
  */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public abstract class AbstractHttpConnection extends TcpSocketConnection {
-	private static final Logger logger = LoggerFactory.getLogger(AbstractHttpConnection.class);
-
 	public static final int DEFAULT_HTTP_BUFFER_SIZE = 16 * 1024;
 	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
@@ -76,14 +71,13 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 
 	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
 	protected ExposedLinkedList.Node<AbstractHttpConnection> connectionsListNode;
-	private static final ExceptionMarker INTERNAL_MARKER = new ExceptionMarker(AbstractHttpConnection.class, "InternalException");
 
 	/**
 	 * Creates a new instance of AbstractHttpConnection
 	 *
-	 * @param eventloop          eventloop which will handle its I/O operations
-	 * @param socketChannel      socket for this connection
-	 * @param connectionsList    pool in which will stored this connection
+	 * @param eventloop       eventloop which will handle its I/O operations
+	 * @param socketChannel   socket for this connection
+	 * @param connectionsList pool in which will stored this connection
 	 */
 	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, socketChannel);

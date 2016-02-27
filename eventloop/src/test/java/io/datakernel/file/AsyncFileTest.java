@@ -35,7 +35,7 @@ import java.util.concurrent.Executors;
 
 import static java.nio.file.StandardOpenOption.READ;
 import static java.nio.file.StandardOpenOption.WRITE;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertArrayEquals;
 
 public class AsyncFileTest {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncFileTest.class);
@@ -65,7 +65,7 @@ public class AsyncFileTest {
 									public void onComplete() {
 										logger.info("Finished writing file");
 										try {
-											assertEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));
+											assertArrayEquals(Files.readAllBytes(srcPath), Files.readAllBytes(destPath));
 										} catch (IOException e) {
 											logger.info("Could not compare files {} and {}", srcPath, destPath);
 											throw new RuntimeException(e);
