@@ -16,55 +16,19 @@
 
 package io.datakernel.jmx;
 
-import javax.management.openmbean.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
-import static io.datakernel.jmx.MBeanFormat.formatException;
-import static io.datakernel.jmx.Utils.stringOf;
+import static java.util.Arrays.asList;
 
 public final class ExceptionStats implements JmxStats<ExceptionStats> {
-	private static final String DETAILS_TYPE_NAME = "ExceptionStatsDetails";
-	private static final String DETAILS_KEY = "details";
-	private static final String LAST_EXCEPTION_KEY = "lastException";
-	private static final String CAUSED_OBJECT_KEY = "lastExceptionCausedObject";
-	private static final String STACK_TRACE_KEY = "lastExceptionStackTrace";
-	private static final String TIMESTAMP_KEY = "lastExceptionTimestamp";
-	private static final String TOTAL_EXCEPTIONS_KEY = "totalExceptions";
-
-	private final CompositeType detailsType;
-
 	private Throwable throwable;
 	private Object causeObject;
 	private long timestamp;
 	private int count;
 
-	public ExceptionStats() {
-		try {
-			String[] detailsItemNames = new String[]{
-					LAST_EXCEPTION_KEY,
-					CAUSED_OBJECT_KEY,
-					STACK_TRACE_KEY,
-					TIMESTAMP_KEY,
-					TOTAL_EXCEPTIONS_KEY
-			};
-
-			OpenType<?>[] detailsItemTypes = new OpenType<?>[]{
-					SimpleType.STRING,
-					SimpleType.STRING,
-					new ArrayType<>(1, SimpleType.STRING),
-					SimpleType.LONG,
-					SimpleType.INTEGER
-			};
-
-			detailsType = new CompositeType(
-					DETAILS_TYPE_NAME, DETAILS_TYPE_NAME, detailsItemNames, detailsItemNames, detailsItemTypes);
-		} catch (OpenDataException e) {
-			throw new RuntimeException(e);
-		}
-	}
+	public ExceptionStats() {}
 
 	public void recordException(Throwable throwable, Object causeObject, long timestamp) {
 		this.count++;
@@ -95,39 +59,37 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 
 	}
 
-	@Override
-	public SortedMap<String, TypeAndValue> getAttributes() {
-		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
-		attributes.put(LAST_EXCEPTION_KEY, new TypeAndValue(SimpleType.STRING, stringOf(throwable)));
-		attributes.put(TOTAL_EXCEPTIONS_KEY, new TypeAndValue(SimpleType.INTEGER, count));
-		try {
-			Map<String, Object> details = new HashMap<>();
-			details.put(LAST_EXCEPTION_KEY, stringOf(throwable));
-			details.put(CAUSED_OBJECT_KEY, stringOf(causeObject));
-			details.put(STACK_TRACE_KEY, formatException(throwable));
-			details.put(TIMESTAMP_KEY, timestamp);
-			details.put(TOTAL_EXCEPTIONS_KEY, count);
-			CompositeDataSupport compositeDataSupport = new CompositeDataSupport(detailsType, details);
-			attributes.put(DETAILS_KEY, new TypeAndValue(detailsType, compositeDataSupport));
-		} catch (OpenDataException e) {
-			throw new RuntimeException(e);
-		}
-		return attributes;
-	}
-
-	public Throwable getThrowable() {
-		return throwable;
-	}
-
-	public Object getCauseObject() {
-		return causeObject;
-	}
-
-	public long getTimestamp() {
+	@JmxAttribute
+	public long getLastExceptionTimestamp() {
 		return timestamp;
 	}
 
-	public int getCount() {
+	@JmxAttribute
+	public int getTotal() {
 		return count;
+	}
+
+	@JmxAttribute
+	public String getLastExceptionType() {
+		return throwable != null ? throwable.getClass().getName() : "";
+	}
+
+	@JmxAttribute
+	public String getLastExceptionMessage() {
+		return throwable != null ? throwable.getMessage() : "";
+	}
+
+	@JmxAttribute
+	String getLastExceptionCause() {
+		return Objects.toString(causeObject);
+	}
+
+	@JmxAttribute
+	public List<String> getLastExceptionStackTrace() {
+		if (throwable != null) {
+			return asList(MBeanFormat.formatException(throwable));
+		} else {
+			return new ArrayList<>();
+		}
 	}
 }

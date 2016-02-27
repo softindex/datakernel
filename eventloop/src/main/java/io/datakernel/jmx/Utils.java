@@ -22,7 +22,7 @@ import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
-public final class Utils {
+final class Utils {
 
 	private Utils() {}
 
@@ -41,16 +41,79 @@ public final class Utils {
 		return isGetter(method) && returnsJmxStats && hasNoArgs;
 	}
 
+	public static boolean isJmxStats(Class<?> clazz) {
+		return JmxStats.class.isAssignableFrom(clazz);
+	}
+
 	public static boolean isGetterOfSimpleType(Method method) {
-		boolean returnsSimpleType =
-				boolean.class.isAssignableFrom(method.getReturnType())
-						|| int.class.isAssignableFrom(method.getReturnType())
-						|| long.class.isAssignableFrom(method.getReturnType())
-						|| double.class.isAssignableFrom(method.getReturnType())
-						|| String.class.isAssignableFrom(method.getReturnType());
+		boolean returnsSimpleType = boolean.class.isAssignableFrom(method.getReturnType())
+				|| int.class.isAssignableFrom(method.getReturnType())
+				|| long.class.isAssignableFrom(method.getReturnType())
+				|| double.class.isAssignableFrom(method.getReturnType())
+				|| String.class.isAssignableFrom(method.getReturnType());
 		boolean hasNoArgs = method.getParameterTypes().length == 0;
 		// TODO(vmykhalko): maybe also condisder "is*" getter for boolean instead of "get*" getter ?
 		return isGetter(method) && returnsSimpleType && hasNoArgs;
+	}
+
+	public static boolean isGetterOfPrimitiveType(Method method) {
+		boolean returnsPrimitive = isPrimitiveType(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsPrimitive && hasNoArgs;
+	}
+
+	public static boolean isGetterOfPrimitiveTypeWrapper(Method method) {
+		boolean returnsPrimitive = isPrimitiveTypeWrapper(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsPrimitive && hasNoArgs;
+	}
+
+	public static boolean isPrimitiveType(Class<?> clazz) {
+		return boolean.class.isAssignableFrom(clazz)
+				|| byte.class.isAssignableFrom(clazz)
+				|| short.class.isAssignableFrom(clazz)
+				|| char.class.isAssignableFrom(clazz)
+				|| int.class.isAssignableFrom(clazz)
+				|| long.class.isAssignableFrom(clazz)
+				|| float.class.isAssignableFrom(clazz)
+				|| double.class.isAssignableFrom(clazz);
+	}
+
+	public static boolean isPrimitiveTypeWrapper(Class<?> clazz) {
+		return Boolean.class.isAssignableFrom(clazz)
+				|| Byte.class.isAssignableFrom(clazz)
+				|| Short.class.isAssignableFrom(clazz)
+				|| Character.class.isAssignableFrom(clazz)
+				|| Integer.class.isAssignableFrom(clazz)
+				|| Long.class.isAssignableFrom(clazz)
+				|| Float.class.isAssignableFrom(clazz)
+				|| Double.class.isAssignableFrom(clazz);
+	}
+
+	public static boolean isString(Class<?> clazz) {
+		return String.class.isAssignableFrom(clazz);
+	}
+
+	public static boolean isList(Class<?> clazz) {
+		return List.class.isAssignableFrom(clazz);
+	}
+
+	public static boolean isArray(Class<?> clazz) {
+		return Object[].class.isAssignableFrom(clazz);
+	}
+
+	public static boolean isMap(Class<?> clazz) {
+		return Map.class.isAssignableFrom(clazz);
+	}
+
+	public static boolean isThrowable(Class<?> clazz) {
+		return Throwable.class.isAssignableFrom(clazz);
+	}
+
+	public static boolean isGetterOfString(Method method) {
+		boolean returnsString = String.class.isAssignableFrom(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsString && hasNoArgs;
 	}
 
 	public static boolean isGetterOfList(Method method) {
@@ -65,14 +128,33 @@ public final class Utils {
 		return isGetter(method) && returnsArray && hasNoArgs;
 	}
 
+	public static boolean isGetterOfMap(Method method) {
+		boolean returnsMap = Map.class.isAssignableFrom(method.getReturnType());
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		return isGetter(method) && returnsMap && hasNoArgs;
+	}
+
 	public static boolean isGetterOfThrowable(Method method) {
 		boolean returnsThrowable = Throwable.class.isAssignableFrom(method.getReturnType());
 		boolean hasNoArgs = method.getParameterTypes().length == 0;
 		return isGetter(method) && returnsThrowable && hasNoArgs;
 	}
 
+	public static boolean isGetterOfPojo(Method method) {
+		boolean hasNoArgs = method.getParameterTypes().length == 0;
+		boolean doesNotReturnStandardType =
+				!isGetterOfPrimitiveType(method) &&
+						!isGetterOfPrimitiveTypeWrapper(method) &&
+						!isGetterOfString(method) &&
+						!isGetterOfArray(method) &&
+						!isGetterOfList(method) &&
+						!isGetterOfThrowable(method);
+		return isGetter(method) && doesNotReturnStandardType && hasNoArgs;
+	}
+
 	public static boolean isGetter(Method method) {
-		return method.getName().length() > 3 && method.getName().startsWith("get");
+		return method.getName().length() > 3 && method.getName().startsWith("get")
+				&& method.getReturnType() != void.class;
 	}
 
 	public static SortedMap<String, JmxStats<?>> fetchNameToJmxStats(Object objectWithJmxStats) {

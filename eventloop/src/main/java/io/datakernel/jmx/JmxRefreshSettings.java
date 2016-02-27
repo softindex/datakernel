@@ -14,15 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.jmx;
+package io.datakernel.jmx;
 
-import io.datakernel.jmx.MapStats;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-import java.net.InetSocketAddress;
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface JmxRefreshSettings {
+	double smoothingWindow();
 
-public final class AddressToConnectStats extends MapStats<InetSocketAddress, RpcConnectStats> {
-	@Override
-	protected RpcConnectStats createJmxStatsInstance() {
-		return new RpcConnectStats();
-	}
+	double period();
 }

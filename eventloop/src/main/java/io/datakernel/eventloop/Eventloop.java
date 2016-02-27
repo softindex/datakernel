@@ -265,6 +265,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				executeBackgroundTasks();
 				executeLocalTasks();
 			} catch (Exception e) {
+				stats.recordFatalError(e, null, currentTimeMillis());
 				updateExceptionStats(UNCHECKED_MARKER, e, selector);
 				logger.error("Exception in dispatch loop", e);
 			}
@@ -399,6 +400,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 					stats.updateLocalTaskDuration(item, sw);
 				updateExceptionStats(LOCAL_TASK_MARKER, e, item);
 				logger.error(LOCAL_TASK_MARKER.getMarker(), "Exception thrown while execution Local-task", e);
+				stats.recordFatalError(e, item, currentTimeMillis());
 			}
 			newRunnables++;
 		}
@@ -434,6 +436,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 					stats.updateConcurrentTaskDuration(runnable, sw);
 				updateExceptionStats(CONCURRENT_TASK_MARKER, e, runnable);
 				logger.error(CONCURRENT_TASK_MARKER.getMarker(), "Exception in concurrent task {}", runnable, e);
+				stats.recordFatalError(e, runnable, currentTimeMillis());
 			}
 			newRunnables++;
 		}
@@ -486,6 +489,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 					stats.updateScheduledTaskDuration(runnable, sw);
 				updateExceptionStats(SCHEDULED_TASK_MARKER, e, polled);
 				logger.error(SCHEDULED_TASK_MARKER.getMarker(), "Exception in Scheduled-task {}", runnable, e);
+				stats.recordFatalError(e, runnable, currentTimeMillis());
 			}
 
 			newRunnables++;
@@ -526,6 +530,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			try {
 				acceptCallback.onAccept(socketChannel);
 			} catch (Throwable e) {
+				stats.recordFatalError(e, acceptCallback, currentTimeMillis());
 				updateExceptionStats(ACCEPT_MARKER, e, acceptCallback);
 				logger.error(ACCEPT_MARKER.getMarker(), "Fatal Error: onAccept {}", socketChannel, e);
 				closeQuietly(socketChannel);
@@ -576,6 +581,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		try {
 			connection.onReadReady();
 		} catch (Throwable e) {
+			stats.recordFatalError(e, connection, currentTimeMillis());
 			updateExceptionStats(READ_MARKER, e, connection);
 			logger.error(READ_MARKER.getMarker(), "Fatal Error: onReadReady {}", connection, e);
 			closeQuietly(key.channel());
@@ -593,6 +599,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		try {
 			connection.onWriteReady();
 		} catch (Throwable e) {
+			stats.recordFatalError(e, null, currentTimeMillis());
 			updateExceptionStats(WRITE_MARKER, e, connection);
 			logger.error(WRITE_MARKER.getMarker(), "Fatal Error: onWriteReady {}", connection);
 			closeQuietly(key.channel());
@@ -896,7 +903,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		stats.resetStats();
 	}
 
-	@JmxAttribute
+	@JmxAttribute(name = "")
 	public EventloopStats getEventloopStats() {
 		return stats;
 	}

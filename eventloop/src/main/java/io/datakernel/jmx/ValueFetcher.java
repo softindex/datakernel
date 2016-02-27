@@ -14,15 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.rpc.client.jmx;
+package io.datakernel.jmx;
 
-import io.datakernel.jmx.MapStats;
-
-import java.net.InetSocketAddress;
-
-public final class AddressToRequestStats extends MapStats<InetSocketAddress, RpcRequestStats> {
-	@Override
-	protected RpcRequestStats createJmxStatsInstance() {
-		return new RpcRequestStats();
-	}
+interface ValueFetcher {
+	Object fetchFrom(Object source);
 }

@@ -16,12 +16,7 @@
 
 package io.datakernel.jmx;
 
-import javax.management.openmbean.SimpleType;
-import java.util.SortedMap;
-import java.util.TreeMap;
-
-import static java.lang.Math.exp;
-import static java.lang.Math.log;
+import static java.lang.Math.pow;
 
 /**
  * Computes total amount of events and dynamic rate using exponential smoothing algorithm
@@ -29,17 +24,12 @@ import static java.lang.Math.log;
  * Class is supposed to work in single thread
  */
 public final class EventStats implements JmxStats<EventStats> {
-	private boolean computationStarted;
 	private long lastTimestampMillis;
 	private int lastCount;
+	private double adjustmentCoef = 0;
 
 	private long totalCount;
-
-	//	private double smoothedTime;
-//	private double smoothedCount;
-	private double smoothedPeriod;
-
-//	private int addedEventStatsCount;
+	private double smoothedCount;
 
 	/**
 	 * Creates {@link EventStats} with specified parameters and rate = 0
@@ -52,12 +42,9 @@ public final class EventStats implements JmxStats<EventStats> {
 	 */
 	public void resetStats() {
 		lastCount = 0;
-//		smoothedTime = 0;
 		totalCount = 0;
 		lastTimestampMillis = 0;
-		smoothedPeriod = 0;
-		computationStarted = false;
-//		addedEventStatsCount = 0;
+		smoothedCount = 0;
 	}
 
 	/**
@@ -74,59 +61,33 @@ public final class EventStats implements JmxStats<EventStats> {
 	 */
 	public void recordEvents(int events) {
 		lastCount += events;
+		totalCount += events;
 	}
 
 	@Override
 	public void refreshStats(long timestamp, double smoothingWindow) {
-		// TODO(vmykhalko): refactor this method (tests are already written)
-		if (computationStarted) {
-			if (lastCount > 0) {
-				long timeElapsedMillis = timestamp - lastTimestampMillis;
+		long timeElapsedMillis = timestamp - lastTimestampMillis;
+		double timeElapsedSeconds = timeElapsedMillis / 1000.0;
+		smoothedCount = lastCount + smoothedCount * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
 
-				double windowE = smoothingWindow * 1000.0 / log(2);
-				double weight = exp(-timeElapsedMillis / windowE);
+		adjustmentCoef = computeAdjustmentCoef(smoothingWindow, timeElapsedSeconds);
 
-				smoothedPeriod = (1 - weight) * (timeElapsedMillis / (double) lastCount) + smoothedPeriod * weight;
+		lastCount = 0;
+		lastTimestampMillis = timestamp;
+	}
 
-				lastTimestampMillis = timestamp;
-				totalCount += lastCount;
-				lastCount = 0;
-			} else {
-				// ignore update
-			}
-		} else {
-			if (lastTimestampMillis != 0L) {
-				if (lastCount > 0) {
-					smoothedPeriod = (timestamp - lastTimestampMillis) / (double) lastCount;
-					lastTimestampMillis = timestamp;
-					totalCount += lastCount;
-					lastCount = 0;
-					computationStarted = true;
-				} else {
-					// ignore update
-				}
-			}
-			lastTimestampMillis = timestamp;
-			totalCount += lastCount;
-			lastCount = 0;
-		}
+	private double computeAdjustmentCoef(double smoothingWindow, double timeElapsedSeconds) {
+		double ratio = smoothingWindow / timeElapsedSeconds;
+		double coef = -0.5 * (pow(2.0, (ratio - 1) / ratio) - 2);
+		coef *= 1 / timeElapsedSeconds;
+		return coef;
 	}
 
 	@Override
-	public SortedMap<String, TypeAndValue> getAttributes() {
-		SortedMap<String, TypeAndValue> attributes = new TreeMap<>();
-		attributes.put("totalCount", new TypeAndValue(SimpleType.LONG, getTotalCount()));
-		attributes.put("smoothedRate", new TypeAndValue(SimpleType.DOUBLE, getSmoothedRate()));
-		return attributes;
-	}
-
-	@Override
-
 	public void add(EventStats anotherStats) {
-		// TODO(vmykhalko): revisit / test this code
 		totalCount += anotherStats.totalCount;
-		smoothedPeriod = (1.0 / (getSmoothedRate() + anotherStats.getSmoothedRate())) * 1000;
-		computationStarted = true;
+		smoothedCount += anotherStats.smoothedCount;
+		adjustmentCoef = anotherStats.adjustmentCoef;
 	}
 
 	/**
@@ -136,8 +97,9 @@ public final class EventStats implements JmxStats<EventStats> {
 	 *
 	 * @return smoothed value of rate in events per second
 	 */
+	@JmxAttribute
 	public double getSmoothedRate() {
-		return computationStarted ? 1.0 / (smoothedPeriod / 1000.0) : 0.0;
+		return smoothedCount * adjustmentCoef;
 	}
 
 	/**
@@ -145,6 +107,7 @@ public final class EventStats implements JmxStats<EventStats> {
 	 *
 	 * @return total amount of recorded events
 	 */
+	@JmxAttribute
 	public long getTotalCount() {
 		return totalCount;
 	}

@@ -29,7 +29,6 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.jmx.Utils.isJmxMBean;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -383,5 +382,9 @@ public final class JmxRegistry {
 			}
 		}
 		return false;
+	}
+
+	private static boolean isJmxMBean(Class<?> clazz) {
+		return ConcurrentJmxMBean.class.isAssignableFrom(clazz);
 	}
 }

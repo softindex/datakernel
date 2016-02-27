@@ -16,11 +16,24 @@
 
 package io.datakernel.jmx;
 
-public final class AggregationException extends Exception {
-	public AggregationException() {
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
+import static io.datakernel.util.Preconditions.checkNotNull;
+
+final class ValueFetcherFromGetter implements ValueFetcher {
+	private final Method getter;
+
+	public ValueFetcherFromGetter(Method getter) {
+		this.getter = checkNotNull(getter);
 	}
 
-	public AggregationException(String message) {
-		super(message);
+	@Override
+	public Object fetchFrom(Object source) {
+		try {
+			return getter.invoke(source);
+		} catch (IllegalAccessException | InvocationTargetException e) {
+			throw new RuntimeException(e);
+		}
 	}
 }

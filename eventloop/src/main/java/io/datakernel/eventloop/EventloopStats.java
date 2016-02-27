@@ -17,13 +17,18 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.jmx.*;
+import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-public final class EventloopStats extends AbstractCompositeStats<EventloopStats> {
+public final class EventloopStats {
 
 	private static final class DurationRunnable {
 		private Runnable runnable;
@@ -46,14 +51,6 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		@Override
 		public String toString() {
 			return (runnable == null) ? "" : runnable.getClass().getName() + ": " + duration;
-		}
-	}
-
-	private static final class ExceptionStatsMap<K> extends MapStats<K, ExceptionStats> {
-
-		@Override
-		protected ExceptionStats createJmxStatsInstance() {
-			return new ExceptionStats();
 		}
 	}
 
@@ -81,8 +78,10 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 	private final ValueStats concurrentTasksTime = new ValueStats();
 	private final ValueStats scheduledTasksTime = new ValueStats();
 
-	private final MapStats<ExceptionMarker, ExceptionStats> exceptions = new ExceptionStatsMap<>();
-	private final MapStats<Class<? extends Throwable>, ExceptionStats> severeExceptions = new ExceptionStatsMap<>();
+	private final ExceptionStats fatalErrors = new ExceptionStats();
+
+	private final Map<ExceptionMarker, ExceptionStats> exceptions = new HashMap<>();
+	private final Map<Class<? extends Throwable>, ExceptionStats> severeExceptions = new HashMap<>();
 
 	public void updateBusinessLogicTime(long timestamp, long businessLogicTime) {
 		this.businessLogicTime.recordValue((int) businessLogicTime);
@@ -144,6 +143,10 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 		if (sw != null)
 			scheduledTasksTime.recordValue((int) sw.elapsed(TimeUnit.MILLISECONDS));
 		scheduledTasks.recordEvents(newTasks);
+	}
+
+	public void recordFatalError(Throwable throwable, Object causedObject, long timestamp) {
+		fatalErrors.recordException(throwable, causedObject, timestamp);
 	}
 
 	public ExceptionStats getExceptionStats(ExceptionMarker marker) {
@@ -309,13 +312,17 @@ public final class EventloopStats extends AbstractCompositeStats<EventloopStats>
 	}
 
 	@JmxAttribute
-	public MapStats<ExceptionMarker, ExceptionStats> getExceptions() {
+	public Map<ExceptionMarker, ExceptionStats> getExceptions() {
 		return exceptions;
 	}
 
 	@JmxAttribute
-	public MapStats<Class<? extends Throwable>, ExceptionStats> getSevereExceptions() {
+	public Map<Class<? extends Throwable>, ExceptionStats> getSevereExceptions() {
 		return severeExceptions;
 	}
 
+	@JmxAttribute
+	public ExceptionStats getFatalErrors() {
+		return fatalErrors;
+	}
 }

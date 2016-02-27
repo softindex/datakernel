@@ -16,8 +16,25 @@
 
 package io.datakernel.jmx;
 
-public interface JmxStats<T extends JmxStats> {
-	void add(T value);
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
-	void refreshStats(long timestamp, double smoothingWindow);
+import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.util.Arrays.asList;
+
+final class ValueFetcherFromGetterArrayAdapter implements ValueFetcher {
+	private final Method getter;
+
+	public ValueFetcherFromGetterArrayAdapter(Method getter) {
+		this.getter = checkNotNull(getter);
+	}
+
+	@Override
+	public Object fetchFrom(Object source) {
+		try {
+			return asList((Object[]) getter.invoke(source));
+		} catch (IllegalAccessException | InvocationTargetException e) {
+			throw new RuntimeException(e);
+		}
+	}
 }

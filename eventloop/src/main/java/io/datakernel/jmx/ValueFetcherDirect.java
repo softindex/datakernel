@@ -14,22 +14,12 @@
  * limitations under the License.
  */
 
-package io.datakernel.jmx.helper;
+package io.datakernel.jmx;
 
-import io.datakernel.jmx.AbstractCompositeStats;
-import io.datakernel.jmx.JmxAttribute;
+final class ValueFetcherDirect implements ValueFetcher {
 
-public final class CompositeStatsStub extends AbstractCompositeStats<CompositeStatsStub> {
-	private JmxStatsStub counterOne = new JmxStatsStub();
-	private JmxStatsStub counterTwo = new JmxStatsStub();
-
-	@JmxAttribute
-	public JmxStatsStub getCounterOne() {
-		return counterOne;
-	}
-
-	@JmxAttribute
-	public JmxStatsStub getCounterTwo() {
-		return counterTwo;
+	@Override
+	public Object fetchFrom(Object source) {
+		return source;
 	}
 }
