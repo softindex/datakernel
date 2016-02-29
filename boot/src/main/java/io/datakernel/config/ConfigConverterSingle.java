@@ -26,7 +26,7 @@ public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
 	protected abstract String toString(T item);
 
 	@Override
-	public final T get(Config config) {
+	public final T get(ConfigNode config) {
 		checkState(config.getChildren().isEmpty());
 		String string = config.get();
 		checkNotNull(string, "Config %s not found", config);
@@ -34,7 +34,7 @@ public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
 	}
 
 	@Override
-	public final T get(Config config, T defaultValue) {
+	public final T get(ConfigNode config, T defaultValue) {
 		checkState(config.getChildren().isEmpty());
 		String defaultString = toString(defaultValue);
 		String string = config.get(defaultString);
@@ -47,7 +47,7 @@ public abstract class ConfigConverterSingle<T> implements ConfigConverter<T> {
 	}
 
 	@Override
-	public final void set(Config config, T item) {
+	public final void set(ConfigNode config, T item) {
 		checkState(config.getChildren().isEmpty());
 		config.set(toString(item));
 	}

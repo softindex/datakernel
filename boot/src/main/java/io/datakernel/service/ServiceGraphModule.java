@@ -98,18 +98,22 @@ public final class ServiceGraphModule extends AbstractModule {
 
 	private static boolean isSingleton(Binding<?> binding) {
 		return binding.acceptScopingVisitor(new BindingScopingVisitor<Boolean>() {
+			@Override
 			public Boolean visitNoScoping() {
 				return false;
 			}
 
+			@Override
 			public Boolean visitScopeAnnotation(Class<? extends Annotation> visitedAnnotation) {
 				return visitedAnnotation.equals(Singleton.class);
 			}
 
+			@Override
 			public Boolean visitScope(Scope visitedScope) {
 				return visitedScope.equals(Scopes.SINGLETON);
 			}
 
+			@Override
 			public Boolean visitEagerSingleton() {
 				return true;
 			}

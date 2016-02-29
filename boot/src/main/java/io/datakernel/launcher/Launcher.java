@@ -17,15 +17,10 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
-import io.datakernel.config.Config;
-import io.datakernel.config.ConfigModule;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.FileLocker;
 import org.slf4j.Logger;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,8 +35,6 @@ public abstract class Launcher {
 	private Stage stage;
 
 	private Module[] modules;
-
-	private File[] configs;
 
 	private FileLocker fileLocker;
 
@@ -58,57 +51,13 @@ public abstract class Launcher {
 
 	private final Thread mainThread = Thread.currentThread();
 
-	protected Config config;
-
-	private File saveConfigFile;
-
 	protected void useLockFile() {
 		this.useLockFile = true;
-	}
-
-	protected void configs(File... files) {
-		this.configs = files;
-	}
-
-	protected void configs(String... config) {
-		this.configs = strings2files(config);
-	}
-
-	protected void configs(Path... paths) {
-		this.configs = paths2Files(paths);
-	}
-
-	private File[] paths2Files(Path[] paths) {
-		File[] files = new File[paths.length];
-		for (int i = 0; i < paths.length; i++) {
-			files[i] = paths[i].toFile();
-		}
-		return files;
-	}
-
-	private File[] strings2files(String... strings) {
-		File[] files = new File[strings.length];
-		for (int i = 0; i < strings.length; i++) {
-			files[i] = new File(strings[i]);
-		}
-		return files;
 	}
 
 	protected void injector(Stage stage, Module... modules) {
 		this.stage = stage;
 		this.modules = modules;
-	}
-
-	public void saveConfig(Path path) {
-		saveConfigFile = path.toFile();
-	}
-
-	public void saveConfig(File file) {
-		saveConfigFile = file;
-	}
-
-	public void saveConfig(String string) {
-		saveConfigFile = new File(string);
 	}
 
 	protected abstract void configure();
@@ -125,7 +74,6 @@ public abstract class Launcher {
 			obtainLockFile();
 			logger.info("=== WIRING APPLICATION");
 			doWire();
-			writeConfig();
 			try {
 				logger.info("=== STARTING APPLICATION");
 				doStart();
@@ -157,13 +105,6 @@ public abstract class Launcher {
 		fileLocker.releaseLock();
 	}
 
-	private void writeConfig() throws IOException {
-		if (saveConfigFile == null || configs == null || configs[0] == null)
-			return;
-
-		config.saveToPropertiesFile(saveConfigFile);
-	}
-
 	protected void doWire() throws Exception {
 		List<Module> modules = new ArrayList<>(Arrays.asList(this.modules));
 
@@ -175,24 +116,8 @@ public abstract class Launcher {
 			}
 		});
 
-		List<Config> configsList = new ArrayList<>();
-		loadConfigs(configs, configsList, true);
-
-		if (configsList.size() > 0) {
-			config = Config.union(configsList);
-			modules.add(new ConfigModule(config));
-		}
-
 		Injector injector = Guice.createInjector(stage, modules);
 		injector.injectMembers(this);
-	}
-
-	private void loadConfigs(File[] sources, List<Config> container, boolean optional) {
-		if (sources != null && sources.length != 0) {
-			for (File config : sources) {
-				container.add(Config.ofProperties(config, optional));
-			}
-		}
 	}
 
 	protected void doStart() throws Exception {

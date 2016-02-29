@@ -21,33 +21,33 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-public class ConfigTest {
+public class ConfigPropertiesTest {
 
 	@Test
-	public void rootConfigDoesntHaveKey() {
-		Config root = new Config();
+	public void rootConfigDoesNotHaveKey() {
+		ConfigNode root = ConfigNode.defaultInstance();
 
 		assertEquals("", root.getKey());
 	}
 
 	@Test
 	public void configShouldStoreInfoAboutChildConfigs() {
-		Config root = new Config();
+		ConfigNode root = ConfigNode.defaultInstance();
 		root.set("name1", "value1");
 		root.set("name2", "value2");
 
-		assertEquals("value1", root.getChild("name1").get());
-		assertEquals("value2", root.getChild("name2").get());
+		assertEquals("value1", root.getChild("name1").get(String.class));
+		assertEquals("value2", root.getChild("name2").get(String.class));
 	}
 
 	@Test
 	public void configShouldProperlySplitChildKey() {
-		Config root = new Config();
+		ConfigNode root = ConfigNode.defaultInstance();
 		root.set("base.sub1.sub2", "value");
 
-		Config base = root.getChild("base");
-		Config sub1 = base.getChild("sub1");
-		Config sub2 = sub1.getChild("sub2");
+		ConfigNode base = (ConfigNode) root.getChild("base");
+		ConfigNode sub1 = (ConfigNode) base.getChild("sub1");
+		ConfigNode sub2 = (ConfigNode) sub1.getChild("sub2");
 
 		assertNull(root.get());
 		assertNull(base.get());
@@ -57,11 +57,11 @@ public class ConfigTest {
 
 	@Test
 	public void configShouldUpdateValueIfKeyWasAlreadyUsed() {
-		Config root = new Config();
+		ConfigNode root = ConfigNode.defaultInstance();
 		root.set("key1", "value1");
 
 		root.set("key1", "value2");
 
-		assertEquals("value2", root.getChild("key1").get());
+		assertEquals("value2", root.getChild("key1").get(String.class));
 	}
 }
