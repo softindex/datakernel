@@ -19,6 +19,10 @@ package io.datakernel.rpc.server;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.ValueStats;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -47,9 +51,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	private final Map<SocketChannel, RpcServerConnection> connections = new HashMap<>();
 
-	// JMX
+	// jmx
+	private ValueStats connectionsCount = new ValueStats();
 	private boolean monitoring;
-	private volatile double smoothingWindow = 10.0;
 
 	private RpcServer(Eventloop eventloop) {
 		super(eventloop);
@@ -105,11 +109,17 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 			@Override
 			public void onOpen(RpcServerConnection connection) {
 				connections.put(socketChannel, connection);
+
+				// jmx
+				connectionsCount.recordValue(connections.size());
 			}
 
 			@Override
 			public void onClosed() {
 				connections.remove(socketChannel);
+
+				// jmx
+				connectionsCount.recordValue(connections.size());
 			}
 		};
 		BufferSerializer<RpcMessage> messageSerializer = createSerializer();
@@ -133,44 +143,22 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		if (logger.isInfoEnabled())
 			logger.info("Client connected on {}", socketChannel);
 		connections.put(socketChannel, connection);
+
+		// jmx
+		connectionsCount.recordValue(connections.size());
 	}
 
 	public void remove(SocketChannel socketChannel) {
 		if (logger.isInfoEnabled())
 			logger.info("Client disconnected on {}", socketChannel);
 		connections.remove(socketChannel);
-	}
 
-	@Override
-	protected void onListen() {
-//		scheduleRefreshStats();
+		// jmx
+		connectionsCount.recordValue(connections.size());
 	}
 
 	// JMX
-
-//	private void scheduleRefreshStats() {
-//		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
-//			@Override
-//			public void run() {
-//				if (!isRunning())
-//					return;
-//				long timestamp = eventloop.currentTimeMillis();
-//				for (RpcServerConnection connection : connections.values()) {
-//					connection.refreshStats(timestamp, smoothingWindow);
-//				}
-//				scheduleRefreshStats();
-//			}
-//		});
-//	}
-
-	// TODO (vmykhalko): upgrade jmx here
-	/*
-	@Override
-	public void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-	}
-
-	@Override
+	@JmxOperation
 	public void startMonitoring() {
 		monitoring = true;
 		for (RpcServerConnection connection : connections.values()) {
@@ -178,7 +166,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 	}
 
-	@Override
+	@JmxOperation
 	public void stopMonitoring() {
 		monitoring = false;
 		for (RpcServerConnection connection : connections.values()) {
@@ -186,61 +174,47 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 	}
 
-	@Override
-	public boolean isMonitoring() {
+	@JmxAttribute
+	public boolean getMonitoring() {
 		return monitoring;
 	}
 
-	@Override
-	public void resetStats() {
+	@JmxAttribute
+	public ValueStats getConnectionsCount() {
+		return connectionsCount;
+	}
+
+	@JmxAttribute
+	public List<RpcServerConnection> getConnections() {
+		return new ArrayList<>(connections.values());
+	}
+
+	@JmxAttribute
+	public EventStats getRequests() {
+		EventStats totalRequests = new EventStats();
 		for (RpcServerConnection connection : connections.values()) {
-			connection.resetStats();
+			totalRequests.add(connection.getSuccessfulResponses());
+			totalRequests.add(connection.getErrorResponses());
 		}
+		return totalRequests;
 	}
 
-	@Override
-	public int getConnectionsCount() {
-		return connections.size();
-	}
-
-	@Override
-	public CompositeData[] getConnections() throws OpenDataException {
-		List<CompositeData> compositeData = new ArrayList<>();
-		for (SocketChannel socketChannel : connections.keySet()) {
-			RpcServerConnection connection = connections.get(socketChannel);
-			CompositeData lastResponseException = connection.getLastResponseException();
-			CompositeData lastInternalException = connection.getLastInternalException();
-			CompositeData connectionDetails = connection.getConnectionDetails();
-			compositeData.add(CompositeDataBuilder.builder("Rpc connections", "Rpc connections status")
-					.add("SocketInfo", SimpleType.STRING, socketChannel.toString())
-					.add("SuccessfulResponses", SimpleType.INTEGER, connection.getSuccessfulResponses())
-					.add("ErrorResponses", SimpleType.INTEGER, connection.getErrorResponses())
-					.add("TimeExecution", SimpleType.STRING, connection.getTimeExecutionMillis())
-					.add("LastResponseException", lastResponseException)
-					.add("LastInternalException", lastInternalException)
-					.add("ConnectionDetails", connectionDetails)
-					.build());
-		}
-		return compositeData.toArray(new CompositeData[compositeData.size()]);
-	}
-
-	@Override
-	public long getTotalRequests() {
-		long requests = 0;
+	@JmxAttribute
+	public EventStats getProcessingErrors() {
+		EventStats errors = new EventStats();
 		for (RpcServerConnection connection : connections.values()) {
-			requests += connection.getSuccessfulResponses() + connection.getErrorResponses();
+			errors.add(connection.getErrorResponses());
 		}
-		return requests;
+		return errors;
 	}
 
-	@Override
-	public long getTotalProcessingErrors() {
-		long requests = 0;
+	@JmxAttribute
+	public ValueStats getRequestHandlingTime() {
+		ValueStats requestHandlingTime = new ValueStats();
 		for (RpcServerConnection connection : connections.values()) {
-			requests += connection.getErrorResponses();
+			requestHandlingTime.add(connection.getRequestHandlingTime());
 		}
-		return requests;
+		return requestHandlingTime;
 	}
-	*/
 }
 

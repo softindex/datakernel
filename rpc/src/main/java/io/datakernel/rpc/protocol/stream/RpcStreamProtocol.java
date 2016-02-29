@@ -122,9 +122,6 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	private final StreamDeserializer<RpcMessage> deserializer;
 	private final boolean compression;
 	private final TcpStreamSocketConnection connection;
-	// JMX
-	private boolean monitoring;
-	private long timeMonitoring;
 
 	protected RpcStreamProtocol(Eventloop eventloop, SocketChannel socketChannel,
 	                            BufferSerializer<RpcMessage> messageSerializer,
@@ -201,42 +198,4 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		}
 		connection.close();
 	}
-
-//	// JMX
-//	// TODO (vmykhalko)
-//	public void startMonitoring() {
-//		monitoring = true;
-//		timeMonitoring = System.currentTimeMillis();
-//	}
-//
-//	public void stopMonitoring() {
-//		monitoring = false;
-//		timeMonitoring = 0;
-//	}
-//
-//	public boolean isMonitoring() {
-//		return monitoring;
-//	}
-//
-//	public void reset() {
-//		if (isMonitoring())
-//			timeMonitoring = System.currentTimeMillis();
-//	}
-//
-//	private String getMonitoringTime() {
-//		if (timeMonitoring == 0)
-//			return null;
-//		return MBeanFormat.formatDuration(System.currentTimeMillis() - timeMonitoring);
-//	}
-
-//	@Override
-//	public CompositeData getConnectionDetails() throws OpenDataException {
-//		return CompositeDataBuilder.builder(RpcStreamProtocol.class.getSimpleName(), "Rpc stream connection details")
-//				.add("Overloaded", SimpleType.BOOLEAN, isOverloaded())
-//				.add("Compression", SimpleType.BOOLEAN, compression)
-//				.add("Monitoring", SimpleType.BOOLEAN, isMonitoring())
-//				.add("MonitoringTime", SimpleType.STRING, getMonitoringTime())
-//				.add("ChannelInfo", SimpleType.STRING, connection.getChannelInfo())
-//				.build();
-//	}
 }

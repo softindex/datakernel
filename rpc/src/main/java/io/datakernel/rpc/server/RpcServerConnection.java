@@ -19,7 +19,9 @@ package io.datakernel.rpc.server;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
+import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
@@ -47,9 +49,9 @@ public final class RpcServerConnection implements RpcConnection {
 
 	// JMX
 	private final ExceptionStats lastRemoteException = new ExceptionStats();
-	private final ValueStats timeExecution;
-	private int successfulResponses = 0;
-	private int errorResponses = 0;
+	private final ValueStats requestHandlingTime = new ValueStats();
+	private EventStats successfulResponses = new EventStats();
+	private EventStats errorResponses = new EventStats();
 	private boolean monitoring;
 
 	public RpcServerConnection(Eventloop eventloop, SocketChannel socketChannel,
@@ -60,9 +62,6 @@ public final class RpcServerConnection implements RpcConnection {
 		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, true);
 		this.handlers = handlers;
 		this.statusListener = statusListener;
-
-		// JMX
-		this.timeExecution = new ValueStats();
 	}
 
 	public void apply(Object request, ResultCallback<Object> callback) {
@@ -92,7 +91,7 @@ public final class RpcServerConnection implements RpcConnection {
 			public void onResult(Object result) {
 				updateProcessTime();
 				protocol.sendMessage(new RpcMessage(cookie, result));
-				successfulResponses++;
+				successfulResponses.recordEvent();
 			}
 
 			@Override
@@ -106,7 +105,7 @@ public final class RpcServerConnection implements RpcConnection {
 				if (startTime == 0)
 					return;
 				int value = (int) (System.currentTimeMillis() - startTime);
-				timeExecution.recordValue(value);
+				requestHandlingTime.recordValue(value);
 			}
 		});
 	}
@@ -114,7 +113,7 @@ public final class RpcServerConnection implements RpcConnection {
 	private void sendError(int cookie, Exception error) {
 		protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(error)));
 		logger.warn("Exception while process request ID {}", cookie, error.toString());
-		errorResponses++;
+		errorResponses.recordEvent();
 	}
 
 	@Override
@@ -140,56 +139,38 @@ public final class RpcServerConnection implements RpcConnection {
 		return protocol.getSocketConnection();
 	}
 
-//	// JMX
-//	// TODO(vmykhalko): upgrade jmx here
-//	public void startMonitoring() {
-//		monitoring = true;
-//		protocol.startMonitoring();
-//	}
-//
-//	public void stopMonitoring() {
-//		monitoring = false;
-//		protocol.stopMonitoring();
-//	}
-//
-//	public boolean isMonitoring() {
-//		return monitoring;
-//	}
-//
-//	public void resetStats() {
-//		lastRemoteException.resetStats();
-//		lastInternalException.resetStats();
-//		successfulResponses = 0;
-//		errorResponses = 0;
-//		timeExecution.resetStats();
-//		protocol.reset();
-//	}
-//
-//	public void refreshStats(long timestamp, double smoothingWindow) {
-//		timeExecution.refreshStats(timestamp, smoothingWindow);
-//	}
-//
-////	public CompositeData getConnectionDetails() throws OpenDataException {
-////		return protocol.getConnectionDetails();
-////	}
-//
-//	public int getSuccessfulResponses() {
-//		return successfulResponses;
-//	}
-//
-//	public int getErrorResponses() {
-//		return errorResponses;
-//	}
-//
-//	public String getTimeExecutionMillis() {
-//		return timeExecution.toString();
-//	}
-//
-//	public CompositeData getLastResponseException() throws OpenDataException {
-//		return lastRemoteException.compositeData();
-//	}
-//
-//	public CompositeData getLastInternalException() throws OpenDataException {
-//		return lastInternalException.compositeData();
-//	}
+	// JMX
+	public void startMonitoring() {
+		monitoring = true;
+	}
+
+	public void stopMonitoring() {
+		monitoring = false;
+	}
+
+	@JmxAttribute
+	public boolean getOverloaded() {
+		return protocol.isOverloaded();
+	}
+
+
+	@JmxAttribute
+	public EventStats getSuccessfulResponses() {
+		return successfulResponses;
+	}
+
+	@JmxAttribute
+	public EventStats getErrorResponses() {
+		return errorResponses;
+	}
+
+	@JmxAttribute
+	public ValueStats getRequestHandlingTime() {
+		return requestHandlingTime;
+	}
+
+	@JmxAttribute
+	public ExceptionStats getLastResponseException() {
+		return lastRemoteException;
+	}
 }

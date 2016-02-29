@@ -26,13 +26,4 @@ public interface RpcProtocol {
 	void close();
 
 	SocketConnection getSocketConnection();
-
-	// TODO(vmykhalko): upgrade jmx
-//	void startMonitoring();
-//
-//	void stopMonitoring();
-//
-//	void reset();
-//
-//	CompositeData getConnectionDetails() throws OpenDataException;
 }
