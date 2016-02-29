@@ -26,10 +26,10 @@ import static java.lang.Math.pow;
 public final class EventStats implements JmxStats<EventStats> {
 	private long lastTimestampMillis;
 	private int lastCount;
-	private double adjustmentCoef = 0;
 
 	private long totalCount;
 	private double smoothedCount;
+	private double smoothedRate;
 
 	/**
 	 * Creates {@link EventStats} with specified parameters and rate = 0
@@ -45,6 +45,7 @@ public final class EventStats implements JmxStats<EventStats> {
 		totalCount = 0;
 		lastTimestampMillis = 0;
 		smoothedCount = 0;
+		smoothedRate = 0;
 	}
 
 	/**
@@ -70,7 +71,12 @@ public final class EventStats implements JmxStats<EventStats> {
 		double timeElapsedSeconds = timeElapsedMillis / 1000.0;
 		smoothedCount = lastCount + smoothedCount * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
 
-		adjustmentCoef = computeAdjustmentCoef(smoothingWindow, timeElapsedSeconds);
+		if (timeElapsedMillis != 0) {
+			double adjustmentCoef = computeAdjustmentCoef(smoothingWindow, timeElapsedSeconds);
+			smoothedRate = smoothedCount * adjustmentCoef;
+		} else {
+			smoothedRate = 0;
+		}
 
 		lastCount = 0;
 		lastTimestampMillis = timestamp;
@@ -87,7 +93,7 @@ public final class EventStats implements JmxStats<EventStats> {
 	public void add(EventStats anotherStats) {
 		totalCount += anotherStats.totalCount;
 		smoothedCount += anotherStats.smoothedCount;
-		adjustmentCoef = anotherStats.adjustmentCoef;
+		smoothedRate += anotherStats.smoothedRate;
 	}
 
 	/**
@@ -99,7 +105,7 @@ public final class EventStats implements JmxStats<EventStats> {
 	 */
 	@JmxAttribute
 	public double getSmoothedRate() {
-		return smoothedCount * adjustmentCoef;
+		return smoothedRate;
 	}
 
 	/**

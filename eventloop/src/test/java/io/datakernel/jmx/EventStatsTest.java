@@ -72,19 +72,32 @@ public class EventStatsTest {
 	}
 
 	@Test
-	public void counterShouldProperlyCountAllEvents() {
-		EventStats eventStats = new EventStats();
-		double smoothingWindow = 1.0;
+	public void counterShouldProperlyAggregateEvents() {
+		int iterations = 1000;
+		final int period = 100;
 		long currentTimestamp = 0;
-		int events = 100;
 
-		for (int i = 0; i < events; i++) {
-			eventStats.recordEvent();
+		EventStats stats_1 = new EventStats();
+		EventStats stats_2 = new EventStats();
+		EventStats stats_3 = new EventStats();
+
+		for (int i = 0; i < iterations; i++) {
+			stats_1.recordEvents(1);
+			stats_2.recordEvents(2);
+			// we do not record event to stats_3
+
+			currentTimestamp += period;
+			stats_1.refreshStats(currentTimestamp, 10.0);
+			stats_2.refreshStats(currentTimestamp, 10.0);
+			stats_3.refreshStats(currentTimestamp, 10.0);
 		}
 
-		eventStats.refreshStats(currentTimestamp, smoothingWindow);
+		EventStats accumulator = new EventStats();
+		accumulator.add(stats_1);
+		accumulator.add(stats_2);
+		accumulator.add(stats_3);
 
-		assertEquals(events, eventStats.getTotalCount());
+		System.out.println(accumulator.getSmoothedRate());
 	}
 
 	@Test
@@ -139,6 +152,8 @@ public class EventStatsTest {
 		double acceptableError = 2.0;
 		assertEquals(25.0, stats.getSmoothedRate(), acceptableError);
 	}
+
+
 
 	public static int uniformRandom(int min, int max) {
 		return min + Math.abs(RANDOM.nextInt()) % (max - min + 1);
