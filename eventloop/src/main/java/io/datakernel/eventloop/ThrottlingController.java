@@ -26,6 +26,7 @@ import java.util.Random;
 import java.util.concurrent.Executor;
 
 import static io.datakernel.util.Preconditions.check;
+import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
 public final class ThrottlingController implements ConcurrentJmxMBean {
@@ -94,6 +95,7 @@ public final class ThrottlingController implements ConcurrentJmxMBean {
 
 	public ThrottlingController(Eventloop eventloop) {
 		this.eventloop = eventloop;
+		checkArgument(this.eventloop.throttlingController == null, "Throttling controller already set");
 		this.eventloop.throttlingController = this;
 	}
 

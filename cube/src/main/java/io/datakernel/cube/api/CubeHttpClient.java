@@ -23,7 +23,10 @@ import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.CubeQuery;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpClient;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.HttpUtils;
 
 import java.util.HashMap;
 import java.util.Map;

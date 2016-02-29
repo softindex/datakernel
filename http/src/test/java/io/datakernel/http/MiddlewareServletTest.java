@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Rule;
@@ -33,8 +32,8 @@ public class MiddlewareServletTest {
 	@Rule
 	public ExpectedException expectedException = ExpectedException.none();
 
-	private static ResultCallback<HttpResponse> callback(final String expectedBody, final int expectedCode) {
-		return new ResultCallback<HttpResponse>() {
+	private static AsyncHttpServlet.Callback callback(final String expectedBody, final int expectedCode) {
+		return new AsyncHttpServlet.Callback() {
 			@Override
 			public void onResult(HttpResponse result) {
 				assertEquals(expectedBody, result.getBody() == null ? "" : result.getBody().toString());
@@ -43,14 +42,13 @@ public class MiddlewareServletTest {
 			}
 
 			@Override
-			public void onException(Exception exception) {
-
+			public void onHttpError(HttpServletError httpServletError) {
 			}
 		};
 	}
 
 	@Test
-	public void testMicroMapping() {
+	public void testMicroMapping() throws HttpParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
@@ -62,7 +60,7 @@ public class MiddlewareServletTest {
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
@@ -95,7 +93,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testLongMapping() {
+	public void testLongMapping() throws HttpParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
@@ -107,7 +105,7 @@ public class MiddlewareServletTest {
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
@@ -138,7 +136,7 @@ public class MiddlewareServletTest {
 	public void testOverrideHandler() {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
@@ -146,7 +144,7 @@ public class MiddlewareServletTest {
 
 		AsyncHttpServlet anotherAction = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
@@ -163,7 +161,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMerge() {
+	public void testMerge() throws HttpParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");         // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");        // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/b");        // ok
@@ -174,7 +172,7 @@ public class MiddlewareServletTest {
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
@@ -205,12 +203,12 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testFailMerge() {
+	public void testFailMerge() throws HttpParseException {
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
@@ -218,7 +216,7 @@ public class MiddlewareServletTest {
 
 		AsyncHttpServlet anotherAction = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				ByteBuf msg = ByteBufStrings.wrapUTF8("Shall not be executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
@@ -241,10 +239,10 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testParameter() {
+	public void testParameter() throws HttpParseException {
 		AsyncHttpServlet printParameters = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
 				response.body(ByteBufStrings.wrapUTF8(request.getUrlParameter("id")
 						+ " " + request.getUrlParameter("uid")
@@ -265,10 +263,10 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMultiParameters() {
+	public void testMultiParameters() throws HttpParseException {
 		AsyncHttpServlet serveCar = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
 				response.body(ByteBufStrings.wrapUTF8("served car: " + request.getUrlParameter("cid")));
 				callback.onResult(response);
@@ -277,7 +275,7 @@ public class MiddlewareServletTest {
 
 		AsyncHttpServlet serveMan = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
 				response.body(ByteBufStrings.wrapUTF8("served man: " + request.getUrlParameter("mid")));
 				callback.onResult(response);
@@ -295,14 +293,14 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testDifferentMethods() {
+	public void testDifferentMethods() throws HttpParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/a/b/c/action");
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
 		HttpRequest request3 = HttpRequest.create(HttpMethod.CONNECT).url(TEMPLATE + "/a/b/c/action");
 
 		AsyncHttpServlet post = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
 				response.body(ByteBufStrings.wrapUTF8("POST"));
 				callback.onResult(response);
@@ -311,7 +309,7 @@ public class MiddlewareServletTest {
 
 		AsyncHttpServlet get = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
 				response.body(ByteBufStrings.wrapUTF8("GET"));
 				callback.onResult(response);
@@ -320,7 +318,7 @@ public class MiddlewareServletTest {
 
 		AsyncHttpServlet wildcard = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
 				response.body(ByteBufStrings.wrapUTF8("WILDCARD"));
 				callback.onResult(response);
@@ -340,17 +338,17 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testDefault() {
+	public void testDefault() throws HttpParseException {
 		AsyncHttpServlet def = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("Stopped at admin: " + request.getRelativePath())));
 			}
 		};
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("Action executed")));
 			}
 		};
@@ -369,10 +367,10 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void test404() {
+	public void test404() throws HttpParseException {
 		AsyncHttpServlet handler = new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("All OK")));
 			}
 		};

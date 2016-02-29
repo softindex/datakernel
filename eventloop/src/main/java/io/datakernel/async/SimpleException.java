@@ -17,7 +17,7 @@
 package io.datakernel.async;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class SimpleException extends RuntimeException {
+public class SimpleException extends Exception {
 
 	public SimpleException() {
 		super();
@@ -36,7 +36,7 @@ public class SimpleException extends RuntimeException {
 	}
 
 	@Override
-	public Throwable fillInStackTrace() {
+	public final Throwable fillInStackTrace() {
 		return this;
 	}
 }

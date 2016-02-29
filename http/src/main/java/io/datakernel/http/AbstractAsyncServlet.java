@@ -22,10 +22,7 @@ import io.datakernel.jmx.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
 
 /**
  * Represent an asynchronous HTTP servlet which receives and responds to requests from clients across HTTP.
@@ -34,24 +31,26 @@ import java.util.concurrent.RejectedExecutionException;
  */
 public abstract class AbstractAsyncServlet implements AsyncHttpServlet, ConcurrentJmxMBean {
 	protected static final Logger logger = LoggerFactory.getLogger(AbstractAsyncServlet.class);
-	public static final RejectedExecutionException THROTTLED_EXCEPTION = new RejectedExecutionException("Throttled");
 
 	protected final Eventloop eventloop;
 
 	// JMX
-	private ValueStats timings = new ValueStats();
-	private EventStats requests = new EventStats();
-	private EventStats requestsThrottled = new EventStats();
-	private final ExceptionStats exceptions = new ExceptionStats();
-	private final Map<Integer, HttpStats> httpCodeStats = new HashMap<>();
+	private final EventStats requests = new EventStats();
+	private final ExceptionStats errors = new ExceptionStats();
+	private final ValueStats requestsTimings = new ValueStats();
+	private final ValueStats errorsTimings = new ValueStats();
 
 	protected AbstractAsyncServlet(Eventloop eventloop) {
 		this.eventloop = eventloop;
 	}
 
-	protected boolean isRequestThrottled(HttpRequest request) {
-		return eventloop.isRequestThrottled();
-	}
+	/**
+	 * Method with logic for handling request and creating the response to client
+	 *
+	 * @param request  received request from client
+	 * @param callback callback for handling result
+	 */
+	protected abstract void doServeAsync(HttpRequest request, Callback callback) throws HttpParseException;
 
 	/**
 	 * Handles the received {@link HttpRequest},  creates the {@link HttpResponse} and responds to client with
@@ -61,106 +60,29 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 	 * @param callback ResultCallback for handling result
 	 */
 	@Override
-	public final void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-		if (isMonitoring(request)) {
-			serveMonitoredRequest(request, callback);
-		} else {
-			serveNotMonitoredRequest(request, callback);
-		}
-	}
-
-	private void serveMonitoredRequest(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-		requests.recordEvent();
-
-		if (isRequestThrottled(request)) {
-			requestsThrottled.recordEvent();
-			handleRejectedRequest(request, THROTTLED_EXCEPTION, callback);
+	public final void serveAsync(final HttpRequest request, final Callback callback) throws HttpParseException {
+		if (!isMonitoring(request)) {
+			doServeAsync(request, callback);
 			return;
 		}
-
+		requests.recordEvent();
 		final long timestamp = eventloop.currentTimeMillis();
-		doServeAsync(request, new ResultCallback<HttpResponse>() {
+		doServeAsync(request, new Callback() {
 			@Override
 			public void onResult(HttpResponse result) {
 				int duration = (int) (eventloop.currentTimeMillis() - timestamp);
-				timings.recordValue(duration);
-				if (result != null) {
-					int code = result.getCode();
-					HttpStats stats = ensureStatsForCode(code);
-					stats.getRequests().recordEvent();
-					stats.getTimings().recordValue(duration);
-				}
-
+				requestsTimings.recordValue(duration);
 				callback.onResult(result);
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				exceptions.recordException(exception, extractUrl(request), eventloop.currentTimeMillis());
-				handleException(request, exception, callback);
+			public void onHttpError(HttpServletError httpServletError) {
+				int duration = (int) (eventloop.currentTimeMillis() - timestamp);
+				errorsTimings.recordValue(duration);
+				errors.recordException(httpServletError, extractUrl(request), eventloop.currentTimeMillis());
+				callback.onHttpError(httpServletError);
 			}
 		});
-
-	}
-
-	private void serveNotMonitoredRequest(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
-		if (isRequestThrottled(request)) {
-			handleRejectedRequest(request, THROTTLED_EXCEPTION, callback);
-			return;
-		}
-
-		doServeAsync(request, new ResultCallback<HttpResponse>() {
-			@Override
-			public void onResult(HttpResponse result) {
-				callback.onResult(result);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				handleException(request, exception, callback);
-			}
-		});
-
-	}
-
-	/**
-	 * Method with logic for handling request and creating the response to client
-	 *
-	 * @param request  received request from client
-	 * @param callback callback for handling result
-	 */
-	protected abstract void doServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback);
-
-	protected final void handleException(HttpRequest request, Exception e, ResultCallback<HttpResponse> callback) {
-		HttpResponse response;
-		if (logger.isErrorEnabled()) {
-			logger.error("Exception on {}: {}", request, e.toString());
-		}
-		response = formatErrorResponse(request, e);
-		if (response != null) {
-			callback.onResult(response);
-		} else {
-			callback.onException(e);
-		}
-	}
-
-	protected final void handleRejectedRequest(HttpRequest request, RejectedExecutionException e, ResultCallback<HttpResponse> callback) {
-		if (logger.isWarnEnabled()) {
-			logger.warn("Request rejected {} : {}", request, e.toString());
-		}
-		HttpResponse response = formatRejectedResponse(request, e);
-		if (response != null)
-			callback.onResult(response);
-		else
-			callback.onException(e);
-	}
-
-	protected HttpResponse formatErrorResponse(HttpRequest request, Exception e) {
-		return null;
-	}
-
-	protected HttpResponse formatRejectedResponse(HttpRequest request, RejectedExecutionException e) {
-		return formatErrorResponse(request, e);
 	}
 
 	// jmx
@@ -178,13 +100,6 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 		return "url: " + request.toString();
 	}
 
-	private HttpStats ensureStatsForCode(int code) {
-		if (!httpCodeStats.containsKey(code)) {
-			httpCodeStats.put(code, new HttpStats());
-		}
-		return httpCodeStats.get(code);
-	}
-
 	public Eventloop getEventloop() {
 		return eventloop;
 	}
@@ -195,37 +110,18 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 	}
 
 	@JmxAttribute
-	public final EventStats getRequestsThrottled() {
-		return requestsThrottled;
+	public final ExceptionStats getErrors() {
+		return errors;
 	}
 
 	@JmxAttribute
-	public final ExceptionStats getExceptions() {
-		return exceptions;
+	public final ValueStats getRequestsTimings() {
+		return requestsTimings;
 	}
 
 	@JmxAttribute
-	public final ValueStats getTimings() {
-		return timings;
+	public final ValueStats getErrorsTimings() {
+		return errorsTimings;
 	}
 
-	@JmxAttribute
-	public final Map<Integer, HttpStats> getHttpCodeStats() {
-		return httpCodeStats;
-	}
-
-	public static final class HttpStats {
-		private ValueStats timings = new ValueStats();
-		private EventStats requests = new EventStats();
-
-		@JmxAttribute
-		public ValueStats getTimings() {
-			return timings;
-		}
-
-		@JmxAttribute
-		public EventStats getRequests() {
-			return requests;
-		}
-	}
 }

@@ -18,8 +18,7 @@ package io.datakernel.http;
 
 import java.lang.reflect.Array;
 
-import static io.datakernel.util.ByteBufStrings.encodeAscii;
-import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
+import static io.datakernel.util.ByteBufStrings.*;
 
 abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> {
 	static abstract class Token {
@@ -37,7 +36,22 @@ abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> 
 		TOKENS = ts;
 	}
 
-	protected final T register(String name) {
+	public final T register(String name) {
+		assert Integer.bitCount(TOKENS.length) == 1;
+
+		T token = create(name);
+
+		for (int p = 0; p < maxProbings; p++) {
+			int slot = (token.lowerCaseHashCode + p) & (TOKENS.length - 1);
+			if (TOKENS[slot] == null) {
+				TOKENS[slot] = token;
+				return token;
+			}
+		}
+		throw new IllegalArgumentException("CaseInsensitiveTokenMap hash collision, try to increase size");
+	}
+
+	public final T create(String name) {
 		byte[] bytes = encodeAscii(name);
 
 		byte[] lowerCaseBytes = new byte[bytes.length];
@@ -50,20 +64,20 @@ abstract class CaseInsensitiveTokenMap<T extends CaseInsensitiveTokenMap.Token> 
 			lowerCaseHashCode = lowerCaseHashCode * 31 + b;
 		}
 
-		T token = create(bytes, 0, bytes.length, lowerCaseBytes, lowerCaseHashCode);
-
-		assert Integer.bitCount(TOKENS.length) == 1;
-		for (int p = 0; p < maxProbings; p++) {
-			int slot = (lowerCaseHashCode + p) & (TOKENS.length - 1);
-			if (TOKENS[slot] == null) {
-				TOKENS[slot] = token;
-				return token;
-			}
-		}
-		throw new IllegalArgumentException("CaseInsensitiveTokenMap hash collision, try to increase size");
+		return create(bytes, 0, bytes.length, lowerCaseBytes, lowerCaseHashCode);
 	}
 
-	protected final T get(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
+	public final T getOrCreate(byte[] bytes, int offset, int length) {
+		int lowerCaseHashCode = hashCodeLowerCaseAscii(bytes, offset, length);
+		return getOrCreate(bytes, offset, length, lowerCaseHashCode);
+	}
+
+	public final T getOrCreate(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
+		T t = get(bytes, offset, length, lowerCaseHashCode);
+		return (t != null) ? t : create(bytes, offset, length, null, lowerCaseHashCode);
+	}
+
+	public final T get(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
 		for (int p = 0; p < maxProbings; p++) {
 			int slot = (lowerCaseHashCode + p) & (TOKENS.length - 1);
 			T t = TOKENS[slot];

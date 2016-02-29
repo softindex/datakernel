@@ -45,7 +45,7 @@ public class ProxyServerExample {
 	                                                    final AsyncHttpClient client) {
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, final Callback callback) {
 				client.execute(HttpRequest.get(REDIRECT_ADDRESS + request.getUrl().getPath()), 1000,
 						new ResultCallback<HttpResponse>() {
 							@Override
@@ -57,7 +57,7 @@ public class ProxyServerExample {
 
 							@Override
 							public void onException(Exception exception) {
-								callback.onException(exception);
+								callback.onHttpError(new HttpServletError(500, exception));
 							}
 						});
 			}

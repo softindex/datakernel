@@ -111,9 +111,8 @@ public final class MediaTypes {
 		throw new AssertionError();
 	}
 
-	static MediaType parse(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
-		MediaType mime = mimes.get(bytes, offset, length, lowerCaseHashCode);
-		return mime != null ? mime : new MediaType(bytes, offset, length, null, lowerCaseHashCode);
+	static MediaType of(byte[] bytes, int offset, int length, int lowerCaseHashCode) {
+		return mimes.getOrCreate(bytes, offset, length, lowerCaseHashCode);
 	}
 
 	static void render(MediaType mime, ByteBuf buf) {

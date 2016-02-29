@@ -245,7 +245,8 @@ public class ClientProtocol {
 								messaging.shutdown();
 								callback.onException(new Exception(item.msg));
 							}
-						}).addReadException(new MessagingException() {
+						})
+						.addReadExceptionHandler(new MessagingExceptionHandler() {
 							@Override
 							public void onException(Exception e) {
 								logger.trace("Caught exception in stream while uploading file {}", fileName);
@@ -289,7 +290,7 @@ public class ClientProtocol {
 								callback.onException(e);
 							}
 						})
-						.addReadException(new MessagingException() {
+						.addReadExceptionHandler(new MessagingExceptionHandler() {
 							@Override
 							public void onException(Exception e) {
 								logger.trace("Stream exception while downloading file {}", fileName);
@@ -329,7 +330,7 @@ public class ClientProtocol {
 								callback.onException(new Exception(item.msg));
 							}
 						})
-						.addReadException(new MessagingException() {
+						.addReadExceptionHandler(new MessagingExceptionHandler() {
 							@Override
 							public void onException(Exception e) {
 								logger.trace("Stream exception while deleting file {}", fileName);
@@ -369,7 +370,7 @@ public class ClientProtocol {
 								callback.onException(new Exception(item.msg));
 							}
 						})
-						.addReadException(new MessagingException() {
+						.addReadExceptionHandler(new MessagingExceptionHandler() {
 							@Override
 							public void onException(Exception e) {
 								logger.trace("Stream exception while requesting list of files");

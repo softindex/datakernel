@@ -32,7 +32,7 @@ final class ValueFetcherFromGetterArrayAdapter implements ValueFetcher {
 	@Override
 	public Object fetchFrom(Object source) {
 		try {
-			return asList((Object[])getter.invoke(source));
+			return asList((Object[]) getter.invoke(source));
 		} catch (IllegalAccessException | InvocationTargetException e) {
 			throw new RuntimeException(e);
 		}

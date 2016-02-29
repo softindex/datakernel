@@ -84,7 +84,7 @@ public class AsyncHttpClientTest {
 
 		final AsyncHttpServer httpServer = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, final Callback callback) {
 				eventloop.schedule(eventloop.currentTimeMillis() + (3 * TIMEOUT), new Runnable() {
 					@Override
 					public void run() {
@@ -158,7 +158,7 @@ public class AsyncHttpClientTest {
 		}
 	}
 
-	@Test(expected = RuntimeException.class)
+	@Test(expected = HttpParseException.class)
 	public void testBigHttpMessage() throws Throwable {
 		final int TIMEOUT = 1000;
 		final Eventloop eventloop = new Eventloop();

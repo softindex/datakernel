@@ -25,5 +25,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface JmxAttribute {
 	String USE_GETTER_NAME = "USE_GETTER_NAME";
+
 	String name() default USE_GETTER_NAME;
 }

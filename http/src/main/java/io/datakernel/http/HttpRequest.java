@@ -166,7 +166,7 @@ public final class HttpRequest extends HttpMessage {
 		return list;
 	}
 
-	public List<AcceptCharset> parseAcceptCharsets() {
+	public List<AcceptCharset> parseAcceptCharsets() throws HttpParseException {
 		assert !recycled;
 		List<AcceptCharset> charsets = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT_CHARSET);
@@ -178,7 +178,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	@Override
-	public List<HttpCookie> parseCookies() {
+	public List<HttpCookie> parseCookies() throws HttpParseException {
 		assert !recycled;
 		List<HttpCookie> cookie = new ArrayList<>();
 		List<Value> headers = getHeaderValues(COOKIE);
@@ -189,7 +189,7 @@ public final class HttpRequest extends HttpMessage {
 		return cookie;
 	}
 
-	public Date parseIfModifiedSince() {
+	public Date parseIfModifiedSince() throws HttpParseException {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
 		if (header != null)
@@ -197,7 +197,7 @@ public final class HttpRequest extends HttpMessage {
 		return null;
 	}
 
-	public Date parseIfUnModifiedSince() {
+	public Date parseIfUnModifiedSince() throws HttpParseException {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_UNMODIFIED_SINCE);
 		if (header != null)
@@ -206,18 +206,18 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	// internal
-	public Map<String, String> getParameters() {
+	public Map<String, String> getParameters() throws HttpParseException {
 		assert !recycled;
 		return url.getParameters();
 	}
 
-	public Map<String, String> getPostParameters() {
+	public Map<String, String> getPostParameters() throws HttpParseException {
 		assert !recycled;
 		if (method == POST && getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
 				&& body.position() != body.limit()) {
 			if (bodyParameters == null) {
-				bodyParameters = HttpUtils.parse(decodeUTF8(getBody()));
+				bodyParameters = HttpUtils.parse(decodeAscii(getBody()));
 			}
 			return bodyParameters;
 		} else {
@@ -225,11 +225,11 @@ public final class HttpRequest extends HttpMessage {
 		}
 	}
 
-	public String getPostParameter(String name) {
+	public String getPostParameter(String name) throws HttpParseException {
 		return getPostParameters().get(name);
 	}
 
-	public String getParameter(String name) {
+	public String getParameter(String name) throws HttpParseException {
 		assert !recycled;
 		return url.getParameter(name);
 	}

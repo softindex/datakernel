@@ -16,12 +16,13 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ForwardingResultCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.file.File;
 
+import java.io.FileNotFoundException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
@@ -44,12 +45,20 @@ public final class StaticServletForFiles extends StaticServlet {
 	}
 
 	@Override
-	protected final void doServeAsync(String name, final ForwardingResultCallback<ByteBuf> callback) {
+	protected final void doServeAsync(String name, final ResultCallback<ByteBuf> callback) {
 		AsyncFile.open(eventloop, executor, storage.resolve(name),
-				new OpenOption[]{READ}, new ForwardingResultCallback<File>(callback) {
+				new OpenOption[]{READ}, new ResultCallback<File>() {
 					@Override
 					public void onResult(File file) {
 						file.readFully(callback);
+					}
+
+					@Override
+					public void onException(Exception exception) {
+						if (exception instanceof FileNotFoundException)
+							callback.onResult(null);
+						else
+							callback.onException(exception);
 					}
 				});
 	}

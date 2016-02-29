@@ -18,7 +18,6 @@ package io.datakernel.guice;
 
 import com.google.common.io.Closeables;
 import com.google.inject.*;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -103,7 +102,7 @@ public class HelloWorldGuiceTest {
 		AsyncHttpServlet servlet(@Worker Eventloop eventloop, @WorkerId final int workerId) {
 			return new AbstractAsyncServlet(eventloop) {
 				@Override
-				protected void doServeAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+				protected void doServeAsync(HttpRequest request, Callback callback) {
 					HttpResponse httpResponse = HttpResponse.create(200);
 					httpResponse.body(ByteBuf.wrap(ByteBufStrings.encodeAscii("Hello world: worker server #" + workerId)));
 					callback.onResult(httpResponse);

@@ -18,11 +18,9 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
-import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 
-import java.io.IOException;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.TimeoutException;
 
@@ -37,7 +35,7 @@ import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
-	private static final Exception CLOSED_CONNECTION = new IOException("Connection unexpectedly closed");
+	private static final HttpParseException CLOSED_CONNECTION = new HttpParseException("Connection unexpectedly closed");
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
@@ -70,12 +68,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		super.onWriteException(e);
 	}
 
-	@Override
-	public void onInternalException(Exception e) {
-		onException(e);
-		super.onInternalException(e);
-	}
-
 	private void onException(Exception e) {
 		assert eventloop.inEventloopThread();
 		if (this.callback != null) {
@@ -86,9 +78,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onFirstLine(ByteBuf line) {
+	protected void onFirstLine(ByteBuf line) throws HttpParseException {
 		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1')
-			throw new SimpleException("Invalid status line");
+			throw new HttpParseException("Invalid response");
 
 		int sp1;
 		if (line.peek(6) == SP) {
@@ -96,7 +88,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
 			sp1 = line.position() + 9;
 		} else
-			throw new SimpleException("Invalid status line: " + new String(line.array(), line.position(), line.remaining()));
+			throw new HttpParseException("Invalid response: " + new String(line.array(), line.position(), line.remaining()));
 
 		int sp2;
 		for (sp2 = sp1; sp2 < line.limit(); sp2++) {
@@ -129,7 +121,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param value  value of header
 	 */
 	@Override
-	protected void onHeader(HttpHeader header, ByteBuf value) {
+	protected void onHeader(HttpHeader header, ByteBuf value) throws HttpParseException {
 		super.onHeader(header, value);
 		response.addHeader(header, value);
 	}

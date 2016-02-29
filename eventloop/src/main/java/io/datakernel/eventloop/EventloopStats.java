@@ -21,11 +21,8 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
-import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public final class EventloopStats {
@@ -80,10 +77,9 @@ public final class EventloopStats {
 
 	private final ExceptionStats fatalErrors = new ExceptionStats();
 
-	private final Map<ExceptionMarker, ExceptionStats> exceptions = new HashMap<>();
-	private final Map<Class<? extends Throwable>, ExceptionStats> severeExceptions = new HashMap<>();
+	private final ExceptionStats ioErrors = new ExceptionStats();
 
-	public void updateBusinessLogicTime(long timestamp, long businessLogicTime) {
+	public void updateBusinessLogicTime(long businessLogicTime) {
 		this.businessLogicTime.recordValue((int) businessLogicTime);
 	}
 
@@ -149,31 +145,8 @@ public final class EventloopStats {
 		fatalErrors.recordException(throwable, causedObject, timestamp);
 	}
 
-	public ExceptionStats getExceptionStats(ExceptionMarker marker) {
-		return exceptions.get(marker);
-	}
-
-	public void updateExceptionStats(ExceptionMarker marker, Throwable e, Object o, long timestamp) {
-		if (!exceptions.containsKey(marker)) // TODO (vmykhalko): refactor as below
-			exceptions.put(marker, new ExceptionStats());
-		exceptions.get(marker).recordException(e, o, timestamp);
-	}
-
-	public void updateSevereExceptionStats(Throwable e, Object o, long timestamp) {
-		Class<? extends Throwable> exceptionType = e.getClass();
-		ExceptionStats stats = severeExceptions.get(exceptionType);
-		if (stats == null) {
-			stats = new ExceptionStats();
-			severeExceptions.put(exceptionType, stats);
-		}
-		stats.recordException(e, o, timestamp);
-	}
-
-	public void resetExceptionStats(ExceptionMarker marker) { // TODO (vmykhalko): refactor
-		ExceptionStats counter = exceptions.get(marker);
-		if (counter != null) {
-			counter.resetStats();
-		}
+	public void recordIoError(Throwable e, Object o, long timestamp) {
+		ioErrors.recordException(e, o, timestamp);
 	}
 
 	public void resetStats() {
@@ -200,9 +173,8 @@ public final class EventloopStats {
 		concurrentTasksTime.resetStats();
 		scheduledTasksTime.resetStats();
 
-		for (ExceptionStats counter : exceptions.values()) {
-			counter.resetStats();
-		}
+		fatalErrors.resetStats();
+		ioErrors.resetStats();
 
 		lastLongestLocalRunnable.reset();
 		lastLongestConcurrentRunnable.reset();
@@ -312,13 +284,8 @@ public final class EventloopStats {
 	}
 
 	@JmxAttribute
-	public Map<ExceptionMarker, ExceptionStats> getExceptions() {
-		return exceptions;
-	}
-
-	@JmxAttribute
-	public Map<Class<? extends Throwable>, ExceptionStats> getSevereExceptions() {
-		return severeExceptions;
+	public ExceptionStats getIoErrors() {
+		return ioErrors;
 	}
 
 	@JmxAttribute

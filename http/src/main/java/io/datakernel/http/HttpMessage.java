@@ -123,7 +123,7 @@ public abstract class HttpMessage {
 		return 0;
 	}
 
-	public ContentType getContentType() {
+	public ContentType getContentType() throws HttpParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_TYPE);
 		if (header != null)
@@ -131,7 +131,7 @@ public abstract class HttpMessage {
 		return null;
 	}
 
-	public Date getDate() {
+	public Date getDate() throws HttpParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(DATE);
 		if (header != null) {
@@ -256,9 +256,9 @@ public abstract class HttpMessage {
 		return result;
 	}
 
-	protected abstract List<HttpCookie> parseCookies();
+	protected abstract List<HttpCookie> parseCookies() throws HttpParseException;
 
-	public Map<String, HttpCookie> parseCookiesMap() {
+	public Map<String, HttpCookie> parseCookiesMap() throws HttpParseException {
 		assert !recycled;
 		List<HttpCookie> cookies = parseCookies();
 		LinkedHashMap<String, HttpCookie> map = new LinkedHashMap<>();
@@ -268,7 +268,7 @@ public abstract class HttpMessage {
 		return map;
 	}
 
-	public HttpCookie parseCookie(String name) {
+	public HttpCookie parseCookie(String name) throws HttpParseException {
 		assert !recycled;
 		List<HttpCookie> cookies = parseCookies();
 		for (HttpCookie cookie : cookies) {

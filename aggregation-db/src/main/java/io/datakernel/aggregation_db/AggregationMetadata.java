@@ -45,6 +45,7 @@ public class AggregationMetadata {
 	private final RangeTree<PrimaryKey, AggregationChunk>[] prefixRanges;
 
 	private static final int EQUALS_QUERIES_THRESHOLD = 1_000;
+	private static final Random RANDOM = new Random();
 
 	public AggregationMetadata(Collection<String> keys, Collection<String> fields) {
 		this(keys, fields, null);
@@ -249,13 +250,70 @@ public class AggregationMetadata {
 		return Math.pow(Math.pow(unfilteredKeyCost, keys.size() - filteredKeys), 1 + remainingFields.size());
 	}
 
-	public List<AggregationChunk> findChunksToConsolidate() {
+	public List<List<AggregationChunk>> findChunkGroupsForConsolidation(int maxChunks, int maxGroups) {
+		Set<Set<AggregationChunk>> chunkGroups = getChunkGroupsWithOverlaps();
+
+		if (chunkGroups.isEmpty())
+			return newArrayList();
+
+		Set<Set<AggregationChunk>> expandedChunkGroups = newHashSet();
+		for (Set<AggregationChunk> chunkGroup : chunkGroups) {
+			Set<AggregationChunk> expandedChunkGroup = newHashSet(chunkGroup);
+			expandRange(expandedChunkGroup, Integer.MAX_VALUE);
+			expandedChunkGroups.add(expandedChunkGroup);
+		}
+
+		List<List<AggregationChunk>> trimmedChunkGroups = newArrayList();
+		for (Set<AggregationChunk> chunkGroup : expandedChunkGroups) {
+			if (chunkGroup.size() > maxChunks) {
+				trimmedChunkGroups.add(trimChunks(newArrayList(chunkGroup), maxChunks));
+				continue;
+			}
+
+			trimmedChunkGroups.add(newArrayList(chunkGroup));
+		}
+
+		if (trimmedChunkGroups.size() <= maxGroups)
+			return trimmedChunkGroups;
+
+		Collections.sort(trimmedChunkGroups, new Comparator<List<AggregationChunk>>() {
+			@Override
+			public int compare(List<AggregationChunk> s1, List<AggregationChunk> s2) {
+				return Integer.compare(s2.size(), s1.size());
+			}
+		});
+		return trimmedChunkGroups.subList(0, maxGroups);
+	}
+
+	private Set<Set<AggregationChunk>> getChunkGroupsWithOverlaps() {
+		int minOverlaps = 2;
+		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
+
+		Set<Set<AggregationChunk>> chunkGroups = newHashSet();
+		for (RangeTree.Segment<AggregationChunk> segment : tree.getSegments().values()) {
+			if (getNumberOfOverlaps(segment) < minOverlaps)
+				continue;
+
+			Set<AggregationChunk> segmentSet = newHashSet();
+			segmentSet.addAll(segment.getSet());
+			segmentSet.addAll(segment.getClosingSet());
+			chunkGroups.add(segmentSet);
+		}
+
+		return chunkGroups;
+	}
+
+	private int getNumberOfOverlaps(RangeTree.Segment segment) {
+		return segment.getSet().size() + segment.getClosingSet().size();
+	}
+
+	public List<AggregationChunk> findChunksGroupWithMostOverlaps() {
 		int maxOverlaps = 2;
 		Set<AggregationChunk> result = new HashSet<>();
 		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
 		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
 			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
-			int overlaps = segment.getSet().size() + segment.getClosingSet().size();
+			int overlaps = getNumberOfOverlaps(segment);
 			if (overlaps >= maxOverlaps) {
 				maxOverlaps = overlaps;
 				result.clear();
@@ -264,6 +322,94 @@ public class AggregationMetadata {
 			}
 		}
 		return new ArrayList<>(result);
+	}
+
+	public List<AggregationChunk> findChunksGroupWithMinKey() {
+		int minOverlaps = 2;
+		Set<AggregationChunk> result = new HashSet<>();
+		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
+		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+			int overlaps = getNumberOfOverlaps(segment);
+			if (overlaps >= minOverlaps) {
+				result.addAll(segment.getSet());
+				result.addAll(segment.getClosingSet());
+				break;
+			}
+		}
+		return new ArrayList<>(result);
+	}
+
+	public boolean useHotSegmentStrategy(double preferHotSegmentsCoef) {
+		return RANDOM.nextDouble() <= preferHotSegmentsCoef;
+	}
+
+	public List<AggregationChunk> findChunksForConsolidation(int maxChunks, double preferHotSegmentsCoef) {
+		List<AggregationChunk> chunks = useHotSegmentStrategy(preferHotSegmentsCoef) ?
+				findChunksGroupWithMostOverlaps() : findChunksGroupWithMinKey();
+
+		if (chunks.isEmpty() || chunks.size() == maxChunks)
+			return chunks;
+
+		if (chunks.size() > maxChunks)
+			return trimChunks(chunks, maxChunks);
+
+		List<AggregationChunk> expandedChunks = expandRange(chunks, maxChunks);
+
+		if (expandedChunks.size() > maxChunks)
+			return trimChunks(expandedChunks, maxChunks);
+
+		return expandedChunks;
+	}
+
+	private List<AggregationChunk> trimChunks(List<AggregationChunk> chunks, int maxChunks) {
+		Collections.sort(chunks, new Comparator<AggregationChunk>() {
+			@Override
+			public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
+				return Integer.compare(chunk2.getCount(), chunk1.getCount());
+			}
+		});
+		return chunks.subList(0, maxChunks);
+	}
+
+	private boolean expandRange(Set<AggregationChunk> chunks) {
+		PrimaryKey minKey = null;
+		PrimaryKey maxKey = null;
+
+		for (AggregationChunk chunk : chunks) {
+			PrimaryKey chunkMinKey = chunk.getMinPrimaryKey();
+			PrimaryKey chunkMaxKey = chunk.getMaxPrimaryKey();
+
+			if (minKey == null) {
+				minKey = chunkMinKey;
+				maxKey = chunkMaxKey;
+				continue;
+			}
+
+			if (chunkMinKey.compareTo(minKey) < 0)
+				minKey = chunkMinKey;
+
+			if (chunkMaxKey.compareTo(maxKey) > 0)
+				maxKey = chunkMaxKey;
+		}
+
+		Set<AggregationChunk> chunksForRange = getChunksForRange(minKey, maxKey);
+		return chunks.addAll(chunksForRange);
+	}
+
+	private void expandRange(Set<AggregationChunk> chunks, int maxChunks) {
+		boolean expand = chunks.size() < maxChunks;
+
+		while (expand) {
+			boolean expanded = expandRange(chunks);
+			expand = expanded && chunks.size() < maxChunks;
+		}
+	}
+
+	private List<AggregationChunk> expandRange(List<AggregationChunk> chunks, int maxChunks) {
+		Set<AggregationChunk> chunkSet = new HashSet<>(chunks);
+		expandRange(chunkSet, maxChunks);
+		return new ArrayList<>(chunkSet);
 	}
 
 	public List<ConsolidationDebugInfo> getConsolidationDebugInfo() {
@@ -585,6 +731,12 @@ public class AggregationMetadata {
 		int size = minPrimaryKey.size();
 		RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[size];
 		return new ArrayList<>(index.getRange(minPrimaryKey, maxPrimaryKey));
+	}
+
+	private Set<AggregationChunk> getChunksForRange(PrimaryKey minPrimaryKey, PrimaryKey maxPrimaryKey) {
+		checkArgument(minPrimaryKey.size() == maxPrimaryKey.size());
+		RangeTree<PrimaryKey, AggregationChunk> index = prefixRanges[minPrimaryKey.size()];
+		return index.getRange(minPrimaryKey, maxPrimaryKey);
 	}
 
 	private Predicate isBetweenPredicate() {

@@ -117,15 +117,13 @@ public final class HttpHeaders {
 
 	public static final HttpHeader X_REAL_IP = headers.register("X-Real-IP");
 
-	static HttpHeader parseHeader(byte[] array, int offset, int length, int lowerCaseHashCode) {
-		return headers.get(array, offset, length, lowerCaseHashCode);
+	static HttpHeader of(byte[] array, int offset, int length, int lowerCaseHashCode) {
+		return headers.getOrCreate(array, offset, length, lowerCaseHashCode);
 	}
 
-	static HttpHeader parse(String string) {
+	static HttpHeader of(String string) {
 		byte[] array = encodeAscii(string);
-		int hash = hashCodeLowerCaseAscii(array);
-		HttpHeader header = headers.get(array, 0, array.length, hash);
-		return header != null ? header : new HttpHeader(array, 0, array.length, null, hash);
+		return headers.getOrCreate(array, 0, array.length);
 	}
 
 	// helpers

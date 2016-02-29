@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.util;
+package io.datakernel.stream.net;
 
-public interface Function<F, T> {
-	T apply(F value);
+public interface MessagingExceptionHandler {
+	void onException(Exception e);
 }

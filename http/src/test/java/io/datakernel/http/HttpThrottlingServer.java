@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
 import io.datakernel.util.ByteBufStrings;
@@ -82,7 +81,7 @@ public class HttpThrottlingServer {
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				callback.onResult(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
 			}
 		});

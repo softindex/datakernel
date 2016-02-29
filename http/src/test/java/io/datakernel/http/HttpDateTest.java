@@ -42,7 +42,7 @@ public class HttpDateTest {
 	}
 
 	@Test
-	public void testParser() {
+	public void testParser() throws HttpParseException {
 		String date = "Thu, 01 Jan 2015 00:00:00 GMT";
 		long actual = HttpDate.parse(date.getBytes(Charset.forName("ISO-8859-1")), 0);
 
@@ -53,7 +53,7 @@ public class HttpDateTest {
 	}
 
 	@Test
-	public void testFull() {
+	public void testFull() throws HttpParseException {
 		long timestamp = 4073580000000l;
 		byte[] bytes = new byte[29];
 		HttpDate.render(timestamp, bytes, 0);

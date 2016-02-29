@@ -395,27 +395,32 @@ public final class Cube implements ConcurrentJmxMBean {
 	}
 
 	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
-		logger.info("Launching consolidation");
-		consolidate(maxChunksToConsolidate, false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
+		consolidate(maxChunksToConsolidate, 1.0, callback);
 	}
 
-	private void consolidate(final int maxChunksToConsolidate, final boolean found,
+	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, ResultCallback<Boolean> callback) {
+		logger.info("Launching consolidation");
+		consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, false,
+				new ArrayList<>(this.aggregations.values()).iterator(), callback);
+	}
+
+	private void consolidate(final int maxChunksToConsolidate, final double preferHotSegmentsCoef, final boolean found,
 	                         final Iterator<Aggregation> iterator, final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				if (iterator.hasNext()) {
 					final Aggregation aggregation = iterator.next();
-					aggregation.consolidate(maxChunksToConsolidate, new ResultCallback<Boolean>() {
+					aggregation.consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, new ResultCallback<Boolean>() {
 						@Override
 						public void onResult(Boolean result) {
-							consolidate(maxChunksToConsolidate, result || found, iterator, callback);
+							consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, result || found, iterator, callback);
 						}
 
 						@Override
 						public void onException(Exception exception) {
 							logger.error("Consolidating aggregation '{}' failed", aggregation, exception);
-							consolidate(maxChunksToConsolidate, found, iterator, callback);
+							consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, found, iterator, callback);
 						}
 					});
 				} else {

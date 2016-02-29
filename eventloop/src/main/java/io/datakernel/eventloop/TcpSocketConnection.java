@@ -81,13 +81,9 @@ public abstract class TcpSocketConnection extends SocketConnection {
 
 		if (numRead == -1) {
 			buf.recycle();
-			try {
-				onReadEndOfStream();
-				if (isRegistered()) {
-					readInterest(false); // prevent spinning if connection is still open
-				}
-			} catch (Exception e) {
-				onInternalException(e);
+			onReadEndOfStream();
+			if (isRegistered()) {
+				readInterest(false); // prevent spinning if connection is still open
 			}
 			return;
 		}
@@ -97,11 +93,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 
 		buf.flip();
-		try {
-			onRead(buf);
-		} catch (Exception e) {
-			onInternalException(e);
-		}
+		onRead(buf);
 	}
 
 	protected void onRead(ByteBuf buf) {
@@ -129,7 +121,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 				channelWrite(byteBuffer);
 				buf.setByteBuffer(byteBuffer);
 			} catch (IOException e) {
-				onInternalException(e);
+				onWriteException(e);
 				return;
 			}
 
@@ -150,11 +142,7 @@ public abstract class TcpSocketConnection extends SocketConnection {
 		}
 
 		if (writeQueue.isEmpty()) {
-			try {
-				onWriteFlushed();
-			} catch (Exception e) {
-				onInternalException(e);
-			}
+			onWriteFlushed();
 			writeInterest(false);
 		} else {
 			writeInterest(true);

@@ -19,8 +19,8 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.MoreObjects;
 
 import java.util.List;
+import java.util.Objects;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Collections.unmodifiableList;
 
 public class AggregationChunk {
@@ -97,6 +97,24 @@ public class AggregationChunk {
 
 	public int getCount() {
 		return count;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		AggregationChunk chunk = (AggregationChunk) o;
+		return revisionId == chunk.revisionId &&
+				chunkId == chunk.chunkId &&
+				count == chunk.count &&
+				Objects.equals(fields, chunk.fields) &&
+				Objects.equals(minPrimaryKey, chunk.minPrimaryKey) &&
+				Objects.equals(maxPrimaryKey, chunk.maxPrimaryKey);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(revisionId, chunkId, fields, minPrimaryKey, maxPrimaryKey, count);
 	}
 
 	@Override

@@ -169,7 +169,7 @@ public class ServerProtocol<S extends FsServer> extends AbstractServer<ServerPro
 							return;
 						}
 
-						logger.trace("Responding ok to file download: {}. File size", size);
+						logger.trace("Responding ok to file download: {}. File size {}", item.filePath, size);
 						messaging.sendMessage(new FsResponses.Ready(size));
 
 						// preventing output stream from being explicitly closed

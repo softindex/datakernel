@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.SimpleException;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -91,8 +90,8 @@ public class HttpUriTest {
 	}
 
 	@Test
-	public void testPartialUrl() {
-		HttpUri url = HttpUri.ofPartialUrl("/path1/path2?aa=bb&zz=a+b");
+	public void testPartialUrl() throws HttpParseException {
+		HttpUri url = HttpUri.parseUrl("/path1/path2?aa=bb&zz=a+b");
 		assertTrue(url.isPartial());
 		assertNull(url.getHostAndPort());
 		assertNull(url.getHost());
@@ -101,7 +100,7 @@ public class HttpUriTest {
 		assertEquals("/path1/path2", url.getPath());
 		assertEquals("aa=bb&zz=a+b", url.getQuery());
 
-		url = HttpUri.ofPartialUrl("");
+		url = HttpUri.parseUrl("");
 		assertTrue(url.isPartial());
 		assertNull(url.getHostAndPort());
 		assertNull(url.getHost());
@@ -111,13 +110,13 @@ public class HttpUriTest {
 		assertEquals("", url.getQuery());
 	}
 
-	@Test(expected = SimpleException.class)
+	@Test(expected = IllegalArgumentException.class)
 	public void testInvalidScheme() {
 		HttpUri.ofUrl("https://abc.com/");
 	}
 
-	@Test(expected = SimpleException.class)
-	public void testInvalidPartialUrl() {
+	@Test(expected = IllegalArgumentException.class)
+	public void testInvalidPartialUrl() throws HttpParseException {
 		HttpUri.ofUrl("/path");
 	}
 

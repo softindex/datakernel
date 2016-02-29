@@ -20,8 +20,8 @@ import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncTask;
 import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SimpleException;
 import io.datakernel.jmx.ConcurrentJmxMBean;
-import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.DatagramSocketSettings;
@@ -29,7 +29,6 @@ import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
-import io.datakernel.util.ExceptionMarker;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,8 +43,6 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static java.util.Arrays.asList;
-
 /**
  * It is internal class for asynchronous programming. Eventloop represents infinite loop with only one
  * blocking operation selector.select() which selects a set of keys whose corresponding channels are
@@ -57,7 +54,7 @@ import static java.util.Arrays.asList;
 public final class Eventloop implements Runnable, CurrentTimeProvider, EventloopExecutor, ConcurrentJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 
-	private static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
+	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
 	private static final long DEFAULT_EVENT_TIMEOUT = 20L;
 
 	/**
@@ -118,7 +115,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	 */
 	private long timestamp;
 
-	// TODO: why this field is package-private ?
 	ThrottlingController throttlingController;
 
 	/**
@@ -127,20 +123,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	private int lastSelectedKeys;
 
 	// JMX
-	private static final ExceptionMarker ACCEPT_MARKER = new ExceptionMarker(Eventloop.class, "AcceptException");
-	private static final ExceptionMarker CONNECT_MARKER = new ExceptionMarker(Eventloop.class, "ConnectException");
-	private static final ExceptionMarker CONNECT_TIMEOUT_MARKER = new ExceptionMarker(Eventloop.class, "ConnectTimeout");
-	private static final ExceptionMarker READ_MARKER = new ExceptionMarker(Eventloop.class, "ReadException");
-	private static final ExceptionMarker WRITE_MARKER = new ExceptionMarker(Eventloop.class, "WriteException");
-	private static final ExceptionMarker CLOSE_MARKER = new ExceptionMarker(Eventloop.class, "CloseException");
-	private static final ExceptionMarker LOCAL_TASK_MARKER = new ExceptionMarker(Eventloop.class, "LocalTaskException");
-	private static final ExceptionMarker CONCURRENT_TASK_MARKER = new ExceptionMarker(Eventloop.class, "ConcurrentTaskException");
-	private static final ExceptionMarker SCHEDULED_TASK_MARKER = new ExceptionMarker(Eventloop.class, "ScheduledTaskException");
-	private static final ExceptionMarker UNCHECKED_MARKER = new ExceptionMarker(Eventloop.class, "UncheckedException");
-
-	// TODO (vmykhalko): remove and implement with dedicated methods and maps
-	private final Collection<ExceptionMarker> severeExceptionsMarkers =
-			new HashSet<>(asList(LOCAL_TASK_MARKER, CONCURRENT_TASK_MARKER, SCHEDULED_TASK_MARKER, UNCHECKED_MARKER));
 
 	private final EventloopStats stats;
 
@@ -184,9 +166,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			try {
 				selector.close();
 				selector = null;
-			} catch (Exception exception) {
+			} catch (IOException exception) {
 				logger.error("Could not close selector", exception);
-				throw new RuntimeException(exception);
 			}
 		}
 	}
@@ -224,10 +205,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				|| keepAlive || !selector.keys().isEmpty();
 	}
 
-	public boolean isRequestThrottled() {
-		return throttlingController != null && throttlingController.isRequestThrottled();
-	}
-
 	/**
 	 * Sets the desired name of the thread
 	 */
@@ -252,22 +229,24 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		while (isKeepAlive()) {
 			tick++;
 
+			updateBusinessLogicTimeStats();
+
 			try {
-				updateBusinessLogicTimeStats();
-
 				selector.select(getSelectTimeout());
-				updateSelectorSelectTimeStats();
-
-				processSelectedKeys(selector.selectedKeys());
-				executeConcurrentTasks();
-				executeScheduledTasks();
-				executeBackgroundTasks();
-				executeLocalTasks();
-			} catch (Exception e) {
-				stats.recordFatalError(e, null, currentTimeMillis());
-				updateExceptionStats(UNCHECKED_MARKER, e, selector);
-				logger.error("Exception in dispatch loop", e);
+			} catch (ClosedChannelException e) {
+				logger.error("Selector is closed", e);
+				break;
+			} catch (IOException e) {
+				recordIoError(e, selector);
 			}
+
+			updateSelectorSelectTimeStats();
+
+			processSelectedKeys(selector.selectedKeys());
+			executeConcurrentTasks();
+			executeScheduledTasks();
+			executeBackgroundTasks();
+			executeLocalTasks();
 		}
 
 		eventloopThread = null;
@@ -286,7 +265,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			if (throttlingController != null) {
 				throttlingController.updateStats(lastSelectedKeys, (int) businessLogicTime);
 			}
-			stats.updateBusinessLogicTime(timeBeforeSelectorSelect, businessLogicTime);
+			stats.updateBusinessLogicTime(businessLogicTime);
 		}
 	}
 
@@ -345,25 +324,30 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				continue;
 			}
 
-			if (key.isAcceptable()) {
-				onAccept(key);
-				acceptKeys++;
-			} else if (key.isConnectable()) {
-				onConnect(key);
-				connectKeys++;
-			} else {
-				if (key.isReadable()) {
-					onRead(key);
-					readKeys++;
-				}
-				if (key.isValid()) {
-					if (key.isWritable()) {
-						onWrite(key);
-						writeKeys++;
-					}
+			try {
+				if (key.isAcceptable()) {
+					onAccept(key);
+					acceptKeys++;
+				} else if (key.isConnectable()) {
+					onConnect(key);
+					connectKeys++;
 				} else {
-					invalidKeys++;
+					if (key.isReadable()) {
+						onRead(key);
+						readKeys++;
+					}
+					if (key.isValid()) {
+						if (key.isWritable()) {
+							onWrite(key);
+							writeKeys++;
+						}
+					} else {
+						invalidKeys++;
+					}
 				}
+			} catch (Exception e) {
+				recordFatalError(e, key.attachment());
+				closeQuietly(key.channel());
 			}
 		}
 		stats.updateSelectedKeysTimeStats(sw);
@@ -380,8 +364,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		Stopwatch sw = monitoring ? Stopwatch.createUnstarted() : null;
 
 		while (true) {
-			Runnable item = localTasks.poll();
-			if (item == null) {
+			Runnable runnable = localTasks.poll();
+			if (runnable == null) {
 				break;
 			}
 
@@ -391,15 +375,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			}
 
 			try {
-				item.run();
+				runnable.run();
 				if (sw != null)
-					stats.updateLocalTaskDuration(item, sw);
-			} catch (Throwable e) {
+					stats.updateLocalTaskDuration(runnable, sw);
+			} catch (Exception e) {
 				if (sw != null)
-					stats.updateLocalTaskDuration(item, sw);
-				updateExceptionStats(LOCAL_TASK_MARKER, e, item);
-				logger.error(LOCAL_TASK_MARKER.getMarker(), "Exception thrown while execution Local-task", e);
-				stats.recordFatalError(e, item, currentTimeMillis());
+					stats.updateLocalTaskDuration(runnable, sw);
+				recordFatalError(e, runnable);
 			}
 			newRunnables++;
 		}
@@ -430,12 +412,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				runnable.run();
 				if (sw != null)
 					stats.updateConcurrentTaskDuration(runnable, sw);
-			} catch (Throwable e) {
+			} catch (Exception e) {
 				if (sw != null)
 					stats.updateConcurrentTaskDuration(runnable, sw);
-				updateExceptionStats(CONCURRENT_TASK_MARKER, e, runnable);
-				logger.error(CONCURRENT_TASK_MARKER.getMarker(), "Exception in concurrent task {}", runnable, e);
-				stats.recordFatalError(e, runnable, currentTimeMillis());
+				recordFatalError(e, runnable);
 			}
 			newRunnables++;
 		}
@@ -483,12 +463,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				polled.complete();
 				if (sw != null)
 					stats.updateScheduledTaskDuration(runnable, sw);
-			} catch (Throwable e) {
+			} catch (Exception e) {
 				if (sw != null)
 					stats.updateScheduledTaskDuration(runnable, sw);
-				updateExceptionStats(SCHEDULED_TASK_MARKER, e, polled);
-				logger.error(SCHEDULED_TASK_MARKER.getMarker(), "Exception in Scheduled-task {}", runnable, e);
-				stats.recordFatalError(e, runnable, currentTimeMillis());
+				recordFatalError(e, runnable);
 			}
 
 			newRunnables++;
@@ -520,18 +498,15 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				socketChannel.configureBlocking(false);
 			} catch (ClosedChannelException e) {
 				break;
-			} catch (Exception e) {
-				updateExceptionStats(ACCEPT_MARKER, e, channel);
-				logger.error(ACCEPT_MARKER.getMarker(), "Could not finish accept to {}", channel, e.toString());
+			} catch (IOException e) {
+				recordIoError(e, channel);
 				break;
 			}
 
 			try {
 				acceptCallback.onAccept(socketChannel);
-			} catch (Exception e) {
-				stats.recordFatalError(e, acceptCallback, currentTimeMillis());
-				updateExceptionStats(ACCEPT_MARKER, e, acceptCallback);
-				logger.error(ACCEPT_MARKER.getMarker(), "onAccept exception {}", socketChannel, e);
+			} catch (Throwable e) {
+				recordFatalError(e, acceptCallback);
 				closeQuietly(socketChannel);
 			}
 		}
@@ -545,19 +520,21 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	private void onConnect(SelectionKey key) {
 		assert inEventloopThread();
 		ConnectCallback connectCallback = (ConnectCallback) key.attachment();
-		SocketChannel socketChannel = (SocketChannel) key.channel();
+		SocketChannel channel = (SocketChannel) key.channel();
+		boolean connected;
 		try {
-			if (!socketChannel.finishConnect())
-				return;
-			connectCallback.onConnect(socketChannel);
-		} catch (Exception e) {
-			// TODO(vmykhalko): rework error onConnect() error handling later
-//			stats.recordFatalError(e, connectCallback, currentTimeMillis());
-			updateExceptionStats(CONNECT_MARKER, e, connectCallback);
-			logger.warn(CONNECT_MARKER.getMarker(), "Could not finish connect to {}", socketChannel, e);
-			key.cancel();
-			closeQuietly(socketChannel);
+			connected = channel.finishConnect();
+		} catch (IOException e) {
+			recordIoError(e, channel);
+			closeQuietly(channel);
 			connectCallback.onException(e);
+			return;
+		}
+
+		if (connected) {
+			connectCallback.onConnect(channel);
+		} else {
+			connectCallback.onException(new SimpleException("Not connected"));
 		}
 	}
 
@@ -569,13 +546,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	private void onRead(SelectionKey key) {
 		assert inEventloopThread();
 		SocketConnection connection = (SocketConnection) key.attachment();
-		try {
-			connection.onReadReady();
-		} catch (Throwable e) {
-			stats.recordFatalError(e, connection, currentTimeMillis());
-			updateExceptionStats(READ_MARKER, e, connection);
-			logger.error(READ_MARKER.getMarker(), "Could not finish read to {}", connection, e);
-		}
+		connection.onReadReady();
 	}
 
 	/**
@@ -586,24 +557,15 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	private void onWrite(SelectionKey key) {
 		assert inEventloopThread();
 		SocketConnection connection = (SocketConnection) key.attachment();
-		try {
-			connection.onWriteReady();
-		} catch (Throwable e) {
-			stats.recordFatalError(e, null, currentTimeMillis());
-			updateExceptionStats(WRITE_MARKER, e, connection);
-			logger.error(WRITE_MARKER.getMarker(), "Could not finish write to {}", connection);
-		}
+		connection.onWriteReady();
 	}
 
-	private void closeQuietly(AutoCloseable closeable) {
+	private static void closeQuietly(AutoCloseable closeable) {
 		if (closeable == null)
 			return;
 		try {
 			closeable.close();
-		} catch (Exception e) {
-			updateExceptionStats(CLOSE_MARKER, e, closeable);
-			if (logger.isWarnEnabled())
-				logger.warn(CLOSE_MARKER.getMarker(), "Exception thrown while closing {}", closeable, e.toString());
+		} catch (Exception ignored) {
 		}
 	}
 
@@ -627,9 +589,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			serverChannel.register(ensureSelector(), SelectionKey.OP_ACCEPT, acceptCallback);
 			return serverChannel;
 		} catch (IOException e) {
+			recordIoError(e, address);
 			closeQuietly(serverChannel);
-			updateExceptionStats(ACCEPT_MARKER, e, address);
-			logger.warn(ACCEPT_MARKER.getMarker(), "Listen error for {}", address, e);
 			throw e;
 		}
 	}
@@ -696,10 +657,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			socketChannel.register(ensureSelector(), SelectionKey.OP_CONNECT,
 					timeoutConnectCallback(socketChannel, timeout, connectCallback));
 		} catch (IOException e) {
+			recordIoError(e, address);
 			closeQuietly(socketChannel);
-			updateExceptionStats(CONNECT_MARKER, e, address);
-			logger.warn(CONNECT_MARKER.getMarker(), "Connect error for {}", address, e);
-			connectCallback.onException(e);
+			try {
+				connectCallback.onException(e);
+			} catch (Exception e1) {
+				recordFatalError(e1, connectCallback);
+			}
 		}
 	}
 
@@ -717,8 +681,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 			private final ScheduledRunnable scheduledTimeout = schedule(currentTimeMillis() + connectionTime, new Runnable() {
 				@Override
 				public void run() {
-					updateExceptionStats(CONNECT_TIMEOUT_MARKER, CONNECT_TIMEOUT, socketChannel.toString());
-					logger.warn(CONNECT_TIMEOUT_MARKER.getMarker(), "Connection timed out for {}", socketChannel, CONNECT_TIMEOUT);
+					recordIoError(CONNECT_TIMEOUT, socketChannel);
 					closeQuietly(socketChannel);
 					connectCallback.onException(CONNECT_TIMEOUT);
 				}
@@ -900,29 +863,16 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		return stats;
 	}
 
-	public ExceptionStats getExceptionStats(ExceptionMarker marker) {
-		return stats.getExceptionStats(marker);
-	}
-
-	// TODO (vmykhalko): consider removing
-	public void updateExceptionStats(ExceptionMarker marker, Throwable e, Object o) {
+	public void recordFatalError(Throwable e, Object context) {
 		assert inEventloopThread();
-
-		long timestamp = currentTimeMillis();
-		stats.updateExceptionStats(marker, e, o, timestamp);
-		if (isExceptionSevere(marker)) {
-			stats.updateSevereExceptionStats(e, o, timestamp);
-		}
+		stats.recordFatalError(e, context, currentTimeMillis());
+		logger.error("Fatal Error in {}", context, e);
 	}
 
-	private boolean isExceptionSevere(ExceptionMarker marker) {
-		return severeExceptionsMarkers.contains(marker);
-	}
-
-	// TODO (vmykhalko): consider removing
-	public void resetExceptionStats(ExceptionMarker marker) {
+	public void recordIoError(Exception e, Object context) {
 		assert inEventloopThread();
-		stats.resetExceptionStats(marker);
+		stats.recordIoError(e, context, currentTimeMillis());
+		logger.warn("IO Error in {}", context, e.toString());
 	}
 
 	public String getThreadName() {

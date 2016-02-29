@@ -16,13 +16,9 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.util.ExceptionMarker;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,7 +27,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.util.List;
 import java.util.Random;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
@@ -40,7 +35,8 @@ import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static java.lang.Math.min;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class AsyncHttpServerTest {
 
@@ -53,7 +49,7 @@ public class AsyncHttpServerTest {
 	public static AsyncHttpServer blockingHttpServer(Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				callback.onResult(content);
 			}
@@ -63,7 +59,7 @@ public class AsyncHttpServerTest {
 	public static AsyncHttpServer asyncHttpServer(final Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.post(new Runnable() {
 					@Override
@@ -79,7 +75,7 @@ public class AsyncHttpServerTest {
 		final Random random = new Random();
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				primaryEventloop.schedule(primaryEventloop.currentTimeMillis() + random.nextInt(3), new Runnable() {
 					@Override
@@ -239,7 +235,7 @@ public class AsyncHttpServerTest {
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(final HttpRequest request, final Callback callback) {
 				final HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				eventloop.post(new Runnable() {
 					@Override
@@ -262,12 +258,9 @@ public class AsyncHttpServerTest {
 		}
 		server.closeFuture().await();
 		thread.join();
-		ExceptionStats exceptionCounter = eventloop.getExceptionStats(new ExceptionMarker(SocketConnection.class, "ReadException"));
-		assertNotNull(exceptionCounter);
-		List<String> stackTraceArr = exceptionCounter.getLastExceptionStackTrace();
-		String[] exception = stackTraceArr.toArray(new String[stackTraceArr.size()]);
-		assertTrue(exception != null && exception.length > 0);
-		assertTrue(exception[0], exception[0].contains("Too big HttpMessage"));
+		assertEquals(1, eventloop.getEventloopStats().getIoErrors().getTotal());
+		assertEquals("Too big HttpMessage",
+				eventloop.getEventloopStats().getIoErrors().getLastException().getMessage());
 	}
 
 	public static void main(String[] args) throws Exception {

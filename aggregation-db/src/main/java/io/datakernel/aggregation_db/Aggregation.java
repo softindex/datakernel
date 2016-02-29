@@ -575,69 +575,63 @@ public class Aggregation {
 		return (Predicate) builder.newInstance();
 	}
 
-	public void consolidate(int maxChunksToConsolidate,
-	                        final ResultCallback<Boolean> callback) {
-		logger.trace("Aggregation {} consolidation started", this);
+	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, final ResultCallback<Boolean> callback) {
+		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate, preferHotSegmentsCoef);
 
-		final List<AggregationChunk> chunksToConsolidate;
-		List<AggregationChunk> foundChunksToConsolidate = aggregationMetadata.findChunksToConsolidate();
-		if (foundChunksToConsolidate.size() <= maxChunksToConsolidate) {
-			chunksToConsolidate = foundChunksToConsolidate;
-		} else {
-			List<AggregationChunk> chunks = new ArrayList(foundChunksToConsolidate);
-			Collections.sort(chunks, new Comparator<AggregationChunk>() {
-				@Override
-				public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
-					return Integer.compare(chunk1.getCount(), chunk2.getCount());
-				}
-			});
-			chunksToConsolidate = chunks.subList(0, maxChunksToConsolidate);
-		}
-		if (chunksToConsolidate.isEmpty()) {
+		if (chunks.isEmpty()) {
 			callback.onResult(false);
 			return;
 		}
 
-		logger.info("Starting consolidation of the following chunks in aggregation '{}': [{}]",
-				aggregationMetadata, getChunkIds(chunksToConsolidate));
-		metadataStorage.startConsolidation(chunksToConsolidate, new ForwardingCompletionCallback(callback) {
+		consolidate(chunks, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
-				doConsolidation(chunksToConsolidate, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
+				callback.onResult(true);
+			}
+		});
+	}
+
+	private void consolidate(final List<AggregationChunk> chunks, final CompletionCallback callback) {
+		metadataStorage.startConsolidation(chunks, new ForwardingCompletionCallback(callback) {
+			@Override
+			public void onComplete() {
+				doConsolidation(chunks, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
 					@Override
 					public void onResult(final List<AggregationChunk.NewChunk> consolidatedChunks) {
-						metadataStorage.saveConsolidatedChunks(chunksToConsolidate,
-								consolidatedChunks, new ForwardingCompletionCallback(callback) {
-									@Override
-									public void onComplete() {
-										logger.info("Completed consolidation of the following chunks " +
-														"in aggregation '{}': [{}]. Created chunks: [{}]",
-												aggregationMetadata, getChunkIds(chunksToConsolidate),
-												getNewChunkIds(consolidatedChunks));
-										callback.onResult(true);
-									}
-								});
+						metadataStorage.saveConsolidatedChunks(chunks, consolidatedChunks, new CompletionCallback() {
+							@Override
+							public void onComplete() {
+								logger.info("Completed consolidation of the following chunks " +
+												"in aggregation '{}': [{}]. Created chunks: [{}]",
+										aggregationMetadata, getChunkIds(chunks),
+										getNewChunkIds(consolidatedChunks));
+								callback.onComplete();
+							}
+
+							@Override
+							public void onException(Exception exception) {
+								callback.onException(exception);
+							}
+						});
 					}
 				});
 			}
 		});
 	}
 
-	private static String getNewChunkIds(List<AggregationChunk.NewChunk> chunks) {
+	private static String getNewChunkIds(Iterable<AggregationChunk.NewChunk> chunks) {
 		List<Long> ids = new ArrayList<>();
 		for (AggregationChunk.NewChunk chunk : chunks) {
 			ids.add(chunk.chunkId);
 		}
-
 		return JOINER.join(ids);
 	}
 
-	private static String getChunkIds(List<AggregationChunk> chunks) {
+	private static String getChunkIds(Iterable<AggregationChunk> chunks) {
 		List<Long> ids = new ArrayList<>();
 		for (AggregationChunk chunk : chunks) {
 			ids.add(chunk.getChunkId());
 		}
-
 		return JOINER.join(ids);
 	}
 

@@ -52,7 +52,7 @@ public class SimpleProxyServerTest {
 	public static AsyncHttpServer proxyHttpServer(final Eventloop primaryEventloop, final AsyncHttpClient httpClient) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, final ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, final Callback callback) {
 				httpClient.execute(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
 					@Override
 					public void onResult(final HttpResponse result) {
@@ -63,7 +63,7 @@ public class SimpleProxyServerTest {
 
 					@Override
 					public void onException(Exception exception) {
-						callback.onException(exception);
+						callback.onHttpError(new HttpServletError(500, exception));
 					}
 				});
 			}
@@ -73,7 +73,7 @@ public class SimpleProxyServerTest {
 	public static AsyncHttpServer echoServer(Eventloop primaryEventloop) {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, ResultCallback<HttpResponse> callback) {
+			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
 				callback.onResult(content);
 			}

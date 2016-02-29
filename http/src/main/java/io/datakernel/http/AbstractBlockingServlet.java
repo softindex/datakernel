@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -43,7 +42,9 @@ public abstract class AbstractBlockingServlet extends AbstractAsyncServlet {
 		this.executor = executor;
 	}
 
-	protected final void doServeAsync(final HttpRequest request, final ResultCallback<HttpResponse> callback) {
+	protected abstract HttpResponse doServeBlocking(HttpRequest httpRequest) throws HttpServletError, HttpParseException;
+
+	protected final void doServeAsync(final HttpRequest request, final Callback callback) {
 		executor.execute(new Runnable() {
 			@Override
 			public void run() {
@@ -60,22 +61,34 @@ public abstract class AbstractBlockingServlet extends AbstractAsyncServlet {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							handleRejectedRequest(request, e, callback);
+							callback.onHttpError(new HttpServletError(429));
+						}
+					});
+				} catch (final HttpServletError e) {
+					eventloop.execute(new Runnable() {
+						@Override
+						public void run() {
+							callback.onHttpError(e);
+						}
+					});
+				} catch (final HttpParseException e) {
+					eventloop.execute(new Runnable() {
+						@Override
+						public void run() {
+							callback.onHttpError(new HttpServletError(400, e));
 						}
 					});
 				} catch (final Exception e) {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {
-							handleException(request, e, callback);
+							throw e;
 						}
 					});
 				}
 			}
 		});
 	}
-
-	protected abstract HttpResponse doServeBlocking(HttpRequest httpRequest) throws Exception;
 
 	@JmxAttribute
 	public EventStats getRequestsRejected() {

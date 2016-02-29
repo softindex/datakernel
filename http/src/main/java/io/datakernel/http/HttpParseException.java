@@ -14,8 +14,23 @@
  * limitations under the License.
  */
 
-package io.datakernel.util;
+package io.datakernel.http;
 
-public interface Function<F, T> {
-	T apply(F value);
+import io.datakernel.async.SimpleException;
+
+public class HttpParseException extends SimpleException {
+	public HttpParseException() {
+	}
+
+	public HttpParseException(String message) {
+		super(message);
+	}
+
+	public HttpParseException(String message, Throwable cause) {
+		super(message, cause);
+	}
+
+	public HttpParseException(Throwable cause) {
+		super(cause);
+	}
 }

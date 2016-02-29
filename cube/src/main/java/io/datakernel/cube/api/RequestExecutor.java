@@ -265,6 +265,13 @@ public final class RequestExecutor {
 					for (DrillDown drillDown : drillDowns) {
 						if (all(dependencies, in(drillDown.getMeasures())))
 							drillDown.getMeasures().add(computedMeasure);
+
+						Iterables.removeIf(drillDown.getMeasures(), new Predicate<String>() {
+							@Override
+							public boolean apply(String measure) {
+								return !queryMeasures.contains(measure);
+							}
+						});
 					}
 				}
 			}

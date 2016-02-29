@@ -64,53 +64,57 @@ final class HttpDate {
 
 	private HttpDate() {}
 
-	static long parse(byte[] bytes, int start) {
-		int day = decodeDecimal(bytes, start + 5, 2);
+	static long parse(byte[] bytes, int start) throws HttpParseException {
+		try {
+			int day = decodeDecimal(bytes, start + 5, 2);
 
-		int month = -1;
-		for (int i = 0; i < MONTHS_IN_YEAR.length; i++) {
-			byte[] entry = MONTHS_IN_YEAR[i];
-			if (entry[0] == bytes[start + 8] &&
-					entry[1] == bytes[start + 9] &&
-					entry[2] == bytes[start + 10]) {
-				month = i;
+			int month = -1;
+			for (int i = 0; i < MONTHS_IN_YEAR.length; i++) {
+				byte[] entry = MONTHS_IN_YEAR[i];
+				if (entry[0] == bytes[start + 8] &&
+						entry[1] == bytes[start + 9] &&
+						entry[2] == bytes[start + 10]) {
+					month = i;
+				}
 			}
+
+			int year = decodeDecimal(bytes, start + 12, 4);
+			int hour = decodeDecimal(bytes, start + 17, 2);
+			int minutes = decodeDecimal(bytes, start + 20, 2);
+			int seconds = decodeDecimal(bytes, start + 23, 2);
+			boolean isLeapYear = isLeap(year);
+
+			int[] days = isLeapYear ? DAYS_IN_MONTH_LEAP : DAYS_IN_MONTH;
+
+			year = year - 1970;
+			int yearsLeft = year % 4;
+			long timestamp = 0;
+			int fy = (year - yearsLeft) / 4;
+			for (int i = 0; i < fy; i++) {
+				timestamp += FOUR_YEAR_SECONDS;
+			}
+
+			timestamp += yearsLeft * YEAR_SECONDS;
+			if (yearsLeft > 2) {
+				// 1972 was a leap year and this code is assumed to be either deprecated or fixed before year 2100
+				timestamp += DAY_SECONDS;
+			}
+
+			for (int i = 0; i < month; i++) {
+				timestamp += (DAY_SECONDS * days[i]);
+			}
+
+			for (int i = 1; i < day; i++) {
+				timestamp += DAY_SECONDS;
+			}
+
+			timestamp += ((60 * hour + minutes) * 60) + seconds;
+			timestamp *= 1_000l;
+
+			return timestamp;
+		} catch (Exception e) {
+			throw new HttpParseException();
 		}
-
-		int year = decodeDecimal(bytes, start + 12, 4);
-		int hour = decodeDecimal(bytes, start + 17, 2);
-		int minutes = decodeDecimal(bytes, start + 20, 2);
-		int seconds = decodeDecimal(bytes, start + 23, 2);
-		boolean isLeapYear = isLeap(year);
-
-		int[] days = isLeapYear ? DAYS_IN_MONTH_LEAP : DAYS_IN_MONTH;
-
-		year = year - 1970;
-		int yearsLeft = year % 4;
-		long timestamp = 0;
-		int fy = (year - yearsLeft) / 4;
-		for (int i = 0; i < fy; i++) {
-			timestamp += FOUR_YEAR_SECONDS;
-		}
-
-		timestamp += yearsLeft * YEAR_SECONDS;
-		if (yearsLeft > 2) {
-			// 1972 was a leap year and this code is assumed to be either deprecated or fixed before year 2100
-			timestamp += DAY_SECONDS;
-		}
-
-		for (int i = 0; i < month; i++) {
-			timestamp += (DAY_SECONDS * days[i]);
-		}
-
-		for (int i = 1; i < day; i++) {
-			timestamp += DAY_SECONDS;
-		}
-
-		timestamp += ((60 * hour + minutes) * 60) + seconds;
-		timestamp *= 1_000l;
-
-		return timestamp;
 	}
 
 	static void render(long timestamp, ByteBuf buf) {

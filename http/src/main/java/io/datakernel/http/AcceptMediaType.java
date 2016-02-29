@@ -72,7 +72,7 @@ public final class AcceptMediaType {
 				lowerCaseHashCode = lowerCaseHashCode * 31 + b;
 				pos++;
 			}
-			MediaType mime = MediaTypes.parse(bytes, start, pos - start, lowerCaseHashCode);
+			MediaType mime = MediaTypes.of(bytes, start, pos - start, lowerCaseHashCode);
 
 			if (pos < end) {
 				if (bytes[pos++] == ',') {

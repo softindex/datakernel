@@ -27,7 +27,7 @@ import java.util.Map;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-final class AttributeNodeForPojo implements AttributeNode{
+final class AttributeNodeForPojo implements AttributeNode {
 	private static final String ATTRIBUTE_NAME_SEPARATOR = "_";
 	private static final String COMPOSITE_TYPE_DEFAULT_NAME = "CompositeType";
 
@@ -141,7 +141,6 @@ final class AttributeNodeForPojo implements AttributeNode{
 			return nameToSubNode.values().iterator().next().aggregateAttribute(fetchInnerPojos(pojos), attrName);
 		}
 
-
 		String attrGroupName = attrName;
 		String subAttrName = null;
 		if (attrName.contains(ATTRIBUTE_NAME_SEPARATOR)) {
@@ -149,7 +148,6 @@ final class AttributeNodeForPojo implements AttributeNode{
 			attrGroupName = attrName.substring(0, indexOfSeparator);
 			subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
 		}
-
 
 		if (!nameToSubNode.containsKey(attrGroupName)) {
 			throw new IllegalArgumentException("There is no attribute with name: " + attrGroupName);
