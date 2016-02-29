@@ -21,6 +21,7 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 
 import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -39,14 +40,23 @@ public final class StaticServletForResources extends StaticServlet {
 	private static final IOException ERROR = new IOException("Resource loading error");
 	private final ConcurrentHashMap<String, byte[]> cache = new ConcurrentHashMap<>();
 
-	public StaticServletForResources(Eventloop eventloop, ExecutorService executor, String resourceRoot) {
+	private StaticServletForResources(Eventloop eventloop, ExecutorService executor, URL root) {
 		this.eventloop = eventloop;
 		this.executor = executor;
-		this.root = ClassLoader.getSystemResource(resourceRoot);
+		this.root = root;
+	}
+
+	public static StaticServletForResources create(Eventloop eventloop, ExecutorService executor, String resourceRoot) {
+		return new StaticServletForResources(eventloop, executor, ClassLoader.getSystemResource(resourceRoot));
 	}
 
 	private static byte[] loadResource(URL root, String name) throws IOException {
 		URL file = new URL(root, name);
+
+		if (!file.getPath().startsWith(root.getPath())) {
+			throw new FileNotFoundException();
+		}
+
 		try (InputStream in = file.openStream()) {
 			// reading file as resource
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -78,20 +88,14 @@ public final class StaticServletForResources extends StaticServlet {
 						return ByteBuf.wrap(bytes);
 					} catch (Exception e) {
 						cache.put(name, ERROR_BYTES);
-						throw e;
+						if (e instanceof FileNotFoundException) {
+							return null;
+						} else {
+							throw e;
+						}
 					}
 				}
-			}, new ResultCallback<ByteBuf>() {
-				@Override
-				public void onResult(ByteBuf result) {
-					callback.onResult(result);
-				}
-
-				@Override
-				public void onException(Exception exception) {
-					callback.onResult(null);
-				}
-			});
+			}, callback);
 		}
 	}
 }

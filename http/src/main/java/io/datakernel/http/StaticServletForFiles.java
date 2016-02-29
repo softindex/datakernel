@@ -22,7 +22,7 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.file.File;
 
-import java.io.FileNotFoundException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
@@ -46,7 +46,13 @@ public final class StaticServletForFiles extends StaticServlet {
 
 	@Override
 	protected final void doServeAsync(String name, final ResultCallback<ByteBuf> callback) {
-		AsyncFile.open(eventloop, executor, storage.resolve(name),
+		Path path = storage.resolve(name).normalize();
+
+		if (!path.startsWith(storage)) {
+			callback.onResult(null);
+		}
+
+		AsyncFile.open(eventloop, executor, path,
 				new OpenOption[]{READ}, new ResultCallback<File>() {
 					@Override
 					public void onResult(File file) {
@@ -55,7 +61,7 @@ public final class StaticServletForFiles extends StaticServlet {
 
 					@Override
 					public void onException(Exception exception) {
-						if (exception instanceof FileNotFoundException)
+						if (exception instanceof NoSuchFileException)
 							callback.onResult(null);
 						else
 							callback.onException(exception);
