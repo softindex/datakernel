@@ -25,8 +25,6 @@ import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.Marker;
-import org.slf4j.MarkerFactory;
 
 import java.nio.channels.SocketChannel;
 import java.util.Map;
@@ -48,10 +46,7 @@ public final class RpcServerConnection implements RpcConnection {
 	private final StatusListener statusListener;
 
 	// JMX
-	// TODO(vmykhalko): remove this marker ?
-	private static final Marker LAST_REMOTE_EXCEPTION_MARKER = MarkerFactory.getMarker("RemoteException");
 	private final ExceptionStats lastRemoteException = new ExceptionStats();
-	private final ExceptionStats lastInternalException = new ExceptionStats();
 	private final ValueStats timeExecution;
 	private int successfulResponses = 0;
 	private int errorResponses = 0;
@@ -96,12 +91,7 @@ public final class RpcServerConnection implements RpcConnection {
 			@Override
 			public void onResult(Object result) {
 				updateProcessTime();
-				try {
-					protocol.sendMessage(new RpcMessage(cookie, result));
-				} catch (Exception e) {
-					onException(e);
-					return;
-				}
+				protocol.sendMessage(new RpcMessage(cookie, result));
 				successfulResponses++;
 			}
 
@@ -122,14 +112,9 @@ public final class RpcServerConnection implements RpcConnection {
 	}
 
 	private void sendError(int cookie, Exception error) {
-		try {
-			protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(error)));
-			logger.error(LAST_REMOTE_EXCEPTION_MARKER, "Exception while process request ID {}", cookie, error);
-			errorResponses++;
-		} catch (Exception exception) {
-			lastInternalException.recordException(exception, error, eventloop.currentTimeMillis());
-			throw new RuntimeException(exception);
-		}
+		protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(error)));
+		logger.warn("Exception while process request ID {}", cookie, error.toString());
+		errorResponses++;
 	}
 
 	@Override
