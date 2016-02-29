@@ -19,7 +19,7 @@ package io.datakernel.rpc.protocol;
 import io.datakernel.eventloop.SocketConnection;
 
 public interface RpcProtocol {
-	void sendMessage(RpcMessage rpcMessage) throws Exception;
+	void sendMessage(RpcMessage rpcMessage);
 
 	boolean isOverloaded();
 

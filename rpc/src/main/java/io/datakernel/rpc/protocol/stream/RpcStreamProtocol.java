@@ -171,7 +171,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	}
 
 	@Override
-	public void sendMessage(RpcMessage message) throws Exception {
+	public void sendMessage(RpcMessage message) {
 		sender.sendMessage(message);
 	}
 

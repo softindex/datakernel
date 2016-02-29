@@ -227,26 +227,30 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 		timeBeforeSelectorSelect = timeAfterSelectorSelect = 0;
 		while (isKeepAlive()) {
-			tick++;
-
-			updateBusinessLogicTimeStats();
-
 			try {
-				selector.select(getSelectTimeout());
-			} catch (ClosedChannelException e) {
-				logger.error("Selector is closed", e);
-				break;
-			} catch (IOException e) {
-				recordIoError(e, selector);
+				tick++;
+
+				updateBusinessLogicTimeStats();
+
+				try {
+					selector.select(getSelectTimeout());
+				} catch (ClosedChannelException e) {
+					logger.error("Selector is closed", e);
+					break;
+				} catch (IOException e) {
+					recordIoError(e, selector);
+				}
+
+				updateSelectorSelectTimeStats();
+
+				processSelectedKeys(selector.selectedKeys());
+				executeConcurrentTasks();
+				executeScheduledTasks();
+				executeBackgroundTasks();
+				executeLocalTasks();
+			} catch (Exception e) {
+				recordFatalError(e, this);
 			}
-
-			updateSelectorSelectTimeStats();
-
-			processSelectedKeys(selector.selectedKeys());
-			executeConcurrentTasks();
-			executeScheduledTasks();
-			executeBackgroundTasks();
-			executeLocalTasks();
 		}
 
 		eventloopThread = null;
