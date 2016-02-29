@@ -186,7 +186,7 @@ public final class ThrottlingController implements ConcurrentJmxMBean {
 		return targetTimeMillis;
 	}
 
-	@JmxAttribute
+	@JmxOperation
 	public void setTargetTimeMillis(int targetTimeMillis) {
 		check(targetTimeMillis > 0);
 		this.targetTimeMillis = targetTimeMillis;
@@ -197,7 +197,7 @@ public final class ThrottlingController implements ConcurrentJmxMBean {
 		return gcTimeMillis;
 	}
 
-	@JmxAttribute
+	@JmxOperation
 	public void setGcTimeMillis(int gcTimeMillis) {
 		check(gcTimeMillis > 0);
 		this.gcTimeMillis = gcTimeMillis;
@@ -208,7 +208,7 @@ public final class ThrottlingController implements ConcurrentJmxMBean {
 		return throttlingDecrease;
 	}
 
-	@JmxAttribute
+	@JmxOperation
 	public void setThrottlingDecrease(double throttlingDecrease) {
 		check(throttlingDecrease >= 0.0 && throttlingDecrease <= 1.0);
 		this.throttlingDecrease = throttlingDecrease;
@@ -219,7 +219,7 @@ public final class ThrottlingController implements ConcurrentJmxMBean {
 		return smoothingWindow;
 	}
 
-	@JmxAttribute
+	@JmxOperation
 	public void setSmoothingWindow(int smoothingWindow) {
 		check(smoothingWindow > 0);
 		this.smoothingWindow = smoothingWindow;
