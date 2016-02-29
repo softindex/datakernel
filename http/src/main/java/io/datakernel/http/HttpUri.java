@@ -51,7 +51,7 @@ public final class HttpUri {
 	static HttpUri parseUrl(String uri) throws ParseException {
 		try {
 			return new HttpUri(uri, false);
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
 			throw new ParseException(e);
 		}
 	}

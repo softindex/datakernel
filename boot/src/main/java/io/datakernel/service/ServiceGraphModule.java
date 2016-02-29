@@ -135,7 +135,7 @@ public final class ServiceGraphModule extends AbstractModule {
 						sb.append(first ? "" : ",").append(methodName).append("=").append(valueStr);
 						first = false;
 					}
-				} catch (Exception ignored) {
+				} catch (ReflectiveOperationException ignored) {
 				}
 			}
 		}

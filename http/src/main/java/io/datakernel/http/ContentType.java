@@ -84,7 +84,7 @@ public final class ContentType {
 				}
 			}
 			return lookup(type, charset);
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
 			throw new ParseException();
 		}
 	}

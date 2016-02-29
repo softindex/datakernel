@@ -268,7 +268,7 @@ public class AsyncHttpClient implements EventloopService, ConcurrentJmxMBean {
 				logger.trace("dnsClient.resolve4.onException Calling {}", request);
 				if (exception.getClass() == DnsException.class || exception.getClass() == TimeoutException.class) {
 					if (logger.isWarnEnabled()) {
-						logger.warn("Unexpected DNS exception for '{}': {}", request, exception.getMessage());
+						logger.warn("DNS exception for '{}': {}", request, exception.getMessage());
 					}
 				} else {
 					if (logger.isErrorEnabled()) {

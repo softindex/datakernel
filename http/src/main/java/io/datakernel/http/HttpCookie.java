@@ -109,7 +109,7 @@ public final class HttpCookie {
 				}
 				pos = valueEnd + 1;
 			}
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
 			throw new ParseException();
 		}
 	}
@@ -181,7 +181,7 @@ public final class HttpCookie {
 
 				pos = valueEnd + 1;
 			}
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
 			throw new ParseException();
 		}
 	}

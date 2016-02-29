@@ -33,4 +33,8 @@ public class SerializeException extends Exception {
 		super(cause);
 	}
 
+	@Override
+	public Throwable fillInStackTrace() {
+		return this;
+	}
 }

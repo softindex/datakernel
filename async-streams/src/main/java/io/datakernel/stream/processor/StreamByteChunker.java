@@ -62,27 +62,23 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		public void onData(ByteBuf buf) {
-			try {
-				while (internalBuf.position() + buf.remaining() >= minChunkSize) {
-					if (internalBuf.position() == 0) {
-						int chunkSize = Math.min(maxChunkSize, buf.remaining());
-						send(buf.slice(buf.position(), chunkSize));
-						buf.advance(chunkSize);
-					} else {
-						buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
-						internalBuf.flip();
-						send(internalBuf);
-						internalBuf = ByteBufPool.allocate(maxChunkSize);
-					}
+			while (internalBuf.position() + buf.remaining() >= minChunkSize) {
+				if (internalBuf.position() == 0) {
+					int chunkSize = Math.min(maxChunkSize, buf.remaining());
+					send(buf.slice(buf.position(), chunkSize));
+					buf.advance(chunkSize);
+				} else {
+					buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
+					internalBuf.flip();
+					send(internalBuf);
+					internalBuf = ByteBufPool.allocate(maxChunkSize);
 				}
-
-				buf.drainTo(internalBuf, buf.remaining());
-				assert internalBuf.position() < minChunkSize;
-
-				buf.recycle();
-			} catch (Exception e) {
-				closeWithError(e);
 			}
+
+			buf.drainTo(internalBuf, buf.remaining());
+			assert internalBuf.position() < minChunkSize;
+
+			buf.recycle();
 		}
 
 		private void flushAndClose() {

@@ -116,7 +116,7 @@ public final class AcceptCharset {
 					list.add(AcceptCharset.of(charset));
 				}
 			}
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
 			throw new ParseException();
 		}
 	}

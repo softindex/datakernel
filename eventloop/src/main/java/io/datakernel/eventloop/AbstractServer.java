@@ -205,7 +205,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		try {
 			closeable.close();
 		} catch (Exception e) {
-
 			// jmx
 			closeException.recordException(e, closeable, eventloop.currentTimeMillis());
 

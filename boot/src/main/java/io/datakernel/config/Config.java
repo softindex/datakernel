@@ -63,7 +63,7 @@ public final class Config {
 		final Properties properties = new Properties();
 		try (InputStream fis = new FileInputStream(propertiesFile)) {
 			properties.load(fis);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			logger.error("Cannot load required property: {}", e.getMessage());
 			throw new RuntimeException(e);
 		}

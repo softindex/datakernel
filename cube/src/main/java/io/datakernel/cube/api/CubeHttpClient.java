@@ -21,6 +21,7 @@ import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.http.AsyncHttpClient;
@@ -60,7 +61,7 @@ public final class CubeHttpClient {
 				String response = decodeUTF8(httpResponse.getBody());
 
 				if (httpResponse.getCode() != 200) {
-					callback.onException(new Exception("Cube HTTP query failed. Response code: "
+					callback.onException(new ParseException("Cube HTTP query failed. Response code: "
 							+ httpResponse.getCode() + " Body: " + response));
 					return;
 				}
@@ -68,14 +69,14 @@ public final class CubeHttpClient {
 				try {
 					ReportingQueryResult result = gson.fromJson(response, ReportingQueryResult.class);
 					callback.onResult(result);
-				} catch (Exception e) {
-					callback.onException(new Exception("Could not parse cube HTTP query response", e));
+				} catch (RuntimeException e) {
+					callback.onException(new ParseException("Could not parse cube HTTP query response", e));
 				}
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.onException(new Exception("Cube HTTP request failed", e));
+				callback.onException(new ParseException("Cube HTTP request failed", e));
 			}
 		});
 	}

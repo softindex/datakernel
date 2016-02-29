@@ -113,7 +113,7 @@ final class HttpDate {
 			timestamp *= 1_000l;
 
 			return timestamp;
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
 			throw new ParseException();
 		}
 	}

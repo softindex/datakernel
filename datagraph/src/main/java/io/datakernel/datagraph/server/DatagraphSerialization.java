@@ -149,13 +149,9 @@ public final class DatagraphSerialization {
 	public synchronized <T> BufferSerializer<T> getSerializer(Class<T> type) {
 		BufferSerializer<T> serializer = (BufferSerializer<T>) serializers.get(type);
 		if (serializer == null) {
-			try {
-				logger.info("Creating serializer for {}", type);
-				serializer = SerializerBuilder.newDefaultSerializer(type, ClassLoader.getSystemClassLoader());
-				serializers.put(type, serializer);
-			} catch (Exception e) {
-				logger.error("Error creating serializer for {}", type, e);
-			}
+			logger.info("Creating serializer for {}", type);
+			serializer = SerializerBuilder.newDefaultSerializer(type, ClassLoader.getSystemClassLoader());
+			serializers.put(type, serializer);
 		}
 		return serializer;
 	}
@@ -166,7 +162,7 @@ public final class DatagraphSerialization {
 			str = gson.toJson(item, type);
 			gson.fromJson(str, type);
 			return true;
-		} catch (Exception e) {
+		} catch (RuntimeException e) {
 			logger.error("Gson error:\n{}\n\n{}", e, str);
 			throw e;
 		}

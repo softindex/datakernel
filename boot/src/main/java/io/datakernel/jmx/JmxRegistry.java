@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.management.*;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -55,7 +54,7 @@ public final class JmxRegistry {
 		if (isJmxMBean(instanceClass)) {
 			try {
 				mbean = mbeanFactory.createFor(asList((ConcurrentJmxMBean) singletonInstance), true);
-			} catch (Exception e) {
+			} catch (ReflectiveOperationException e) {
 				String msg = format("Instance with key %s implemetns ConcurrentJmxMBean " +
 						"but exception was thrown during attempt to create DynamicMBean", key.toString());
 				logger.error(msg, e);
@@ -73,7 +72,7 @@ public final class JmxRegistry {
 		String name;
 		try {
 			name = createNameForKey(key);
-		} catch (Exception e) {
+		} catch (ReflectiveOperationException e) {
 			String msg = format("Error during generation name for instance with key %s", key.toString());
 			logger.error(msg, e);
 			return;
@@ -109,7 +108,7 @@ public final class JmxRegistry {
 				String name = createNameForKey(key);
 				ObjectName objectName = new ObjectName(name);
 				mbs.unregisterMBean(objectName);
-			} catch (Exception e) {
+			} catch (ReflectiveOperationException | JMException e) {
 				String msg =
 						format("Error during attempt to unregister MBean for instance with key %s.", key.toString());
 				logger.error(msg, e);
@@ -146,7 +145,7 @@ public final class JmxRegistry {
 		String commonName;
 		try {
 			commonName = createNameForKey(key);
-		} catch (Exception e) {
+		} catch (ReflectiveOperationException e) {
 			String msg = format("Error during generation name for pool of instances with key %s", key.toString());
 			logger.error(msg, e);
 			return;
@@ -161,7 +160,7 @@ public final class JmxRegistry {
 		DynamicMBean mbean;
 		try {
 			mbean = mbeanFactory.createFor(concurrentJmxMBeans, true);
-		} catch (Exception e) {
+		} catch (ReflectiveOperationException e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
 			logger.error(msg, e);
@@ -208,7 +207,7 @@ public final class JmxRegistry {
 		String commonName;
 		try {
 			commonName = createNameForKey(key);
-		} catch (Exception e) {
+		} catch (ReflectiveOperationException e) {
 			String msg = format("Error during generation name for pool of instances with key %s", key.toString());
 			logger.error(msg, e);
 			return;
@@ -219,7 +218,7 @@ public final class JmxRegistry {
 			try {
 				String workerName = createWorkerName(commonName, i);
 				mbs.unregisterMBean(new ObjectName(workerName));
-			} catch (Exception e) {
+			} catch (JMException e) {
 				String msg = format("Error during attempt to unregister mbean for worker" +
 								" of pool of instances with key %s. Worker id is \"%d\"",
 						key.toString(), i);
@@ -230,7 +229,7 @@ public final class JmxRegistry {
 		// unregister aggregated mbean for pool of workers
 		try {
 			mbs.unregisterMBean(new ObjectName(commonName));
-		} catch (Exception e) {
+		} catch (JMException e) {
 			String msg = format("Error during attempt to unregister aggregated mbean for pool of instances " +
 					"with key %s.", key.toString());
 			logger.error(msg, e);
@@ -253,7 +252,7 @@ public final class JmxRegistry {
 		DynamicMBean mbean;
 		try {
 			mbean = mbeanFactory.createFor(asList(worker), false);
-		} catch (Exception e) {
+		} catch (ReflectiveOperationException e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());
 			logger.error(msg, e);
@@ -285,7 +284,7 @@ public final class JmxRegistry {
 		return commonName + format(",workerId=worker-%d", workerId);
 	}
 
-	private static String createNameForKey(Key<?> key) throws Exception {
+	private static String createNameForKey(Key<?> key) throws ReflectiveOperationException {
 		Class<?> rawType = key.getTypeLiteral().getRawType();
 		Annotation annotation = key.getAnnotation();
 		String domain = rawType.getPackage().getName();
@@ -336,8 +335,7 @@ public final class JmxRegistry {
 	/**
 	 * Returns values if it is not null, otherwise throws exception
 	 */
-	private static Object fetchAnnotationElementValue(Annotation annotation, Method element)
-			throws InvocationTargetException, IllegalAccessException {
+	private static Object fetchAnnotationElementValue(Annotation annotation, Method element) throws ReflectiveOperationException {
 		Object value = element.invoke(annotation);
 		if (value == null) {
 			String errorMsg = "@" + annotation.annotationType().getName() + "." +
@@ -347,8 +345,7 @@ public final class JmxRegistry {
 		return value;
 	}
 
-	private static Method[] filterNonEmptyElements(Annotation annotation)
-			throws InvocationTargetException, IllegalAccessException {
+	private static Method[] filterNonEmptyElements(Annotation annotation) throws ReflectiveOperationException {
 		List<Method> filtered = new ArrayList<>();
 		for (Method method : annotation.annotationType().getDeclaredMethods()) {
 			Object elementValue = fetchAnnotationElementValue(annotation, method);

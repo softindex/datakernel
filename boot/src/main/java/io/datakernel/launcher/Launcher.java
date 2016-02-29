@@ -138,7 +138,7 @@ public abstract class Launcher {
 				doStop();
 				releaseLockFile();
 			}
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			logger.error("Application failed", e);
 		}
 	}

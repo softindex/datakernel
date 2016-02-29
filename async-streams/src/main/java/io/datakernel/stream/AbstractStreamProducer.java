@@ -126,11 +126,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 	protected void produce() {
 		if (!isStatusReady())
 			return;
-		try {
-			doProduce();
-		} catch (Exception e) {
-			closeWithError(e, true);
-		}
+		doProduce();
 	}
 
 	protected void resumeProduce() {

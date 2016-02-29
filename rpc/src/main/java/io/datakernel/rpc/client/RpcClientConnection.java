@@ -150,14 +150,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 		addTimeoutCookie(timeoutCookie);
 		requests.put(cookieCounter, requestCallback);
 
-		try {
-			protocol.sendMessage(new RpcMessage(cookieCounter, request));
-		} catch (Exception e) {
-			if (logger.isErrorEnabled())
-				logger.error("Send RpcMessage {} failed", request, e);
-			removeTimeoutCookie(timeoutCookie);
-			returnProtocolError(requests.remove(cookieCounter), e);
-		}
+		protocol.sendMessage(new RpcMessage(cookieCounter, request));
 	}
 
 	private void addTimeoutCookie(TimeoutCookie timeoutCookie) {

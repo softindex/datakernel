@@ -16,8 +16,10 @@
 
 package io.datakernel.dns;
 
+import io.datakernel.async.ParseException;
+
 /**
  * Exception which will be threw, at parsing URL
  */
-public class DnsResponseParseException extends Exception {
+public class DnsResponseParseException extends ParseException {
 }

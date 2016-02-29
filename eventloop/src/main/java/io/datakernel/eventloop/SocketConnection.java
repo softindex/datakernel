@@ -60,10 +60,7 @@ public abstract class SocketConnection {
 	private void updateInterests(int newOps) {
 		ops = newOps;
 		if (key != null) {
-			try {
-				key.interestOps(newOps);
-			} catch (Exception ignored) {
-			}
+			key.interestOps(newOps);
 		}
 	}
 
@@ -122,7 +119,7 @@ public abstract class SocketConnection {
 	public final void register() {
 		try {
 			key = getChannel().register(eventloop.ensureSelector(), ops, this);
-		} catch (Exception e) {
+		} catch (IOException e) {
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {

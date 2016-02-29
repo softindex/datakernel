@@ -16,13 +16,13 @@
 
 package io.datakernel.dns;
 
-import java.io.IOException;
+import io.datakernel.async.SimpleException;
 
 /**
  * Represents an exception which stores name of domain with which error was created ,
  * end  error code.
  */
-public final class DnsException extends IOException {
+public final class DnsException extends SimpleException {
 	private final String domainName;
 	private final DnsMessage.ResponseErrorCode errorCode;
 

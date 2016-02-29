@@ -54,16 +54,11 @@ public final class HttpRequestHandler implements RequestHandler {
 			requestExecutor.execute(reportingQuery, new ResultCallback<QueryResult>() {
 				@Override
 				public void onResult(QueryResult result) {
-					try {
-						Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
-						HttpResponse httpResponse = httpResultProcessor.apply(result);
-						logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
-								reportingQuery, totalTimeStopwatch, resultProcessingStopwatch);
-						resultCallback.onResult(httpResponse);
-					} catch (Exception e) {
-						logger.error("Exception occurred while processing results", e);
-						resultCallback.onHttpError(new HttpServletError(500, e));
-					}
+					Stopwatch resultProcessingStopwatch = Stopwatch.createStarted();
+					HttpResponse httpResponse = httpResultProcessor.apply(result);
+					logger.info("Processed request {} ({}) [totalTime={}, jsonConstruction={}]", httpRequest,
+							reportingQuery, totalTimeStopwatch, resultProcessingStopwatch);
+					resultCallback.onResult(httpResponse);
 				}
 
 				@Override

@@ -61,8 +61,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	@Override
-	public DynamicMBean createFor(List<? extends ConcurrentJmxMBean> monitorables, boolean enableRefresh)
-			throws Exception {
+	public DynamicMBean createFor(List<? extends ConcurrentJmxMBean> monitorables, boolean enableRefresh) throws ReflectiveOperationException {
 		checkNotNull(monitorables);
 		checkArgument(monitorables.size() > 0);
 		checkArgument(!listContainsNullValues(monitorables), "monitorable can not be null");
@@ -159,11 +158,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			// 3 cases: simple-type, JmxStats, POJO
 			Class<?> returnClass = (Class<?>) attrType;
 			if (isSimpleType(returnClass)) {
-				try {
-					return new AttributeNodeForSimpleType(attrName, defaultFetcher, returnClass);
-				} catch (Exception e) {
-					throw new RuntimeException(e);
-				}
+				return new AttributeNodeForSimpleType(attrName, defaultFetcher, returnClass);
 			} else if (isThrowable(returnClass)) {
 				return new AttributeNodeForThrowable(attrName, defaultFetcher);
 			} else if (returnClass.isArray()) {

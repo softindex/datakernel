@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -30,7 +31,6 @@ import net.jpountz.util.SafeUtils;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
-import java.io.IOException;
 import java.util.concurrent.Executor;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -95,14 +95,14 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				if (getProducerStatus().isOpen()) {
 					consumeInputByteBuffer(buf);
 				}
-			} catch (Exception e) {
+			} catch (ParseException e) {
 				inputConsumer.closeWithError(e);
 			} finally {
 				buf.recycle();
 			}
 		}
 
-		private void consumeInputByteBuffer(ByteBuf buf) throws Exception {
+		private void consumeInputByteBuffer(ByteBuf buf) throws ParseException {
 			while (buf.hasRemaining()) {
 				if (isReadingHeader()) {
 					// read message header:
@@ -192,7 +192,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 	}
 
 	private static ByteBuf readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
-	                                byte[] buf, int off) throws Exception {
+	                                byte[] buf, int off) throws ParseException {
 		ByteBuf outputBuf = ByteBufPool.allocate(header.originalLen);
 		outputBuf.limit(header.originalLen);
 		switch (header.compressionMethod) {
@@ -203,10 +203,10 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				try {
 					int compressedLen2 = decompressor.decompress(buf, off, outputBuf.array(), 0, header.originalLen);
 					if (header.compressedLen != compressedLen2) {
-						throw new IOException("Stream is corrupted");
+						throw new ParseException("Stream is corrupted");
 					}
 				} catch (LZ4Exception e) {
-					throw new IOException("Stream is corrupted", e);
+					throw new ParseException("Stream is corrupted", e);
 				}
 				break;
 			default:
@@ -215,22 +215,22 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		checksum.reset();
 		checksum.update(outputBuf.array(), 0, header.originalLen);
 		if (checksum.getValue() != header.check) {
-			throw new IOException("Stream is corrupted");
+			throw new ParseException("Stream is corrupted");
 		}
 		return outputBuf;
 	}
 
-	private static void readHeader(Header header, byte[] buf, int off) throws Exception {
+	private static void readHeader(Header header, byte[] buf, int off) throws ParseException {
 		for (int i = 0; i < MAGIC_LENGTH; ++i) {
 			if (buf[off + i] != MAGIC[i]) {
-				throw new IOException("Stream is corrupted");
+				throw new ParseException("Stream is corrupted");
 			}
 		}
 		int token = buf[off + MAGIC_LENGTH] & 0xFF;
 		header.compressionMethod = token & 0xF0;
 		int compressionLevel = COMPRESSION_LEVEL_BASE + (token & 0x0F);
 		if (header.compressionMethod != COMPRESSION_METHOD_RAW && header.compressionMethod != COMPRESSION_METHOD_LZ4) {
-			throw new IOException("Stream is corrupted");
+			throw new ParseException("Stream is corrupted");
 		}
 		header.compressedLen = SafeUtils.readIntLE(buf, off + MAGIC_LENGTH + 1);
 		header.originalLen = SafeUtils.readIntLE(buf, off + MAGIC_LENGTH + 5);
@@ -240,11 +240,11 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				|| (header.originalLen == 0 && header.compressedLen != 0)
 				|| (header.originalLen != 0 && header.compressedLen == 0)
 				|| (header.compressionMethod == COMPRESSION_METHOD_RAW && header.originalLen != header.compressedLen)) {
-			throw new IOException("Stream is corrupted");
+			throw new ParseException("Stream is corrupted");
 		}
 		if (header.originalLen == 0) {
 			if (header.check != 0) {
-				throw new IOException("Stream is corrupted");
+				throw new ParseException("Stream is corrupted");
 			}
 			header.finished = true;
 		}

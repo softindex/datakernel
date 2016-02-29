@@ -71,7 +71,7 @@ public final class FileLocker {
 			lockStream.write(0);
 			fileLock = lockStream.getChannel().tryLock();
 			return fileLock != null;
-		} catch (Exception e) {
+		} catch (IOException e) {
 			logger.error("IO Exception during locking {}", lockFile, e);
 			return false;
 		}

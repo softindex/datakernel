@@ -147,12 +147,7 @@ public final class RequestExecutor {
 			consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 				@Override
 				public void onResult(List<QueryResultPlaceholder> results) {
-					try {
-						processResults(results, resultCallback);
-					} catch (Exception e) {
-						logger.error("Unknown exception occurred while processing results {}", e);
-						resultCallback.onException(e);
-					}
+					processResults(results, resultCallback);
 				}
 
 				@Override

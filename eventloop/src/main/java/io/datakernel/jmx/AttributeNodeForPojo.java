@@ -153,12 +153,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 			throw new IllegalArgumentException("There is no attribute with name: " + attrGroupName);
 		}
 
-		try {
-			return nameToSubNode.get(attrGroupName).aggregateAttribute(fetchInnerPojos(pojos), subAttrName);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException(e);
-		}
+		return nameToSubNode.get(attrGroupName).aggregateAttribute(fetchInnerPojos(pojos), subAttrName);
 	}
 
 	private List<Object> fetchInnerPojos(List<?> outerPojos) {

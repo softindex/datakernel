@@ -86,7 +86,7 @@ public final class StaticServletForResources extends StaticServlet {
 						byte[] bytes = loadResource(root, name);
 						cache.put(name, bytes);
 						return ByteBuf.wrap(bytes);
-					} catch (Exception e) {
+					} catch (IOException e) {
 						cache.put(name, ERROR_BYTES);
 						if (e instanceof FileNotFoundException) {
 							return null;

@@ -86,20 +86,16 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 
 		@Override
 		public void onData(ByteBuf buf) {
-			try {
-				jmxBufs++;
-				jmxBytesInput += buf.remaining();
+			jmxBufs++;
+			jmxBytesInput += buf.remaining();
 
-				ByteBuf outputBuffer = compressBlock(compressor, checksum,
-						buf.array(), buf.position(), buf.remaining());
-				jmxBytesOutput += outputBuffer.remaining();
+			ByteBuf outputBuffer = compressBlock(compressor, checksum,
+					buf.array(), buf.position(), buf.remaining());
+			jmxBytesOutput += outputBuffer.remaining();
 
-				send(outputBuffer);
+			send(outputBuffer);
 
-				buf.recycle();
-			} catch (Exception e) {
-				closeWithError(e);
-			}
+			buf.recycle();
 		}
 	}
 

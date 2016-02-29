@@ -16,6 +16,7 @@
 
 package io.datakernel.rpc.server;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
@@ -30,8 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.channels.SocketChannel;
 import java.util.Map;
-
-import static io.datakernel.util.Preconditions.checkNotNull;
 
 public final class RpcServerConnection implements RpcConnection {
 
@@ -64,18 +63,10 @@ public final class RpcServerConnection implements RpcConnection {
 		this.statusListener = statusListener;
 	}
 
-	public void apply(Object request, ResultCallback<Object> callback) {
-		RpcRequestHandler<Object> requestHandler;
-		try {
-			checkNotNull(request);
-			checkNotNull(callback);
-			requestHandler = handlers.get(request.getClass());
-			checkNotNull(requestHandler, "Unknown request class: %", request.getClass());
-		} catch (Exception e) {
-			if (logger != null) {
-				logger.error("Failed to process request " + request, e);
-			}
-			callback.onException(e);
+	private void apply(Object request, ResultCallback<Object> callback) {
+		RpcRequestHandler<Object> requestHandler = handlers.get(request.getClass());
+		if (requestHandler == null) {
+			callback.onException(new ParseException("Failed to process request " + request));
 			return;
 		}
 		requestHandler.run(request, callback);
