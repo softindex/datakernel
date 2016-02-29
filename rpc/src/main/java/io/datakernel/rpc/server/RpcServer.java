@@ -19,10 +19,7 @@ package io.datakernel.rpc.server;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxOperation;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.protocol.RpcMessage;
@@ -52,7 +49,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private final Map<SocketChannel, RpcServerConnection> connections = new HashMap<>();
 
 	// jmx
-	private ValueStats connectionsCount = new ValueStats();
+	private CountStats connectionsCount = new CountStats();
 	private boolean monitoring;
 
 	private RpcServer(Eventloop eventloop) {
@@ -111,7 +108,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 				connections.put(socketChannel, connection);
 
 				// jmx
-				connectionsCount.recordValue(connections.size());
+				connectionsCount.setCount(connections.size());
 			}
 
 			@Override
@@ -119,7 +116,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 				connections.remove(socketChannel);
 
 				// jmx
-				connectionsCount.recordValue(connections.size());
+				connectionsCount.setCount(connections.size());
 			}
 		};
 		BufferSerializer<RpcMessage> messageSerializer = createSerializer();
@@ -145,7 +142,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		connections.put(socketChannel, connection);
 
 		// jmx
-		connectionsCount.recordValue(connections.size());
+		connectionsCount.setCount(connections.size());
 	}
 
 	public void remove(SocketChannel socketChannel) {
@@ -154,7 +151,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		connections.remove(socketChannel);
 
 		// jmx
-		connectionsCount.recordValue(connections.size());
+		connectionsCount.setCount(connections.size());
 	}
 
 	// JMX
@@ -179,8 +176,8 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return monitoring;
 	}
 
-	@JmxAttribute
-	public ValueStats getConnectionsCount() {
+	@JmxAttribute(name = "currentConnections")
+	public CountStats getConnectionsCount() {
 		return connectionsCount;
 	}
 

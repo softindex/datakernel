@@ -16,13 +16,20 @@
 
 package io.datakernel.http;
 
+import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ThrottlingController;
+import io.datakernel.jmx.DynamicMBeanFactory;
+import io.datakernel.jmx.JmxMBeans;
 import io.datakernel.util.ByteBufStrings;
 
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+import java.lang.management.ManagementFactory;
 import java.util.Random;
 
 import static io.datakernel.util.Preconditions.checkArgument;
+import static java.util.Arrays.asList;
 
 public class HttpThrottlingServer {
 	private static final Random rand = new Random();
@@ -77,7 +84,6 @@ public class HttpThrottlingServer {
 	}
 
 	private static AsyncHttpServer buildHttpServer(Eventloop eventloop, final int loadBusinessLogic) {
-		ThrottlingController.createDefaultThrottlingController(eventloop);
 //		final ByteBufPool byteBufferPool = new ByteBufPool(16, 65536);
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
@@ -120,14 +126,18 @@ public class HttpThrottlingServer {
 		info(options);
 
 		final Eventloop eventloop = new Eventloop();
+		ThrottlingController throttlingController = ThrottlingController.createDefaultThrottlingController(eventloop);
 
 		final HttpThrottlingServer server = new HttpThrottlingServer(eventloop, options);
 
-		// TODO(vmykhalko): reimplement jmx logic
-//		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
-//		eventloop.registerMBean(mbeanServer, WOW, NIO);
-//		ByteBufPool.registerMBean(mbeanServer);
-//		register(mbeanServer, MBeanFormat.name(WOW, NIO, ThrottlingController.class), eventloop.throttlingController);
+		MBeanServer mbeanServer = ManagementFactory.getPlatformMBeanServer();
+		DynamicMBeanFactory mBeanFactory = JmxMBeans.factory();
+		mbeanServer.registerMBean(mBeanFactory.createFor(asList(eventloop), true),
+				new ObjectName(Eventloop.class.getPackage().getName() + ":type=Eventloop"));
+		mbeanServer.registerMBean(ByteBufPool.getStats(),
+				new ObjectName(ByteBufPool.class.getPackage().getName() + ":type=ByteBufPool"));
+		mbeanServer.registerMBean(mBeanFactory.createFor(asList(throttlingController), true),
+				new ObjectName(ThrottlingController.class.getPackage().getName() + ":type=ThrottlingController"));
 		server.start();
 
 		eventloop.run();

@@ -23,6 +23,7 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.CountStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.SocketSettings;
@@ -430,9 +431,11 @@ public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 		return requestStatsPerAddress;
 	}
 
-	@JmxAttribute
-	public int getActiveConnectionsCount() {
-		return connections.size();
+	@JmxAttribute(name = "activeConnections")
+	public CountStats getActiveConnectionsCount() {
+		CountStats countStats = new CountStats();
+		countStats.setCount(connections.size());
+		return countStats;
 	}
 
 	private RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
@@ -479,7 +482,6 @@ public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 					updateResponseTime(requestClass, timeElapsed());
 
 					long timestamp = eventloop.currentTimeMillis();
-					// TODO(vmykhalko): maybe there should be something more informative instead of null (as causedObject)?
 					generalRequestsStats.getServerExceptions().recordException(exception, null, timestamp);
 					ensureRequestStatsPerClass(requestClass)
 							.getServerExceptions().recordException(exception, null, timestamp);

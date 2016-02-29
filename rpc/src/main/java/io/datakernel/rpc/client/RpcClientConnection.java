@@ -342,7 +342,6 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 					requestsStats.getResponseTime().recordValue(timeElapsed());
 
 					long timestamp = eventloop.currentTimeMillis();
-					// TODO(vmykhalko): maybe there should be something more informative instead of null (as causedObject)?
 					requestsStats.getServerExceptions().recordException(exception, null, timestamp);
 				}
 			}

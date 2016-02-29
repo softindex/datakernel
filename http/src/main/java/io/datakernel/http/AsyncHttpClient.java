@@ -23,8 +23,7 @@ import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
 import io.datakernel.http.ExposedLinkedList.Node;
-import io.datakernel.jmx.MBeanFormat;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.Joiner;
 import io.datakernel.util.Stopwatch;
@@ -41,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -50,7 +50,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class AsyncHttpClient implements EventloopService {
+public class AsyncHttpClient implements EventloopService, ConcurrentJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
@@ -72,15 +72,19 @@ public class AsyncHttpClient implements EventloopService {
 	private boolean blockLocalAddresses = false;
 	private long bindExceptionBlockTimeout = 24 * 60 * 60 * 1000L;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
-	private int countPendingSocketConnect;
 
 	private boolean running;
 
 	// JMX
-	private final ValueStats timeCheckExpired;
-	private final ValueStats expiredConnections;
+	private final ValueStats timeCheckExpired = new ValueStats();
+	private final ValueStats expiredConnections = new ValueStats();
+
+	private final EventStats totalRequests = new EventStats();
+	private final ExceptionStats dnsErrors = new ExceptionStats();
+
+	private CountStats pendingSocketConnect = new CountStats();
+
 	private boolean monitoring;
-	private volatile double smoothingWindow = 10.0;
 
 	private int inetAddressIdx = 0;
 
@@ -112,10 +116,6 @@ public class AsyncHttpClient implements EventloopService {
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
-
-		// JMX
-		this.timeCheckExpired = new ValueStats();
-		this.expiredConnections = new ValueStats();
 	}
 
 	public AsyncHttpClient setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
@@ -251,6 +251,7 @@ public class AsyncHttpClient implements EventloopService {
 		assert eventloop.inEventloopThread();
 
 		logger.trace("Calling {}", request);
+		totalRequests.recordEvent();
 		getUrlAsync(request, timeout, callback);
 	}
 
@@ -274,6 +275,7 @@ public class AsyncHttpClient implements EventloopService {
 						logger.error("Unexpected DNS exception for " + request, exception);
 					}
 				}
+				dnsErrors.recordException(exception, request, eventloop.currentTimeMillis());
 				callback.onException(exception);
 			}
 		});
@@ -352,7 +354,9 @@ public class AsyncHttpClient implements EventloopService {
 	}
 
 	private void addPendingSocketConnect(InetSocketAddress address) {
-		countPendingSocketConnect++;
+		// jmx
+		pendingSocketConnect.increment();
+
 		Integer counter = addressPendingConnects.get(address);
 		if (counter == null) {
 			counter = 0;
@@ -361,7 +365,9 @@ public class AsyncHttpClient implements EventloopService {
 	}
 
 	private void removePendingSocketConnect(InetSocketAddress address) {
-		countPendingSocketConnect--;
+		// jmx
+		pendingSocketConnect.decrement();
+
 		Integer counter = addressPendingConnects.get(address);
 		if (counter != null) {
 			if (--counter > 0)
@@ -433,7 +439,6 @@ public class AsyncHttpClient implements EventloopService {
 		checkState(eventloop.inEventloopThread());
 		checkState(!running);
 		running = true;
-		scheduleRefreshStats();
 		callback.onComplete();
 	}
 
@@ -459,42 +464,37 @@ public class AsyncHttpClient implements EventloopService {
 
 	// JMX
 
-	private void scheduleRefreshStats() {
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + 200L, new Runnable() {
-			@Override
-			public void run() {
-				if (!running)
-					return;
-				double smoothingWindow = AsyncHttpClient.this.smoothingWindow;
-				long timestamp = eventloop.currentTimeMillis();
-				timeCheckExpired.refreshStats(timestamp, smoothingWindow);
-				expiredConnections.refreshStats(timestamp, smoothingWindow);
-				scheduleRefreshStats();
-			}
-		});
-	}
+//	public void resetStats() {
+//		timeCheckExpired.resetStats();
+//	}
 
-	public void resetStats() {
-		timeCheckExpired.resetStats();
-	}
-
+	@JmxOperation
 	public void startMonitoring() {
 		monitoring = true;
 	}
 
+	@JmxOperation
 	public void stopMonitoring() {
 		monitoring = false;
 	}
 
-	public int getTimeCheckExpiredMicros() {
-		return (int) timeCheckExpired.getLastValue();
+	@JmxAttribute
+	public EventStats getTotalRequests() {
+		return totalRequests;
 	}
 
-	public String getTimeCheckExpiredMicrosStats() {
-		return timeCheckExpired.toString();
+	@JmxAttribute
+	public ExceptionStats getDnsErrors() {
+		return dnsErrors;
 	}
 
-	public String[] getAddressConnections() {
+	@JmxAttribute
+	public ValueStats getTimeCheckExpiredMicros() {
+		return timeCheckExpired;
+	}
+
+	@JmxAttribute
+	public List<String> getAddressConnections() {
 		if (ipConnectionLists.isEmpty())
 			return null;
 		List<String> result = new ArrayList<>();
@@ -504,14 +504,16 @@ public class AsyncHttpClient implements EventloopService {
 			ExposedLinkedList<HttpClientConnection> connections = entry.getValue();
 			result.add(address + "," + connections.size());
 		}
-		return result.toArray(new String[result.size()]);
+		return result;
 	}
 
+	@JmxAttribute
 	public int getConnectionsCount() {
 		return connectionsList.size();
 	}
 
-	public String[] getConnections() {
+	@JmxAttribute
+	public List<String> getConnections() {
 		Joiner joiner = Joiner.on(',');
 		List<String> info = new ArrayList<>();
 		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
@@ -523,18 +525,21 @@ public class AsyncHttpClient implements EventloopService {
 			);
 			info.add(string);
 		}
-		return info.toArray(new String[info.size()]);
+		return info;
 	}
 
+	@JmxAttribute
 	public ValueStats getExpiredConnectionsStats() {
 		return expiredConnections;
 	}
 
-	public int getPendingConnectsCount() {
-		return countPendingSocketConnect;
+	@JmxAttribute
+	public CountStats getPendingConnectsCount() {
+		return pendingSocketConnect;
 	}
 
-	public String[] getAddressPendingConnects() {
+	@JmxAttribute
+	public List<String> getAddressPendingConnects() {
 		if (addressPendingConnects.isEmpty())
 			return null;
 		List<String> result = new ArrayList<>();
@@ -542,10 +547,11 @@ public class AsyncHttpClient implements EventloopService {
 		for (Entry<InetSocketAddress, Integer> entry : addressPendingConnects.entrySet()) {
 			result.add(entry.getKey() + ", " + entry.getValue());
 		}
-		return result.toArray(new String[result.size()]);
+		return result;
 	}
 
-	public String[] getBindExceptionBlockedHosts() {
+	@JmxAttribute
+	public List<String> getBindExceptionBlockedHosts() {
 		if (bindExceptionBlockedHosts.isEmpty())
 			return null;
 		List<String> result = new ArrayList<>();
@@ -553,6 +559,11 @@ public class AsyncHttpClient implements EventloopService {
 		for (Entry<InetAddress, Long> entry : bindExceptionBlockedHosts.entrySet()) {
 			result.add(entry.getKey() + "," + MBeanFormat.formatDateTime(entry.getValue()));
 		}
-		return result.toArray(new String[result.size()]);
+		return result;
+	}
+
+	@Override
+	public Executor getJmxExecutor() {
+		return eventloop;
 	}
 }
