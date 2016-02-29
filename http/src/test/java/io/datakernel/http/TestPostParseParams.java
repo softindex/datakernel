@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import org.junit.Test;
 
 import java.util.Map;
@@ -27,7 +28,7 @@ import static org.junit.Assert.assertEquals;
 
 public class TestPostParseParams {
 	@Test
-	public void testParameters() throws HttpParseException {
+	public void testParameters() throws ParseException {
 		HttpRequest request = HttpRequest.post("http://127.0.0.1")
 				.header(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
 				.body(wrapAscii("hello=world&value=1234"));

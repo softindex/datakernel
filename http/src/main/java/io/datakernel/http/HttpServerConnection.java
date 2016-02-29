@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
@@ -119,13 +120,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param line received line of header.
 	 */
 	@Override
-	protected void onFirstLine(ByteBuf line) throws HttpParseException {
+	protected void onFirstLine(ByteBuf line) throws ParseException {
 		assert isRegistered();
 		assert eventloop.inEventloopThread();
 
 		HttpMethod method = getHttpMethod(line);
 		if (method == null)
-			throw new HttpParseException("Unknown HTTP method");
+			throw new ParseException("Unknown HTTP method");
 
 		request = HttpRequest.create(method);
 
@@ -151,7 +152,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	 * @param value  value of received header
 	 */
 	@Override
-	protected void onHeader(HttpHeader header, final ByteBuf value) throws HttpParseException {
+	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
 		request.addHeader(header, value);
 	}
@@ -203,7 +204,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					}
 				}
 			});
-		} catch (HttpParseException e) {
+		} catch (ParseException e) {
 			writeException(new HttpServletError(400, e));
 		}
 	}

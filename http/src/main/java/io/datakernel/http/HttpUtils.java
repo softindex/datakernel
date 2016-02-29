@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.util.Splitter;
 
 import java.io.UnsupportedEncodingException;
@@ -92,7 +93,12 @@ public final class HttpUtils {
 		int start = 0;
 		for (int i = 0; i < bytes.length; i++) {
 			if (bytes[i] == '.' || i == bytes.length - 1) {
-				int v = decodeDecimal(bytes, start, i - start);
+				int v = 0;
+				try {
+					v = decodeDecimal(bytes, start, i - start);
+				} catch (ParseException e) {
+					return false;
+				}
 				if (v < 0 || v > 255) return false;
 				start = i + 1;
 			}
@@ -116,7 +122,7 @@ public final class HttpUtils {
 		return pos;
 	}
 
-	public static int parseQ(byte[] bytes, int pos, int length) {
+	public static int parseQ(byte[] bytes, int pos, int length) throws ParseException {
 		if (bytes[pos] == '1') {
 			return 100;
 		} else {
@@ -192,7 +198,7 @@ public final class HttpUtils {
 	 * @param enc   encoding of this string
 	 * @return collection with keys - name of parameter, value - value of it.
 	 */
-	public static Map<String, String> parse(String query, String enc) throws HttpParseException {
+	public static Map<String, String> parse(String query, String enc) throws ParseException {
 		LinkedHashMap<String, String> qps = new LinkedHashMap<>();
 		for (String pair : querySplitter.splitToList(query)) {
 			int pos = pair.indexOf('=');
@@ -220,7 +226,7 @@ public final class HttpUtils {
 	 * @param query string with URL for parsing
 	 * @return collection with keys - name of parameter, value - value of it.
 	 */
-	public static Map<String, String> parse(String query) throws HttpParseException {
+	public static Map<String, String> parse(String query) throws ParseException {
 		return parse(query, ENCODING);
 	}
 
@@ -282,11 +288,11 @@ public final class HttpUtils {
 	 * @param enc the name of a supported character encoding
 	 * @return the newly decoded String
 	 */
-	private static String decode(String s, String enc) throws HttpParseException {
+	private static String decode(String s, String enc) throws ParseException {
 		try {
 			return URLDecoder.decode(s, enc);
 		} catch (UnsupportedEncodingException e) {
-			throw new HttpParseException(e);
+			throw new ParseException(e);
 		}
 	}
 }

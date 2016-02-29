@@ -16,6 +16,7 @@
 
 package io.datakernel;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
@@ -69,7 +70,7 @@ public class HttpApiTest {
 		eventloop = new Eventloop();
 		server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws HttpParseException {
+			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				testRequest(request);
 				HttpResponse response = createResponse();
 				callback.onResult(response);
@@ -110,7 +111,7 @@ public class HttpApiTest {
 			public void onResult(HttpResponse result) {
 				try {
 					testResponse(result);
-				} catch (HttpParseException e) {
+				} catch (ParseException e) {
 					fail("Invalid response");
 				}
 				server.close();
@@ -150,7 +151,7 @@ public class HttpApiTest {
 		return request;
 	}
 
-	private void testResponse(HttpResponse response) throws HttpParseException {
+	private void testResponse(HttpResponse response) throws ParseException {
 		assertEquals(responseContentType.toString(), response.getContentType().toString());
 		assertEquals(responseCookies.toString(), response.parseCookies().toString());
 		assertEquals(responseDate.toString(), response.getDate().toString());
@@ -159,7 +160,7 @@ public class HttpApiTest {
 		assertEquals(lastModified.toString(), response.parseLastModified().toString());
 	}
 
-	private void testRequest(HttpRequest request) throws HttpParseException {
+	private void testRequest(HttpRequest request) throws ParseException {
 		assertEquals(requestAcceptContentTypes.toString(), request.parseAccept().toString());
 		assertEquals(requestAcceptCharsets.toString(), request.parseAcceptCharsets().toString());
 		assertEquals(requestDate.toString(), request.getDate().toString());

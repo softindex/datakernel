@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -42,7 +43,7 @@ public abstract class AbstractBlockingServlet extends AbstractAsyncServlet {
 		this.executor = executor;
 	}
 
-	protected abstract HttpResponse doServeBlocking(HttpRequest httpRequest) throws HttpServletError, HttpParseException;
+	protected abstract HttpResponse doServeBlocking(HttpRequest httpRequest) throws HttpServletError, ParseException;
 
 	protected final void doServeAsync(final HttpRequest request, final Callback callback) {
 		executor.execute(new Runnable() {
@@ -71,7 +72,7 @@ public abstract class AbstractBlockingServlet extends AbstractAsyncServlet {
 							callback.onHttpError(e);
 						}
 					});
-				} catch (final HttpParseException e) {
+				} catch (final ParseException e) {
 					eventloop.execute(new Runnable() {
 						@Override
 						public void run() {

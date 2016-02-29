@@ -16,6 +16,8 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
+
 /**
  * Servlet receives and responds to {@link HttpRequest} from clients across HTTP.
  * Receives {@link HttpRequest},  creates {@link HttpResponse} and sends it.
@@ -37,5 +39,5 @@ public interface AsyncHttpServlet {
 	 * @param request  received request
 	 * @param callback ResultCallback for handling result
 	 */
-	void serveAsync(HttpRequest request, Callback callback) throws HttpParseException;
+	void serveAsync(HttpRequest request, Callback callback) throws ParseException;
 }

@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 
 import static io.datakernel.util.ByteBufStrings.*;
@@ -64,7 +65,7 @@ final class HttpDate {
 
 	private HttpDate() {}
 
-	static long parse(byte[] bytes, int start) throws HttpParseException {
+	static long parse(byte[] bytes, int start) throws ParseException {
 		try {
 			int day = decodeDecimal(bytes, start + 5, 2);
 
@@ -113,7 +114,7 @@ final class HttpDate {
 
 			return timestamp;
 		} catch (Exception e) {
-			throw new HttpParseException();
+			throw new ParseException();
 		}
 	}
 

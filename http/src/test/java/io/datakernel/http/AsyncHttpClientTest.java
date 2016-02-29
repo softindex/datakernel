@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
@@ -158,7 +159,7 @@ public class AsyncHttpClientTest {
 		}
 	}
 
-	@Test(expected = HttpParseException.class)
+	@Test(expected = ParseException.class)
 	public void testBigHttpMessage() throws Throwable {
 		final int TIMEOUT = 1000;
 		final Eventloop eventloop = new Eventloop();

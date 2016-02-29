@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.*;
@@ -50,7 +51,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 	 * @param request  received request from client
 	 * @param callback callback for handling result
 	 */
-	protected abstract void doServeAsync(HttpRequest request, Callback callback) throws HttpParseException;
+	protected abstract void doServeAsync(HttpRequest request, Callback callback) throws ParseException;
 
 	/**
 	 * Handles the received {@link HttpRequest},  creates the {@link HttpResponse} and responds to client with
@@ -60,7 +61,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 	 * @param callback ResultCallback for handling result
 	 */
 	@Override
-	public final void serveAsync(final HttpRequest request, final Callback callback) throws HttpParseException {
+	public final void serveAsync(final HttpRequest request, final Callback callback) throws ParseException {
 		if (!isMonitoring(request)) {
 			doServeAsync(request, callback);
 			return;

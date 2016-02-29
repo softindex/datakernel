@@ -16,6 +16,8 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -106,14 +108,14 @@ public class MiddlewareServlet implements AsyncHttpServlet {
 	}
 
 	@Override
-	public void serveAsync(HttpRequest request, Callback callback) throws HttpParseException {
+	public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 		boolean processed = tryServeAsync(request, callback);
 		if (!processed) {
 			callback.onResult(HttpResponse.notFound404());
 		}
 	}
 
-	protected boolean tryServeAsync(HttpRequest request, Callback callback) throws HttpParseException {
+	protected boolean tryServeAsync(HttpRequest request, Callback callback) throws ParseException {
 		int introPosition = request.getPos();
 		String urlPart = request.pollUrlPart();
 		HttpMethod method = request.getMethod();

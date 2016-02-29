@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Rule;
@@ -48,7 +49,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMicroMapping() throws HttpParseException {
+	public void testMicroMapping() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
@@ -93,7 +94,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testLongMapping() throws HttpParseException {
+	public void testLongMapping() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");     // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");    // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/a/c");  // ok
@@ -161,7 +162,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMerge() throws HttpParseException {
+	public void testMerge() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/");         // ok
 		HttpRequest request2 = HttpRequest.get(TEMPLATE + "/a");        // ok
 		HttpRequest request3 = HttpRequest.get(TEMPLATE + "/b");        // ok
@@ -203,7 +204,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testFailMerge() throws HttpParseException {
+	public void testFailMerge() throws ParseException {
 		HttpRequest request = HttpRequest.get(TEMPLATE + "/a/c/f");    // fail
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
@@ -239,7 +240,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testParameter() throws HttpParseException {
+	public void testParameter() throws ParseException {
 		AsyncHttpServlet printParameters = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
@@ -263,7 +264,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testMultiParameters() throws HttpParseException {
+	public void testMultiParameters() throws ParseException {
 		AsyncHttpServlet serveCar = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
@@ -293,7 +294,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testDifferentMethods() throws HttpParseException {
+	public void testDifferentMethods() throws ParseException {
 		HttpRequest request1 = HttpRequest.get(TEMPLATE + "/a/b/c/action");
 		HttpRequest request2 = HttpRequest.post(TEMPLATE + "/a/b/c/action");
 		HttpRequest request3 = HttpRequest.create(HttpMethod.CONNECT).url(TEMPLATE + "/a/b/c/action");
@@ -338,7 +339,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void testDefault() throws HttpParseException {
+	public void testDefault() throws ParseException {
 		AsyncHttpServlet def = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
@@ -367,7 +368,7 @@ public class MiddlewareServletTest {
 	}
 
 	@Test
-	public void test404() throws HttpParseException {
+	public void test404() throws ParseException {
 		AsyncHttpServlet handler = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {

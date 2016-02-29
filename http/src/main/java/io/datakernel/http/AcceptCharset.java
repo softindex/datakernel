@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 
@@ -68,13 +69,13 @@ public final class AcceptCharset {
 		return q;
 	}
 
-	static List<AcceptCharset> parse(byte[] bytes, int pos, int len) throws HttpParseException {
+	static List<AcceptCharset> parse(byte[] bytes, int pos, int len) throws ParseException {
 		List<AcceptCharset> chs = new ArrayList<>();
 		parse(bytes, pos, len, chs);
 		return chs;
 	}
 
-	static void parse(byte[] bytes, int pos, int len, List<AcceptCharset> list) throws HttpParseException {
+	static void parse(byte[] bytes, int pos, int len, List<AcceptCharset> list) throws ParseException {
 		try {
 			int end = pos + len;
 
@@ -116,7 +117,7 @@ public final class AcceptCharset {
 				}
 			}
 		} catch (Exception e) {
-			throw new HttpParseException();
+			throw new ParseException();
 		}
 	}
 

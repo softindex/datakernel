@@ -19,11 +19,15 @@ package io.datakernel.cube.api;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import io.datakernel.aggregation_db.api.QueryException;
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpServlet;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.HttpResponse;
+import io.datakernel.http.HttpServletError;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +47,7 @@ public final class HttpRequestHandler implements RequestHandler {
 	}
 
 	@Override
-	public void process(final HttpRequest httpRequest, final AsyncHttpServlet.Callback resultCallback) throws HttpParseException {
+	public void process(final HttpRequest httpRequest, final AsyncHttpServlet.Callback resultCallback) throws ParseException {
 		try {
 			final Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
 			final ReportingQuery reportingQuery = httpRequestProcessor.apply(httpRequest);

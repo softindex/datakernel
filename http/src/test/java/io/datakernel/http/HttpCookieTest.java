@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
@@ -27,7 +28,7 @@ import static org.junit.Assert.*;
 public class HttpCookieTest {
 
 	@Test
-	public void testParser() throws HttpParseException {
+	public void testParser() throws ParseException {
 		String cookieString = "name1=\"value1\"; expires=Thu, 01 Jan 2015 00:00:00 GMT; Secure; name2=value2; HttpOnly";
 		List<HttpCookie> httpCookies = new ArrayList<>();
 		HttpCookie.parse(cookieString, httpCookies);

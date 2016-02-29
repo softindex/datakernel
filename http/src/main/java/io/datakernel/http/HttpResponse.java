@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.util.ByteBufStrings;
@@ -145,7 +146,7 @@ public final class HttpResponse extends HttpMessage {
 		return code;
 	}
 
-	public int parseAge() {
+	public int parseAge() throws ParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(AGE);
 		if (header != null)
@@ -153,7 +154,7 @@ public final class HttpResponse extends HttpMessage {
 		return 0;
 	}
 
-	public Date parseExpires() throws HttpParseException {
+	public Date parseExpires() throws ParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(EXPIRES);
 		if (header != null)
@@ -161,7 +162,7 @@ public final class HttpResponse extends HttpMessage {
 		return null;
 	}
 
-	public Date parseLastModified() throws HttpParseException {
+	public Date parseLastModified() throws ParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(LAST_MODIFIED);
 		if (header != null)
@@ -170,7 +171,7 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	@Override
-	public List<HttpCookie> parseCookies() throws HttpParseException {
+	public List<HttpCookie> parseCookies() throws ParseException {
 		assert !recycled;
 		List<HttpCookie> cookies = new ArrayList<>();
 		List<Value> headers = getHeaderValues(SET_COOKIE);

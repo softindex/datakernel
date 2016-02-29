@@ -16,6 +16,8 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
+
 import java.util.Map;
 
 import static java.lang.Integer.parseInt;
@@ -46,11 +48,11 @@ public final class HttpUri {
 	 * @param uri URI for parsing
 	 * @return new URI
 	 */
-	static HttpUri parseUrl(String uri) throws HttpParseException {
+	static HttpUri parseUrl(String uri) throws ParseException {
 		try {
 			return new HttpUri(uri, false);
 		} catch (Exception e) {
-			throw new HttpParseException(e);
+			throw new ParseException(e);
 		}
 	}
 
@@ -147,17 +149,17 @@ public final class HttpUri {
 		return query;
 	}
 
-	public String getParameter(String name) throws HttpParseException {
+	public String getParameter(String name) throws ParseException {
 		parseParams();
 		return params.get(name);
 	}
 
-	public Map<String, String> getParameters() throws HttpParseException {
+	public Map<String, String> getParameters() throws ParseException {
 		parseParams();
 		return params;
 	}
 
-	private void parseParams() throws HttpParseException {
+	private void parseParams() throws ParseException {
 		if (params != null)
 			return;
 		params = HttpUtils.parse(query);

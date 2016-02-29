@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 
 import java.util.Date;
@@ -27,7 +28,7 @@ import static io.datakernel.util.ByteBufStrings.*;
 // RFC 6265
 public final class HttpCookie {
 	private abstract static class AvHandler {
-		protected abstract void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws HttpParseException;
+		protected abstract void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException;
 	}
 
 	private static final byte[] EXPIRES = encodeAscii("Expires");
@@ -63,16 +64,16 @@ public final class HttpCookie {
 		this.name = name;
 	}
 
-	static void parse(String cookieString, List<HttpCookie> cookies) throws HttpParseException {
+	static void parse(String cookieString, List<HttpCookie> cookies) throws ParseException {
 		byte[] bytes = encodeAscii(cookieString);
 		parse(bytes, 0, bytes.length, cookies);
 	}
 
-	static void parse(ByteBuf buf, List<HttpCookie> cookies) throws HttpParseException {
+	static void parse(ByteBuf buf, List<HttpCookie> cookies) throws ParseException {
 		parse(buf.array(), buf.position(), buf.limit(), cookies);
 	}
 
-	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws HttpParseException {
+	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws ParseException {
 		try {
 			HttpCookie cookie = new HttpCookie("", "");
 			while (pos < end) {
@@ -109,7 +110,7 @@ public final class HttpCookie {
 				pos = valueEnd + 1;
 			}
 		} catch (Exception e) {
-			throw new HttpParseException();
+			throw new ParseException();
 		}
 	}
 
@@ -141,12 +142,12 @@ public final class HttpCookie {
 		return pos;
 	}
 
-	static void parseSimple(String string, List<HttpCookie> cookies) throws HttpParseException {
+	static void parseSimple(String string, List<HttpCookie> cookies) throws ParseException {
 		byte[] bytes = encodeAscii(string);
 		parseSimple(bytes, 0, bytes.length, cookies);
 	}
 
-	static void parseSimple(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws HttpParseException {
+	static void parseSimple(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws ParseException {
 		try {
 			while (pos < end) {
 				pos = skipSpaces(bytes, pos, end);
@@ -181,7 +182,7 @@ public final class HttpCookie {
 				pos = valueEnd + 1;
 			}
 		} catch (Exception e) {
-			throw new HttpParseException();
+			throw new ParseException();
 		}
 	}
 
@@ -246,14 +247,14 @@ public final class HttpCookie {
 			case EXPIRES_HC:
 				return new AvHandler() {
 					@Override
-					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws HttpParseException {
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
 						cookie.setExpirationDate(parseExpirationDate(bytes, start, end));
 					}
 				};
 			case MAX_AGE_HC:
 				return new AvHandler() {
 					@Override
-					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) {
+					protected void handle(HttpCookie cookie, byte[] bytes, int start, int end) throws ParseException {
 						cookie.setMaxAge(decodeDecimal(bytes, start, end - start));
 					}
 				};
@@ -290,7 +291,7 @@ public final class HttpCookie {
 		return null;
 	}
 
-	private static Date parseExpirationDate(byte[] bytes, int start, int end) throws HttpParseException {
+	private static Date parseExpirationDate(byte[] bytes, int start, int end) throws ParseException {
 		assert end - start <= 29;
 		long timestamp = HttpDate.parse(bytes, start);
 		return new Date(timestamp);

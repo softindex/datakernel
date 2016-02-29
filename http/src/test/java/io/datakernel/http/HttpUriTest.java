@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -90,7 +91,7 @@ public class HttpUriTest {
 	}
 
 	@Test
-	public void testPartialUrl() throws HttpParseException {
+	public void testPartialUrl() throws ParseException {
 		HttpUri url = HttpUri.parseUrl("/path1/path2?aa=bb&zz=a+b");
 		assertTrue(url.isPartial());
 		assertNull(url.getHostAndPort());
@@ -116,7 +117,7 @@ public class HttpUriTest {
 	}
 
 	@Test(expected = IllegalArgumentException.class)
-	public void testInvalidPartialUrl() throws HttpParseException {
+	public void testInvalidPartialUrl() throws ParseException {
 		HttpUri.ofUrl("/path");
 	}
 

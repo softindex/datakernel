@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import org.junit.Test;
 
 import java.nio.charset.Charset;
@@ -42,7 +43,7 @@ public class HttpDateTest {
 	}
 
 	@Test
-	public void testParser() throws HttpParseException {
+	public void testParser() throws ParseException {
 		String date = "Thu, 01 Jan 2015 00:00:00 GMT";
 		long actual = HttpDate.parse(date.getBytes(Charset.forName("ISO-8859-1")), 0);
 
@@ -53,7 +54,7 @@ public class HttpDateTest {
 	}
 
 	@Test
-	public void testFull() throws HttpParseException {
+	public void testFull() throws ParseException {
 		long timestamp = 4073580000000l;
 		byte[] bytes = new byte[29];
 		HttpDate.render(timestamp, bytes, 0);

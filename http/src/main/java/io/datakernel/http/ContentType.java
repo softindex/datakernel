@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 
@@ -44,7 +45,7 @@ public final class ContentType {
 		return lookup(mime, HttpCharset.of(charset));
 	}
 
-	static ContentType parse(byte[] bytes, int pos, int length) throws HttpParseException {
+	static ContentType parse(byte[] bytes, int pos, int length) throws ParseException {
 		try {
 			// parsing media type
 			int end = pos + length;
@@ -84,7 +85,7 @@ public final class ContentType {
 			}
 			return lookup(type, charset);
 		} catch (Exception e) {
-			throw new HttpParseException();
+			throw new ParseException();
 		}
 	}
 

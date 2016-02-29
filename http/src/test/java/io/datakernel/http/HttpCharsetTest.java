@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import org.junit.Test;
 
@@ -58,7 +59,7 @@ public class HttpCharsetTest {
 	}
 
 	@Test
-	public void testAcceptCharset() throws HttpParseException {
+	public void testAcceptCharset() throws ParseException {
 		byte[] bytes = encodeAscii("iso-8859-5, unicode-1-1;q=0.8");
 		List<AcceptCharset> charsets = AcceptCharset.parse(bytes, 0, bytes.length);
 		assertEquals(2, charsets.size());

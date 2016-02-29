@@ -20,12 +20,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.ParseException;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
 import io.datakernel.cube.CubeQuery;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.*;
+import io.datakernel.http.AsyncHttpServer;
+import io.datakernel.http.AsyncHttpServlet;
+import io.datakernel.http.HttpRequest;
+import io.datakernel.http.MiddlewareServlet;
 
 public final class CubeHttpServer {
 	public static final String QUERY_REQUEST_PATH = "/";
@@ -42,7 +45,7 @@ public final class CubeHttpServer {
 
 		servlet.get(QUERY_REQUEST_PATH, new AsyncHttpServlet() {
 			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws HttpParseException {
+			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
 				handler.process(request, callback);
 			}
 		});

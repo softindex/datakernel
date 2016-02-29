@@ -16,6 +16,7 @@
 
 package io.datakernel.util;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 
@@ -306,7 +307,7 @@ public final class ByteBufStrings {
 		return buf;
 	}
 
-	public static int decodeDecimal(byte[] array, int pos, int len) {
+	public static int decodeDecimal(byte[] array, int pos, int len) throws ParseException {
 		int result = 0;
 		int offsetLeft = trimOffsetLeft(array, pos, len);
 		pos = pos + offsetLeft;
@@ -315,7 +316,7 @@ public final class ByteBufStrings {
 		for (int i = pos; i < pos + len; i++) {
 			byte b = (byte) (array[i] - '0');
 			if (b < 0 || b >= 10)
-				throw new RuntimeException("Not decimal value" + new String(array, pos, len));
+				throw new ParseException("Not a decimal value" + new String(array, pos, len));
 			result = b + result * 10;
 		}
 		return result;

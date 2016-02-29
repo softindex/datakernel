@@ -20,6 +20,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
+import io.datakernel.async.ParseException;
 
 import java.lang.reflect.Type;
 import java.util.*;
@@ -66,7 +67,7 @@ public final class ReadSettings<K> {
 		this.extra = extra;
 	}
 
-	public static <K> ReadSettings<K> from(Gson gson, Map<String, String> parameters) {
+	public static <K> ReadSettings<K> from(Gson gson, Map<String, String> parameters) throws ParseException {
 
 		String fieldsParameter = parameters.get("fields");
 		List<String> fields;

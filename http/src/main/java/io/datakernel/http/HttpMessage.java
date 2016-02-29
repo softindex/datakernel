@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 
@@ -115,7 +116,7 @@ public abstract class HttpMessage {
 	}
 
 	// getters
-	public int getContentLength() {
+	public int getContentLength() throws ParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_LENGTH);
 		if (header != null)
@@ -123,7 +124,7 @@ public abstract class HttpMessage {
 		return 0;
 	}
 
-	public ContentType getContentType() throws HttpParseException {
+	public ContentType getContentType() throws ParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(CONTENT_TYPE);
 		if (header != null)
@@ -131,7 +132,7 @@ public abstract class HttpMessage {
 		return null;
 	}
 
-	public Date getDate() throws HttpParseException {
+	public Date getDate() throws ParseException {
 		assert !recycled;
 		HttpHeaders.ValueOfBytes header = (HttpHeaders.ValueOfBytes) getHeaderValue(DATE);
 		if (header != null) {
@@ -256,9 +257,9 @@ public abstract class HttpMessage {
 		return result;
 	}
 
-	protected abstract List<HttpCookie> parseCookies() throws HttpParseException;
+	protected abstract List<HttpCookie> parseCookies() throws ParseException;
 
-	public Map<String, HttpCookie> parseCookiesMap() throws HttpParseException {
+	public Map<String, HttpCookie> parseCookiesMap() throws ParseException {
 		assert !recycled;
 		List<HttpCookie> cookies = parseCookies();
 		LinkedHashMap<String, HttpCookie> map = new LinkedHashMap<>();
@@ -268,7 +269,7 @@ public abstract class HttpMessage {
 		return map;
 	}
 
-	public HttpCookie parseCookie(String name) throws HttpParseException {
+	public HttpCookie parseCookie(String name) throws ParseException {
 		assert !recycled;
 		List<HttpCookie> cookies = parseCookies();
 		for (HttpCookie cookie : cookies) {

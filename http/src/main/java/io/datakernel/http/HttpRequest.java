@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 
@@ -155,7 +156,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	// getters
-	public List<AcceptMediaType> parseAccept() {
+	public List<AcceptMediaType> parseAccept() throws ParseException {
 		assert !recycled;
 		List<AcceptMediaType> list = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT);
@@ -166,7 +167,7 @@ public final class HttpRequest extends HttpMessage {
 		return list;
 	}
 
-	public List<AcceptCharset> parseAcceptCharsets() throws HttpParseException {
+	public List<AcceptCharset> parseAcceptCharsets() throws ParseException {
 		assert !recycled;
 		List<AcceptCharset> charsets = new ArrayList<>();
 		List<Value> headers = getHeaderValues(ACCEPT_CHARSET);
@@ -178,7 +179,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	@Override
-	public List<HttpCookie> parseCookies() throws HttpParseException {
+	public List<HttpCookie> parseCookies() throws ParseException {
 		assert !recycled;
 		List<HttpCookie> cookie = new ArrayList<>();
 		List<Value> headers = getHeaderValues(COOKIE);
@@ -189,7 +190,7 @@ public final class HttpRequest extends HttpMessage {
 		return cookie;
 	}
 
-	public Date parseIfModifiedSince() throws HttpParseException {
+	public Date parseIfModifiedSince() throws ParseException {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_MODIFIED_SINCE);
 		if (header != null)
@@ -197,7 +198,7 @@ public final class HttpRequest extends HttpMessage {
 		return null;
 	}
 
-	public Date parseIfUnModifiedSince() throws HttpParseException {
+	public Date parseIfUnModifiedSince() throws ParseException {
 		assert !recycled;
 		ValueOfBytes header = (ValueOfBytes) getHeaderValue(IF_UNMODIFIED_SINCE);
 		if (header != null)
@@ -206,12 +207,12 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	// internal
-	public Map<String, String> getParameters() throws HttpParseException {
+	public Map<String, String> getParameters() throws ParseException {
 		assert !recycled;
 		return url.getParameters();
 	}
 
-	public Map<String, String> getPostParameters() throws HttpParseException {
+	public Map<String, String> getPostParameters() throws ParseException {
 		assert !recycled;
 		if (method == POST && getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
@@ -225,11 +226,11 @@ public final class HttpRequest extends HttpMessage {
 		}
 	}
 
-	public String getPostParameter(String name) throws HttpParseException {
+	public String getPostParameter(String name) throws ParseException {
 		return getPostParameters().get(name);
 	}
 
-	public String getParameter(String name) throws HttpParseException {
+	public String getParameter(String name) throws ParseException {
 		assert !recycled;
 		return url.getParameter(name);
 	}

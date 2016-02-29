@@ -14,23 +14,21 @@
  * limitations under the License.
  */
 
-package io.datakernel.http;
+package io.datakernel.async;
 
-import io.datakernel.async.SimpleException;
-
-public class HttpParseException extends SimpleException {
-	public HttpParseException() {
+public class ParseException extends SimpleException {
+	public ParseException() {
 	}
 
-	public HttpParseException(String message) {
+	public ParseException(String message) {
 		super(message);
 	}
 
-	public HttpParseException(String message, Throwable cause) {
+	public ParseException(String message, Throwable cause) {
 		super(message, cause);
 	}
 
-	public HttpParseException(Throwable cause) {
+	public ParseException(Throwable cause) {
 		super(cause);
 	}
 }

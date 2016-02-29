@@ -17,7 +17,7 @@
 package io.datakernel.uikernel;
 
 import com.google.gson.Gson;
-import io.datakernel.http.HttpParseException;
+import io.datakernel.async.ParseException;
 import io.datakernel.http.HttpRequest;
 import org.junit.Test;
 
@@ -26,7 +26,7 @@ import static org.junit.Assert.assertTrue;
 
 public class ReadSettingsTest {
 	@Test
-	public void testParseEncoded() throws HttpParseException {
+	public void testParseEncoded() throws ParseException {
 		String query = "fields=%5B%22name%22%2C%22surname%22%2C%22phone%22%2C%22age%22%2C%22gender%22%5D" +
 				"&offset=0" +
 				"&limit=10" +

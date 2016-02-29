@@ -226,8 +226,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		breakEventloop = false;
 
 		timeBeforeSelectorSelect = timeAfterSelectorSelect = 0;
-		while (isKeepAlive()) {
+		while (true) {
 			try {
+				if (!isKeepAlive()) {
+					logger.info("Eventloop {} is complete, exiting...", this);
+					break;
+				}
+
 				tick++;
 
 				updateBusinessLogicTimeStats();
@@ -235,7 +240,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				try {
 					selector.select(getSelectTimeout());
 				} catch (ClosedChannelException e) {
-					logger.error("Selector is closed", e);
+					logger.error("Selector is closed, exiting...", e);
 					break;
 				} catch (IOException e) {
 					recordIoError(e, selector);
@@ -248,15 +253,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 				executeScheduledTasks();
 				executeBackgroundTasks();
 				executeLocalTasks();
-			} catch (Exception e) {
+			} catch (Throwable e) {
 				recordFatalError(e, this);
 			}
 		}
-
+		logger.info("Eventloop {} finished", this);
 		eventloopThread = null;
 		if (selector.keys().isEmpty()) {
 			closeSelector();
-			logger.trace("End of event loop {}", this);
 		} else {
 			logger.warn("Selector is still open, because event loop {} has {} keys", this, selector.keys());
 		}
@@ -868,15 +872,13 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	}
 
 	public void recordFatalError(Throwable e, Object context) {
-		assert inEventloopThread();
-		stats.recordFatalError(e, context, currentTimeMillis());
 		logger.error("Fatal Error in {}", context, e);
+		stats.recordFatalError(e, context, currentTimeMillis());
 	}
 
 	public void recordIoError(Exception e, Object context) {
-		assert inEventloopThread();
-		stats.recordIoError(e, context, currentTimeMillis());
 		logger.warn("IO Error in {}", context, e.toString());
+		stats.recordIoError(e, context, currentTimeMillis());
 	}
 
 	public String getThreadName() {

@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.util.ByteBufStrings;
 
@@ -50,13 +51,13 @@ public final class AcceptMediaType {
 		return new AcceptMediaType(mime, q);
 	}
 
-	static List<AcceptMediaType> parse(byte[] bytes, int pos, int length) {
+	static List<AcceptMediaType> parse(byte[] bytes, int pos, int length) throws ParseException {
 		List<AcceptMediaType> cts = new ArrayList<>();
 		parse(bytes, pos, length, cts);
 		return cts;
 	}
 
-	static void parse(byte[] bytes, int pos, int length, List<AcceptMediaType> list) {
+	static void parse(byte[] bytes, int pos, int length, List<AcceptMediaType> list) throws ParseException {
 		int end = pos + length;
 
 		while (pos < end) {

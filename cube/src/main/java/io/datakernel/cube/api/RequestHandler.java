@@ -16,10 +16,10 @@
 
 package io.datakernel.cube.api;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.http.AsyncHttpServlet;
-import io.datakernel.http.HttpParseException;
 import io.datakernel.http.HttpRequest;
 
 public interface RequestHandler {
-	void process(HttpRequest httpRequest, AsyncHttpServlet.Callback resultCallback) throws HttpParseException;
+	void process(HttpRequest httpRequest, AsyncHttpServlet.Callback resultCallback) throws ParseException;
 }

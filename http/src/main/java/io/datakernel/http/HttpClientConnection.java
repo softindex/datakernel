@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -35,7 +36,7 @@ import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
-	private static final HttpParseException CLOSED_CONNECTION = new HttpParseException("Connection unexpectedly closed");
+	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
@@ -78,9 +79,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	protected void onFirstLine(ByteBuf line) throws HttpParseException {
+	protected void onFirstLine(ByteBuf line) throws ParseException {
 		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1')
-			throw new HttpParseException("Invalid response");
+			throw new ParseException("Invalid response");
 
 		int sp1;
 		if (line.peek(6) == SP) {
@@ -88,7 +89,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
 			sp1 = line.position() + 9;
 		} else
-			throw new HttpParseException("Invalid response: " + new String(line.array(), line.position(), line.remaining()));
+			throw new ParseException("Invalid response: " + new String(line.array(), line.position(), line.remaining()));
 
 		int sp2;
 		for (sp2 = sp1; sp2 < line.limit(); sp2++) {
@@ -97,7 +98,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			}
 		}
 
-		response = HttpResponse.create(decodeDecimal(line.array(), sp1, sp2 - sp1));
+		int statusCode = decodeDecimal(line.array(), sp1, sp2 - sp1);
+		if (!(statusCode >= 100 && statusCode < 600))
+			throw new ParseException("Invalid HTTP Status Code " + statusCode);
+		response = HttpResponse.create(statusCode);
 		if (isNoBodyMessage(response)) {
 			// Reset Content-Length for the case keep-alive connection
 			contentLength = 0;
@@ -121,7 +125,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * @param value  value of header
 	 */
 	@Override
-	protected void onHeader(HttpHeader header, ByteBuf value) throws HttpParseException {
+	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
 		response.addHeader(header, value);
 	}
