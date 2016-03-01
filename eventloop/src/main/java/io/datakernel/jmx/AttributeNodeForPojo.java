@@ -85,6 +85,9 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	private static CompositeType createCompositeType(List<? extends AttributeNode> subNodes) {
+		if (subNodes.size() == 0) {
+			return null;
+		}
 		List<String> itemNames = new ArrayList<>();
 		List<OpenType<?>> itemTypes = new ArrayList<>();
 		for (AttributeNode subNode : subNodes) {

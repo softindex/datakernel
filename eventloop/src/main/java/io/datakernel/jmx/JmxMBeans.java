@@ -110,7 +110,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return null;
 	}
 
-	public static AttributeNodeForPojo createAttributesTree(Class<? extends ConcurrentJmxMBean> clazz) {
+	private static AttributeNodeForPojo createAttributesTree(Class<? extends ConcurrentJmxMBean> clazz) {
 		List<AttributeNode> subNodes = createNodesFor(clazz);
 		AttributeNodeForPojo root = new AttributeNodeForPojo("", new ValueFetcherDirect(), subNodes);
 		return root;
@@ -129,8 +129,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				attrName = attrAnnotationName;
 			}
 			checkArgument(!attrName.contains("_"), "@JmxAttribute with name \"%s\" contains underscores", attrName);
-			Type returnType = getter.getGenericReturnType();
-			attrNodes.add(createAttributeNodeFor(attrName, returnType, getter));
+			Type type = getter.getGenericReturnType();
+			attrNodes.add(createAttributeNodeFor(attrName, type, getter));
 		}
 		return attrNodes;
 	}
@@ -402,6 +402,39 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 		return opkeyToMethod;
 	}
+
+//	private static final class AttributeDescriptor {
+//		private final String name;
+//		private final Type type;
+//		private final Method getter;
+//		private final Method setter;
+//
+//		public AttributeDescriptor(String name, Type type, Method getter, Method setter) {
+//			this.name = name;
+//			this.type = type;
+//			this.getter = getter;
+//			this.setter = setter;
+//		}
+//
+//		public String getName() {
+//			return name;
+//		}
+//
+//		public Type getType() {
+//			return type;
+//		}
+//
+//		public Method getGetter() {
+//			return getter;
+//		}
+//
+//		public Method getSetter() {
+//			return setter;
+//		}
+//	}
+
+//	private static String extractNameFromAttributeGetter(Method getter);
+//	private static String extractNameFromAttributeSetter(Method setter);
 
 	private static final class OperationKey {
 		private final String name;

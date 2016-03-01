@@ -29,16 +29,13 @@ interface AttributeNode {
 
 	Map<String, Object> aggregateAllAttributes(List<?> pojos);
 
-	/**
-	 * Fetch and aggregate attributes with name {@code attrName} from each pojo in {@link List}
-	 *
-	 * @param pojos
-	 * @param attrName
-	 * @return
-	 */
 	Object aggregateAttribute(List<?> pojos, String attrName);
 
 	void refresh(List<?> pojos, long timestamp, double smoothingWindow);
 
 	boolean isRefreshable();
+
+//	boolean isSettable();
+//
+//	void setAttribute(Object value);
 }

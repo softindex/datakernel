@@ -97,7 +97,8 @@ public class EventStatsTest {
 		accumulator.add(stats_2);
 		accumulator.add(stats_3);
 
-		System.out.println(accumulator.getSmoothedRate());
+		double acceptableError = 0.1;
+		assertEquals(30.0, accumulator.getSmoothedRate(), acceptableError);
 	}
 
 	@Test
@@ -152,8 +153,6 @@ public class EventStatsTest {
 		double acceptableError = 2.0;
 		assertEquals(25.0, stats.getSmoothedRate(), acceptableError);
 	}
-
-
 
 	public static int uniformRandom(int min, int max) {
 		return min + Math.abs(RANDOM.nextInt()) % (max - min + 1);
