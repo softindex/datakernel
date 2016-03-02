@@ -866,8 +866,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		stats.resetStats();
 	}
 
-	@JmxAttribute(name = "")
-	public EventloopStats getEventloopStats() {
+	@JmxAttribute
+	public EventloopStats getStats() {
 		return stats;
 	}
 
@@ -976,4 +976,21 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		return future;
 	}
 
+	@JmxAttribute
+	public long getTick() { return tick; }
+
+	@JmxAttribute
+	public int getConcurrentTasks() {return concurrentTasks.size();}
+
+	@JmxAttribute
+	public int getScheduledTasks() { return scheduledTasks.size(); }
+
+	@JmxAttribute
+	public int getBackgroundTasks() {return backgroundTasks.size(); }
+
+	@JmxAttribute
+	public int getLocalTasks() { return localTasks.size(); }
+
+	@JmxAttribute
+	public boolean getKeepAlive() { return keepAlive; }
 }
