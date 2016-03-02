@@ -17,6 +17,8 @@
 package io.datakernel.jmx;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -74,5 +76,15 @@ final class Utils {
 
 	public static <T> boolean hasSingleElement(T[] array) {
 		return array != null && array.length == 1;
+	}
+
+	public static <T> List<T> filterNulls(List<T> src) {
+		List<T> out = new ArrayList<>();
+		for (T item : src) {
+			if (item != null) {
+				out.add(item);
+			}
+		}
+		return out;
 	}
 }

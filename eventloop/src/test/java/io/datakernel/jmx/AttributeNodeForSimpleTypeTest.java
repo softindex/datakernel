@@ -38,7 +38,7 @@ public class AttributeNodeForSimpleTypeTest {
 	ValueFetcher fetcher = context.mock(ValueFetcher.class);
 
 	@Test
-	public void returnsProperOpenType() {
+	public void createsProperOpenType() {
 		AttributeNodeForSimpleType attrNodeInt = new AttributeNodeForSimpleType("intAttr", fetcher, int.class);
 		AttributeNodeForSimpleType attrNodeDouble = new AttributeNodeForSimpleType("doubleAttr", fetcher, double.class);
 		AttributeNodeForSimpleType attrNodeString = new AttributeNodeForSimpleType("stringAttr", fetcher, String.class);
@@ -49,7 +49,7 @@ public class AttributeNodeForSimpleTypeTest {
 	}
 
 	@Test
-	public void returnsProperFlattenedMapWithOneEntry() {
+	public void createsProperFlattenedMapWithOneEntry() {
 		AttributeNodeForSimpleType attrNodeInt = new AttributeNodeForSimpleType("intAttr", fetcher, int.class);
 
 		Map<String, OpenType<?>> map = attrNodeInt.getFlattenedOpenTypes();

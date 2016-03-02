@@ -57,6 +57,7 @@ final class OpenTypeUtils {
 		} else if (openType instanceof TabularType) {
 			return TabularData.class;
 		}
+		// ArrayType is not supported
 		throw new IllegalArgumentException(format("OpenType \"%s\" cannot be converted to Class", openType));
 	}
 

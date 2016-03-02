@@ -24,7 +24,9 @@ import java.util.Objects;
 
 import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
 import static io.datakernel.jmx.OpenTypeUtils.simpleTypeOf;
+import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class AttributeNodeForSimpleType implements AttributeNode {
 	private final String name;
@@ -64,28 +66,19 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
 		checkArgument(attrName.equals(name));
-
-		int firstNotNullSourceIndex = 0;
-		while (true) {
-			if (firstNotNullSourceIndex >= sources.size()) {
-				// if all sources are null, return null
-				return null;
-			}
-			if (sources.get(firstNotNullSourceIndex) != null) {
-				break;
-			}
-			firstNotNullSourceIndex++;
+		checkNotNull(sources);
+		List<?> notNullSources = filterNulls(sources);
+		if (notNullSources.size() == 0) {
+			return null;
 		}
-		Object firstPojo = sources.get(firstNotNullSourceIndex);
+
+		Object firstPojo = notNullSources.get(0);
 		Object firstValue = fetcher.fetchFrom(firstPojo);
-		for (int i = firstNotNullSourceIndex + 1; i < sources.size(); i++) {
-			Object currentPojo = sources.get(i);
-			if (currentPojo != null) {
-				Object currentValue = fetcher.fetchFrom(currentPojo);
-				if (!Objects.equals(firstValue, currentValue)) {
-					// TODO (vmykhalko): maybe throw AggregationException instead ?
-					return null;
-				}
+		for (int i = 1; i < notNullSources.size(); i++) {
+			Object currentPojo = notNullSources.get(i);
+			Object currentValue = fetcher.fetchFrom(currentPojo);
+			if (!Objects.equals(firstValue, currentValue)) {
+				return null;
 			}
 		}
 		return firstValue;

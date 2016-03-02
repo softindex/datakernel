@@ -25,7 +25,9 @@ import java.util.Map;
 
 import static io.datakernel.jmx.OpenTypeUtils.classOf;
 import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
+import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 final class AttributeNodeForList implements AttributeNode {
@@ -61,7 +63,7 @@ final class AttributeNodeForList implements AttributeNode {
 	@Override
 	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		Map<String, Object> attrs = new HashMap<>(1);
-		attrs.put(name, aggregateAttribute(null, sources));
+		attrs.put(name, aggregateAttribute(name, sources));
 		return attrs;
 	}
 
@@ -77,13 +79,16 @@ final class AttributeNodeForList implements AttributeNode {
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		// TODO(vmykhalko): is this check needed ?
-//		checkPojos(pojos);
-		checkArgument(attrName == null || attrName.isEmpty());
+		checkArgument(attrName.equals(name));
+		checkNotNull(sources);
+		List<?> notNullSources = filterNulls(sources);
+		if (notNullSources.size() == 0) {
+			return null;
+		}
 
 		List<Map<String, Object>> attributesFromAllElements = new ArrayList<>();
-		for (Object pojo : sources) {
-			List<?> currentList = (List<?>) fetcher.fetchFrom(pojo);
+		for (Object source : notNullSources) {
+			List<?> currentList = (List<?>) fetcher.fetchFrom(source);
 			if (currentList != null) {
 				for (Object element : currentList) {
 					Map<String, Object> attributesFromElement = subNode.aggregateAllAttributes(asList(element));

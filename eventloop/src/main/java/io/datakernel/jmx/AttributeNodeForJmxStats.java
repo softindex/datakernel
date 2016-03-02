@@ -41,6 +41,7 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 
 	public AttributeNodeForJmxStats(String name, ValueFetcher fetcher, Class<?> jmxStatsClass,
 	                                List<? extends AttributeNode> subNodes) {
+		checkArgument(!name.isEmpty());
 		this.name = name;
 		this.fetcher = checkNotNull(fetcher);
 		this.jmxStatsClass = checkNotNull(jmxStatsClass);
@@ -134,17 +135,15 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		Map<String, Object> allAttrs = aggregateAllAttributes(sources);
-		if (getName().isEmpty()) {
-			return allAttrs.get(attrName);
-		} else {
-			for (String fullAttrName : allAttrs.keySet()) {
-				String subAttrName = fullAttrName.substring(getName().length() + 1);
-				if (subAttrName.equals(attrName)) {
-					return allAttrs.get(fullAttrName);
-				}
+		try {
+			Map<String, Object> allAttrs = aggregateAllAttributes(sources);
+			if (!allAttrs.containsKey(attrName)) {
+				throw new IllegalArgumentException("There is no attribute with name: " + attrName);
 			}
-			throw new RuntimeException("Attribute \"" + attrName + "\" not found");
+			return allAttrs.get(attrName);
+		} catch (Exception e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
 		}
 	}
 

@@ -154,6 +154,31 @@ public class JmxMBeansAttributesTest {
 		assertEquals(5, row_4.get("value"));
 	}
 
+	// test empty names
+	@Test
+	public void handlesEmptyAttributeNamesProperly() throws Exception {
+		MBeanWithEmptyNames mBeanWithEmptyNames =
+				new MBeanWithEmptyNames(
+						new SamplePojo_L_1_1(10),
+						new SamplePojo_L_1_2(
+								new SamplePojo_L_2(25)
+						)
+				);
+
+		DynamicMBean mbean = createDynamicMBeanFor(mBeanWithEmptyNames);
+
+		MBeanAttributeInfo[] attributesInfoArr = mbean.getMBeanInfo().getAttributes();
+		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
+
+		assertEquals(2, nameToAttr.size());
+
+		assertTrue(nameToAttr.containsKey("group_count"));
+		assertTrue(nameToAttr.containsKey("group_total"));
+
+		assertEquals(10, mbean.getAttribute("group_count"));
+		assertEquals(25, mbean.getAttribute("group_total"));
+	}
+
 	/*
 	 * helper methods
  	 */
@@ -293,6 +318,70 @@ public class JmxMBeansAttributesTest {
 		@Override
 		public Executor getJmxExecutor() {
 			return Executors.newSingleThreadExecutor();
+		}
+	}
+
+	public static final class MBeanWithEmptyNames implements ConcurrentJmxMBean {
+		private final SamplePojo_L_1_1 pojo1;
+		private final SamplePojo_L_1_2 pojo2;
+
+		public MBeanWithEmptyNames(SamplePojo_L_1_1 pojo1, SamplePojo_L_1_2 pojo2) {
+			this.pojo1 = pojo1;
+			this.pojo2 = pojo2;
+		}
+
+		@JmxAttribute(name = "group")
+		public SamplePojo_L_1_1 getPojo1() {
+			return pojo1;
+		}
+
+		@JmxAttribute(name = "")
+		public SamplePojo_L_1_2 getPojo2() {
+			return pojo2;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
+		}
+	}
+
+	public static final class SamplePojo_L_1_1 {
+		private final int count;
+
+		public SamplePojo_L_1_1(int count) {
+			this.count = count;
+		}
+
+		@JmxAttribute(name = "count")
+		public int getCount() {
+			return count;
+		}
+	}
+
+	public static final class SamplePojo_L_1_2 {
+		private final SamplePojo_L_2 pojo;
+
+		public SamplePojo_L_1_2(SamplePojo_L_2 pojo) {
+			this.pojo = pojo;
+		}
+
+		@JmxAttribute(name = "group")
+		public SamplePojo_L_2 getPojo() {
+			return pojo;
+		}
+	}
+
+	public static final class SamplePojo_L_2 {
+		private final int total;
+
+		public SamplePojo_L_2(int total) {
+			this.total = total;
+		}
+
+		@JmxAttribute(name = "total")
+		public int getTotal() {
+			return total;
 		}
 	}
 }

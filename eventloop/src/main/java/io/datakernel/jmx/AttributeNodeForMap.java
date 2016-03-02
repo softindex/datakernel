@@ -23,7 +23,9 @@ import java.util.List;
 import java.util.Map;
 
 import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
+import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
 
 final class AttributeNodeForMap implements AttributeNode {
@@ -97,15 +99,18 @@ final class AttributeNodeForMap implements AttributeNode {
 	@Override
 	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		Map<String, Object> attrs = new HashMap<>();
-		attrs.put(getName(), aggregateAttribute(null, sources));
+		attrs.put(getName(), aggregateAttribute(getName(), sources));
 		return attrs;
 	}
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		// TODO(vmykhalko): is this check needed ?
-//		checkPojos(pojos);
-		checkArgument(attrName == null || attrName.isEmpty());
+		checkArgument(attrName.equals(name));
+		checkNotNull(sources);
+		List<?> notNullSources = filterNulls(sources);
+		if (notNullSources.size() == 0) {
+			return null;
+		}
 
 		Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(sources);
 		TabularDataSupport tdSupport = new TabularDataSupport(tabularType);
