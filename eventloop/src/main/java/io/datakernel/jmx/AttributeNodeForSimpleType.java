@@ -55,34 +55,44 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
+	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		Map<String, Object> attrs = new HashMap<>();
-		attrs.put(name, aggregateAttribute(pojos, null));
+		attrs.put(name, aggregateAttribute(name, sources));
 		return attrs;
 	}
 
 	@Override
-	public Object aggregateAttribute(List<?> pojos, String attrName) {
-		// TODO(vmykhalko): is this check needed ?
-//		checkPojos(pojos);
-		checkArgument(attrName == null || attrName.isEmpty());
+	public Object aggregateAttribute(String attrName, List<?> sources) {
+		checkArgument(attrName.equals(name));
 
-		// we ignore attrName here because this is leaf-node
-		Object firstPojo = pojos.get(0);
-		Object firstValue = fetcher.fetchFrom(firstPojo);
-		for (int i = 1; i < pojos.size(); i++) {
-			Object currentPojo = pojos.get(i);
-			Object currentValue = fetcher.fetchFrom(currentPojo);
-			if (!Objects.equals(firstValue, currentValue)) {
-				// TODO (vmykhalko): maybe throw AggregationException instead ?
+		int firstNotNullSourceIndex = 0;
+		while (true) {
+			if (firstNotNullSourceIndex >= sources.size()) {
+				// if all sources are null, return null
 				return null;
+			}
+			if (sources.get(firstNotNullSourceIndex) != null) {
+				break;
+			}
+			firstNotNullSourceIndex++;
+		}
+		Object firstPojo = sources.get(firstNotNullSourceIndex);
+		Object firstValue = fetcher.fetchFrom(firstPojo);
+		for (int i = firstNotNullSourceIndex + 1; i < sources.size(); i++) {
+			Object currentPojo = sources.get(i);
+			if (currentPojo != null) {
+				Object currentValue = fetcher.fetchFrom(currentPojo);
+				if (!Objects.equals(firstValue, currentValue)) {
+					// TODO (vmykhalko): maybe throw AggregationException instead ?
+					return null;
+				}
 			}
 		}
 		return firstValue;
 	}
 
 	@Override
-	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
 		throw new UnsupportedOperationException();
 	}
 

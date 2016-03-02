@@ -95,19 +95,19 @@ final class AttributeNodeForMap implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
+	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		Map<String, Object> attrs = new HashMap<>();
-		attrs.put(getName(), aggregateAttribute(pojos, null));
+		attrs.put(getName(), aggregateAttribute(null, sources));
 		return attrs;
 	}
 
 	@Override
-	public Object aggregateAttribute(List<?> pojos, String attrName) {
+	public Object aggregateAttribute(String attrName, List<?> sources) {
 		// TODO(vmykhalko): is this check needed ?
 //		checkPojos(pojos);
 		checkArgument(attrName == null || attrName.isEmpty());
 
-		Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(pojos);
+		Map<Object, List<Object>> groupedByKey = fetchMapsAndGroupEntriesByKey(sources);
 		TabularDataSupport tdSupport = new TabularDataSupport(tabularType);
 		for (Object key : groupedByKey.keySet()) {
 			List<Object> group = groupedByKey.get(key);
@@ -154,9 +154,9 @@ final class AttributeNodeForMap implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
 		if (refreshable) {
-			for (Object pojo : pojos) {
+			for (Object pojo : targets) {
 				Map<?, ?> map = (Map<?, ?>) fetcher.fetchFrom(pojo);
 				for (Object mapValue : map.values()) {
 					subNode.refresh(asList(mapValue), timestamp, smoothingWindow);

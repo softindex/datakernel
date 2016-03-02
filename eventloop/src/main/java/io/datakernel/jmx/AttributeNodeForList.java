@@ -59,9 +59,9 @@ final class AttributeNodeForList implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
+	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		Map<String, Object> attrs = new HashMap<>(1);
-		attrs.put(name, aggregateAttribute(pojos, null));
+		attrs.put(name, aggregateAttribute(null, sources));
 		return attrs;
 	}
 
@@ -76,13 +76,13 @@ final class AttributeNodeForList implements AttributeNode {
 	}
 
 	@Override
-	public Object aggregateAttribute(List<?> pojos, String attrName) {
+	public Object aggregateAttribute(String attrName, List<?> sources) {
 		// TODO(vmykhalko): is this check needed ?
 //		checkPojos(pojos);
 		checkArgument(attrName == null || attrName.isEmpty());
 
 		List<Map<String, Object>> attributesFromAllElements = new ArrayList<>();
-		for (Object pojo : pojos) {
+		for (Object pojo : sources) {
 			List<?> currentList = (List<?>) fetcher.fetchFrom(pojo);
 			if (currentList != null) {
 				for (Object element : currentList) {
@@ -129,9 +129,9 @@ final class AttributeNodeForList implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
 		if (refreshable) {
-			for (Object pojo : pojos) {
+			for (Object pojo : targets) {
 				List<?> currentList = (List<?>) fetcher.fetchFrom(pojo);
 				if (currentList != null) {
 					for (Object element : currentList) {

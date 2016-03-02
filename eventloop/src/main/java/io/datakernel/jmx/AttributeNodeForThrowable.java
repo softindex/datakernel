@@ -69,24 +69,24 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
+	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		Map<String, Object> attrs = new HashMap<>();
-		attrs.put(name, aggregateAttribute(pojos, null));
+		attrs.put(name, aggregateAttribute(null, sources));
 		return attrs;
 	}
 
 	@Override
-	public Object aggregateAttribute(List<?> pojos, String attrName) {
+	public Object aggregateAttribute(String attrName, List<?> sources) {
 		// TODO(vmykhalko): is this check needed ?
 //		checkPojos(pojos);
 		checkArgument(attrName == null || attrName.isEmpty());
 
 		// we ignore attrName here because this is leaf-node
-		Object firstPojo = pojos.get(0);
+		Object firstPojo = sources.get(0);
 		Throwable firstThrowable = (Throwable) fetcher.fetchFrom(firstPojo);
 		Throwable resultThrowable = firstThrowable;
-		for (int i = 1; i < pojos.size(); i++) {
-			Object currentPojo = pojos.get(i);
+		for (int i = 1; i < sources.size(); i++) {
+			Object currentPojo = sources.get(i);
 			Throwable currentThrowable = (Throwable) fetcher.fetchFrom(currentPojo);
 			if (currentThrowable != null) {
 				resultThrowable = currentThrowable;
@@ -116,7 +116,7 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
 		throw new UnsupportedOperationException();
 	}
 

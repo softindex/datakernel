@@ -125,9 +125,9 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
+	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		Map<String, Object> attrs = new HashMap<>();
-		List<Object> innerPojos = fetchInnerPojos(pojos);
+		List<Object> innerPojos = fetchInnerPojos(sources);
 		String prefix = name.isEmpty() ? "" : name + "_";
 		for (AttributeNode attributeNode : nameToSubNode.values()) {
 			Map<String, Object> subAttrs = attributeNode.aggregateAllAttributes(innerPojos);
@@ -139,9 +139,9 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public Object aggregateAttribute(List<?> pojos, String attrName) {
+	public Object aggregateAttribute(String attrName, List<?> sources) {
 		if (nameToSubNode.size() == 1 && nameToSubNode.containsKey("")) {
-			return nameToSubNode.values().iterator().next().aggregateAttribute(fetchInnerPojos(pojos), attrName);
+			return nameToSubNode.values().iterator().next().aggregateAttribute(attrName, fetchInnerPojos(sources));
 		}
 
 		String attrGroupName = attrName;
@@ -156,7 +156,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 			throw new IllegalArgumentException("There is no attribute with name: " + attrGroupName);
 		}
 
-		return nameToSubNode.get(attrGroupName).aggregateAttribute(fetchInnerPojos(pojos), subAttrName);
+		return nameToSubNode.get(attrGroupName).aggregateAttribute(subAttrName, fetchInnerPojos(sources));
 	}
 
 	private List<Object> fetchInnerPojos(List<?> outerPojos) {
@@ -168,8 +168,8 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
-		List<Object> innerPojos = fetchInnerPojos(pojos);
+	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
+		List<Object> innerPojos = fetchInnerPojos(targets);
 		for (AttributeNode refreshableSubNode : refreshableSubNodes) {
 			refreshableSubNode.refresh(innerPojos, timestamp, smoothingWindow);
 		}

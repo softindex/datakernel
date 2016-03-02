@@ -27,15 +27,15 @@ interface AttributeNode {
 
 	Map<String, OpenType<?>> getFlattenedOpenTypes();
 
-	Map<String, Object> aggregateAllAttributes(List<?> pojos);
+	Map<String, Object> aggregateAllAttributes(List<?> sources);
 
-	Object aggregateAttribute(List<?> pojos, String attrName);
+	Object aggregateAttribute(String attrName, List<?> sources);
 
-	void refresh(List<?> pojos, long timestamp, double smoothingWindow);
+	void refresh(List<?> targets, long timestamp, double smoothingWindow);
 
 	boolean isRefreshable();
 
 //	boolean isSettable();
 //
-//	void setAttribute(Object value);
+//	void setAttribute(List<?> targets, Object value);
 }

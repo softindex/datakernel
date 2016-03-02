@@ -559,7 +559,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				return smoothingWindow;
 			}
 
-			Object attrValue = rootNode.aggregateAttribute(mbeans, attribute);
+			Object attrValue = rootNode.aggregateAttribute(attribute, mbeans);
 
 			// TODO(vmykhalko): is support of AggregationException needed ?
 //			if (attrValue instanceof Exception) {

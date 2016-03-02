@@ -16,9 +16,7 @@
 
 package io.datakernel.jmx;
 
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.*;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -35,37 +33,8 @@ final class Utils {
 		return firstLetter.toLowerCase() + restOfName;
 	}
 
-	public static boolean isGetterOfJmxStats(Method method) {
-		boolean returnsJmxStats = JmxStats.class.isAssignableFrom(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		return isGetter(method) && returnsJmxStats && hasNoArgs;
-	}
-
 	public static boolean isJmxStats(Class<?> clazz) {
 		return JmxStats.class.isAssignableFrom(clazz);
-	}
-
-	public static boolean isGetterOfSimpleType(Method method) {
-		boolean returnsSimpleType = boolean.class.isAssignableFrom(method.getReturnType())
-				|| int.class.isAssignableFrom(method.getReturnType())
-				|| long.class.isAssignableFrom(method.getReturnType())
-				|| double.class.isAssignableFrom(method.getReturnType())
-				|| String.class.isAssignableFrom(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		// TODO(vmykhalko): maybe also condisder "is*" getter for boolean instead of "get*" getter ?
-		return isGetter(method) && returnsSimpleType && hasNoArgs;
-	}
-
-	public static boolean isGetterOfPrimitiveType(Method method) {
-		boolean returnsPrimitive = isPrimitiveType(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		return isGetter(method) && returnsPrimitive && hasNoArgs;
-	}
-
-	public static boolean isGetterOfPrimitiveTypeWrapper(Method method) {
-		boolean returnsPrimitive = isPrimitiveTypeWrapper(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		return isGetter(method) && returnsPrimitive && hasNoArgs;
 	}
 
 	public static boolean isPrimitiveType(Class<?> clazz) {
@@ -94,62 +63,8 @@ final class Utils {
 		return String.class.isAssignableFrom(clazz);
 	}
 
-	public static boolean isList(Class<?> clazz) {
-		return List.class.isAssignableFrom(clazz);
-	}
-
-	public static boolean isArray(Class<?> clazz) {
-		return Object[].class.isAssignableFrom(clazz);
-	}
-
-	public static boolean isMap(Class<?> clazz) {
-		return Map.class.isAssignableFrom(clazz);
-	}
-
 	public static boolean isThrowable(Class<?> clazz) {
 		return Throwable.class.isAssignableFrom(clazz);
-	}
-
-	public static boolean isGetterOfString(Method method) {
-		boolean returnsString = String.class.isAssignableFrom(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		return isGetter(method) && returnsString && hasNoArgs;
-	}
-
-	public static boolean isGetterOfList(Method method) {
-		boolean returnsList = List.class.isAssignableFrom(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		return isGetter(method) && returnsList && hasNoArgs;
-	}
-
-	public static boolean isGetterOfArray(Method method) {
-		boolean returnsArray = Object[].class.isAssignableFrom(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		return isGetter(method) && returnsArray && hasNoArgs;
-	}
-
-	public static boolean isGetterOfMap(Method method) {
-		boolean returnsMap = Map.class.isAssignableFrom(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		return isGetter(method) && returnsMap && hasNoArgs;
-	}
-
-	public static boolean isGetterOfThrowable(Method method) {
-		boolean returnsThrowable = Throwable.class.isAssignableFrom(method.getReturnType());
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		return isGetter(method) && returnsThrowable && hasNoArgs;
-	}
-
-	public static boolean isGetterOfPojo(Method method) {
-		boolean hasNoArgs = method.getParameterTypes().length == 0;
-		boolean doesNotReturnStandardType =
-				!isGetterOfPrimitiveType(method) &&
-						!isGetterOfPrimitiveTypeWrapper(method) &&
-						!isGetterOfString(method) &&
-						!isGetterOfArray(method) &&
-						!isGetterOfList(method) &&
-						!isGetterOfThrowable(method);
-		return isGetter(method) && doesNotReturnStandardType && hasNoArgs;
 	}
 
 	public static boolean isGetter(Method method) {
@@ -157,105 +72,7 @@ final class Utils {
 				&& method.getReturnType() != void.class;
 	}
 
-	public static SortedMap<String, JmxStats<?>> fetchNameToJmxStats(Object objectWithJmxStats) {
-		SortedMap<String, JmxStats<?>> attributeToJmxStats = new TreeMap<>();
-		SortedMap<String, Method> attributeToGetter = fetchNameToJmxStatsGetter(objectWithJmxStats);
-		for (String attrName : attributeToGetter.keySet()) {
-			Method getter = attributeToGetter.get(attrName);
-			JmxStats<?> currentJmxStats;
-			try {
-				currentJmxStats = (JmxStats<?>) getter.invoke(objectWithJmxStats);
-			} catch (IllegalAccessException | InvocationTargetException e) {
-				throw new RuntimeException(e);
-			}
-			attributeToJmxStats.put(attrName, currentJmxStats);
-		}
-		return attributeToJmxStats;
-	}
-
-	public static SortedMap<String, Method> fetchNameToJmxStatsGetter(Object objectWithJmxStats) {
-		SortedMap<String, Method> attributeToJmxStatsGetter = new TreeMap<>();
-		Method[] methods = objectWithJmxStats.getClass().getMethods();
-		for (Method method : methods) {
-			if (isGetterOfJmxStats(method) && method.isAnnotationPresent(JmxAttribute.class)) {
-				String currentJmxStatsName = extractFieldNameFromGetter(method);
-				attributeToJmxStatsGetter.put(currentJmxStatsName, method);
-			}
-		}
-		return attributeToJmxStatsGetter;
-	}
-
-	public static Map<String, Method> fetchNameToSimpleAttributeGetter(Object objectWithJmxStats) {
-		Map<String, Method> attributeToJmxStatsGetter = new HashMap<>();
-		Method[] methods = objectWithJmxStats.getClass().getMethods();
-		for (Method method : methods) {
-			if (isGetterOfSimpleType(method) && method.isAnnotationPresent(JmxAttribute.class)) {
-				String currentAttrName = extractFieldNameFromGetter(method);
-				attributeToJmxStatsGetter.put(currentAttrName, method);
-			}
-		}
-		return attributeToJmxStatsGetter;
-	}
-
-	public static Map<String, Method> fetchNameToListAttributeGetter(Object objectWithJmxStats) {
-		Map<String, Method> attributeToJmxStatsGetter = new HashMap<>();
-		Method[] methods = objectWithJmxStats.getClass().getMethods();
-		for (Method method : methods) {
-			if (isGetterOfList(method) && method.isAnnotationPresent(JmxAttribute.class)) {
-				String currentAttrName = extractFieldNameFromGetter(method);
-				attributeToJmxStatsGetter.put(currentAttrName, method);
-			}
-		}
-		return attributeToJmxStatsGetter;
-	}
-
-	public static Map<String, Method> fetchNameToArrayAttributeGetter(Object objectWithJmxStats) {
-		Map<String, Method> attributeToJmxStatsGetter = new HashMap<>();
-		Method[] methods = objectWithJmxStats.getClass().getMethods();
-		for (Method method : methods) {
-			if (isGetterOfArray(method) && method.isAnnotationPresent(JmxAttribute.class)) {
-				String currentAttrName = extractFieldNameFromGetter(method);
-				attributeToJmxStatsGetter.put(currentAttrName, method);
-			}
-		}
-		return attributeToJmxStatsGetter;
-	}
-
-	public static Map<String, Method> fetchNameToThrowableAttributeGetter(Object objectWithJmxStats) {
-		Map<String, Method> attributeToJmxStatsGetter = new HashMap<>();
-		Method[] methods = objectWithJmxStats.getClass().getMethods();
-		for (Method method : methods) {
-			if (isGetterOfThrowable(method) && method.isAnnotationPresent(JmxAttribute.class)) {
-				String currentAttrName = extractFieldNameFromGetter(method);
-				attributeToJmxStatsGetter.put(currentAttrName, method);
-			}
-		}
-		return attributeToJmxStatsGetter;
-	}
-
-	public static boolean isJmxMBean(Class<?> clazz) {
-		return ConcurrentJmxMBean.class.isAssignableFrom(clazz);
-	}
-
-	public static <T> boolean isEmtpyOrNull(T[] array) {
-		return array == null || array.length == 0;
-	}
-
 	public static <T> boolean hasSingleElement(T[] array) {
 		return array != null && array.length == 1;
-	}
-
-	/**
-	 * If value == null, returns empty string, otherwise return value.toString()
-	 *
-	 * @param value value
-	 * @return returns empty string, if value == null, otherwise return value.toString()
-	 */
-	public static String stringOf(Object value) {
-		if (value != null) {
-			return value.toString();
-		} else {
-			return "";
-		}
 	}
 }

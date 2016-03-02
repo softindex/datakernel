@@ -108,14 +108,14 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 	}
 
 	@Override
-	public Map<String, Object> aggregateAllAttributes(List<?> pojos) {
+	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
 		JmxStats accumulator = null;
 		try {
 			accumulator = (JmxStats) jmxStatsClass.newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}
-		for (Object pojo : pojos) {
+		for (Object pojo : sources) {
 			accumulator.add((JmxStats) fetcher.fetchFrom(pojo));
 		}
 
@@ -133,8 +133,8 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 	}
 
 	@Override
-	public Object aggregateAttribute(List<?> pojos, String attrName) {
-		Map<String, Object> allAttrs = aggregateAllAttributes(pojos);
+	public Object aggregateAttribute(String attrName, List<?> sources) {
+		Map<String, Object> allAttrs = aggregateAllAttributes(sources);
 		if (getName().isEmpty()) {
 			return allAttrs.get(attrName);
 		} else {
@@ -149,8 +149,8 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> pojos, long timestamp, double smoothingWindow) {
-		for (Object pojo : pojos) {
+	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
+		for (Object pojo : targets) {
 			((JmxStats<?>) fetcher.fetchFrom(pojo)).refreshStats(timestamp, smoothingWindow);
 		}
 	}
