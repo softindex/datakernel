@@ -17,11 +17,17 @@
 package io.datakernel.config;
 
 import com.google.common.reflect.TypeToken;
+import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
+import io.datakernel.util.MemSize;
 import io.datakernel.util.Splitter;
+import org.joda.time.Period;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,11 +67,7 @@ public final class ConfigNode implements Config {
 
 	public static ConfigNode defaultInstance(ConfigNode parent) {
 		return new ConfigNode(parent)
-				.registerConverter(String.class, ConfigConverters.ofString())
-				.registerConverter(Integer.class, ConfigConverters.ofInteger())
-				.registerConverter(Long.class, ConfigConverters.ofLong())
-				.registerConverter(Double.class, ConfigConverters.ofDouble())
-				.registerConverter(Boolean.class, ConfigConverters.ofBoolean());
+				.registerDefaultConverters();
 	}
 
 	public static ConfigNode newInstance() {
@@ -74,6 +76,21 @@ public final class ConfigNode implements Config {
 
 	public static ConfigNode newInstance(ConfigNode parent) {
 		return new ConfigNode(parent);
+	}
+
+	public ConfigNode registerDefaultConverters() {
+		registerConverter(String.class, ConfigConverters.ofString());
+		registerConverter(Integer.class, ConfigConverters.ofInteger());
+		registerConverter(Long.class, ConfigConverters.ofLong());
+		registerConverter(Double.class, ConfigConverters.ofDouble());
+		registerConverter(Boolean.class, ConfigConverters.ofBoolean());
+		registerConverter(Period.class, ConfigConverters.ofPeriod());
+		registerConverter(MemSize.class, ConfigConverters.ofMemSize());
+		registerConverter(InetSocketAddress.class, ConfigConverters.ofInetSocketAddress());
+		registerConverter(DatagramSocketSettings.class, ConfigConverters.ofDatagramSocketSettings());
+		registerConverter(ServerSocketSettings.class, ConfigConverters.ofServerSocketSettings());
+		registerConverter(SocketSettings.class, ConfigConverters.ofSocketSettings());
+		return this;
 	}
 
 	public <T> ConfigNode registerConverter(TypeToken<T> type, ConfigConverter<T> converter) {

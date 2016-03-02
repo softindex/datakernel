@@ -40,12 +40,7 @@ public final class PropertiesConfig implements BlockingService, Config {
 	}
 
 	public static PropertiesConfig ofProperties(List<Properties> properties) {
-		return new PropertiesConfig(propertiesToConfig(properties)
-				.registerConverter(Integer.class, ConfigConverters.ofInteger())
-				.registerConverter(Long.class, ConfigConverters.ofLong())
-				.registerConverter(Double.class, ConfigConverters.ofDouble())
-				.registerConverter(String.class, ConfigConverters.ofString())
-				.registerConverter(Boolean.class, ConfigConverters.ofBoolean()));
+		return new PropertiesConfig(propertiesToConfig(properties));
 	}
 
 	public static PropertiesConfig ofProperties(Properties... properties) {
@@ -153,7 +148,7 @@ public final class PropertiesConfig implements BlockingService, Config {
 			}
 			configs.add(root);
 		}
-		return ConfigNode.union(configs);
+		return ConfigNode.union(configs).registerDefaultConverters();
 	}
 
 	private static List<Properties> loadProperties(List<Path> paths) {
