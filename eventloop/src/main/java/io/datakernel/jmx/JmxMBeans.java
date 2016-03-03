@@ -117,10 +117,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static List<AttributeNode> createNodesFor(Class<?> clazz) {
-		List<Method> getters = extractAttributeGettersFrom(clazz);
+		List<AttributeDescriptor> attrDescriptors = fetchAttributeDescriptors(clazz);
 		List<AttributeNode> attrNodes = new ArrayList<>();
-		for (Method getter : getters) {
+		for (AttributeDescriptor descriptor : attrDescriptors) {
+			check(descriptor.getGetter() != null, "@JmxAttribute \"%s\" does not have getter", descriptor.getName());
+
 			String attrName;
+			Method getter = descriptor.getGetter();
 			JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
 			String attrAnnotationName = attrAnnotation.name();
 			if (attrAnnotationName.equals(JmxAttribute.USE_GETTER_NAME)) {
@@ -130,35 +133,92 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 			checkArgument(!attrName.contains("_"), "@JmxAttribute with name \"%s\" contains underscores", attrName);
 			Type type = getter.getGenericReturnType();
-			attrNodes.add(createAttributeNodeFor(attrName, type, getter));
+			attrNodes.add(createAttributeNodeFor(attrName, type, getter, descriptor.getSetter()));
 		}
 		return attrNodes;
 	}
 
-	private static List<Method> extractAttributeGettersFrom(Class<?> clazz) {
-		Method[] methods = clazz.getMethods();
-		List<Method> attrGetters = new ArrayList<>();
-		for (Method method : methods) {
+//	private static List<Method> extractAttributeGettersFrom(Class<?> clazz) {
+//		Method[] methods = clazz.getMethods();
+//		List<Method> attrGetters = new ArrayList<>();
+//		for (Method method : methods) {
+//			if (method.isAnnotationPresent(JmxAttribute.class)) {
+//				if (!isGetter(method)) {
+//					logger.warn(
+//							format("Method \"%s\" in class \"%s\" is annotated with @JmxAttribute but is not getter",
+//									method.getName(), clazz.getName()));
+//					continue;
+//				}
+//				attrGetters.add(method);
+//			}
+//		}
+//		return attrGetters;
+//	}
+
+	private static List<AttributeDescriptor> fetchAttributeDescriptors(Class<?> clazz) {
+		Map<String, AttributeDescriptor> nameToAttr = new HashMap<>();
+		for (Method method : clazz.getMethods()) {
 			if (method.isAnnotationPresent(JmxAttribute.class)) {
-				if (!isGetter(method)) {
-					logger.warn(
-							format("Method \"%s\" in class \"%s\" is annotated with @JmxAttribute but is not getter",
-									method.getName(), clazz.getName()));
-					continue;
+				if (isGetter(method)) {
+					processGetter(nameToAttr, method);
+				} else if (isSetter(method)) {
+					processSetter(nameToAttr, method);
+				} else {
+					throw new RuntimeException(format("Method \"%s\" of class \"%s\" is annotated with @JmxAnnotation "
+							+ "but is neither getter nor setter", method.getName(), method.getClass().getName())
+					);
 				}
-				attrGetters.add(method);
 			}
 		}
-		return attrGetters;
+		return new ArrayList<>(nameToAttr.values());
 	}
 
-	private static AttributeNode createAttributeNodeFor(String attrName, Type attrType, Method getter) {
+	private static void processGetter(Map<String, AttributeDescriptor> nameToAttr, Method getter) {
+		String name = extractFieldNameFromGetter(getter);
+		Type attrType = getter.getReturnType();
+		if (nameToAttr.containsKey(name)) {
+			AttributeDescriptor previousDescriptor = nameToAttr.get(name);
+
+			check(previousDescriptor.getGetter() == null,
+					"More that one getter with name" + getter.getName());
+			check(previousDescriptor.getType().equals(attrType),
+					"Getter with name \"%s\" has different type than appropriate setter", getter.getName());
+
+			nameToAttr.put(name, new AttributeDescriptor(
+					name, attrType, getter, previousDescriptor.getSetter()));
+		} else {
+			nameToAttr.put(name, new AttributeDescriptor(name, attrType, getter, null));
+		}
+	}
+
+	private static void processSetter(Map<String, AttributeDescriptor> nameToAttr, Method setter) {
+		checkArgument(isSimpleType(setter.getParameterTypes()[0]), "Setters are allowed only on SimpleType attributes."
+				+ " But setter \"%s\" is not SimpleType setter", setter.getName());
+
+		String name = extractFieldNameFromSetter(setter);
+		Type attrType = setter.getParameterTypes()[0];
+		if (nameToAttr.containsKey(name)) {
+			AttributeDescriptor previousDescriptor = nameToAttr.get(name);
+
+			check(previousDescriptor.getSetter() == null,
+					"More that one setter with name" + setter.getName());
+			check(previousDescriptor.getType().equals(attrType),
+					"Setter with name \"%s\" has different type than appropriate getter", setter.getName());
+
+			nameToAttr.put(name, new AttributeDescriptor(
+					name, attrType, previousDescriptor.getGetter(), setter));
+		} else {
+			nameToAttr.put(name, new AttributeDescriptor(name, attrType, null, setter));
+		}
+	}
+
+	private static AttributeNode createAttributeNodeFor(String attrName, Type attrType, Method getter, Method setter) {
 		ValueFetcher defaultFetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 		if (attrType instanceof Class) {
 			// 3 cases: simple-type, JmxStats, POJO
 			Class<?> returnClass = (Class<?>) attrType;
 			if (isSimpleType(returnClass)) {
-				return new AttributeNodeForSimpleType(attrName, defaultFetcher, returnClass);
+				return new AttributeNodeForSimpleType(attrName, defaultFetcher, setter, returnClass);
 			} else if (isThrowable(returnClass)) {
 				return new AttributeNodeForThrowable(attrName, defaultFetcher);
 			} else if (returnClass.isArray()) {
@@ -215,7 +275,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	                                                               Type listElementType) {
 		if (listElementType instanceof Class<?>) {
 			String typeName = ((Class<?>) listElementType).getSimpleName();
-			return new AttributeNodeForList(attrName, fetcher, createAttributeNodeFor(typeName, listElementType, null));
+			return new AttributeNodeForList(attrName, fetcher,
+					createAttributeNodeFor(typeName, listElementType, null, null));
 		} else if (listElementType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) listElementType).getRawType()).getSimpleName();
 			return new AttributeNodeForList(attrName, fetcher,
@@ -229,7 +290,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	                                                             Type valueType) {
 		if (valueType instanceof Class<?>) {
 			String typeName = ((Class<?>) valueType).getSimpleName();
-			return new AttributeNodeForMap(attrName, fetcher, createAttributeNodeFor(typeName, valueType, null));
+			return new AttributeNodeForMap(attrName, fetcher,
+					createAttributeNodeFor(typeName, valueType, null, null));
 		} else if (valueType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) valueType).getRawType()).getSimpleName();
 			return new AttributeNodeForMap(attrName, fetcher,
@@ -357,7 +419,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		List<MBeanAttributeInfo> attrsInfo = new ArrayList<>();
 		for (String attrName : nameToType.keySet()) {
 			String attrType = nameToType.get(attrName).getClassName();
-			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType, attrName, true, false, false));
+			boolean writable = rootNode.isSettable(attrName);
+			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType, attrName, true, writable, false));
 		}
 
 		if (refreshEnabled) {
@@ -407,35 +470,35 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return opkeyToMethod;
 	}
 
-//	private static final class AttributeDescriptor {
-//		private final String name;
-//		private final Type type;
-//		private final Method getter;
-//		private final Method setter;
-//
-//		public AttributeDescriptor(String name, Type type, Method getter, Method setter) {
-//			this.name = name;
-//			this.type = type;
-//			this.getter = getter;
-//			this.setter = setter;
-//		}
-//
-//		public String getName() {
-//			return name;
-//		}
-//
-//		public Type getType() {
-//			return type;
-//		}
-//
-//		public Method getGetter() {
-//			return getter;
-//		}
-//
-//		public Method getSetter() {
-//			return setter;
-//		}
-//	}
+	private static final class AttributeDescriptor {
+		private final String name;
+		private final Type type;
+		private final Method getter;
+		private final Method setter;
+
+		public AttributeDescriptor(String name, Type type, Method getter, Method setter) {
+			this.name = name;
+			this.type = type;
+			this.getter = getter;
+			this.setter = setter;
+		}
+
+		public String getName() {
+			return name;
+		}
+
+		public Type getType() {
+			return type;
+		}
+
+		public Method getGetter() {
+			return getter;
+		}
+
+		public Method getSetter() {
+			return setter;
+		}
+	}
 
 //	private static String extractNameFromAttributeGetter(Method getter);
 //	private static String extractNameFromAttributeSetter(Method setter);
@@ -579,6 +642,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		@Override
 		public void setAttribute(final Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
 				MBeanException, ReflectionException {
+			rootNode.setAttribute(attribute.getName(), attribute.getValue(), mbeans);
 		}
 
 		@Override

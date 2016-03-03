@@ -176,4 +176,14 @@ final class AttributeNodeForMap implements AttributeNode {
 	public boolean isRefreshable() {
 		return refreshable;
 	}
+
+	@Override
+	public boolean isSettable(String attrName) {
+		return false;
+	}
+
+	@Override
+	public void setAttribute(String attrName, Object value, List<?> targets) {
+		throw new UnsupportedOperationException();
+	}
 }

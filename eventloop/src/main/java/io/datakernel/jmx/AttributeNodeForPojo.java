@@ -21,7 +21,9 @@ import javax.management.openmbean.OpenDataException;
 import javax.management.openmbean.OpenType;
 import java.util.*;
 
+import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class AttributeNodeForPojo implements AttributeNode {
 	private static final String ATTRIBUTE_NAME_SEPARATOR = "_";
@@ -138,6 +140,12 @@ final class AttributeNodeForPojo implements AttributeNode {
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
+		checkNotNull(sources);
+		List<?> notNullSources = filterNulls(sources);
+		if (notNullSources.size() == 0) {
+			return null;
+		}
+
 		if (!fullNameToNode.containsKey(attrName)) {
 			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
 		}
@@ -145,12 +153,12 @@ final class AttributeNodeForPojo implements AttributeNode {
 		AttributeNode appropriateSubNode = fullNameToNode.get(attrName);
 
 		if (name.isEmpty()) {
-			return appropriateSubNode.aggregateAttribute(attrName, fetchInnerPojos(sources));
+			return appropriateSubNode.aggregateAttribute(attrName, fetchInnerPojos(notNullSources));
 		} else {
 			checkArgument(attrName.contains(ATTRIBUTE_NAME_SEPARATOR));
 			int indexOfSeparator = attrName.indexOf(ATTRIBUTE_NAME_SEPARATOR);
 			String subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
-			return appropriateSubNode.aggregateAttribute(subAttrName, fetchInnerPojos(sources));
+			return appropriateSubNode.aggregateAttribute(subAttrName, fetchInnerPojos(notNullSources));
 		}
 	}
 
@@ -173,5 +181,49 @@ final class AttributeNodeForPojo implements AttributeNode {
 	@Override
 	public boolean isRefreshable() {
 		return refreshable;
+	}
+
+	@Override
+	public boolean isSettable(String attrName) {
+		if (!fullNameToNode.containsKey(attrName)) {
+			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
+		}
+
+		AttributeNode appropriateSubNode = fullNameToNode.get(attrName);
+
+		String subAttrName;
+		if (name.isEmpty()) {
+			subAttrName = attrName;
+		} else {
+			checkArgument(attrName.contains(ATTRIBUTE_NAME_SEPARATOR));
+			int indexOfSeparator = attrName.indexOf(ATTRIBUTE_NAME_SEPARATOR);
+			subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
+		}
+
+		return appropriateSubNode.isSettable(subAttrName);
+	}
+
+	@Override
+	public void setAttribute(String attrName, Object value, List<?> targets) {
+		checkNotNull(targets);
+		List<?> notNullTargets = filterNulls(targets);
+		if (notNullTargets.size() == 0) {
+			return;
+		}
+
+		if (!fullNameToNode.containsKey(attrName)) {
+			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
+		}
+
+		AttributeNode appropriateSubNode = fullNameToNode.get(attrName);
+
+		if (name.isEmpty()) {
+			appropriateSubNode.setAttribute(attrName, value, fetchInnerPojos(targets));
+		} else {
+			checkArgument(attrName.contains(ATTRIBUTE_NAME_SEPARATOR));
+			int indexOfSeparator = attrName.indexOf(ATTRIBUTE_NAME_SEPARATOR);
+			String subAttrName = attrName.substring(indexOfSeparator + 1, attrName.length());
+			appropriateSubNode.setAttribute(subAttrName, value, fetchInnerPojos(targets));
+		}
 	}
 }

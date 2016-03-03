@@ -35,7 +35,7 @@ interface AttributeNode {
 
 	boolean isRefreshable();
 
-//	boolean isSettable();
-//
-//	void setAttribute(List<?> targets, Object value);
+	boolean isSettable(String attrName);
+
+	void setAttribute(String attrName, Object value, List<?> targets);
 }

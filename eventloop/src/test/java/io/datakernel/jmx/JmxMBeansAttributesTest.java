@@ -19,6 +19,7 @@ package io.datakernel.jmx;
 import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Test;
 
+import javax.management.Attribute;
 import javax.management.DynamicMBean;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
@@ -181,8 +182,48 @@ public class JmxMBeansAttributesTest {
 
 	// test setters
 	@Test
-	public void returnsInfoAboutWritableAttributesInMBeanInfo() {
+	public void returnsInfoAboutWritableAttributesInMBeanInfo() throws Exception {
+		MBeanWithSettableAttributes settableMBean = new MBeanWithSettableAttributes(10, 20, "data");
+		DynamicMBean mbean = createDynamicMBeanFor(settableMBean);
 
+		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
+
+		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
+		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(attributesInfoArr);
+
+		assertEquals(3, nameToAttr.size());
+
+		assertTrue(nameToAttr.containsKey("notSettableInt"));
+		assertFalse(nameToAttr.get("notSettableInt").isWritable());
+
+		assertTrue(nameToAttr.containsKey("settableInt"));
+		assertTrue(nameToAttr.get("settableInt").isWritable());
+
+		assertTrue(nameToAttr.containsKey("settableStr"));
+		assertTrue(nameToAttr.get("settableStr").isWritable());
+	}
+
+	@Test
+	public void setsWritableAttributes() throws Exception {
+		MBeanWithSettableAttributes settableMBean = new MBeanWithSettableAttributes(10, 20, "data");
+		DynamicMBean mbean = createDynamicMBeanFor(settableMBean);
+
+		mbean.setAttribute(new Attribute("settableInt", 125));
+		mbean.setAttribute(new Attribute("settableStr", "data-2"));
+
+		assertEquals(125, mbean.getAttribute("settableInt"));
+		assertEquals("data-2", mbean.getAttribute("settableStr"));
+	}
+
+	@Test
+	public void setsWrittableAttributesInInnerPojo() throws Exception {
+		PojoWithSettableAttribute pojo = new PojoWithSettableAttribute(20);
+		MBeanWithPojoWithSettableAttribute settableMBean = new MBeanWithPojoWithSettableAttribute(pojo);
+		DynamicMBean mbean = createDynamicMBeanFor(settableMBean);
+
+		mbean.setAttribute(new Attribute("pojo_sum", 155L));
+
+		assertEquals(155L, mbean.getAttribute("pojo_sum"));
 	}
 
 	/*
@@ -395,12 +436,12 @@ public class JmxMBeansAttributesTest {
 	// classes for setter tests
 	public static final class MBeanWithSettableAttributes implements ConcurrentJmxMBean {
 		private final int notSettableInt;
-		private int settalbeInt;
-		private int settableStr;
+		private int settableInt;
+		private String settableStr;
 
-		public MBeanWithSettableAttributes(int notSettableInt, int settalbeInt, int settableStr) {
+		public MBeanWithSettableAttributes(int notSettableInt, int settableInt, String settableStr) {
 			this.notSettableInt = notSettableInt;
-			this.settalbeInt = settalbeInt;
+			this.settableInt = settableInt;
 			this.settableStr = settableStr;
 		}
 
@@ -410,28 +451,74 @@ public class JmxMBeansAttributesTest {
 		}
 
 		@JmxAttribute
-		public int getSettalbeInt() {
-			return settalbeInt;
+		public int getSettableInt() {
+			return settableInt;
 		}
 
 		@JmxAttribute
-		public int getSettableStr() {
+		public String getSettableStr() {
 			return settableStr;
 		}
 
 		@JmxAttribute
-		public void setSettalbeInt(int settalbeInt) {
-			this.settalbeInt = settalbeInt;
+		public void setSettableInt(int settableInt) {
+			this.settableInt = settableInt;
 		}
 
 		@JmxAttribute
-		public void setSettableStr(int settableStr) {
+		public void setSettableStr(String settableStr) {
 			this.settableStr = settableStr;
 		}
 
 		@Override
 		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+			return new Executor() {
+				@Override
+				public void execute(Runnable command) {
+					command.run();
+				}
+			};
+		}
+	}
+
+	public static final class MBeanWithPojoWithSettableAttribute implements ConcurrentJmxMBean {
+		private final PojoWithSettableAttribute pojo;
+
+		public MBeanWithPojoWithSettableAttribute(PojoWithSettableAttribute pojo) {
+			this.pojo = pojo;
+		}
+
+		@JmxAttribute
+		public PojoWithSettableAttribute getPojo() {
+			return pojo;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return new Executor() {
+				@Override
+				public void execute(Runnable command) {
+					command.run();
+				}
+			};
+		}
+	}
+
+	public static final class PojoWithSettableAttribute {
+		private long sum;
+
+		public PojoWithSettableAttribute(long sum) {
+			this.sum = sum;
+		}
+
+		@JmxAttribute
+		public long getSum() {
+			return sum;
+		}
+
+		@JmxAttribute
+		public void setSum(long sum) {
+			this.sum = sum;
 		}
 	}
 }

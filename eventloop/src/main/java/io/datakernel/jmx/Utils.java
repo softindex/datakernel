@@ -26,15 +26,6 @@ final class Utils {
 
 	private Utils() {}
 
-	public static String extractFieldNameFromGetter(Method method) {
-		checkArgument(isGetter(method));
-
-		String getterName = method.getName();
-		String firstLetter = getterName.substring(3, 4);
-		String restOfName = getterName.substring(4);
-		return firstLetter.toLowerCase() + restOfName;
-	}
-
 	public static boolean isJmxStats(Class<?> clazz) {
 		return JmxStats.class.isAssignableFrom(clazz);
 	}
@@ -72,6 +63,30 @@ final class Utils {
 	public static boolean isGetter(Method method) {
 		return method.getName().length() > 3 && method.getName().startsWith("get")
 				&& method.getReturnType() != void.class;
+	}
+
+	public static String extractFieldNameFromGetter(Method getter) {
+		checkArgument(isGetter(getter));
+
+		String getterName = getter.getName();
+		String firstLetter = getterName.substring(3, 4);
+		String restOfName = getterName.substring(4);
+		return firstLetter.toLowerCase() + restOfName;
+	}
+
+	public static boolean isSetter(Method method) {
+		boolean hasSingleParameter = method.getParameterTypes().length == 1;
+		return method.getName().length() > 3 && method.getName().startsWith("set")
+				&& method.getReturnType() == void.class && hasSingleParameter;
+	}
+
+	public static String extractFieldNameFromSetter(Method setter) {
+		checkArgument(isSetter(setter));
+
+		String setterName = setter.getName();
+		String firstLetter = setterName.substring(3, 4);
+		String restOfName = setterName.substring(4);
+		return firstLetter.toLowerCase() + restOfName;
 	}
 
 	public static <T> boolean hasSingleElement(T[] array) {

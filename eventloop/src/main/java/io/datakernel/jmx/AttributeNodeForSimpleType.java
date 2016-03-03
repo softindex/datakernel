@@ -17,6 +17,8 @@
 package io.datakernel.jmx;
 
 import javax.management.openmbean.OpenType;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,14 +33,16 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 final class AttributeNodeForSimpleType implements AttributeNode {
 	private final String name;
 	private final ValueFetcher fetcher;
+	private final Method setter;
 	private final OpenType<?> openType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 
-	public AttributeNodeForSimpleType(String name, ValueFetcher fetcher, Class<?> attributeType) {
+	public AttributeNodeForSimpleType(String name, ValueFetcher fetcher, Method setter, Class<?> attributeType) {
 		checkArgument(!name.isEmpty(), "SimpleType attribute cannot have empty name");
 
 		this.name = name;
 		this.fetcher = fetcher;
+		this.setter = setter;
 		this.openType = simpleTypeOf(attributeType);
 		this.nameToOpenType = createMapWithOneEntry(name, openType);
 	}
@@ -94,5 +98,30 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	@Override
 	public boolean isRefreshable() {
 		return false;
+	}
+
+	@Override
+	public boolean isSettable(String attrName) {
+		checkArgument(attrName.equals(name));
+
+		return setter != null;
+	}
+
+	@Override
+	public void setAttribute(String attrName, Object value, List<?> targets) {
+		checkArgument(attrName.equals(name));
+		checkNotNull(targets);
+		List<?> notNullTargets = filterNulls(targets);
+		if (notNullTargets.size() == 0) {
+			return;
+		}
+
+		for (Object target : notNullTargets) {
+			try {
+				setter.invoke(target, value);
+			} catch (IllegalAccessException | InvocationTargetException e) {
+				throw new RuntimeException(e);
+			}
+		}
 	}
 }

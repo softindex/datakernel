@@ -130,4 +130,15 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	public boolean isRefreshable() {
 		return false;
 	}
+
+	@Override
+	public boolean isSettable(String attrName) {
+		return false;
+	}
+
+	@Override
+	public void setAttribute(String attrName, Object value, List<?> targets) {
+		throw new UnsupportedOperationException();
+	}
+
 }

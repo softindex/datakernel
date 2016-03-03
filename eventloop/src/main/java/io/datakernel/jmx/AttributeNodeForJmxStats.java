@@ -155,4 +155,15 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 	public boolean isRefreshable() {
 		return true;
 	}
+
+	@Override
+	public boolean isSettable(String attrName) {
+		return false;
+	}
+
+	@Override
+	public void setAttribute(String attrName, Object value, List<?> targets) {
+		// TODO(vmykhalko): maybe there could be nice way to set smoothingWindow ?
+		throw new UnsupportedOperationException();
+	}
 }
