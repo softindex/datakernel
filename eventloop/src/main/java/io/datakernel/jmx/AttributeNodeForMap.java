@@ -42,6 +42,8 @@ final class AttributeNodeForMap implements AttributeNode {
 	private final boolean refreshable;
 
 	public AttributeNodeForMap(String name, ValueFetcher fetcher, AttributeNode subNode) {
+		checkArgument(!name.isEmpty(), "Map attribute cannot have empty name");
+
 		this.name = name;
 		this.tabularType = createTabularType(subNode);
 		this.nameToOpenType = createMapWithOneEntry(name, tabularType);
@@ -128,7 +130,7 @@ final class AttributeNodeForMap implements AttributeNode {
 
 	private CompositeData createTabularDataRow(String key, Map<String, Object> attributes) throws OpenDataException {
 		Map<String, Object> allAttributes = new HashMap<>(attributes.size() + 1);
-		if (attributes.size() == 1 && attributes.keySet().iterator().next().equals("")) {
+		if (attributes.size() == 1 && tabularType.getRowType().containsKey("value")) {
 			allAttributes.put(VALUE_COLUMN_NAME, attributes.values().iterator().next());
 		} else {
 			allAttributes.putAll(attributes);

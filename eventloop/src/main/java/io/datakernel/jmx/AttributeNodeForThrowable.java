@@ -38,6 +38,8 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	private final Map<String, OpenType<?>> nameToOpenType;
 
 	public AttributeNodeForThrowable(String name, ValueFetcher fetcher) {
+		checkArgument(!name.isEmpty(), "Throwable attribute cannot have empty name");
+
 		this.name = name;
 		this.fetcher = fetcher;
 		this.compositeType = compositeTypeForThrowable();

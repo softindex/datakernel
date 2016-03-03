@@ -41,11 +41,12 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 
 	public AttributeNodeForJmxStats(String name, ValueFetcher fetcher, Class<?> jmxStatsClass,
 	                                List<? extends AttributeNode> subNodes) {
-		checkArgument(!name.isEmpty());
+		checkArgument(!name.isEmpty(), "JmxStats attribute cannot have empty name");
+
 		this.name = name;
 		this.fetcher = checkNotNull(fetcher);
 		this.jmxStatsClass = checkNotNull(jmxStatsClass);
-		this.compositeType = createCompositeType(subNodes);
+		this.compositeType = createCompositeType(name, subNodes);
 		this.nameToOpenType = createNameToOpenTypeMap(name, subNodes);
 
 		nameToSubNode = new HashMap<>(subNodes.size());
@@ -71,13 +72,14 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 		return nameToOpenType;
 	}
 
-	private static CompositeType createCompositeType(List<? extends AttributeNode> subNodes) {
+	private static CompositeType createCompositeType(String name, List<? extends AttributeNode> subNodes) {
 		List<String> itemNames = new ArrayList<>();
 		List<OpenType<?>> itemTypes = new ArrayList<>();
+		String prefix = name.isEmpty() ? "" : name + "_";
 		for (AttributeNode subNode : subNodes) {
 			Map<String, OpenType<?>> subNodeFlattenedTypes = subNode.getFlattenedOpenTypes();
 			for (String attrName : subNodeFlattenedTypes.keySet()) {
-				itemNames.add(attrName);
+				itemNames.add(prefix + attrName);
 				itemTypes.add(subNodeFlattenedTypes.get(attrName));
 			}
 		}
@@ -135,16 +137,11 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 
 	@Override
 	public Object aggregateAttribute(String attrName, List<?> sources) {
-		try {
-			Map<String, Object> allAttrs = aggregateAllAttributes(sources);
-			if (!allAttrs.containsKey(attrName)) {
-				throw new IllegalArgumentException("There is no attribute with name: " + attrName);
-			}
-			return allAttrs.get(attrName);
-		} catch (Exception e) {
-			e.printStackTrace();
-			throw new RuntimeException(e);
+		Map<String, Object> allAttrs = aggregateAllAttributes(sources);
+		if (!allAttrs.containsKey(attrName)) {
+			throw new IllegalArgumentException("There is no attribute with name: " + attrName);
 		}
+		return allAttrs.get(attrName);
 	}
 
 	@Override

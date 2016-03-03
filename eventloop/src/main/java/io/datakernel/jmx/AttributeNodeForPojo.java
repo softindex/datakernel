@@ -38,7 +38,7 @@ final class AttributeNodeForPojo implements AttributeNode {
 	public AttributeNodeForPojo(String name, ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
 		this.name = name;
 		this.fetcher = fetcher;
-		this.compositeType = createCompositeType(subNodes);
+		this.compositeType = createCompositeType(name, subNodes);
 		this.nameToOpenType = createNameToOpenTypeMap(name, subNodes);
 		this.refreshableSubNodes = filterRefreshableSubNodes(subNodes);
 		this.refreshable = refreshableSubNodes.size() > 0;
@@ -86,16 +86,17 @@ final class AttributeNodeForPojo implements AttributeNode {
 		return nameToOpenType;
 	}
 
-	private static CompositeType createCompositeType(List<? extends AttributeNode> subNodes) {
+	private static CompositeType createCompositeType(String name, List<? extends AttributeNode> subNodes) {
 		if (subNodes.size() == 0) {
 			return null;
 		}
 		List<String> itemNames = new ArrayList<>();
 		List<OpenType<?>> itemTypes = new ArrayList<>();
+		String prefix = name.isEmpty() ? "" : name + "_";
 		for (AttributeNode subNode : subNodes) {
 			Map<String, OpenType<?>> subNodeFlattenedTypes = subNode.getFlattenedOpenTypes();
 			for (String attrName : subNodeFlattenedTypes.keySet()) {
-				itemNames.add(attrName);
+				itemNames.add(prefix + attrName);
 				itemTypes.add(subNodeFlattenedTypes.get(attrName));
 			}
 		}

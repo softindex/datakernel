@@ -179,6 +179,12 @@ public class JmxMBeansAttributesTest {
 		assertEquals(25, mbean.getAttribute("group_total"));
 	}
 
+	// test setters
+	@Test
+	public void returnsInfoAboutWritableAttributesInMBeanInfo() {
+
+	}
+
 	/*
 	 * helper methods
  	 */
@@ -321,6 +327,7 @@ public class JmxMBeansAttributesTest {
 		}
 	}
 
+	// classes for empty names tests
 	public static final class MBeanWithEmptyNames implements ConcurrentJmxMBean {
 		private final SamplePojo_L_1_1 pojo1;
 		private final SamplePojo_L_1_2 pojo2;
@@ -382,6 +389,49 @@ public class JmxMBeansAttributesTest {
 		@JmxAttribute(name = "total")
 		public int getTotal() {
 			return total;
+		}
+	}
+
+	// classes for setter tests
+	public static final class MBeanWithSettableAttributes implements ConcurrentJmxMBean {
+		private final int notSettableInt;
+		private int settalbeInt;
+		private int settableStr;
+
+		public MBeanWithSettableAttributes(int notSettableInt, int settalbeInt, int settableStr) {
+			this.notSettableInt = notSettableInt;
+			this.settalbeInt = settalbeInt;
+			this.settableStr = settableStr;
+		}
+
+		@JmxAttribute
+		public int getNotSettableInt() {
+			return notSettableInt;
+		}
+
+		@JmxAttribute
+		public int getSettalbeInt() {
+			return settalbeInt;
+		}
+
+		@JmxAttribute
+		public int getSettableStr() {
+			return settableStr;
+		}
+
+		@JmxAttribute
+		public void setSettalbeInt(int settalbeInt) {
+			this.settalbeInt = settalbeInt;
+		}
+
+		@JmxAttribute
+		public void setSettableStr(int settableStr) {
+			this.settableStr = settableStr;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return Executors.newSingleThreadExecutor();
 		}
 	}
 }

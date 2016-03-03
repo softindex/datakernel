@@ -214,10 +214,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static AttributeNodeForList createListAttributeNodeFor(String attrName, ValueFetcher fetcher,
 	                                                               Type listElementType) {
 		if (listElementType instanceof Class<?>) {
-			return new AttributeNodeForList(attrName, fetcher, createAttributeNodeFor("", listElementType, null));
+			String typeName = ((Class<?>) listElementType).getSimpleName();
+			return new AttributeNodeForList(attrName, fetcher, createAttributeNodeFor(typeName, listElementType, null));
 		} else if (listElementType instanceof ParameterizedType) {
+			String typeName = ((Class<?>) ((ParameterizedType) listElementType).getRawType()).getSimpleName();
 			return new AttributeNodeForList(attrName, fetcher,
-					createNodeForParametrizedType("", (ParameterizedType) listElementType, null));
+					createNodeForParametrizedType(typeName, (ParameterizedType) listElementType, null));
 		} else {
 			throw new RuntimeException();
 		}
@@ -226,10 +228,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static AttributeNodeForMap createMapAttributeNodeFor(String attrName, ValueFetcher fetcher,
 	                                                             Type valueType) {
 		if (valueType instanceof Class<?>) {
-			return new AttributeNodeForMap(attrName, fetcher, createAttributeNodeFor("", valueType, null));
+			String typeName = ((Class<?>) valueType).getSimpleName();
+			return new AttributeNodeForMap(attrName, fetcher, createAttributeNodeFor(typeName, valueType, null));
 		} else if (valueType instanceof ParameterizedType) {
+			String typeName = ((Class<?>) ((ParameterizedType) valueType).getRawType()).getSimpleName();
 			return new AttributeNodeForMap(attrName, fetcher,
-					createNodeForParametrizedType("", (ParameterizedType) valueType, null));
+					createNodeForParametrizedType(typeName, (ParameterizedType) valueType, null));
 		} else {
 			throw new RuntimeException();
 		}
