@@ -132,14 +132,14 @@ public abstract class Launcher {
 				logger.info("=== RUNNING APPLICATION");
 				doRun();
 			} catch (Exception e) {
-				logger.error(e.getMessage());
+				logger.error("Application failed", e);
 			} finally {
 				logger.info("=== STOPPING APPLICATION");
 				doStop();
 				releaseLockFile();
 			}
 		} catch (Throwable e) {
-			logger.error("Application failed", e);
+			logger.error("Failed to wire/stop application", e);
 		}
 	}
 
