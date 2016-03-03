@@ -17,9 +17,9 @@
 package io.datakernel.config;
 
 public interface ConfigConverter<T> {
-	T get(ConfigNode config);
+	T get(ConfigTree config);
 
-	T get(ConfigNode config, T defaultValue);
+	T get(ConfigTree config, T defaultValue);
 
-	void set(ConfigNode config, T item);
+	void set(ConfigTree config, T item);
 }

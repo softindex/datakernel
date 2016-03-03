@@ -23,6 +23,7 @@ import com.google.inject.Stage;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
+import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.PropertiesConfig;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
@@ -31,6 +32,8 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
+
+import java.io.IOException;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -83,8 +86,12 @@ public class SimpleHttpLauncherExample extends Launcher {
 
 		@Provides
 		@Singleton
-		Config config() {
-			return PropertiesConfig.ofProperties("configs.properties");
+		Config config() throws IOException {
+			return PropertiesConfig.build()
+					.addFile("configs.properties", false)
+					.registerConfigConverter(String.class, ConfigConverters.ofString())
+					.registerConfigConverter(Integer.class, ConfigConverters.ofInteger())
+					.build();
 		}
 	}
 }

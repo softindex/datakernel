@@ -213,12 +213,12 @@ public final class ConfigConverters {
 		private final ServerSocketSettings defaultValue = new ServerSocketSettings();
 
 		@Override
-		public ServerSocketSettings get(ConfigNode config) {
+		public ServerSocketSettings get(ConfigTree config) {
 			return get(config, defaultValue);
 		}
 
 		@Override
-		public ServerSocketSettings get(ConfigNode config, ServerSocketSettings defaultValue) {
+		public ServerSocketSettings get(ConfigTree config, ServerSocketSettings defaultValue) {
 			ServerSocketSettings result = Preconditions.checkNotNull(defaultValue);
 			result = result.backlog(config.get("backlog", Integer.class, result.getBacklog()));
 			if (config.hasValue("receiveBufferSize"))
@@ -229,7 +229,7 @@ public final class ConfigConverters {
 		}
 
 		@Override
-		public void set(ConfigNode config, ServerSocketSettings item) {
+		public void set(ConfigTree config, ServerSocketSettings item) {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
 			config.set("backlog", Integer.toString(item.getBacklog()));
@@ -244,12 +244,12 @@ public final class ConfigConverters {
 		private final SocketSettings defaultValue = new SocketSettings();
 
 		@Override
-		public SocketSettings get(ConfigNode config) {
+		public SocketSettings get(ConfigTree config) {
 			return get(config, defaultValue);
 		}
 
 		@Override
-		public SocketSettings get(ConfigNode config, SocketSettings defaultValue) {
+		public SocketSettings get(ConfigTree config, SocketSettings defaultValue) {
 			SocketSettings result = Preconditions.checkNotNull(defaultValue);
 			if (config.hasValue("receiveBufferSize"))
 				result = result.receiveBufferSize((int) config.get("receiveBufferSize", MemSize.class).getBytes());
@@ -265,7 +265,7 @@ public final class ConfigConverters {
 		}
 
 		@Override
-		public void set(ConfigNode config, SocketSettings item) {
+		public void set(ConfigTree config, SocketSettings item) {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
 			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());
@@ -280,12 +280,12 @@ public final class ConfigConverters {
 		static ConfigConverterDatagramSocketSettings INSTANCE = new ConfigConverterDatagramSocketSettings();
 
 		@Override
-		public DatagramSocketSettings get(ConfigNode config) {
+		public DatagramSocketSettings get(ConfigTree config) {
 			return get(config, defaultDatagramSocketSettings());
 		}
 
 		@Override
-		public DatagramSocketSettings get(ConfigNode config, DatagramSocketSettings defaultValue) {
+		public DatagramSocketSettings get(ConfigTree config, DatagramSocketSettings defaultValue) {
 			DatagramSocketSettings result = Preconditions.checkNotNull(defaultDatagramSocketSettings());
 			if (config.hasValue("receiveBufferSize"))
 				result = result.receiveBufferSize((int) config.get("receiveBufferSize", MemSize.class).getBytes());
@@ -299,7 +299,7 @@ public final class ConfigConverters {
 		}
 
 		@Override
-		public void set(ConfigNode config, DatagramSocketSettings item) {
+		public void set(ConfigTree config, DatagramSocketSettings item) {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
 			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());

@@ -17,17 +17,11 @@
 package io.datakernel.config;
 
 import com.google.common.reflect.TypeToken;
-import io.datakernel.net.DatagramSocketSettings;
-import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
-import io.datakernel.util.MemSize;
 import io.datakernel.util.Splitter;
-import org.joda.time.Period;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,14 +31,14 @@ import static io.datakernel.util.Preconditions.*;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings("unchecked")
-public final class ConfigNode implements Config {
+public final class ConfigTree implements Config {
 	private Map<TypeToken, ConfigConverter> converters;
 
 	private static final Splitter SPLITTER = Splitter.on('.');
 
-	private final Map<String, ConfigNode> children = new LinkedHashMap<>();
+	private final Map<String, ConfigTree> children = new LinkedHashMap<>();
 
-	private ConfigNode parent;
+	private ConfigTree parent;
 	private String value;
 	private String defaultValue;
 
@@ -52,60 +46,36 @@ public final class ConfigNode implements Config {
 	private boolean modified;
 
 	// creators
-	private ConfigNode() {
+	private ConfigTree() {
 		this(null);
 	}
 
-	private ConfigNode(ConfigNode parent) {
+	private ConfigTree(ConfigTree parent) {
 		this.parent = parent;
 		this.converters = parent == null ? new HashMap<TypeToken, ConfigConverter>() : parent.converters;
 	}
 
-	public static ConfigNode defaultInstance() {
-		return defaultInstance(null);
-	}
-
-	public static ConfigNode defaultInstance(ConfigNode parent) {
-		return new ConfigNode(parent)
-				.registerDefaultConverters();
-	}
-
-	public static ConfigNode newInstance() {
+	public static ConfigTree newInstance() {
 		return newInstance(null);
 	}
 
-	public static ConfigNode newInstance(ConfigNode parent) {
-		return new ConfigNode(parent);
+	public static ConfigTree newInstance(ConfigTree parent) {
+		return new ConfigTree(parent);
 	}
 
-	public ConfigNode registerDefaultConverters() {
-		registerConverter(String.class, ConfigConverters.ofString());
-		registerConverter(Integer.class, ConfigConverters.ofInteger());
-		registerConverter(Long.class, ConfigConverters.ofLong());
-		registerConverter(Double.class, ConfigConverters.ofDouble());
-		registerConverter(Boolean.class, ConfigConverters.ofBoolean());
-		registerConverter(Period.class, ConfigConverters.ofPeriod());
-		registerConverter(MemSize.class, ConfigConverters.ofMemSize());
-		registerConverter(InetSocketAddress.class, ConfigConverters.ofInetSocketAddress());
-		registerConverter(DatagramSocketSettings.class, ConfigConverters.ofDatagramSocketSettings());
-		registerConverter(ServerSocketSettings.class, ConfigConverters.ofServerSocketSettings());
-		registerConverter(SocketSettings.class, ConfigConverters.ofSocketSettings());
-		return this;
-	}
-
-	public <T> ConfigNode registerConverter(TypeToken<T> type, ConfigConverter<T> converter) {
+	public <T> ConfigTree registerConverter(TypeToken<T> type, ConfigConverter<T> converter) {
 		converters.put(type, converter);
 		return this;
 	}
 
-	public <T> ConfigNode registerConverter(Class<T> type, ConfigConverter<T> converter) {
+	public <T> ConfigTree registerConverter(Class<T> type, ConfigConverter<T> converter) {
 		return registerConverter(TypeToken.of(type), converter);
 	}
 
 	// api
 	@Override
 	synchronized public Config getChild(String path) {
-		final ConfigNode config = ensureChild(path);
+		final ConfigTree config = ensureChild(path);
 		config.accessed = true;
 		return config;
 	}
@@ -123,7 +93,7 @@ public final class ConfigNode implements Config {
 	@Override
 	synchronized public <T> T get(TypeToken<T> type) {
 		ConfigConverter<T> converter = converters.get(type);
-		checkNotNull(converter);
+		checkNotNull(converter, "Missing config converter for type: %s", type);
 		return converter.get(this);
 	}
 
@@ -171,20 +141,20 @@ public final class ConfigNode implements Config {
 	public synchronized boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		ConfigNode config = (ConfigNode) o;
+		ConfigTree config = (ConfigTree) o;
 		return Objects.equals(this.children, config.children) &&
 				Objects.equals(this.value, config.value);
 	}
 
 	// util
 	synchronized public boolean hasSection(String path) {
-		ConfigNode child = ensureChild(path);
+		ConfigTree child = ensureChild(path);
 		child.accessed = true;
 		return child.children.size() > 0 && child.value == null;
 	}
 
 	synchronized public boolean hasValue(String path) {
-		ConfigNode child = ensureChild(path);
+		ConfigTree child = ensureChild(path);
 		child.accessed = true;
 		return child.value != null;
 	}
@@ -197,16 +167,16 @@ public final class ConfigNode implements Config {
 		return modified;
 	}
 
-	public static ConfigNode union(ConfigNode... configs) {
+	public static ConfigTree union(ConfigTree... configs) {
 		return union(asList(configs));
 	}
 
-	public static ConfigNode union(Collection<ConfigNode> configs) {
+	public static ConfigTree union(Collection<ConfigTree> configs) {
 		if (configs.size() == 1)
 			return configs.iterator().next();
 
 		Map<TypeToken, ConfigConverter> map = new HashMap<>();
-		for (ConfigNode config : configs) {
+		for (ConfigTree config : configs) {
 			for (Map.Entry<TypeToken, ConfigConverter> entry : config.converters.entrySet()) {
 				ConfigConverter converter = map.get(entry.getKey());
 				if (converter != null) {
@@ -220,12 +190,12 @@ public final class ConfigNode implements Config {
 		return doUnion(null, configs, map);
 	}
 
-	private static ConfigNode doUnion(ConfigNode parent, Collection<ConfigNode> configs, Map<TypeToken, ConfigConverter> map) {
-		ConfigNode result = new ConfigNode(parent);
+	private static ConfigTree doUnion(ConfigTree parent, Collection<ConfigTree> configs, Map<TypeToken, ConfigConverter> map) {
+		ConfigTree result = new ConfigTree(parent);
 		result.converters = map;
-		Map<String, List<ConfigNode>> childrenList = new LinkedHashMap<>();
+		Map<String, List<ConfigTree>> childrenList = new LinkedHashMap<>();
 
-		for (ConfigNode config : configs) {
+		for (ConfigTree config : configs) {
 			if (config.value != null) {
 				if (result.value != null) {
 					throw new IllegalStateException("Multiple values for " + config.getKey());
@@ -233,9 +203,9 @@ public final class ConfigNode implements Config {
 				result.value = config.value;
 			}
 			for (String key : config.children.keySet()) {
-				ConfigNode child = config.children.get(key);
+				ConfigTree child = config.children.get(key);
 				child.converters = map;
-				List<ConfigNode> list = childrenList.get(key);
+				List<ConfigTree> list = childrenList.get(key);
 				if (list == null) {
 					list = new ArrayList<>();
 					childrenList.put(key, list);
@@ -245,22 +215,22 @@ public final class ConfigNode implements Config {
 		}
 
 		for (String key : childrenList.keySet()) {
-			List<ConfigNode> childConfigs = childrenList.get(key);
-			ConfigNode joined = doUnion(result, childConfigs, map);
+			List<ConfigTree> childConfigs = childrenList.get(key);
+			ConfigTree joined = doUnion(result, childConfigs, map);
 			result.children.put(key, joined);
 		}
 
 		return result;
 	}
 
-	public static ConfigNode clone(ConfigNode config) {
+	public static ConfigTree clone(ConfigTree config) {
 		return clone(config, null);
 	}
 
-	private static ConfigNode clone(ConfigNode config, ConfigNode parent) {
-		ConfigNode clone = new ConfigNode(parent);
-		for (Map.Entry<String, ConfigNode> entry : config.children.entrySet()) {
-			ConfigNode clonedConfig = clone(entry.getValue(), clone);
+	private static ConfigTree clone(ConfigTree config, ConfigTree parent) {
+		ConfigTree clone = new ConfigTree(parent);
+		for (Map.Entry<String, ConfigTree> entry : config.children.entrySet()) {
+			ConfigTree clonedConfig = clone(entry.getValue(), clone);
 			clone.children.put(entry.getKey(), clonedConfig);
 		}
 		clone.accessed = config.accessed;
@@ -358,7 +328,7 @@ public final class ConfigNode implements Config {
 			saved = true;
 		}
 		for (String key : children.keySet()) {
-			ConfigNode child = children.get(key);
+			ConfigTree child = children.get(key);
 			boolean savedByChild = child.saveToPropertiesFile(rootLevel ? key : (prefix + "." + key), writer);
 			if (rootLevel && savedByChild) {
 				writer.write('\n');
@@ -418,14 +388,14 @@ public final class ConfigNode implements Config {
 		return sb.toString();
 	}
 
-	public ConfigNode ensureChild(String path) {
+	public ConfigTree ensureChild(String path) {
 		checkArgument(!path.isEmpty(), "Path must not be empty");
-		ConfigNode result = this;
+		ConfigTree result = this;
 		for (String key : SPLITTER.splitToList(path)) {
 			checkState(!key.isEmpty(), "Child path must not be empty: %s", path);
-			ConfigNode child = result.children.get(key);
+			ConfigTree child = result.children.get(key);
 			if (child == null) {
-				child = new ConfigNode(result);
+				child = new ConfigTree(result);
 				result.children.put(key, child);
 			}
 			result = child;
@@ -433,13 +403,13 @@ public final class ConfigNode implements Config {
 		return result;
 	}
 
-	public synchronized boolean contains(ConfigNode config) {
+	public synchronized boolean contains(ConfigTree config) {
 		if (this == config)
 			return true;
 		if (!Objects.equals(this.value, config.value))
 			return false;
-		for (Map.Entry<String, ConfigNode> entry : config.children.entrySet()) {
-			ConfigNode childrenConfig = this.children.get(entry.getKey());
+		for (Map.Entry<String, ConfigTree> entry : config.children.entrySet()) {
+			ConfigTree childrenConfig = this.children.get(entry.getKey());
 			if (childrenConfig == null || !childrenConfig.contains(entry.getValue()))
 				return false;
 		}
@@ -447,8 +417,8 @@ public final class ConfigNode implements Config {
 	}
 
 	public synchronized void removeUnused() {
-		for (Map.Entry<String, ConfigNode> entry : new ArrayList<>(children.entrySet())) {
-			final ConfigNode value = entry.getValue();
+		for (Map.Entry<String, ConfigTree> entry : new ArrayList<>(children.entrySet())) {
+			final ConfigTree value = entry.getValue();
 			if (value.children.isEmpty()) {
 				if (!value.accessed)
 					children.remove(entry.getKey());
@@ -458,12 +428,12 @@ public final class ConfigNode implements Config {
 		}
 	}
 
-	public synchronized boolean update(ConfigNode config) {
+	public synchronized boolean update(ConfigTree config) {
 		this.converters.putAll(config.converters);
 		return doUpdate(config);
 	}
 
-	private boolean doUpdate(ConfigNode config) {
+	private boolean doUpdate(ConfigTree config) {
 		checkNotNull(config);
 		boolean updated = false;
 		if (!Objects.equals(this.value, config.value)) {
@@ -471,11 +441,11 @@ public final class ConfigNode implements Config {
 			updated = true;
 		}
 
-		for (Map.Entry<String, ConfigNode> entry : config.children.entrySet()) {
+		for (Map.Entry<String, ConfigTree> entry : config.children.entrySet()) {
 			String key = entry.getKey();
-			ConfigNode value = entry.getValue();
+			ConfigTree value = entry.getValue();
 			if (!this.children.containsKey(key)) {
-				ConfigNode conf = clone(value);
+				ConfigTree conf = clone(value);
 				conf.converters = this.converters;
 				this.children.put(key, conf);
 				updated = true;
@@ -488,21 +458,21 @@ public final class ConfigNode implements Config {
 		return updated;
 	}
 
-	public synchronized ConfigNode diff(ConfigNode config) {
+	public synchronized ConfigTree diff(ConfigTree config) {
 		checkNotNull(config);
 
-		ConfigNode diff = new ConfigNode();
+		ConfigTree diff = new ConfigTree();
 		if (!Objects.equals(this.value, config.value)) {
 			diff.value = config.value;
 		}
 
-		for (Map.Entry<String, ConfigNode> entry : config.children.entrySet()) {
+		for (Map.Entry<String, ConfigTree> entry : config.children.entrySet()) {
 			String key = entry.getKey();
-			ConfigNode value = entry.getValue();
+			ConfigTree value = entry.getValue();
 			if (!this.children.containsKey(key)) {
 				diff.children.put(key, clone(value));
 			} else {
-				ConfigNode subDiff = this.children.get(key).diff(value);
+				ConfigTree subDiff = this.children.get(key).diff(value);
 				if (subDiff != null)
 					diff.children.put(key, subDiff);
 			}

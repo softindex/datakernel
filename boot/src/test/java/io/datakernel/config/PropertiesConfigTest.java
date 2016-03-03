@@ -19,11 +19,14 @@ package io.datakernel.config;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Properties;
+
+import static io.datakernel.config.ConfigConverters.*;
 
 public class PropertiesConfigTest {
 	@Test
-	public void testConfigs() {
+	public void testConfigs() throws IOException {
 		Properties properties1 = new Properties();
 		properties1.put("port", "1234");
 		properties1.put("msg", "Test phrase");
@@ -34,15 +37,21 @@ public class PropertiesConfigTest {
 		properties2.put("workers", "4");
 		properties2.put("innerClass.field3", "true");
 
-		Config config = PropertiesConfig.ofProperties(properties1, properties2)
-				.registerConverter(TestClass.class, new ConfigConverter<TestClass>() {
+		Config config = PropertiesConfig.build()
+				.addProperties(properties1)
+				.addProperties(properties2)
+				.registerConfigConverter(Integer.class, ofInteger())
+				.registerConfigConverter(Double.class, ofDouble())
+				.registerConfigConverter(Boolean.class, ofBoolean())
+				.registerConfigConverter(String.class, ofString())
+				.registerConfigConverter(TestClass.class, new ConfigConverter<TestClass>() {
 					@Override
-					public TestClass get(ConfigNode config) {
+					public TestClass get(ConfigTree config) {
 						return get(config, null);
 					}
 
 					@Override
-					public TestClass get(ConfigNode config, TestClass defaultValue) {
+					public TestClass get(ConfigTree config, TestClass defaultValue) {
 						TestClass testClass = new TestClass();
 						testClass.field1 = config.get("field1", Integer.class);
 						testClass.field2 = config.get("field2", Double.class);
@@ -51,12 +60,13 @@ public class PropertiesConfigTest {
 					}
 
 					@Override
-					public void set(ConfigNode config, TestClass item) {
+					public void set(ConfigTree config, TestClass item) {
 						config.set("field1", Integer.toString(item.field1));
 						config.set("field2", Double.toString(item.field2));
 						config.set("field3", Boolean.toString(item.field3));
 					}
-				});
+				})
+				.build();
 
 		Assert.assertEquals(1234, (int) config.get("port", Integer.class));
 		Assert.assertEquals("Test phrase", config.get("msg", String.class));
