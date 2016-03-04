@@ -45,10 +45,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final Timer TIMER = new Timer(true);
 	private static final String REFRESH_PERIOD_ATTRIBUTE_NAME = "_refreshPeriod";
 	private static final String SMOOTHING_WINDOW_ATTRIBUTE_NAME = "_smoothingWindow";
-	private static final String SET_REFRESH_PERIOD_OP_NAME = "_setRefreshPeriod";
-	private static final String SET_SMOOTHING_WINDOW_OP_NAME = "_setSmoothingWindow";
-	private static final String SET_REFRESH_PERIOD_PARAMETER_NAME = "period";
-	private static final String SET_SMOOTHING_WINDOW_PARAMETER_NAME = "window";
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
 	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
@@ -328,25 +324,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 		}
 
-		if (enableRefresh) {
-			addOperationsForRefreshControl(operations);
-		}
-
 		return operations.toArray(new MBeanOperationInfo[operations.size()]);
-	}
-
-	private static void addOperationsForRefreshControl(List<MBeanOperationInfo> operations) {
-		MBeanParameterInfo[] setPeriodOpParameters = new MBeanParameterInfo[]{
-				new MBeanParameterInfo(SET_REFRESH_PERIOD_PARAMETER_NAME, "double", "")};
-		MBeanOperationInfo setPeriodOp = new MBeanOperationInfo(
-				SET_REFRESH_PERIOD_OP_NAME, "", setPeriodOpParameters, "void", MBeanOperationInfo.ACTION);
-		operations.add(setPeriodOp);
-
-		MBeanParameterInfo[] setWindowOpParameters = new MBeanParameterInfo[]{
-				new MBeanParameterInfo(SET_SMOOTHING_WINDOW_PARAMETER_NAME, "double", "")};
-		MBeanOperationInfo setSmoothingWindowOp = new MBeanOperationInfo(
-				SET_SMOOTHING_WINDOW_OP_NAME, "", setWindowOpParameters, "void", MBeanOperationInfo.ACTION);
-		operations.add(setSmoothingWindowOp);
 	}
 
 	private static JmxParameter findJmxNamedParameterAnnotation(Annotation[] annotations) {
@@ -415,11 +393,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		List<MBeanAttributeInfo> refreshAttrs = new ArrayList<>();
 		MBeanAttributeInfo refreshPeriodAttr =
 				new MBeanAttributeInfo(REFRESH_PERIOD_ATTRIBUTE_NAME, "double", REFRESH_PERIOD_ATTRIBUTE_NAME,
-						true, false, false);
+						true, true, false);
 		refreshAttrs.add(refreshPeriodAttr);
 		MBeanAttributeInfo smoothingWindowAttr =
 				new MBeanAttributeInfo(SMOOTHING_WINDOW_ATTRIBUTE_NAME, "double", SMOOTHING_WINDOW_ATTRIBUTE_NAME,
-						true, false, false);
+						true, true, false);
 		refreshAttrs.add(smoothingWindowAttr);
 		return refreshAttrs;
 	}
@@ -480,9 +458,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return setter;
 		}
 	}
-
-//	private static String extractNameFromAttributeGetter(Method getter);
-//	private static String extractNameFromAttributeSetter(Method setter);
 
 	private static final class OperationKey {
 		private final String name;
@@ -576,7 +551,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					for (final ConcurrentJmxMBean mbean : mbeans) {
 						final Executor executor = mbean.getJmxExecutor();
 						checkNotNull(executor, "Error. Executor of ConcurrentMBean cannot be null");
-//						final List<? extends JmxStats<?>> statsList = wrapper.getAllJmxStats();
 						executor.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -623,7 +597,19 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		@Override
 		public void setAttribute(final Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
 				MBeanException, ReflectionException {
-			rootNode.setAttribute(attribute.getName(), attribute.getValue(), mbeans);
+			String attrName = attribute.getName();
+			Object attrValue = attribute.getValue();
+			if (attrName.equals(REFRESH_PERIOD_ATTRIBUTE_NAME)) {
+				checkState(refreshEnabled());
+				refreshPeriod = (double) attrValue;
+				return;
+			} else if (attrName.equals(SMOOTHING_WINDOW_ATTRIBUTE_NAME)) {
+				checkState(refreshEnabled());
+				smoothingWindow = (double) attrValue;
+				return;
+			}
+
+			rootNode.setAttribute(attrName, attrValue, mbeans);
 		}
 
 		@Override
@@ -662,9 +648,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		@Override
 		public Object invoke(final String actionName, final Object[] params, final String[] signature)
 				throws MBeanException, ReflectionException {
-			if (execIfActionIsForRefreshControl(actionName, params, signature)) {
-				return null;
-			}
 
 			String[] argTypes = signature != null ? signature : new String[0];
 			final Object[] args = params != null ? params : new Object[0];
@@ -722,26 +705,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 			operationName += ")";
 			return operationName;
-		}
-
-		/**
-		 * Returns true and perform action if action is for refresh control, otherwise just returns false
-		 */
-		private boolean execIfActionIsForRefreshControl(String actionName, Object[] params, String[] signature)
-				throws MBeanException {
-			boolean singleArgDouble =
-					hasSingleElement(signature) && signature[0].equals("double") && params[0] != null;
-			if (actionName.equals(SET_REFRESH_PERIOD_OP_NAME) && singleArgDouble) {
-				checkState(refreshEnabled());
-				refreshPeriod = (double) params[0];
-				return true;
-			} else if (actionName.equals(SET_SMOOTHING_WINDOW_OP_NAME) && singleArgDouble) {
-				checkState(refreshEnabled());
-				smoothingWindow = (double) params[0];
-				return true;
-			}
-
-			return false;
 		}
 
 		@Override
