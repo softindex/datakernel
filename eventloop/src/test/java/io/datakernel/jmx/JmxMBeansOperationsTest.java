@@ -117,6 +117,23 @@ public class JmxMBeansOperationsTest {
 		assertEquals(monitorable_2.getSum(), 10 * 15 + 120 * 150);
 	}
 
+	@Test
+	public void operationReturnsValueInCaseOfSingleMBeanInPool() throws Exception {
+		MBeanWithOperationThatReturnsValue mbeanOpWithValue = new MBeanWithOperationThatReturnsValue();
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mbeanOpWithValue), false);
+
+		assertEquals(15, (int)mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
+	}
+
+	@Test
+	public void operationReturnsNullInCaseOfSeveralMBeansInPool() throws Exception {
+		MBeanWithOperationThatReturnsValue mbeanOpWithValue_1 = new MBeanWithOperationThatReturnsValue();
+		MBeanWithOperationThatReturnsValue mbeanOpWithValue_2 = new MBeanWithOperationThatReturnsValue();
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mbeanOpWithValue_1, mbeanOpWithValue_2), false);
+
+		assertEquals(null, mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
+	}
+
 	// helpers
 	public static class MonitorableStubWithOperations implements ConcurrentJmxMBean {
 		private int count = 0;
@@ -152,7 +169,30 @@ public class JmxMBeansOperationsTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+			return new Executor() {
+				@Override
+				public void execute(Runnable command) {
+					command.run();
+				}
+			};
+		}
+	}
+
+	public static final class MBeanWithOperationThatReturnsValue implements ConcurrentJmxMBean {
+
+		@JmxOperation
+		public int sum(int a, int b) {
+			return a + b;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return new Executor() {
+				@Override
+				public void execute(Runnable command) {
+					command.run();
+				}
+			};
 		}
 	}
 

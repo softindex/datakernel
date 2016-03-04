@@ -698,13 +698,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			final CountDownLatch latch = new CountDownLatch(mbeans.size());
 			final AtomicReference<Exception> exceptionReference = new AtomicReference<>();
 
+
+			final AtomicReference lastValue = new AtomicReference();
 			for (final ConcurrentJmxMBean mbean : mbeans) {
 				Executor executor = mbean.getJmxExecutor();
 				executor.execute((new Runnable() {
 					@Override
 					public void run() {
 						try {
-							opMethod.invoke(mbean, args);
+							Object result = opMethod.invoke(mbean, args);
+							lastValue.set(result);
 							latch.countDown();
 						} catch (Exception e) {
 							exceptionReference.set(e);
@@ -725,8 +728,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				throw new MBeanException(exception);
 			}
 
-			// We don't know how to aggregate return values from several monitorables
-			return null;
+			// We don't know how to aggregate return values if there are several mbeans
+			return mbeans.size() == 1 ? lastValue.get() : null;
 		}
 
 		private static String prettyOperationName(String name, String[] argTypes) {
