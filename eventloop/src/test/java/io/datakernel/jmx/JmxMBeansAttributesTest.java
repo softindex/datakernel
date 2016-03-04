@@ -19,10 +19,7 @@ package io.datakernel.jmx;
 import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Test;
 
-import javax.management.Attribute;
-import javax.management.DynamicMBean;
-import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanInfo;
+import javax.management.*;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 import java.util.ArrayList;
@@ -224,6 +221,24 @@ public class JmxMBeansAttributesTest {
 		mbean.setAttribute(new Attribute("pojo_sum", 155L));
 
 		assertEquals(155L, mbean.getAttribute("pojo_sum"));
+	}
+
+	@Test
+	public void worksProperlyWithIsGetters() throws MBeanException, AttributeNotFoundException, ReflectionException {
+		MBeanWithIsGetter mBeanWithIsGetter = new MBeanWithIsGetter();
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mBeanWithIsGetter), false);
+
+		MBeanInfo mBeanInfo = mbean.getMBeanInfo();
+		MBeanAttributeInfo[] attributesInfoArr = mBeanInfo.getAttributes();
+
+		assertEquals(1, attributesInfoArr.length);
+
+		MBeanAttributeInfo booleanAttr = attributesInfoArr[0];
+		assertEquals("active", booleanAttr.getName());
+		assertTrue(booleanAttr.isReadable());
+		assertTrue(booleanAttr.isIs());
+
+		assertTrue((boolean) mbean.getAttribute("active"));
 	}
 
 	/*
@@ -519,6 +534,24 @@ public class JmxMBeansAttributesTest {
 		@JmxAttribute
 		public void setSum(long sum) {
 			this.sum = sum;
+		}
+	}
+
+	public static final class MBeanWithIsGetter implements ConcurrentJmxMBean {
+
+		@JmxAttribute
+		public boolean isActive() {
+			return true;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return new Executor() {
+				@Override
+				public void execute(Runnable command) {
+					command.run();
+				}
+			};
 		}
 	}
 }

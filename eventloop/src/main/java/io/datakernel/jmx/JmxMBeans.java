@@ -23,8 +23,8 @@ import org.slf4j.LoggerFactory;
 
 import javax.management.*;
 import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -61,7 +61,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	@Override
-	public DynamicMBean createFor(List<? extends ConcurrentJmxMBean> monitorables, boolean enableRefresh) throws ReflectiveOperationException {
+	public DynamicMBean createFor(List<? extends ConcurrentJmxMBean> monitorables, boolean enableRefresh) {
 		checkNotNull(monitorables);
 		checkArgument(monitorables.size() > 0);
 		checkArgument(!listContainsNullValues(monitorables), "monitorable can not be null");
@@ -137,23 +137,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 		return attrNodes;
 	}
-
-//	private static List<Method> extractAttributeGettersFrom(Class<?> clazz) {
-//		Method[] methods = clazz.getMethods();
-//		List<Method> attrGetters = new ArrayList<>();
-//		for (Method method : methods) {
-//			if (method.isAnnotationPresent(JmxAttribute.class)) {
-//				if (!isGetter(method)) {
-//					logger.warn(
-//							format("Method \"%s\" in class \"%s\" is annotated with @JmxAttribute but is not getter",
-//									method.getName(), clazz.getName()));
-//					continue;
-//				}
-//				attrGetters.add(method);
-//			}
-//		}
-//		return attrGetters;
-//	}
 
 	private static List<AttributeDescriptor> fetchAttributeDescriptors(Class<?> clazz) {
 		Map<String, AttributeDescriptor> nameToAttr = new HashMap<>();
@@ -309,8 +292,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 	}
 
-	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> monitorableClass, boolean enableRefresh)
-			throws InvocationTargetException, IllegalAccessException {
+	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> monitorableClass, boolean enableRefresh) {
 		// TODO(vmykhalko): refactor this method
 		List<MBeanOperationInfo> operations = new ArrayList<>();
 		Method[] methods = monitorableClass.getMethods();
@@ -353,8 +335,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return operations.toArray(new MBeanOperationInfo[operations.size()]);
 	}
 
-	private static void addOperationsForRefreshControl(List<MBeanOperationInfo> operations)
-			throws InvocationTargetException, IllegalAccessException {
+	private static void addOperationsForRefreshControl(List<MBeanOperationInfo> operations) {
 		MBeanParameterInfo[] setPeriodOpParameters = new MBeanParameterInfo[]{
 				new MBeanParameterInfo(SET_REFRESH_PERIOD_PARAMETER_NAME, "double", "")};
 		MBeanOperationInfo setPeriodOp = new MBeanOperationInfo(
@@ -399,8 +380,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode,
 	                                         Class<? extends ConcurrentJmxMBean> monitorableClass,
-	                                         boolean enableRefresh)
-			throws InvocationTargetException, IllegalAccessException {
+	                                         boolean enableRefresh) {
 		String monitorableName = "";
 		String monitorableDescription = "";
 		MBeanAttributeInfo[] attributes = fetchAttributesInfo(rootNode, enableRefresh);
@@ -418,9 +398,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Map<String, OpenType<?>> nameToType = rootNode.getFlattenedOpenTypes();
 		List<MBeanAttributeInfo> attrsInfo = new ArrayList<>();
 		for (String attrName : nameToType.keySet()) {
-			String attrType = nameToType.get(attrName).getClassName();
+			OpenType<?> attrType = nameToType.get(attrName);
 			boolean writable = rootNode.isSettable(attrName);
-			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType, attrName, true, writable, false));
+			boolean isIs = attrType.equals(SimpleType.BOOLEAN);
+			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType.getClassName(), attrName, true, writable, isIs));
 		}
 
 		if (refreshEnabled) {
@@ -697,7 +678,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			final CountDownLatch latch = new CountDownLatch(mbeans.size());
 			final AtomicReference<Exception> exceptionReference = new AtomicReference<>();
-
 
 			final AtomicReference lastValue = new AtomicReference();
 			for (final ConcurrentJmxMBean mbean : mbeans) {
