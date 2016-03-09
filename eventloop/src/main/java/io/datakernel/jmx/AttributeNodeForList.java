@@ -23,11 +23,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.jmx.OpenTypeUtils.classOf;
-import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
+import static io.datakernel.jmx.Utils.createMapWithOneEntry;
 import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
 final class AttributeNodeForList implements AttributeNode {
@@ -162,5 +162,33 @@ final class AttributeNodeForList implements AttributeNode {
 	@Override
 	public void setAttribute(String attrName, Object value, List<?> targets) {
 		throw new UnsupportedOperationException();
+	}
+
+	private static Class<?> classOf(OpenType<?> openType) {
+		if (openType.equals(SimpleType.BOOLEAN)) {
+			return boolean.class;
+		} else if (openType.equals(SimpleType.BYTE)) {
+			return byte.class;
+		} else if (openType.equals(SimpleType.SHORT)) {
+			return short.class;
+		} else if (openType.equals(SimpleType.CHARACTER)) {
+			return char.class;
+		} else if (openType.equals(SimpleType.INTEGER)) {
+			return int.class;
+		} else if (openType.equals(SimpleType.LONG)) {
+			return long.class;
+		} else if (openType.equals(SimpleType.FLOAT)) {
+			return float.class;
+		} else if (openType.equals(SimpleType.DOUBLE)) {
+			return double.class;
+		} else if (openType.equals(SimpleType.STRING)) {
+			return String.class;
+		} else if (openType instanceof CompositeType) {
+			return CompositeData.class;
+		} else if (openType instanceof TabularType) {
+			return TabularData.class;
+		}
+		// ArrayType is not supported
+		throw new IllegalArgumentException(format("OpenType \"%s\" cannot be converted to Class", openType));
 	}
 }

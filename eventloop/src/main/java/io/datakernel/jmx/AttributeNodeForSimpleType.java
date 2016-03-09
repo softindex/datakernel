@@ -17,6 +17,7 @@
 package io.datakernel.jmx;
 
 import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -24,8 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
-import static io.datakernel.jmx.OpenTypeUtils.simpleTypeOf;
+import static io.datakernel.jmx.Utils.createMapWithOneEntry;
 import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
@@ -122,6 +122,30 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 			} catch (IllegalAccessException | InvocationTargetException e) {
 				throw new RuntimeException(e);
 			}
+		}
+	}
+
+	private static SimpleType<?> simpleTypeOf(Class<?> clazz) throws IllegalArgumentException {
+		if (clazz == boolean.class || clazz == Boolean.class) {
+			return SimpleType.BOOLEAN;
+		} else if (clazz == byte.class || clazz == Byte.class) {
+			return SimpleType.BYTE;
+		} else if (clazz == short.class || clazz == Short.class) {
+			return SimpleType.SHORT;
+		} else if (clazz == char.class || clazz == Character.class) {
+			return SimpleType.CHARACTER;
+		} else if (clazz == int.class || clazz == Integer.class) {
+			return SimpleType.INTEGER;
+		} else if (clazz == long.class || clazz == Long.class) {
+			return SimpleType.LONG;
+		} else if (clazz == float.class || clazz == Float.class) {
+			return SimpleType.FLOAT;
+		} else if (clazz == double.class || clazz == Double.class) {
+			return SimpleType.DOUBLE;
+		} else if (clazz == String.class) {
+			return SimpleType.STRING;
+		} else {
+			throw new IllegalArgumentException("There is no SimpleType for " + clazz.getName());
 		}
 	}
 }

@@ -34,7 +34,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static io.datakernel.jmx.Utils.*;
+import static io.datakernel.jmx.ReflectionUtils.*;
 import static io.datakernel.util.Preconditions.*;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -621,8 +621,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				try {
 					attrList.add(new Attribute(attrName, getAttribute(attrName)));
 				} catch (AttributeNotFoundException | MBeanException | ReflectionException e) {
-					// TODO(vmykhalko): maybe use another exception handling policy (e.g. logging) ?
-					e.printStackTrace();
+					logger.error("Cannot get attribute: " + attrName, e);
 				}
 			}
 			return attrList;
@@ -638,8 +637,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					resultList.add(new Attribute(attribute.getName(), attribute.getValue()));
 				} catch (AttributeNotFoundException | InvalidAttributeValueException
 						| MBeanException | ReflectionException e) {
-					// TODO(vmykhalko): maybe use another exception handling policy (e.g. logging) ?
-					e.printStackTrace();
+					logger.error("Cannot set attribute: " + attribute.getName(), e);
 				}
 			}
 			return resultList;

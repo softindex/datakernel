@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.jmx.OpenTypeUtils.createMapWithOneEntry;
+import static io.datakernel.jmx.Utils.createMapWithOneEntry;
 import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
