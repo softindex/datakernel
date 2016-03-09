@@ -17,11 +17,17 @@
 package io.datakernel.config;
 
 import com.google.common.reflect.TypeToken;
+import io.datakernel.net.DatagramSocketSettings;
+import io.datakernel.net.ServerSocketSettings;
+import io.datakernel.net.SocketSettings;
+import io.datakernel.util.MemSize;
 import io.datakernel.util.Splitter;
+import org.joda.time.Period;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -52,7 +58,34 @@ public final class ConfigTree implements Config {
 
 	private ConfigTree(ConfigTree parent) {
 		this.parent = parent;
-		this.converters = parent == null ? new HashMap<TypeToken, ConfigConverter>() : parent.converters;
+		this.converters = parent == null ? defaultConverters() : parent.converters;
+	}
+
+	private static Map<TypeToken, ConfigConverter> defaultConverters() {
+		Map<TypeToken, ConfigConverter> defaultConverters = new HashMap<>();
+
+		defaultConverters.put(TypeToken.of(boolean.class), ConfigConverters.ofBoolean());
+		defaultConverters.put(TypeToken.of(Boolean.class), ConfigConverters.ofBoolean());
+
+		defaultConverters.put(TypeToken.of(int.class), ConfigConverters.ofInteger());
+		defaultConverters.put(TypeToken.of(Integer.class), ConfigConverters.ofInteger());
+
+		defaultConverters.put(TypeToken.of(long.class), ConfigConverters.ofLong());
+		defaultConverters.put(TypeToken.of(Long.class), ConfigConverters.ofLong());
+
+		defaultConverters.put(TypeToken.of(double.class), ConfigConverters.ofDouble());
+		defaultConverters.put(TypeToken.of(Double.class), ConfigConverters.ofDouble());
+
+		defaultConverters.put(TypeToken.of(String.class), ConfigConverters.ofString());
+
+		defaultConverters.put(TypeToken.of(DatagramSocketSettings.class), ConfigConverters.ofDatagramSocketSettings());
+		defaultConverters.put(TypeToken.of(InetSocketAddress.class), ConfigConverters.ofInetSocketAddress());
+		defaultConverters.put(TypeToken.of(MemSize.class), ConfigConverters.ofMemSize());
+		defaultConverters.put(TypeToken.of(Period.class), ConfigConverters.ofPeriod());
+		defaultConverters.put(TypeToken.of(ServerSocketSettings.class), ConfigConverters.ofServerSocketSettings());
+		defaultConverters.put(TypeToken.of(SocketSettings.class), ConfigConverters.ofSocketSettings());
+
+		return defaultConverters;
 	}
 
 	public static ConfigTree newInstance() {

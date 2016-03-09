@@ -23,7 +23,6 @@ import com.google.inject.Stage;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
-import io.datakernel.config.ConfigConverters;
 import io.datakernel.config.PropertiesConfig;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
@@ -111,10 +110,8 @@ public class LauncherExample extends Launcher {
 		@Provides
 		@Singleton
 		Config config() throws IOException {
-			return PropertiesConfig.build()
-					.addFile("configs.properties", false)
-					.registerConfigConverter(String.class, ConfigConverters.ofString())
-					.registerConfigConverter(Integer.class, ConfigConverters.ofInteger())
+			return PropertiesConfig.builder()
+					.addFile("configs.properties")
 					.saveConfig("configs-result.properties")
 					.build();
 		}

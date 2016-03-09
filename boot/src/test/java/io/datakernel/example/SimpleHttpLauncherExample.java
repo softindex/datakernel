@@ -87,8 +87,8 @@ public class SimpleHttpLauncherExample extends Launcher {
 		@Provides
 		@Singleton
 		Config config() throws IOException {
-			return PropertiesConfig.build()
-					.addFile("configs.properties", false)
+			return PropertiesConfig.builder()
+					.addFile("configs.properties")
 					.registerConfigConverter(String.class, ConfigConverters.ofString())
 					.registerConfigConverter(Integer.class, ConfigConverters.ofInteger())
 					.build();

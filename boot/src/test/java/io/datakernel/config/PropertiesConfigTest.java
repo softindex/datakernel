@@ -37,7 +37,7 @@ public class PropertiesConfigTest {
 		properties2.put("workers", "4");
 		properties2.put("innerClass.field3", "true");
 
-		Config config = PropertiesConfig.build()
+		Config config = PropertiesConfig.builder()
 				.addProperties(properties1)
 				.addProperties(properties2)
 				.registerConfigConverter(Integer.class, ofInteger())

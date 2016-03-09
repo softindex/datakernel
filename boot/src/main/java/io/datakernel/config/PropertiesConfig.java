@@ -30,8 +30,7 @@ import java.util.*;
 
 public final class PropertiesConfig implements BlockingService, Config {
 	public static class Builder {
-		private List<Path> required = new ArrayList<>();
-		private List<Path> optional = new ArrayList<>();
+		private List<Path> files = new ArrayList<>();
 		private List<Properties> properties = new ArrayList<>();
 		private Map<TypeToken, ConfigConverter> converters = new HashMap<>();
 		private Path saveConfigPath;
@@ -40,13 +39,13 @@ public final class PropertiesConfig implements BlockingService, Config {
 
 		}
 
-		public Builder addFile(String path, boolean required) {
-			this.required.add(Paths.get(path));
+		public Builder addFile(String path) {
+			this.files.add(Paths.get(path));
 			return this;
 		}
 
-		public Builder addFile(Path path, boolean required) {
-			this.required.add(path);
+		public Builder addFile(Path path) {
+			this.files.add(path);
 			return this;
 		}
 
@@ -76,8 +75,7 @@ public final class PropertiesConfig implements BlockingService, Config {
 		}
 
 		public PropertiesConfig build() throws IOException {
-			loadProperties(required, true);
-			loadProperties(optional, false);
+			loadProperties(files);
 
 			ConfigTree root = buildTree();
 
@@ -88,18 +86,14 @@ public final class PropertiesConfig implements BlockingService, Config {
 			return new PropertiesConfig(root, saveConfigPath);
 		}
 
-		private void loadProperties(List<Path> src, boolean required) throws IOException {
+		private void loadProperties(List<Path> src) throws IOException {
 			for (Path path : src) {
 				try (InputStream fis = Files.newInputStream(path)) {
 					Properties property = new Properties();
 					property.load(fis);
 					properties.add(property);
 				} catch (IOException e) {
-					if (required) {
-						throw new IOException("Can't load required properties file", e);
-					} else {
-						logger.warn("Can't load optional properties file: {}", path);
-					}
+					logger.warn("Can't load properties file: {}", path);
 				}
 			}
 		}
@@ -128,7 +122,7 @@ public final class PropertiesConfig implements BlockingService, Config {
 		this.saveConfigPath = saveConfigPath;
 	}
 
-	public static Builder build() {
+	public static Builder builder() {
 		return new Builder();
 	}
 
