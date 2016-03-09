@@ -40,7 +40,6 @@ import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyList;
 
 public final class ConfigConverters {
-
 	private static final class ConfigConverterString extends ConfigConverterSingle<String> {
 		static ConfigConverterString INSTANCE = new ConfigConverterString();
 
@@ -214,23 +213,23 @@ public final class ConfigConverters {
 		private final ServerSocketSettings defaultValue = new ServerSocketSettings();
 
 		@Override
-		public ServerSocketSettings get(Config config) {
+		public ServerSocketSettings get(ConfigTree config) {
 			return get(config, defaultValue);
 		}
 
 		@Override
-		public ServerSocketSettings get(Config config, ServerSocketSettings defaultValue) {
+		public ServerSocketSettings get(ConfigTree config, ServerSocketSettings defaultValue) {
 			ServerSocketSettings result = Preconditions.checkNotNull(defaultValue);
-			result = result.backlog(config.get(ofInteger(), "backlog", result.getBacklog()));
+			result = result.backlog(config.get("backlog", Integer.class, result.getBacklog()));
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize(config.get(ofInteger(), "receiveBufferSize"));
+				result = result.receiveBufferSize(config.get("receiveBufferSize", Integer.class));
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+				result = result.reuseAddress(config.get("reuseAddress", Boolean.class));
 			return result;
 		}
 
 		@Override
-		public void set(Config config, ServerSocketSettings item) {
+		public void set(ConfigTree config, ServerSocketSettings item) {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
 			config.set("backlog", Integer.toString(item.getBacklog()));
@@ -245,28 +244,28 @@ public final class ConfigConverters {
 		private final SocketSettings defaultValue = new SocketSettings();
 
 		@Override
-		public SocketSettings get(Config config) {
+		public SocketSettings get(ConfigTree config) {
 			return get(config, defaultValue);
 		}
 
 		@Override
-		public SocketSettings get(Config config, SocketSettings defaultValue) {
+		public SocketSettings get(ConfigTree config, SocketSettings defaultValue) {
 			SocketSettings result = Preconditions.checkNotNull(defaultValue);
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
+				result = result.receiveBufferSize((int) config.get("receiveBufferSize", MemSize.class).getBytes());
 			if (config.hasValue("sendBufferSize"))
-				result = result.sendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
+				result = result.sendBufferSize((int) config.get("sendBufferSize", MemSize.class).getBytes());
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+				result = result.reuseAddress(config.get("reuseAddress", Boolean.class));
 			if (config.hasValue("keepAlive"))
-				result = result.keepAlive(config.get(ofBoolean(), "keepAlive"));
+				result = result.keepAlive(config.get("keepAlive", Boolean.class));
 			if (config.hasValue("tcpNoDelay"))
-				result = result.tcpNoDelay(config.get(ofBoolean(), "tcpNoDelay"));
+				result = result.tcpNoDelay(config.get("tcpNoDelay", Boolean.class));
 			return result;
 		}
 
 		@Override
-		public void set(Config config, SocketSettings item) {
+		public void set(ConfigTree config, SocketSettings item) {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
 			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());
@@ -281,26 +280,26 @@ public final class ConfigConverters {
 		static ConfigConverterDatagramSocketSettings INSTANCE = new ConfigConverterDatagramSocketSettings();
 
 		@Override
-		public DatagramSocketSettings get(Config config) {
+		public DatagramSocketSettings get(ConfigTree config) {
 			return get(config, defaultDatagramSocketSettings());
 		}
 
 		@Override
-		public DatagramSocketSettings get(Config config, DatagramSocketSettings defaultValue) {
+		public DatagramSocketSettings get(ConfigTree config, DatagramSocketSettings defaultValue) {
 			DatagramSocketSettings result = Preconditions.checkNotNull(defaultDatagramSocketSettings());
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
+				result = result.receiveBufferSize((int) config.get("receiveBufferSize", MemSize.class).getBytes());
 			if (config.hasValue("sendBufferSize"))
-				result = result.sendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
+				result = result.sendBufferSize((int) config.get("sendBufferSize", MemSize.class).getBytes());
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
+				result = result.reuseAddress(config.get("reuseAddress", Boolean.class));
 			if (config.hasValue("broadcast"))
-				result = result.broadcast(config.get(ofBoolean(), "broadcast"));
+				result = result.broadcast(config.get("broadcast", Boolean.class));
 			return result;
 		}
 
 		@Override
-		public void set(Config config, DatagramSocketSettings item) {
+		public void set(ConfigTree config, DatagramSocketSettings item) {
 			Preconditions.checkNotNull(config);
 			Preconditions.checkNotNull(item);
 			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());

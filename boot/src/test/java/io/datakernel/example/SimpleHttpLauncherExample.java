@@ -20,9 +20,11 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.Stage;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
 import io.datakernel.config.ConfigConverters;
+import io.datakernel.config.PropertiesConfig;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
 import io.datakernel.http.AsyncHttpServlet;
@@ -30,6 +32,9 @@ import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.launcher.Launcher;
 import io.datakernel.service.ServiceGraphModule;
+import jdk.nashorn.internal.codegen.CompilerConstants;
+
+import java.io.IOException;
 
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -40,7 +45,6 @@ public class SimpleHttpLauncherExample extends Launcher {
 
 	@Override
 	protected void configure() {
-		configs("launcher-example.properties");
 		injector(Stage.PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
 				new LauncherExampleModule());
@@ -61,25 +65,34 @@ public class SimpleHttpLauncherExample extends Launcher {
 
 		@Provides
 		@Singleton
-		Eventloop workerEventloop() {
+		Eventloop eventloop() {
 			return new Eventloop();
 		}
 
 		@Provides
 		@Singleton
-		AsyncHttpServer workerHttpServer(Eventloop eventloop, final Config config) {
+		AsyncHttpServer httpServer(Eventloop eventloop, final Config config) {
 			AsyncHttpServer httpServer = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request, Callback callback) {
-					String responseMessage = config.get(ConfigConverters.ofString(), "responseMessage", DEFAULT_RESPONSE_MESSAGE);
+					String responseMessage = config.get("responseMessage", String.class, DEFAULT_RESPONSE_MESSAGE);
 					HttpResponse content = HttpResponse.create().body(ByteBuf.wrap(encodeAscii(
 							"Message: " + responseMessage + "\n")));
 					callback.onResult(content);
 				}
 			});
-			int port = config.get(ConfigConverters.ofInteger(), "port", DEFAULT_PORT);
+			int port = config.get("port", Integer.class, DEFAULT_PORT);
 			return httpServer.setListenPort(port);
 		}
 
+		@Provides
+		@Singleton
+		Config config() throws IOException {
+			return PropertiesConfig.builder()
+					.addFile("configs.properties")
+					.registerConfigConverter(String.class, ConfigConverters.ofString())
+					.registerConfigConverter(Integer.class, ConfigConverters.ofInteger())
+					.build();
+		}
 	}
 }

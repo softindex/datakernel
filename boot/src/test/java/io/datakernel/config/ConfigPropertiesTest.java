@@ -18,36 +18,37 @@ package io.datakernel.config;
 
 import org.junit.Test;
 
+import static io.datakernel.config.ConfigConverters.ofString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-public class ConfigTest {
+public class ConfigPropertiesTest {
 
 	@Test
-	public void rootConfigDoesntHaveKey() {
-		Config root = new Config();
+	public void rootConfigDoesNotHaveKey() {
+		ConfigTree root = ConfigTree.newInstance();
 
 		assertEquals("", root.getKey());
 	}
 
 	@Test
 	public void configShouldStoreInfoAboutChildConfigs() {
-		Config root = new Config();
+		ConfigTree root = ConfigTree.newInstance().registerConverter(String.class, ofString());
 		root.set("name1", "value1");
 		root.set("name2", "value2");
 
-		assertEquals("value1", root.getChild("name1").get());
-		assertEquals("value2", root.getChild("name2").get());
+		assertEquals("value1", root.getChild("name1").get(String.class));
+		assertEquals("value2", root.getChild("name2").get(String.class));
 	}
 
 	@Test
 	public void configShouldProperlySplitChildKey() {
-		Config root = new Config();
+		ConfigTree root = ConfigTree.newInstance();
 		root.set("base.sub1.sub2", "value");
 
-		Config base = root.getChild("base");
-		Config sub1 = base.getChild("sub1");
-		Config sub2 = sub1.getChild("sub2");
+		ConfigTree base = (ConfigTree) root.getChild("base");
+		ConfigTree sub1 = (ConfigTree) base.getChild("sub1");
+		ConfigTree sub2 = (ConfigTree) sub1.getChild("sub2");
 
 		assertNull(root.get());
 		assertNull(base.get());
@@ -57,11 +58,11 @@ public class ConfigTest {
 
 	@Test
 	public void configShouldUpdateValueIfKeyWasAlreadyUsed() {
-		Config root = new Config();
+		ConfigTree root = ConfigTree.newInstance().registerConverter(String.class, ofString());
 		root.set("key1", "value1");
 
 		root.set("key1", "value2");
 
-		assertEquals("value2", root.getChild("key1").get());
+		assertEquals("value2", root.getChild("key1").get(String.class));
 	}
 }
