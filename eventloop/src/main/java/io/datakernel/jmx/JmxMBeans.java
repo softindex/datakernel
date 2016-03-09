@@ -221,9 +221,23 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				List<AttributeNode> subNodes = createNodesFor(returnClass);
 
 				if (subNodes.size() == 0) {
-					throw new IllegalArgumentException(format(
-							"Type \"%s\" seems to be POJO but does not have JmxAttributes",
-							returnClass.getName()));
+					String errorMsg = format(
+							"Type \"%s\" seems to be POJO but does not have JmxAttributes. ", returnClass.getName());
+
+					if (getter != null) {
+						String infoAboutMethod =
+								format("[in method: %s.%s()]",
+										getter.getDeclaringClass().getName(), getter.getName());
+
+						String advice = "If you own that type, modify it to contain getters annotated " +
+								"with @JmxAttribute, otherwise do not use this type as JmxAttribute ";
+
+						errorMsg += infoAboutMethod + "   " + advice;
+					} else {
+						errorMsg += "This type cannot be used as type parameter in List or Map";
+					}
+
+					throw new IllegalArgumentException(errorMsg);
 				}
 
 				return new AttributeNodeForPojo(attrName, defaultFetcher, subNodes);
