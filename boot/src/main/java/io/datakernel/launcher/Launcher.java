@@ -17,6 +17,7 @@
 package io.datakernel.launcher;
 
 import com.google.inject.*;
+import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.util.FileLocker;
 import org.slf4j.Logger;
@@ -39,6 +40,8 @@ public abstract class Launcher {
 	private FileLocker fileLocker;
 
 	private boolean useLockFile;
+
+	private JmxRegistrator jmxRegistrator;
 
 	@Inject
 	protected Injector injector;
@@ -118,10 +121,25 @@ public abstract class Launcher {
 
 		Injector injector = Guice.createInjector(stage, modules);
 		injector.injectMembers(this);
+		jmxRegistrator = fetchJmxRegistratorIfExists(injector);
+	}
+
+	private JmxRegistrator fetchJmxRegistratorIfExists(Injector injector) {
+		Binding<JmxRegistrator> binding = injector.getExistingBinding(Key.get(JmxRegistrator.class));
+		return binding != null ? binding.getProvider().get() : null;
 	}
 
 	protected void doStart() throws Exception {
+		registerJmxMBeans();
 		serviceGraphProvider.get().startFuture().get();
+	}
+
+	private void registerJmxMBeans() {
+		if (jmxRegistrator != null) {
+			jmxRegistrator.registerJmxMBeans();
+		} else {
+			logger.info("Jmx is disabled. Add JmxModule to enable.");
+		}
 	}
 
 	abstract protected void doRun() throws Exception;

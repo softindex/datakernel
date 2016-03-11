@@ -41,8 +41,8 @@ public final class JmxRegistry {
 	private final DynamicMBeanFactory mbeanFactory;
 
 	public JmxRegistry(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
-		this.mbs = mbs;
-		this.mbeanFactory = mbeanFactory;
+		this.mbs = checkNotNull(mbs);
+		this.mbeanFactory = checkNotNull(mbeanFactory);
 	}
 
 	public void registerSingleton(Key<?> key, Object singletonInstance) {
