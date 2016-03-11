@@ -366,7 +366,7 @@ public class AggregationMetadata {
 		Collections.sort(chunks, new Comparator<AggregationChunk>() {
 			@Override
 			public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {
-				return Integer.compare(chunk2.getCount(), chunk1.getCount());
+				return chunk1.getMinPrimaryKey().compareTo(chunk2.getMinPrimaryKey());
 			}
 		});
 		return chunks.subList(0, maxChunks);
