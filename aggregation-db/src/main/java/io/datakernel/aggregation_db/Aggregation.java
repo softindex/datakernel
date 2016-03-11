@@ -592,6 +592,7 @@ public class Aggregation {
 	}
 
 	private void consolidate(final List<AggregationChunk> chunks, final CompletionCallback callback) {
+		logger.info("Starting consolidation of aggregation '{}'", this);
 		metadataStorage.startConsolidation(chunks, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {

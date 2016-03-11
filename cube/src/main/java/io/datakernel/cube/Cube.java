@@ -411,15 +411,26 @@ public final class Cube implements ConcurrentJmxMBean {
 			public void run() {
 				if (iterator.hasNext()) {
 					final Aggregation aggregation = iterator.next();
-					aggregation.consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, new ResultCallback<Boolean>() {
+					aggregation.loadChunks(new CompletionCallback() {
 						@Override
-						public void onResult(Boolean result) {
-							consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, result || found, iterator, callback);
+						public void onComplete() {
+							aggregation.consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, new ResultCallback<Boolean>() {
+								@Override
+								public void onResult(Boolean result) {
+									consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, result || found, iterator, callback);
+								}
+
+								@Override
+								public void onException(Exception exception) {
+									logger.error("Consolidating aggregation '{}' failed", aggregation, exception);
+									consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, found, iterator, callback);
+								}
+							});
 						}
 
 						@Override
 						public void onException(Exception exception) {
-							logger.error("Consolidating aggregation '{}' failed", aggregation, exception);
+							logger.error("Loading chunks for aggregation '{}' before starting consolidation failed", aggregation, exception);
 							consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, found, iterator, callback);
 						}
 					});
