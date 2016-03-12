@@ -151,7 +151,7 @@ public class ConfigConvertersTest {
 	@Test
 	public void testListConverter() {
 		ConfigConverter<List<Integer>> listConverter = ConfigConverters.ofList(ConfigConverters.ofInteger(), ",");
-		String inputData = "1, 5,10";
+		String inputData = "1, 5,   10   ";
 		Config root = new Config();
 		root.set("key1", inputData);
 

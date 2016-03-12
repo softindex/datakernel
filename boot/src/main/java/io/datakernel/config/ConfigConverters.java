@@ -16,13 +16,12 @@
 
 package io.datakernel.config;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.Splitter;
+import io.datakernel.util.StringUtils;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -33,6 +32,7 @@ import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSett
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Integer.parseInt;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 
@@ -159,13 +159,13 @@ public final class ConfigConverters {
 
 	private static final class ConfigConverterList<T> extends ConfigConverterSingle<List<T>> {
 		private final ConfigConverterSingle<T> elementConverter;
-		private final Splitter splitter;
-		private final Joiner joiner; // TODO: use Joiner from io.datakernel.util
+		private final CharSequence splitSeparators;
+		private final char joinSeparator;
 
 		public ConfigConverterList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
 			this.elementConverter = elementConverter;
-			this.splitter = Splitter.onAnyOf(separators);
-			this.joiner = Joiner.on(separators.charAt(0));
+			this.splitSeparators = separators;
+			this.joinSeparator = separators.charAt(0);
 		}
 
 		@Override
@@ -174,7 +174,7 @@ public final class ConfigConverters {
 			if (string.isEmpty())
 				return emptyList();
 			List<T> list = new ArrayList<>();
-			for (String elementString : splitter.splitToList(string)) {
+			for (String elementString : StringUtils.splitToList(splitSeparators, string)) {
 				T element = elementConverter.fromString(elementString.trim());
 				list.add(element);
 			}
@@ -187,26 +187,24 @@ public final class ConfigConverters {
 			for (T e : item) {
 				strings.add(elementConverter.toString(e));
 			}
-			return joiner.join(strings);
+			return StringUtils.join(joinSeparator, strings);
 		}
 	}
 
 	private static final class ConfigConverterMap<K, V> extends ConfigConverterSingle<Map<K, V>> {
 		private final ConfigConverterSingle<K> keyConverter;
 		private final ConfigConverterSingle<V> valueConverter;
-		private final Splitter entrySplitter;
-		private final Splitter pairSplitter;
-		private final Joiner entryJoiner;
-		private final Joiner pairJoiner;
+		private final CharSequence entriesSplitSeparators;
+		private final char entriesJoinSeparator;
+		private final char keyValueSeparator;
 
 		private ConfigConverterMap(ConfigConverterSingle<K> keyConverter, ConfigConverterSingle<V> valueConverter,
-		                           CharSequence entrySeparators, char pairSeparator) {
+		                           CharSequence entriesSeparators, char keyValueSeparator) {
 			this.keyConverter = keyConverter;
 			this.valueConverter = valueConverter;
-			this.entrySplitter = Splitter.onAnyOf(entrySeparators).omitEmptyStrings().trimResults();
-			this.pairSplitter = Splitter.on(pairSeparator).omitEmptyStrings().trimResults();
-			this.entryJoiner = Joiner.on(entrySeparators.charAt(0));
-			this.pairJoiner = Joiner.on(pairSeparator);
+			this.entriesSplitSeparators = entriesSeparators;
+			this.entriesJoinSeparator = entriesSeparators.charAt(0);
+			this.keyValueSeparator = keyValueSeparator;
 		}
 
 		@Override
@@ -215,11 +213,11 @@ public final class ConfigConverters {
 			if (string.isEmpty())
 				return emptyMap();
 			Map<K, V> map = new HashMap<>();
-			for (String entryString : entrySplitter.splitToList(string)) {
-				List<String> pair = pairSplitter.splitToList(entryString);
+			for (String entryString : StringUtils.splitToList(entriesSplitSeparators, string)) {
+				List<String> pair = StringUtils.splitToList(keyValueSeparator, entryString);
 				checkArgument(pair.size() == 2, "Incorrect key-value pair format");
-				K key = keyConverter.fromString(pair.get(0));
-				V value = valueConverter.fromString(pair.get(1));
+				K key = keyConverter.fromString(pair.get(0).trim());
+				V value = valueConverter.fromString(pair.get(1).trim());
 				map.put(key, value);
 			}
 			return Collections.unmodifiableMap(map);
@@ -231,10 +229,10 @@ public final class ConfigConverters {
 			for (Map.Entry<K, V> entry : map.entrySet()) {
 				String key = keyConverter.toString(entry.getKey());
 				String value = valueConverter.toString(entry.getValue());
-				String pair = pairJoiner.join(key, value);
+				String pair = StringUtils.join(keyValueSeparator, asList(key, value));
 				pairs.add(pair);
 			}
-			return entryJoiner.join(pairs);
+			return StringUtils.join(entriesJoinSeparator, pairs);
 		}
 	}
 
@@ -391,15 +389,15 @@ public final class ConfigConverters {
 	}
 
 	public static <K, V> ConfigConverterSingle<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
-	                                                      ConfigConverterSingle<V> valueConverter) {
+	                                                            ConfigConverterSingle<V> valueConverter) {
 		return new ConfigConverterMap<>(keyConverter, valueConverter, ",;", '=');
 	}
 
 	public static <K, V> ConfigConverterSingle<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
-	                                                      ConfigConverterSingle<V> valueConverter,
-	                                                      CharSequence entrySeparators,
-	                                                      char pairSeparator) {
-		return new ConfigConverterMap<>(keyConverter, valueConverter, entrySeparators, pairSeparator);
+	                                                            ConfigConverterSingle<V> valueConverter,
+	                                                            CharSequence entriesSeparator,
+	                                                            char keyValueSeparator) {
+		return new ConfigConverterMap<>(keyConverter, valueConverter, entriesSeparator, keyValueSeparator);
 	}
 
 	public static ConfigConverterSingle<MemSize> ofMemSize() {

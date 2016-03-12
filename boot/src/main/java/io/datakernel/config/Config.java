@@ -16,7 +16,7 @@
 
 package io.datakernel.config;
 
-import io.datakernel.util.Splitter;
+import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
 
 import java.io.*;
@@ -30,7 +30,7 @@ import static org.slf4j.LoggerFactory.getLogger;
 public final class Config {
 	private static final Logger logger = getLogger(Config.class);
 
-	private static final Splitter SPLITTER = Splitter.on('.');
+	private static final char SEPARATOR = '.';
 
 	private final Map<String, Config> children = new LinkedHashMap<>();
 
@@ -233,7 +233,7 @@ public final class Config {
 	private Config ensureChild(String path) {
 		checkArgument(!path.isEmpty(), "Path must not be empty");
 		Config result = this;
-		for (String key : SPLITTER.splitToList(path)) {
+		for (String key : StringUtils.splitToList(SEPARATOR, path)) {
 			checkState(!key.isEmpty(), "Child path must not be empty: %s", path);
 			Config child = result.children.get(key);
 			if (child == null) {

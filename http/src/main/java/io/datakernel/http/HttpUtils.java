@@ -16,7 +16,7 @@
 
 package io.datakernel.http;
 
-import io.datakernel.util.Splitter;
+import io.datakernel.util.StringUtils;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
@@ -33,8 +33,9 @@ import static io.datakernel.util.ByteBufStrings.*;
  * Util for working with {@link HttpRequest}
  */
 public final class HttpUtils {
-	private static final Splitter commaSplitter = Splitter.on(',').trimResults();
-	private static final Splitter querySplitter = Splitter.on('&').trimResults().omitEmptyStrings();
+	private static final char COMMA_SEPARATOR = ',';
+	private static final char QUERY_SEPARATOR = '&';
+
 	private static final String ENCODING = "UTF-8";
 
 	private static Pattern VALID_IPV4_PATTERN =
@@ -139,7 +140,7 @@ public final class HttpUtils {
 	public static InetAddress getRealIp(HttpRequest request) {
 		String s = request.getHeader(HttpHeaders.X_FORWARDED_FOR);
 		if (!isNullOrEmpty(s)) {
-			String clientIP = commaSplitter.splitToList(s).iterator().next();
+			String clientIP = StringUtils.splitToList(COMMA_SEPARATOR, s).iterator().next().trim();
 			try {
 				return HttpUtils.inetAddress(clientIP);
 			} catch (IllegalArgumentException ignored) {
@@ -194,7 +195,8 @@ public final class HttpUtils {
 	 */
 	public static Map<String, String> parse(String query, String enc) {
 		LinkedHashMap<String, String> qps = new LinkedHashMap<>();
-		for (String pair : querySplitter.splitToList(query)) {
+		for (String pair : StringUtils.splitToList(QUERY_SEPARATOR, query)) {
+			pair = pair.trim();
 			int pos = pair.indexOf('=');
 			String name;
 			String val = null;
