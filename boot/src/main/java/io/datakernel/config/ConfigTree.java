@@ -21,8 +21,7 @@ import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.Splitter;
-import org.joda.time.Period;
+import io.datakernel.util.StringUtils;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -40,7 +39,7 @@ import static java.util.Arrays.asList;
 public final class ConfigTree implements Config {
 	private Map<TypeToken, ConfigConverter> converters;
 
-	private static final Splitter SPLITTER = Splitter.on('.');
+	private static final char SEPARATOR = '.';
 
 	private final Map<String, ConfigTree> children = new LinkedHashMap<>();
 
@@ -81,7 +80,6 @@ public final class ConfigTree implements Config {
 		defaultConverters.put(TypeToken.of(DatagramSocketSettings.class), ConfigConverters.ofDatagramSocketSettings());
 		defaultConverters.put(TypeToken.of(InetSocketAddress.class), ConfigConverters.ofInetSocketAddress());
 		defaultConverters.put(TypeToken.of(MemSize.class), ConfigConverters.ofMemSize());
-		defaultConverters.put(TypeToken.of(Period.class), ConfigConverters.ofPeriod());
 		defaultConverters.put(TypeToken.of(ServerSocketSettings.class), ConfigConverters.ofServerSocketSettings());
 		defaultConverters.put(TypeToken.of(SocketSettings.class), ConfigConverters.ofSocketSettings());
 
@@ -424,7 +422,7 @@ public final class ConfigTree implements Config {
 	public ConfigTree ensureChild(String path) {
 		checkArgument(!path.isEmpty(), "Path must not be empty");
 		ConfigTree result = this;
-		for (String key : SPLITTER.splitToList(path)) {
+		for (String key : StringUtils.splitToList(SEPARATOR, path)) {
 			checkState(!key.isEmpty(), "Child path must not be empty: %s", path);
 			ConfigTree child = result.children.get(key);
 			if (child == null) {

@@ -52,6 +52,10 @@ public class ReportingQueryResponseDeserializer implements JsonDeserializer<Repo
 		Map<String, Object> totals = ctx.deserialize(jsonTotals, map);
 
 		Type listOfStrings = new TypeToken<List<String>>() {}.getType();
+
+		if (json.get(METADATA_FIELD) == null)
+			return new ReportingQueryResult(records, totals, count, null, null, null, null, null, null);
+
 		JsonObject jsonMetadata = json.get(METADATA_FIELD).getAsJsonObject();
 		List<String> dimensions = ctx.deserialize(jsonMetadata.get(DIMENSIONS_FIELD), listOfStrings);
 		List<String> measures = ctx.deserialize(jsonMetadata.get(MEASURES_FIELD), listOfStrings);

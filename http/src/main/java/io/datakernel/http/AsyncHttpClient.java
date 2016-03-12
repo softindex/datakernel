@@ -25,8 +25,8 @@ import io.datakernel.eventloop.EventloopService;
 import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.util.Joiner;
 import io.datakernel.util.Stopwatch;
+import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +48,7 @@ import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
+import static java.util.Arrays.asList;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 public class AsyncHttpClient implements EventloopService, ConcurrentJmxMBean {
@@ -514,14 +515,17 @@ public class AsyncHttpClient implements EventloopService, ConcurrentJmxMBean {
 
 	@JmxAttribute
 	public List<String> getConnections() {
-		Joiner joiner = Joiner.on(',');
 		List<String> info = new ArrayList<>();
 		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
 		for (Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
 			AbstractHttpConnection connection = node.getValue();
-			String string = joiner.join(connection.getRemoteSocketAddress(), connection.isRegistered(),
-					MBeanFormat.formatPeriodAgo(connection.getLifeTime()),
-					MBeanFormat.formatPeriodAgo(connection.getActivityTime())
+			String string = StringUtils.join(",",
+					asList(
+							connection.getRemoteSocketAddress(),
+							connection.isRegistered(),
+							MBeanFormat.formatPeriodAgo(connection.getLifeTime()),
+							MBeanFormat.formatPeriodAgo(connection.getActivityTime())
+					)
 			);
 			info.add(string);
 		}

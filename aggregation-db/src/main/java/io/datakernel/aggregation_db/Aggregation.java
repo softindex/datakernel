@@ -45,10 +45,9 @@ import java.util.concurrent.ExecutorService;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.in;
 import static com.google.common.collect.Iterables.*;
+import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Lists.newArrayList;
-import static com.google.common.collect.Sets.intersection;
-import static com.google.common.collect.Sets.newHashSet;
-import static com.google.common.collect.Sets.newLinkedHashSet;
+import static com.google.common.collect.Sets.*;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Arrays.asList;
 
@@ -592,6 +591,7 @@ public class Aggregation {
 	}
 
 	private void consolidate(final List<AggregationChunk> chunks, final CompletionCallback callback) {
+		logger.info("Starting consolidation of aggregation '{}'", this);
 		metadataStorage.startConsolidation(chunks, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
@@ -661,7 +661,7 @@ public class Aggregation {
 				}
 				Aggregation.this.lastRevisionId = loadedChunks.lastRevisionId;
 				logger.info("Loading chunks for aggregation {} completed. " +
-						"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
+								"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
 						Aggregation.this, loadedChunks.newChunks.size(), loadedChunks.consolidatedChunkIds.size(),
 						loadedChunks.lastRevisionId);
 

@@ -20,24 +20,21 @@ import com.google.common.base.Preconditions;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.util.Joiner;
 import io.datakernel.util.MemSize;
-import io.datakernel.util.Splitter;
-import org.joda.time.Period;
-import org.joda.time.format.PeriodFormat;
+import io.datakernel.util.StringUtils;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Integer.parseInt;
+import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
+import static java.util.Collections.emptyMap;
 
 public final class ConfigConverters {
 	private static final class ConfigConverterString extends ConfigConverterSingle<String> {
@@ -161,13 +158,13 @@ public final class ConfigConverters {
 
 	private static final class ConfigConverterList<T> extends ConfigConverterSingle<List<T>> {
 		private final ConfigConverterSingle<T> elementConverter;
-		private final Splitter splitter;
-		private final Joiner joiner;
+		private final CharSequence splitSeparators;
+		private final char joinSeparator;
 
 		public ConfigConverterList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
 			this.elementConverter = elementConverter;
-			this.splitter = Splitter.onAnyOf(separators);
-			this.joiner = Joiner.on(separators.charAt(0));
+			this.splitSeparators = separators;
+			this.joinSeparator = separators.charAt(0);
 		}
 
 		@Override
@@ -176,7 +173,7 @@ public final class ConfigConverters {
 			if (string.isEmpty())
 				return emptyList();
 			List<T> list = new ArrayList<>();
-			for (String elementString : splitter.splitToList(string)) {
+			for (String elementString : StringUtils.splitToList(splitSeparators, string)) {
 				T element = elementConverter.fromString(elementString.trim());
 				list.add(element);
 			}
@@ -189,7 +186,52 @@ public final class ConfigConverters {
 			for (T e : item) {
 				strings.add(elementConverter.toString(e));
 			}
-			return joiner.join(strings);
+			return StringUtils.join(joinSeparator, strings);
+		}
+	}
+
+	private static final class ConfigConverterMap<K, V> extends ConfigConverterSingle<Map<K, V>> {
+		private final ConfigConverterSingle<K> keyConverter;
+		private final ConfigConverterSingle<V> valueConverter;
+		private final CharSequence entriesSplitSeparators;
+		private final char entriesJoinSeparator;
+		private final char keyValueSeparator;
+
+		private ConfigConverterMap(ConfigConverterSingle<K> keyConverter, ConfigConverterSingle<V> valueConverter,
+		                           CharSequence entriesSeparators, char keyValueSeparator) {
+			this.keyConverter = keyConverter;
+			this.valueConverter = valueConverter;
+			this.entriesSplitSeparators = entriesSeparators;
+			this.entriesJoinSeparator = entriesSeparators.charAt(0);
+			this.keyValueSeparator = keyValueSeparator;
+		}
+
+		@Override
+		protected Map<K, V> fromString(String string) {
+			string = string.trim();
+			if (string.isEmpty())
+				return emptyMap();
+			Map<K, V> map = new HashMap<>();
+			for (String entryString : StringUtils.splitToList(entriesSplitSeparators, string)) {
+				List<String> pair = StringUtils.splitToList(keyValueSeparator, entryString);
+				checkArgument(pair.size() == 2, "Incorrect key-value pair format");
+				K key = keyConverter.fromString(pair.get(0).trim());
+				V value = valueConverter.fromString(pair.get(1).trim());
+				map.put(key, value);
+			}
+			return Collections.unmodifiableMap(map);
+		}
+
+		@Override
+		protected String toString(Map<K, V> map) {
+			List<String> pairs = new ArrayList<>(map.size());
+			for (Map.Entry<K, V> entry : map.entrySet()) {
+				String key = keyConverter.toString(entry.getKey());
+				String value = valueConverter.toString(entry.getValue());
+				String pair = StringUtils.join(keyValueSeparator, asList(key, value));
+				pairs.add(pair);
+			}
+			return StringUtils.join(entriesJoinSeparator, pairs);
 		}
 	}
 
@@ -309,20 +351,6 @@ public final class ConfigConverters {
 		}
 	}
 
-	private static final class ConfigConverterPeriod extends ConfigConverterSingle<Period> {
-		static ConfigConverterPeriod INSTANCE = new ConfigConverterPeriod();
-
-		@Override
-		protected Period fromString(String string) {
-			return PeriodFormat.getDefault().parsePeriod(string);
-		}
-
-		@Override
-		protected String toString(Period item) {
-			return PeriodFormat.getDefault().print(item);
-		}
-	}
-
 	public static ConfigConverterSingle<String> ofString() {
 		return ConfigConverterString.INSTANCE;
 	}
@@ -351,12 +379,24 @@ public final class ConfigConverters {
 		return ConfigConverterInetSocketAddress.INSTANCE;
 	}
 
-	public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
+	public static <T> ConfigConverterSingle<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
 		return new ConfigConverterList<>(elementConverter, separators);
 	}
 
-	public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter) {
+	public static <T> ConfigConverterSingle<List<T>> ofList(ConfigConverterSingle<T> elementConverter) {
 		return ofList(elementConverter, ",;");
+	}
+
+	public static <K, V> ConfigConverterSingle<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
+	                                                            ConfigConverterSingle<V> valueConverter) {
+		return new ConfigConverterMap<>(keyConverter, valueConverter, ",;", '=');
+	}
+
+	public static <K, V> ConfigConverterSingle<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
+	                                                            ConfigConverterSingle<V> valueConverter,
+	                                                            CharSequence entriesSeparator,
+	                                                            char keyValueSeparator) {
+		return new ConfigConverterMap<>(keyConverter, valueConverter, entriesSeparator, keyValueSeparator);
 	}
 
 	public static ConfigConverterSingle<MemSize> ofMemSize() {
@@ -373,10 +413,6 @@ public final class ConfigConverters {
 
 	public static ConfigConverter<DatagramSocketSettings> ofDatagramSocketSettings() {
 		return ConfigConverterDatagramSocketSettings.INSTANCE;
-	}
-
-	public static ConfigConverterSingle<Period> ofPeriod() {
-		return ConfigConverterPeriod.INSTANCE;
 	}
 }
 

@@ -51,11 +51,14 @@ public class ConsolidationChunkSelectionTest {
 		selectedChunks = am.findChunksForConsolidation(5, 1.0);
 		assertEquals(5, selectedChunks.size());
 
-		Set<Integer> trimmedChunkCounts = newHashSet();
-		for (AggregationChunk chunk : selectedChunks) {
-			trimmedChunkCounts.add(chunk.getCount());
-		}
-		assertEquals(newHashSet(4, 5, 6, 7, 8), trimmedChunkCounts);
+		chunks.clear();
+		chunks.add(createTestChunk(3, 1, 4));
+		chunks.add(createTestChunk(4, 3, 4));
+		chunks.add(createTestChunk(5, 3, 6));
+		chunks.add(createTestChunk(6, 5, 6));
+		chunks.add(createTestChunk(7, 5, 8));
+
+		assertEquals(chunks, newHashSet(selectedChunks));
 	}
 
 	@Test
@@ -155,14 +158,16 @@ public class ConsolidationChunkSelectionTest {
 			am.addToIndex(chunk);
 		}
 
-		List<List<AggregationChunk>> chunksForConsolidation = am.findChunkGroupsForConsolidation(4, 3);
+		List<List<AggregationChunk>> chunksForConsolidation = am.findChunkGroupsForConsolidation(5, 3);
 		chunks1.clear();
+		chunks1.add(createTestChunk(1, 1, 2));
+		chunks1.add(createTestChunk(2, 1, 2));
+		chunks1.add(createTestChunk(3, 1, 4));
+		chunks1.add(createTestChunk(4, 3, 4));
 		chunks1.add(createTestChunk(5, 3, 6));
-		chunks1.add(createTestChunk(6, 5, 6));
-		chunks1.add(createTestChunk(7, 5, 8));
-		chunks1.add(createTestChunk(8, 7, 8));
 
 		chunks2.clear();
+		chunks2.add(createTestChunk(9, 9, 10));
 		chunks2.add(createTestChunk(10, 9, 10));
 		chunks2.add(createTestChunk(11, 10, 11));
 		chunks2.add(createTestChunk(12, 10, 13));

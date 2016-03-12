@@ -43,11 +43,11 @@ import java.util.concurrent.ExecutorService;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
-import static io.datakernel.aggregation_db.sql.tables.AggregationDbRevision.AGGREGATION_DB_REVISION;
 import static io.datakernel.aggregation_db.util.JooqUtils.onDuplicateKeyUpdateValues;
 import static io.datakernel.async.AsyncCallbacks.callConcurrently;
 import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static org.jooq.impl.DSL.currentTimestamp;
+import static org.jooq.impl.DSL.max;
 
 public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	private static final Logger logger = LoggerFactory.getLogger(CubeMetadataStorageSql.class);
@@ -97,11 +97,16 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				runConcurrently(eventloop, executor, false, new Runnable() {
 					@Override
 					public void run() {
-						Map<AggregationMetadata, String> idMap = new HashMap<>();
-						idMap.put(aggregationMetadata, aggregationId);
-						Multimap<AggregationMetadata, AggregationChunk.NewChunk> chunks = HashMultimap.create();
-						chunks.putAll(aggregationMetadata, newChunks);
-						doSaveNewChunks(DSL.using(jooqConfiguration), idMap, chunks);
+						executeExclusiveTransaction(new TransactionalRunnable() {
+							@Override
+							public void run(Configuration configuration) throws Exception {
+								Map<AggregationMetadata, String> idMap = new HashMap<>();
+								idMap.put(aggregationMetadata, aggregationId);
+								Multimap<AggregationMetadata, AggregationChunk.NewChunk> chunks = HashMultimap.create();
+								chunks.putAll(aggregationMetadata, newChunks);
+								doSaveNewChunks(DSL.using(jooqConfiguration), idMap, chunks);
+							}
+						});
 					}
 				}, callback);
 			}
@@ -140,7 +145,6 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 	public void truncateTables(DSLContext jooq) {
 		jooq.truncate(AGGREGATION_DB_CHUNK).execute();
-		jooq.truncate(AGGREGATION_DB_REVISION).execute();
 	}
 
 	public void truncateTables() {
@@ -148,12 +152,12 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	}
 
 	public int nextRevisionId(DSLContext jooq) {
-		return jooq
-				.insertInto(AGGREGATION_DB_REVISION)
-				.defaultValues()
-				.returning(AGGREGATION_DB_REVISION.ID)
-				.fetchOne()
-				.getId();
+		Record1<Integer> currentMaxRevisionRecord = jooq
+				.select(max(AGGREGATION_DB_CHUNK.REVISION_ID))
+				.from(AGGREGATION_DB_CHUNK)
+				.fetchOne();
+		int currentMaxRevision = currentMaxRevisionRecord.value1() == null ? 0 : currentMaxRevisionRecord.value1();
+		return currentMaxRevision + 1;
 	}
 
 	public long doCreateChunkId() {

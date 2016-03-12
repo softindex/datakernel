@@ -50,40 +50,29 @@ public final class CubeConsolidatorService implements EventloopService {
 		return eventloop;
 	}
 
-	private void loadChunksAndConsolidate() {
-		cube.loadChunks(new CompletionCallback() {
+	private void consolidate() {
+		cube.consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, new ResultCallback<Boolean>() {
 			@Override
-			public void onComplete() {
-				cube.consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, new ResultCallback<Boolean>() {
-					@Override
-					public void onResult(Boolean consolidated) {
-						if (consolidated) {
-							// if previous consolidation merged some chunks, proceed consolidating other chunks
-							logger.info("Consolidation finished. Launching consolidation task again.");
-							eventloop.post(new Runnable() {
-								@Override
-								public void run() {
-									loadChunksAndConsolidate();
-								}
-							});
-						} else {
-							// previous consolidation did not consolidate any chunks -> wait before next attempt
-							logger.info("Previous consolidation did not merge any chunks. Scheduling next attempt in {} millis.", CubeConsolidatorService.this.nothingToConsolidateSleepTimeMillis);
-							scheduleNext(CubeConsolidatorService.this.nothingToConsolidateSleepTimeMillis);
+			public void onResult(Boolean consolidated) {
+				if (consolidated) {
+					// if previous consolidation merged some chunks, proceed consolidating other chunks
+					logger.info("Consolidation finished. Launching consolidation task again.");
+					eventloop.post(new Runnable() {
+						@Override
+						public void run() {
+							consolidate();
 						}
-					}
-
-					@Override
-					public void onException(Exception e) {
-						logger.error("Consolidation failed", e);
-						scheduleNext(CubeConsolidatorService.this.nothingToConsolidateSleepTimeMillis);
-					}
-				});
+					});
+				} else {
+					// previous consolidation did not consolidate any chunks -> wait before next attempt
+					logger.info("Previous consolidation did not merge any chunks. Scheduling next attempt in {} millis.", CubeConsolidatorService.this.nothingToConsolidateSleepTimeMillis);
+					scheduleNext(CubeConsolidatorService.this.nothingToConsolidateSleepTimeMillis);
+				}
 			}
 
 			@Override
 			public void onException(Exception e) {
-				logger.error("Loading chunk metadata failed", e);
+				logger.error("Consolidation failed", e);
 				scheduleNext(CubeConsolidatorService.this.nothingToConsolidateSleepTimeMillis);
 			}
 		});
@@ -96,7 +85,7 @@ public final class CubeConsolidatorService implements EventloopService {
 		consolidationTask = eventloop.scheduleBackground(eventloop.currentTimeMillis() + timeout, new Runnable() {
 			@Override
 			public void run() {
-				loadChunksAndConsolidate();
+				consolidate();
 			}
 		});
 	}
@@ -104,7 +93,7 @@ public final class CubeConsolidatorService implements EventloopService {
 	@Override
 	public void start(final CompletionCallback callback) {
 		callback.onComplete();
-		loadChunksAndConsolidate();
+		consolidate();
 	}
 
 	@Override

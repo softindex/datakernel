@@ -37,7 +37,7 @@ public class GenericTypesRegistrationTest {
 	private final String domain = ServiceStubOne.class.getPackage().getName();
 
 	@Test
-	public void itShouldFormProperlyNameForTypeWithOneGenericParameter() throws Exception {
+	public void itShouldFormProperlyNameForTypeWithSingleGenericParameter() throws Exception {
 		final ServiceStubOne service = new ServiceStubOne();
 
 		context.checking(new Expectations() {{
@@ -71,7 +71,7 @@ public class GenericTypesRegistrationTest {
 	}
 
 	public static class ServiceStubOne<T> implements ServiceStubOneMBean {
-		private T value = null;
+		private T value;
 
 		@Override
 		public int getCount() {
@@ -84,9 +84,9 @@ public class GenericTypesRegistrationTest {
 	}
 
 	public static class ServiceStubThree<A, B, C> implements ServiceStubThreeMBean {
-		private A a = null;
-		private B b = null;
-		private C c = null;
+		private A a;
+		private B b;
+		private C c;
 
 		@Override
 		public int getCount() {
