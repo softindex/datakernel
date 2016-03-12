@@ -31,7 +31,7 @@ import static org.junit.Assert.*;
 public class ConfigConvertersTest {
 
 	@Test
-	public void testBooleanConvertor() {
+	public void testBooleanConverter() {
 		ConfigConverter<Boolean> booleanConverter = ConfigConverters.ofBoolean();
 		String inputString1 = "true";
 		String inputString2 = "false";
@@ -45,7 +45,7 @@ public class ConfigConvertersTest {
 	}
 
 	@Test
-	public void testIntegerConvertor() {
+	public void testIntegerConverter() {
 		ConfigConverter<Integer> integerConverter = ConfigConverters.ofInteger();
 		String inputString1 = "1";
 		String inputString2 = "-5";
@@ -61,7 +61,7 @@ public class ConfigConvertersTest {
 	}
 
 	@Test
-	public void testLongConvertor() {
+	public void testLongConverter() {
 		ConfigConverter<Long> longConverter = ConfigConverters.ofLong();
 		String inputString1 = "1";
 		String inputString2 = "-5";
@@ -77,7 +77,7 @@ public class ConfigConvertersTest {
 	}
 
 	@Test
-	public void testEnumConvertor() {
+	public void testEnumConverter() {
 		ConfigConverter<Color> enumConverter = ConfigConverters.ofEnum(Color.class);
 		String inputString1 = "RED";
 		String inputString2 = "GREEN";

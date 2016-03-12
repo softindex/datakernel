@@ -382,20 +382,20 @@ public final class ConfigConverters {
 		return ConfigConverterInetSocketAddress.INSTANCE;
 	}
 
-	public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
+	public static <T> ConfigConverterSingle<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
 		return new ConfigConverterList<>(elementConverter, separators);
 	}
 
-	public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter) {
+	public static <T> ConfigConverterSingle<List<T>> ofList(ConfigConverterSingle<T> elementConverter) {
 		return ofList(elementConverter, ",;");
 	}
 
-	public static <K, V> ConfigConverter<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
+	public static <K, V> ConfigConverterSingle<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
 	                                                      ConfigConverterSingle<V> valueConverter) {
 		return new ConfigConverterMap<>(keyConverter, valueConverter, ",;", '=');
 	}
 
-	public static <K, V> ConfigConverter<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
+	public static <K, V> ConfigConverterSingle<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
 	                                                      ConfigConverterSingle<V> valueConverter,
 	                                                      CharSequence entrySeparators,
 	                                                      char pairSeparator) {
