@@ -21,7 +21,9 @@ import org.junit.Test;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -153,6 +155,27 @@ public class ConfigConvertersTest {
 		Config root = new Config();
 		root.set("key1", inputData);
 
-		assertEquals(asList(1, 5, 10), listConverter.get(root.getChild("key1")));
+		List<Integer> expected = asList(1, 5, 10);
+		assertEquals(expected, listConverter.get(root.getChild("key1")));
+
+		listConverter.set(root.getChild("key2"), expected);
+		assertEquals(expected, listConverter.get(root.getChild("key2")));
+	}
+
+	@Test
+	public void testMapConverter() throws Exception {
+		ConfigConverter<Map<String, Integer>> mapConverter = ConfigConverters.ofMap(ConfigConverters.ofString(), ConfigConverters.ofInteger());
+		String input = "key1=42, key2 =11 ,  key3 =   -100   ,  ";
+		Config root = new Config();
+		root.set("map1", input);
+
+		Map<String, Integer> expected = new HashMap<>();
+		expected.put("key1", 42);
+		expected.put("key2", 11);
+		expected.put("key3", -100);
+		assertEquals(expected, mapConverter.get(root.getChild("map1")));
+
+		mapConverter.set(root.getChild("map2"), expected);
+		assertEquals(expected, mapConverter.get(root.getChild("map2")));
 	}
 }
