@@ -482,9 +482,9 @@ public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 					updateResponseTime(requestClass, timeElapsed());
 
 					long timestamp = eventloop.currentTimeMillis();
-					generalRequestsStats.getServerExceptions().recordException(exception, null, timestamp);
+					generalRequestsStats.getServerExceptions().recordException(exception, null);
 					ensureRequestStatsPerClass(requestClass)
-							.getServerExceptions().recordException(exception, null, timestamp);
+							.getServerExceptions().recordException(exception, null);
 				}
 			}
 			callback.onException(exception);

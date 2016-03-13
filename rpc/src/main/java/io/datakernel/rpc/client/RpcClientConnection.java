@@ -335,7 +335,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 					requestsStats.getResponseTime().recordValue(timeElapsed());
 
 					long timestamp = eventloop.currentTimeMillis();
-					requestsStats.getServerExceptions().recordException(exception, null, timestamp);
+					requestsStats.getServerExceptions().recordException(exception, null);
 				}
 			}
 			callback.onException(exception);

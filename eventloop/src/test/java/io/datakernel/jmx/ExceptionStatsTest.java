@@ -54,11 +54,9 @@ public class ExceptionStatsTest {
 		ExceptionStats stats = new ExceptionStats();
 		Exception exception = new RuntimeException("msg");
 		Object causedObject = "cause";
-		long timestamp = 1000L;
-		stats.recordException(exception, causedObject, timestamp);
+		stats.recordException(exception, causedObject);
 
 		assertEquals("msg", stats.getLastExceptionMessage());
-		assertEquals(timestamp, stats.getLastExceptionTimestamp());
 		assertEquals(1, stats.getTotal());
 	}
 
@@ -68,31 +66,23 @@ public class ExceptionStatsTest {
 		ExceptionStats stats_1 = new ExceptionStats();
 		Exception exception_1 = new RuntimeException("msg-1");
 		Object causedObject_1 = "cause-1";
-		long timestamp_1 = 1000L;
-		stats_1.recordException(exception_1, causedObject_1, timestamp_1);
+		stats_1.recordException(exception_1, causedObject_1);
 
 		ExceptionStats stats_2 = new ExceptionStats();
 		Exception exception_2 = new RuntimeException("msg-2");
 		Object causedObject_2 = "cause-2";
-		long timestamp_2 = 2000L;
-		stats_2.recordException(exception_2, causedObject_2, timestamp_2);
+		stats_2.recordException(exception_2, causedObject_2);
 
 		ExceptionStats stats_3 = new ExceptionStats();
 		Exception exception_3 = new RuntimeException("msg-3");
 		Object causedObject_3 = "cause-3";
-		long timestamp_3 = 1500L;
-		stats_3.recordException(exception_3, causedObject_3, timestamp_3);
+		stats_3.recordException(exception_3, causedObject_3);
 
 		// aggregate
 		ExceptionStats accumulator = new ExceptionStats();
 		accumulator.add(stats_1);
 		accumulator.add(stats_2);
 		accumulator.add(stats_3);
-
-//		// check
-		// exception in stats_2 has most recent timestamp
-		assertEquals("msg-2", accumulator.getLastExceptionMessage());
-		assertEquals(timestamp_2, accumulator.getLastExceptionTimestamp());
 
 		assertEquals(3, accumulator.getTotal());
 	}

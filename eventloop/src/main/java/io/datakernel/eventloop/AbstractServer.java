@@ -206,7 +206,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			closeable.close();
 		} catch (Exception e) {
 			// jmx
-			closeException.recordException(e, closeable, eventloop.currentTimeMillis());
+			closeException.recordException(e, closeable);
 
 			if (logger.isWarnEnabled()) {
 				logger.warn("Exception thrown while closing {}", closeable, e);
@@ -228,7 +228,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		} catch (IOException e) {
 
 			// jmx
-			prepareSocketException.recordException(e, socketChannel, eventloop.currentTimeMillis());
+			prepareSocketException.recordException(e, socketChannel);
 
 			if (logger.isErrorEnabled()) {
 				logger.error("Exception thrown while apply settings socket {}", socketChannel, e);

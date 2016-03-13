@@ -88,7 +88,7 @@ public final class RpcServerConnection implements RpcConnection {
 			@Override
 			public void onException(Exception exception) {
 				updateProcessTime();
-				lastRemoteException.recordException(exception, message.getData(), eventloop.currentTimeMillis());
+				lastRemoteException.recordException(exception, message.getData());
 				sendError(cookie, exception);
 			}
 

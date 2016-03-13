@@ -142,11 +142,11 @@ public final class EventloopStats {
 	}
 
 	public void recordFatalError(Throwable throwable, Object causedObject, long timestamp) {
-		fatalErrors.recordException(throwable, causedObject, timestamp);
+		fatalErrors.recordException(throwable, causedObject);
 	}
 
 	public void recordIoError(Throwable e, Object o, long timestamp) {
-		ioErrors.recordException(e, o, timestamp);
+		ioErrors.recordException(e, o);
 	}
 
 	public void resetStats() {

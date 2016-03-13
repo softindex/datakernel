@@ -80,7 +80,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 			public void onHttpError(HttpServletError httpServletError) {
 				int duration = (int) (eventloop.currentTimeMillis() - timestamp);
 				errorsTimings.recordValue(duration);
-				errors.recordException(httpServletError, extractUrl(request), eventloop.currentTimeMillis());
+				errors.recordException(httpServletError, extractUrl(request));
 				callback.onHttpError(httpServletError);
 			}
 		});

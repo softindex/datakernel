@@ -25,43 +25,34 @@ import static java.util.Arrays.asList;
 public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	private Throwable throwable;
 	private Object causeObject;
-	private long timestamp;
 	private int count;
 
 	public ExceptionStats() {}
 
-	public void recordException(Throwable throwable, Object causeObject, long timestamp) {
+	public void recordException(Throwable throwable, Object causeObject) {
 		this.count++;
 		this.throwable = throwable;
 		this.causeObject = causeObject;
-		this.timestamp = timestamp;
 	}
 
 	public void resetStats() {
 		this.count = 0;
 		this.throwable = null;
 		this.causeObject = null;
-		this.timestamp = 0;
 	}
 
 	@Override
 	public void add(ExceptionStats counter) {
 		this.count += counter.count;
-		if (counter.timestamp > this.timestamp) {
+		if (counter.count > this.count) {
 			this.throwable = counter.throwable;
 			this.causeObject = counter.causeObject;
-			this.timestamp = counter.timestamp;
 		}
 	}
 
 	@Override
 	public void refreshStats(long timestamp, double smoothingWindow) {
 
-	}
-
-	@JmxAttribute
-	public long getLastExceptionTimestamp() {
-		return timestamp;
 	}
 
 	@JmxAttribute
