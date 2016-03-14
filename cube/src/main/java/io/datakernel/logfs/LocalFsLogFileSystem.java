@@ -36,6 +36,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 
 import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
 import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
@@ -79,54 +80,59 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	@Override
 	public void list(final String logPartition, final ResultCallback<List<LogFile>> callback) {
 		final Eventloop.ConcurrentOperationTracker concurrentOperationTracker = eventloop.startConcurrentOperation();
-		executorService.execute(new Runnable() {
-			@Override
-			public void run() {
-				final List<LogFile> entries = new ArrayList<>();
+		try {
+			executorService.execute(new Runnable() {
+				@Override
+				public void run() {
+					final List<LogFile> entries = new ArrayList<>();
 
-				try {
-					Files.createDirectories(dir);
-					Files.walkFileTree(dir, new FileVisitor<Path>() {
-						@Override
-						public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-							return FileVisitResult.CONTINUE;
-						}
-
-						@Override
-						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-							PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
-							if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
-								entries.add(partitionAndFile.logFile);
+					try {
+						Files.createDirectories(dir);
+						Files.walkFileTree(dir, new FileVisitor<Path>() {
+							@Override
+							public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+								return FileVisitResult.CONTINUE;
 							}
-							return FileVisitResult.CONTINUE;
-						}
 
-						@Override
-						public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-							if (exc != null) {
-								logger.error("visitFileFailed error", exc);
+							@Override
+							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+								PartitionAndFile partitionAndFile = parse(file.getFileName().toString());
+								if (partitionAndFile != null && partitionAndFile.logPartition.equals(logPartition)) {
+									entries.add(partitionAndFile.logFile);
+								}
+								return FileVisitResult.CONTINUE;
 							}
-							return FileVisitResult.CONTINUE;
-						}
 
-						@Override
-						public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-							if (exc != null) {
-								logger.error("postVisitDirectory error", exc);
+							@Override
+							public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+								if (exc != null) {
+									logger.error("visitFileFailed error", exc);
+								}
+								return FileVisitResult.CONTINUE;
 							}
-							return FileVisitResult.CONTINUE;
-						}
-					});
-					postResultConcurrently(eventloop, callback, entries);
-				} catch (IOException e) {
-					// TODO ?
-					logger.error("walkFileTree error", e);
-					postExceptionConcurrently(eventloop, callback, e);
+
+							@Override
+							public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+								if (exc != null) {
+									logger.error("postVisitDirectory error", exc);
+								}
+								return FileVisitResult.CONTINUE;
+							}
+						});
+						postResultConcurrently(eventloop, callback, entries);
+					} catch (IOException e) {
+						// TODO ?
+						logger.error("walkFileTree error", e);
+						postExceptionConcurrently(eventloop, callback, e);
+					}
+
+					concurrentOperationTracker.complete();
 				}
-
-				concurrentOperationTracker.complete();
-			}
-		});
+			});
+		} catch (RejectedExecutionException e) {
+			concurrentOperationTracker.complete();
+			callback.onException(e);
+		}
 	}
 
 	@Override

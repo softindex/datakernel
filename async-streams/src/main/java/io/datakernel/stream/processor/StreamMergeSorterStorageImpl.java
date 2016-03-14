@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -149,22 +150,25 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	 */
 	@Override
 	public void cleanup() {
-		executorService.execute(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-						@Override
-						public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-							Files.delete(file);
-							return FileVisitResult.CONTINUE;
-						}
-					});
-				} catch (IOException ignored) {
+		try {
+			executorService.execute(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
+							@Override
+							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+								Files.delete(file);
+								return FileVisitResult.CONTINUE;
+							}
+						});
+					} catch (IOException ignored) {
+					}
 				}
-			}
-		});
-
+			});
+		} catch (RejectedExecutionException e) {
+			logger.error("Cleanup error", e);
+		}
 	}
 
 	@Override
