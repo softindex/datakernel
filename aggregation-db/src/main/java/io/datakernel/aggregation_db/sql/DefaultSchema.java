@@ -5,6 +5,7 @@ package io.datakernel.aggregation_db.sql;
 
 
 import io.datakernel.aggregation_db.sql.tables.AggregationDbChunk;
+import io.datakernel.aggregation_db.sql.tables.AggregationDbRevision;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -29,7 +30,7 @@ import org.jooq.impl.SchemaImpl;
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class DefaultSchema extends SchemaImpl {
 
-	private static final long serialVersionUID = 482306103;
+	private static final long serialVersionUID = -1668343438;
 
 	/**
 	 * The reference instance of <code></code>
@@ -52,6 +53,7 @@ public class DefaultSchema extends SchemaImpl {
 
 	private final List<Table<?>> getTables0() {
 		return Arrays.<Table<?>>asList(
-			AggregationDbChunk.AGGREGATION_DB_CHUNK);
+			AggregationDbChunk.AGGREGATION_DB_CHUNK,
+			AggregationDbRevision.AGGREGATION_DB_REVISION);
 	}
 }
