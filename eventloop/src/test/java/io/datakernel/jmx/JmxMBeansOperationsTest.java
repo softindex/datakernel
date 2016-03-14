@@ -28,7 +28,6 @@ import javax.management.MBeanParameterInfo;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
@@ -122,7 +121,7 @@ public class JmxMBeansOperationsTest {
 		MBeanWithOperationThatReturnsValue mbeanOpWithValue = new MBeanWithOperationThatReturnsValue();
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(mbeanOpWithValue), false);
 
-		assertEquals(15, (int)mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
+		assertEquals(15, (int) mbean.invoke("sum", new Object[]{7, 8}, new String[]{"int", "int"}));
 	}
 
 	@Test

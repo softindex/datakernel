@@ -16,9 +16,8 @@
 
 package io.datakernel.jmx;
 
-import javax.management.DynamicMBean;
-import java.util.List;
+import io.datakernel.eventloop.Eventloop;
 
-public interface DynamicMBeanFactory {
-	DynamicMBean createFor(List<?> monitorables, boolean enableRefresh);
+public interface EventloopJmxMBean {
+	Eventloop getEventloop();
 }

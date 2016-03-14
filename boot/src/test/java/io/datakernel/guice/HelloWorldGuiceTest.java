@@ -23,6 +23,8 @@ import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.*;
+import io.datakernel.jmx.JmxModule;
+import io.datakernel.jmx.JmxRegistrator;
 import io.datakernel.service.ServiceGraph;
 import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.util.ByteBufStrings;
@@ -151,7 +153,12 @@ public class HelloWorldGuiceTest {
 	}
 
 	public static void main(String[] args) throws Exception {
-		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule());
+		Injector injector = Guice.createInjector(Stage.PRODUCTION, new TestModule(), new JmxModule());
+
+		// jmx
+		JmxRegistrator jmxRegistrator = injector.getInstance(JmxRegistrator.class);
+		jmxRegistrator.registerJmxMBeans();
+
 		ServiceGraph serviceGraph = injector.getInstance(ServiceGraph.class);
 		try {
 			serviceGraph.startFuture().get();

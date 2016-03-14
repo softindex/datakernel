@@ -57,20 +57,35 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	@Override
-	public DynamicMBean createFor(List<? extends ConcurrentJmxMBean> monitorables, boolean enableRefresh) {
+	public DynamicMBean createFor(List<?> monitorables, boolean enableRefresh) {
 		checkNotNull(monitorables);
 		checkArgument(monitorables.size() > 0);
 		checkArgument(!listContainsNullValues(monitorables), "monitorable can not be null");
 		checkArgument(allObjectsAreOfSameType(monitorables));
 
-		// all objects are of same type, so we can extract info from any of them
-		Class<? extends ConcurrentJmxMBean> mbeanClass = monitorables.get(0).getClass();
+		Object firstMBean = monitorables.get(0);
+		Class<?> mbeanClass = firstMBean.getClass();
+
+		List<MBeanWrapper> mbeanWrappers = new ArrayList<>(monitorables.size());
+		if (ConcurrentJmxMBean.class.isAssignableFrom(mbeanClass)) {
+			for (Object monitorable : monitorables) {
+				mbeanWrappers.add(new ConcurrentJmxMBeanWrapper((ConcurrentJmxMBean) monitorable));
+			}
+		} else if (EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
+			for (Object monitorable : monitorables) {
+				mbeanWrappers.add(new EventloopJmxMBeanWrapper((EventloopJmxMBean) monitorable));
+			}
+		} else {
+			throw new IllegalArgumentException("MBeans should implement either ConcurrentJmxMBean " +
+					"or EventloopJmxMBean interface");
+		}
+
 		AttributeNodeForPojo rootNode = createAttributesTree(mbeanClass);
 		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, mbeanClass, enableRefresh);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(mbeanClass);
 
 		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(
-				mBeanInfo, monitorables, rootNode, opkeyToMethod, enableRefresh
+				mBeanInfo, mbeanWrappers, rootNode, opkeyToMethod, enableRefresh
 		);
 
 		if (enableRefresh) {
@@ -80,7 +95,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return mbean;
 	}
 
-	private static void startRefreshing(Class<? extends ConcurrentJmxMBean> mbeanClass, DynamicMBeanAggregator mbean) {
+	private static void startRefreshing(Class<?> mbeanClass, DynamicMBeanAggregator mbean) {
 		double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 		double refreshPeriod = DEFAULT_REFRESH_PERIOD;
 		JmxRefreshSettings settings = fetchRefreshSettingsIfExists(mbeanClass);
@@ -106,7 +121,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return null;
 	}
 
-	private static AttributeNodeForPojo createAttributesTree(Class<? extends ConcurrentJmxMBean> clazz) {
+	private static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
 		List<AttributeNode> subNodes = createNodesFor(clazz);
 		AttributeNodeForPojo root = new AttributeNodeForPojo("", new ValueFetcherDirect(), subNodes);
 		return root;
@@ -355,7 +370,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode,
-	                                         Class<? extends ConcurrentJmxMBean> monitorableClass,
+	                                         Class<?> monitorableClass,
 	                                         boolean enableRefresh) {
 		String monitorableName = "";
 		String monitorableDescription = "";
@@ -401,7 +416,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	// TODO(vmykhalko): refactor this method (it has common code with  fetchOperationsInfo()
-	private static Map<OperationKey, Method> fetchOpkeyToMethod(Class<? extends ConcurrentJmxMBean> mbeanClass) {
+	private static Map<OperationKey, Method> fetchOpkeyToMethod(Class<?> mbeanClass) {
 		Map<OperationKey, Method> opkeyToMethod = new HashMap<>();
 		Method[] methods = mbeanClass.getMethods();
 		for (Method method : methods) {
@@ -421,11 +436,28 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					paramTypesNames[i] = paramTypes[i].getName();
 				}
 				opkeyToMethod.put(new OperationKey(opName, paramTypesNames), method);
-
 			}
 		}
 		return opkeyToMethod;
 	}
+
+//	private static final class EventloopJmxMBeanAdapter implements ConcurrentJmxMBean {
+//		private final EventloopJmxMBean eventloopJmxMBean;
+//
+//		public EventloopJmxMBeanAdapter(EventloopJmxMBean eventloopJmxMBean) {
+//			this.eventloopJmxMBean = eventloopJmxMBean;
+//		}
+//
+//		@JmxAttribute(name = "")
+//		public EventloopJmxMBean getEventloopJmxMBean() {
+//			return eventloopJmxMBean;
+//		}
+//
+//		@Override
+//		public Executor getJmxExecutor() {
+//			return eventloopJmxMBean.getEventloop();
+//		}
+//	}
 
 	private static final class AttributeDescriptor {
 		private final String name;
@@ -501,7 +533,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static final class DynamicMBeanAggregator implements DynamicMBean {
 		private final MBeanInfo mBeanInfo;
-		private final List<? extends ConcurrentJmxMBean> mbeans;
+		private final List<? extends MBeanWrapper> mbeanWrappers;
+		private final List<?> mbeans;
 		private final AttributeNodeForPojo rootNode;
 		private final Map<OperationKey, Method> opkeyToMethod;
 
@@ -510,11 +543,18 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private volatile double refreshPeriod;
 		private volatile double smoothingWindow;
 
-		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends ConcurrentJmxMBean> mbeans,
+		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends MBeanWrapper> mbeanWrappers,
 		                              AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod,
 		                              boolean refreshEnabled) {
 			this.mBeanInfo = mBeanInfo;
-			this.mbeans = mbeans;
+			this.mbeanWrappers = mbeanWrappers;
+
+			List<Object> extractedMBeans = new ArrayList<>(mbeanWrappers.size());
+			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
+				extractedMBeans.add(mbeanWrapper.getMBean());
+			}
+			this.mbeans = extractedMBeans;
+
 			this.rootNode = rootNode;
 			this.opkeyToMethod = opkeyToMethod;
 			this.refreshEnabled = refreshEnabled;
@@ -540,14 +580,15 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return new TimerTask() {
 				@Override
 				public void run() {
-					final AtomicInteger mbeansLeftForRefresh = new AtomicInteger(mbeans.size());
+					final AtomicInteger mbeansLeftForRefresh = new AtomicInteger(mbeanWrappers.size());
 					// cache smoothingWindow and refreshPeriod to be same for all localRefreshTasks
 					// because this two parameters may be changed from other thread
 					final double currentSmoothingWindow = smoothingWindow;
 					final int currentRefreshPeriod = secondsToMillis(refreshPeriod);
 					final long currentTimestamp = TIME_PROVIDER.currentTimeMillis();
-					for (final ConcurrentJmxMBean mbean : mbeans) {
-						final Executor executor = mbean.getJmxExecutor();
+					for (final MBeanWrapper mbeanWrapper : mbeanWrappers) {
+						final Executor executor = mbeanWrapper.getExecutor();
+						final Object mbean = mbeanWrapper.getMBean();
 						checkNotNull(executor, "Error. Executor of ConcurrentMBean cannot be null");
 						executor.execute(new Runnable() {
 							@Override
@@ -655,12 +696,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				throw new RuntimeOperationsException(new IllegalArgumentException("Operation not found"), errorMsg);
 			}
 
-			final CountDownLatch latch = new CountDownLatch(mbeans.size());
+			final CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
 			final AtomicReference<Exception> exceptionReference = new AtomicReference<>();
 
 			final AtomicReference lastValue = new AtomicReference();
-			for (final ConcurrentJmxMBean mbean : mbeans) {
-				Executor executor = mbean.getJmxExecutor();
+			for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
+				Executor executor = mbeanWrapper.getExecutor();
+				final Object mbean = mbeanWrapper.getMBean();
 				executor.execute((new Runnable() {
 					@Override
 					public void run() {
@@ -688,7 +730,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 
 			// We don't know how to aggregate return values if there are several mbeans
-			return mbeans.size() == 1 ? lastValue.get() : null;
+			return mbeanWrappers.size() == 1 ? lastValue.get() : null;
 		}
 
 		private static String prettyOperationName(String name, String[] argTypes) {
@@ -708,4 +750,47 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return mBeanInfo;
 		}
 	}
+
+	private interface MBeanWrapper {
+		Executor getExecutor();
+
+		Object getMBean();
+	}
+
+	private static final class ConcurrentJmxMBeanWrapper implements MBeanWrapper {
+		private final ConcurrentJmxMBean mbean;
+
+		public ConcurrentJmxMBeanWrapper(ConcurrentJmxMBean mbean) {
+			this.mbean = mbean;
+		}
+
+		@Override
+		public Executor getExecutor() {
+			return mbean.getJmxExecutor();
+		}
+
+		@Override
+		public Object getMBean() {
+			return mbean;
+		}
+	}
+
+	private static final class EventloopJmxMBeanWrapper implements MBeanWrapper {
+		private final EventloopJmxMBean mbean;
+
+		public EventloopJmxMBeanWrapper(EventloopJmxMBean mbean) {
+			this.mbean = mbean;
+		}
+
+		@Override
+		public Executor getExecutor() {
+			return mbean.getEventloop();
+		}
+
+		@Override
+		public Object getMBean() {
+			return mbean;
+		}
+	}
+
 }

@@ -19,8 +19,8 @@ package io.datakernel.eventloop;
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
-import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.EventStats;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.net.ServerSocketSettings;
@@ -33,7 +33,6 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.Executor;
 
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
@@ -48,7 +47,7 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * @param <S> type of AbstractNioServer which extends from it
  */
-public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, ConcurrentJmxMBean {
+public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, EventloopJmxMBean {
 	private static final Logger logger = getLogger(AbstractServer.class);
 
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
@@ -267,12 +266,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected abstract SocketConnection createConnection(SocketChannel socketChannel);
 
 	// jmx
-
-	@Override
-	public Executor getJmxExecutor() {
-		return eventloop;
-	}
-
 	@JmxAttribute
 	public ExceptionStats getCloseException() {
 		return closeException;

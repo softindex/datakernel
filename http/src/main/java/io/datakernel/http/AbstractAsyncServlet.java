@@ -23,14 +23,12 @@ import io.datakernel.jmx.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.Executor;
-
 /**
  * Represent an asynchronous HTTP servlet which receives and responds to requests from clients across HTTP.
  * For using this servlet you should override method doServeAsync(, in this method must be logic
  * for handling requests and creating result.
  */
-public abstract class AbstractAsyncServlet implements AsyncHttpServlet, ConcurrentJmxMBean {
+public abstract class AbstractAsyncServlet implements AsyncHttpServlet, EventloopJmxMBean {
 	protected static final Logger logger = LoggerFactory.getLogger(AbstractAsyncServlet.class);
 
 	protected final Eventloop eventloop;
@@ -87,12 +85,6 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 	}
 
 	// jmx
-
-	@Override
-	public Executor getJmxExecutor() {
-		return eventloop;
-	}
-
 	protected boolean isMonitoring(HttpRequest request) {
 		return true;
 	}
@@ -101,6 +93,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Concurre
 		return "url: " + request.toString();
 	}
 
+	@Override
 	public Eventloop getEventloop() {
 		return eventloop;
 	}

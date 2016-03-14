@@ -18,7 +18,6 @@ package io.datakernel.jmx;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import static java.util.Arrays.asList;
 
@@ -75,8 +74,8 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	}
 
 	@JmxAttribute
-	String getLastExceptionCause() {
-		return Objects.toString(causeObject);
+	public Object getLastExceptionCause() {
+		return causeObject;
 	}
 
 	@JmxAttribute

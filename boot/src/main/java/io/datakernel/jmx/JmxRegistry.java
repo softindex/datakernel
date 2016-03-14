@@ -53,9 +53,9 @@ public final class JmxRegistry {
 		Object mbean;
 		if (isJmxMBean(instanceClass)) {
 			try {
-				mbean = mbeanFactory.createFor(asList((ConcurrentJmxMBean) singletonInstance), true);
-			} catch (ReflectiveOperationException e) {
-				String msg = format("Instance with key %s implemetns ConcurrentJmxMBean " +
+				mbean = mbeanFactory.createFor(asList(singletonInstance), true);
+			} catch (Exception e) {
+				String msg = format("Instance with key %s implemetns ConcurrentJmxMBean or EventloopJmxMBean" +
 						"but exception was thrown during attempt to create DynamicMBean", key.toString());
 				logger.error(msg, e);
 				return;
@@ -64,7 +64,7 @@ public final class JmxRegistry {
 			mbean = singletonInstance;
 		} else {
 			logger.info(format("Instance with key %s was not registered to jmx, " +
-					"because its type does not implement ConcurrentJmxMBean " +
+					"because its type does not implement ConcurrentJmxMBean, EventloopJmxMBean " +
 					"and does not implement neither *MBean nor *MXBean interface", key.toString()));
 			return;
 		}
@@ -103,7 +103,7 @@ public final class JmxRegistry {
 	public void unregisterSingleton(Key<?> key, Object singletonInstance) {
 		checkNotNull(key);
 
-		if (isJmxMBean(singletonInstance.getClass())) {
+		if (isMBean(singletonInstance.getClass())) {
 			try {
 				String name = createNameForKey(key);
 				ObjectName objectName = new ObjectName(name);
@@ -133,34 +133,30 @@ public final class JmxRegistry {
 
 		if (!isJmxMBean(poolInstances.get(0).getClass())) {
 			logger.info(format("Pool of instances with key %s was not registered to jmx, " +
-					"because instances' type does not implement ConcurrentJmxMBean interface", key.toString()));
+					"because instances' type implements neither ConcurrentJmxMBean " +
+					"nor EventloopJmxMBean interface", key.toString()));
 			return;
-		}
-
-		List<ConcurrentJmxMBean> concurrentJmxMBeans = new ArrayList<>();
-		for (Object poolInstance : poolInstances) {
-			concurrentJmxMBeans.add((ConcurrentJmxMBean) poolInstance);
 		}
 
 		String commonName;
 		try {
 			commonName = createNameForKey(key);
-		} catch (ReflectiveOperationException e) {
+		} catch (Exception e) {
 			String msg = format("Error during generation name for pool of instances with key %s", key.toString());
 			logger.error(msg, e);
 			return;
 		}
 
 		// register mbeans for each worker separately
-		for (int i = 0; i < concurrentJmxMBeans.size(); i++) {
-			registerMBeanForWorker(concurrentJmxMBeans.get(i), i, commonName, key);
+		for (int i = 0; i < poolInstances.size(); i++) {
+			registerMBeanForWorker(poolInstances.get(i), i, commonName, key);
 		}
 
 		// register aggregated mbean for pool of workers
 		DynamicMBean mbean;
 		try {
-			mbean = mbeanFactory.createFor(concurrentJmxMBeans, true);
-		} catch (ReflectiveOperationException e) {
+			mbean = mbeanFactory.createFor(poolInstances, true);
+		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for aggregated MBean of pool of workers with key %s",
 					key.toString());
 			logger.error(msg, e);
@@ -246,13 +242,13 @@ public final class JmxRegistry {
 		return true;
 	}
 
-	private void registerMBeanForWorker(ConcurrentJmxMBean worker, int workerId, String commonName, Key<?> key) {
+	private void registerMBeanForWorker(Object worker, int workerId, String commonName, Key<?> key) {
 		String workerName = createWorkerName(commonName, workerId);
 
 		DynamicMBean mbean;
 		try {
 			mbean = mbeanFactory.createFor(asList(worker), false);
-		} catch (ReflectiveOperationException e) {
+		} catch (Exception e) {
 			String msg = format("Cannot create DynamicMBean for worker " +
 					"of pool of instances with key %s", key.toString());
 			logger.error(msg, e);
@@ -382,6 +378,10 @@ public final class JmxRegistry {
 	}
 
 	private static boolean isJmxMBean(Class<?> clazz) {
-		return ConcurrentJmxMBean.class.isAssignableFrom(clazz);
+		return ConcurrentJmxMBean.class.isAssignableFrom(clazz) || EventloopJmxMBean.class.isAssignableFrom(clazz);
+	}
+
+	private static boolean isMBean(Class<?> clazz) {
+		return isJmxMBean(clazz) || isStandardMBean(clazz) || isMXBean(clazz);
 	}
 }
