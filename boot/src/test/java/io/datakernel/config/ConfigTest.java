@@ -18,37 +18,37 @@ package io.datakernel.config;
 
 import org.junit.Test;
 
+import static io.datakernel.config.Config.ROOT;
 import static io.datakernel.config.ConfigConverters.ofString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-public class ConfigTreeTest {
+public class ConfigTest {
 
 	@Test
 	public void rootConfigDoesNotHaveKey() {
-		ConfigTree root = ConfigTree.newInstance();
-
+		Config root = Config.create();
 		assertEquals("", root.getKey());
 	}
 
 	@Test
 	public void configShouldStoreInfoAboutChildConfigs() {
-		ConfigTree root = ConfigTree.newInstance().registerConverter(String.class, ofString());
+		Config root = Config.create();
 		root.set("name1", "value1");
 		root.set("name2", "value2");
 
-		assertEquals("value1", root.getChild("name1").get(String.class));
-		assertEquals("value2", root.getChild("name2").get(String.class));
+		assertEquals("value1", root.getChild("name1").get(ofString(), ROOT));
+		assertEquals("value2", root.getChild("name2").get(ofString(), ROOT));
 	}
 
 	@Test
 	public void configShouldProperlySplitChildKey() {
-		ConfigTree root = ConfigTree.newInstance();
+		Config root = Config.create();
 		root.set("base.sub1.sub2", "value");
 
-		ConfigTree base = (ConfigTree) root.getChild("base");
-		ConfigTree sub1 = (ConfigTree) base.getChild("sub1");
-		ConfigTree sub2 = (ConfigTree) sub1.getChild("sub2");
+		Config base = (Config) root.getChild("base");
+		Config sub1 = (Config) base.getChild("sub1");
+		Config sub2 = (Config) sub1.getChild("sub2");
 
 		assertNull(root.get());
 		assertNull(base.get());
@@ -58,11 +58,11 @@ public class ConfigTreeTest {
 
 	@Test
 	public void configShouldUpdateValueIfKeyWasAlreadyUsed() {
-		ConfigTree root = ConfigTree.newInstance().registerConverter(String.class, ofString());
+		Config root = Config.create();
 		root.set("key1", "value1");
 
 		root.set("key1", "value2");
 
-		assertEquals("value2", root.getChild("key1").get(String.class));
+		assertEquals("value2", root.getChild("key1").get(ofString(), ROOT));
 	}
 }

@@ -22,7 +22,7 @@ import com.google.inject.Singleton;
 import com.google.inject.Stage;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.config.Config;
-import io.datakernel.config.PropertiesConfig;
+import io.datakernel.config.PropertiesConfigModule;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.PrimaryServer;
 import io.datakernel.http.AsyncHttpServer;
@@ -36,8 +36,8 @@ import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
 
-import java.io.IOException;
-
+import static io.datakernel.config.ConfigConverters.ofInteger;
+import static io.datakernel.config.ConfigConverters.ofString;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
 public class LauncherExample extends Launcher {
@@ -51,6 +51,7 @@ public class LauncherExample extends Launcher {
 		injector(Stage.PRODUCTION,
 				ServiceGraphModule.defaultInstance(),
 				new JmxModule(),
+				new PropertiesConfigModule("configs.properties"),
 				new LauncherExampleModule());
 	}
 
@@ -67,7 +68,7 @@ public class LauncherExample extends Launcher {
 		@Provides
 		@Singleton
 		WorkerPool workerPool(Config config) {
-			return new WorkerPool(config.get("workers", Integer.class, 7));
+			return new WorkerPool(config.get(ofInteger(), "workers", 7));
 		}
 
 		@Provides
@@ -81,7 +82,7 @@ public class LauncherExample extends Launcher {
 		PrimaryServer primaryServer(Eventloop primaryEventloop, WorkerPool workerPool, Config config) {
 			PrimaryServer primaryNioServer = PrimaryServer.create(primaryEventloop);
 			primaryNioServer.workerServers(workerPool.getInstances(AsyncHttpServer.class));
-			int port = config.get("port", Integer.class, 5577);
+			int port = config.get(ofInteger(), "port", 5577);
 			primaryNioServer.setListenPort(port);
 			return primaryNioServer;
 		}
@@ -95,7 +96,7 @@ public class LauncherExample extends Launcher {
 		@Provides
 		@Worker
 		AsyncHttpServer workerHttpServer(@Worker Eventloop eventloop, @WorkerId final int workerId, Config config) {
-			final String responseMessage = config.get("msg", String.class, "Some msg");
+			final String responseMessage = config.get(ofString(), "msg", "Some msg");
 			return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 				@Override
 				public void serveAsync(HttpRequest request,
@@ -106,15 +107,6 @@ public class LauncherExample extends Launcher {
 					callback.onResult(httpResponse);
 				}
 			});
-		}
-
-		@Provides
-		@Singleton
-		Config config() throws IOException {
-			return PropertiesConfig.builder()
-					.addFile("configs.properties")
-					.saveConfig("configs-result.properties")
-					.build();
 		}
 	}
 }

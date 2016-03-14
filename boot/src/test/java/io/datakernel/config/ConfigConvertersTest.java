@@ -16,16 +16,14 @@
 
 package io.datakernel.config;
 
-import com.google.common.reflect.TypeToken;
 import org.junit.Test;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
+import static io.datakernel.config.Config.ROOT;
 import static io.datakernel.config.ConfigConverters.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -34,48 +32,45 @@ public class ConfigConvertersTest {
 
 	@Test
 	public void testBooleanConverter() {
-		ConfigConverter<Boolean> booleanConverter = ofBoolean();
 		String inputString1 = "true";
 		String inputString2 = "false";
-		ConfigTree config1 = ConfigTree.newInstance().registerConverter(Boolean.class, ofBoolean());
+		Config config1 = Config.create();
 		config1.set(inputString1);
-		ConfigTree config2 = ConfigTree.newInstance().registerConverter(Boolean.class, ofBoolean());
+		Config config2 = Config.create();
 		config2.set(inputString2);
 
-		assertTrue(booleanConverter.get(config1));
-		assertFalse(booleanConverter.get(config2));
+		assertTrue(config1.get(ofBoolean(), ROOT));
+		assertFalse(config2.get(ofBoolean(), ROOT));
 	}
 
 	@Test
 	public void testIntegerConverter() {
-		ConfigConverter<Integer> integerConverter = ConfigConverters.ofInteger();
 		String inputString1 = "1";
 		String inputString2 = "-5";
 		String inputString3 = "100";
-		ConfigTree root = ConfigTree.newInstance().registerConverter(Integer.class, ofInteger());
+		Config root = Config.create();
 		root.set("key1", inputString1);
 		root.set("key2", inputString2);
 		root.set("key3", inputString3);
 
-		assertEquals(1, (int) integerConverter.get((ConfigTree) root.getChild("key1")));
-		assertEquals(-5, (int) integerConverter.get((ConfigTree) root.getChild("key2")));
-		assertEquals(100, (int) integerConverter.get((ConfigTree) root.getChild("key3")));
+		assertEquals(1, (int) root.get(ofInteger(), "key1"));
+		assertEquals(-5, (int) root.get(ofInteger(), "key2"));
+		assertEquals(100, (int) root.get(ofInteger(), "key3"));
 	}
 
 	@Test
 	public void testLongConverter() {
-		ConfigConverter<Long> longConverter = ConfigConverters.ofLong();
 		String inputString1 = "1";
 		String inputString2 = "-5";
 		String inputString3 = "100";
-		ConfigTree root = ConfigTree.newInstance().registerConverter(Long.class, ofLong());
+		Config root = Config.create();
 		root.set("key1", inputString1);
 		root.set("key2", inputString2);
 		root.set("key3", inputString3);
 
-		assertEquals(1L, (long) longConverter.get((ConfigTree) root.getChild("key1")));
-		assertEquals(-5L, (long) longConverter.get((ConfigTree) root.getChild("key2")));
-		assertEquals(100L, (long) longConverter.get((ConfigTree) root.getChild("key3")));
+		assertEquals(1L, (long) root.get(ofLong(), "key1"));
+		assertEquals(-5L, (long) root.get(ofLong(), "key2"));
+		assertEquals(100L, (long) root.get(ofLong(), "key3"));
 	}
 
 	@Test
@@ -84,14 +79,14 @@ public class ConfigConvertersTest {
 		String inputString1 = "RED";
 		String inputString2 = "GREEN";
 		String inputString3 = "BLUE";
-		ConfigTree root = ConfigTree.newInstance().registerConverter(Color.class, ofEnum(Color.class));
+		Config root = Config.create();
 		root.set("key1", inputString1);
 		root.set("key2", inputString2);
 		root.set("key3", inputString3);
 
-		assertEquals(Color.RED, enumConverter.get((ConfigTree) root.getChild("key1")));
-		assertEquals(Color.GREEN, enumConverter.get((ConfigTree) root.getChild("key2")));
-		assertEquals(Color.BLUE, enumConverter.get((ConfigTree) root.getChild("key3")));
+		assertEquals(Color.RED, root.get(enumConverter, "key1"));
+		assertEquals(Color.GREEN, root.get(enumConverter, "key2"));
+		assertEquals(Color.BLUE, root.get(enumConverter, "key3"));
 	}
 
 	public enum Color {
@@ -104,14 +99,14 @@ public class ConfigConvertersTest {
 		String inputString1 = "data1";
 		String inputString2 = "data2";
 		String inputString3 = "data3";
-		ConfigTree root = ConfigTree.newInstance().registerConverter(String.class, ofString());
+		Config root = Config.create();
 		root.set("key1", inputString1);
 		root.set("key2", inputString2);
 		root.set("key3", inputString3);
 
-		assertEquals(inputString1, stringConverter.get((ConfigTree) root.getChild("key1")));
-		assertEquals(inputString2, stringConverter.get((ConfigTree) root.getChild("key2")));
-		assertEquals(inputString3, stringConverter.get((ConfigTree) root.getChild("key3")));
+		assertEquals(inputString1, root.get(stringConverter, "key1"));
+		assertEquals(inputString2, root.get(stringConverter, "key2"));
+		assertEquals(inputString3, root.get(stringConverter, "key3"));
 	}
 
 	@Test
@@ -120,15 +115,15 @@ public class ConfigConvertersTest {
 		String inputString1 = "0.001";
 		String inputString2 = "1e5";
 		String inputString3 = "-23.1";
-		ConfigTree root = ConfigTree.newInstance().registerConverter(Double.class, ofDouble());
+		Config root = Config.create();
 		root.set("key1", inputString1);
 		root.set("key2", inputString2);
 		root.set("key3", inputString3);
 
 		double acceptableError = 1e-10;
-		assertEquals(0.001, doubleConverter.get((ConfigTree) root.getChild("key1")), acceptableError);
-		assertEquals(1e5, doubleConverter.get((ConfigTree) root.getChild("key2")), acceptableError);
-		assertEquals(-23.1, doubleConverter.get((ConfigTree) root.getChild("key3")), acceptableError);
+		assertEquals(0.001, doubleConverter.get(root.getChild("key1")), acceptableError);
+		assertEquals(1e5, doubleConverter.get(root.getChild("key2")), acceptableError);
+		assertEquals(-23.1, doubleConverter.get(root.getChild("key3")), acceptableError);
 	}
 
 	@Test
@@ -137,7 +132,7 @@ public class ConfigConvertersTest {
 		String inputString1 = "192.168.1.1:80";
 		String inputString2 = "250.200.100.50:10000";
 		String inputString3 = "1.0.0.0:65000";
-		ConfigTree root = ConfigTree.newInstance().registerConverter(InetSocketAddress.class, inetSocketAddressConverter);
+		Config root = Config.create();
 		root.set("key1", inputString1);
 		root.set("key2", inputString2);
 		root.set("key3", inputString3);
@@ -145,39 +140,20 @@ public class ConfigConvertersTest {
 		InetSocketAddress address1 = new InetSocketAddress(InetAddress.getByName("192.168.1.1"), 80);
 		InetSocketAddress address2 = new InetSocketAddress(InetAddress.getByName("250.200.100.50"), 10000);
 		InetSocketAddress address3 = new InetSocketAddress(InetAddress.getByName("1.0.0.0"), 65000);
-		assertEquals(address1, inetSocketAddressConverter.get((ConfigTree) root.getChild("key1")));
-		assertEquals(address2, inetSocketAddressConverter.get((ConfigTree) root.getChild("key2")));
-		assertEquals(address3, inetSocketAddressConverter.get((ConfigTree) root.getChild("key3")));
+		assertEquals(address1, inetSocketAddressConverter.get(root.getChild("key1")));
+		assertEquals(address2, inetSocketAddressConverter.get(root.getChild("key2")));
+		assertEquals(address3, inetSocketAddressConverter.get(root.getChild("key3")));
 	}
 
 	@Test
 	public void testListConverter() {
 		ConfigConverter<List<Integer>> listConverter = ConfigConverters.ofList(ConfigConverters.ofInteger(), ",");
 		String inputData = "1, 5,   10   ";
-		ConfigTree root = ConfigTree.newInstance().registerConverter(new TypeToken<List<Integer>>() {}, listConverter);
+		Config root = Config.create();
 		root.set("key1", inputData);
 
 		List<Integer> expected = asList(1, 5, 10);
-		assertEquals(expected, listConverter.get((ConfigTree) root.getChild("key1")));
-
-		listConverter.set(((ConfigTree) root.getChild("key2")), expected);
-		assertEquals(expected, listConverter.get((ConfigTree) root.getChild("key2")));
+		assertEquals(expected, listConverter.get(root.getChild("key1")));
 	}
 
-	@Test
-	public void testMapConverter() throws Exception {
-		ConfigConverter<Map<String, Integer>> mapConverter = ConfigConverters.ofMap(ConfigConverters.ofString(), ConfigConverters.ofInteger());
-		String input = "key1=42, key2 =11 ,  key3 =   -100   ,  ";
-		ConfigTree root = ConfigTree.newInstance().registerConverter(new TypeToken<Map<String, Integer>>() {}, mapConverter);
-
-		Map<String, Integer> expected = new HashMap<>();
-		expected.put("key1", 42);
-		expected.put("key2", 11);
-		expected.put("key3", -100);
-		root.set("map1", input);
-		assertEquals(expected, mapConverter.get((ConfigTree) root.getChild("map1")));
-
-		mapConverter.set(((ConfigTree) root.getChild("map2")), expected);
-		assertEquals(expected, mapConverter.get((ConfigTree) root.getChild("map2")));
-	}
 }

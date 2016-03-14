@@ -26,17 +26,18 @@ import io.datakernel.util.StringUtils;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Integer.parseInt;
-import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Collections.emptyMap;
 
 public final class ConfigConverters {
+
 	private static final class ConfigConverterString extends ConfigConverterSingle<String> {
 		static ConfigConverterString INSTANCE = new ConfigConverterString();
 
@@ -48,6 +49,20 @@ public final class ConfigConverters {
 		@Override
 		public String toString(String item) {
 			return checkNotNull(item);
+		}
+	}
+
+	private static final class ConfigConverterByte extends ConfigConverterSingle<Byte> {
+		static ConfigConverterByte INSTANCE = new ConfigConverterByte();
+
+		@Override
+		public Byte fromString(String string) {
+			return Byte.parseByte(string);
+		}
+
+		@Override
+		public String toString(Byte item) {
+			return Byte.toString(item);
 		}
 	}
 
@@ -76,6 +91,20 @@ public final class ConfigConverters {
 		@Override
 		public String toString(Long item) {
 			return Long.toString(item);
+		}
+	}
+
+	private static final class ConfigConverterFloat extends ConfigConverterSingle<Float> {
+		static ConfigConverterFloat INSTANCE = new ConfigConverterFloat();
+
+		@Override
+		public Float fromString(String string) {
+			return Float.parseFloat(string);
+		}
+
+		@Override
+		public String toString(Float item) {
+			return Float.toString(item);
 		}
 	}
 
@@ -158,13 +187,13 @@ public final class ConfigConverters {
 
 	private static final class ConfigConverterList<T> extends ConfigConverterSingle<List<T>> {
 		private final ConfigConverterSingle<T> elementConverter;
-		private final CharSequence splitSeparators;
+		private final CharSequence separators;
 		private final char joinSeparator;
 
 		public ConfigConverterList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
 			this.elementConverter = elementConverter;
-			this.splitSeparators = separators;
 			this.joinSeparator = separators.charAt(0);
+			this.separators = separators;
 		}
 
 		@Override
@@ -173,7 +202,7 @@ public final class ConfigConverters {
 			if (string.isEmpty())
 				return emptyList();
 			List<T> list = new ArrayList<>();
-			for (String elementString : StringUtils.splitToList(splitSeparators, string)) {
+			for (String elementString : StringUtils.splitToList(separators, string)) {
 				T element = elementConverter.fromString(elementString.trim());
 				list.add(element);
 			}
@@ -187,51 +216,6 @@ public final class ConfigConverters {
 				strings.add(elementConverter.toString(e));
 			}
 			return StringUtils.join(joinSeparator, strings);
-		}
-	}
-
-	private static final class ConfigConverterMap<K, V> extends ConfigConverterSingle<Map<K, V>> {
-		private final ConfigConverterSingle<K> keyConverter;
-		private final ConfigConverterSingle<V> valueConverter;
-		private final CharSequence entriesSplitSeparators;
-		private final char entriesJoinSeparator;
-		private final char keyValueSeparator;
-
-		private ConfigConverterMap(ConfigConverterSingle<K> keyConverter, ConfigConverterSingle<V> valueConverter,
-		                           CharSequence entriesSeparators, char keyValueSeparator) {
-			this.keyConverter = keyConverter;
-			this.valueConverter = valueConverter;
-			this.entriesSplitSeparators = entriesSeparators;
-			this.entriesJoinSeparator = entriesSeparators.charAt(0);
-			this.keyValueSeparator = keyValueSeparator;
-		}
-
-		@Override
-		protected Map<K, V> fromString(String string) {
-			string = string.trim();
-			if (string.isEmpty())
-				return emptyMap();
-			Map<K, V> map = new HashMap<>();
-			for (String entryString : StringUtils.splitToList(entriesSplitSeparators, string)) {
-				List<String> pair = StringUtils.splitToList(keyValueSeparator, entryString);
-				checkArgument(pair.size() == 2, "Incorrect key-value pair format");
-				K key = keyConverter.fromString(pair.get(0).trim());
-				V value = valueConverter.fromString(pair.get(1).trim());
-				map.put(key, value);
-			}
-			return Collections.unmodifiableMap(map);
-		}
-
-		@Override
-		protected String toString(Map<K, V> map) {
-			List<String> pairs = new ArrayList<>(map.size());
-			for (Map.Entry<K, V> entry : map.entrySet()) {
-				String key = keyConverter.toString(entry.getKey());
-				String value = valueConverter.toString(entry.getValue());
-				String pair = StringUtils.join(keyValueSeparator, asList(key, value));
-				pairs.add(pair);
-			}
-			return StringUtils.join(entriesJoinSeparator, pairs);
 		}
 	}
 
@@ -255,28 +239,19 @@ public final class ConfigConverters {
 		private final ServerSocketSettings defaultValue = new ServerSocketSettings();
 
 		@Override
-		public ServerSocketSettings get(ConfigTree config) {
+		public ServerSocketSettings get(Config config) {
 			return get(config, defaultValue);
 		}
 
 		@Override
-		public ServerSocketSettings get(ConfigTree config, ServerSocketSettings defaultValue) {
+		public ServerSocketSettings get(Config config, ServerSocketSettings defaultValue) {
 			ServerSocketSettings result = Preconditions.checkNotNull(defaultValue);
-			result = result.backlog(config.get("backlog", Integer.class, result.getBacklog()));
+			result = result.backlog(config.get(ofInteger(), "backlog", result.getBacklog()));
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize(config.get("receiveBufferSize", Integer.class));
+				result = result.receiveBufferSize(config.get(ofInteger(), "receiveBufferSize"));
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get("reuseAddress", Boolean.class));
+				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
 			return result;
-		}
-
-		@Override
-		public void set(ConfigTree config, ServerSocketSettings item) {
-			Preconditions.checkNotNull(config);
-			Preconditions.checkNotNull(item);
-			config.set("backlog", Integer.toString(item.getBacklog()));
-			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());
-			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
 		}
 	}
 
@@ -286,35 +261,24 @@ public final class ConfigConverters {
 		private final SocketSettings defaultValue = new SocketSettings();
 
 		@Override
-		public SocketSettings get(ConfigTree config) {
+		public SocketSettings get(Config config) {
 			return get(config, defaultValue);
 		}
 
 		@Override
-		public SocketSettings get(ConfigTree config, SocketSettings defaultValue) {
+		public SocketSettings get(Config config, SocketSettings defaultValue) {
 			SocketSettings result = Preconditions.checkNotNull(defaultValue);
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize((int) config.get("receiveBufferSize", MemSize.class).getBytes());
+				result = result.receiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
 			if (config.hasValue("sendBufferSize"))
-				result = result.sendBufferSize((int) config.get("sendBufferSize", MemSize.class).getBytes());
+				result = result.sendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get("reuseAddress", Boolean.class));
+				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
 			if (config.hasValue("keepAlive"))
-				result = result.keepAlive(config.get("keepAlive", Boolean.class));
+				result = result.keepAlive(config.get(ofBoolean(), "keepAlive"));
 			if (config.hasValue("tcpNoDelay"))
-				result = result.tcpNoDelay(config.get("tcpNoDelay", Boolean.class));
+				result = result.tcpNoDelay(config.get(ofBoolean(), "tcpNoDelay"));
 			return result;
-		}
-
-		@Override
-		public void set(ConfigTree config, SocketSettings item) {
-			Preconditions.checkNotNull(config);
-			Preconditions.checkNotNull(item);
-			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());
-			config.set("sendBufferSize", MemSize.of(item.getSendBufferSize()).toString());
-			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
-			config.set("keepAlive", Boolean.toString(item.getKeepAlive()));
-			config.set("tcpNoDelay", Boolean.toString(item.getTcpNoDelay()));
 		}
 	}
 
@@ -322,37 +286,31 @@ public final class ConfigConverters {
 		static ConfigConverterDatagramSocketSettings INSTANCE = new ConfigConverterDatagramSocketSettings();
 
 		@Override
-		public DatagramSocketSettings get(ConfigTree config) {
+		public DatagramSocketSettings get(Config config) {
 			return get(config, defaultDatagramSocketSettings());
 		}
 
 		@Override
-		public DatagramSocketSettings get(ConfigTree config, DatagramSocketSettings defaultValue) {
+		public DatagramSocketSettings get(Config config, DatagramSocketSettings defaultValue) {
 			DatagramSocketSettings result = Preconditions.checkNotNull(defaultDatagramSocketSettings());
 			if (config.hasValue("receiveBufferSize"))
-				result = result.receiveBufferSize((int) config.get("receiveBufferSize", MemSize.class).getBytes());
+				result = result.receiveBufferSize((int) config.get(ofMemSize(), "receiveBufferSize").getBytes());
 			if (config.hasValue("sendBufferSize"))
-				result = result.sendBufferSize((int) config.get("sendBufferSize", MemSize.class).getBytes());
+				result = result.sendBufferSize((int) config.get(ofMemSize(), "sendBufferSize").getBytes());
 			if (config.hasValue("reuseAddress"))
-				result = result.reuseAddress(config.get("reuseAddress", Boolean.class));
+				result = result.reuseAddress(config.get(ofBoolean(), "reuseAddress"));
 			if (config.hasValue("broadcast"))
-				result = result.broadcast(config.get("broadcast", Boolean.class));
+				result = result.broadcast(config.get(ofBoolean(), "broadcast"));
 			return result;
-		}
-
-		@Override
-		public void set(ConfigTree config, DatagramSocketSettings item) {
-			Preconditions.checkNotNull(config);
-			Preconditions.checkNotNull(item);
-			config.set("receiveBufferSize", MemSize.of(item.getReceiveBufferSize()).toString());
-			config.set("sendBufferSize", MemSize.of(item.getSendBufferSize()).toString());
-			config.set("reuseAddress", Boolean.toString(item.getReuseAddress()));
-			config.set("broadcast", Boolean.toString(item.getBroadcast()));
 		}
 	}
 
 	public static ConfigConverterSingle<String> ofString() {
 		return ConfigConverterString.INSTANCE;
+	}
+
+	public static ConfigConverterSingle<Byte> ofByte() {
+		return ConfigConverterByte.INSTANCE;
 	}
 
 	public static ConfigConverterSingle<Integer> ofInteger() {
@@ -361,6 +319,10 @@ public final class ConfigConverters {
 
 	public static ConfigConverterSingle<Long> ofLong() {
 		return ConfigConverterLong.INSTANCE;
+	}
+
+	public static ConfigConverterSingle<Float> ofFloat() {
+		return ConfigConverterFloat.INSTANCE;
 	}
 
 	public static ConfigConverterSingle<Double> ofDouble() {
@@ -379,24 +341,12 @@ public final class ConfigConverters {
 		return ConfigConverterInetSocketAddress.INSTANCE;
 	}
 
-	public static <T> ConfigConverterSingle<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
+	public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter, CharSequence separators) {
 		return new ConfigConverterList<>(elementConverter, separators);
 	}
 
-	public static <T> ConfigConverterSingle<List<T>> ofList(ConfigConverterSingle<T> elementConverter) {
+	public static <T> ConfigConverter<List<T>> ofList(ConfigConverterSingle<T> elementConverter) {
 		return ofList(elementConverter, ",;");
-	}
-
-	public static <K, V> ConfigConverterSingle<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
-	                                                            ConfigConverterSingle<V> valueConverter) {
-		return new ConfigConverterMap<>(keyConverter, valueConverter, ",;", '=');
-	}
-
-	public static <K, V> ConfigConverterSingle<Map<K, V>> ofMap(ConfigConverterSingle<K> keyConverter,
-	                                                            ConfigConverterSingle<V> valueConverter,
-	                                                            CharSequence entriesSeparator,
-	                                                            char keyValueSeparator) {
-		return new ConfigConverterMap<>(keyConverter, valueConverter, entriesSeparator, keyValueSeparator);
 	}
 
 	public static ConfigConverterSingle<MemSize> ofMemSize() {

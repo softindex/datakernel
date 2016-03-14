@@ -24,7 +24,7 @@ import java.util.Properties;
 
 import static io.datakernel.config.ConfigConverters.*;
 
-public class PropertiesConfigTest {
+public class PropertiesConfigModuleTest {
 	@Test
 	public void testConfigs() throws IOException {
 		Properties properties1 = new Properties();
@@ -37,40 +37,29 @@ public class PropertiesConfigTest {
 		properties2.put("workers", "4");
 		properties2.put("innerClass.field3", "true");
 
-		Config config = PropertiesConfig.builder()
+		ConfigConverter<TestClass> configConverter = new ConfigConverter<TestClass>() {
+			@Override
+			public TestClass get(Config config) {
+				return get(config, null);
+			}
+
+			@Override
+			public TestClass get(Config config, TestClass defaultValue) {
+				TestClass testClass = new TestClass();
+				testClass.field1 = config.get(ofInteger(), "field1");
+				testClass.field2 = config.get(ofDouble(), "field2");
+				testClass.field3 = config.get(ofBoolean(), "field3");
+				return testClass;
+			}
+		};
+		Config config = new PropertiesConfigModule()
 				.addProperties(properties1)
 				.addProperties(properties2)
-				.registerConfigConverter(Integer.class, ofInteger())
-				.registerConfigConverter(Double.class, ofDouble())
-				.registerConfigConverter(Boolean.class, ofBoolean())
-				.registerConfigConverter(String.class, ofString())
-				.registerConfigConverter(TestClass.class, new ConfigConverter<TestClass>() {
-					@Override
-					public TestClass get(ConfigTree config) {
-						return get(config, null);
-					}
+				.provideConfig();
 
-					@Override
-					public TestClass get(ConfigTree config, TestClass defaultValue) {
-						TestClass testClass = new TestClass();
-						testClass.field1 = config.get("field1", Integer.class);
-						testClass.field2 = config.get("field2", Double.class);
-						testClass.field3 = config.get("field3", Boolean.class);
-						return testClass;
-					}
-
-					@Override
-					public void set(ConfigTree config, TestClass item) {
-						config.set("field1", Integer.toString(item.field1));
-						config.set("field2", Double.toString(item.field2));
-						config.set("field3", Boolean.toString(item.field3));
-					}
-				})
-				.build();
-
-		Assert.assertEquals(1234, (int) config.get("port", Integer.class));
-		Assert.assertEquals("Test phrase", config.get("msg", String.class));
-		Assert.assertEquals(new TestClass(2, 3.5, true), config.get("innerClass", TestClass.class));
+		Assert.assertEquals(1234, (int) config.get(ofInteger(), "port"));
+		Assert.assertEquals("Test phrase", config.get(ofString(), "msg"));
+		Assert.assertEquals(new TestClass(2, 3.5, true), config.get(configConverter, "innerClass"));
 	}
 
 	private static class TestClass {
