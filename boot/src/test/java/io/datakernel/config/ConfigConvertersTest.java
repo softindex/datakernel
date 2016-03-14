@@ -177,9 +177,7 @@ public class ConfigConvertersTest {
 		root.set("map1", input);
 		assertEquals(expected, mapConverter.get((ConfigTree) root.getChild("map1")));
 
-//		root.set();
 		mapConverter.set(((ConfigTree) root.getChild("map2")), expected);
-		;
 		assertEquals(expected, mapConverter.get((ConfigTree) root.getChild("map2")));
 	}
 }

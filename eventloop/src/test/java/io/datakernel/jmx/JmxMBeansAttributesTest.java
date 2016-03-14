@@ -22,12 +22,8 @@ import org.junit.Test;
 import javax.management.*;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -241,6 +237,21 @@ public class JmxMBeansAttributesTest {
 		assertTrue((boolean) mbean.getAttribute("active"));
 	}
 
+	@Test
+	public void returns_toString_representationOfObjectsThatAreNeitherSupportedTypesNorPojosWithJmxAttributes()
+			throws MBeanException, AttributeNotFoundException, ReflectionException {
+
+		ArbitraryType arbitraryType = new ArbitraryType("String representation");
+		Date date = new Date();
+		MBeanWithJmxAttributesOfArbitraryTypes obj =
+				new MBeanWithJmxAttributesOfArbitraryTypes(arbitraryType, date);
+
+		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(obj), false);
+
+		assertEquals(arbitraryType.toString(), mbean.getAttribute("arbitraryType"));
+		assertEquals(date.toString(), mbean.getAttribute("date"));
+	}
+
 	/*
 	 * helper methods
  	 */
@@ -307,7 +318,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+			return new StubExecutor();
 		}
 	}
 
@@ -325,7 +336,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+			return new StubExecutor();
 		}
 	}
 
@@ -343,7 +354,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+			return new StubExecutor();
 		}
 	}
 
@@ -361,7 +372,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+			return new StubExecutor();
 		}
 	}
 
@@ -379,7 +390,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+			return new StubExecutor();
 		}
 	}
 
@@ -405,7 +416,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return Executors.newSingleThreadExecutor();
+			return new StubExecutor();
 		}
 	}
 
@@ -487,12 +498,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return new Executor() {
-				@Override
-				public void execute(Runnable command) {
-					command.run();
-				}
-			};
+			return new StubExecutor();
 		}
 	}
 
@@ -510,12 +516,7 @@ public class JmxMBeansAttributesTest {
 
 		@Override
 		public Executor getJmxExecutor() {
-			return new Executor() {
-				@Override
-				public void execute(Runnable command) {
-					command.run();
-				}
-			};
+			return new StubExecutor();
 		}
 	}
 
@@ -552,6 +553,51 @@ public class JmxMBeansAttributesTest {
 					command.run();
 				}
 			};
+		}
+	}
+
+	public static final class MBeanWithJmxAttributesOfArbitraryTypes implements ConcurrentJmxMBean {
+		private final ArbitraryType arbitraryType;
+		private final Date date;
+
+		public MBeanWithJmxAttributesOfArbitraryTypes(ArbitraryType arbitraryType, Date date) {
+			this.arbitraryType = arbitraryType;
+			this.date = date;
+		}
+
+		@JmxAttribute
+		public ArbitraryType getArbitraryType() {
+			return arbitraryType;
+		}
+
+		@JmxAttribute
+		public Date getDate() {
+			return date;
+		}
+
+		@Override
+		public Executor getJmxExecutor() {
+			return new StubExecutor();
+		}
+	}
+
+	public static final class ArbitraryType {
+		private final String str;
+
+		public ArbitraryType(String str) {
+			this.str = str;
+		}
+
+		@Override
+		public String toString() {
+			return str;
+		}
+	}
+
+	public static final class StubExecutor implements Executor {
+		@Override
+		public void execute(Runnable command) {
+			command.run();
 		}
 	}
 }
