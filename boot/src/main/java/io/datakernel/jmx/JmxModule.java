@@ -20,7 +20,6 @@ import com.google.inject.*;
 import com.google.inject.matcher.AbstractMatcher;
 import com.google.inject.spi.BindingScopingVisitor;
 import com.google.inject.spi.ProvisionListener;
-import io.datakernel.worker.WorkerPool;
 import io.datakernel.worker.WorkerPoolModule;
 
 import java.lang.annotation.Annotation;
@@ -92,8 +91,8 @@ public final class JmxModule extends AbstractModule {
 	}
 
 	@Provides
-	JmxRegistrator jmxRegistrator(Injector injector, WorkerPool workerPool, JmxRegistry jmxRegistry) {
-		return new JmxRegistrator(injector, workerPool, singletonKeys, workerKeys, jmxRegistry());
+	JmxRegistrator jmxRegistrator(Injector injector, JmxRegistry jmxRegistry) {
+		return new JmxRegistrator(injector, singletonKeys, workerKeys, jmxRegistry());
 	}
 
 	@Provides

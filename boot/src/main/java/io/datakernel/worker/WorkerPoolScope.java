@@ -27,7 +27,7 @@ import java.util.Map;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
-public final class WorkerPoolScope implements Scope {
+public final class WorkerPoolScope implements WorkerPools, Scope {
 	final Map<Key<?>, WorkerPoolObjects> pool = new HashMap<>();
 
 	@Nullable

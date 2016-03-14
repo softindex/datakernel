@@ -78,4 +78,9 @@ public final class WorkerPoolModule extends AbstractModule {
 	public WorkerPoolObjects getPoolObjects(Key<?> key) {
 		return workerPoolScope.getWorkerPoolObjects(key);
 	}
+
+	@Provides
+	WorkerPools workerPools() {
+		return workerPoolScope;
+	}
 }

@@ -19,23 +19,21 @@ package io.datakernel.jmx;
 import com.google.inject.Injector;
 import com.google.inject.Key;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.worker.WorkerPool;
+import io.datakernel.worker.WorkerPools;
 
 import java.util.List;
 import java.util.Set;
 
 public final class JmxRegistrator {
 	private final Injector injector;
-	private final WorkerPool workerPool;
 	private final Set<Key<?>> singletonKeys;
 	private final Set<Key<?>> workerKeys;
 	private final JmxRegistry jmxRegistry;
 
-	public JmxRegistrator(Injector injector, WorkerPool workerPool,
+	public JmxRegistrator(Injector injector,
 	                      Set<Key<?>> singletonKeys, Set<Key<?>> workerKeys,
 	                      JmxRegistry jmxRegistry) {
 		this.injector = injector;
-		this.workerPool = workerPool;
 		this.singletonKeys = singletonKeys;
 		this.workerKeys = workerKeys;
 		this.jmxRegistry = jmxRegistry;
@@ -53,9 +51,13 @@ public final class JmxRegistrator {
 		}
 
 		// register workers
-		for (Key<?> key : workerKeys) {
-			List<?> objects = workerPool.getInstances(key);
-			jmxRegistry.registerWorkers(key, objects);
+		if (!workerKeys.isEmpty()) {
+			WorkerPools workerPools = injector.getInstance(WorkerPools.class);
+			for (Key<?> key : workerKeys) {
+				List<?> objects = workerPools.getWorkerPoolObjects(key).getObjects();
+				jmxRegistry.registerWorkers(key, objects);
+			}
 		}
+
 	}
 }
