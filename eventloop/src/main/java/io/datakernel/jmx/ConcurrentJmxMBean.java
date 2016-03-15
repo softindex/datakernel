@@ -16,15 +16,8 @@
 
 package io.datakernel.jmx;
 
-import java.util.concurrent.Executor;
-
+/**
+ * Marker interface to denote that class publishes thread-safe jmx operations and jmx attribute setters
+ */
 public interface ConcurrentJmxMBean {
-
-	/**
-	 * Returns {@link Executor} which will be used for performing all jmx operations.
-	 *
-	 * @return {@link Executor} which will be used for performing all jmx operations.
-	 * (getting and setting attributes, operation invocations, refreshing {@link JmxStats}, etc.)
-	 */
-	Executor getJmxExecutor();
 }

@@ -16,6 +16,7 @@
 
 package io.datakernel.jmx;
 
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.helper.JmxStatsStub;
 import org.junit.Test;
 
@@ -23,7 +24,6 @@ import javax.management.*;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.TabularData;
 import java.util.*;
-import java.util.concurrent.Executor;
 
 import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
@@ -252,11 +252,22 @@ public class JmxMBeansAttributesTest {
 		assertEquals(date.toString(), mbean.getAttribute("date"));
 	}
 
+	@Test(expected = IllegalArgumentException.class)
+	public void concurrentJmxMBeansAreNotAllowedToBeInPool_OnlyEventloopJmxMBeansAreAllowedToBeInPool() {
+		JmxMBeans.factory().createFor(
+				asList(new ConcurrentJmxMBeanWithSingleIntAttr(), new ConcurrentJmxMBeanWithSingleIntAttr()), false);
+	}
+
+	@Test(expected = IllegalArgumentException.class)
+	public void jmxStatsAreAllowedOnlyInEventloopJmxMBean() {
+		JmxMBeans.factory().createFor(asList(new ConcurrentJmxMBeanWithJmxStats()), false);
+	}
+
 	/*
 	 * helper methods
  	 */
 
-	public static DynamicMBean createDynamicMBeanFor(ConcurrentJmxMBean... objects) throws Exception {
+	public static DynamicMBean createDynamicMBeanFor(Object... objects) throws Exception {
 		boolean refreshEnabled = false;
 		return JmxMBeans.factory().createFor(asList(objects), refreshEnabled);
 	}
@@ -315,14 +326,9 @@ public class JmxMBeansAttributesTest {
 		public SamplePojo getSamplePojo() {
 			return samplePojo;
 		}
-
-		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
-		}
 	}
 
-	public static final class MBeanWithListAttr implements ConcurrentJmxMBean {
+	public static final class MBeanWithListAttr implements EventloopJmxMBean {
 		private final List<String> list;
 
 		public MBeanWithListAttr(List<String> list) {
@@ -335,12 +341,12 @@ public class JmxMBeansAttributesTest {
 		}
 
 		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
+		public Eventloop getEventloop() {
+			return new Eventloop();
 		}
 	}
 
-	public static final class MBeanWithSingleIntAttr implements ConcurrentJmxMBean {
+	public static final class MBeanWithSingleIntAttr implements EventloopJmxMBean {
 		private final int value;
 
 		public MBeanWithSingleIntAttr(int value) {
@@ -353,12 +359,12 @@ public class JmxMBeansAttributesTest {
 		}
 
 		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
+		public Eventloop getEventloop() {
+			return new Eventloop();
 		}
 	}
 
-	public static final class MBeanWithJmxStats implements ConcurrentJmxMBean {
+	public static final class MBeanWithJmxStats implements EventloopJmxMBean {
 		private final JmxStatsStub jmxStatsStub;
 
 		public MBeanWithJmxStats(JmxStatsStub jmxStatsStub) {
@@ -371,12 +377,12 @@ public class JmxMBeansAttributesTest {
 		}
 
 		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
+		public Eventloop getEventloop() {
+			return new Eventloop();
 		}
 	}
 
-	public static final class MBeanWithMap implements ConcurrentJmxMBean {
+	public static final class MBeanWithMap implements EventloopJmxMBean {
 		private final Map<String, Integer> nameToNumber;
 
 		public MBeanWithMap(Map<String, Integer> nameToNumber) {
@@ -389,8 +395,8 @@ public class JmxMBeansAttributesTest {
 		}
 
 		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
+		public Eventloop getEventloop() {
+			return new Eventloop();
 		}
 	}
 
@@ -412,11 +418,6 @@ public class JmxMBeansAttributesTest {
 		@JmxAttribute(name = "")
 		public SamplePojo_L_1_2 getPojo2() {
 			return pojo2;
-		}
-
-		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
 		}
 	}
 
@@ -495,11 +496,6 @@ public class JmxMBeansAttributesTest {
 		public void setSettableStr(String settableStr) {
 			this.settableStr = settableStr;
 		}
-
-		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
-		}
 	}
 
 	public static final class MBeanWithPojoWithSettableAttribute implements ConcurrentJmxMBean {
@@ -512,11 +508,6 @@ public class JmxMBeansAttributesTest {
 		@JmxAttribute
 		public PojoWithSettableAttribute getPojo() {
 			return pojo;
-		}
-
-		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
 		}
 	}
 
@@ -544,16 +535,6 @@ public class JmxMBeansAttributesTest {
 		public boolean isActive() {
 			return true;
 		}
-
-		@Override
-		public Executor getJmxExecutor() {
-			return new Executor() {
-				@Override
-				public void execute(Runnable command) {
-					command.run();
-				}
-			};
-		}
 	}
 
 	public static final class MBeanWithJmxAttributesOfArbitraryTypes implements ConcurrentJmxMBean {
@@ -574,11 +555,6 @@ public class JmxMBeansAttributesTest {
 		public Date getDate() {
 			return date;
 		}
-
-		@Override
-		public Executor getJmxExecutor() {
-			return new StubExecutor();
-		}
 	}
 
 	public static final class ArbitraryType {
@@ -594,10 +570,19 @@ public class JmxMBeansAttributesTest {
 		}
 	}
 
-	public static final class StubExecutor implements Executor {
-		@Override
-		public void execute(Runnable command) {
-			command.run();
+	public static final class ConcurrentJmxMBeanWithJmxStats implements ConcurrentJmxMBean {
+
+		@JmxAttribute
+		public JmxStatsStub getStats() {
+			return new JmxStatsStub();
+		}
+	}
+
+	public static final class ConcurrentJmxMBeanWithSingleIntAttr implements ConcurrentJmxMBean {
+
+		@JmxAttribute
+		public int getCount() {
+			return 0;
 		}
 	}
 }

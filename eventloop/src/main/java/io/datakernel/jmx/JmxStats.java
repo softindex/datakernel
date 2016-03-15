@@ -17,7 +17,9 @@
 package io.datakernel.jmx;
 
 public interface JmxStats<T extends JmxStats> {
+
 	void add(T another);
 
 	void refreshStats(long timestamp, double smoothingWindow);
+
 }

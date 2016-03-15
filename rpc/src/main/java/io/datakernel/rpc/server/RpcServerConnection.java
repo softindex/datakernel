@@ -144,7 +144,6 @@ public final class RpcServerConnection implements RpcConnection {
 		return protocol.isOverloaded();
 	}
 
-
 	@JmxAttribute
 	public EventStats getSuccessfulResponses() {
 		return successfulResponses;

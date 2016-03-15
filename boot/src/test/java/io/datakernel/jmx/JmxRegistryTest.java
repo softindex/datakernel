@@ -264,9 +264,5 @@ public class JmxRegistryTest {
 	// helper classes
 	public final class ServiceStub implements ConcurrentJmxMBean {
 
-		@Override
-		public Executor getJmxExecutor() {
-			return null;
-		}
 	}
 }
