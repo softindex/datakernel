@@ -22,8 +22,8 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.jmx.ConcurrentJmxMBean;
 import io.datakernel.jmx.CountStats;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.SocketSettings;
@@ -43,7 +43,6 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.*;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
@@ -52,7 +51,7 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
+public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
@@ -353,12 +352,6 @@ public final class RpcClient implements EventloopService, ConcurrentJmxMBean {
 	}
 
 	// JMX
-
-	@Override
-	public Executor getJmxExecutor() {
-		return eventloop;
-	}
-
 	@JmxOperation
 	public void startMonitoring() {
 		RpcClient.this.monitoring = true;

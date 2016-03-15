@@ -19,7 +19,7 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.*;
 
@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.Executor;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -39,7 +38,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <K> type of keys
  * @param <T> type of objects
  */
-public final class StreamSorter<K, T> implements StreamTransformer<T, T>, ConcurrentJmxMBean {
+public final class StreamSorter<K, T> implements StreamTransformer<T, T>, EventloopJmxMBean {
 	protected long jmxItems;
 
 	private final Eventloop eventloop;
@@ -215,8 +214,9 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Concur
 	}
 
 	// jmx
+
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

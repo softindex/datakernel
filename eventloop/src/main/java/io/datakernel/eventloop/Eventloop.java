@@ -21,7 +21,7 @@ import io.datakernel.async.AsyncCallable;
 import io.datakernel.async.AsyncTask;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.async.SimpleException;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.DatagramSocketSettings;
@@ -39,7 +39,10 @@ import java.net.SocketAddress;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -51,7 +54,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * because it is implementation of {@link Runnable}. Working of this eventloop will be ended, when it has
  * not selected keys and its queues with tasks are empty.
  */
-public final class Eventloop implements Runnable, CurrentTimeProvider, EventloopExecutor, ConcurrentJmxMBean {
+public final class Eventloop implements Runnable, CurrentTimeProvider, EventloopExecutor, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 
 	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
@@ -886,7 +889,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	}
 
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return this;
 	}
 

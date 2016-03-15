@@ -21,15 +21,14 @@ import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayDeque;
-import java.util.concurrent.Executor;
 
-public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, ConcurrentJmxMBean {
+public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, EventloopJmxMBean {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -194,8 +193,9 @@ public final class StreamGsonDeserializer<T> extends AbstractStreamTransformer_1
 	}
 
 	// jmx
+
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

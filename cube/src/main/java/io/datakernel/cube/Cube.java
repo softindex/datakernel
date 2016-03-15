@@ -36,7 +36,7 @@ import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
@@ -48,7 +48,6 @@ import org.slf4j.LoggerFactory;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -66,7 +65,7 @@ import static java.util.Collections.sort;
  * Also provides functionality for managing aggregations.
  */
 @SuppressWarnings("unchecked")
-public final class Cube implements ConcurrentJmxMBean {
+public final class Cube implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
 	private final Eventloop eventloop;
@@ -650,7 +649,7 @@ public final class Cube implements ConcurrentJmxMBean {
 	}
 
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 }

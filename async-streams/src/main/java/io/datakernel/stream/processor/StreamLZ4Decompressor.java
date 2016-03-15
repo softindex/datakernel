@@ -20,7 +20,7 @@ import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
@@ -31,13 +31,11 @@ import net.jpountz.util.SafeUtils;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
-import java.util.concurrent.Executor;
-
 import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
 
-public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements ConcurrentJmxMBean {
+public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements EventloopJmxMBean {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -256,7 +254,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 
 	// jmx
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

@@ -17,15 +17,13 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
 
-import java.util.concurrent.Executor;
-
 @SuppressWarnings("unchecked")
-public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implements ConcurrentJmxMBean {
+public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implements EventloopJmxMBean {
 	private int jmxItems;
 
 	public StreamSplitter(Eventloop eventloop) {
@@ -46,8 +44,9 @@ public final class StreamSplitter<T> extends AbstractStreamSplitter<T> implement
 	}
 
 	// jmx
+
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

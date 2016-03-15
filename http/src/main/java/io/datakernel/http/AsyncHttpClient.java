@@ -40,7 +40,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -51,7 +50,7 @@ import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class AsyncHttpClient implements EventloopService, ConcurrentJmxMBean {
+public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
@@ -564,10 +563,5 @@ public class AsyncHttpClient implements EventloopService, ConcurrentJmxMBean {
 			result.add(entry.getKey() + "," + MBeanFormat.formatDateTime(entry.getValue()));
 		}
 		return result;
-	}
-
-	@Override
-	public Executor getJmxExecutor() {
-		return eventloop;
 	}
 }

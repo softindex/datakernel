@@ -20,18 +20,20 @@ import com.google.common.base.Function;
 import io.datakernel.async.AsyncOperationsTracker;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxOperation;
-import io.datakernel.stream.*;
+import io.datakernel.stream.AbstractStreamConsumer;
+import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.StreamProducers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.concurrent.Executor;
 
 import static com.google.common.collect.Iterables.transform;
 
-public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>, ConcurrentJmxMBean {
+public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
 
 	private static final int MAX_OUTPUT_STREAMS = 1;
@@ -158,7 +160,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 }

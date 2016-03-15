@@ -17,12 +17,10 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
-
-import java.util.concurrent.Executor;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -34,7 +32,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * @param <I> type of input data
  * @param <O> type of output data
  */
-public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> implements ConcurrentJmxMBean {
+public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> implements EventloopJmxMBean {
 	private int jmxItems;
 
 	/**
@@ -168,8 +166,9 @@ public final class StreamMap<I, O> extends AbstractStreamTransformer_1_1<I, O> i
 	}
 
 	// jmx
+
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 

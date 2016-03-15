@@ -16,20 +16,19 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Random;
-import java.util.concurrent.Executor;
 
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static java.lang.Math.pow;
 
-public final class ThrottlingController implements ConcurrentJmxMBean {
+public final class ThrottlingController implements EventloopJmxMBean {
 	private static int staticInstanceCounter = 0;
 
 	private final Logger logger = LoggerFactory.getLogger(ThrottlingController.class.getName() + "." + staticInstanceCounter++);
@@ -299,7 +298,7 @@ public final class ThrottlingController implements ConcurrentJmxMBean {
 	}
 
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 }

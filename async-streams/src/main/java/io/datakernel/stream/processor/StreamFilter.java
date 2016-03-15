@@ -19,12 +19,10 @@ package io.datakernel.stream.processor;
 import com.google.common.base.Predicate;
 import com.google.common.base.Predicates;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.ConcurrentJmxMBean;
+import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
-
-import java.util.concurrent.Executor;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -35,7 +33,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  *
  * @param <T>
  */
-public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> implements ConcurrentJmxMBean {
+public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> implements EventloopJmxMBean {
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
@@ -98,8 +96,9 @@ public final class StreamFilter<T> extends AbstractStreamTransformer_1_1<T, T> i
 	}
 
 	// jmx
+
 	@Override
-	public Executor getJmxExecutor() {
+	public Eventloop getEventloop() {
 		return eventloop;
 	}
 
