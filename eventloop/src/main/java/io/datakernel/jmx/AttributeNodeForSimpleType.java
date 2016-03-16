@@ -20,10 +20,10 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import static io.datakernel.jmx.Utils.createMapWithOneEntry;
 import static io.datakernel.jmx.Utils.filterNulls;
@@ -36,8 +36,10 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	private final Method setter;
 	private final OpenType<?> openType;
 	private final Map<String, OpenType<?>> nameToOpenType;
+	private final JmxReducer reducer;
 
-	public AttributeNodeForSimpleType(String name, ValueFetcher fetcher, Method setter, Class<?> attributeType) {
+	public AttributeNodeForSimpleType(String name, ValueFetcher fetcher, Method setter,
+	                                  Class<?> attributeType, JmxReducer reducer) {
 		checkArgument(!name.isEmpty(), "SimpleType attribute cannot have empty name");
 
 		this.name = name;
@@ -45,6 +47,7 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 		this.setter = setter;
 		this.openType = simpleTypeOf(attributeType);
 		this.nameToOpenType = createMapWithOneEntry(name, openType);
+		this.reducer = checkNotNull(reducer);
 	}
 
 	@Override
@@ -78,16 +81,14 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 			return null;
 		}
 
-		Object firstPojo = notNullSources.get(0);
-		Object firstValue = fetcher.fetchFrom(firstPojo);
-		for (int i = 1; i < notNullSources.size(); i++) {
-			Object currentPojo = notNullSources.get(i);
-			Object currentValue = fetcher.fetchFrom(currentPojo);
-			if (!Objects.equals(firstValue, currentValue)) {
-				return null;
-			}
+		List<Object> values = new ArrayList<>(notNullSources.size());
+		for (Object notNullSource : notNullSources) {
+			Object currentValue = fetcher.fetchFrom(notNullSource);
+			values.add(currentValue);
 		}
-		return firstValue;
+
+		// TODO(vmykhalko): what about type checking? maybe catch exception and add error to a logger?
+		return reducer.reduce(values);
 	}
 
 	@Override

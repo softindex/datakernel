@@ -16,17 +16,16 @@
 
 package io.datakernel.jmx;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.List;
 
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface JmxAttribute {
-	String USE_GETTER_NAME = "USE_GETTER_NAME";
-
-	String name() default USE_GETTER_NAME;
-
-	Class<? extends JmxReducer<?>> reducer() default JmxReducers.JmxReducerDistinct.class;
+/**
+ * Reduces input list to single value.
+ * <p/>
+ * It's highly recommended for implementations of this interface to be stateless or immutable
+ * (namely have immutable state after creation)
+ *
+ * @param <T>
+ */
+public interface JmxReducer<T> {
+	T reduce(List<? extends T> input);
 }

@@ -16,17 +16,31 @@
 
 package io.datakernel.jmx;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.util.List;
+import java.util.Objects;
 
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface JmxAttribute {
-	String USE_GETTER_NAME = "USE_GETTER_NAME";
+public final class JmxReducers {
+	private JmxReducers() {}
 
-	String name() default USE_GETTER_NAME;
+	public static JmxReducer<Object> distinct() {
+		return new JmxReducerDistinct();
+	}
 
-	Class<? extends JmxReducer<?>> reducer() default JmxReducers.JmxReducerDistinct.class;
+	public static final class JmxReducerDistinct implements JmxReducer<Object> {
+		@Override
+		public Object reduce(List<?> input) {
+			if (input.size() == 0) {
+				return null;
+			}
+
+			Object firstValue = input.get(0);
+			for (int i = 1; i < input.size(); i++) {
+				Object currentValue = input.get(i);
+				if (!Objects.equals(firstValue, currentValue)) {
+					return null;
+				}
+			}
+			return firstValue;
+		}
+	}
 }

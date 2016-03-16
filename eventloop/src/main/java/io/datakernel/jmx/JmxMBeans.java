@@ -45,6 +45,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
 	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
+	private static final JmxReducer<?> DEFAULT_REDUCER = JmxReducers.distinct();
+
 	private static final CurrentTimeProvider TIME_PROVIDER = CurrentTimeProviderSystem.instance();
 
 	private static final JmxMBeans INSTANCE = new JmxMBeans();
@@ -212,7 +214,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			// 3 cases: simple-type, JmxStats, POJO
 			Class<?> returnClass = (Class<?>) attrType;
 			if (isSimpleType(returnClass)) {
-				return new AttributeNodeForSimpleType(attrName, defaultFetcher, setter, returnClass);
+				JmxReducer<?> reducer;
+				try {
+					reducer = fetchReducerFrom(getter);
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+				return new AttributeNodeForSimpleType(attrName, defaultFetcher, setter, returnClass, reducer);
 			} else if (isThrowable(returnClass)) {
 				return new AttributeNodeForThrowable(attrName, defaultFetcher);
 			} else if (returnClass.isArray()) {
@@ -248,6 +256,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return createNodeForParametrizedType(attrName, (ParameterizedType) attrType, getter, mbeanClass);
 		} else {
 			throw new RuntimeException();
+		}
+	}
+
+	private static JmxReducer<?> fetchReducerFrom(Method getter) throws IllegalAccessException, InstantiationException {
+		if (getter == null) {
+			return DEFAULT_REDUCER;
+		} else {
+			JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
+			Class<? extends JmxReducer<?>> reducerClass = attrAnnotation.reducer();
+			if (reducerClass == DEFAULT_REDUCER.getClass()) {
+				return DEFAULT_REDUCER;
+			} else {
+				return reducerClass.newInstance();
+			}
 		}
 	}
 
