@@ -25,9 +25,7 @@ import javax.management.*;
 import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
+import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -49,10 +47,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static final CurrentTimeProvider TIME_PROVIDER = CurrentTimeProviderSystem.instance();
 
+	private static final JmxMBeans INSTANCE = new JmxMBeans();
+
 	private JmxMBeans() {}
 
 	public static JmxMBeans factory() {
-		return new JmxMBeans();
+		return INSTANCE;
 	}
 
 	@Override
@@ -206,7 +206,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static AttributeNode createAttributeNodeFor(String attrName, Type attrType, Method getter, Method setter,
-	                                                    Class<?> mbeanClazz) {
+	                                                    Class<?> mbeanClass) {
 		ValueFetcher defaultFetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 		if (attrType instanceof Class) {
 			// 3 cases: simple-type, JmxStats, POJO
@@ -219,14 +219,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				Class<?> elementType = returnClass.getComponentType();
 				checkNotNull(getter, "Arrays can be used only directly in POJO, JmxStats or JmxMBeans");
 				ValueFetcher fetcher = new ValueFetcherFromGetterArrayAdapter(getter);
-				return createListAttributeNodeFor(attrName, fetcher, elementType, mbeanClazz);
+				return createListAttributeNodeFor(attrName, fetcher, elementType, mbeanClass);
 			} else if (isJmxStats(returnClass)) {
-				if (!EventloopJmxMBean.class.isAssignableFrom(mbeanClazz)) {
-					throw new IllegalArgumentException("JmxStats can be used only in classes that implements" +
-							" EventloopJmxMBean");
-				}
 				// JmxStats case
-				List<AttributeNode> subNodes = createNodesFor(returnClass, mbeanClazz);
+
+				checkJmxStatsAreValid(returnClass, mbeanClass, getter);
+
+				List<AttributeNode> subNodes = createNodesFor(returnClass, mbeanClass);
 
 				if (subNodes.size() == 0) {
 					throw new IllegalArgumentException(format(
@@ -236,7 +235,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 				return new AttributeNodeForJmxStats(attrName, defaultFetcher, returnClass, subNodes);
 			} else {
-				List<AttributeNode> subNodes = createNodesFor(returnClass, mbeanClazz);
+				List<AttributeNode> subNodes = createNodesFor(returnClass, mbeanClass);
 
 				if (subNodes.size() == 0) {
 					return new AttributeNodeForAnyOtherType(attrName, defaultFetcher);
@@ -246,10 +245,47 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				}
 			}
 		} else if (attrType instanceof ParameterizedType) {
-			return createNodeForParametrizedType(attrName, (ParameterizedType) attrType, getter, mbeanClazz);
+			return createNodeForParametrizedType(attrName, (ParameterizedType) attrType, getter, mbeanClass);
 		} else {
 			throw new RuntimeException();
 		}
+	}
+
+	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, Method getter) {
+		if (!EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
+			throw new IllegalArgumentException("JmxStats can be used only in classes that implements" +
+					" EventloopJmxMBean");
+		}
+
+		if (returnClass.isInterface()) {
+			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
+		}
+
+		if (Modifier.isAbstract(returnClass.getModifiers())) {
+			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
+		}
+
+		if (!classHasPublicNoArgConstructor(returnClass)) {
+			throw new IllegalArgumentException(createErrorMessageForInvalidJmxStatsAttribute(getter));
+		}
+	}
+
+	private static boolean classHasPublicNoArgConstructor(Class<?> clazz) {
+		for (Constructor<?> constructor : clazz.getConstructors()) {
+			if (constructor.getParameterTypes().length == 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static String createErrorMessageForInvalidJmxStatsAttribute(Method getter) {
+		String msg = "Return type of JmxStats attribute must be concrete class that implements" +
+				" JmxStats interface and contains public no-arg constructor";
+		if (getter != null) {
+			msg += format(". Error at %s.%s()", getter.getDeclaringClass().getName(), getter.getName());
+		}
+		return msg;
 	}
 
 	private static AttributeNode createNodeForParametrizedType(String attrName, ParameterizedType pType,
@@ -543,7 +579,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final Map<OperationKey, Method> opkeyToMethod;
 
 		// refresh
-		private boolean refreshEnabled;
+		private final boolean refreshEnabled;
 		private volatile double refreshPeriod;
 		private volatile double smoothingWindow;
 

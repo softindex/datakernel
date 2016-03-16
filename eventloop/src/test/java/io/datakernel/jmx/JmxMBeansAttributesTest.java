@@ -18,7 +18,9 @@ package io.datakernel.jmx;
 
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.helper.JmxStatsStub;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import javax.management.*;
 import javax.management.openmbean.CompositeData;
@@ -29,6 +31,8 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.*;
 
 public class JmxMBeansAttributesTest {
+	@Rule
+	public ExpectedException expectedException = ExpectedException.none();
 
 	@Test
 	public void retreivesProperMBeanInfo() throws Exception {
@@ -252,15 +256,51 @@ public class JmxMBeansAttributesTest {
 		assertEquals(date.toString(), mbean.getAttribute("date"));
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void concurrentJmxMBeansAreNotAllowedToBeInPool_OnlyEventloopJmxMBeansAreAllowedToBeInPool() {
+		expectedException.expect(IllegalArgumentException.class);
+		expectedException.expectMessage("ConcurrentJmxMBeans cannot be used in pool. " +
+				"Only EventloopJmxMBeans can be used in pool");
+
 		JmxMBeans.factory().createFor(
 				asList(new ConcurrentJmxMBeanWithSingleIntAttr(), new ConcurrentJmxMBeanWithSingleIntAttr()), false);
 	}
 
-	@Test(expected = IllegalArgumentException.class)
+	@Test
 	public void jmxStatsAreAllowedOnlyInEventloopJmxMBean() {
+		expectedException.expect(IllegalArgumentException.class);
+		expectedException.expectMessage("JmxStats can be used only in classes that implements" +
+				" EventloopJmxMBean");
+
 		JmxMBeans.factory().createFor(asList(new ConcurrentJmxMBeanWithJmxStats()), false);
+	}
+
+	// test JmxStats as @JmxAttribute, all returned stats should be concrete classes with public no-arg constructor
+	@Test
+	public void jmxStatsAttributeCannotBeInterface() {
+		expectedException.expect(IllegalArgumentException.class);
+		expectedException.expectMessage("Return type of JmxStats attribute must be concrete class that implements" +
+				" JmxStats interface and contains public no-arg constructor");
+
+		JmxMBeans.factory().createFor(asList(new MBeanWithInterfaceAsJmxStatsAttributes()), false);
+	}
+
+	@Test
+	public void jmxStatsAttributeCannotBeAbstractClass() {
+		expectedException.expect(IllegalArgumentException.class);
+		expectedException.expectMessage("Return type of JmxStats attribute must be concrete class that implements" +
+				" JmxStats interface and contains public no-arg constructor");
+
+		JmxMBeans.factory().createFor(asList(new MBeanWithAbstractClassAsJmxStatsAttributes()), false);
+	}
+
+	@Test
+	public void jmxStatsAttributesClassMustHavePublicNoArgConstructor() {
+		expectedException.expect(IllegalArgumentException.class);
+		expectedException.expectMessage("Return type of JmxStats attribute must be concrete class that implements" +
+				" JmxStats interface and contains public no-arg constructor");
+
+		JmxMBeans.factory().createFor(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), false);
 	}
 
 	/*
@@ -583,6 +623,76 @@ public class JmxMBeansAttributesTest {
 		@JmxAttribute
 		public int getCount() {
 			return 0;
+		}
+	}
+
+	public static final class MBeanWithInterfaceAsJmxStatsAttributes implements EventloopJmxMBean {
+
+		@JmxAttribute
+		public JmxStatsAdditionalInterface getStats() {
+			return null;
+		}
+
+		@Override
+		public Eventloop getEventloop() {
+			return new Eventloop();
+		}
+	}
+
+	public interface JmxStatsAdditionalInterface extends JmxStats<JmxStatsAdditionalInterface> {
+	}
+
+	public static final class MBeanWithAbstractClassAsJmxStatsAttributes implements EventloopJmxMBean {
+
+		@JmxAttribute
+		public JmxStatsAbstractClass getStats() {
+			return null;
+		}
+
+		@Override
+		public Eventloop getEventloop() {
+			return new Eventloop();
+		}
+	}
+
+	public static abstract class JmxStatsAbstractClass implements JmxStats<JmxStatsAbstractClass> {
+
+	}
+
+	public static final class MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor implements EventloopJmxMBean {
+
+		@JmxAttribute
+		public JmxStatsWithNoPublicNoArgConstructor getStats() {
+			return null;
+		}
+
+		@Override
+		public Eventloop getEventloop() {
+			return new Eventloop();
+		}
+	}
+
+	public static final class JmxStatsWithNoPublicNoArgConstructor
+			implements JmxStats<JmxStatsWithNoPublicNoArgConstructor> {
+		private final int count;
+
+		public JmxStatsWithNoPublicNoArgConstructor(int count) {
+			this.count = count;
+		}
+
+		@JmxAttribute
+		public int getAttr() {
+			return 0;
+		}
+
+		@Override
+		public void add(JmxStatsWithNoPublicNoArgConstructor another) {
+
+		}
+
+		@Override
+		public void refreshStats(long timestamp, double smoothingWindow) {
+
 		}
 	}
 }
