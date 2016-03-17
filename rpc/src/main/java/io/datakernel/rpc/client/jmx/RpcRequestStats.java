@@ -40,15 +40,6 @@ public final class RpcRequestStats {
 		serverExceptions.resetStats();
 	}
 
-	public void refreshStats(long timestamp, double smoothingWindow) {
-		totalRequests.refreshStats(timestamp, smoothingWindow);
-		successfulRequests.refreshStats(timestamp, smoothingWindow);
-		failedRequests.refreshStats(timestamp, smoothingWindow);
-		rejectedRequests.refreshStats(timestamp, smoothingWindow);
-		expiredRequests.refreshStats(timestamp, smoothingWindow);
-		responseTimeStats.refreshStats(timestamp, smoothingWindow);
-	}
-
 	public void add(RpcRequestStats statsSet) {
 		totalRequests.add(statsSet.getTotalRequests());
 		successfulRequests.add(statsSet.getSuccessfulRequests());

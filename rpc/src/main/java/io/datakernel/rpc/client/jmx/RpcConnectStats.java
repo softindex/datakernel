@@ -30,12 +30,6 @@ public final class RpcConnectStats {
 		closedConnects.resetStats();
 	}
 
-	public void refreshStats(long timestamp, double smoothingWindow) {
-		successfulConnects.refreshStats(timestamp, smoothingWindow);
-		failedConnects.refreshStats(timestamp, smoothingWindow);
-		closedConnects.refreshStats(timestamp, smoothingWindow);
-	}
-
 	public void add(RpcConnectStats statsSet) {
 		successfulConnects.add(statsSet.getSuccessfulConnects());
 		failedConnects.add(statsSet.getFailedConnects());

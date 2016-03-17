@@ -35,6 +35,9 @@ public final class EventStats implements JmxStats<EventStats> {
 
 	private double smoothingWindow;
 
+	// fields for aggregation
+	private int addedStats;
+
 	public EventStats() {
 		this.smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	}
@@ -100,6 +103,16 @@ public final class EventStats implements JmxStats<EventStats> {
 		totalCount += anotherStats.totalCount;
 		smoothedCount += anotherStats.smoothedCount;
 		smoothedRate += anotherStats.smoothedRate;
+
+		if (addedStats == 0) {
+			smoothingWindow = anotherStats.smoothingWindow;
+		} else {
+			// all stats should have same smoothing window, -1 means smoothing windows differ in stats, which is error
+			if (smoothingWindow != anotherStats.smoothingWindow) {
+				smoothingWindow = -1;
+			}
+		}
+		addedStats++;
 	}
 
 	/**

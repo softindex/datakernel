@@ -48,6 +48,9 @@ public final class ValueStats implements JmxStats<ValueStats> {
 
 	private double smoothingWindow;
 
+	// fields for aggregation
+	private int addedStats;
+
 	/**
 	 * Resets stats and sets new parameters
 	 */
@@ -150,33 +153,43 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	}
 
 	@Override
-	public void add(ValueStats counter) {
-		if (counter.lastTimestampMillis == 0L)
+	public void add(ValueStats anotherStats) {
+		if (anotherStats.lastTimestampMillis == 0L)
 			return;
 
-		smoothedSum += counter.smoothedSum;
-		smoothedSqr += counter.smoothedSqr;
-		smoothedCount += counter.smoothedCount;
-		if (counter.smoothedMin < smoothedMin) {
-			smoothedMin = counter.smoothedMin;
+		smoothedSum += anotherStats.smoothedSum;
+		smoothedSqr += anotherStats.smoothedSqr;
+		smoothedCount += anotherStats.smoothedCount;
+		if (anotherStats.smoothedMin < smoothedMin) {
+			smoothedMin = anotherStats.smoothedMin;
 		}
-		if (counter.smoothedMax > smoothedMax) {
-			smoothedMax = counter.smoothedMax;
-		}
-
-		totalSum += counter.totalSum;
-		totalCount += counter.totalCount;
-		if (counter.totalMin < totalMin) {
-			totalMin = counter.totalMin;
-		}
-		if (counter.totalMax > totalMax) {
-			totalMax = counter.totalMax;
+		if (anotherStats.smoothedMax > smoothedMax) {
+			smoothedMax = anotherStats.smoothedMax;
 		}
 
-		if (counter.lastTimestampMillis > lastTimestampMillis) {
-			lastTimestampMillis = counter.lastTimestampMillis;
-			lastValue = counter.lastValue;
+		totalSum += anotherStats.totalSum;
+		totalCount += anotherStats.totalCount;
+		if (anotherStats.totalMin < totalMin) {
+			totalMin = anotherStats.totalMin;
 		}
+		if (anotherStats.totalMax > totalMax) {
+			totalMax = anotherStats.totalMax;
+		}
+
+		if (anotherStats.lastTimestampMillis > lastTimestampMillis) {
+			lastTimestampMillis = anotherStats.lastTimestampMillis;
+			lastValue = anotherStats.lastValue;
+		}
+
+		if (addedStats == 0) {
+			smoothingWindow = anotherStats.smoothingWindow;
+		} else {
+			// all stats should have same smoothing window, -1 means smoothing windows differ in stats, which is error
+			if (smoothingWindow != anotherStats.smoothingWindow) {
+				smoothingWindow = -1;
+			}
+		}
+		addedStats++;
 	}
 
 	/**
