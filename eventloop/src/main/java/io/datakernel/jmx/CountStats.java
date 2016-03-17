@@ -54,7 +54,7 @@ public final class CountStats implements JmxStats<CountStats> {
 	}
 
 	@Override
-	public void refreshStats(long timestamp, double smoothingWindow) {
+	public void refreshStats(long timestamp) {
 
 	}
 }

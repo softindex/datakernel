@@ -31,7 +31,7 @@ interface AttributeNode {
 
 	Object aggregateAttribute(String attrName, List<?> sources);
 
-	void refresh(List<?> targets, long timestamp, double smoothingWindow);
+	void refresh(List<?> targets, long timestamp);
 
 	boolean isRefreshable();
 

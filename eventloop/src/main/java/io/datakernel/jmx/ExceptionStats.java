@@ -50,7 +50,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	}
 
 	@Override
-	public void refreshStats(long timestamp, double smoothingWindow) {
+	public void refreshStats(long timestamp) {
 
 	}
 

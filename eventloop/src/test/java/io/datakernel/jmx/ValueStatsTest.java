@@ -30,9 +30,9 @@ public class ValueStatsTest {
 
 	@Test
 	public void smoothedAverageAtLimitShouldBeSameAsInputInCaseOfConstantData() {
-		double window = 10.0;
+		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = new ValueStats();
+		ValueStats valueStats = new ValueStats(smoothingWindow);
 		int inputValue = 5;
 		int iterations = 1000;
 		int refreshPeriod = ONE_SECOND_IN_MILLIS;
@@ -40,7 +40,7 @@ public class ValueStatsTest {
 		for (int i = 0; i < iterations; i++) {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += refreshPeriod;
-			valueStats.refreshStats(currentTimestamp, window);
+			valueStats.refreshStats(currentTimestamp);
 		}
 
 		double acceptableError = 10E-5;
@@ -49,9 +49,9 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldReturnProperStandardDeviationAtLimit() {
-		double window = 100.0;
+		double smoothingWindow = 100.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = new ValueStats();
+		ValueStats valueStats = new ValueStats(smoothingWindow);
 		int iterations = 10000;
 		int minValue = 0;
 		int maxValue = 10;
@@ -61,7 +61,7 @@ public class ValueStatsTest {
 			int currentValue = uniformRandom(minValue, maxValue);
 			valueStats.recordValue(currentValue);
 			currentTimestamp += refreshPeriod;
-			valueStats.refreshStats(currentTimestamp, window);
+			valueStats.refreshStats(currentTimestamp);
 		}
 
 		// standard deviation of uniform distribution
@@ -72,9 +72,9 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldResetStatsAfterResetMethodCall() {
-		double window = 10.0;
+		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats = new ValueStats();
+		ValueStats valueStats = new ValueStats(smoothingWindow);
 		int inputValue = 5;
 		int iterations = 1000;
 		int refreshPeriod = ONE_SECOND_IN_MILLIS;
@@ -82,7 +82,7 @@ public class ValueStatsTest {
 		for (int i = 0; i < iterations; i++) {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += refreshPeriod;
-			valueStats.refreshStats(currentTimestamp, window);
+			valueStats.refreshStats(currentTimestamp);
 		}
 
 		double avgBeforeReset = valueStats.getSmoothedAverage();
@@ -96,10 +96,10 @@ public class ValueStatsTest {
 
 	@Test
 	public void itShouldAccumulateProperly() {
-		double window = 10.0;
+		double smoothingWindow = 10.0;
 		long currentTimestamp = 0;
-		ValueStats valueStats_1 = new ValueStats();
-		ValueStats valueStats_2 = new ValueStats();
+		ValueStats valueStats_1 = new ValueStats(smoothingWindow);
+		ValueStats valueStats_2 = new ValueStats(smoothingWindow);
 		int inputValue_1 = 5;
 		int inputValue_2 = 10;
 		int iterations = 1000;
@@ -109,8 +109,8 @@ public class ValueStatsTest {
 			valueStats_1.recordValue(inputValue_1);
 			valueStats_2.recordValue(inputValue_2);
 			currentTimestamp += refreshPeriod;
-			valueStats_1.refreshStats(currentTimestamp, window);
-			valueStats_2.refreshStats(currentTimestamp, window);
+			valueStats_1.refreshStats(currentTimestamp);
+			valueStats_2.refreshStats(currentTimestamp);
 		}
 
 		ValueStats accumulator = new ValueStats();
@@ -121,24 +121,6 @@ public class ValueStatsTest {
 		double expectedAccumulatedSmoothedAvg = (5 + 10) / 2.0;
 		assertEquals(expectedAccumulatedSmoothedAvg, accumulator.getSmoothedAverage(), acceptableError);
 	}
-
-//	@Test
-//	public void example() {
-//		double window = 10.0;
-//		ValueStats valueStats = new ValueStats();
-//		long currentTimestamp = 0;
-//		int iterations = 1000;
-//		int minValue = 0;
-//		int maxValue = 500;
-//
-//		for (int i = 0; i < iterations; i++) {
-//			int currentValue = uniformRandom(minValue, maxValue);
-//			valueStats.recordValue(currentValue);
-//			currentTimestamp += 100;
-//			valueStats.refreshStats(currentTimestamp, window);
-//			System.out.println(i + ":   stats: " + valueStats);
-//		}
-//	}
 
 	public static int uniformRandom(int min, int max) {
 		return min + (Math.abs(RANDOM.nextInt()) % (max - min + 1));

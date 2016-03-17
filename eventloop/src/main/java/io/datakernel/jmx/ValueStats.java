@@ -24,6 +24,7 @@ import static java.lang.Math.*;
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxStats<ValueStats> {
+	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private long lastTimestampMillis;
 
@@ -44,6 +45,8 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	private double smoothedCount;
 	private double smoothedMin;
 	private double smoothedMax;
+
+	private double smoothingWindow;
 
 	/**
 	 * Resets stats and sets new parameters
@@ -67,6 +70,14 @@ public final class ValueStats implements JmxStats<ValueStats> {
 		lastTimestampMillis = 0L;
 	}
 
+	public ValueStats() {
+		this.smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
+	}
+
+	public ValueStats(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
+	}
+
 	/**
 	 * Adds value
 	 */
@@ -87,7 +98,7 @@ public final class ValueStats implements JmxStats<ValueStats> {
 	}
 
 	@Override
-	public void refreshStats(long timestamp, double smoothingWindow) {
+	public void refreshStats(long timestamp) {
 		if (lastCount == 0)
 			return;
 
@@ -255,11 +266,20 @@ public final class ValueStats implements JmxStats<ValueStats> {
 		return totalCount != 0L ? totalSum / (double) totalCount : 0.0;
 	}
 
+	@JmxAttribute
+	public double getSmoothingWindow() {
+		return smoothingWindow;
+	}
+
+	@JmxAttribute
+	public void setSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
+	}
+
 	@Override
 	public String toString() {
 		return String.format("%.2f±%.3f   min: %d   max: %d   last: %d   avg: %.2f   smoothedMin: %.2f   smoothedMax: %.2f",
 				getSmoothedAverage(), getSmoothedStandardDeviation(), getTotalMin(), getTotalMax(), getLastValue(),
 				getAverage(), getSmoothedMin(), getSmoothedMax());
 	}
-
 }

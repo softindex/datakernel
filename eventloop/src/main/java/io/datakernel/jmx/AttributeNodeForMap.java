@@ -161,12 +161,12 @@ final class AttributeNodeForMap implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp) {
 		if (refreshable) {
 			for (Object pojo : targets) {
 				Map<?, ?> map = (Map<?, ?>) fetcher.fetchFrom(pojo);
 				for (Object mapValue : map.values()) {
-					subNode.refresh(asList(mapValue), timestamp, smoothingWindow);
+					subNode.refresh(asList(mapValue), timestamp);
 				}
 			}
 		}

@@ -46,6 +46,6 @@ public final class JmxStatsStub implements JmxStats<JmxStatsStub> {
 	}
 
 	@Override
-	public void refreshStats(long timestamp, double smoothingWindow) {
+	public void refreshStats(long timestamp) {
 	}
 }

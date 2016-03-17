@@ -104,7 +104,7 @@ public final class JmxReducers {
 				return integerMin;
 			} else {
 				throw new IllegalArgumentException(
-						"Cannot calculate sum of objects of type: " + first.getClass().getName());
+						"Cannot calculate min of objects of type: " + first.getClass().getName());
 			}
 		}
 	}
@@ -140,7 +140,7 @@ public final class JmxReducers {
 				return integerMax;
 			} else {
 				throw new IllegalArgumentException(
-						"Cannot calculate sum of objects of type: " + first.getClass().getName());
+						"Cannot calculate max of objects of type: " + first.getClass().getName());
 			}
 		}
 	}

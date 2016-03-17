@@ -29,7 +29,7 @@ public class EventStatsTest {
 	@Test
 	public void ifRateIsConstantEventStatsShouldApproximateThatRateAfterEnoughTimePassed() {
 		double smoothingWindow = 1.0;
-		EventStats eventStats = new EventStats();
+		EventStats eventStats = new EventStats(smoothingWindow);
 		long currentTimestamp = 0;
 		int events = 1000;
 		double rate = 20.0;
@@ -38,7 +38,7 @@ public class EventStatsTest {
 
 		for (int i = 0; i < events; i++) {
 			eventStats.recordEvent();
-			eventStats.refreshStats(currentTimestamp, smoothingWindow);
+			eventStats.refreshStats(currentTimestamp);
 			currentTimestamp += periodInMillis;
 		}
 
@@ -48,8 +48,8 @@ public class EventStatsTest {
 
 	@Test
 	public void counterShouldResetRateAfterResetMethodCall() {
-		EventStats eventStats = new EventStats();
 		double smoothingWindow = 1.0;
+		EventStats eventStats = new EventStats(smoothingWindow);
 		long currentTimestamp = 0;
 		int events = 1000;
 		double rate = 20.0;
@@ -59,7 +59,7 @@ public class EventStatsTest {
 		for (int i = 0; i < events; i++) {
 			eventStats.recordEvent();
 			currentTimestamp += periodInMillis;
-			eventStats.refreshStats(currentTimestamp, smoothingWindow);
+			eventStats.refreshStats(currentTimestamp);
 		}
 		double rateBeforeReset = eventStats.getSmoothedRate();
 		eventStats.resetStats();
@@ -77,9 +77,11 @@ public class EventStatsTest {
 		final int period = 100;
 		long currentTimestamp = 0;
 
-		EventStats stats_1 = new EventStats();
-		EventStats stats_2 = new EventStats();
-		EventStats stats_3 = new EventStats();
+		double smoothingWindow = 10.0;
+
+		EventStats stats_1 = new EventStats(smoothingWindow);
+		EventStats stats_2 = new EventStats(smoothingWindow);
+		EventStats stats_3 = new EventStats(smoothingWindow);
 
 		for (int i = 0; i < iterations; i++) {
 			stats_1.recordEvents(1);
@@ -87,9 +89,9 @@ public class EventStatsTest {
 			// we do not record event to stats_3
 
 			currentTimestamp += period;
-			stats_1.refreshStats(currentTimestamp, 10.0);
-			stats_2.refreshStats(currentTimestamp, 10.0);
-			stats_3.refreshStats(currentTimestamp, 10.0);
+			stats_1.refreshStats(currentTimestamp);
+			stats_2.refreshStats(currentTimestamp);
+			stats_3.refreshStats(currentTimestamp);
 		}
 
 		EventStats accumulator = new EventStats();
@@ -103,7 +105,8 @@ public class EventStatsTest {
 
 	@Test
 	public void itShouldConvergeProperlyWhenNoEventsOccurredBetweenRefreshes() {
-		EventStats stats = new EventStats();
+		double smoothingWindow = 10.0;
+		EventStats stats = new EventStats(smoothingWindow);
 		int iterations = 1000;
 		long currentTimestamp = 0;
 		final int period = 200;
@@ -112,7 +115,7 @@ public class EventStatsTest {
 			int eventsPerRefresh = i % 2;
 			stats.recordEvents(eventsPerRefresh);
 			currentTimestamp += period;
-			stats.refreshStats(currentTimestamp, 10.0);
+			stats.refreshStats(currentTimestamp);
 		}
 
 		assertEquals(500, stats.getTotalCount());
@@ -122,7 +125,8 @@ public class EventStatsTest {
 
 	@Test
 	public void itShouldConvergeProperlyWhenPeriodIsNotStableButPeriodExpectationIsStable() {
-		EventStats stats = new EventStats();
+		double smoothingWindow = 10.0;
+		EventStats stats = new EventStats(smoothingWindow);
 		int iterations = 1000;
 		long currentTimestamp = 0;
 		final int period = 200;
@@ -130,7 +134,7 @@ public class EventStatsTest {
 			stats.recordEvents(1);
 			int currentPeriod = period + uniformRandom(-50, 50);
 			currentTimestamp += currentPeriod;
-			stats.refreshStats(currentTimestamp, 10.0);
+			stats.refreshStats(currentTimestamp);
 		}
 
 		assertEquals(1000, stats.getTotalCount());
@@ -140,14 +144,15 @@ public class EventStatsTest {
 
 	@Test
 	public void itShouldConvergeProperlyWhenAmountOfEventsPerPeriodIsNotStableButExpectationOfAmountOfEventIsStable() {
-		EventStats stats = new EventStats();
+		double smoothingWindow = 50.0;
+		EventStats stats = new EventStats(smoothingWindow);
 		int iterations = 10000;
 		long currentTimestamp = 0;
 		final int period = 200;
 		for (int i = 0; i < iterations; i++) {
 			stats.recordEvents(uniformRandom(0, 10));
 			currentTimestamp += period;
-			stats.refreshStats(currentTimestamp, 50.0);
+			stats.refreshStats(currentTimestamp);
 		}
 
 		double acceptableError = 2.0;

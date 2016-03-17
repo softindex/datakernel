@@ -24,6 +24,8 @@ import static java.lang.Math.pow;
  * Class is supposed to work in single thread
  */
 public final class EventStats implements JmxStats<EventStats> {
+	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+
 	private long lastTimestampMillis;
 	private int lastCount;
 
@@ -31,10 +33,14 @@ public final class EventStats implements JmxStats<EventStats> {
 	private double smoothedCount;
 	private double smoothedRate;
 
-	/**
-	 * Creates {@link EventStats} with specified parameters and rate = 0
-	 */
+	private double smoothingWindow;
+
 	public EventStats() {
+		this.smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
+	}
+
+	public EventStats(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
 	}
 
 	/**
@@ -66,7 +72,7 @@ public final class EventStats implements JmxStats<EventStats> {
 	}
 
 	@Override
-	public void refreshStats(long timestamp, double smoothingWindow) {
+	public void refreshStats(long timestamp) {
 		long timeElapsedMillis = timestamp - lastTimestampMillis;
 		double timeElapsedSeconds = timeElapsedMillis / 1000.0;
 		smoothedCount = lastCount + smoothedCount * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
@@ -82,7 +88,7 @@ public final class EventStats implements JmxStats<EventStats> {
 		lastTimestampMillis = timestamp;
 	}
 
-	private double computeAdjustmentCoef(double smoothingWindow, double timeElapsedSeconds) {
+	private static double computeAdjustmentCoef(double smoothingWindow, double timeElapsedSeconds) {
 		double ratio = smoothingWindow / timeElapsedSeconds;
 		double coef = -0.5 * (pow(2.0, (ratio - 1) / ratio) - 2);
 		coef *= 1 / timeElapsedSeconds;
@@ -116,6 +122,16 @@ public final class EventStats implements JmxStats<EventStats> {
 	@JmxAttribute
 	public long getTotalCount() {
 		return totalCount;
+	}
+
+	@JmxAttribute
+	public double getSmoothingWindow() {
+		return smoothingWindow;
+	}
+
+	@JmxAttribute
+	public void setSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
 	}
 
 	@Override

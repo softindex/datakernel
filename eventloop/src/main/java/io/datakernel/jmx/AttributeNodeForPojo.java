@@ -171,10 +171,10 @@ final class AttributeNodeForPojo implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp) {
 		List<Object> innerPojos = fetchInnerPojos(targets);
 		for (AttributeNode refreshableSubNode : refreshableSubNodes) {
-			refreshableSubNode.refresh(innerPojos, timestamp, smoothingWindow);
+			refreshableSubNode.refresh(innerPojos, timestamp);
 		}
 	}
 

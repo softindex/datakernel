@@ -145,9 +145,9 @@ final class AttributeNodeForJmxStats implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp) {
 		for (Object pojo : targets) {
-			((JmxStats<?>) fetcher.fetchFrom(pojo)).refreshStats(timestamp, smoothingWindow);
+			((JmxStats<?>) fetcher.fetchFrom(pojo)).refreshStats(timestamp);
 		}
 	}
 

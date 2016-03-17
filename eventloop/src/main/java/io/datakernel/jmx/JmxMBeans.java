@@ -41,9 +41,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static final Timer TIMER = new Timer(true);
 	private static final String REFRESH_PERIOD_ATTRIBUTE_NAME = "_refreshPeriod";
-	private static final String SMOOTHING_WINDOW_ATTRIBUTE_NAME = "_smoothingWindow";
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
-	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
 
@@ -97,25 +95,22 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static void startRefreshing(Class<?> mbeanClass, DynamicMBeanAggregator mbean) {
-		double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 		double refreshPeriod = DEFAULT_REFRESH_PERIOD;
-		JmxRefreshSettings settings = fetchRefreshSettingsIfExists(mbeanClass);
-		if (settings != null) {
-			double customSmoothingWindow = settings.smoothingWindow();
-			double customRefreshPeriod = settings.period();
-			checkArgument(customRefreshPeriod > 0.0, "refresh period must be positive");
-			checkArgument(customSmoothingWindow > 0.0, "smoothing window must be positive");
-			smoothingWindow = customSmoothingWindow;
+		JmxRefreshPeriodInSeconds refreshPeriodAnnotation = fetchRefreshSettingsIfExists(mbeanClass);
+		if (refreshPeriodAnnotation != null) {
+			double customRefreshPeriod = refreshPeriodAnnotation.value();
+			checkArgument(customRefreshPeriod > 0.0, "refresh period must be positive. " +
+					"Error in class: " + mbeanClass.getName());
 			refreshPeriod = customRefreshPeriod;
 		}
-		mbean.startRefreshing(refreshPeriod, smoothingWindow);
+		mbean.startRefreshing(refreshPeriod);
 	}
 
-	private static JmxRefreshSettings fetchRefreshSettingsIfExists(Class<?> clazz) {
+	private static JmxRefreshPeriodInSeconds fetchRefreshSettingsIfExists(Class<?> clazz) {
 		Class<?> currentClass = clazz;
 		while (currentClass != null) {
-			if (currentClass.isAnnotationPresent(JmxRefreshSettings.class)) {
-				return currentClass.getAnnotation(JmxRefreshSettings.class);
+			if (currentClass.isAnnotationPresent(JmxRefreshPeriodInSeconds.class)) {
+				return currentClass.getAnnotation(JmxRefreshPeriodInSeconds.class);
 			}
 			currentClass = currentClass.getSuperclass();
 		}
@@ -470,10 +465,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				new MBeanAttributeInfo(REFRESH_PERIOD_ATTRIBUTE_NAME, "double", REFRESH_PERIOD_ATTRIBUTE_NAME,
 						true, true, false);
 		refreshAttrs.add(refreshPeriodAttr);
-		MBeanAttributeInfo smoothingWindowAttr =
-				new MBeanAttributeInfo(SMOOTHING_WINDOW_ATTRIBUTE_NAME, "double", SMOOTHING_WINDOW_ATTRIBUTE_NAME,
-						true, true, false);
-		refreshAttrs.add(smoothingWindowAttr);
 		return refreshAttrs;
 	}
 
@@ -603,7 +594,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		// refresh
 		private final boolean refreshEnabled;
 		private volatile double refreshPeriod;
-		private volatile double smoothingWindow;
 
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends MBeanWrapper> mbeanWrappers,
 		                              AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod,
@@ -622,11 +612,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			this.refreshEnabled = refreshEnabled;
 		}
 
-		public void startRefreshing(double defaultRefreshPeriod, double defaultSmoothingWindow) {
+		public void startRefreshing(double defaultRefreshPeriod) {
 			if (rootNode.isRefreshable()) {
 				checkState(refreshEnabled());
 				refreshPeriod = defaultRefreshPeriod;
-				smoothingWindow = defaultSmoothingWindow;
 				TIMER.schedule(createRefreshTask(), 0L);
 			} else {
 				logger.warn("Refresh was enabled but MBeans are not refreshable");
@@ -645,7 +634,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 					final AtomicInteger mbeansLeftForRefresh = new AtomicInteger(mbeanWrappers.size());
 					// cache smoothingWindow and refreshPeriod to be same for all localRefreshTasks
 					// because this two parameters may be changed from other thread
-					final double currentSmoothingWindow = smoothingWindow;
 					final int currentRefreshPeriod = secondsToMillis(refreshPeriod);
 					final long currentTimestamp = TIME_PROVIDER.currentTimeMillis();
 					for (final MBeanWrapper mbeanWrapper : mbeanWrappers) {
@@ -653,7 +641,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						mbeanWrapper.execute(new Runnable() {
 							@Override
 							public void run() {
-								rootNode.refresh(asList(mbean), currentTimestamp, currentSmoothingWindow);
+								rootNode.refresh(asList(mbean), currentTimestamp);
 								int tasksLeft = mbeansLeftForRefresh.decrementAndGet();
 								if (tasksLeft == 0) {
 									TIMER.schedule(createRefreshTask(), currentRefreshPeriod);
@@ -675,9 +663,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			if (attribute.equals(REFRESH_PERIOD_ATTRIBUTE_NAME)) {
 				checkState(refreshEnabled());
 				return refreshPeriod;
-			} else if (attribute.equals(SMOOTHING_WINDOW_ATTRIBUTE_NAME)) {
-				checkState(refreshEnabled());
-				return smoothingWindow;
 			}
 
 			Object attrValue = rootNode.aggregateAttribute(attribute, mbeans);
@@ -701,10 +686,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			if (attrName.equals(REFRESH_PERIOD_ATTRIBUTE_NAME)) {
 				checkState(refreshEnabled());
 				refreshPeriod = (double) attrValue;
-				return;
-			} else if (attrName.equals(SMOOTHING_WINDOW_ATTRIBUTE_NAME)) {
-				checkState(refreshEnabled());
-				smoothingWindow = (double) attrValue;
 				return;
 			}
 

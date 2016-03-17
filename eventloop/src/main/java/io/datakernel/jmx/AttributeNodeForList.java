@@ -136,13 +136,13 @@ final class AttributeNodeForList implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp) {
 		if (refreshable) {
 			for (Object pojo : targets) {
 				List<?> currentList = (List<?>) fetcher.fetchFrom(pojo);
 				if (currentList != null) {
 					for (Object element : currentList) {
-						subNode.refresh(asList(element), timestamp, smoothingWindow);
+						subNode.refresh(asList(element), timestamp);
 					}
 				}
 			}

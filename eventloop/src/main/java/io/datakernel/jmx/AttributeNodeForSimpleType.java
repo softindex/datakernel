@@ -92,7 +92,7 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp, double smoothingWindow) {
+	public void refresh(List<?> targets, long timestamp) {
 		throw new UnsupportedOperationException();
 	}
 
