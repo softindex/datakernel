@@ -19,13 +19,15 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 
+import java.util.concurrent.TimeoutException;
+
 /**
  * Represents a ResultCallback which has time to live. After timeout this callback can not be calling
  *
  * @param <T> type of received result
  */
 public final class ResultCallbackWithTimeout<T> implements ResultCallback<T>, AsyncCancellable {
-	public static final SimpleException TIMEOUT_EXCEPTION = new SimpleException("Timeout");
+	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private final ResultCallback<T> callback;
 	private final ScheduledRunnable timeouter;
 

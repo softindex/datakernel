@@ -55,9 +55,9 @@ public class AsyncFileTest {
 					@Override
 					public void onResult(final ByteBuf result) {
 						final Path destPath = Paths.get(tempFile.getAbsolutePath());
-						AsyncFile.open(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}, new ResultCallback<File>() {
+						AsyncFile.open(eventloop, Executors.newCachedThreadPool(), destPath, new OpenOption[]{WRITE}, new ResultCallback<AsyncFile>() {
 							@Override
-							public void onResult(File file) {
+							public void onResult(AsyncFile file) {
 								logger.info("Finished reading file.");
 
 								file.writeFully(result, 0, new CompletionCallback() {

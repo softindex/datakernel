@@ -20,7 +20,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
-import io.datakernel.file.File;
 
 import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
@@ -53,9 +52,9 @@ public final class StaticServletForFiles extends StaticServlet {
 		}
 
 		AsyncFile.open(eventloop, executor, path,
-				new OpenOption[]{READ}, new ResultCallback<File>() {
+				new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 					@Override
-					public void onResult(File file) {
+					public void onResult(AsyncFile file) {
 						file.readFully(callback);
 					}
 

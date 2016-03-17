@@ -19,12 +19,14 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 
+import java.util.concurrent.TimeoutException;
+
 /**
  * It is CompletionCallback which has time to live, in this time this callback will work as usual CompletionCallback,
  * after timeout, calling of it will throw TimeoutException.
  */
 public final class CompletionCallbackWithTimeout implements CompletionCallback, AsyncCancellable {
-	public static final SimpleException TIMEOUT_EXCEPTION = new SimpleException("Timeout");
+	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private final CompletionCallback callback;
 	private final ScheduledRunnable timeouter;
 

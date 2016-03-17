@@ -42,7 +42,7 @@ import static java.nio.file.StandardOpenOption.*;
 /**
  * An abstract representation of file. Actions with this file are non-blocking
  */
-public final class AsyncFile implements File {
+public final class AsyncFile {
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
 	private final AsynchronousFileChannel channel;
@@ -88,8 +88,8 @@ public final class AsyncFile implements File {
 	 * @param callback    callback which will be called after opening
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T extends File> void open(final Eventloop eventloop, final ExecutorService executor,
-	                                         final Path path, final OpenOption[] openOptions, ResultCallback<T> callback) {
+	public static <T extends AsyncFile> void open(final Eventloop eventloop, final ExecutorService executor,
+	                                              final Path path, final OpenOption[] openOptions, ResultCallback<T> callback) {
 		callConcurrently(eventloop, executor, new Callable<T>() {
 			@Override
 			public T call() throws Exception {
@@ -254,7 +254,6 @@ public final class AsyncFile implements File {
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 * @param callback callback which will be called after complete
 	 */
-	@Override
 	public void write(final ByteBuf buf, long position, final ResultCallback<Integer> callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final ByteBuffer byteBuffer = buf.toByteBuffer();
@@ -291,7 +290,6 @@ public final class AsyncFile implements File {
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 * @param callback which will be called after complete
 	 */
-	@Override
 	public void read(final ByteBuf buf, long position, final ResultCallback<Integer> callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final ByteBuffer byteBuffer = buf.toByteBuffer();
@@ -366,7 +364,6 @@ public final class AsyncFile implements File {
 	 * @param position the  file position at which the transfer is to begin; must be non-negative
 	 * @param callback callback which will be called after complete
 	 */
-	@Override
 	public AsyncCancellable writeFully(ByteBuf byteBuf, long position, CompletionCallback callback) {
 		Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		final AtomicBoolean cancelled = new AtomicBoolean();
@@ -425,7 +422,6 @@ public final class AsyncFile implements File {
 	 * @param position the file position at which the transfer is to begin; must be non-negative
 	 * @param callback which will be called after complete
 	 */
-	@Override
 	public AsyncCancellable readFully(ByteBuf buf, long position, CompletionCallback callback) {
 		long size;
 
@@ -453,7 +449,6 @@ public final class AsyncFile implements File {
 	 *
 	 * @param callback which will be called after complete
 	 */
-	@Override
 	public void readFully(final ResultCallback<ByteBuf> callback) {
 		long size;
 
@@ -496,7 +491,6 @@ public final class AsyncFile implements File {
 	 *
 	 * @param callback which will be called after complete
 	 */
-	@Override
 	public void close(CompletionCallback callback) {
 		runConcurrently(eventloop, executor, new RunnableWithException() {
 			@Override
@@ -512,7 +506,6 @@ public final class AsyncFile implements File {
 	 * @param size     the new size, a non-negative byte count
 	 * @param callback which will be called after complete
 	 */
-	@Override
 	public void truncate(final long size, CompletionCallback callback) {
 		runConcurrently(eventloop, executor, new RunnableWithException() {
 			@Override
@@ -529,7 +522,6 @@ public final class AsyncFile implements File {
 	 *                 content and metadata to be written to storage; otherwise, it need only force content changes to be written
 	 * @param callback which will be called after complete
 	 */
-	@Override
 	public void force(final boolean metaData, CompletionCallback callback) {
 		runConcurrently(eventloop, executor, new RunnableWithException() {
 			@Override
