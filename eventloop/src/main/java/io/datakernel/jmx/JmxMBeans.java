@@ -45,7 +45,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
 	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
-	private static final JmxReducer<?> DEFAULT_REDUCER = JmxReducers.distinct();
+	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
 
 	private static final CurrentTimeProvider TIME_PROVIDER = CurrentTimeProviderSystem.instance();
 
@@ -829,7 +829,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				} else {
 					throw new MBeanException(
 							new Exception(format("Throwable of type \"%s\" and message \"%s\" " +
-									"was thrown during method invocation",
+											"was thrown during method invocation",
 									targetException.getClass().getName(), targetException.getMessage())
 							)
 					);

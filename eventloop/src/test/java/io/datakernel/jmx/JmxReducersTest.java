@@ -18,16 +18,19 @@ package io.datakernel.jmx;
 
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.jmx.JmxReducers.*;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class JmxReducersTest {
 
 	@Test
 	public void distinctReducerReturnsCommonValueIfAllValuesAreSame() {
-		JmxReducer<Object> reducer = JmxReducers.distinct();
+		JmxReducerDistinct reducer = new JmxReducerDistinct();
 
 		List<String> input = asList("data", "data", "data");
 
@@ -36,10 +39,119 @@ public class JmxReducersTest {
 
 	@Test
 	public void distinctReducerReturnsNullIfThereAreAtLeastTwoDifferentValuesInInputList() {
-		JmxReducer<Object> reducer = JmxReducers.distinct();
+		JmxReducerDistinct reducer = new JmxReducerDistinct();
 
 		List<String> input = asList("data", "non-data", "data");
 
-		assertEquals(null, reducer.reduce(input));
+		assertNull(reducer.reduce(input));
+	}
+
+	@Test
+	public void sumReducerWorksCorrectlyWithIntegerNumbers() {
+		JmxReducerSum sumReducer = new JmxReducerSum();
+		List<Number> numbers = new ArrayList<>();
+		numbers.add(10);
+		numbers.add(15);
+
+		long result = (long) sumReducer.reduce(numbers);
+		assertEquals(25L, result);
+	}
+
+	@Test
+	public void sumReducerWorksCorrectlyWithFloatingPointNumbers() {
+		JmxReducerSum sumReducer = new JmxReducerSum();
+		List<Number> numbers = new ArrayList<>();
+		numbers.add(5.0);
+		numbers.add(2.5);
+
+		double result = (double) sumReducer.reduce(numbers);
+		double acceptableError = 10E-3;
+		assertEquals(7.5, result, acceptableError);
+	}
+
+	@Test
+	public void sumReducerIgnoresNullValues() {
+		JmxReducerSum sumReducer = new JmxReducerSum();
+		List<Number> numbers = new ArrayList<>();
+		numbers.add(10);
+		numbers.add(null);
+		numbers.add(15);
+
+		long result = (long) sumReducer.reduce(numbers);
+		assertEquals(25L, result);
+	}
+
+	@Test
+	public void sumReducerReturnsNullInCaseOfEmptyList() {
+		JmxReducerSum sumReducer = new JmxReducerSum();
+		List<Number> numbers = new ArrayList<>();
+
+		assertNull(sumReducer.reduce(numbers));
+	}
+
+	@Test
+	public void minReducerWorksCorrectlyWithFloatingPointNumbers() {
+		JmxReducerMin minReducer = new JmxReducerMin();
+		List<Number> numbers = new ArrayList<>();
+		numbers.add(5.0);
+		numbers.add(2.5);
+		numbers.add(10.0);
+
+		double result = (double) minReducer.reduce(numbers);
+		double acceptableError = 10E-3;
+		assertEquals(2.5, result, acceptableError);
+	}
+
+	@Test
+	public void minReducerWorksCorrectlyWithIntegerNumbers() {
+		JmxReducerMin minReducer = new JmxReducerMin();
+		List<Number> numbers = new ArrayList<>();
+		numbers.add(5);
+		numbers.add(2);
+		numbers.add(10);
+
+		long result = (long) minReducer.reduce(numbers);
+		assertEquals(2, result);
+	}
+
+	@Test
+	public void minReducerReturnsNullInCaseOfEmptyList() {
+		JmxReducerMin minReducer = new JmxReducerMin();
+		List<Number> numbers = new ArrayList<>();
+
+		assertNull(minReducer.reduce(numbers));
+	}
+
+	@Test
+	public void maxReducerWorksCorrectlyWithFloatingPointNumbers() {
+		JmxReducerMax maxReducer = new JmxReducerMax();
+		List<Number> numbers = new ArrayList<>();
+		numbers.add(5.0);
+		numbers.add(2.5);
+		numbers.add(10.0);
+
+		double result = (double) maxReducer.reduce(numbers);
+		double acceptableError = 10E-3;
+		assertEquals(10.0, result, acceptableError);
+	}
+
+	@Test
+	public void maxReducerWorksCorrectlyWithIntegerNumbers() {
+		JmxReducerMax maxReducer = new JmxReducerMax();
+		List<Number> numbers = new ArrayList<>();
+		numbers.add(5);
+		numbers.add(2);
+		numbers.add(10);
+
+		long result = (long) maxReducer.reduce(numbers);
+		assertEquals(10, result);
+	}
+
+	@Test
+	public void maxReducerReturnsNullInCaseOfEmptyList() {
+		JmxReducerMin maxReducer = new JmxReducerMin();
+		List<Number> numbers = new ArrayList<>();
+
+		assertNull(maxReducer.reduce(numbers));
 	}
 }
