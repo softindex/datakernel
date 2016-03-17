@@ -813,11 +813,31 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			Exception exception = exceptionReference.get();
 			if (exception != null) {
-				throw new MBeanException(exception);
+				propagateException(exception);
 			}
 
 			// We don't know how to aggregate return values if there are several mbeans
 			return mbeanWrappers.size() == 1 ? lastValue.get() : null;
+		}
+
+		private void propagateException(Exception exception) throws MBeanException {
+			if (exception instanceof InvocationTargetException) {
+				Throwable targetException = ((InvocationTargetException) exception).getTargetException();
+
+				if (targetException instanceof Exception) {
+					throw new MBeanException((Exception) targetException);
+				} else {
+					throw new MBeanException(
+							new Exception(format("Throwable of type \"%s\" and message \"%s\" " +
+									"was thrown during method invocation",
+									targetException.getClass().getName(), targetException.getMessage())
+							)
+					);
+				}
+
+			} else {
+				throw new MBeanException(exception);
+			}
 		}
 
 		private static String prettyOperationName(String name, String[] argTypes) {
