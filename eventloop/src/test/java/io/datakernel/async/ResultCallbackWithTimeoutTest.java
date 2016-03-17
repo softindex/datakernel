@@ -90,26 +90,4 @@ public class ResultCallbackWithTimeoutTest {
 		assertTrue(callback.exceptions == 1);
 		assertTrue(callback.lastException.equals(exception1));
 	}
-
-	@Test
-	public void testWithCancellableCallback() throws Exception {
-		SteppingCurrentTimeProvider timeProvider = new SteppingCurrentTimeProvider(0, 1);
-		Eventloop eventloop = new Eventloop(timeProvider);
-		TestLoggingCancellableCallback<Integer> callback = new TestLoggingCancellableCallback<>();
-		final ResultCallbackWithTimeout<Integer> callbackWithTimeout =
-				new ResultCallbackWithTimeout<>(eventloop, callback, 10);
-		callback.cancel();
-
-		eventloop.schedule(5, new Runnable() {
-			@Override
-			public void run() {
-				callbackWithTimeout.onResult(42);
-			}
-		});
-
-		eventloop.run();
-
-		assertTrue(callback.results == 0);
-		assertTrue(callback.exceptions == 0);
-	}
 }

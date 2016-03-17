@@ -16,6 +16,7 @@
 
 package io.datakernel.file;
 
+import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -23,11 +24,11 @@ import io.datakernel.bytebuf.ByteBuf;
 public interface File {
 	void write(final ByteBuf buf, long position, final ResultCallback<Integer> callback);
 
-	void writeFully(ByteBuf byteBuf, long position, CompletionCallback callback);
+	AsyncCancellable writeFully(ByteBuf byteBuf, long position, CompletionCallback callback);
 
 	void read(final ByteBuf buf, long position, final ResultCallback<Integer> callback);
 
-	void readFully(ByteBuf buf, long position, CompletionCallback callback);
+	AsyncCancellable readFully(ByteBuf buf, long position, CompletionCallback callback);
 
 	void readFully(final ResultCallback<ByteBuf> callback);
 

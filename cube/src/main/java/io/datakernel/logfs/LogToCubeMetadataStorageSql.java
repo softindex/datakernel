@@ -32,7 +32,6 @@ import org.jooq.impl.DSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,7 +107,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 
 	@Override
 	public void loadLogPositions(final String log, final List<String> partitions, final ResultCallback<Map<String, LogPosition>> callback) {
-		callConcurrently(eventloop, executor, false, new Callable<Map<String, LogPosition>>() {
+		callConcurrently(eventloop, executor, new Callable<Map<String, LogPosition>>() {
 			@Override
 			public Map<String, LogPosition> call() throws Exception {
 				return loadLogPositions(DSL.using(jooqConfiguration), log, partitions);
@@ -122,7 +121,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	                       final Map<String, LogPosition> newPositions,
 	                       final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
 	                       CompletionCallback callback) {
-		runConcurrently(eventloop, executor, false, new Runnable() {
+		runConcurrently(eventloop, executor, new Runnable() {
 			@Override
 			public void run() {
 				saveCommit(log, idMap, oldPositions, newPositions, newChunks);

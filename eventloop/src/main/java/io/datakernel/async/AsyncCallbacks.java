@@ -251,48 +251,19 @@ public final class AsyncCallbacks {
 		});
 	}
 
-	public static void notifyOnCancel(ExceptionCallback callback, AsyncCancellableStatus.CancelNotifier cancelNotifier) {
-		if (callback instanceof AsyncCancellableStatus) {
-			((AsyncCancellableStatus) callback).notifyOnCancel(cancelNotifier);
-		}
-	}
-
-	/**
-	 * Checks if the action was cancelled
-	 *
-	 * @param callback callback for checking
-	 * @return true if was, false else
-	 */
-	public static boolean isCancelled(ExceptionCallback callback) {
-		if (callback instanceof AsyncCancellableStatus) {
-			return ((AsyncCancellableStatus) callback).isCancelled();
-		}
-		return false;
-	}
-
-	/**
-	 * Calls onCancel() and cancels  callback.
-	 */
-	public static void cancel(ExceptionCallback callback) {
-		if (callback instanceof AsyncCancellable) {
-			((AsyncCancellable) callback).cancel();
-		}
-	}
-
 	/**
 	 * In new thread calls callable and receives result. Then in Eventloop's thread processes it with
 	 * callback's onResult() or onException() and closes callback.
 	 *
+	 * @param <T>                   type of result
 	 * @param eventloop             in its thread it will be called callback
 	 * @param executor              executor for running in new thread
-	 * @param mayInterruptIfRunning flag that mean thread in which callable ran could be closed
 	 * @param callable              instance which returns result
 	 * @param callback              callback for handling result
-	 * @param <T>                   type of result
 	 */
-	public static <T> void callConcurrently(final Eventloop eventloop, ExecutorService executor,
-	                                        final boolean mayInterruptIfRunning, final Callable<T> callable,
-	                                        final ResultCallback<T> callback) {
+	public static <T> AsyncCancellable callConcurrently(final Eventloop eventloop, ExecutorService executor,
+	                                                    final Callable<T> callable,
+	                                                    final ResultCallback<T> callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		try {
 			final Future<?> future = executor.submit(new Runnable() {
@@ -319,34 +290,32 @@ public final class AsyncCallbacks {
 					}
 				}
 			});
-			notifyOnCancel(callback, new AsyncCancellableStatus.CancelNotifier() {
+			return new AsyncCancellable() {
 				@Override
-				public void onCancel() {
-					future.cancel(mayInterruptIfRunning);
+				public void cancel() {
+					future.cancel(true);
 				}
-			});
+			};
 		} catch (RejectedExecutionException e) {
 			tracker.complete();
 			callback.onException(e);
+			return notCancellable();
 		}
 	}
 
 	/**
 	 * Sets value to Settable from new thread. Then in Eventloop's thread
 	 * processes it with callback's onComplete() or onException() and closes callback.
-	 *
+	 *  @param <T>                   type of value
 	 * @param eventloop             in its thread it will be called callback
 	 * @param executor              executor for running in new thread
-	 * @param mayInterruptIfRunning flag that mean thread in which callable ran could be closed
 	 * @param settable              settable for setting
 	 * @param value                 value for setting
 	 * @param callback              callback for handling complete
-	 * @param <T>                   type of value
 	 */
-	public static <T> void setConcurrently(final Eventloop eventloop, ExecutorService executor,
-	                                       final boolean mayInterruptIfRunning,
-	                                       final Settable<T> settable, final T value,
-	                                       final CompletionCallback callback) {
+	public static <T> AsyncCancellable setConcurrently(final Eventloop eventloop, ExecutorService executor,
+	                                                   final Settable<T> settable, final T value,
+	                                                   final CompletionCallback callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		try {
 			final Future<?> future = executor.submit(new Runnable() {
@@ -373,15 +342,16 @@ public final class AsyncCallbacks {
 					}
 				}
 			});
-			notifyOnCancel(callback, new AsyncCancellableStatus.CancelNotifier() {
+			return new AsyncCancellable() {
 				@Override
-				public void onCancel() {
-					future.cancel(mayInterruptIfRunning);
+				public void cancel() {
+					future.cancel(true);
 				}
-			});
+			};
 		} catch (RejectedExecutionException e) {
 			callback.onException(e);
 			tracker.complete();
+			return notCancellable();
 		}
 	}
 
@@ -391,17 +361,15 @@ public final class AsyncCallbacks {
 	 *
 	 * @param eventloop             in its thread it will be called callback
 	 * @param executor              executor for running in new thread
-	 * @param mayInterruptIfRunning flag that mean thread in which callable ran could be closed
 	 * @param function              function for receiving result
 	 * @param value                 value for applying function
 	 * @param callback              callback for handling result
 	 * @param <I>                   type of value
 	 * @param <O>                   type of result
 	 */
-	public static <I, O> void applyConcurrently(final Eventloop eventloop, ExecutorService executor,
-	                                            final boolean mayInterruptIfRunning,
-	                                            final Function<I, O> function, final I value,
-	                                            final ResultCallback<O> callback) {
+	public static <I, O> AsyncCancellable applyConcurrently(final Eventloop eventloop, ExecutorService executor,
+	                                                        final Function<I, O> function, final I value,
+	                                                        final ResultCallback<O> callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		try {
 			final Future<?> future = executor.submit(new Runnable() {
@@ -428,31 +396,30 @@ public final class AsyncCallbacks {
 					}
 				}
 			});
-			notifyOnCancel(callback, new AsyncCancellableStatus.CancelNotifier() {
+			return new AsyncCancellable() {
 				@Override
-				public void onCancel() {
-					future.cancel(mayInterruptIfRunning);
+				public void cancel() {
+					future.cancel(true);
 				}
-			});
+			};
 		} catch (RejectedExecutionException e) {
 			tracker.complete();
 			callback.onException(e);
+			return notCancellable();
 		}
 	}
 
 	/**
 	 * Runs runnable in new thread. Then in Eventloop's thread processes it with callback's
 	 * onComplete() or onException() and closes callback.
-	 *
-	 * @param eventloop             in its thread it will be called callback
+	 *  @param eventloop             in its thread it will be called callback
 	 * @param executor              executor for running in new thread
-	 * @param mayInterruptIfRunning flag that mean thread in which callable ran could be closed
 	 * @param runnable              runnable for running
 	 * @param callback              callback for handling complete
 	 */
-	public static void runConcurrently(final Eventloop eventloop, ExecutorService executor,
-	                                   final boolean mayInterruptIfRunning, final Runnable runnable,
-	                                   final CompletionCallback callback) {
+	public static AsyncCancellable runConcurrently(final Eventloop eventloop, ExecutorService executor,
+	                                               final Runnable runnable,
+	                                               final CompletionCallback callback) {
 		final Eventloop.ConcurrentOperationTracker tracker = eventloop.startConcurrentOperation();
 		try {
 			final Future<?> future = executor.submit(new Runnable() {
@@ -479,15 +446,16 @@ public final class AsyncCallbacks {
 					}
 				}
 			});
-			notifyOnCancel(callback, new AsyncCancellableStatus.CancelNotifier() {
+			return new AsyncCancellable() {
 				@Override
-				public void onCancel() {
-					future.cancel(mayInterruptIfRunning);
+				public void cancel() {
+					future.cancel(true);
 				}
-			});
+			};
 		} catch (RejectedExecutionException e) {
 			tracker.complete();
 			callback.onException(e);
+			return notCancellable();
 		}
 	}
 

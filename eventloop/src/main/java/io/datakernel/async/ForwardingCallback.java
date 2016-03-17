@@ -19,7 +19,7 @@ package io.datakernel.async;
 /**
  * This callback is wrapper over other callback. It redirects callings to it to other callback.
  */
-public abstract class ForwardingCallback implements ExceptionCallback, AsyncCancellableStatus {
+public abstract class ForwardingCallback implements ExceptionCallback {
 	private final ExceptionCallback callback;
 
 	/**
@@ -39,24 +39,5 @@ public abstract class ForwardingCallback implements ExceptionCallback, AsyncCanc
 	@Override
 	public void onException(Exception exception) {
 		callback.onException(exception);
-	}
-
-	/**
-	 * Checks if other callback is cancelled
-	 *
-	 * @return true if it cancelled, false else
-	 */
-	@SuppressWarnings("SimplifiableConditionalExpression")
-	@Override
-	public final boolean isCancelled() {
-		return AsyncCallbacks.isCancelled(callback);
-	}
-
-	/**
-	 * If callback was cancelled calls onCancel of CancelNotifier
-	 */
-	@Override
-	public final void notifyOnCancel(CancelNotifier cancelNotifier) {
-		AsyncCallbacks.notifyOnCancel(callback, cancelNotifier);
 	}
 }

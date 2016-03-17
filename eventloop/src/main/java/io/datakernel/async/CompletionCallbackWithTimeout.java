@@ -19,13 +19,12 @@ package io.datakernel.async;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.ScheduledRunnable;
 
-import java.util.concurrent.TimeoutException;
-
 /**
  * It is CompletionCallback which has time to live, in this time this callback will work as usual CompletionCallback,
  * after timeout, calling of it will throw TimeoutException.
  */
-public final class CompletionCallbackWithTimeout extends AbstractAsyncCancellable implements CompletionCallback {
+public final class CompletionCallbackWithTimeout implements CompletionCallback, AsyncCancellable {
+	public static final SimpleException TIMEOUT_EXCEPTION = new SimpleException("Timeout");
 	private final CompletionCallback callback;
 	private final ScheduledRunnable timeouter;
 
@@ -38,20 +37,10 @@ public final class CompletionCallbackWithTimeout extends AbstractAsyncCancellabl
 	 */
 	public CompletionCallbackWithTimeout(Eventloop eventloop, final CompletionCallback callback, long timeoutMillis) {
 		this.callback = callback;
-
-		AsyncCallbacks.notifyOnCancel(callback, new CancelNotifier() {
-			@Override
-			public void onCancel() {
-				cancel();
-				timeouter.cancel();
-			}
-		});
-
-		timeouter = eventloop.schedule(System.currentTimeMillis() + timeoutMillis, new Runnable() {
+		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {
 			@Override
 			public void run() {
-				cancel();
-				callback.onException(new TimeoutException());
+				callback.onException(TIMEOUT_EXCEPTION);
 			}
 		});
 	}
@@ -70,5 +59,10 @@ public final class CompletionCallbackWithTimeout extends AbstractAsyncCancellabl
 			callback.onException(exception);
 			timeouter.cancel();
 		}
+	}
+
+	@Override
+	public void cancel() {
+		timeouter.cancel();
 	}
 }

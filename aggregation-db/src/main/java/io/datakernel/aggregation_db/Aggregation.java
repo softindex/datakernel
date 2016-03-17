@@ -638,13 +638,13 @@ public class Aggregation {
 	public void loadChunks(final CompletionCallback callback) {
 		if (loadChunksCallback != null) {
 			logger.info("Loading chunks for aggregation {} is already started. Added callback", this);
-			loadChunksCallback.addCallback(callback);
+			loadChunksCallback.addListener(callback);
 			return;
 		}
 
 		logger.info("Loading chunks for aggregation {}", this);
 		loadChunksCallback = new ListenableCompletionCallback();
-		loadChunksCallback.addCallback(callback);
+		loadChunksCallback.addListener(callback);
 		metadataStorage.loadChunks(lastRevisionId, new ResultCallback<LoadedChunks>() {
 			@Override
 			public void onResult(LoadedChunks loadedChunks) {

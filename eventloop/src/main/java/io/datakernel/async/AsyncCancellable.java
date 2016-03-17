@@ -16,13 +16,6 @@
 
 package io.datakernel.async;
 
-/**
- * This interface allows canceling actions after its starting. But in implementation you can ignore
- * method cancel
- */
 public interface AsyncCancellable {
-	/**
-	 * Cancels some action which have began.
-	 */
 	void cancel();
 }

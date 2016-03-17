@@ -16,7 +16,6 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.AsyncCancellableStatus;
 import io.datakernel.async.AsyncGetter;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.net.SocketSettings;
@@ -109,8 +108,6 @@ public final class SocketReconnector implements AsyncGetter<SocketChannel> {
 	                             final SocketSettings socketSettings,
 	                             final int reconnectAttempts, final long reconnectTimeout,
 	                             final ConnectCallback callback) {
-		if (callback instanceof AsyncCancellableStatus && ((AsyncCancellableStatus) callback).isCancelled())
-			return;
 		logger.info("Connecting {}", address);
 		eventloop.connect(address, socketSettings, new ConnectCallback() {
 			@Override

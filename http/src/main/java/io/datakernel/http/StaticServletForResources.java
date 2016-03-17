@@ -79,7 +79,7 @@ public final class StaticServletForResources extends StaticServlet {
 				callback.onResult(null);
 			}
 		} else {
-			callConcurrently(eventloop, executor, false, new Callable<ByteBuf>() {
+			callConcurrently(eventloop, executor, new Callable<ByteBuf>() {
 				@Override
 				public ByteBuf call() throws Exception {
 					try {

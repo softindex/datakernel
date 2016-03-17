@@ -17,105 +17,55 @@
 package io.datakernel.async;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 
 /**
  * This callback contains collection of listeners-CompletionCallback, on calling onComplete/onException this callback
  * it will be call listeners methods too. Each listener can react only on one action, than it will be removed from
  * this ListenableCompletionCallback.
  */
-public class ListenableCompletionCallback extends AbstractAsyncCancellable implements CompletionCallback {
-	private ArrayList<CompletionCallback> callbackList = new ArrayList<>();
-	private int cancelled = 0;
-	private int cancellable = 0;
+public class ListenableCompletionCallback implements CompletionCallback {
+	private ArrayList<CompletionCallback> listeners = new ArrayList<>();
 	private boolean completed = false;
 	private Exception exception;
 
-	public void addCallback(CompletionCallback callback) {
-		if (callback instanceof AsyncCancellableStatus) {
-			AsyncCancellableStatus cancellableCallback = (AsyncCancellableStatus) callback;
-			boolean isCancelled = cancellableCallback.isCancelled();
-
-			if (completed && !isCancelled) {
-				callback.onComplete();
-				return;
-			}
-
-			if (exception != null && !isCancelled) {
-				callback.onException(exception);
-				return;
-			}
-
-			++cancellable;
-
-			if (isCancelled) {
-				++cancelled;
-			}
-
-			cancellableCallback.notifyOnCancel(new CancelNotifier() {
-				@Override
-				public void onCancel() {
-					++cancelled;
-
-					if (cancelled == cancellable && cancellable == callbackList.size()) {
-						cancel();
-					}
-				}
-			});
-		} else {
-			if (completed) {
-				callback.onComplete();
-				return;
-			}
-
-			if (exception != null) {
-				callback.onException(exception);
-				return;
-			}
+	public void addListener(CompletionCallback callback) {
+		if (completed) {
+			callback.onComplete();
+			return;
 		}
 
-		callbackList.add(callback);
+		if (exception != null) {
+			callback.onException(exception);
+			return;
+		}
+
+		listeners.add(callback);
 	}
 
 	@Override
 	public void onComplete() {
+		assert exception == null;
+
 		this.completed = true;
 
-		Iterator<CompletionCallback> it = callbackList.iterator();
-
-		while (it.hasNext()) {
-			CompletionCallback callback = it.next();
-
-			if (callback instanceof AsyncCancellableStatus) {
-				if (((AsyncCancellableStatus) callback).isCancelled()) {
-					it.remove();
-					continue;
-				}
-			}
-
-			callback.onComplete();
-			it.remove();
+		for (CompletionCallback listener : listeners) {
+			listener.onComplete();
 		}
+
+		listeners.clear();
 	}
 
 	@Override
 	public void onException(Exception exception) {
+		assert !completed;
+		assert exception != null;
+
 		this.exception = exception;
 
-		Iterator<CompletionCallback> it = callbackList.iterator();
-
-		while (it.hasNext()) {
-			CompletionCallback callback = it.next();
-
-			if (callback instanceof AsyncCancellableStatus) {
-				if (((AsyncCancellableStatus) callback).isCancelled()) {
-					it.remove();
-					continue;
-				}
-			}
-
-			callback.onException(exception);
-			it.remove();
+		for (CompletionCallback listener : listeners) {
+			listener.onException(exception);
 		}
+
+		listeners.clear();
 	}
 }

@@ -101,7 +101,7 @@ public final class FileSystem {
 
 	// utils
 	private void listFiles(final Path parent, ResultCallback<List<String>> callback) {
-		AsyncCallbacks.callConcurrently(eventloop, executor, false, new Callable<List<String>>() {
+		AsyncCallbacks.callConcurrently(eventloop, executor, new Callable<List<String>>() {
 			@Override
 			public List<String> call() throws Exception {
 				List<String> result = new ArrayList<>();
@@ -124,7 +124,7 @@ public final class FileSystem {
 	}
 
 	private void ensureDirectory(final Path container, final String path, ResultCallback<Path> callback) {
-		AsyncCallbacks.callConcurrently(eventloop, executor, false, new Callable<Path>() {
+		AsyncCallbacks.callConcurrently(eventloop, executor, new Callable<Path>() {
 			@Override
 			public Path call() throws Exception {
 				return ensureDirectory(container, path);

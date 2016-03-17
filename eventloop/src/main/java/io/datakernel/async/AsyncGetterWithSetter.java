@@ -26,8 +26,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  *
  * @param <T> type of result
  */
-public final class AsyncGetterWithSetter<T> extends AbstractAsyncCancellable
-		implements AsyncGetter<T>, ResultCallback<T> {
+public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCallback<T> {
 
 	private final Eventloop eventloop;
 	private T result;

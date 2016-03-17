@@ -84,7 +84,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		return new AggregationMetadataStorage() {
 			@Override
 			public void createChunkId(ResultCallback<Long> callback) {
-				callConcurrently(eventloop, executor, false, new Callable<Long>() {
+				callConcurrently(eventloop, executor, new Callable<Long>() {
 					@Override
 					public Long call() throws Exception {
 						return doCreateChunkId();
@@ -94,7 +94,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 			@Override
 			public void saveChunks(final List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
-				runConcurrently(eventloop, executor, false, new Runnable() {
+				runConcurrently(eventloop, executor, new Runnable() {
 					@Override
 					public void run() {
 						executeExclusiveTransaction(new TransactionalRunnable() {
@@ -113,7 +113,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 			@Override
 			public void startConsolidation(final List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
-				runConcurrently(eventloop, executor, false, new Runnable() {
+				runConcurrently(eventloop, executor, new Runnable() {
 					@Override
 					public void run() {
 						doStartConsolidation(DSL.using(jooqConfiguration), chunksToConsolidate);
@@ -123,7 +123,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 			@Override
 			public void loadChunks(final int lastRevisionId, final ResultCallback<LoadedChunks> callback) {
-				callConcurrently(eventloop, executor, false, new Callable<LoadedChunks>() {
+				callConcurrently(eventloop, executor, new Callable<LoadedChunks>() {
 					@Override
 					public LoadedChunks call() {
 						return doLoadChunks(DSL.using(jooqConfiguration), aggregationId, aggregationMetadata, aggregationStructure, lastRevisionId);
@@ -133,7 +133,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 			@Override
 			public void saveConsolidatedChunks(final List<AggregationChunk> originalChunks, final List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
-				runConcurrently(eventloop, executor, false, new Runnable() {
+				runConcurrently(eventloop, executor, new Runnable() {
 					@Override
 					public void run() {
 						doSaveConsolidatedChunks(aggregationId, aggregationMetadata, originalChunks, consolidatedChunks);

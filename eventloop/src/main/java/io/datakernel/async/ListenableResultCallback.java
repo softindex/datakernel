@@ -25,7 +25,7 @@ import java.util.List;
  *
  * @param <T> type of result
  */
-public final class ListenableResultCallback<T> extends AbstractAsyncCancellable implements ResultCallback<T> {
+public final class ListenableResultCallback<T> implements ResultCallback<T> {
 	private List<ResultCallback<T>> listeners = new ArrayList<>();
 	private T result;
 	private Exception exception;
