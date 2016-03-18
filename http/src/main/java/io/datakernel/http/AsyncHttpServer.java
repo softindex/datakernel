@@ -165,7 +165,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	// JMX
 
 //	@JmxAttribute
-//	public JmxStats<?> getConnectionsCount() {
+//	public JmxRefreshableStats<?> getConnectionsCount() {
 //		return JmxStatsWrappers.forSummableValue(connectionsList.size());
 //	}
 

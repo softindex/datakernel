@@ -49,11 +49,6 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		}
 	}
 
-	@Override
-	public void refreshStats(long timestamp) {
-
-	}
-
 	@JmxAttribute
 	public int getTotal() {
 		return count;

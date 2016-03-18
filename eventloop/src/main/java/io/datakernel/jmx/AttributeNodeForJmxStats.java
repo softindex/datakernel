@@ -37,14 +37,14 @@ final class AttributeNodeForJmxStats extends AttributeNodeForPojoAbstract {
 
 	@Override
 	public Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		JmxStats accumulator = null;
+		JmxRefreshableStats accumulator = null;
 		try {
-			accumulator = (JmxStats) jmxStatsClass.newInstance();
+			accumulator = (JmxRefreshableStats) jmxStatsClass.newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
 			throw new RuntimeException(e);
 		}
 		for (Object pojo : sources) {
-			accumulator.add((JmxStats) fetcher.fetchFrom(pojo));
+			accumulator.add((JmxRefreshableStats) fetcher.fetchFrom(pojo));
 		}
 
 		Map<String, Object> attrs = new HashMap<>();
@@ -72,7 +72,7 @@ final class AttributeNodeForJmxStats extends AttributeNodeForPojoAbstract {
 	@Override
 	public void refresh(List<?> targets, long timestamp) {
 		for (Object pojo : targets) {
-			((JmxStats<?>) fetcher.fetchFrom(pojo)).refreshStats(timestamp);
+			((JmxRefreshableStats<?>) fetcher.fetchFrom(pojo)).refreshStats(timestamp);
 		}
 	}
 

@@ -104,6 +104,14 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 		}
 	}
 
+	protected final List<Object> fetchInnerPojos(List<?> outerPojos) {
+		List<Object> innerPojos = new ArrayList<>(outerPojos.size());
+		for (Object outerPojo : outerPojos) {
+			innerPojos.add(fetcher.fetchFrom(outerPojo));
+		}
+		return innerPojos;
+	}
+
 	@Override
 	public final String getName() {
 		return name;
@@ -117,14 +125,6 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	@Override
 	public final Map<String, OpenType<?>> getFlattenedOpenTypes() {
 		return nameToOpenType;
-	}
-
-	protected final List<Object> fetchInnerPojos(List<?> outerPojos) {
-		List<Object> innerPojos = new ArrayList<>(outerPojos.size());
-		for (Object outerPojo : outerPojos) {
-			innerPojos.add(fetcher.fetchFrom(outerPojo));
-		}
-		return innerPojos;
 	}
 
 	@Override

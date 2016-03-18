@@ -41,18 +41,18 @@ public class JmxMBeansAttributeExceptionsTest {
 	@Test
 	public void jmxStatsAreAllowedOnlyInEventloopJmxMBean() {
 		expectedException.expect(IllegalArgumentException.class);
-		expectedException.expectMessage("JmxStats can be used only in classes that implements" +
+		expectedException.expectMessage("JmxRefreshableStats can be used only in classes that implements" +
 				" EventloopJmxMBean");
 
 		JmxMBeans.factory().createFor(asList(new ConcurrentJmxMBeanWithJmxStats()), false);
 	}
 
-	// test JmxStats as @JmxAttribute, all returned stats should be concrete classes with public no-arg constructor
+	// test JmxRefreshableStats as @JmxAttribute, all returned stats should be concrete classes with public no-arg constructor
 	@Test
 	public void jmxStatsAttributeCannotBeInterface() {
 		expectedException.expect(IllegalArgumentException.class);
-		expectedException.expectMessage("Return type of JmxStats attribute must be concrete class that implements" +
-				" JmxStats interface and contains public no-arg constructor");
+		expectedException.expectMessage("Return type of JmxRefreshableStats attribute must be concrete class that implements" +
+				" JmxRefreshableStats interface and contains public no-arg constructor");
 
 		JmxMBeans.factory().createFor(asList(new MBeanWithInterfaceAsJmxStatsAttributes()), false);
 	}
@@ -60,8 +60,8 @@ public class JmxMBeansAttributeExceptionsTest {
 	@Test
 	public void jmxStatsAttributeCannotBeAbstractClass() {
 		expectedException.expect(IllegalArgumentException.class);
-		expectedException.expectMessage("Return type of JmxStats attribute must be concrete class that implements" +
-				" JmxStats interface and contains public no-arg constructor");
+		expectedException.expectMessage("Return type of JmxRefreshableStats attribute must be concrete class that implements" +
+				" JmxRefreshableStats interface and contains public no-arg constructor");
 
 		JmxMBeans.factory().createFor(asList(new MBeanWithAbstractClassAsJmxStatsAttributes()), false);
 	}
@@ -69,8 +69,8 @@ public class JmxMBeansAttributeExceptionsTest {
 	@Test
 	public void jmxStatsAttributesClassMustHavePublicNoArgConstructor() {
 		expectedException.expect(IllegalArgumentException.class);
-		expectedException.expectMessage("Return type of JmxStats attribute must be concrete class that implements" +
-				" JmxStats interface and contains public no-arg constructor");
+		expectedException.expectMessage("Return type of JmxRefreshableStats attribute must be concrete class that implements" +
+				" JmxRefreshableStats interface and contains public no-arg constructor");
 
 		JmxMBeans.factory().createFor(asList(new MBeanWithJmxStatsClassWhichDoesntHavePublicNoArgConstructor()), false);
 	}
@@ -104,7 +104,7 @@ public class JmxMBeansAttributeExceptionsTest {
 		}
 	}
 
-	public interface JmxStatsAdditionalInterface extends JmxStats<JmxStatsAdditionalInterface> {
+	public interface JmxStatsAdditionalInterface extends JmxRefreshableStats<JmxStatsAdditionalInterface> {
 	}
 
 	public static final class MBeanWithAbstractClassAsJmxStatsAttributes implements EventloopJmxMBean {
@@ -120,7 +120,7 @@ public class JmxMBeansAttributeExceptionsTest {
 		}
 	}
 
-	public static abstract class JmxStatsAbstractClass implements JmxStats<JmxStatsAbstractClass> {
+	public static abstract class JmxStatsAbstractClass implements JmxRefreshableStats<JmxStatsAbstractClass> {
 
 	}
 
@@ -138,7 +138,7 @@ public class JmxMBeansAttributeExceptionsTest {
 	}
 
 	public static final class JmxStatsWithNoPublicNoArgConstructor
-			implements JmxStats<JmxStatsWithNoPublicNoArgConstructor> {
+			implements JmxRefreshableStats<JmxStatsWithNoPublicNoArgConstructor> {
 		private final int count;
 
 		public JmxStatsWithNoPublicNoArgConstructor(int count) {

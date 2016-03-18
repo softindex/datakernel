@@ -23,7 +23,7 @@ import static java.lang.Math.pow;
  * <p/>
  * Class is supposed to work in single thread
  */
-public final class EventStats implements JmxStats<EventStats> {
+public final class EventStats implements JmxRefreshableStats<EventStats> {
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private long lastTimestampMillis;

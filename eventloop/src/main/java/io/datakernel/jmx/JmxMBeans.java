@@ -206,7 +206,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	                                                    Class<?> mbeanClass) {
 		ValueFetcher defaultFetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 		if (attrType instanceof Class) {
-			// 3 cases: simple-type, JmxStats, POJO
+			// 3 cases: simple-type, JmxRefreshableStats, POJO
 			Class<?> returnClass = (Class<?>) attrType;
 			if (isSimpleType(returnClass)) {
 				JmxReducer<?> reducer;
@@ -220,11 +220,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				return new AttributeNodeForThrowable(attrName, defaultFetcher);
 			} else if (returnClass.isArray()) {
 				Class<?> elementType = returnClass.getComponentType();
-				checkNotNull(getter, "Arrays can be used only directly in POJO, JmxStats or JmxMBeans");
+				checkNotNull(getter, "Arrays can be used only directly in POJO, JmxRefreshableStats or JmxMBeans");
 				ValueFetcher fetcher = new ValueFetcherFromGetterArrayAdapter(getter);
 				return createListAttributeNodeFor(attrName, fetcher, elementType, mbeanClass);
 			} else if (isJmxStats(returnClass)) {
-				// JmxStats case
+				// JmxRefreshableStats case
 
 				checkJmxStatsAreValid(returnClass, mbeanClass, getter);
 
@@ -232,7 +232,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 				if (subNodes.size() == 0) {
 					throw new IllegalArgumentException(format(
-							"JmxStats of type \"%s\" does not have JmxAttributes",
+							"JmxRefreshableStats of type \"%s\" does not have JmxAttributes",
 							returnClass.getName()));
 				}
 
@@ -270,7 +270,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static void checkJmxStatsAreValid(Class<?> returnClass, Class<?> mbeanClass, Method getter) {
 		if (!EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
-			throw new IllegalArgumentException("JmxStats can be used only in classes that implements" +
+			throw new IllegalArgumentException("JmxRefreshableStats can be used only in classes that implements" +
 					" EventloopJmxMBean");
 		}
 
@@ -297,8 +297,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static String createErrorMessageForInvalidJmxStatsAttribute(Method getter) {
-		String msg = "Return type of JmxStats attribute must be concrete class that implements" +
-				" JmxStats interface and contains public no-arg constructor";
+		String msg = "Return type of JmxRefreshableStats attribute must be concrete class that implements" +
+				" JmxRefreshableStats interface and contains public no-arg constructor";
 		if (getter != null) {
 			msg += format(". Error at %s.%s()", getter.getDeclaringClass().getName(), getter.getName());
 		}

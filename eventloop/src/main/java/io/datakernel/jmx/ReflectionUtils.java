@@ -25,7 +25,7 @@ final class ReflectionUtils {
 	private ReflectionUtils() {}
 
 	public static boolean isJmxStats(Class<?> clazz) {
-		return JmxStats.class.isAssignableFrom(clazz);
+		return JmxRefreshableStats.class.isAssignableFrom(clazz);
 	}
 
 	public static boolean isPrimitiveType(Class<?> clazz) {

@@ -52,9 +52,4 @@ public final class CountStats implements JmxStats<CountStats> {
 	public void add(CountStats another) {
 		this.count += another.count;
 	}
-
-	@Override
-	public void refreshStats(long timestamp) {
-
-	}
 }

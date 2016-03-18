@@ -23,7 +23,7 @@ import static java.lang.Math.*;
  * <p/>
  * Class is supposed to work in single thread
  */
-public final class ValueStats implements JmxStats<ValueStats> {
+public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private long lastTimestampMillis;

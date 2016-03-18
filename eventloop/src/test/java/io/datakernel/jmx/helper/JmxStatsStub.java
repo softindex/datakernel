@@ -17,9 +17,9 @@
 package io.datakernel.jmx.helper;
 
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxStats;
+import io.datakernel.jmx.JmxRefreshableStats;
 
-public final class JmxStatsStub implements JmxStats<JmxStatsStub> {
+public final class JmxStatsStub implements JmxRefreshableStats<JmxStatsStub> {
 
 	private long sum = 0L;
 	private int count = 0;
