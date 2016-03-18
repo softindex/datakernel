@@ -65,10 +65,13 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		Object firstMBean = monitorables.get(0);
 		Class<?> mbeanClass = firstMBean.getClass();
 
+		boolean isRefreshEnabled = enableRefresh;
+
 		List<MBeanWrapper> mbeanWrappers = new ArrayList<>(monitorables.size());
 		if (ConcurrentJmxMBean.class.isAssignableFrom(mbeanClass)) {
 			checkArgument(monitorables.size() == 1, "ConcurrentJmxMBeans cannot be used in pool. " +
 					"Only EventloopJmxMBeans can be used in pool");
+			isRefreshEnabled = false;
 			mbeanWrappers.add(new ConcurrentJmxMBeanWrapper((ConcurrentJmxMBean) monitorables.get(0)));
 		} else if (EventloopJmxMBean.class.isAssignableFrom(mbeanClass)) {
 			for (Object monitorable : monitorables) {
@@ -80,14 +83,14 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		AttributeNodeForPojo rootNode = createAttributesTree(mbeanClass);
-		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, mbeanClass, enableRefresh);
+		MBeanInfo mBeanInfo = createMBeanInfo(rootNode, mbeanClass, isRefreshEnabled);
 		Map<OperationKey, Method> opkeyToMethod = fetchOpkeyToMethod(mbeanClass);
 
 		DynamicMBeanAggregator mbean = new DynamicMBeanAggregator(
-				mBeanInfo, mbeanWrappers, rootNode, opkeyToMethod, enableRefresh
+				mBeanInfo, mbeanWrappers, rootNode, opkeyToMethod, isRefreshEnabled
 		);
 
-		if (enableRefresh) {
+		if (isRefreshEnabled) {
 			startRefreshing(mbeanClass, mbean);
 		}
 

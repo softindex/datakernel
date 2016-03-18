@@ -32,13 +32,17 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
-public final class JmxRegistry {
+public final class JmxRegistry implements ConcurrentJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(JmxRegistry.class);
 
 	private static final String GENERIC_PARAM_NAME_FORMAT = "T%d=%s";
 
 	private final MBeanServer mbs;
 	private final DynamicMBeanFactory mbeanFactory;
+
+	private int registeredSingletons;
+	private int registeredPools;
+	private int totallyRegisteredMBeans;
 
 	public JmxRegistry(MBeanServer mbs, DynamicMBeanFactory mbeanFactory) {
 		this.mbs = checkNotNull(mbs);
@@ -92,6 +96,10 @@ public final class JmxRegistry {
 			mbs.registerMBean(mbean, objectName);
 			logger.info(format("Instance with key %s was successfully registered to jmx " +
 					"with ObjectName \"%s\" ", key.toString(), objectName.toString()));
+
+			registeredSingletons++;
+			totallyRegisteredMBeans++;
+
 		} catch (NotCompliantMBeanException | InstanceAlreadyExistsException | MBeanRegistrationException e) {
 			String msg = format("Cannot register MBean for instance with key %s and ObjectName \"%s\"",
 					key.toString(), objectName.toString());
@@ -177,6 +185,10 @@ public final class JmxRegistry {
 			mbs.registerMBean(mbean, objectName);
 			logger.info(format("Pool of instances with key %s was successfully registered to jmx " +
 					"with ObjectName \"%s\"", key.toString(), objectName.toString()));
+
+			registeredPools++;
+			totallyRegisteredMBeans++;
+
 		} catch (NotCompliantMBeanException | InstanceAlreadyExistsException | MBeanRegistrationException e) {
 			String msg = format("Cannot register aggregated MBean of pool of workers with key %s " +
 					"and ObjectName \"%s\"", key.toString(), objectName.toString());
@@ -268,6 +280,9 @@ public final class JmxRegistry {
 
 		try {
 			mbs.registerMBean(mbean, objectName);
+
+			totallyRegisteredMBeans++;
+
 		} catch (NotCompliantMBeanException | InstanceAlreadyExistsException | MBeanRegistrationException e) {
 			String msg = format("Cannot register MBean for worker of pool of instances with key %s. " +
 					"ObjectName for worker is \"%s\"", key.toString(), objectName.toString());
@@ -383,5 +398,21 @@ public final class JmxRegistry {
 
 	private static boolean isMBean(Class<?> clazz) {
 		return isJmxMBean(clazz) || isStandardMBean(clazz) || isMXBean(clazz);
+	}
+
+	// jmx
+	@JmxAttribute
+	public int getRegisteredSingletons() {
+		return registeredSingletons;
+	}
+
+	@JmxAttribute
+	public int getRegisteredPools() {
+		return registeredPools;
+	}
+
+	@JmxAttribute
+	public int getTotallyRegisteredMBeans() {
+		return totallyRegisteredMBeans;
 	}
 }

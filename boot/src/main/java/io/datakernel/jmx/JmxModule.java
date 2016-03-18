@@ -92,10 +92,11 @@ public final class JmxModule extends AbstractModule {
 
 	@Provides
 	JmxRegistrator jmxRegistrator(Injector injector, JmxRegistry jmxRegistry) {
-		return new JmxRegistrator(injector, singletonKeys, workerKeys, jmxRegistry());
+		return new JmxRegistrator(injector, singletonKeys, workerKeys, jmxRegistry);
 	}
 
 	@Provides
+	@Singleton
 	JmxRegistry jmxRegistry() {
 		return new JmxRegistry(ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory());
 	}
