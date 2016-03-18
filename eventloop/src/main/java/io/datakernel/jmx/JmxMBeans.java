@@ -41,7 +41,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static final Timer TIMER = new Timer(true);
 	private static final String REFRESH_PERIOD_ATTRIBUTE_NAME = "_refreshPeriod";
-	public static final double DEFAULT_REFRESH_PERIOD = 0.2;
+	public static final double DEFAULT_REFRESH_PERIOD = 1.0;
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
 
