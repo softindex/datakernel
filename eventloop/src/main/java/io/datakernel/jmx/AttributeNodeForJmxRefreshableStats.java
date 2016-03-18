@@ -18,20 +18,23 @@ package io.datakernel.jmx;
 
 import java.util.List;
 
-final class AttributeNodeForJmxStats extends AttributeNodeForJmxStatsAbstract {
+final class AttributeNodeForJmxRefreshableStats extends AttributeNodeForJmxStatsAbstract {
 
-	public AttributeNodeForJmxStats(String name, ValueFetcher fetcher, Class<? extends JmxStats<?>> jmxStatsClass,
-	                                List<? extends AttributeNode> subNodes) {
+	public AttributeNodeForJmxRefreshableStats(String name, ValueFetcher fetcher,
+	                                           Class<? extends JmxRefreshableStats<?>> jmxStatsClass,
+	                                           List<? extends AttributeNode> subNodes) {
 		super(name, fetcher, jmxStatsClass, subNodes);
 	}
 
 	@Override
 	public void refresh(List<?> targets, long timestamp) {
-		throw new UnsupportedOperationException();
+		for (Object pojo : targets) {
+			((JmxRefreshableStats<?>) fetcher.fetchFrom(pojo)).refreshStats(timestamp);
+		}
 	}
 
 	@Override
 	public boolean isRefreshable() {
-		return false;
+		return true;
 	}
 }

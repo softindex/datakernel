@@ -202,6 +202,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private static AttributeNode createAttributeNodeFor(String attrName, Type attrType, Method getter, Method setter,
 	                                                    Class<?> mbeanClass) {
 		ValueFetcher defaultFetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
@@ -236,7 +237,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 							returnClass.getName()));
 				}
 
-				return new AttributeNodeForJmxStats(attrName, defaultFetcher, returnClass, subNodes);
+				if (isJmxRefreshableStats(returnClass)) {
+					return new AttributeNodeForJmxRefreshableStats(attrName, defaultFetcher,
+							(Class<? extends JmxRefreshableStats<?>>) returnClass,
+							subNodes);
+				} else {
+					return new AttributeNodeForJmxStats(attrName, defaultFetcher,
+							(Class<? extends JmxStats<?>>) returnClass,
+							subNodes);
+				}
+
 			} else {
 				List<AttributeNode> subNodes = createNodesFor(returnClass, mbeanClass);
 
