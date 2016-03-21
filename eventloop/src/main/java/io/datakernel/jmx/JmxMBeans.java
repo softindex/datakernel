@@ -16,8 +16,7 @@
 
 package io.datakernel.jmx;
 
-import io.datakernel.time.CurrentTimeProvider;
-import io.datakernel.time.CurrentTimeProviderSystem;
+import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +27,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.jmx.ReflectionUtils.*;
@@ -39,13 +37,9 @@ import static java.util.Arrays.asList;
 public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
 
-	private static final Timer TIMER = new Timer(true);
-	private static final String REFRESH_PERIOD_ATTRIBUTE_NAME = "_refreshPeriod";
 	public static final double DEFAULT_REFRESH_PERIOD = 1.0;
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
-
-	private static final CurrentTimeProvider TIME_PROVIDER = CurrentTimeProviderSystem.instance();
 
 	private static final JmxMBeans INSTANCE = new JmxMBeans();
 
@@ -91,33 +85,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		);
 
 		if (isRefreshEnabled) {
-			startRefreshing(mbeanClass, mbean);
+			mbean.startRefreshing(DEFAULT_REFRESH_PERIOD);
 		}
 
 		return mbean;
-	}
-
-	private static void startRefreshing(Class<?> mbeanClass, DynamicMBeanAggregator mbean) {
-		double refreshPeriod = DEFAULT_REFRESH_PERIOD;
-		JmxRefreshPeriodInSeconds refreshPeriodAnnotation = fetchRefreshSettingsIfExists(mbeanClass);
-		if (refreshPeriodAnnotation != null) {
-			double customRefreshPeriod = refreshPeriodAnnotation.value();
-			checkArgument(customRefreshPeriod > 0.0, "refresh period must be positive. " +
-					"Error in class: " + mbeanClass.getName());
-			refreshPeriod = customRefreshPeriod;
-		}
-		mbean.startRefreshing(refreshPeriod);
-	}
-
-	private static JmxRefreshPeriodInSeconds fetchRefreshSettingsIfExists(Class<?> clazz) {
-		Class<?> currentClass = clazz;
-		while (currentClass != null) {
-			if (currentClass.isAnnotationPresent(JmxRefreshPeriodInSeconds.class)) {
-				return currentClass.getAnnotation(JmxRefreshPeriodInSeconds.class);
-			}
-			currentClass = currentClass.getSuperclass();
-		}
-		return null;
 	}
 
 	private static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
@@ -465,20 +436,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType.getClassName(), attrName, true, writable, isIs));
 		}
 
-		if (refreshEnabled) {
-			attrsInfo.addAll(createAttributesForRefreshControl());
-		}
-
 		return attrsInfo.toArray(new MBeanAttributeInfo[attrsInfo.size()]);
-	}
-
-	private static List<MBeanAttributeInfo> createAttributesForRefreshControl() {
-		List<MBeanAttributeInfo> refreshAttrs = new ArrayList<>();
-		MBeanAttributeInfo refreshPeriodAttr =
-				new MBeanAttributeInfo(REFRESH_PERIOD_ATTRIBUTE_NAME, "double", REFRESH_PERIOD_ATTRIBUTE_NAME,
-						true, true, false);
-		refreshAttrs.add(refreshPeriodAttr);
-		return refreshAttrs;
 	}
 
 	// TODO(vmykhalko): refactor this method (it has common code with  fetchOperationsInfo()
@@ -586,10 +544,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		private final AttributeNodeForPojo rootNode;
 		private final Map<OperationKey, Method> opkeyToMethod;
 
-		// refresh
-		private final boolean refreshEnabled;
-		private volatile double refreshPeriod;
-
 		public DynamicMBeanAggregator(MBeanInfo mBeanInfo, List<? extends MBeanWrapper> mbeanWrappers,
 		                              AttributeNodeForPojo rootNode, Map<OperationKey, Method> opkeyToMethod,
 		                              boolean refreshEnabled) {
@@ -604,46 +558,35 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			this.rootNode = rootNode;
 			this.opkeyToMethod = opkeyToMethod;
-			this.refreshEnabled = refreshEnabled;
+//			this.refreshEnabled = refreshEnabled;
 		}
 
-		public void startRefreshing(double defaultRefreshPeriod) {
+		public void startRefreshing(final double refreshPeriod) {
 			if (rootNode.isRefreshable()) {
-				checkState(refreshEnabled());
-				refreshPeriod = defaultRefreshPeriod;
-				TIMER.schedule(createRefreshTask(), 0L);
+				for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
+					final Eventloop eventloop = mbeanWrapper.getEventloop();
+					if (eventloop != null) {
+						Runnable refreshTask =
+								createRefreshTask(mbeanWrapper.getMBean(), eventloop, secondsToMillis(refreshPeriod));
+						eventloop.execute(refreshTask);
+					}
+				}
 			} else {
 				logger.warn("Refresh was enabled but MBeans are not refreshable");
 			}
 		}
 
-		private boolean refreshEnabled() {
-			return refreshEnabled;
-		}
-
-		private TimerTask createRefreshTask() {
-			checkState(refreshEnabled());
-			return new TimerTask() {
+		private Runnable createRefreshTask(final Object mbean, final Eventloop eventloop,
+		                                   final int refreshPeriodInMillis) {
+			return new Runnable() {
 				@Override
 				public void run() {
-					final AtomicInteger mbeansLeftForRefresh = new AtomicInteger(mbeanWrappers.size());
-					// cache smoothingWindow and refreshPeriod to be same for all localRefreshTasks
-					// because this two parameters may be changed from other thread
-					final int currentRefreshPeriod = secondsToMillis(refreshPeriod);
-					final long currentTimestamp = TIME_PROVIDER.currentTimeMillis();
-					for (final MBeanWrapper mbeanWrapper : mbeanWrappers) {
-						final Object mbean = mbeanWrapper.getMBean();
-						mbeanWrapper.execute(new Runnable() {
-							@Override
-							public void run() {
-								rootNode.refresh(asList(mbean), currentTimestamp);
-								int tasksLeft = mbeansLeftForRefresh.decrementAndGet();
-								if (tasksLeft == 0) {
-									TIMER.schedule(createRefreshTask(), currentRefreshPeriod);
-								}
-							}
-						});
-					}
+					long currentTime = eventloop.currentTimeMillis();
+					rootNode.refresh(asList(mbean), currentTime);
+					eventloop.schedule(
+							currentTime + refreshPeriodInMillis,
+							createRefreshTask(mbean, eventloop, refreshPeriodInMillis)
+					);
 				}
 			};
 		}
@@ -654,23 +597,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 		@SuppressWarnings("unchecked")
 		@Override
-		public Object getAttribute(String attribute) throws AttributeNotFoundException, MBeanException, ReflectionException {
-			if (attribute.equals(REFRESH_PERIOD_ATTRIBUTE_NAME)) {
-				checkState(refreshEnabled());
-				return refreshPeriod;
-			}
-
-			Object attrValue = rootNode.aggregateAttribute(attribute, mbeans);
-
-			// TODO(vmykhalko): is support of AggregationException needed ?
-//			if (attrValue instanceof Exception) {
-//				Exception attrException = (Exception) attrValue;
-//				throw new MBeanException(EXCEPTION,
-//						format("Exception with type \"%s\" and message \"%s\" occured during fetching attribute",
-//								attrException.getClass().getName(), attrException.getMessage()));
-//			}
-
-			return attrValue;
+		public Object getAttribute(String attribute)
+				throws AttributeNotFoundException, MBeanException, ReflectionException {
+			return rootNode.aggregateAttribute(attribute, mbeans);
 		}
 
 		@Override
@@ -678,11 +607,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				MBeanException, ReflectionException {
 			final String attrName = attribute.getName();
 			final Object attrValue = attribute.getValue();
-			if (attrName.equals(REFRESH_PERIOD_ATTRIBUTE_NAME)) {
-				checkState(refreshEnabled());
-				refreshPeriod = (double) attrValue;
-				return;
-			}
 
 			final CountDownLatch latch = new CountDownLatch(mbeanWrappers.size());
 			final AtomicReference<Exception> exceptionReference = new AtomicReference<>();
@@ -837,11 +761,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private interface MBeanWrapper {
 		void execute(Runnable command);
 
-		void schedule(long timestamp, Runnable runnable);
-
 		boolean isRefreshable();
 
 		Object getMBean();
+
+		Eventloop getEventloop();
 	}
 
 	private static final class ConcurrentJmxMBeanWrapper implements MBeanWrapper {
@@ -857,11 +781,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public void schedule(long timestamp, Runnable runnable) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
 		public boolean isRefreshable() {
 			return false;
 		}
@@ -869,6 +788,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		@Override
 		public Object getMBean() {
 			return mbean;
+		}
+
+		@Override
+		public Eventloop getEventloop() {
+			return null;
 		}
 	}
 
@@ -885,11 +809,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public void schedule(long timestamp, Runnable runnable) {
-			mbean.getEventloop().schedule(timestamp, runnable);
-		}
-
-		@Override
 		public boolean isRefreshable() {
 			return true;
 		}
@@ -897,6 +816,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		@Override
 		public Object getMBean() {
 			return mbean;
+		}
+
+		@Override
+		public Eventloop getEventloop() {
+			return mbean.getEventloop();
 		}
 	}
 
