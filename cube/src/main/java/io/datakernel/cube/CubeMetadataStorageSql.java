@@ -19,10 +19,7 @@ package io.datakernel.cube;
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Multimap;
+import com.google.common.collect.*;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation_db.sql.tables.records.AggregationDbChunkRecord;
@@ -54,7 +51,6 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 	private static final String LOCK_NAME = "cube_lock";
 	private static final int DEFAULT_LOCK_TIMEOUT_SECONDS = 180;
-	private static final int MAX_KEYS = 40;
 	private static final Joiner JOINER = Joiner.on(' ');
 	private static final Splitter SPLITTER = Splitter.on(' ').omitEmptyStrings();
 
@@ -174,12 +170,42 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		doSaveNewChunks(jooq, revisionId, idMap, newChunksWithMetadata);
 	}
 
+	private static int getMaxKeyLength(Iterable<AggregationMetadata> aggregations) {
+		int maxKeyLength = 0;
+		for (AggregationMetadata aggregation : aggregations) {
+			maxKeyLength = Math.max(maxKeyLength, aggregation.getKeys().size());
+		}
+		return maxKeyLength;
+	}
+
+	private static Collection<Field<?>> getChunkUpdateFields(int maxKeyLength) {
+		List<Field<?>> updateFields = new ArrayList<>(maxKeyLength * 2 + 6);
+
+		updateFields.add(AGGREGATION_DB_CHUNK.AGGREGATION_ID);
+		updateFields.add(AGGREGATION_DB_CHUNK.REVISION_ID);
+		updateFields.add(AGGREGATION_DB_CHUNK.KEYS);
+		updateFields.add(AGGREGATION_DB_CHUNK.FIELDS);
+		updateFields.add(AGGREGATION_DB_CHUNK.COUNT);
+		updateFields.add(AGGREGATION_DB_CHUNK.PROCESS_ID);
+
+		for (int d = 0; d < maxKeyLength; d++) {
+			updateFields.add(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min"));
+			updateFields.add(AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_max"));
+		}
+
+		return updateFields;
+	}
+
 	private void doSaveNewChunks(DSLContext jooq, final int revisionId,
 	                             Map<AggregationMetadata, String> idMap,
 	                             Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunksWithMetadata) {
 		InsertQuery<AggregationDbChunkRecord> insertQuery = jooq.insertQuery(AGGREGATION_DB_CHUNK);
 
-		for (AggregationMetadata aggregationMetadata : newChunksWithMetadata.keySet()) {
+		Set<AggregationMetadata> aggregationMetadatas = newChunksWithMetadata.keySet();
+
+		int maxKeyLength = getMaxKeyLength(aggregationMetadatas);
+
+		for (AggregationMetadata aggregationMetadata : aggregationMetadatas) {
 			String aggregationId = idMap.get(aggregationMetadata);
 			for (AggregationChunk.NewChunk newChunk : newChunksWithMetadata.get(aggregationMetadata)) {
 				insertQuery.newRecord();
@@ -195,7 +221,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				insertQuery.addValue(AGGREGATION_DB_CHUNK.PROCESS_ID, processId);
 
 				int keyLength = aggregationMetadata.getKeys().size();
-				for (int d = 0; d < MAX_KEYS; d++) {
+				for (int d = 0; d < maxKeyLength; d++) {
 					Field<String> minField = AGGREGATION_DB_CHUNK.field("d" + (d + 1) + "_min").coerce(String.class);
 					insertQuery.addValue(minField, d >= keyLength ? null : chunk.getMinPrimaryKey().values().get(d).toString());
 
@@ -205,9 +231,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 			}
 		}
 
-		ArrayList<Field<?>> updateFields = Lists.newArrayList(AGGREGATION_DB_CHUNK.fields());
-		updateFields.remove(AGGREGATION_DB_CHUNK.ID);
-
+		Collection<Field<?>> updateFields = getChunkUpdateFields(maxKeyLength);
 		insertQuery.addValuesForUpdate(onDuplicateKeyUpdateValues(updateFields));
 		insertQuery.onDuplicateKeyUpdate(true);
 		insertQuery.execute();
@@ -222,8 +246,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				.and(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(aggregationId))
 				.fetchOne();
 		if (maxRevisionRecord.value1() == null) {
-			return new LoadedChunks(lastRevisionId,
-					Collections.<Long>emptyList(), Collections.<AggregationChunk>emptyList());
+			return new LoadedChunks(lastRevisionId, Collections.<Long>emptyList(), Collections.<AggregationChunk>emptyList());
 		}
 		int newRevisionId = maxRevisionRecord.value1();
 
