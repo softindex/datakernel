@@ -26,7 +26,7 @@ import java.util.Map;
 public final class ConcurrentCallsStats {
 	private final EventStats totalCalls = new EventStats();
 	private final EventStats rejectedCalls = new EventStats();
-	private final ValueStats callDuration = new ValueStats();
+	private final ValueStats executionDuration = new ValueStats();
 	private final ValueStats awaitingStartDuration = new ValueStats();
 
 	private final Map<String, DistributedStats> taskNameToStats = new HashMap<>();
@@ -45,8 +45,8 @@ public final class ConcurrentCallsStats {
 	}
 
 	public void recordCallDuration(String taskName, int duration) {
-		callDuration.recordValue(duration);
-		ensureConcurrentCallsStatsForTaskName(taskName).getCallDuration().recordValue(duration);
+		executionDuration.recordValue(duration);
+		ensureConcurrentCallsStatsForTaskName(taskName).getExecutionDuration().recordValue(duration);
 	}
 
 	public void recordAwaitingStartDuration(String taskName, int duration) {
@@ -65,8 +65,8 @@ public final class ConcurrentCallsStats {
 	}
 
 	@JmxAttribute
-	public ValueStats getCallDuration() {
-		return callDuration;
+	public ValueStats getExecutionDuration() {
+		return executionDuration;
 	}
 
 	@JmxAttribute
@@ -82,7 +82,7 @@ public final class ConcurrentCallsStats {
 	public static final class DistributedStats {
 		private final EventStats totalCalls = new EventStats();
 		private final EventStats rejectedCalls = new EventStats();
-		private final ValueStats callDuration = new ValueStats();
+		private final ValueStats executionDuration = new ValueStats();
 		private final ValueStats awaitingStartDuration = new ValueStats();
 
 		public DistributedStats() {
@@ -99,8 +99,8 @@ public final class ConcurrentCallsStats {
 		}
 
 		@JmxAttribute
-		public ValueStats getCallDuration() {
-			return callDuration;
+		public ValueStats getExecutionDuration() {
+			return executionDuration;
 		}
 
 		@JmxAttribute
