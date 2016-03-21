@@ -43,8 +43,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	private double smoothedSum;
 	private double smoothedSqr;
 	private double smoothedCount;
-	private double smoothedMin;
-	private double smoothedMax;
 
 	private double smoothingWindow;
 
@@ -58,8 +56,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		smoothedSum = 0.0;
 		smoothedSqr = 0.0;
 		smoothedCount = 0.0;
-		smoothedMin = totalMin;
-		smoothedMax = totalMax;
 		totalMax = 0;
 		totalMin = 0;
 		totalSum = 0;
@@ -109,8 +105,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 			smoothedSum = lastSum;
 			smoothedSqr = lastSqr;
 			smoothedCount = lastCount;
-			smoothedMin = totalMin = lastMin;
-			smoothedMax = totalMax = lastMax;
 		} else {
 			double windowE = smoothingWindow * 1000.0 / log(2);
 			double weight = exp(-(timestamp - lastTimestampMillis) / windowE);
@@ -118,17 +112,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 			smoothedSum = lastSum + smoothedSum * weight;
 			smoothedSqr = lastSqr + smoothedSqr * weight;
 			smoothedCount = lastCount + smoothedCount * weight;
-
-			smoothedMin += (smoothedMax - smoothedMin) * (1.0 - weight);
-			smoothedMax += (smoothedMin - smoothedMax) * (1.0 - weight);
-
-			if (lastMin < smoothedMin) {
-				smoothedMin = lastMin;
-			}
-
-			if (lastMax > smoothedMax) {
-				smoothedMax = lastMax;
-			}
 
 			totalSum += lastSum;
 			totalCount += lastCount;
@@ -160,12 +143,6 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		smoothedSum += anotherStats.smoothedSum;
 		smoothedSqr += anotherStats.smoothedSqr;
 		smoothedCount += anotherStats.smoothedCount;
-		if (anotherStats.smoothedMin < smoothedMin) {
-			smoothedMin = anotherStats.smoothedMin;
-		}
-		if (anotherStats.smoothedMax > smoothedMax) {
-			smoothedMax = anotherStats.smoothedMax;
-		}
 
 		totalSum += anotherStats.totalSum;
 		totalCount += anotherStats.totalCount;
@@ -235,31 +212,11 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	}
 
 	/**
-	 * Returns smoothed min of added values
-	 *
-	 * @return smoothed min of added values
-	 */
-	@JmxAttribute
-	public double getSmoothedMin() {
-		return smoothedMin;
-	}
-
-	/**
-	 * Returns smoothed max of added values
-	 *
-	 * @return smoothed max of added values
-	 */
-	@JmxAttribute
-	public double getSmoothedMax() {
-		return smoothedMax;
-	}
-
-	/**
 	 * Returns minimum of all added values
 	 *
 	 * @return minimum of all added values
 	 */
-	@JmxAttribute
+	@JmxAttribute(name = "min")
 	public int getTotalMin() {
 		return totalMin;
 	}
@@ -269,7 +226,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 *
 	 * @return maximum of all added values
 	 */
-	@JmxAttribute
+	@JmxAttribute(name = "max")
 	public int getTotalMax() {
 		return totalMax;
 	}
@@ -291,8 +248,8 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 
 	@Override
 	public String toString() {
-		return String.format("%.2f±%.3f   min: %d   max: %d   last: %d   avg: %.2f   smoothedMin: %.2f   smoothedMax: %.2f",
+		return String.format("%.2f±%.3f   min: %d   max: %d   last: %d   avg: %.2f",
 				getSmoothedAverage(), getSmoothedStandardDeviation(), getTotalMin(), getTotalMax(), getLastValue(),
-				getAverage(), getSmoothedMin(), getSmoothedMax());
+				getAverage());
 	}
 }
