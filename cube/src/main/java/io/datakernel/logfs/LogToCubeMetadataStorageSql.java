@@ -38,8 +38,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.callConcurrently;
-import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static io.datakernel.cube.sql.tables.AggregationDbLog.AGGREGATION_DB_LOG;
 
 /**
@@ -57,9 +55,10 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	 * Constructs a metadata storage for cube metadata and logs, that runs in the specified event loop,
 	 * performs SQL queries in the given executor, connects to RDBMS using the specified configuration,
 	 * and uses the given cube metadata storage for some of the operations.
-	 *  @param eventloop                  event loop, in which metadata storage is to run
-	 * @param executor                   executor, where SQL queries are to be run
-	 * @param jooqConfiguration          database connection configuration
+	 *
+	 * @param eventloop           event loop, in which metadata storage is to run
+	 * @param executor            executor, where SQL queries are to be run
+	 * @param jooqConfiguration   database connection configuration
 	 * @param cubeMetadataStorage aggregation metadata storage
 	 */
 	public LogToCubeMetadataStorageSql(Eventloop eventloop, ExecutorService executor,
@@ -107,7 +106,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 
 	@Override
 	public void loadLogPositions(final String log, final List<String> partitions, final ResultCallback<Map<String, LogPosition>> callback) {
-		callConcurrently(eventloop, executor, new Callable<Map<String, LogPosition>>() {
+		eventloop.callConcurrently(executor, new Callable<Map<String, LogPosition>>() {
 			@Override
 			public Map<String, LogPosition> call() throws Exception {
 				return loadLogPositions(DSL.using(jooqConfiguration), log, partitions);
@@ -121,7 +120,7 @@ public final class LogToCubeMetadataStorageSql implements LogToCubeMetadataStora
 	                       final Map<String, LogPosition> newPositions,
 	                       final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
 	                       CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new Runnable() {
+		eventloop.runConcurrently(executor, new Runnable() {
 			@Override
 			public void run() {
 				saveCommit(log, idMap, oldPositions, newPositions, newChunks);

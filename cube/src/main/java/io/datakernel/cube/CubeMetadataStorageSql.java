@@ -44,8 +44,6 @@ import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 import static io.datakernel.aggregation_db.sql.tables.AggregationDbChunk.AGGREGATION_DB_CHUNK;
 import static io.datakernel.aggregation_db.util.JooqUtils.onDuplicateKeyUpdateValues;
-import static io.datakernel.async.AsyncCallbacks.callConcurrently;
-import static io.datakernel.async.AsyncCallbacks.runConcurrently;
 import static org.jooq.impl.DSL.currentTimestamp;
 import static org.jooq.impl.DSL.max;
 
@@ -84,7 +82,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		return new AggregationMetadataStorage() {
 			@Override
 			public void createChunkId(ResultCallback<Long> callback) {
-				callConcurrently(eventloop, executor, new Callable<Long>() {
+				eventloop.callConcurrently(executor, new Callable<Long>() {
 					@Override
 					public Long call() throws Exception {
 						return doCreateChunkId();
@@ -94,7 +92,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 			@Override
 			public void saveChunks(final List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
-				runConcurrently(eventloop, executor, new Runnable() {
+				eventloop.runConcurrently(executor, new Runnable() {
 					@Override
 					public void run() {
 						executeExclusiveTransaction(new TransactionalRunnable() {
@@ -113,7 +111,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 			@Override
 			public void startConsolidation(final List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
-				runConcurrently(eventloop, executor, new Runnable() {
+				eventloop.runConcurrently(executor, new Runnable() {
 					@Override
 					public void run() {
 						doStartConsolidation(DSL.using(jooqConfiguration), chunksToConsolidate);
@@ -123,7 +121,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 			@Override
 			public void loadChunks(final int lastRevisionId, final ResultCallback<LoadedChunks> callback) {
-				callConcurrently(eventloop, executor, new Callable<LoadedChunks>() {
+				eventloop.callConcurrently(executor, new Callable<LoadedChunks>() {
 					@Override
 					public LoadedChunks call() {
 						return doLoadChunks(DSL.using(jooqConfiguration), aggregationId, aggregationMetadata, aggregationStructure, lastRevisionId);
@@ -133,7 +131,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 
 			@Override
 			public void saveConsolidatedChunks(final List<AggregationChunk> originalChunks, final List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
-				runConcurrently(eventloop, executor, new Runnable() {
+				eventloop.runConcurrently(executor, new Runnable() {
 					@Override
 					public void run() {
 						doSaveConsolidatedChunks(aggregationId, aggregationMetadata, originalChunks, consolidatedChunks);

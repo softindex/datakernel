@@ -17,10 +17,7 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.async.AsyncCallable;
-import io.datakernel.async.AsyncTask;
-import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.async.SimpleException;
+import io.datakernel.async.*;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
@@ -39,12 +36,11 @@ import java.net.SocketAddress;
 import java.nio.channels.*;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static io.datakernel.async.AsyncCallbacks.notCancellable;
 
 /**
  * It is internal class for asynchronous programming. Eventloop represents infinite loop with only one
@@ -127,7 +123,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 	// JMX
 
-	private final EventloopStats stats;
+	private final EventloopStats stats = new EventloopStats();
+	private final ConcurrentCallsStats concurrentCallsStats = new ConcurrentCallsStats();
 
 	private boolean monitoring;
 
@@ -146,8 +143,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	public Eventloop(CurrentTimeProvider timeProvider) {
 		this.timeProvider = timeProvider;
 		refreshTimestampAndGet();
-
-		this.stats = new EventloopStats();
 	}
 
 	private void openSelector() {
@@ -979,6 +974,159 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		return future;
 	}
 
+	public AsyncCancellable runConcurrently(ExecutorService executor,
+	                                        final Runnable runnable, final CompletionCallback callback) {
+		assert inEventloopThread();
+
+		final ConcurrentOperationTracker tracker = startConcurrentOperation();
+
+		// jmx
+		final String taskName = runnable.getClass().getName();
+		concurrentCallsStats.recordCall(taskName);
+		final long submitionStart = currentTimeMillis();
+
+		try {
+			final Future<?> future = executor.submit(new Runnable() {
+				@Override
+				public void run() {
+
+					// jmx
+					final long executingStart = System.currentTimeMillis();
+
+					try {
+						runnable.run();
+
+						// jmx
+						final long executingFinish = System.currentTimeMillis();
+
+						Eventloop.this.execute(new Runnable() {
+							@Override
+							public void run() {
+								// jmx
+								updateConcurrentCallsStatsTimings(
+										taskName, submitionStart, executingStart, executingFinish);
+
+								tracker.complete();
+								callback.onComplete();
+							}
+						});
+					} catch (final Exception e) {
+						// jmx
+						final long executingFinish = System.currentTimeMillis();
+
+						logger.error("runConcurrently error", e);
+						Eventloop.this.execute(new Runnable() {
+							@Override
+							public void run() {
+								// jmx
+								updateConcurrentCallsStatsTimings(
+										taskName, submitionStart, executingStart, executingFinish);
+
+								tracker.complete();
+								callback.onException(e);
+							}
+						});
+					}
+				}
+			});
+			return new AsyncCancellable() {
+				@Override
+				public void cancel() {
+					future.cancel(true);
+				}
+			};
+		} catch (RejectedExecutionException e) {
+			// jmx
+			concurrentCallsStats.recordRejectedCall(taskName);
+
+			tracker.complete();
+			callback.onException(e);
+			return notCancellable();
+		}
+	}
+
+	public <T> AsyncCancellable callConcurrently(ExecutorService executor,
+	                                             final Callable<T> callable, final ResultCallback<T> callback) {
+		assert inEventloopThread();
+
+		final ConcurrentOperationTracker tracker = startConcurrentOperation();
+
+		// jmx
+		final String taskName = callable.getClass().getName();
+		concurrentCallsStats.recordCall(taskName);
+		final long submitionStart = currentTimeMillis();
+
+		try {
+			final Future<?> future = executor.submit(new Runnable() {
+				@Override
+				public void run() {
+					// jmx
+					final long executingStart = System.currentTimeMillis();
+
+					try {
+						final T result = callable.call();
+
+						// jmx
+						final long executingFinish = System.currentTimeMillis();
+
+						Eventloop.this.execute(new Runnable() {
+							@Override
+							public void run() {
+								// jmx
+								updateConcurrentCallsStatsTimings(
+										taskName, submitionStart, executingStart, executingFinish);
+
+								tracker.complete();
+								callback.onResult(result);
+							}
+						});
+					} catch (final Exception e) {
+						// jmx
+						final long executingFinish = System.currentTimeMillis();
+
+						logger.error("callConcurrently error", e);
+						Eventloop.this.execute(new Runnable() {
+							@Override
+							public void run() {
+								// jmx
+								updateConcurrentCallsStatsTimings(
+										taskName, submitionStart, executingStart, executingFinish);
+
+								tracker.complete();
+								callback.onException(e);
+							}
+						});
+					}
+				}
+			});
+			return new AsyncCancellable() {
+				@Override
+				public void cancel() {
+					future.cancel(true);
+				}
+			};
+		} catch (RejectedExecutionException e) {
+			// jmx
+			concurrentCallsStats.recordRejectedCall(taskName);
+
+			tracker.complete();
+			callback.onException(e);
+			return notCancellable();
+		}
+	}
+
+	private void updateConcurrentCallsStatsTimings(String taskName,
+	                                               long submitionStart, long executingStart, long executingFinish) {
+		concurrentCallsStats.recordAwaitingStartDuration(
+				taskName,
+				(int) (executingStart - submitionStart)
+		);
+		concurrentCallsStats.recordCallDuration(
+				taskName,
+				(int) (executingFinish - executingStart)
+		);
+	}
+
 	@JmxAttribute
 	public long getTick() { return tick; }
 
@@ -996,4 +1144,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 	@JmxAttribute
 	public boolean getKeepAlive() { return keepAlive; }
+
+	@JmxAttribute
+	public ConcurrentCallsStats getConcurrentCallsStats() {
+		return concurrentCallsStats;
+	}
 }

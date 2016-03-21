@@ -35,7 +35,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.datakernel.async.AsyncCallbacks.*;
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.nio.file.StandardOpenOption.*;
 
@@ -90,7 +90,7 @@ public final class AsyncFile {
 	@SuppressWarnings("unchecked")
 	public static <T extends AsyncFile> void open(final Eventloop eventloop, final ExecutorService executor,
 	                                              final Path path, final OpenOption[] openOptions, ResultCallback<T> callback) {
-		callConcurrently(eventloop, executor, new Callable<T>() {
+		eventloop.callConcurrently(executor, new Callable<T>() {
 			@Override
 			public T call() throws Exception {
 				AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, openOptions);
@@ -108,7 +108,7 @@ public final class AsyncFile {
 	 */
 	public static void delete(Eventloop eventloop, ExecutorService executor,
 	                          final Path path, CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new RunnableWithException() {
+		eventloop.runConcurrently(executor, new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				Files.delete(path);
@@ -118,7 +118,7 @@ public final class AsyncFile {
 
 	public static void length(Eventloop eventloop, ExecutorService executor, final Path path,
 	                          ResultCallback<Long> callback) {
-		callConcurrently(eventloop, executor, new Callable<Long>() {
+		eventloop.callConcurrently(executor, new Callable<Long>() {
 			@Override
 			public Long call() throws Exception {
 				java.io.File file = path.toFile();
@@ -142,7 +142,7 @@ public final class AsyncFile {
 	 */
 	public static void move(Eventloop eventloop, ExecutorService executor,
 	                        final Path source, final Path target, final CopyOption[] options, CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new RunnableWithException() {
+		eventloop.runConcurrently(executor, new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				Files.move(source, target, options);
@@ -160,7 +160,7 @@ public final class AsyncFile {
 	 */
 	public static void createDirectory(Eventloop eventloop, ExecutorService executor,
 	                                   final Path dir, @Nullable final FileAttribute<?>[] attrs, CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new RunnableWithException() {
+		eventloop.runConcurrently(executor, new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				Files.createDirectory(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
@@ -178,7 +178,7 @@ public final class AsyncFile {
 	 */
 	public static void createDirectories(Eventloop eventloop, ExecutorService executor,
 	                                     final Path dir, @Nullable final FileAttribute<?>[] attrs, CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new RunnableWithException() {
+		eventloop.runConcurrently(executor, new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				Files.createDirectories(dir, attrs == null ? new FileAttribute<?>[0] : attrs);
@@ -477,7 +477,7 @@ public final class AsyncFile {
 	}
 
 	public void forceAndClose(CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new RunnableWithException() {
+		eventloop.runConcurrently(executor, new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				channel.force(true);
@@ -492,7 +492,7 @@ public final class AsyncFile {
 	 * @param callback which will be called after complete
 	 */
 	public void close(CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new RunnableWithException() {
+		eventloop.runConcurrently(executor, new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				channel.close();
@@ -507,7 +507,7 @@ public final class AsyncFile {
 	 * @param callback which will be called after complete
 	 */
 	public void truncate(final long size, CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new RunnableWithException() {
+		eventloop.runConcurrently(executor, new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				channel.truncate(size);
@@ -523,7 +523,7 @@ public final class AsyncFile {
 	 * @param callback which will be called after complete
 	 */
 	public void force(final boolean metaData, CompletionCallback callback) {
-		runConcurrently(eventloop, executor, new RunnableWithException() {
+		eventloop.runConcurrently(executor, new RunnableWithException() {
 			@Override
 			public void runWithException() throws Exception {
 				channel.force(metaData);

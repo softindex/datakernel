@@ -29,8 +29,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.callConcurrently;
-
 public final class StaticServletForResources extends StaticServlet {
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
@@ -79,7 +77,7 @@ public final class StaticServletForResources extends StaticServlet {
 				callback.onResult(null);
 			}
 		} else {
-			callConcurrently(eventloop, executor, new Callable<ByteBuf>() {
+			eventloop.callConcurrently(executor, new Callable<ByteBuf>() {
 				@Override
 				public ByteBuf call() throws Exception {
 					try {

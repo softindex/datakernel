@@ -507,24 +507,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return opkeyToMethod;
 	}
 
-//	private static final class EventloopJmxMBeanAdapter implements ConcurrentJmxMBean {
-//		private final EventloopJmxMBean eventloopJmxMBean;
-//
-//		public EventloopJmxMBeanAdapter(EventloopJmxMBean eventloopJmxMBean) {
-//			this.eventloopJmxMBean = eventloopJmxMBean;
-//		}
-//
-//		@JmxAttribute(name = "")
-//		public EventloopJmxMBean getEventloopJmxMBean() {
-//			return eventloopJmxMBean;
-//		}
-//
-//		@Override
-//		public Executor getJmxExecutor() {
-//			return eventloopJmxMBean.getEventloop();
-//		}
-//	}
-
 	private static final class AttributeDescriptor {
 		private final String name;
 		private final Type type;
