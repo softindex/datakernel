@@ -24,6 +24,7 @@ import static java.lang.Math.*;
  * Class is supposed to work in single thread
  */
 public final class ValueStats implements JmxRefreshableStats<ValueStats> {
+	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 1000; // 1 minute
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private long lastTimestampMillis;
@@ -106,24 +107,29 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 			smoothedSqr = lastSqr;
 			smoothedCount = lastCount;
 		} else {
-			double windowE = smoothingWindow * 1000.0 / log(2);
-			double weight = exp(-(timestamp - lastTimestampMillis) / windowE);
+			long timeElapsedMillis = timestamp - lastTimestampMillis;
 
-			smoothedSum = lastSum + smoothedSum * weight;
-			smoothedSqr = lastSqr + smoothedSqr * weight;
-			smoothedCount = lastCount + smoothedCount * weight;
+			if (isTimePeriodValid(timeElapsedMillis)) {
+				double windowE = smoothingWindow * 1000.0 / log(2);
+				double weight = exp(-(timeElapsedMillis) / windowE);
 
-			totalSum += lastSum;
-			totalCount += lastCount;
+				smoothedSum = lastSum + smoothedSum * weight;
+				smoothedSqr = lastSqr + smoothedSqr * weight;
+				smoothedCount = lastCount + smoothedCount * weight;
 
-			if (lastMin < totalMin) {
-				totalMin = lastMin;
+				totalSum += lastSum;
+				totalCount += lastCount;
+
+				if (lastMin < totalMin) {
+					totalMin = lastMin;
+				}
+
+				if (lastMax > totalMax) {
+					totalMax = lastMax;
+				}
+			} else {
+				// skip stats of last time period
 			}
-
-			if (lastMax > totalMax) {
-				totalMax = lastMax;
-			}
-
 		}
 
 		lastTimestampMillis = timestamp;
@@ -133,6 +139,10 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		lastCount = 0;
 		lastMin = Integer.MAX_VALUE;
 		lastMax = Integer.MIN_VALUE;
+	}
+
+	private static boolean isTimePeriodValid(long timePeriod) {
+		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
 	}
 
 	@Override

@@ -24,6 +24,7 @@ import static java.lang.Math.pow;
  * Class is supposed to work in single thread
  */
 public final class EventStats implements JmxRefreshableStats<EventStats> {
+	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 1000; // 1 minute
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private long lastTimestampMillis;
@@ -77,18 +78,28 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	@Override
 	public void refreshStats(long timestamp) {
 		long timeElapsedMillis = timestamp - lastTimestampMillis;
-		double timeElapsedSeconds = timeElapsedMillis / 1000.0;
-		smoothedCount = lastCount + smoothedCount * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
 
-		if (timeElapsedMillis != 0) {
-			double adjustmentCoef = computeAdjustmentCoef(smoothingWindow, timeElapsedSeconds);
-			smoothedRate = smoothedCount * adjustmentCoef;
+		if (isTimePeriodValid(timeElapsedMillis)) {
+
+			double timeElapsedSeconds = timeElapsedMillis / 1000.0;
+			smoothedCount = lastCount + smoothedCount * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
+
+			if (timeElapsedMillis != 0) {
+				double adjustmentCoef = computeAdjustmentCoef(smoothingWindow, timeElapsedSeconds);
+				smoothedRate = smoothedCount * adjustmentCoef;
+			} else {
+				smoothedRate = 0;
+			}
 		} else {
-			smoothedRate = 0;
+			// skip stats of last time period
 		}
 
 		lastCount = 0;
 		lastTimestampMillis = timestamp;
+	}
+
+	private static boolean isTimePeriodValid(long timePeriod) {
+		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
 	}
 
 	private static double computeAdjustmentCoef(double smoothingWindow, double timeElapsedSeconds) {
