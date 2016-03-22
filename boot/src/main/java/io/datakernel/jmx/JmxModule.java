@@ -27,10 +27,22 @@ import java.lang.management.ManagementFactory;
 import java.util.HashSet;
 import java.util.Set;
 
+import static io.datakernel.util.Preconditions.checkArgument;
+
 public final class JmxModule extends AbstractModule {
+	public static final double DEFAULT_REFRESH_PERIOD = 1.0;
 
 	private final Set<Key<?>> singletonKeys = new HashSet<>();
 	private final Set<Key<?>> workerKeys = new HashSet<>();
+
+	private double refreshPeriod = DEFAULT_REFRESH_PERIOD;
+
+	public JmxModule withRefreshPeriod(double refreshPeriod) {
+		checkArgument(refreshPeriod > 0.0);
+
+		this.refreshPeriod = refreshPeriod;
+		return this;
+	}
 
 	@Override
 	protected void configure() {
@@ -98,6 +110,7 @@ public final class JmxModule extends AbstractModule {
 	@Provides
 	@Singleton
 	JmxRegistry jmxRegistry() {
-		return new JmxRegistry(ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory());
+		return new JmxRegistry(
+				ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory(refreshPeriod), refreshPeriod);
 	}
 }

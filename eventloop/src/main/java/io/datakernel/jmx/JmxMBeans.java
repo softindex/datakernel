@@ -41,12 +41,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
 
-	private static final JmxMBeans INSTANCE = new JmxMBeans();
+	private static final JmxMBeans INSTANCE_WITH_DEFAULT_REFRESH_PERIOD = new JmxMBeans(DEFAULT_REFRESH_PERIOD);
 
-	private JmxMBeans() {}
+	private final double refreshPeriod;
+
+	private JmxMBeans(double refreshPeriod) {
+		this.refreshPeriod = refreshPeriod;
+	}
 
 	public static JmxMBeans factory() {
-		return INSTANCE;
+		return INSTANCE_WITH_DEFAULT_REFRESH_PERIOD;
+	}
+
+	public static JmxMBeans factory(double refreshPeriod) {
+		return new JmxMBeans(refreshPeriod);
 	}
 
 	@Override
@@ -85,7 +93,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		);
 
 		if (isRefreshEnabled) {
-			mbean.startRefreshing(DEFAULT_REFRESH_PERIOD);
+			mbean.startRefreshing(refreshPeriod);
 		}
 
 		return mbean;
