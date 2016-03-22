@@ -16,15 +16,20 @@
 
 package io.datakernel.jmx;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import static java.util.Arrays.asList;
 
 public final class ExceptionStats implements JmxStats<ExceptionStats> {
+	public static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+
 	private Throwable throwable;
 	private Object causeObject;
 	private int count;
+	private long lastExceptionTimestamp;
 
 	public ExceptionStats() {}
 
@@ -32,6 +37,7 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 		this.count++;
 		this.throwable = throwable;
 		this.causeObject = causeObject;
+		this.lastExceptionTimestamp = System.currentTimeMillis();
 	}
 
 	public void resetStats() {
@@ -41,11 +47,12 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	}
 
 	@Override
-	public void add(ExceptionStats counter) {
-		this.count += counter.count;
-		if (counter.count > this.count) {
-			this.throwable = counter.throwable;
-			this.causeObject = counter.causeObject;
+	public void add(ExceptionStats another) {
+		this.count += another.count;
+		if (another.lastExceptionTimestamp > this.lastExceptionTimestamp) {
+			this.throwable = another.throwable;
+			this.causeObject = another.causeObject;
+			this.lastExceptionTimestamp = another.lastExceptionTimestamp;
 		}
 	}
 
@@ -57,6 +64,11 @@ public final class ExceptionStats implements JmxStats<ExceptionStats> {
 	@JmxAttribute
 	public String getLastExceptionType() {
 		return throwable != null ? throwable.getClass().getName() : "";
+	}
+
+	@JmxAttribute
+	public String getLastExceptionTimestamp() {
+		return TIMESTAMP_FORMAT.format(new Date(lastExceptionTimestamp));
 	}
 
 	public Throwable getLastException() {
