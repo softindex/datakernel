@@ -591,7 +591,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				public void run() {
 					long currentTime = eventloop.currentTimeMillis();
 					rootNode.refresh(asList(mbean), currentTime);
-					eventloop.schedule(
+					eventloop.scheduleBackground(
 							currentTime + refreshPeriodInMillis,
 							createRefreshTask(mbean, eventloop, refreshPeriodInMillis)
 					);
