@@ -21,6 +21,7 @@ import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.RunnableWithException;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

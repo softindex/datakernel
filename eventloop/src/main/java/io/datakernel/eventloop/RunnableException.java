@@ -14,25 +14,17 @@
  * limitations under the License.
  */
 
-package io.datakernel.async;
+package io.datakernel.eventloop;
 
-/**
- * Represents the runnable which will be ran with exception, which will be threw from runWithException()
- */
-public abstract class RunnableWithException implements Runnable {
+public final class RunnableException extends RuntimeException {
+	private final Exception cause;
 
-	/**
-	 * Throws the exception
-	 */
-	public abstract void runWithException() throws Exception;
-
-	@Override
-	public final void run() {
-		try {
-			runWithException();
-		} catch (Exception e) {
-			throw new RuntimeException(e);
-		}
+	public RunnableException(Exception cause) {
+		super(cause);
+		this.cause = cause;
 	}
 
+	public Exception getActualException() {
+		return cause;
+	}
 }

@@ -1014,7 +1014,9 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 						// jmx
 						final long executingFinish = System.currentTimeMillis();
 
-						logger.error("runConcurrently error", e);
+						final Exception actualException =
+								e instanceof RunnableException ? ((RunnableException) e).getActualException() : e;
+
 						Eventloop.this.execute(new Runnable() {
 							@Override
 							public void run() {
@@ -1023,7 +1025,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 										taskName, submissionStart, executingStart, executingFinish);
 
 								tracker.complete();
-								callback.onException(e);
+								callback.onException(actualException);
 							}
 						});
 					}
