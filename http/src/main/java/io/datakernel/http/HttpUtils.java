@@ -54,6 +54,10 @@ public final class HttpUtils {
 
 	// https://url.spec.whatwg.org/
 	public static boolean isInetAddress(String host) {
+		if (host == null || host.isEmpty()) {
+			return false;
+		}
+
 		int colons = 0;
 		int dots = 0;
 		byte[] bytes = encodeAscii(host);
