@@ -118,7 +118,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 			}
 
 			private void resolve(final String domainName, final boolean ipv6, final ResultCallback<InetAddress[]> callback) {
-				checkArgument(domainName != null, "Domain name must not be null");
+				checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 				if (HttpUtils.isInetAddress(domainName)) {
 					callback.onResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
@@ -175,7 +175,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 	}
 
 	private void resolve(final String domainName, final boolean ipv6, final ResultCallback<InetAddress[]> callback) {
-		checkArgument(domainName != null, "Domain name must not be null");
+		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 		if (HttpUtils.isInetAddress(domainName)) {
 			callback.onResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
