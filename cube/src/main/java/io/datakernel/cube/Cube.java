@@ -68,7 +68,7 @@ import static java.util.Collections.sort;
 public final class Cube implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
-	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 1000;
+	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 300;
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
