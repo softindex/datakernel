@@ -58,7 +58,7 @@ public class LogToCubeTest {
 	                           AggregationStructure aggregationStructure) {
 		return new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				aggregationStructure, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
-				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD);
 	}
 
 	public static AggregationStructure getStructure(DefiningClassLoader classLoader) {

@@ -93,7 +93,7 @@ public class CubePartitioningTest {
 	                            AggregationStructure cubeStructure) {
 		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				cubeStructure, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
-				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD);
 		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES), "date");
 		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
 				.put("campaign", "advertiser")

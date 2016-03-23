@@ -150,7 +150,7 @@ public class ReportingTest {
 	                            AggregationStructure cubeStructure) {
 		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				cubeStructure, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
-				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD);
 		Set<String> measures = newHashSet(MEASURES.keySet());
 		measures.remove("revenue");
 		cube.addAggregation("detailed", new AggregationMetadata(newArrayList(DIMENSIONS.keySet()),

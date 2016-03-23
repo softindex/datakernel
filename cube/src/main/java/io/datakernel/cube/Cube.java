@@ -68,6 +68,8 @@ import static java.util.Collections.sort;
 public final class Cube implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Cube.class);
 
+	public static final int DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD = 1000;
+
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
 	private final DefiningClassLoader classLoader;
@@ -76,6 +78,7 @@ public final class Cube implements EventloopJmxMBean {
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
 	private int sorterBlockSize;
+	private int overlappingChunksThreshold;
 	private boolean ignoreChunkReadingExceptions;
 
 	private final AggregationStructure structure;
@@ -101,7 +104,8 @@ public final class Cube implements EventloopJmxMBean {
 	 */
 	public Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	            CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int sorterItemsInMemory, int sorterBlockSize, int aggregationChunkSize) {
+	            AggregationStructure structure, int sorterItemsInMemory, int sorterBlockSize, int aggregationChunkSize,
+	            int overlappingChunksThreshold) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.classLoader = classLoader;
@@ -111,6 +115,7 @@ public final class Cube implements EventloopJmxMBean {
 		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
 		this.sorterBlockSize = sorterBlockSize;
+		this.overlappingChunksThreshold = overlappingChunksThreshold;
 	}
 
 	public void setChildParentRelationships(Map<String, String> childParentRelationships) {
@@ -372,6 +377,15 @@ public final class Cube implements EventloopJmxMBean {
 
 		return getOrderedResultStream(query, resultClass, streamReducer,
 				query.getResultDimensions(), query.getResultMeasures());
+	}
+
+	public boolean containsExcessiveNumberOfOverlappingChunks() {
+		for (Aggregation aggregation : aggregations.values()) {
+			if (aggregation.getNumberOfOverlappingChunks() > overlappingChunksThreshold)
+				return true;
+		}
+
+		return false;
 	}
 
 	public void loadChunks(CompletionCallback callback) {
@@ -646,6 +660,16 @@ public final class Cube implements EventloopJmxMBean {
 	@JmxAttribute
 	public int getSorterBlockSize() {
 		return sorterBlockSize;
+	}
+
+	@JmxAttribute
+	public int getOverlappingChunksThreshold() {
+		return overlappingChunksThreshold;
+	}
+
+	@JmxAttribute
+	public void setOverlappingChunksThreshold(int overlappingChunksThreshold) {
+		this.overlappingChunksThreshold = overlappingChunksThreshold;
 	}
 
 	@Override

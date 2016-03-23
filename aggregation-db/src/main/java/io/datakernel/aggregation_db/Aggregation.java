@@ -574,6 +574,10 @@ public class Aggregation {
 		return (Predicate) builder.newInstance();
 	}
 
+	public int getNumberOfOverlappingChunks() {
+		return aggregationMetadata.findOverlappingChunks().size();
+	}
+
 	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, final ResultCallback<Boolean> callback) {
 		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate, preferHotSegmentsCoef);
 

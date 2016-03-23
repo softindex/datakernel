@@ -303,8 +303,23 @@ public class AggregationMetadata {
 		return chunkGroups;
 	}
 
-	private int getNumberOfOverlaps(RangeTree.Segment segment) {
+	private static int getNumberOfOverlaps(RangeTree.Segment segment) {
 		return segment.getSet().size() + segment.getClosingSet().size();
+	}
+
+	public Set<AggregationChunk> findOverlappingChunks() {
+		int minOverlaps = 2;
+		Set<AggregationChunk> result = new HashSet<>();
+		RangeTree<PrimaryKey, AggregationChunk> tree = prefixRanges[keys.size()];
+		for (Map.Entry<PrimaryKey, RangeTree.Segment<AggregationChunk>> segmentEntry : tree.getSegments().entrySet()) {
+			RangeTree.Segment<AggregationChunk> segment = segmentEntry.getValue();
+			int overlaps = getNumberOfOverlaps(segment);
+			if (overlaps >= minOverlaps) {
+				result.addAll(segment.getSet());
+				result.addAll(segment.getClosingSet());
+			}
+		}
+		return result;
 	}
 
 	public List<AggregationChunk> findChunksGroupWithMostOverlaps() {
@@ -340,7 +355,7 @@ public class AggregationMetadata {
 		return new ArrayList<>(result);
 	}
 
-	public boolean useHotSegmentStrategy(double preferHotSegmentsCoef) {
+	public static boolean useHotSegmentStrategy(double preferHotSegmentsCoef) {
 		return RANDOM.nextDouble() <= preferHotSegmentsCoef;
 	}
 
@@ -362,7 +377,7 @@ public class AggregationMetadata {
 		return expandedChunks;
 	}
 
-	private List<AggregationChunk> trimChunks(List<AggregationChunk> chunks, int maxChunks) {
+	private static List<AggregationChunk> trimChunks(List<AggregationChunk> chunks, int maxChunks) {
 		Collections.sort(chunks, new Comparator<AggregationChunk>() {
 			@Override
 			public int compare(AggregationChunk chunk1, AggregationChunk chunk2) {

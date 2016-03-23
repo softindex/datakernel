@@ -43,15 +43,32 @@ public final class LogProcessorService implements EventloopService {
 	}
 
 	private void processLogs() {
-		logProcessor.processLogs(new CompletionCallback() {
+		cube.loadChunks(new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				scheduleNext();
+				if (cube.containsExcessiveNumberOfOverlappingChunks()) {
+					logger.info("Cube contains excessive number of overlapping chunks. Skipping this aggregation operation");
+					scheduleNext();
+					return;
+				}
+
+				logProcessor.processLogs(new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						scheduleNext();
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Processing logs failed", e);
+						scheduleNext();
+					}
+				});
 			}
 
 			@Override
 			public void onException(Exception e) {
-				logger.error("Processing logs failed", e);
+				logger.error("Could not load chunks", e);
 				scheduleNext();
 			}
 		});

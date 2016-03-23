@@ -45,7 +45,7 @@ public class StringDimensionTest {
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
 		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, storage, structure,
 				Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
-				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD);
 		cube.addAggregation("detailedAggregation",
 				new AggregationMetadata(asList("key1", "key2"), asList("metric1", "metric2", "metric3")));
 		return cube;
