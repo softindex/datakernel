@@ -48,6 +48,8 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	private final Map<SocketChannel, RpcServerConnection> connections = new HashMap<>();
 
+	private BufferSerializer<RpcMessage> serializer;
+
 	// jmx
 	private CountStats connectionsCount = new CountStats();
 	private boolean monitoring;
@@ -92,12 +94,15 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return this;
 	}
 
-	private BufferSerializer<RpcMessage> createSerializer() {
-		SerializerBuilder serializerBuilder = this.serializerBuilder != null ?
-				this.serializerBuilder :
-				SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
-		serializerBuilder.setExtraSubclasses("extraRpcMessageData", messageTypes);
-		return serializerBuilder.create(RpcMessage.class);
+	private BufferSerializer<RpcMessage> getSerializer() {
+		if (serializer == null) {
+			SerializerBuilder serializerBuilder = this.serializerBuilder != null ?
+					this.serializerBuilder :
+					SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
+			serializerBuilder.setExtraSubclasses("extraRpcMessageData", messageTypes);
+			serializer = serializerBuilder.create(RpcMessage.class);
+		}
+		return serializer;
 	}
 
 	@Override
@@ -119,7 +124,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 				connectionsCount.setCount(connections.size());
 			}
 		};
-		BufferSerializer<RpcMessage> messageSerializer = createSerializer();
+		BufferSerializer<RpcMessage> messageSerializer = getSerializer();
 		RpcServerConnection serverConnection = new RpcServerConnection(eventloop, socketChannel,
 				messageSerializer, handlers, protocolFactory, statusListener);
 		return serverConnection.getSocketConnection();

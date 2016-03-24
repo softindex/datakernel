@@ -69,6 +69,8 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
 	private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
 
+	private BufferSerializer<RpcMessage> serializer;
+
 	private RpcSender requestSender;
 
 	private CompletionCallback startCallback;
@@ -213,12 +215,15 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		callback.onComplete();
 	}
 
-	private BufferSerializer<RpcMessage> createSerializer() {
-		SerializerBuilder serializerBuilder = this.serializerBuilder != null ?
-				this.serializerBuilder :
-				SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
-		serializerBuilder.setExtraSubclasses("extraRpcMessageData", messageTypes);
-		return serializerBuilder.create(RpcMessage.class);
+	private BufferSerializer<RpcMessage> getSerializer() {
+		if (serializer == null) {
+			SerializerBuilder serializerBuilder = this.serializerBuilder != null ?
+					this.serializerBuilder :
+					SerializerBuilder.newDefaultInstance(ClassLoader.getSystemClassLoader());
+			serializerBuilder.setExtraSubclasses("extraRpcMessageData", messageTypes);
+			serializer = serializerBuilder.create(RpcMessage.class);
+		}
+		return serializer;
 	}
 
 	private void connect(final InetSocketAddress address) {
@@ -249,7 +254,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 					}
 				};
 				RpcClientConnection connection = new RpcClientConnection(eventloop, socketChannel,
-						createSerializer(), protocolFactory, statusListener);
+						getSerializer(), protocolFactory, statusListener);
 				connection.getSocketConnection().register();
 
 				// jmx
