@@ -221,7 +221,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		private void handleSerializationError(Exception e) {
 			serializationErrors++;
 			if (skipSerializationErrors) {
-				logger.warn("Skipping serialization error in {} : {}", this, e);
+				logger.warn("Skipping serialization error in {}", this, e);
 			} else {
 				closeWithError(e);
 			}

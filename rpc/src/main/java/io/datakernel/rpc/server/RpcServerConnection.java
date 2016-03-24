@@ -103,7 +103,7 @@ public final class RpcServerConnection implements RpcConnection {
 
 	private void sendError(int cookie, Exception error) {
 		protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(error)));
-		logger.warn("Exception while process request ID {}", cookie, error.toString());
+		logger.warn("Exception while process request ID {}", cookie, error);
 		errorResponses.recordEvent();
 	}
 
