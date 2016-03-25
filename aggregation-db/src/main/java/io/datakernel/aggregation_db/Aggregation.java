@@ -667,23 +667,7 @@ public class Aggregation {
 		metadataStorage.loadChunks(lastRevisionId, new ResultCallback<LoadedChunks>() {
 			@Override
 			public void onResult(LoadedChunks loadedChunks) {
-				for (AggregationChunk newChunk : loadedChunks.newChunks) {
-					addToIndex(newChunk);
-					logger.trace("Added chunk {} to index", newChunk);
-				}
-				for (Long consolidatedChunkId : loadedChunks.consolidatedChunkIds) {
-					AggregationChunk chunk = chunks.get(consolidatedChunkId);
-					if (chunk != null) {
-						removeFromIndex(chunk);
-						logger.trace("Removed chunk {} from index", chunk);
-					}
-				}
-				Aggregation.this.lastRevisionId = loadedChunks.lastRevisionId;
-				logger.info("Loading chunks for aggregation {} completed. " +
-								"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
-						Aggregation.this, loadedChunks.newChunks.size(), loadedChunks.consolidatedChunkIds.size(),
-						loadedChunks.lastRevisionId);
-
+				loadChunks(loadedChunks);
 				loadChunksCallback.onComplete();
 				loadChunksCallback = null;
 			}
@@ -695,6 +679,27 @@ public class Aggregation {
 				loadChunksCallback = null;
 			}
 		});
+	}
+
+	public void loadChunks(LoadedChunks loadedChunks) {
+		for (AggregationChunk newChunk : loadedChunks.newChunks) {
+			addToIndex(newChunk);
+			logger.trace("Added chunk {} to index", newChunk);
+		}
+
+		for (Long consolidatedChunkId : loadedChunks.consolidatedChunkIds) {
+			AggregationChunk chunk = chunks.get(consolidatedChunkId);
+			if (chunk != null) {
+				removeFromIndex(chunk);
+				logger.trace("Removed chunk {} from index", chunk);
+			}
+		}
+
+		this.lastRevisionId = loadedChunks.lastRevisionId;
+		logger.info("Loading chunks for aggregation {} completed. " +
+						"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
+				this, loadedChunks.newChunks.size(), loadedChunks.consolidatedChunkIds.size(),
+				loadedChunks.lastRevisionId);
 	}
 
 	public List<AggregationMetadata.ConsolidationDebugInfo> getConsolidationDebugInfo() {

@@ -24,14 +24,15 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import io.datakernel.aggregation_db.*;
+import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerMultimap;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.cube.CubeMetadataStorage.CubeLoadedChunks;
 import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
@@ -85,6 +86,7 @@ public final class Cube implements EventloopJmxMBean {
 	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
 
 	private Map<String, Aggregation> aggregations = new LinkedHashMap<>();
+	private Map<String, AggregationMetadata> aggregationMetadatas = new LinkedHashMap<>();
 	private AggregationKeyRelationships childParentRelationships;
 
 	private int lastRevisionId;
@@ -164,6 +166,7 @@ public final class Cube implements EventloopJmxMBean {
 				sorterBlockSize, partitioningKey);
 		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
 		aggregations.put(aggregationId, aggregation);
+		aggregationMetadatas.put(aggregationId, aggregationMetadata);
 		logger.info("Added aggregation {} for id '{}'", aggregation, aggregationId);
 	}
 
@@ -406,23 +409,34 @@ public final class Cube implements EventloopJmxMBean {
 		return false;
 	}
 
-	public void loadChunks(CompletionCallback callback) {
+	public void loadChunks(final CompletionCallback callback) {
 		logger.info("Loading chunks");
-		loadChunks(new ArrayList<>(this.aggregations.values()).iterator(), callback);
-	}
 
-	private void loadChunks(final Iterator<Aggregation> iterator, final CompletionCallback callback) {
-		if (iterator.hasNext()) {
-			iterator.next().loadChunks(new ForwardingCompletionCallback(callback) {
-				@Override
-				public void onComplete() {
-					loadChunks(iterator, callback);
-				}
-			});
-		} else {
-			logger.info("Loading chunks completed");
-			callback.onComplete();
-		}
+		cubeMetadataStorage.loadChunks(lastRevisionId, aggregationMetadatas, structure,
+				new ResultCallback<CubeLoadedChunks>() {
+					@Override
+					public void onResult(CubeLoadedChunks result) {
+						for (Map.Entry<String, Aggregation> entry : aggregations.entrySet()) {
+							String aggregationId = entry.getKey();
+							List<Long> consolidatedChunkIds = result.consolidatedChunkIds.get(aggregationId);
+							List<AggregationChunk> newChunks = result.newChunks.get(aggregationId);
+							LoadedChunks loadedChunks = new LoadedChunks(result.lastRevisionId,
+									consolidatedChunkIds == null ? Collections.<Long>emptyList() : consolidatedChunkIds,
+									newChunks == null ?  Collections.<AggregationChunk>emptyList() : newChunks);
+							entry.getValue().loadChunks(loadedChunks);
+						}
+
+						Cube.this.lastRevisionId = result.lastRevisionId;
+						logger.info("Loading chunks completed");
+						callback.onComplete();
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Loading chunks failed");
+						callback.onException(e);
+					}
+				});
 	}
 
 	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
