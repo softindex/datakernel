@@ -26,6 +26,7 @@ import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,21 +75,24 @@ public class SumAggregationExample {
 		List<DataRecord> firstList = asList(new DataRecord(1, 1, 11, 17.34), new DataRecord(1, 2, 3, 15.3),
 				new DataRecord(1, 1, 42, 18.933));
 		System.out.println(firstList);
-		StreamProducers.ofIterable(eventloop, firstList).streamTo(aggregation.consumer(DataRecord.class));
+		StreamProducers.ofIterable(eventloop, firstList).streamTo(aggregation.consumer(DataRecord.class,
+				DataRecord.FIELDS, Collections.<String, String>emptyMap()));
 		eventloop.run();
 
 		// second chunk of data
 		List<DataRecord> secondList = asList(new DataRecord(1, 3, 10, 15), new DataRecord(1, 2, -5, -21),
 				new DataRecord(1, 1, 11, 11.333));
 		System.out.println(secondList);
-		StreamProducers.ofIterable(eventloop, secondList).streamTo(aggregation.consumer(DataRecord.class));
+		StreamProducers.ofIterable(eventloop, secondList).streamTo(aggregation.consumer(DataRecord.class,
+				DataRecord.FIELDS, Collections.<String, String>emptyMap()));
 		eventloop.run();
 
 		// third chunk of data
 		List<DataRecord> thirdList = asList(new DataRecord(1, 1, 20, 7.7), new DataRecord(1, 3, -1, 20),
 				new DataRecord(1, 4, 17, 42));
 		System.out.println(thirdList);
-		StreamProducers.ofIterable(eventloop, thirdList).streamTo(aggregation.consumer(DataRecord.class));
+		StreamProducers.ofIterable(eventloop, thirdList).streamTo(aggregation.consumer(DataRecord.class,
+				DataRecord.FIELDS, Collections.<String, String>emptyMap()));
 		eventloop.run();
 
 		// Perform the query. We will just retrieve records for all keys.
