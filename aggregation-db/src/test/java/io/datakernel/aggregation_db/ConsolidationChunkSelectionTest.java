@@ -41,14 +41,12 @@ public class ConsolidationChunkSelectionTest {
 		chunks.add(createTestChunk(7, 5, 8));
 		chunks.add(createTestChunk(8, 7, 8));
 
-		for (AggregationChunk chunk : chunks) {
-			am.addToIndex(chunk);
-		}
+		addChunks(am, chunks);
 
-		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100, 1.0);
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100, 4000, 1.0);
 		assertEquals(chunks, newHashSet(selectedChunks));
 
-		selectedChunks = am.findChunksForConsolidation(5, 1.0);
+		selectedChunks = am.findChunksForConsolidation(5, 4000, 1.0);
 		assertEquals(5, selectedChunks.size());
 
 		chunks.clear();
@@ -78,13 +76,37 @@ public class ConsolidationChunkSelectionTest {
 		chunks2.add(createTestChunk(12, 10, 13));
 		chunks2.add(createTestChunk(13, 12, 13));
 
-		Set<AggregationChunk> allChunks = newHashSet(concat(chunks1, chunks2));
-		for (AggregationChunk chunk : allChunks) {
-			am.addToIndex(chunk);
-		}
+		addChunks(am, concat(chunks1, chunks2));
 
-		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100, 0.0);
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100, 4000, 0.0);
 		assertEquals(chunks1, newHashSet(selectedChunks));
+	}
+
+	@Test
+	public void testSizeFixStrategy() throws Exception {
+		AggregationMetadata am = new AggregationMetadata(singletonList(""), new ArrayList<String>());
+		int optimalChunkSize = 5;
+		int maxChunks = 5;
+
+		Set<AggregationChunk> chunks1 = newHashSet();
+		chunks1.add(createTestChunk(1, 1, 2, optimalChunkSize));
+		chunks1.add(createTestChunk(2, 3, 4, optimalChunkSize));
+
+		Set<AggregationChunk> chunks2 = newHashSet();
+		chunks2.add(createTestChunk(3, 5, 6, 4));
+		chunks2.add(createTestChunk(4, 7, 8, 1));
+		chunks2.add(createTestChunk(5, 9, 13, optimalChunkSize));
+		chunks2.add(createTestChunk(6, 10, 11, optimalChunkSize));
+		chunks2.add(createTestChunk(7, 10, 12, optimalChunkSize));
+
+		Set<AggregationChunk> chunks3 = newHashSet();
+		chunks3.add(createTestChunk(8, 14, 15, 3));
+		chunks3.add(createTestChunk(9, 14, 15, 6));
+
+		addChunks(am, concat(chunks1, chunks2, chunks3));
+
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(maxChunks, optimalChunkSize, 0.0);
+		assertEquals(chunks2, newHashSet(selectedChunks));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -114,10 +136,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks3.add(createTestChunk(15, 14, 16));
 		chunks3.add(createTestChunk(16, 15, 16));
 
-		Set<AggregationChunk> allChunks = newHashSet(concat(chunks1, chunks2, chunks3));
-		for (AggregationChunk chunk : allChunks) {
-			am.addToIndex(chunk);
-		}
+		addChunks(am, concat(chunks1, chunks2, chunks3));
 
 		List<List<AggregationChunk>> chunksForConsolidation = am.findChunkGroupsForConsolidation(100, 10);
 		assertEquals(newHashSet(chunks1, chunks2, chunks3), toSet(chunksForConsolidation));
@@ -153,10 +172,7 @@ public class ConsolidationChunkSelectionTest {
 		chunks3.add(createTestChunk(15, 14, 16));
 		chunks3.add(createTestChunk(16, 15, 16));
 
-		Set<AggregationChunk> allChunks = newHashSet(concat(chunks1, chunks2, chunks3));
-		for (AggregationChunk chunk : allChunks) {
-			am.addToIndex(chunk);
-		}
+		addChunks(am, concat(chunks1, chunks2, chunks3));
 
 		List<List<AggregationChunk>> chunksForConsolidation = am.findChunkGroupsForConsolidation(5, 3);
 		chunks1.clear();
@@ -175,8 +191,18 @@ public class ConsolidationChunkSelectionTest {
 		assertEquals(newHashSet(chunks1, chunks2, chunks3), toSet(chunksForConsolidation));
 	}
 
+	private static void addChunks(AggregationMetadata am, Iterable<AggregationChunk> chunks) {
+		for (AggregationChunk chunk : chunks) {
+			am.addToIndex(chunk);
+		}
+	}
+
 	private static AggregationChunk createTestChunk(int id, int min, int max) {
-		return new AggregationChunk(0, id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), id);
+		return createTestChunk(id, min, max, id);
+	}
+
+	private static AggregationChunk createTestChunk(int id, int min, int max, int count) {
+		return new AggregationChunk(0, id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
 	}
 
 	private static Set<Set<AggregationChunk>> toSet(List<List<AggregationChunk>> chunkGroups) {

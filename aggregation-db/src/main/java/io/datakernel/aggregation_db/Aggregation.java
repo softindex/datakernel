@@ -579,7 +579,8 @@ public class Aggregation {
 	}
 
 	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, final ResultCallback<Boolean> callback) {
-		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate, preferHotSegmentsCoef);
+		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate,
+				aggregationChunkSize, preferHotSegmentsCoef);
 
 		if (chunks.isEmpty()) {
 			callback.onResult(false);
@@ -607,10 +608,10 @@ public class Aggregation {
 						metadataStorage.saveConsolidatedChunks(chunks, consolidatedChunks, new CompletionCallback() {
 							@Override
 							public void onComplete() {
-								logger.info("Completed consolidation of the following chunks " +
-												"in aggregation '{}': [{}]. Created chunks: [{}]",
-										aggregationMetadata, getChunkIds(chunks),
-										getNewChunkIds(consolidatedChunks));
+								logger.info("Completed consolidation of the following chunks ({}) " +
+												"in aggregation '{}': [{}]. Created chunks ({}): [{}]",
+										chunks.size(), aggregationMetadata, getChunkIds(chunks),
+										consolidatedChunks.size(), getNewChunkIds(consolidatedChunks));
 								callback.onComplete();
 							}
 
@@ -625,7 +626,7 @@ public class Aggregation {
 		});
 	}
 
-	private static String getNewChunkIds(Iterable<AggregationChunk.NewChunk> chunks) {
+	public static String getNewChunkIds(Iterable<AggregationChunk.NewChunk> chunks) {
 		List<Long> ids = new ArrayList<>();
 		for (AggregationChunk.NewChunk chunk : chunks) {
 			ids.add(chunk.chunkId);
@@ -633,7 +634,7 @@ public class Aggregation {
 		return JOINER.join(ids);
 	}
 
-	private static String getChunkIds(Iterable<AggregationChunk> chunks) {
+	public static String getChunkIds(Iterable<AggregationChunk> chunks) {
 		List<Long> ids = new ArrayList<>();
 		for (AggregationChunk chunk : chunks) {
 			ids.add(chunk.getChunkId());
