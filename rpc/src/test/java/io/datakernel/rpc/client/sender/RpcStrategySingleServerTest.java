@@ -72,6 +72,6 @@ public class RpcStrategySingleServerTest {
 			sender.sendRequest(data, timeout, callback);
 		}
 
-		assertEquals(calls, connection.getSendsNumber());
+		assertEquals(calls, connection.getRequests());
 	}
 }

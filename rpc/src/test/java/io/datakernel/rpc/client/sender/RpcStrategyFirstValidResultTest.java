@@ -68,9 +68,9 @@ public class RpcStrategyFirstValidResultTest {
 			senderToAll.sendRequest(new Object(), 50, new ResultCallbackFuture<>());
 		}
 
-		assertEquals(callsAmountIterationOne, connection1.getSendsNumber());
-		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection2.getSendsNumber());
-		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection3.getSendsNumber());
+		assertEquals(callsAmountIterationOne, connection1.getRequests());
+		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection2.getRequests());
+		assertEquals(callsAmountIterationOne + callsAmountIterationTwo, connection3.getRequests());
 	}
 
 	@Test

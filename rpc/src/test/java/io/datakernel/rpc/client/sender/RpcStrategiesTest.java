@@ -69,7 +69,7 @@ public class RpcStrategiesTest {
 		List<RpcSenderStub> connections =
 				asList(connection1, connection2, connection3, connection4, connection5);
 		for (int i = 0; i < 5; i++) {
-			assertEquals(iterations / 5, connections.get(i).getSendsNumber());
+			assertEquals(iterations / 5, connections.get(i).getRequests());
 		}
 	}
 
@@ -95,10 +95,10 @@ public class RpcStrategiesTest {
 			sender.sendRequest(new Object(), 50, callback);
 		}
 
-		assertEquals(iterations / 2, connection1.getSendsNumber());
-		assertEquals(0, connection2.getSendsNumber());
-		assertEquals(0, connection3.getSendsNumber());
-		assertEquals(iterations / 2, connection4.getSendsNumber());
+		assertEquals(iterations / 2, connection1.getRequests());
+		assertEquals(0, connection2.getRequests());
+		assertEquals(0, connection3.getRequests());
+		assertEquals(iterations / 2, connection4.getRequests());
 	}
 
 	@Test
@@ -133,11 +133,11 @@ public class RpcStrategiesTest {
 		sender.sendRequest(1, 50, callback);
 		sender.sendRequest(0, 50, callback);
 
-		assertEquals(3, connection1.getSendsNumber());
-		assertEquals(0, connection2.getSendsNumber());
-		assertEquals(2, connection3.getSendsNumber());
-		assertEquals(2, connection4.getSendsNumber());
-		assertEquals(2, connection5.getSendsNumber());
+		assertEquals(3, connection1.getRequests());
+		assertEquals(0, connection2.getRequests());
+		assertEquals(2, connection3.getRequests());
+		assertEquals(2, connection4.getRequests());
+		assertEquals(2, connection5.getRequests());
 	}
 
 	@Test
@@ -178,11 +178,11 @@ public class RpcStrategiesTest {
 		}
 
 		double acceptableError = iterationsPerLoop / 10.0;
-		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection1.getSendsNumber(), acceptableError);
-		assertEquals(0, connection2.getSendsNumber());
-		assertEquals(iterationsPerLoop / 3, connection3.getSendsNumber(), acceptableError);
-		assertEquals(0, connection4.getSendsNumber());
-		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection5.getSendsNumber(), acceptableError);
+		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection1.getRequests(), acceptableError);
+		assertEquals(0, connection2.getRequests());
+		assertEquals(iterationsPerLoop / 3, connection3.getRequests(), acceptableError);
+		assertEquals(0, connection4.getRequests());
+		assertEquals(iterationsPerLoop / 3 + iterationsPerLoop / 2, connection5.getRequests(), acceptableError);
 	}
 
 	@Test
@@ -217,10 +217,10 @@ public class RpcStrategiesTest {
 			sender.sendRequest("request", timeout, callback);
 		}
 
-		assertEquals(iterationsPerDataStubWithKey, connection1.getSendsNumber());
-		assertEquals(iterationsPerDataStubWithKey, connection2.getSendsNumber());
-		assertEquals(iterationsPerDataStub, connection3.getSendsNumber());
-		assertEquals(0, connection4.getSendsNumber());
-		assertEquals(0, connection5.getSendsNumber());
+		assertEquals(iterationsPerDataStubWithKey, connection1.getRequests());
+		assertEquals(iterationsPerDataStubWithKey, connection2.getRequests());
+		assertEquals(iterationsPerDataStub, connection3.getRequests());
+		assertEquals(0, connection4.getRequests());
+		assertEquals(0, connection5.getRequests());
 	}
 }

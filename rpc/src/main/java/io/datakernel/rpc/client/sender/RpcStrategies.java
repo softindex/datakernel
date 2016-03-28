@@ -107,5 +107,9 @@ public final class RpcStrategies {
 	public static RpcStrategyTypeDispatching typeDispatching() {
 		return new RpcStrategyTypeDispatching();
 	}
+
+	public static RpcStrategyRandomSampling randomSampling() {
+		return new RpcStrategyRandomSampling();
+	}
 }
 

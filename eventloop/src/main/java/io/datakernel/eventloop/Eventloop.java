@@ -1086,7 +1086,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 						// jmx
 						final long executingFinish = System.currentTimeMillis();
 
-						logger.error("callConcurrently error", e);
 						Eventloop.this.execute(new Runnable() {
 							@Override
 							public void run() {

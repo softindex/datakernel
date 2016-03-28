@@ -73,9 +73,9 @@ public class RpcStrategyTypeDispatchingTest {
 			sender.sendRequest(new RpcMessageDataTypeThree(), 50, new ResultCallbackFuture<>());
 		}
 
-		assertEquals(dataTypeOneRequests, connection1.getSendsNumber());
-		assertEquals(dataTypeTwoRequests, connection2.getSendsNumber());
-		assertEquals(dataTypeThreeRequests, connection3.getSendsNumber());
+		assertEquals(dataTypeOneRequests, connection1.getRequests());
+		assertEquals(dataTypeTwoRequests, connection2.getRequests());
+		assertEquals(dataTypeThreeRequests, connection3.getRequests());
 
 	}
 
@@ -104,10 +104,10 @@ public class RpcStrategyTypeDispatchingTest {
 		RpcSender sender = typeDispatchingStrategy.createSender(pool);
 		sender.sendRequest(new RpcMessageDataStub(), 50, callback);
 
-		assertEquals(0, connection1.getSendsNumber());
-		assertEquals(0, connection2.getSendsNumber());
-		assertEquals(0, connection3.getSendsNumber());
-		assertEquals(1, connection4.getSendsNumber());  // connection of default server
+		assertEquals(0, connection1.getRequests());
+		assertEquals(0, connection2.getRequests());
+		assertEquals(0, connection3.getRequests());
+		assertEquals(1, connection4.getRequests());  // connection of default server
 
 	}
 

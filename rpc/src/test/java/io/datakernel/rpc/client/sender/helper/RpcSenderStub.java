@@ -20,14 +20,14 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.rpc.client.sender.RpcSender;
 
 public final class RpcSenderStub implements RpcSender {
-	private int sends;
+	private int requests;
 
-	public int getSendsNumber() {
-		return sends;
+	public int getRequests() {
+		return requests;
 	}
 
 	@Override
 	public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-		sends++;
+		requests++;
 	}
 }

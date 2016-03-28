@@ -72,9 +72,9 @@ public class RpcStrategyShardingTest {
 		senderSharding.sendRequest(0, timeout, callback);
 		senderSharding.sendRequest(2, timeout, callback);
 
-		assertEquals(5, connection1.getSendsNumber());
-		assertEquals(1, connection2.getSendsNumber());
-		assertEquals(2, connection3.getSendsNumber());
+		assertEquals(5, connection1.getRequests());
+		assertEquals(1, connection2.getRequests());
+		assertEquals(2, connection3.getRequests());
 	}
 
 	@Test(expected = Exception.class)
@@ -105,8 +105,8 @@ public class RpcStrategyShardingTest {
 		sender.sendRequest(1, 50, callback2);
 		sender.sendRequest(2, 50, callback3);
 
-		assertEquals(1, connection2.getSendsNumber());
-		assertEquals(1, connection3.getSendsNumber());
+		assertEquals(1, connection2.getRequests());
+		assertEquals(1, connection3.getRequests());
 		callback1.get();
 
 	}

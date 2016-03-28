@@ -54,6 +54,7 @@ public final class RpcStrategyTypeDispatching implements RpcStrategy {
 		for (RpcStrategy strategy : dataTypeToStrategy.values()) {
 			result.addAll(strategy.getAddresses());
 		}
+		result.addAll(defaultStrategy.getAddresses());
 		return result;
 	}
 

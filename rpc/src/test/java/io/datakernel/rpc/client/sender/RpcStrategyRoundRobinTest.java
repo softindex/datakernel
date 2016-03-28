@@ -66,9 +66,9 @@ public class RpcStrategyRoundRobinTest {
 			senderRoundRobin.sendRequest(data, timeout, callback);
 		}
 
-		assertEquals(2, connection1.getSendsNumber());
-		assertEquals(2, connection2.getSendsNumber());
-		assertEquals(1, connection3.getSendsNumber());
+		assertEquals(2, connection1.getRequests());
+		assertEquals(2, connection2.getRequests());
+		assertEquals(1, connection3.getRequests());
 	}
 
 	@Test
@@ -93,9 +93,9 @@ public class RpcStrategyRoundRobinTest {
 			senderRoundRobin.sendRequest(data, timeout, callback);
 		}
 
-		assertEquals(4, connection1.getSendsNumber());
-		assertEquals(3, connection2.getSendsNumber());
-		assertEquals(3, connection4.getSendsNumber());
+		assertEquals(4, connection1.getRequests());
+		assertEquals(3, connection2.getRequests());
+		assertEquals(3, connection4.getRequests());
 	}
 
 	@Test

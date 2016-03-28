@@ -70,9 +70,9 @@ public class RpcStrategyFirstAvailableTest {
 			sender.sendRequest(new Object(), 50, callback);
 		}
 
-		assertEquals(callsToSender1, connection1.getSendsNumber());
-		assertEquals(callsToSender2, connection2.getSendsNumber());
-		assertEquals(callsToSender3, connection3.getSendsNumber());
+		assertEquals(callsToSender1, connection1.getRequests());
+		assertEquals(callsToSender2, connection2.getRequests());
+		assertEquals(callsToSender3, connection3.getRequests());
 	}
 
 	@Test

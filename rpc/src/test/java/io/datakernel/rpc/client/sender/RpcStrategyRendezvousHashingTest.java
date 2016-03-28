@@ -81,9 +81,9 @@ public class RpcStrategyRendezvousHashingTest {
 		int expectedCallsOfConnection2 = (callsPerLoop / 3) + (callsPerLoop / 2) + callsPerLoop;
 		int expectedCallsOfConnection3 = (callsPerLoop / 3) + (callsPerLoop / 2);
 		double delta = callsPerLoop / 30.0;
-		assertEquals(expectedCallsOfConnection1, connection1.getSendsNumber(), delta);
-		assertEquals(expectedCallsOfConnection2, connection2.getSendsNumber(), delta);
-		assertEquals(expectedCallsOfConnection3, connection3.getSendsNumber(), delta);
+		assertEquals(expectedCallsOfConnection1, connection1.getRequests(), delta);
+		assertEquals(expectedCallsOfConnection2, connection2.getRequests(), delta);
+		assertEquals(expectedCallsOfConnection3, connection3.getRequests(), delta);
 	}
 
 	@Test
