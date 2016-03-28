@@ -282,7 +282,7 @@ public class AsmBuilder<T> {
 
 				g.endMethod();
 			} catch (Exception e) {
-				throw new RuntimeException(e.getMessage());
+				throw new RuntimeException(e);
 			}
 		}
 
@@ -298,13 +298,14 @@ public class AsmBuilder<T> {
 
 				g.endMethod();
 			} catch (Exception e) {
-				throw new RuntimeException(e.getMessage());
+				throw new RuntimeException(e);
 			}
 		}
 		if (bytecodeSaveDir != null) {
 			try (FileOutputStream fos = new FileOutputStream(bytecodeSaveDir.resolve(className + ".class").toFile())) {
 				fos.write(cw.toByteArray());
-			} catch (IOException ignored) {
+			} catch (IOException e) {
+				throw new RuntimeException(e);
 			}
 		}
 

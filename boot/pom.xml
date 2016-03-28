@@ -30,6 +30,11 @@
         </dependency>
 
         <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>io.datakernel</groupId>
             <artifactId>http</artifactId>
             <version>${version}</version>

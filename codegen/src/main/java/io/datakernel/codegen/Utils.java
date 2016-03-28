@@ -174,7 +174,7 @@ public class Utils {
 			try {
 				return classLoader.loadClass(type.getClassName());
 			} catch (ClassNotFoundException e) {
-				throw new RuntimeException(format("No class %s in class loader", type.getClassName()));
+				throw new RuntimeException(format("No class %s in class loader", type.getClassName()), e);
 			}
 		}
 		if (sort == Type.ARRAY) {
