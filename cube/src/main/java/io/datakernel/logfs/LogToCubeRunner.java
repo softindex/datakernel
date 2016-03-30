@@ -121,7 +121,7 @@ public final class LogToCubeRunner<T> {
 		aggregator.streamTo(cube, logCommitTransaction);
 	}
 
-	private void processLog_doCommit(String log, Map<String, LogPosition> oldPositions,
+	private void processLog_doCommit(final String log, Map<String, LogPosition> oldPositions,
 	                                 Map<String, LogPosition> newPositions,
 	                                 final Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks,
 	                                 final CompletionCallback callback) {
@@ -130,10 +130,12 @@ public final class LogToCubeRunner<T> {
 		for (Map.Entry<String, Aggregation> entry : cube.getAggregations().entrySet()) {
 			idMap.put(entry.getValue().getAggregationMetadata(), entry.getKey());
 		}
+		logger.info("Saving commit to metadata storage. Log: {}", log);
 		metadataStorage.saveCommit(log, idMap, oldPositions, newPositions, newChunks,
 				new ForwardingCompletionCallback(callback) {
 					@Override
 					public void onComplete() {
+						logger.info("Completed saving commit to metadata storage. Log: {}", log);
 						processLog_afterCommit(newChunks, callback);
 					}
 				});

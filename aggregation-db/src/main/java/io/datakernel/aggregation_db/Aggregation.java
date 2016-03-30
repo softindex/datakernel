@@ -599,9 +599,11 @@ public class Aggregation {
 		metadataStorage.startConsolidation(chunks, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {
+				logger.info("Completed writing consolidation start metadata in aggregation '{}'", Aggregation.this);
 				doConsolidation(chunks, new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
 					@Override
 					public void onResult(final List<AggregationChunk.NewChunk> consolidatedChunks) {
+						logger.info("Saving consolidation results to metadata storage in aggregation '{}'", Aggregation.this);
 						metadataStorage.saveConsolidatedChunks(chunks, consolidatedChunks, new CompletionCallback() {
 							@Override
 							public void onComplete() {

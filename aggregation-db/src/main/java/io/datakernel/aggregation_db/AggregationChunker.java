@@ -137,9 +137,11 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				final StreamForwarder<T> forwarder = new StreamForwarder<>(eventloop);
 				outputProducer.streamTo(forwarder.getInput());
 
+				logger.info("Retrieving new chunk id for aggregation {}", keys);
 				metadataStorage.createChunkId(new ResultCallback<Long>() {
 					@Override
 					public void onResult(final Long chunkId) {
+						logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, keys);
 						storage.chunkWriter(keys, fields, recordClass, chunkId, forwarder.getOutput(),
 								new CompletionCallback() {
 									@Override
