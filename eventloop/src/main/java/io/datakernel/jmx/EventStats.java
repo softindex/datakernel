@@ -32,6 +32,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 
 	private long totalCount;
 	private double smoothedCount;
+	private double smoothedTimeSeconds;
 	private double smoothedRate;
 
 	private double smoothingWindow;
@@ -56,6 +57,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		lastTimestampMillis = 0;
 		smoothedCount = 0;
 		smoothedRate = 0;
+		smoothedTimeSeconds = 0;
 	}
 
 	/**
@@ -83,15 +85,10 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 
 			double timeElapsedSeconds = timeElapsedMillis / 1000.0;
 			smoothedCount = lastCount + smoothedCount * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
+			smoothedTimeSeconds =
+					timeElapsedSeconds + smoothedTimeSeconds * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
 
-			if (timeElapsedMillis != 0) {
-				double totalWeight = computeTotalWeight(timeElapsedSeconds, smoothingWindow);
-				double normalizedSmoothedCount = smoothedCount / totalWeight;
-				smoothedRate = normalizedSmoothedCount / timeElapsedSeconds;
-			} else {
-				// error, cannot compute rate if time period is equal to zero
-				smoothedRate = -1;
-			}
+			smoothedRate = smoothedCount / smoothedTimeSeconds;
 		} else {
 			// skip stats of last time period
 		}
@@ -102,12 +99,6 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 
 	private static boolean isTimePeriodValid(long timePeriod) {
 		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
-	}
-
-	private static double computeTotalWeight(double timeElapsedSeconds, double smoothingWindow) {
-		double ratio = timeElapsedSeconds / smoothingWindow;
-		double twoToTheRatio = pow(2.0, ratio);
-		return twoToTheRatio / (twoToTheRatio - 1);
 	}
 
 	@Override
