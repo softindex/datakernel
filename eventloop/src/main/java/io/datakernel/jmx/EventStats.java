@@ -85,10 +85,12 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 			smoothedCount = lastCount + smoothedCount * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
 
 			if (timeElapsedMillis != 0) {
-				double adjustmentCoef = computeAdjustmentCoef(smoothingWindow, timeElapsedSeconds);
-				smoothedRate = smoothedCount * adjustmentCoef;
+				double totalWeight = computeTotalWeight(timeElapsedSeconds, smoothingWindow);
+				double normalizedSmoothedCount = smoothedCount / totalWeight;
+				smoothedRate = normalizedSmoothedCount / timeElapsedSeconds;
 			} else {
-				smoothedRate = 0;
+				// error, cannot compute rate if time period is equal to zero
+				smoothedRate = -1;
 			}
 		} else {
 			// skip stats of last time period
@@ -102,11 +104,10 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		return timePeriod < TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES && timePeriod > 0;
 	}
 
-	private static double computeAdjustmentCoef(double smoothingWindow, double timeElapsedSeconds) {
-		double ratio = smoothingWindow / timeElapsedSeconds;
-		double coef = -0.5 * (pow(2.0, (ratio - 1) / ratio) - 2);
-		coef *= 1 / timeElapsedSeconds;
-		return coef;
+	private static double computeTotalWeight(double timeElapsedSeconds, double smoothingWindow) {
+		double ratio = timeElapsedSeconds / smoothingWindow;
+		double twoToTheRatio = pow(2.0, ratio);
+		return twoToTheRatio / (twoToTheRatio - 1);
 	}
 
 	@Override

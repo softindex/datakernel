@@ -143,7 +143,7 @@ public class JmxRegistryTest {
 			allowing(mbeanFactory).createFor(asList(worker_3), false);
 			will(returnValue(dynamicMBean));
 
-			// creating DynamicMBean work workers pool
+			// creating DynamicMBean for worker pool
 			allowing(mbeanFactory).createFor(asList(worker_1, worker_2, worker_3), true);
 			will(doAll());
 			will(returnValue(dynamicMBean));
