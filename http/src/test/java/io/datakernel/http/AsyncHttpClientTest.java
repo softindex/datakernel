@@ -21,15 +21,21 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
+import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.TcpSocketConnection;
+import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
+import static io.datakernel.examples.ProxyServerExample.TIMEOUT;
 import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
@@ -197,4 +203,53 @@ public class AsyncHttpClientTest {
 		}
 	}
 
+	@Test(expected = ParseException.class)
+	public void testEmptyLineResponse() throws Throwable {
+		final Eventloop eventloop = new Eventloop();
+
+		final AbstractServer server = new AbstractServer(eventloop) {
+			@Override
+			protected SocketConnection createConnection(SocketChannel socketChannel) {
+				return new TcpSocketConnection(eventloop, socketChannel) {
+					@Override
+					protected void onRead() {
+						readInterest(false);
+						write(ByteBufStrings.wrapAscii("\r\n"));
+						writeInterest(false);
+						this.close();
+					}
+				};
+			}
+		}
+				.setListenPort(PORT);
+		final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop,
+				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
+		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
+
+		server.listen();
+
+		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+			@Override
+			public void onResult(HttpResponse result) {
+				resultObserver.onResult(decodeUTF8(result.getBody()));
+				httpClient.close();
+				server.close();
+			}
+
+			@Override
+			public void onException(Exception e) {
+				resultObserver.onException(e);
+				httpClient.close();
+				server.close();
+			}
+		});
+
+		eventloop.run();
+
+		try {
+			System.err.println("Result: " + resultObserver.get());
+		} catch (ExecutionException e) {
+			throw e.getCause();
+		}
+	}
 }

@@ -293,12 +293,17 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 				}
 
 				if (!line.hasRemaining()) {
+					line.recycle();
+
+					if (reading == FIRSTLINE)
+						throw new ParseException("Empty response from server");
+
 					if (isChunked) {
 						reading = CHUNK_LENGTH;
 						maxChunkHeaderChars = MAX_CHUNK_HEADER_CHARS;
 					} else
 						reading = BODY;
-					line.recycle();
+
 					break;
 				}
 
