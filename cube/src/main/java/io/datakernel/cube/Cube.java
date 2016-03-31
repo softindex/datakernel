@@ -26,10 +26,7 @@ import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -239,13 +236,21 @@ public final class Cube implements EventloopJmxMBean {
 				continue;
 
 			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass, aggregationMeasures, outputToInputFields,
-					new ForwardingResultCallback<List<AggregationChunk.NewChunk>>(callback) {
+					new ResultCallback<List<AggregationChunk.NewChunk>>() {
 						@Override
 						public void onResult(List<AggregationChunk.NewChunk> chunks) {
 							resultChunks.putAll(aggregation.getAggregationMetadata(), chunks);
 							++aggregationsDone[0];
 							if (aggregationsDone[0] == streamSplitterOutputs[0]) {
 								callback.onResult(resultChunks);
+							}
+						}
+
+						@Override
+						public void onException(Exception e) {
+							++aggregationsDone[0];
+							if (aggregationsDone[0] == streamSplitterOutputs[0]) {
+								callback.onException(e);
 							}
 						}
 					});

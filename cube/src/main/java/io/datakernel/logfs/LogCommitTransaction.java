@@ -40,6 +40,7 @@ public final class LogCommitTransaction<T> {
 
 	private ListMultimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks = LinkedListMultimap.create();
 	private Map<String, LogPosition> newPositions = new LinkedHashMap<>();
+	private Exception exception;
 
 	private int commitCallbacks;
 	private int logCallbacks;
@@ -65,14 +66,18 @@ public final class LogCommitTransaction<T> {
 			public void onResult(Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks) {
 				newChunks.putAll(resultChunks);
 				commitCallbacks--;
-				logger.trace("Commit callback onCommit called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);
+				logger.trace("Commit callback onCommit called. Commit callbacks: {}. Log callbacks: {}",
+						commitCallbacks, logCallbacks);
 				tryCommit();
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.error("Commit callback onException called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks, exception);
-				callback.onException(exception);
+			public void onException(Exception e) {
+				exception = e;
+				commitCallbacks--;
+				logger.error("Commit callback onException called. Commit callbacks: {}. Log callbacks: {}",
+						commitCallbacks, logCallbacks, e);
+				tryCommit();
 			}
 		};
 	}
@@ -84,29 +89,38 @@ public final class LogCommitTransaction<T> {
 			@Override
 			public void onResult(Map<String, LogPosition> resultPositions) {
 				logCallbacks--;
-				logger.trace("Log callback onResult called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);
+				logger.trace("Log callback onResult called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks,
+						logCallbacks);
 				newPositions.putAll(resultPositions);
 				tryCommit();
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.error("Log callback onException called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks, exception);
-				callback.onException(exception);
+			public void onException(Exception e) {
+				exception = e;
+				logCallbacks--;
+				logger.error("Log callback onException called. Commit callbacks: {}. Log callbacks: {}",
+						commitCallbacks, logCallbacks, e);
+				tryCommit();
 			}
 		};
 	}
 
 	private void tryCommit() {
 		logger.trace("tryCommit called.");
+
 		if (commitCallbacks != 0 || logCallbacks != 0) {
 			logger.trace("Exiting tryCommit. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);
 			return;
 		}
+
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onCommit(log, oldPositions, newPositions, newChunks);
+				if (exception != null)
+					callback.onException(exception);
+				else
+					callback.onCommit(log, oldPositions, newPositions, newChunks);
 			}
 		});
 	}
