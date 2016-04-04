@@ -16,7 +16,8 @@
 
 package io.datakernel.aggregation_db;
 
-import io.datakernel.async.AsyncOperationsTracker;
+import io.datakernel.aggregation_db.util.AsyncResultsTracker;
+import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerList;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
@@ -30,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 
 import static io.datakernel.util.Preconditions.checkArgument;
-import static java.util.Collections.singletonList;
 
 public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationChunker.class);
@@ -40,7 +40,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private final Class<T> recordClass;
 	private AggregationChunkStorage storage;
 	private AggregationMetadataStorage metadataStorage;
-	private final AsyncOperationsTracker<AggregationChunk.NewChunk> operationsTracker;
+	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
 
 	public AggregationChunker(Eventloop eventloop, List<String> keys, List<String> fields,
 	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
@@ -50,7 +50,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		this.recordClass = recordClass;
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
-		this.operationsTracker = new AsyncOperationsTracker<>(chunksCallback);
+		this.resultsTracker = AsyncResultsTracker.ofList(chunksCallback);
 		Chunker chunker = new Chunker(eventloop, chunkSize);
 		setActualConsumer(chunker.getInput());
 	}
@@ -85,13 +85,13 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 					outputProducer.sendEndOfStream();
 				}
 
-				operationsTracker.shutDown();
+				resultsTracker.shutDown();
 			}
 
 			@Override
 			protected void onError(Exception e) {
 				super.onError(e);
-				operationsTracker.shutDownWithException(e);
+				resultsTracker.shutDownWithException(e);
 			}
 
 			@Override
@@ -126,7 +126,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 			}
 
 			private void startNewChunk() {
-				final ResultCallback<List<AggregationChunk.NewChunk>> operationCallback = operationsTracker.startOperation();
+				resultsTracker.startOperation();
 				first = null;
 				last = null;
 				count = 0;
@@ -149,7 +149,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 										AggregationChunk.NewChunk newChunk = createNewChunk(chunkId, metadata.first,
 												metadata.last, metadata.count);
 
-										operationCallback.onResult(singletonList(newChunk));
+										resultsTracker.completeWithResult(newChunk);
 
 										logger.trace("Saving new chunk with id {} to storage {} completed",
 												chunkId, storage);
@@ -160,7 +160,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 										logger.error("Saving new chunk with id {} to storage {} failed",
 												chunkId, storage, e);
 										closeWithError(e);
-										operationCallback.onException(e);
+										resultsTracker.completeWithException(e);
 									}
 								});
 					}
@@ -170,7 +170,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 						logger.error("Failed to retrieve new chunk id from metadata storage {}",
 								metadataStorage, e);
 						closeWithError(e);
-						operationCallback.onException(e);
+						resultsTracker.completeWithException(e);
 					}
 				});
 			}

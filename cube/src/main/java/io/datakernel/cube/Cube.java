@@ -20,13 +20,15 @@ import com.google.common.base.Function;
 import com.google.common.base.Functions;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Predicate;
-import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.api.QueryException;
-import io.datakernel.async.*;
+import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerMultimap;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingCompletionCallback;
+import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -54,6 +56,7 @@ import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
+import static io.datakernel.aggregation_db.util.AsyncResultsTracker.ofMultimap;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.sort;
 
@@ -221,9 +224,7 @@ public final class Cube implements EventloopJmxMBean {
 		logger.info("Started consuming data. Dimensions: {}. Measures: {}", dimensions, measures);
 
 		final StreamSplitter<T> streamSplitter = new StreamSplitter<>(eventloop);
-		final Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks = LinkedHashMultimap.create();
-		final int[] aggregationsDone = {0};
-		final int[] streamSplitterOutputs = {0};
+		final AsyncResultsTrackerMultimap<AggregationMetadata, AggregationChunk.NewChunk> tracker = ofMultimap(callback);
 
 		Collection<Aggregation> preparedAggregations = findAggregationsForWriting(predicates);
 
@@ -235,29 +236,23 @@ public final class Cube implements EventloopJmxMBean {
 			if (aggregationMeasures.isEmpty())
 				continue;
 
+			tracker.startOperation();
 			StreamConsumer<T> groupReducer = aggregation.consumer(inputClass, aggregationMeasures, outputToInputFields,
 					new ResultCallback<List<AggregationChunk.NewChunk>>() {
 						@Override
 						public void onResult(List<AggregationChunk.NewChunk> chunks) {
-							resultChunks.putAll(aggregation.getAggregationMetadata(), chunks);
-							++aggregationsDone[0];
-							if (aggregationsDone[0] == streamSplitterOutputs[0]) {
-								callback.onResult(resultChunks);
-							}
+							tracker.completeWithResults(aggregation.getAggregationMetadata(), chunks);
 						}
 
 						@Override
 						public void onException(Exception e) {
-							++aggregationsDone[0];
-							if (aggregationsDone[0] == streamSplitterOutputs[0]) {
-								callback.onException(e);
-							}
+							tracker.completeWithException(e);
 						}
 					});
 
 			streamSplitter.newOutput().streamTo(groupReducer);
-			++streamSplitterOutputs[0];
 		}
+		tracker.shutDown();
 
 		return streamSplitter.getInput();
 	}
