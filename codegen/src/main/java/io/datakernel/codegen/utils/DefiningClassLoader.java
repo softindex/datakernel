@@ -23,8 +23,11 @@ import java.util.Map;
  * Represents a loader for defining dynamically generated classes.
  * Also contains cache, that speeds up loading of classes, which have the same structure as the ones already loaded.
  */
-public class DefiningClassLoader extends ClassLoader {
+public class DefiningClassLoader extends ClassLoader implements DefiningClassLoaderMBean {
 	private final Map<Object, Class<?>> definedClasses = new HashMap<>();
+
+	// jmx
+	private String lastDefinedClass;
 
 	public DefiningClassLoader() {
 	}
@@ -33,16 +36,25 @@ public class DefiningClassLoader extends ClassLoader {
 		super(parent);
 	}
 
-	public Class<?> defineClass(String name, byte[] b) {
-		return defineClass(name, b, 0, b.length);
-	}
-
-	public void addToCache(Object key, Class<?> definedClass) {
+	public Class<?> defineClass(String name, Object key, byte[] b) {
+		Class<?> definedClass = defineClass(name, b, 0, b.length);
 		definedClasses.put(key, definedClass);
+		lastDefinedClass = name;
+		return definedClass;
 	}
 
 	public Class<?> getClassByKey(Object key) {
 		return definedClasses.get(key);
 	}
 
+	// jmx
+	@Override
+	public int getDefinedClassesAmount() {
+		return definedClasses.size();
+	}
+
+	@Override
+	public String getLastDefinedClass() {
+		return lastDefinedClass;
+	}
 }

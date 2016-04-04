@@ -311,9 +311,7 @@ public class AsmBuilder<T> {
 
 		cw.visitEnd();
 
-		Class<?> definedClass = classLoader.defineClass(className, cw.toByteArray());
-
-		classLoader.addToCache(key, definedClass);
+		Class<?> definedClass = classLoader.defineClass(className, key, cw.toByteArray());
 
 		return (Class<T>) definedClass;
 	}
