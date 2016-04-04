@@ -17,6 +17,8 @@
 package io.datakernel.config;
 
 import io.datakernel.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.*;
@@ -27,6 +29,8 @@ import static java.util.Arrays.asList;
 
 @SuppressWarnings("unchecked")
 public final class Config {
+	private static final Logger logger = LoggerFactory.getLogger(Config.class);
+
 	public static final String ROOT = "";
 	public static final char SEPARATOR = '.';
 
@@ -288,7 +292,11 @@ public final class Config {
 			this.defaultValue = defaultValue;
 		}
 		String result = get();
-		return result != null ? result : defaultValue;
+		if (result == null) {
+			logger.info("Using default value for '{}'", getKey());
+			result = defaultValue;
+		}
+		return result;
 	}
 
 	synchronized public void set(String value) {
