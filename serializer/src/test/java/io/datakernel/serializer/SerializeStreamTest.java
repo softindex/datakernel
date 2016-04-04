@@ -16,7 +16,7 @@
 
 package io.datakernel.serializer;
 
-import io.datakernel.asm.DefiningClassLoader;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import org.junit.Test;
 
 import java.io.ByteArrayInputStream;
