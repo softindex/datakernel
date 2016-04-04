@@ -17,8 +17,6 @@
 package io.datakernel.cube;
 
 import com.google.common.collect.ImmutableMap;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import io.datakernel.aggregation_db.*;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
@@ -26,32 +24,25 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.examples.LogItem;
-import io.datakernel.examples.LogItemSplitter;
-import io.datakernel.logfs.*;
-import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.serializer.SerializerBuilder;
+import io.datakernel.logfs.LogManager;
+import io.datakernel.logfs.LogToCubeMetadataStorage;
+import io.datakernel.logfs.LogToCubeRunner;
 import io.datakernel.stream.StreamConsumers;
 import io.datakernel.stream.StreamProducers;
 import org.jooq.Configuration;
 import org.jooq.SQLDialect;
-import org.jooq.impl.DataSourceConnectionProvider;
-import org.jooq.impl.DefaultConfiguration;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.*;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.google.common.base.Charsets.UTF_8;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.doubleSum;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.dateKey;

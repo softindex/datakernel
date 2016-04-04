@@ -23,7 +23,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.examples.KeyValuePair;
 import io.datakernel.stream.*;
 import org.junit.Rule;
 import org.junit.Test;
@@ -33,9 +32,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intSum;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
+import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -310,7 +309,7 @@ public class AggregationChunkerTest {
 				aggregationChunkStorage, aggregationMetadataStorage, 1, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
-				new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2))
+						new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2))
 		);
 		producer.streamTo(aggregationChunker);
 

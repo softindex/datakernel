@@ -35,7 +35,6 @@ import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static io.datakernel.examples.ProxyServerExample.TIMEOUT;
 import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
@@ -43,6 +42,8 @@ import static org.junit.Assert.assertEquals;
 public class AsyncHttpClientTest {
 	private static final int PORT = 45788;
 	public static final byte[] TIMEOUT_EXCEPTION_BYTES = encodeAscii("ERROR: Must be TimeoutException");
+
+	public static final int TIMEOUT = 1000;
 
 	@Before
 	public void before() {

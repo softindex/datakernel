@@ -24,8 +24,6 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.examples.LogItem;
-import io.datakernel.examples.LogItemSplitter;
 import io.datakernel.logfs.LogManager;
 import io.datakernel.logfs.LogToCubeMetadataStorage;
 import io.datakernel.logfs.LogToCubeRunner;
@@ -160,14 +158,12 @@ public class CubeMeasureRemovalTest {
 		assertEquals(1, chunks.size());
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 
-
 		// Initialize cube with new structure (removed measure)
 		structure = getStructure(classLoader);
 		aggregationChunkStorage = getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
 		cube = getNewCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
 		logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,
 				LogItemSplitter.factory(), LOG_NAME, LOG_PARTITIONS, logToCubeMetadataStorage);
-
 
 		// Save and aggregate logs
 		List<LogItem> listOfRandomLogItems2 = LogItem.getListOfRandomLogItems(100);
@@ -191,7 +187,6 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 		assertTrue(chunks.get(1).getFields().contains("revenue"));
 
-
 		// Aggregate manually
 		HashMap<Integer, Long> map = new HashMap<>();
 		aggregateToMap(map, listOfRandomLogItems);
@@ -203,12 +198,10 @@ public class CubeMeasureRemovalTest {
 		eventloop.run();
 		List<LogItem> queryResultBeforeConsolidation = queryResultConsumer.getList();
 
-
 		// Check query results
 		for (LogItem logItem : queryResultBeforeConsolidation) {
 			assertEquals(logItem.clicks, map.get(logItem.date).longValue());
 		}
-
 
 		// Consolidate
 		ResultCallbackFuture<Boolean> callback = new ResultCallbackFuture<>();
@@ -228,14 +221,12 @@ public class CubeMeasureRemovalTest {
 		assertEquals(1, chunks.size());
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 
-
 		// Query
 		query = new CubeQuery().dimensions("date").measures("clicks");
 		queryResultConsumer = new StreamConsumers.ToList<>(eventloop);
 		cube.query(LogItem.class, query).streamTo(queryResultConsumer);
 		eventloop.run();
 		List<LogItem> queryResultAfterConsolidation = queryResultConsumer.getList();
-
 
 		// Check that query results before and after consolidation match
 		assertEquals(queryResultBeforeConsolidation.size(), queryResultAfterConsolidation.size());

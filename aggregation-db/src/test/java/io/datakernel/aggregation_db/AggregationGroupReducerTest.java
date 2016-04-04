@@ -25,7 +25,6 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.examples.InvertedIndexRecord;
 import io.datakernel.stream.*;
 import org.junit.Rule;
 import org.junit.Test;
