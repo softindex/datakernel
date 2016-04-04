@@ -68,10 +68,10 @@ public class RpcHelloWorldTest {
 		}
 	}
 
-	private static RpcRequestHandler<HelloRequest> helloServiceRequestHandler(final HelloService helloService) {
-		return new RpcRequestHandler<HelloRequest>() {
+	private static RpcRequestHandler<HelloRequest, HelloResponse> helloServiceRequestHandler(final HelloService helloService) {
+		return new RpcRequestHandler<HelloRequest, HelloResponse>() {
 			@Override
-			public void run(HelloRequest request, ResultCallback<Object> callback) {
+			public void run(HelloRequest request, ResultCallback<HelloResponse> callback) {
 				String result;
 				try {
 					result = helloService.hello(request.name);

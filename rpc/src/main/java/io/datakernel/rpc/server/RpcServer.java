@@ -41,7 +41,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(16384);
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 
-	private final Map<Class<?>, RpcRequestHandler<Object>> handlers = new HashMap<>();
+	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers = new HashMap<>();
 	private RpcProtocolFactory protocolFactory = streamProtocol();
 	private SerializerBuilder serializerBuilder;
 	private final Set<Class<?>> messageTypes = new LinkedHashSet<>();
@@ -89,8 +89,8 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> RpcServer on(Class<T> requestClass, RpcRequestHandler<T> handler) {
-		handlers.put(requestClass, (RpcRequestHandler<Object>) handler);
+	public <I> RpcServer on(Class<I> requestClass, RpcRequestHandler<I, ?> handler) {
+		handlers.put(requestClass, handler);
 		return this;
 	}
 

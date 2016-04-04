@@ -60,11 +60,11 @@ public final class CumulativeBenchmark {
 	private final RpcServer server = RpcServer.create(serverEventloop)
 			.messageTypes(ValueMessage.class)
 			.protocol(streamProtocol(64 << 10, 64 << 10, true))
-			.on(ValueMessage.class, new RpcRequestHandler<ValueMessage>() {
+			.on(ValueMessage.class, new RpcRequestHandler<ValueMessage, ValueMessage>() {
 				private final ValueMessage currentSum = new ValueMessage(0);
 
 				@Override
-				public void run(ValueMessage request, ResultCallback<Object> callback) {
+				public void run(ValueMessage request, ResultCallback<ValueMessage> callback) {
 					if (request.value != 0) {
 						currentSum.value += request.value;
 					} else {

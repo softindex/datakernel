@@ -68,9 +68,9 @@ public class RpcBinaryProtocolTest {
 
 		final RpcServer server = RpcServer.create(eventloop)
 				.messageTypes(String.class)
-				.on(String.class, new RpcRequestHandler<String>() {
+				.on(String.class, new RpcRequestHandler<String, String>() {
 					@Override
-					public void run(String request, ResultCallback<Object> callback) {
+					public void run(String request, ResultCallback<String> callback) {
 						callback.onResult("Hello, " + request + "!");
 					}
 				})

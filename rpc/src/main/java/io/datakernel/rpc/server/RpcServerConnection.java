@@ -43,7 +43,7 @@ public final class RpcServerConnection implements RpcConnection {
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 	private final Eventloop eventloop;
 	private final RpcProtocol protocol;
-	private final Map<Class<?>, RpcRequestHandler<Object>> handlers;
+	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
 	private final StatusListener statusListener;
 
 	// JMX
@@ -55,7 +55,7 @@ public final class RpcServerConnection implements RpcConnection {
 
 	public RpcServerConnection(Eventloop eventloop, SocketChannel socketChannel,
 	                           BufferSerializer<RpcMessage> messageSerializer,
-	                           Map<Class<?>, RpcRequestHandler<Object>> handlers,
+	                           Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
 	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
 		this.eventloop = eventloop;
 		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, true);
@@ -63,8 +63,9 @@ public final class RpcServerConnection implements RpcConnection {
 		this.statusListener = statusListener;
 	}
 
+	@SuppressWarnings("unchecked")
 	private void apply(Object request, ResultCallback<Object> callback) {
-		RpcRequestHandler<Object> requestHandler = handlers.get(request.getClass());
+		RpcRequestHandler requestHandler = handlers.get(request.getClass());
 		if (requestHandler == null) {
 			callback.onException(new ParseException("Failed to process request " + request));
 			return;
