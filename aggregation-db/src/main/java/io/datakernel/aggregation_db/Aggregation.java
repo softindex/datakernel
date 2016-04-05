@@ -25,6 +25,7 @@ import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation_db.processor.ProcessorFactory;
 import io.datakernel.async.*;
 import io.datakernel.codegen.AsmBuilder;
+import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -70,7 +71,7 @@ public class Aggregation {
 	private final AggregationMetadataStorage metadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final AggregationMetadata aggregationMetadata;
-	private final String partitioningKey;
+	private final List<String> partitioningKey;
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
 	private int sorterBlockSize;
@@ -90,8 +91,7 @@ public class Aggregation {
 	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
 	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
 	 * and uses the specified parameters.
-	 *
-	 * @param eventloop               event loop, in which the aggregation is to run
+	 *  @param eventloop               event loop, in which the aggregation is to run
 	 * @param classLoader             class loader for defining dynamic classes
 	 * @param metadataStorage         storage for aggregations metadata
 	 * @param aggregationChunkStorage storage for data chunks
@@ -103,8 +103,10 @@ public class Aggregation {
 	public Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
 	                   AggregationMetadata aggregationMetadata, AggregationStructure structure,
-	                   String partitioningKey, int sorterItemsInMemory, int sorterBlockSize, int aggregationChunkSize) {
-		checkArgument(partitioningKey == null || aggregationMetadata.getKeys().contains(partitioningKey));
+	                   int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize,
+	                   List<String> partitioningKey) {
+		checkArgument(partitioningKey == null || (aggregationMetadata.getKeys().containsAll(partitioningKey) &&
+				isPrefix(partitioningKey, aggregationMetadata.getKeys())));
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.classLoader = classLoader;
@@ -138,8 +140,8 @@ public class Aggregation {
 	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
 	                   AggregationMetadata aggregationMetadata, AggregationStructure structure) {
 		this(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata,
-				structure, null, DEFAULT_SORTER_ITEMS_IN_MEMORY, DEFAULT_SORTER_BLOCK_SIZE,
-				DEFAULT_AGGREGATION_CHUNK_SIZE);
+				structure, DEFAULT_AGGREGATION_CHUNK_SIZE, DEFAULT_SORTER_ITEMS_IN_MEMORY, DEFAULT_SORTER_BLOCK_SIZE,
+				null);
 	}
 
 	public List<String> getAggregationFieldsForConsumer(List<String> fields) {
@@ -247,7 +249,11 @@ public class Aggregation {
 			return null;
 
 		AsmBuilder<PartitioningStrategy> builder = new AsmBuilder<>(classLoader, PartitioningStrategy.class);
-		builder.method("getPartition", getter(cast(arg(0), recordClass), partitioningKey));
+		List<Expression> fields = new ArrayList<>();
+		for (String keyComponent : partitioningKey) {
+			fields.add(getter(cast(arg(0), recordClass), keyComponent));
+		}
+		builder.method("getPartition", hashCodeOfArgs(fields));
 		return builder.newInstance();
 	}
 
@@ -377,15 +383,11 @@ public class Aggregation {
 		return resultKeysAreSubset && !isPrefix(resultKeys, aggregationKeys);
 	}
 
-	private boolean isPrefix(List<String> fields1, List<String> fields2) {
-		checkArgument(fields1.size() <= fields2.size());
-		for (int i = 0; i < fields1.size(); ++i) {
-			String resultKey = fields1.get(i);
-			String aggregationKey = fields2.get(i);
-			if (!resultKey.equals(aggregationKey)) {
-				// not prefix
+	private boolean isPrefix(List<String> l1, List<String> l2) {
+		checkArgument(l1.size() <= l2.size());
+		for (int i = 0; i < l1.size(); ++i) {
+			if (!l1.get(i).equals(l2.get(i)))
 				return false;
-			}
 		}
 		return true;
 	}
