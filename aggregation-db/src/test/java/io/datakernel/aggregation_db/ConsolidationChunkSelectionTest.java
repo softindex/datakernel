@@ -20,12 +20,14 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static com.google.common.collect.Iterables.concat;
 import static com.google.common.collect.Sets.newHashSet;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 public class ConsolidationChunkSelectionTest {
 	@Test
@@ -109,86 +111,33 @@ public class ConsolidationChunkSelectionTest {
 		assertEquals(chunks2, newHashSet(selectedChunks));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
-	public void testChunkGroups() throws Exception {
+	public void testGroupingByPartition() throws Exception {
 		AggregationMetadata am = new AggregationMetadata(singletonList(""), new ArrayList<String>());
 
 		Set<AggregationChunk> chunks1 = newHashSet();
-		chunks1.add(createTestChunk(1, 1, 2));
-		chunks1.add(createTestChunk(2, 1, 2));
-		chunks1.add(createTestChunk(3, 1, 4));
-		chunks1.add(createTestChunk(4, 3, 4));
-		chunks1.add(createTestChunk(5, 3, 6));
-		chunks1.add(createTestChunk(6, 5, 6));
-		chunks1.add(createTestChunk(7, 5, 8));
-		chunks1.add(createTestChunk(8, 7, 8));
+		chunks1.add(createTestChunk(2, 1, 1, 1, 1, 1, 5));
+		chunks1.add(createTestChunk(1, 1, 1, 1, 1, 1, 1));
 
 		Set<AggregationChunk> chunks2 = newHashSet();
-		chunks2.add(createTestChunk(9, 9, 10));
-		chunks2.add(createTestChunk(10, 9, 10));
-		chunks2.add(createTestChunk(11, 10, 11));
-		chunks2.add(createTestChunk(12, 10, 13));
-		chunks2.add(createTestChunk(13, 12, 13));
+		chunks2.add(createTestChunk(3, 2, 2, 1, 1, 1, 1));
+		chunks2.add(createTestChunk(4, 2, 2, 1, 1, 2, 2));
 
 		Set<AggregationChunk> chunks3 = newHashSet();
-		chunks3.add(createTestChunk(14, 14, 15));
-		chunks3.add(createTestChunk(15, 14, 16));
-		chunks3.add(createTestChunk(16, 15, 16));
+		chunks3.add(createTestChunk(5, 2, 2, 2, 2, 3, 3));
+		chunks3.add(createTestChunk(6, 2, 2, 2, 2, 1, 1));
+		chunks3.add(createTestChunk(7, 2, 2, 2, 2, 1, 10));
 
 		addChunks(am, concat(chunks1, chunks2, chunks3));
 
-		List<List<AggregationChunk>> chunksForConsolidation = am.findChunkGroupsForConsolidation(100, 10);
-		assertEquals(newHashSet(chunks1, chunks2, chunks3), toSet(chunksForConsolidation));
+		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = am.groupByPartition(2);
 
-		chunksForConsolidation = am.findChunkGroupsForConsolidation(100, 2);
-		assertEquals(newHashSet(chunks1, chunks2), toSet(chunksForConsolidation));
-	}
+		assertEquals(chunks1, partitioningKeyToTree.get(PrimaryKey.ofArray(1, 1)).getAll());
+		assertEquals(chunks2, partitioningKeyToTree.get(PrimaryKey.ofArray(2, 1)).getAll());
+		assertEquals(chunks3, partitioningKeyToTree.get(PrimaryKey.ofArray(2, 2)).getAll());
 
-	@SuppressWarnings("unchecked")
-	@Test
-	public void testTrimmedChunkGroups() throws Exception {
-		AggregationMetadata am = new AggregationMetadata(singletonList(""), new ArrayList<String>());
-
-		Set<AggregationChunk> chunks1 = newHashSet();
-		chunks1.add(createTestChunk(1, 1, 2));
-		chunks1.add(createTestChunk(2, 1, 2));
-		chunks1.add(createTestChunk(3, 1, 4));
-		chunks1.add(createTestChunk(4, 3, 4));
-		chunks1.add(createTestChunk(5, 3, 6));
-		chunks1.add(createTestChunk(6, 5, 6));
-		chunks1.add(createTestChunk(7, 5, 8));
-		chunks1.add(createTestChunk(8, 7, 8));
-
-		Set<AggregationChunk> chunks2 = newHashSet();
-		chunks2.add(createTestChunk(9, 9, 10));
-		chunks2.add(createTestChunk(10, 9, 10));
-		chunks2.add(createTestChunk(11, 10, 11));
-		chunks2.add(createTestChunk(12, 10, 13));
-		chunks2.add(createTestChunk(13, 12, 13));
-
-		Set<AggregationChunk> chunks3 = newHashSet();
-		chunks3.add(createTestChunk(14, 14, 15));
-		chunks3.add(createTestChunk(15, 14, 16));
-		chunks3.add(createTestChunk(16, 15, 16));
-
-		addChunks(am, concat(chunks1, chunks2, chunks3));
-
-		List<List<AggregationChunk>> chunksForConsolidation = am.findChunkGroupsForConsolidation(5, 3);
-		chunks1.clear();
-		chunks1.add(createTestChunk(1, 1, 2));
-		chunks1.add(createTestChunk(2, 1, 2));
-		chunks1.add(createTestChunk(3, 1, 4));
-		chunks1.add(createTestChunk(4, 3, 4));
-		chunks1.add(createTestChunk(5, 3, 6));
-
-		chunks2.clear();
-		chunks2.add(createTestChunk(9, 9, 10));
-		chunks2.add(createTestChunk(10, 9, 10));
-		chunks2.add(createTestChunk(11, 10, 11));
-		chunks2.add(createTestChunk(12, 10, 13));
-		chunks2.add(createTestChunk(13, 12, 13));
-		assertEquals(newHashSet(chunks1, chunks2, chunks3), toSet(chunksForConsolidation));
+		am.addToIndex(createTestChunk(8, 1, 1, 2, 3, 5, 5));
+		assertNull(am.groupByPartition(2));
 	}
 
 	private static void addChunks(AggregationMetadata am, Iterable<AggregationChunk> chunks) {
@@ -201,19 +150,13 @@ public class ConsolidationChunkSelectionTest {
 		return createTestChunk(id, min, max, id);
 	}
 
-	private static AggregationChunk createTestChunk(int id, int min, int max, int count) {
-		return new AggregationChunk(0, id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
+	private static AggregationChunk createTestChunk(int id, int d1Min, int d1Max, int d2Min, int d2Max, int d3Min,
+	                                                int d3Max) {
+		return new AggregationChunk(0, id, new ArrayList<String>(), PrimaryKey.ofArray(d1Min, d2Min, d3Min),
+				PrimaryKey.ofArray(d1Max, d2Max, d3Max), 10);
 	}
 
-	private static Set<Set<AggregationChunk>> toSet(List<List<AggregationChunk>> chunkGroups) {
-		Set<Set<AggregationChunk>> set = newHashSet();
-		for (List<AggregationChunk> chunkGroup : chunkGroups) {
-			Set<AggregationChunk> chunkSet = newHashSet();
-			for (AggregationChunk chunk : chunkGroup) {
-				chunkSet.add(chunk);
-			}
-			set.add(chunkSet);
-		}
-		return set;
+	private static AggregationChunk createTestChunk(int id, int min, int max, int count) {
+		return new AggregationChunk(0, id, new ArrayList<String>(), PrimaryKey.ofArray(min), PrimaryKey.ofArray(max), count);
 	}
 }

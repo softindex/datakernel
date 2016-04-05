@@ -582,7 +582,7 @@ public class Aggregation {
 
 	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, final ResultCallback<Boolean> callback) {
 		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate,
-				aggregationChunkSize, preferHotSegmentsCoef);
+				aggregationChunkSize, partitioningKey == null ? 0 : partitioningKey.size(), preferHotSegmentsCoef);
 
 		if (chunks.isEmpty()) {
 			callback.onResult(false);
