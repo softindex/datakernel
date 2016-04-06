@@ -19,6 +19,8 @@ package io.datakernel.aggregation_db;
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.aggregation_db.util.BiPredicate;
+import io.datakernel.aggregation_db.util.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -111,8 +113,8 @@ public class AggregationChunkerTest {
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
-				keys, fields, recordClass,
-				aggregationChunkStorage, aggregationMetadataStorage, 1, resultCallback);
+				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
+				aggregationMetadataStorage, 1, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValuePair(3, 4, 6), new KeyValuePair(3, 6, 7), new KeyValuePair(1, 2, 1)));
@@ -201,8 +203,8 @@ public class AggregationChunkerTest {
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
-				keys, fields, recordClass,
-				aggregationChunkStorage, aggregationMetadataStorage, 1, resultCallback);
+				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
+				aggregationMetadataStorage, 1, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
@@ -305,11 +307,11 @@ public class AggregationChunkerTest {
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
-				keys, fields, recordClass,
-				aggregationChunkStorage, aggregationMetadataStorage, 1, resultCallback);
+				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
+				aggregationMetadataStorage, 1, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
-						new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2))
+				new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2))
 		);
 		producer.streamTo(aggregationChunker);
 

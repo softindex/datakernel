@@ -21,6 +21,7 @@ import com.google.common.collect.ImmutableMap;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.aggregation_db.processor.ProcessorFactory;
+import io.datakernel.aggregation_db.util.Predicates;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.utils.DefiningClassLoader;
@@ -40,6 +41,7 @@ import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+@SuppressWarnings({"Duplicates", "unchecked"})
 public class AggregationGroupReducerTest {
 
 	@Rule
@@ -110,7 +112,9 @@ public class AggregationGroupReducerTest {
 
 		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop,
 				aggregationChunkStorage, aggregationMetadataStorage, aggregationMetadata.getKeys(),
-				aggregationMetadata.getFields(), null, aggregationClass, keyFunction, aggregate, chunksCallback, aggregationChunkSize);
+				aggregationMetadata.getFields(), aggregationClass,
+				Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, chunksCallback,
+				aggregationChunkSize);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),
@@ -191,13 +195,14 @@ public class AggregationGroupReducerTest {
 
 			@Override
 			public void onException(Exception exception) {
-//				fail(exception.getMessage()); // TODO (dtkachenko): uncomment?
+				fail(exception.getMessage());
 			}
 		};
 
 		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop,
 				aggregationChunkStorage, aggregationMetadataStorage, aggregationMetadata.getKeys(),
-				aggregationMetadata.getFields(), null, aggregationClass, keyFunction, aggregate, chunksCallback,
+				aggregationMetadata.getFields(), aggregationClass,
+				Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, chunksCallback,
 				aggregationChunkSize);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.concat(eventloop,

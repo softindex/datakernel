@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-package io.datakernel.aggregation_db;
+package io.datakernel.aggregation_db.util;
 
-public interface PartitioningStrategy {
-	int getPartition(Object record);
+public interface BiPredicate<T, U> {
+	boolean test(T t, U u);
 }

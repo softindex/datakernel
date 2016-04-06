@@ -155,10 +155,12 @@ public final class Cube implements EventloopJmxMBean {
 	 *
 	 * @param aggregationMetadata metadata of aggregation
 	 */
-	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata, List<String> partitioningKey) {
-		AggregationMetadataStorage aggregationMetadataStorage = cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
+	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata,
+	                           List<String> partitioningKey, int chunkSize) {
+		AggregationMetadataStorage aggregationMetadataStorage =
+				cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
 		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
-				aggregationChunkStorage, aggregationMetadata, structure, aggregationChunkSize, sorterItemsInMemory,
+				aggregationChunkStorage, aggregationMetadata, structure, chunkSize, sorterItemsInMemory,
 				sorterBlockSize, partitioningKey);
 		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
 		aggregations.put(aggregationId, aggregation);
@@ -166,7 +168,7 @@ public final class Cube implements EventloopJmxMBean {
 	}
 
 	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata) {
-		addAggregation(aggregationId, aggregationMetadata, null);
+		addAggregation(aggregationId, aggregationMetadata, null, aggregationChunkSize);
 	}
 
 	public void incrementLastRevisionId() {

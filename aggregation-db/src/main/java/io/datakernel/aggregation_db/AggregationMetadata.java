@@ -278,7 +278,7 @@ public class AggregationMetadata {
 		return findChunksGroupWithMostOverlaps(prefixRanges[keys.size()]);
 	}
 
-	private PickedChunks findChunksGroupWithMostOverlaps(Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree) {
+	private static PickedChunks findChunksGroupWithMostOverlaps(Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree) {
 		int minChunks = 2;
 		for (Map.Entry<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> entry : partitioningKeyToTree.entrySet()) {
 			List<AggregationChunk> chunks = findChunksGroupWithMostOverlaps(entry.getValue());

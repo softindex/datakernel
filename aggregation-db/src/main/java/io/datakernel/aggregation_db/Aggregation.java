@@ -23,9 +23,10 @@ import com.google.common.base.Predicate;
 import com.google.common.collect.Ordering;
 import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation_db.processor.ProcessorFactory;
+import io.datakernel.aggregation_db.util.BiPredicate;
+import io.datakernel.aggregation_db.util.Predicates;
 import io.datakernel.async.*;
 import io.datakernel.codegen.AsmBuilder;
-import io.datakernel.codegen.Expression;
 import io.datakernel.codegen.PredicateDefAnd;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
@@ -231,29 +232,18 @@ public class Aggregation {
 		return processorFactory.aggregationReducer(inputClass, outputClass, keys, fields);
 	}
 
-	public static <T> StreamConsumer<T> createChunker(PartitioningStrategy partitioningStrategy, Eventloop eventloop,
-	                                                  List<String> keys, List<String> fields,
-	                                                  Class<T> recordClass, AggregationChunkStorage storage,
-	                                                  AggregationMetadataStorage metadataStorage, int chunkSize,
-	                                                  ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
-		if (partitioningStrategy == null)
-			return new AggregationChunker<>(eventloop, keys, fields, recordClass, storage,
-					metadataStorage, chunkSize, chunksCallback);
-
-		return new PartitioningAggregationChunker<>(partitioningStrategy, eventloop, keys, fields,
-				recordClass, storage, metadataStorage, chunkSize, chunksCallback).getInput();
-	}
-
-	private PartitioningStrategy createPartitioningStrategy(Class recordClass) {
+	private BiPredicate createPartitionPredicate(Class recordClass) {
 		if (partitioningKey == null)
-			return null;
+			return Predicates.alwaysTrue();
 
-		AsmBuilder<PartitioningStrategy> builder = new AsmBuilder<>(classLoader, PartitioningStrategy.class);
-		List<Expression> fields = new ArrayList<>();
+		AsmBuilder<BiPredicate> builder = new AsmBuilder<>(classLoader, BiPredicate.class);
+		PredicateDefAnd predicate = and();
 		for (String keyComponent : partitioningKey) {
-			fields.add(getter(cast(arg(0), recordClass), keyComponent));
+			predicate.add(cmpEq(
+					getter(cast(arg(0), recordClass), keyComponent),
+					getter(cast(arg(1), recordClass), keyComponent)));
 		}
-		builder.method("getPartition", hashCodeOfArgs(fields));
+		builder.method("test", predicate);
 		return builder.newInstance();
 	}
 
@@ -299,11 +289,9 @@ public class Aggregation {
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, getKeys(),
 				fields, outputToInputFields);
 
-		PartitioningStrategy partitioningStrategy = createPartitioningStrategy(aggregationClass);
-
 		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, metadataStorage, getKeys(),
-				outputFields, partitioningStrategy, aggregationClass, keyFunction, aggregate, chunksCallback,
-				aggregationChunkSize);
+				outputFields, aggregationClass, createPartitionPredicate(aggregationClass), keyFunction, aggregate,
+				chunksCallback, aggregationChunkSize);
 	}
 
 	/**
@@ -405,11 +393,10 @@ public class Aggregation {
 
 		Class resultClass = structure.createRecordClass(getKeys(), fields);
 
-		PartitioningStrategy partitioningStrategy = createPartitioningStrategy(resultClass);
-
 		consolidatedProducer(getKeys(), fields, resultClass, null, chunksToConsolidate, null)
-				.streamTo(createChunker(partitioningStrategy, eventloop, getKeys(), fields, resultClass,
-						aggregationChunkStorage, metadataStorage, aggregationChunkSize, callback));
+				.streamTo(new AggregationChunker(eventloop, getKeys(), fields, resultClass,
+						createPartitionPredicate(resultClass), aggregationChunkStorage, metadataStorage,
+						aggregationChunkSize, callback));
 	}
 
 	private <T> StreamProducer<T> consolidatedProducer(List<String> keys, List<String> fields, Class<T> resultClass,
