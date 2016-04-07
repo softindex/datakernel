@@ -474,6 +474,7 @@ public class Aggregation {
 
 			producer.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
 		}
+
 		return streamReducer.getOutput();
 	}
 

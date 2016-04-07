@@ -427,21 +427,55 @@ public class AggregationMetadata {
 		return findChunksForConsolidation(maxChunks, optimalChunkSize, 0, preferHotSegmentsCoef);
 	}
 
+	public List<AggregationChunk> findChunksForPartitioning(int partitioningKeyLength, int maxChunks) {
+		List<AggregationChunk> chunksForPartitioning = new ArrayList<>();
+		Set<AggregationChunk> allChunks = prefixRanges[0].getAll();
+
+		for (AggregationChunk chunk : allChunks) {
+			if (chunksForPartitioning.size() == maxChunks)
+				break;
+
+			PrimaryKey minKeyPrefix = chunk.getMinPrimaryKey().prefix(partitioningKeyLength);
+			PrimaryKey maxKeyPrefix = chunk.getMaxPrimaryKey().prefix(partitioningKeyLength);
+
+			if (!minKeyPrefix.equals(maxKeyPrefix))
+				chunksForPartitioning.add(chunk);
+		}
+
+		return chunksForPartitioning;
+	}
+
+	private PickedChunks pickChunks(double preferHotSegmentsCoef, int maxChunks, int optimalChunkSize,
+	                                Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree) {
+		boolean useHotSegmentStrategy = useHotSegmentStrategy(preferHotSegmentsCoef); // first strategy to try
+		PickedChunks pickedChunks;
+		if (useHotSegmentStrategy) {
+			pickedChunks = findChunksGroupWithMostOverlaps(partitioningKeyToTree);
+			if (pickedChunks.chunks.isEmpty()) {
+				// try another strategy
+				pickedChunks = findChunksWithMinKeyOrSizeFixStrategy(partitioningKeyToTree, maxChunks, optimalChunkSize);
+			}
+		} else {
+			pickedChunks = findChunksWithMinKeyOrSizeFixStrategy(partitioningKeyToTree, maxChunks, optimalChunkSize);
+			if (pickedChunks.chunks.isEmpty()) {
+				// try another strategy
+				pickedChunks = findChunksGroupWithMostOverlaps(partitioningKeyToTree);
+			}
+		}
+		return pickedChunks;
+	}
+
 	public List<AggregationChunk> findChunksForConsolidation(int maxChunks, int optimalChunkSize,
 	                                                         int partitioningKeyLength, double preferHotSegmentsCoef) {
 		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = groupByPartition(partitioningKeyLength);
 
 		if (partitioningKeyToTree == null) { // not partitioned
-			List<AggregationChunk> chunks = newArrayList(prefixRanges[0].getAll());
-			if (chunks.size() > maxChunks)
-				chunks = trimChunks(chunks, maxChunks);
+			List<AggregationChunk> chunks = findChunksForPartitioning(partitioningKeyLength, maxChunks);
 			logChunksAndStrategy(chunks, PickingStrategy.PARTITIONING);
 			return chunks; // re-consolidate everything
 		}
 
-		PickedChunks pickedChunks = useHotSegmentStrategy(preferHotSegmentsCoef) ?
-				findChunksGroupWithMostOverlaps(partitioningKeyToTree) :
-				findChunksWithMinKeyOrSizeFixStrategy(partitioningKeyToTree, maxChunks, optimalChunkSize);
+		PickedChunks pickedChunks = pickChunks(preferHotSegmentsCoef, maxChunks, optimalChunkSize, partitioningKeyToTree);
 		List<AggregationChunk> chunks = pickedChunks.chunks;
 		PickingStrategy strategy = pickedChunks.strategy;
 
