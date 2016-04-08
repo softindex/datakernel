@@ -26,6 +26,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.stream.StreamStatus.*;
+import static java.lang.String.format;
 
 /**
  * It is basic implementation of {@link StreamProducer}
@@ -285,6 +286,8 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		@Override
 		public void onData(T item) {
 			logger.error("Unexpected item {} after end-of-stream of {}", item, this);
+			// TODO(vmykhalko): throw new AssertionError instead of logging
+//			throw new AssertionError(format("Unexpected item \"%s\" after end-of-stream of \"%s\"", item, this));
 		}
 	}
 }

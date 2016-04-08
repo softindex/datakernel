@@ -69,9 +69,11 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 	}
 
 	private class Sender extends AbstractStreamProducer<RpcMessage> {
+		private boolean channelOpen;
 
 		public Sender(Eventloop eventloop) {
 			super(eventloop);
+			channelOpen = true;
 		}
 
 		@Override
@@ -92,12 +94,21 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		public void onResumed() {
 		}
 
+		@Override
+		protected void doCleanup() {
+			channelOpen = false;
+		}
+
 		public boolean isOverloaded() {
 			return getProducerStatus() != StreamStatus.READY;
 		}
 
 		public void sendMessage(RpcMessage item) {
-			super.send(item);
+			if (channelOpen) {
+				super.send(item);
+			} else {
+				// ignore message
+			}
 		}
 
 		public void close() {
