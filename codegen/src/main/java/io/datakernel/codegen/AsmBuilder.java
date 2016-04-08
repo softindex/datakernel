@@ -260,7 +260,13 @@ public class AsmBuilder<T> {
 			Method m = getMethod("void <init> ()");
 			GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 			g.loadThis();
-			g.invokeConstructor(getType(Object.class), m);
+
+			if (type.isInterface()) {
+				g.invokeConstructor(getType(Object.class), m);
+			} else {
+				g.invokeConstructor(getType(type), m);
+			}
+
 			g.returnValue();
 			g.endMethod();
 		}
