@@ -28,7 +28,7 @@ import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import io.datakernel.serializer.asm.SerializerGenClass;
-import io.datakernel.stream.processor.StreamReducers;
+import io.datakernel.stream.processor.StreamMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,6 +121,21 @@ public class AggregationStructure {
 
 		builder.method("compare", comparator);
 
+		return builder.newInstance();
+	}
+
+	public StreamMap.MapperProjection createMapper(Class<?> recordClass, Class<?> resultClass,
+	                                               List<String> keys, List<String> fields) {
+		AsmBuilder<StreamMap.MapperProjection> builder = new AsmBuilder<>(classLoader, StreamMap.MapperProjection.class);
+		Expression result = let(constructor(resultClass));
+		ExpressionSequence applyDef = sequence(result);
+		for (String fieldName : concat(keys, fields)) {
+			applyDef.add(set(
+					getter(result, fieldName),
+					getter(cast(arg(0), recordClass), fieldName)));
+		}
+		applyDef.add(result);
+		builder.method("apply", applyDef);
 		return builder.newInstance();
 	}
 

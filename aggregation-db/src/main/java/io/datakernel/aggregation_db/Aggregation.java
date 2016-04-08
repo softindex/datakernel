@@ -460,6 +460,19 @@ public class Aggregation {
 	private <T> StreamProducer<T> mergeProducers(List<String> keys, List<String> fields, Class<?> resultClass,
 	                                             List<StreamProducer> producers, List<List<String>> producersFields,
 	                                             List<Class<?>> producerClasses) {
+		if (newHashSet(keys).equals(newHashSet(getKeys())) && producers.size() == 1) {
+			/*
+			If there is only one sequential producer and all aggregation keys are requested, then there is no need for
+			using StreamReducer, because all records have unique keys and all we need to do is copy requested fields
+			from record class to result class.
+			 */
+			StreamMap.MapperProjection mapper = structure.createMapper(producerClasses.get(0),
+					resultClass, keys, fields);
+			StreamMap<Object, T> streamMap = new StreamMap<>(eventloop, mapper);
+			producers.get(0).streamTo(streamMap.getInput());
+			return streamMap.getOutput();
+		}
+
 		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
 
 		Class<?> keyClass = structure.createKeyClass(keys);
