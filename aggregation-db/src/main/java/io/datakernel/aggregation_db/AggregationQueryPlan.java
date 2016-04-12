@@ -23,12 +23,14 @@ import static com.google.common.collect.Lists.newArrayList;
 
 final class AggregationQueryPlan {
 	private static class FieldsWithChunks {
-		private List<String> fields;
-		private List<AggregationChunk> chunks;
+		private final List<String> fields;
+		private final List<AggregationChunk> chunks;
+		private final boolean sorted;
 
-		public FieldsWithChunks(List<String> fields, List<AggregationChunk> chunks) {
+		public FieldsWithChunks(List<String> fields, List<AggregationChunk> chunks, boolean sorted) {
 			this.fields = fields;
 			this.chunks = chunks;
+			this.sorted = sorted;
 		}
 
 		@Override
@@ -36,6 +38,7 @@ final class AggregationQueryPlan {
 			return "{" +
 					"fields=" + fields +
 					", chunks=" + chunksToString(chunks) +
+					", sorted=" + sorted +
 					'}';
 		}
 
@@ -63,18 +66,18 @@ final class AggregationQueryPlan {
 
 	private List<FieldsWithChunks> sequentialChunkGroups = newArrayList();
 	private boolean postFiltering;
-	private boolean additionalSorting;
+	private boolean optimizedAwayReducer;
 
-	public void addChunkGroup(List<String> fields, List<AggregationChunk> sequentialChunkGroup) {
-		sequentialChunkGroups.add(new FieldsWithChunks(fields, sequentialChunkGroup));
+	public void addChunkGroup(List<String> fields, List<AggregationChunk> sequentialChunkGroup, boolean sorted) {
+		sequentialChunkGroups.add(new FieldsWithChunks(fields, sequentialChunkGroup, sorted));
 	}
 
 	public void setPostFiltering(boolean postFiltering) {
 		this.postFiltering = postFiltering;
 	}
 
-	public void setAdditionalSorting(boolean additionalSorting) {
-		this.additionalSorting = additionalSorting;
+	public void setOptimizedAwayReducer(boolean optimizedAwayReducer) {
+		this.optimizedAwayReducer = optimizedAwayReducer;
 	}
 
 	@Override
@@ -84,12 +87,16 @@ final class AggregationQueryPlan {
 
 		StringBuilder sb = new StringBuilder();
 
-		sb.append("\nSequential groups: ");
+		sb.append("\nSequential groups (");
+		sb.append(sequentialChunkGroups.size());
+		sb.append("): ");
 
 		for (int i = 0; i < sequentialChunkGroups.size(); ++i) {
 			sb.append("\n");
 			sb.append(i + 1);
-			sb.append(". ");
+			sb.append(" (");
+			sb.append(sequentialChunkGroups.get(i).chunks.size());
+			sb.append("). ");
 			sb.append(sequentialChunkGroups.get(i));
 			sb.append(" ");
 		}
@@ -98,8 +105,8 @@ final class AggregationQueryPlan {
 		sb.append(postFiltering);
 		sb.append(". ");
 
-		sb.append("\nAdditional sorting: ");
-		sb.append(additionalSorting);
+		sb.append("\nOptimized away reducer: ");
+		sb.append(optimizedAwayReducer);
 		sb.append(". ");
 
 		return sb.toString();

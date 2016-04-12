@@ -312,8 +312,8 @@ public class Aggregation {
 
 		AggregationQueryPlan queryPlan = new AggregationQueryPlan();
 
-		StreamProducer streamProducer = consolidatedProducer(query.getAllKeys(), aggregationFields,
-				outputClass, query.getPredicates(), allChunks, queryPlan);
+		StreamProducer streamProducer = consolidatedProducer(query.getResultKeys(), query.getRequestedKeys(),
+				aggregationFields, outputClass, query.getPredicates(), allChunks, queryPlan);
 
 		StreamProducer queryResultProducer = streamProducer;
 
@@ -332,19 +332,6 @@ public class Aggregation {
 			queryPlan.setPostFiltering(true);
 		}
 
-		if (sortingRequired(resultKeys, getKeys())) {
-			Comparator keyComparator = structure.createKeyComparator(outputClass, resultKeys);
-			Path path = Paths.get("sorterStorage", "%d.part");
-			BufferSerializer bufferSerializer = structure.createBufferSerializer(outputClass, getKeys(), aggregationFields);
-			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
-					bufferSerializer, path, sorterBlockSize);
-			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
-					sorterItemsInMemory);
-			queryResultProducer.streamTo(sorter.getInput());
-			queryResultProducer = sorter.getOutput();
-			queryPlan.setAdditionalSorting(true);
-		}
-
 		logger.info("Query plan for {} in aggregation {}: {}", query, this, queryPlan);
 
 		return queryResultProducer;
@@ -352,6 +339,19 @@ public class Aggregation {
 
 	public <T> StreamProducer<T> query(AggregationQuery query, Class<T> outputClass) {
 		return query(query, query.getResultFields(), outputClass);
+	}
+
+	private <T> StreamProducer<T> getOrderedStream(StreamProducer<T> rawStream, Class<T> resultClass,
+	                                               List<String> keys, List<String> fields) {
+		Comparator keyComparator = structure.createKeyComparator(resultClass, keys);
+		Path path = Paths.get("sorterStorage", "%d.part");
+		BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, getKeys(), fields);
+		StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
+				bufferSerializer, path, sorterBlockSize);
+		StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
+				sorterItemsInMemory);
+		rawStream.streamTo(sorter.getInput());
+		return sorter.getOutput();
 	}
 
 	private List<AggregationQuery.PredicateNotEquals> getNotEqualsPredicates(AggregationQuery.Predicates queryPredicates) {
@@ -366,12 +366,12 @@ public class Aggregation {
 		return notEqualsPredicates;
 	}
 
-	private boolean sortingRequired(List<String> resultKeys, List<String> aggregationKeys) {
-		boolean resultKeysAreSubset = !all(aggregationKeys, in(resultKeys));
-		return resultKeysAreSubset && !isPrefix(resultKeys, aggregationKeys);
+	private static boolean sortingRequired(List<String> keys, List<String> aggregationKeys) {
+		boolean resultKeysAreSubset = !all(aggregationKeys, in(keys));
+		return resultKeysAreSubset && !isPrefix(keys, aggregationKeys);
 	}
 
-	private boolean isPrefix(List<String> l1, List<String> l2) {
+	private static boolean isPrefix(List<String> l1, List<String> l2) {
 		checkArgument(l1.size() <= l2.size());
 		for (int i = 0; i < l1.size(); ++i) {
 			if (!l1.get(i).equals(l2.get(i)))
@@ -393,13 +393,14 @@ public class Aggregation {
 
 		Class resultClass = structure.createRecordClass(getKeys(), fields);
 
-		consolidatedProducer(getKeys(), fields, resultClass, null, chunksToConsolidate, null)
+		consolidatedProducer(getKeys(), getKeys(), fields, resultClass, null, chunksToConsolidate, null)
 				.streamTo(new AggregationChunker(eventloop, getKeys(), fields, resultClass,
 						createPartitionPredicate(resultClass), aggregationChunkStorage, metadataStorage,
 						aggregationChunkSize, callback));
 	}
 
-	private <T> StreamProducer<T> consolidatedProducer(List<String> keys, List<String> fields, Class<T> resultClass,
+	private <T> StreamProducer<T> consolidatedProducer(List<String> queryKeys, List<String> requestedKeys,
+	                                                   List<String> fields, Class<T> resultClass,
 	                                                   AggregationQuery.Predicates predicates,
 	                                                   List<AggregationChunk> individualChunks,
 	                                                   AggregationQueryPlan queryPlan) {
@@ -439,14 +440,18 @@ public class Aggregation {
 
 				List<AggregationChunk> sequentialChunkGroup = newArrayList(chunks);
 
-				if (queryPlan != null) {
-					queryPlan.addChunkGroup(newArrayList(requestedFieldsInSequence), sequentialChunkGroup);
-				}
-
+				boolean sorted = false;
 				StreamProducer producer = sequentialProducer(predicates, sequentialChunkGroup, chunksClass);
+				if (sortingRequired(requestedKeys, getKeys())) {
+					producer = getOrderedStream(producer, chunksClass, requestedKeys, sequenceFields);
+					sorted = true;
+				}
 				producers.add(producer);
 
 				chunks.clear();
+
+				if (queryPlan != null)
+					queryPlan.addChunkGroup(newArrayList(requestedFieldsInSequence), sequentialChunkGroup, sorted);
 			}
 
 			if (chunk != null) {
@@ -454,36 +459,40 @@ public class Aggregation {
 			}
 		}
 
-		return mergeProducers(keys, fields, resultClass, producers, producersFields, producersClasses);
+		return mergeProducers(queryKeys, requestedKeys, fields, resultClass, producers, producersFields,
+				producersClasses, queryPlan);
 	}
 
-	private <T> StreamProducer<T> mergeProducers(List<String> keys, List<String> fields, Class<?> resultClass,
-	                                             List<StreamProducer> producers, List<List<String>> producersFields,
-	                                             List<Class<?>> producerClasses) {
-		if (newHashSet(keys).equals(newHashSet(getKeys())) && producers.size() == 1) {
+	private <T> StreamProducer<T> mergeProducers(List<String> queryKeys, List<String> requestedKeys, List<String> fields,
+	                                             Class<?> resultClass, List<StreamProducer> producers,
+	                                             List<List<String>> producersFields, List<Class<?>> producerClasses,
+	                                             AggregationQueryPlan queryPlan) {
+		if (newHashSet(requestedKeys).equals(newHashSet(getKeys())) && producers.size() == 1) {
 			/*
 			If there is only one sequential producer and all aggregation keys are requested, then there is no need for
 			using StreamReducer, because all records have unique keys and all we need to do is copy requested fields
 			from record class to result class.
 			 */
 			StreamMap.MapperProjection mapper = structure.createMapper(producerClasses.get(0),
-					resultClass, keys, fields);
+					resultClass, queryKeys, fields);
 			StreamMap<Object, T> streamMap = new StreamMap<>(eventloop, mapper);
 			producers.get(0).streamTo(streamMap.getInput());
+			if (queryPlan != null)
+				queryPlan.setOptimizedAwayReducer(true);
 			return streamMap.getOutput();
 		}
 
 		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
 
-		Class<?> keyClass = structure.createKeyClass(keys);
+		Class<?> keyClass = structure.createKeyClass(queryKeys);
 
 		for (int i = 0; i < producers.size(); i++) {
 			StreamProducer producer = producers.get(i);
 
-			Function extractKeyFunction = structure.createKeyFunction(producerClasses.get(i), keyClass, keys);
+			Function extractKeyFunction = structure.createKeyFunction(producerClasses.get(i), keyClass, queryKeys);
 
 			StreamReducers.Reducer reducer = processorFactory.aggregationReducer(producerClasses.get(i), resultClass,
-					keys, newArrayList(filter(fields, in(producersFields.get(i)))));
+					queryKeys, newArrayList(filter(fields, in(producersFields.get(i)))));
 
 			producer.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
 		}
@@ -553,8 +562,8 @@ public class Aggregation {
 
 		for (AggregationQuery.Predicate predicate : predicates.asCollection()) {
 			if (predicate instanceof AggregationQuery.PredicateEq) {
-//				if (keysAlreadyInChunk.contains(predicate.key))
-//					continue;
+				if (keysAlreadyInChunk.contains(predicate.key))
+					continue;
 				Object value = ((AggregationQuery.PredicateEq) predicate).value;
 
 				predicateDefAnd.add(cmpEq(

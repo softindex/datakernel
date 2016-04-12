@@ -341,6 +341,8 @@ public final class Cube implements EventloopJmxMBean {
 
 		CubeQueryPlan queryPlan = new CubeQueryPlan();
 
+		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
+
 		for (Map.Entry<Aggregation, List<String>> entry : aggregationsToAppliedPredicateKeys.entrySet()) {
 			Aggregation aggregation = entry.getKey();
 			CubeQuery filteredQuery = getQueryWithoutAppliedPredicateKeys(query, entry.getValue());
@@ -356,8 +358,24 @@ public final class Cube implements EventloopJmxMBean {
 
 			Class aggregationClass = structure.createRecordClass(aggregation.getKeys(), aggregationMeasures);
 
-			StreamProducer<T> queryResultProducer = aggregation.query(filteredQuery.getAggregationQuery(),
+			StreamProducer aggregationProducer = aggregation.query(filteredQuery.getAggregationQuery(),
 					aggregationMeasures, aggregationClass);
+
+			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregationMeasures))));
+
+			if (queryMeasures.isEmpty() && streamReducer.getInputs().isEmpty()) {
+				/*
+				If query is fulfilled from the single aggregation,
+				just use mapper instead of reducer to copy requested fields.
+				 */
+				StreamMap.MapperProjection mapper = structure.createMapper(aggregationClass, resultClass,
+						resultDimensions, aggregationMeasures);
+				StreamMap streamMap = new StreamMap<>(eventloop, mapper);
+				aggregationProducer.streamTo(streamMap.getInput());
+				queryResultProducer = streamMap.getOutput();
+				queryPlan.setOptimizedAwayReducer(true);
+				break;
+			}
 
 			Function keyFunction = structure.createKeyFunction(aggregationClass, resultKeyClass, resultDimensions);
 
@@ -366,19 +384,17 @@ public final class Cube implements EventloopJmxMBean {
 
 			StreamConsumer streamReducerInput = streamReducer.newInput(keyFunction, reducer);
 
-			queryResultProducer.streamTo(streamReducerInput);
-
-			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getFields()))));
+			aggregationProducer.streamTo(streamReducerInput);
 		}
 
 		if (!queryMeasures.isEmpty()) {
 			logger.info("Could not build query plan for {}. Incomplete plan: {}", query, queryPlan);
 			throw new QueryException("Could not find suitable aggregation(s)");
 		} else
-			logger.info("Built query plan for {}: {}", query, queryPlan);
+			logger.info("Picked following aggregations ({}) for {}: {}", queryPlan.getNumberOfAggregations(), query,
+					queryPlan);
 
-		return getOrderedResultStream(query, resultClass, streamReducer,
-				query.getResultDimensions(), query.getResultMeasures());
+		return getOrderedResultStream(query, resultClass, queryResultProducer, resultDimensions, query.getResultMeasures());
 	}
 
 	public boolean containsExcessiveNumberOfOverlappingChunks() {
@@ -546,7 +562,7 @@ public final class Cube implements EventloopJmxMBean {
 	}
 
 	private <T> StreamProducer<T> getOrderedResultStream(CubeQuery query, Class<T> resultClass,
-	                                                     StreamReducer<Comparable, T, Object> rawResultStream,
+	                                                     StreamProducer<T> rawResultStream,
 	                                                     List<String> dimensions, List<String> measures) {
 		if (queryRequiresSorting(query)) {
 			Comparator fieldComparator = createFieldComparator(query, resultClass);
@@ -556,10 +572,10 @@ public final class Cube implements EventloopJmxMBean {
 					bufferSerializer, path, sorterBlockSize);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
 					fieldComparator, false, sorterItemsInMemory);
-			rawResultStream.getOutput().streamTo(sorter.getInput());
+			rawResultStream.streamTo(sorter.getInput());
 			return sorter.getOutput();
 		} else {
-			return rawResultStream.getOutput();
+			return rawResultStream;
 		}
 	}
 
