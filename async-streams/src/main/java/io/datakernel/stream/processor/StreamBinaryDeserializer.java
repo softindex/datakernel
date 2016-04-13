@@ -114,99 +114,103 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 
 		@Override
 		protected void doProduce() {
-			while (isStatusReady()) {
-				ByteBuf nextBuf = byteBufs.peek();
-				if (nextBuf == null)
-					break;
+			try {
+				while (isStatusReady()) {
+					ByteBuf nextBuf = byteBufs.peek();
+					if (nextBuf == null)
+						break;
 
-				byte[] b = nextBuf.array();
-				int off = nextBuf.position();
-				int len = nextBuf.remaining();
-				while (isStatusReady() && len > 0) {
-					if (dataSize == 0) {
-						assert bufferPos < MAX_HEADER_BYTES;
-						assert buffer.length >= MAX_HEADER_BYTES;
-						// read message header:
-						if (bufferPos == 0 && len >= MAX_HEADER_BYTES) {
-							int sizeLen = tryReadSize(b, off);
-							if (sizeLen > MAX_HEADER_BYTES)
-								throw new IllegalArgumentException("Parsed size length > MAX_HEADER_BYTES");
-							len -= sizeLen;
-							off += sizeLen;
+					byte[] b = nextBuf.array();
+					int off = nextBuf.position();
+					int len = nextBuf.remaining();
+					while (isStatusReady() && len > 0) {
+						if (dataSize == 0) {
+							assert bufferPos < MAX_HEADER_BYTES;
+							assert buffer.length >= MAX_HEADER_BYTES;
+							// read message header:
+							if (bufferPos == 0 && len >= MAX_HEADER_BYTES) {
+								int sizeLen = tryReadSize(b, off);
+								if (sizeLen > MAX_HEADER_BYTES)
+									throw new IllegalArgumentException("Parsed size length > MAX_HEADER_BYTES");
+								len -= sizeLen;
+								off += sizeLen;
+								bufferPos = 0;
+							} else {
+								int readSize = min(len, MAX_HEADER_BYTES - bufferPos);
+								System.arraycopy(b, off, buffer, bufferPos, readSize);
+								len -= readSize;
+								off += readSize;
+								bufferPos += readSize;
+								int sizeLen = tryReadSize(buffer, 0);
+								if (sizeLen > bufferPos) {
+									// Read past last position - incomplete varint in buffer, waiting for more bytes
+									dataSize = 0;
+									break;
+								}
+								int unreadSize = bufferPos - sizeLen;
+								len += unreadSize;
+								off -= unreadSize;
+								bufferPos = 0;
+							}
+							if (dataSize > maxMessageSize)
+								throw new IllegalArgumentException("Parsed data size > message size");
+						}
+
+						// read message body:
+						T item;
+						if (bufferPos == 0 && len >= dataSize) {
+							arrayInputBuffer.set(b, off);
+							item = valueSerializer.deserialize(arrayInputBuffer);
+							if ((arrayInputBuffer.position() - off) != dataSize)
+								throw new IllegalArgumentException("Deserialized size != parsed data size");
+							len -= dataSize;
+							off += dataSize;
 							bufferPos = 0;
+							dataSize = 0;
 						} else {
-							int readSize = min(len, MAX_HEADER_BYTES - bufferPos);
-							System.arraycopy(b, off, buffer, bufferPos, readSize);
+							int readSize = min(len, dataSize - bufferPos);
+							copyIntoBuffer(b, off, readSize);
 							len -= readSize;
 							off += readSize;
-							bufferPos += readSize;
-							int sizeLen = tryReadSize(buffer, 0);
-							if (sizeLen > bufferPos) {
-								// Read past last position - incomplete varint in buffer, waiting for more bytes
-								dataSize = 0;
+							if (bufferPos != dataSize)
 								break;
-							}
-							int unreadSize = bufferPos - sizeLen;
-							len += unreadSize;
-							off -= unreadSize;
+							arrayInputBuffer.set(buffer, 0);
+							item = valueSerializer.deserialize(arrayInputBuffer);
+							if (arrayInputBuffer.position() != dataSize)
+								throw new IllegalArgumentException("Deserialized size != parsed data size");
 							bufferPos = 0;
+							dataSize = 0;
 						}
-						if (dataSize > maxMessageSize)
-							throw new IllegalArgumentException("Parsed data size > message size");
+						nextBuf.position(off);
+						++jmxItems;
+						downstreamDataReceiver.onData(item);
 					}
 
-					// read message body:
-					T item;
-					if (bufferPos == 0 && len >= dataSize) {
-						arrayInputBuffer.set(b, off);
-						item = valueSerializer.deserialize(arrayInputBuffer);
-						if ((arrayInputBuffer.position() - off) != dataSize)
-							throw new IllegalArgumentException("Deserialized size != parsed data size");
-						len -= dataSize;
-						off += dataSize;
-						bufferPos = 0;
-						dataSize = 0;
+					if (getProducerStatus().isClosed())
+						return;
+
+					if (len != 0) {
+						nextBuf.position(off);
+						return;
+					}
+
+					ByteBuf poolBuffer = byteBufs.poll();
+					assert poolBuffer == nextBuf;
+					nextBuf.recycle();
+				}
+
+				if (byteBufs.isEmpty()) {
+					if (inputConsumer.getConsumerStatus().isClosed()) {
+						outputProducer.sendEndOfStream();
+						logger.info("Deserialized {} objects from {}", jmxItems, inputConsumer.getUpstream());
 					} else {
-						int readSize = min(len, dataSize - bufferPos);
-						copyIntoBuffer(b, off, readSize);
-						len -= readSize;
-						off += readSize;
-						if (bufferPos != dataSize)
-							break;
-						arrayInputBuffer.set(buffer, 0);
-						item = valueSerializer.deserialize(arrayInputBuffer);
-						if (arrayInputBuffer.position() != dataSize)
-							throw new IllegalArgumentException("Deserialized size != parsed data size");
-						bufferPos = 0;
-						dataSize = 0;
-					}
-					nextBuf.position(off);
-					++jmxItems;
-					downstreamDataReceiver.onData(item);
-				}
-
-				if (getProducerStatus().isClosed())
-					return;
-
-				if (len != 0) {
-					nextBuf.position(off);
-					return;
-				}
-
-				ByteBuf poolBuffer = byteBufs.poll();
-				assert poolBuffer == nextBuf;
-				nextBuf.recycle();
-			}
-
-			if (byteBufs.isEmpty()) {
-				if (inputConsumer.getConsumerStatus().isClosed()) {
-					outputProducer.sendEndOfStream();
-					logger.info("Deserialized {} objects from {}", jmxItems, inputConsumer.getUpstream());
-				} else {
-					if (!isStatusReady()) {
-						resumeProduce();
+						if (!isStatusReady()) {
+							resumeProduce();
+						}
 					}
 				}
+			} catch (Exception e) {
+				closeWithError(e);
 			}
 		}
 
