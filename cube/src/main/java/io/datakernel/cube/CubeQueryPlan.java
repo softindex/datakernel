@@ -46,15 +46,11 @@ final class CubeQueryPlan {
 		StringBuilder sb = new StringBuilder();
 
 		for (Map.Entry<Aggregation, List<String>> entry : aggregationToMeasures.entrySet()) {
-			sb.append("{");
-			sb.append("aggregation=").append(entry.getKey());
-			sb.append(", measures=").append(entry.getValue());
-			sb.append("} ");
+			sb.append("{").append("aggregation=").append(entry.getKey());
+			sb.append(", measures=").append(entry.getValue()).append("} ");
 		}
 
-		sb.append("\nOptimized away reducer: ");
-		sb.append(optimizedAwayReducer);
-		sb.append(". ");
+		sb.append("\nOptimized away reducer: ").append(optimizedAwayReducer).append(". ");
 
 		return sb.toString();
 	}

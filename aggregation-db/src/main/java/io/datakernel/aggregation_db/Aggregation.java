@@ -313,7 +313,7 @@ public class Aggregation {
 		AggregationQueryPlan queryPlan = new AggregationQueryPlan();
 
 		StreamProducer streamProducer = consolidatedProducer(query.getResultKeys(), query.getRequestedKeys(),
-				aggregationFields, outputClass, query.getPredicates(), allChunks, queryPlan);
+				aggregationFields, outputClass, query.getPredicates(), allChunks, queryPlan, null);
 
 		StreamProducer queryResultProducer = streamProducer;
 
@@ -393,17 +393,20 @@ public class Aggregation {
 
 		Class resultClass = structure.createRecordClass(getKeys(), fields);
 
-		consolidatedProducer(getKeys(), getKeys(), fields, resultClass, null, chunksToConsolidate, null)
+		ConsolidationPlan consolidationPlan = new ConsolidationPlan();
+		consolidatedProducer(getKeys(), getKeys(), fields, resultClass, null, chunksToConsolidate, null, consolidationPlan)
 				.streamTo(new AggregationChunker(eventloop, getKeys(), fields, resultClass,
 						createPartitionPredicate(resultClass), aggregationChunkStorage, metadataStorage,
 						aggregationChunkSize, callback));
+		logger.info("Consolidation plan: {}", consolidationPlan);
 	}
 
 	private <T> StreamProducer<T> consolidatedProducer(List<String> queryKeys, List<String> requestedKeys,
 	                                                   List<String> fields, Class<T> resultClass,
 	                                                   AggregationQuery.Predicates predicates,
 	                                                   List<AggregationChunk> individualChunks,
-	                                                   AggregationQueryPlan queryPlan) {
+	                                                   AggregationQueryPlan queryPlan,
+	                                                   ConsolidationPlan consolidationPlan) {
 		Set<String> fieldsSet = newHashSet(fields);
 		individualChunks = newArrayList(individualChunks);
 		Collections.sort(individualChunks, new Comparator<AggregationChunk>() {
@@ -452,6 +455,9 @@ public class Aggregation {
 
 				if (queryPlan != null)
 					queryPlan.addChunkGroup(newArrayList(requestedFieldsInSequence), sequentialChunkGroup, sorted);
+
+				if (consolidationPlan != null)
+					consolidationPlan.addChunkGroup(newArrayList(requestedFieldsInSequence), sequentialChunkGroup);
 			}
 
 			if (chunk != null) {
