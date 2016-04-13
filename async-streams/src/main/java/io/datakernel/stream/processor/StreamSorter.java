@@ -54,11 +54,13 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 		private final int itemsInMemorySize;
 		private ArrayList<T> list;
 		private StreamForwarder<T> forwarder;
+		private final boolean deduplicate;
 
 		private boolean writing;
 		private int readPartitions;
 
-		protected InputConsumer(Eventloop eventloop, int itemsInMemorySize, Comparator<T> itemComparator, StreamMergeSorterStorage<T> storage, StreamMerger<K, T> merger) {
+		protected InputConsumer(Eventloop eventloop, int itemsInMemorySize, Comparator<T> itemComparator,
+		                        StreamMergeSorterStorage<T> storage, StreamMerger<K, T> merger, boolean deduplicate) {
 			super(eventloop);
 			this.itemsInMemorySize = itemsInMemorySize;
 			this.itemComparator = itemComparator;
@@ -67,6 +69,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 			this.list = new ArrayList<>();
 			this.listOfPartitions = new ArrayList<>();
 			this.forwarder = new StreamForwarder<>(eventloop);
+			this.deduplicate = deduplicate;
 		}
 
 		@Override
@@ -107,6 +110,11 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 				Collections.sort(list, itemComparator);
 				StreamProducer<T> queueProducer = StreamProducers.ofIterable(eventloop, list);
 				list = null;
+
+				if (!deduplicate && listOfPartitions.isEmpty()) {
+					queueProducer.streamTo(forwarder.getInput());
+					return;
+				}
 
 				queueProducer.streamTo(merger.newInput());
 
@@ -210,7 +218,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 		};
 
 		this.inputConsumer = new InputConsumer(eventloop, itemsInMemorySize, itemComparator, storage,
-				StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate));
+				StreamMerger.streamMerger(eventloop, keyFunction, keyComparator, deduplicate), deduplicate);
 	}
 
 	@Override
