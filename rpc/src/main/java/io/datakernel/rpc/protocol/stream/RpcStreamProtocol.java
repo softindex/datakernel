@@ -25,10 +25,13 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.*;
 import io.datakernel.stream.net.TcpStreamSocketConnection;
 import io.datakernel.stream.processor.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.channels.SocketChannel;
 
 abstract class RpcStreamProtocol implements RpcProtocol {
+	private static final Logger logger = LoggerFactory.getLogger(RpcStreamProtocol.class);
 
 	private class Receiver extends AbstractStreamConsumer<RpcMessage> implements StreamDataReceiver<RpcMessage> {
 
@@ -59,6 +62,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onError(Exception e) {
+			logger.error("RpcStreamProtocol was closed with error", e);
 			sender.closeWithError(e);
 		}
 
@@ -121,6 +125,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 
 		@Override
 		protected void onError(Exception e) {
+			// we do not log error here, because it [was logged] / [will be logged] in Receiver
 			receiver.closeWithError(e);
 		}
 	}
