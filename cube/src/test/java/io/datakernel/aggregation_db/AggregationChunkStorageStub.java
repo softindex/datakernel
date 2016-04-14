@@ -91,6 +91,6 @@ public class AggregationChunkStorageStub implements AggregationChunkStorage {
 	public void removeChunk(long id, CompletionCallback callback) {
 		chunkTypes.remove(id);
 		lists.remove(id);
-		callback.onComplete();
+		callback.complete();
 	}
 }

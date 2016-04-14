@@ -108,7 +108,7 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		AsyncFile.open(eventloop, executorService, partitionPath(partition), StreamFileWriter.CREATE_OPTIONS,
 				new ForwardingResultCallback<AsyncFile>(completionCallback) {
 					@Override
-					public void onResult(AsyncFile file) {
+					protected void onResult(AsyncFile file) {
 						StreamFileWriter streamWriter = StreamFileWriter.create(eventloop, file);
 						streamByteChunkerAfter.getOutput().streamTo(streamWriter);
 						streamWriter.setFlushCallback(completionCallback);
@@ -134,24 +134,24 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 
 		AsyncFile.open(eventloop, executorService, partitionPath(partition), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override
-			public void onResult(AsyncFile file) {
+			protected void onResult(AsyncFile file) {
 				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, 0L);
 				fileReader.streamTo(streamDecompressor.getInput());
 				fileReader.setPositionCallback(new ResultCallback<Long>() {
 					@Override
 					public void onResult(Long position) {
-						callback.onComplete();
+						callback.complete();
 					}
 
 					@Override
 					public void onException(Exception e) {
-						callback.onException(e);
+						callback.fireException(e);
 					}
 				});
 			}
 
 			@Override
-			public void onException(Exception e) {
+			protected void onException(Exception e) {
 				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(streamDecompressor.getInput());
 			}
 		});

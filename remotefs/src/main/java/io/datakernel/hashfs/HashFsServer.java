@@ -63,18 +63,18 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 							localReplica.onUploadComplete(fileName);
 						}
 					});
-					callback.onResult(writer);
+					callback.sendResult(writer);
 				}
 
 				@Override
 				public void onException(Exception e) {
 					localReplica.onUploadFailed(fileName);
-					callback.onException(e);
+					callback.fireException(e);
 				}
 			});
 		} else {
 			logger.warn("refused to upload {}", fileName);
-			callback.onException(new Exception("Refused to upload file"));
+			callback.fireException(new Exception("Refused to upload file"));
 		}
 	}
 
@@ -93,18 +93,18 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 							localReplica.onDownloadComplete(fileName);
 						}
 					});
-					callback.onResult(reader);
+					callback.sendResult(reader);
 				}
 
 				@Override
 				public void onException(Exception e) {
 					localReplica.onDownloadFailed(fileName);
-					callback.onException(e);
+					callback.fireException(e);
 				}
 			});
 		} else {
 			logger.warn("refused to download {}", fileName);
-			callback.onException(new Exception("Refused to download file"));
+			callback.fireException(new Exception("Refused to download file"));
 		}
 	}
 
@@ -116,18 +116,18 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 				@Override
 				public void onComplete() {
 					localReplica.onDeleteComplete(fileName);
-					callback.onComplete();
+					callback.complete();
 				}
 
 				@Override
 				public void onException(Exception e) {
 					localReplica.onDeleteFailed(fileName);
-					callback.onException(e);
+					callback.fireException(e);
 				}
 			});
 		} else {
 			logger.warn("refused to delete {}", fileName);
-			callback.onException(new Exception("Refused to delete file"));
+			callback.fireException(new Exception("Refused to delete file"));
 		}
 	}
 

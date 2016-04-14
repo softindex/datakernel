@@ -58,12 +58,12 @@ public class HttpServerRequestGeneratorTest {
 
 		final HttpRequestsGenerator requestsGenerator = new HttpRequestsGenerator(eventloop, generatorOptions, new CompletionCallback() {
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				server.stop();
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				server.stop();
 				System.err.println(exception.toString());
 			}

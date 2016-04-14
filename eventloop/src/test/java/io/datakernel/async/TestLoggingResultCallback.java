@@ -19,7 +19,7 @@ package io.datakernel.async;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class TestLoggingResultCallback<T> implements ResultCallback<T> {
+class TestLoggingResultCallback<T> extends ResultCallback<T> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	int results = 0;

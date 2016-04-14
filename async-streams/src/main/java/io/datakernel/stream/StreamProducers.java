@@ -114,12 +114,12 @@ public class StreamProducers {
 			public void run() {
 				producerGetter.get(new ResultCallback<StreamProducer<T>>() {
 					@Override
-					public void onResult(StreamProducer<T> actualProducer) {
+					protected void onResult(StreamProducer<T> actualProducer) {
 						actualProducer.streamTo(forwarder.getInput());
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						new ClosingWithError<T>(eventloop, exception).streamTo(forwarder.getInput());
 					}
 				});
@@ -425,7 +425,7 @@ public class StreamProducers {
 						public void run() {
 							iterator.next(new IteratorCallback<StreamProducer<T>>() {
 								@Override
-								public void onNext(StreamProducer<T> actualProducer) {
+								protected void onNext(StreamProducer<T> actualProducer) {
 									actualProducer.streamTo(new StreamConsumerDecorator<T>(ForwarderConcat.this.getInput()) {
 										@Override
 										public void onProducerEndOfStream() {
@@ -435,12 +435,12 @@ public class StreamProducers {
 								}
 
 								@Override
-								public void onEnd() {
+								protected void onEnd() {
 									outputProducer.sendEndOfStream();
 								}
 
 								@Override
-								public void onException(Exception e) {
+								protected void onException(Exception e) {
 									closeWithError(e);
 								}
 							});

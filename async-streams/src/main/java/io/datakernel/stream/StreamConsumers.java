@@ -69,12 +69,12 @@ public class StreamConsumers {
 			public void run() {
 				consumerGetter.get(new ResultCallback<StreamConsumer<T>>() {
 					@Override
-					public void onResult(StreamConsumer<T> result) {
+					protected void onResult(StreamConsumer<T> result) {
 						forwarder.getOutput().streamTo(result);
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						forwarder.getOutput().streamTo(new ClosingWithError<T>(eventloop, exception));
 					}
 				});
@@ -93,9 +93,9 @@ public class StreamConsumers {
 				this.callback = callback;
 			} else {
 				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					callback.onComplete();
+					callback.complete();
 				} else {
-					callback.onException(getConsumerException());
+					callback.fireException(getConsumerException());
 				}
 			}
 		}
@@ -108,7 +108,7 @@ public class StreamConsumers {
 		@Override
 		protected void onError(Exception e) {
 			if (callback != null) {
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		}
 
@@ -183,9 +183,9 @@ public class StreamConsumers {
 				this.completionCallback = completionCallback;
 			} else {
 				if (getConsumerStatus() == StreamStatus.END_OF_STREAM) {
-					completionCallback.onComplete();
+					completionCallback.complete();
 				} else {
-					completionCallback.onException(getConsumerException());
+					completionCallback.fireException(getConsumerException());
 				}
 			}
 		}
@@ -206,20 +206,20 @@ public class StreamConsumers {
 		@Override
 		protected void onEndOfStream() {
 			if (completionCallback != null) {
-				completionCallback.onComplete();
+				completionCallback.complete();
 			}
 			if (resultCallback != null) {
-				resultCallback.onResult(list);
+				resultCallback.sendResult(list);
 			}
 		}
 
 		@Override
 		protected void onError(Exception e) {
 			if (completionCallback != null) {
-				completionCallback.onException(e);
+				completionCallback.fireException(e);
 			}
 			if (resultCallback != null) {
-				resultCallback.onException(e);
+				resultCallback.fireException(e);
 			}
 		}
 

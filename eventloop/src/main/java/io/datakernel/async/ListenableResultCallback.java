@@ -20,12 +20,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * This callback contains collection of listeners-ResultCallbacks, on calling onResult/onException this callback
+ * This callback contains collection of listeners-ResultCallbacks, on calling sendResult/fireException this callback
  * it will be call listeners methods too.
  *
  * @param <T> type of result
  */
-public final class ListenableResultCallback<T> implements ResultCallback<T> {
+public final class ListenableResultCallback<T> extends ResultCallback<T> {
 	private List<ResultCallback<T>> listeners = new ArrayList<>();
 	private T result;
 	private Exception exception;
@@ -38,12 +38,12 @@ public final class ListenableResultCallback<T> implements ResultCallback<T> {
 	 */
 	public void addListener(ResultCallback<T> listener) {
 		if (result != null) {
-			listener.onResult(result);
+			listener.sendResult(result);
 			return;
 		}
 
 		if (exception != null) {
-			listener.onException(exception);
+			listener.fireException(exception);
 			return;
 		}
 
@@ -51,32 +51,32 @@ public final class ListenableResultCallback<T> implements ResultCallback<T> {
 	}
 
 	/**
-	 * Sets result to this callback and calls onResult() from all listeners.
+	 * Sets result to this callback and calls sendResult() from all listeners.
 	 *
 	 * @param result result of async operation
 	 */
 	@Override
-	public void onResult(T result) {
+	protected void onResult(T result) {
 		this.result = result;
 
 		for (ResultCallback<T> listener : listeners) {
-			listener.onResult(result);
+			listener.sendResult(result);
 		}
 
 		listeners.clear();
 	}
 
 	/**
-	 * Sets exception to this callback and calls onException() from all listeners.
+	 * Sets exception to this callback and calls fireException() from all listeners.
 	 *
 	 * @param exception exception of async operation
 	 */
 	@Override
-	public void onException(Exception exception) {
+	protected void onException(Exception exception) {
 		this.exception = exception;
 
 		for (ResultCallback<T> listener : listeners) {
-			listener.onException(exception);
+			listener.fireException(exception);
 		}
 
 		listeners.clear();

@@ -57,12 +57,12 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 		setActualProducer(forwarder.getOutput());
 		fileSystem.list(logPartition, new ResultCallback<List<LogFile>>() {
 			@Override
-			public void onResult(List<LogFile> entries) {
+			protected void onResult(List<LogFile> entries) {
 				producerForList(entries).streamTo(forwarder.getInput());
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				new StreamProducers.ClosingWithError<T>(eventloop, exception).streamTo(forwarder.getInput());
 			}
 		});
@@ -90,9 +90,9 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 			@Override
 			public void next(final IteratorCallback<StreamProducer<T>> callback) {
 				if (!it.hasNext()) {
-					callback.onEnd();
+					callback.end();
 					if (positionCallback != null) {
-						positionCallback.onResult(getLogPosition());
+						positionCallback.sendResult(getLogPosition());
 					}
 					return;
 				}
@@ -112,7 +112,7 @@ public class LogStreamProducer<T> extends StreamProducerDecorator<T> {
 				currentDecompressor.getOutput().streamTo(currentDeserializer.getInput());
 				currentDeserializer.getOutput().streamTo(errorIgnoringTransformer.getInput());
 
-				callback.onNext(errorIgnoringTransformer.getOutput());
+				callback.sendNext(errorIgnoringTransformer.getOutput());
 			}
 		});
 	}

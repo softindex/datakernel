@@ -84,7 +84,7 @@ public class RpcStrategyFirstValidResultTest {
 
 		sender.sendRequest(new Object(), 50, callback);
 
-		// despite there are several sender, onResult should be called only once after all senders returned null
+		// despite there are several sender, sendResult should be called only once after all senders returned null
 		assertEquals(null, callback.get());
 	}
 
@@ -169,7 +169,7 @@ public class RpcStrategyFirstValidResultTest {
 	private static final class SenderOnResultWithNullCaller implements RpcSender {
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			callback.onResult(null);
+			callback.sendResult(null);
 		}
 	}
 
@@ -183,7 +183,7 @@ public class RpcStrategyFirstValidResultTest {
 		@SuppressWarnings("unchecked")
 		@Override
 		public <I, O> void sendRequest(I request, int timeout, ResultCallback<O> callback) {
-			callback.onResult((O) data);
+			callback.sendResult((O) data);
 		}
 	}
 

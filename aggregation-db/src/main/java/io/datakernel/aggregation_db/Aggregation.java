@@ -533,7 +533,7 @@ public class Aggregation implements AggregationOperationTracker {
 				new AsyncFunction<AggregationChunk, StreamProducer<Object>>() {
 					@Override
 					public void apply(AggregationChunk chunk, ResultCallback<StreamProducer<Object>> producerCallback) {
-						producerCallback.onResult(chunkReaderWithFilter(predicates, chunk, sequenceClass, classLoader));
+						producerCallback.sendResult(chunkReaderWithFilter(predicates, chunk, sequenceClass, classLoader));
 					}
 				});
 		return StreamProducers.concat(eventloop, producerAsyncIterator);
@@ -634,7 +634,7 @@ public class Aggregation implements AggregationOperationTracker {
 			public void onException(Exception e) {
 				logger.error("Loading chunks for aggregation '{}' before starting min key consolidation failed",
 						Aggregation.this, e);
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 	}
@@ -651,7 +651,7 @@ public class Aggregation implements AggregationOperationTracker {
 			public void onException(Exception e) {
 				logger.error("Loading chunks for aggregation '{}' before starting consolidation of hot segment failed",
 						Aggregation.this, e);
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 	}
@@ -659,7 +659,7 @@ public class Aggregation implements AggregationOperationTracker {
 	private void consolidate(final List<AggregationChunk> chunks, final ResultCallback<Boolean> callback) {
 		if (chunks.isEmpty()) {
 			logger.info("Nothing to consolidate in aggregation '{}", this);
-			callback.onResult(false);
+			callback.sendResult(false);
 			return;
 		}
 
@@ -679,12 +679,12 @@ public class Aggregation implements AggregationOperationTracker {
 												"in aggregation '{}': [{}]. Created chunks ({}): [{}]",
 										chunks.size(), aggregationMetadata, getChunkIds(chunks),
 										consolidatedChunks.size(), getNewChunkIds(consolidatedChunks));
-								callback.onResult(true);
+								callback.sendResult(true);
 							}
 
 							@Override
 							public void onException(Exception e) {
-								callback.onException(e);
+								callback.fireException(e);
 							}
 						});
 					}
@@ -729,7 +729,7 @@ public class Aggregation implements AggregationOperationTracker {
 				loadChunks(loadedChunks, incremental);
 				CompletionCallback currentCallback = loadChunksCallback;
 				loadChunksCallback = null;
-				currentCallback.onComplete();
+				currentCallback.complete();
 			}
 
 			@Override
@@ -737,7 +737,7 @@ public class Aggregation implements AggregationOperationTracker {
 				logger.error("Loading chunks for aggregation {} failed", this, exception);
 				CompletionCallback currentCallback = loadChunksCallback;
 				loadChunksCallback = null;
-				currentCallback.onException(exception);
+				currentCallback.fireException(exception);
 			}
 		});
 	}

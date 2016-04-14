@@ -167,14 +167,14 @@ public final class RequestExecutor {
 
 			consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 				@Override
-				public void onResult(List<QueryResultPlaceholder> results) {
+				protected void onResult(List<QueryResultPlaceholder> results) {
 					processResults(results, resultCallback);
 				}
 
 				@Override
-				public void onException(Exception e) {
+				protected void onException(Exception e) {
 					logger.error("Executing query {} failed.", query, e);
-					resultCallback.onException(e);
+					resultCallback.fireException(e);
 				}
 			});
 		}
@@ -398,7 +398,7 @@ public final class RequestExecutor {
 						}
 					}));
 
-			callback.onResult(buildResult(applyLimitAndOffset(results), totalsPlaceholder, results.size(),
+			callback.sendResult(buildResult(applyLimitAndOffset(results), totalsPlaceholder, results.size(),
 					resultMeasures, filterAttributesPlaceholder));
 		}
 

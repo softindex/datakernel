@@ -19,6 +19,7 @@ package io.datakernel.https;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
@@ -32,6 +33,7 @@ import java.io.File;
 import java.security.SecureRandom;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.http.HttpRequest.post;
@@ -60,7 +62,7 @@ public class TestHttpsClientServer {
 	private AsyncHttpServlet bobServlet = new AsyncHttpServlet() {
 		@Override
 		public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-			callback.onResult(create().body(wrapAscii("Hello, I am Bob!")));
+			callback.sendResult(create().body(wrapAscii("Hello, I am Bob!")));
 		}
 	};
 	private Eventloop eventloop = new Eventloop();
@@ -86,14 +88,14 @@ public class TestHttpsClientServer {
 		client.send(request, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				callback.onResult(decodeAscii(result.getBody()));
+				callback.sendResult(decodeAscii(result.getBody()));
 				server.close();
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.onException(e);
+				callback.fireException(e);
 				server.close();
 				client.close();
 			}
@@ -124,7 +126,7 @@ public class TestHttpsClientServer {
 
 		server.listen();
 
-		final CompletionCallback waitAll = AsyncCallbacks.waitAll(2, new SimpleCompletionCallback() {
+		final WaitAllHandler waitAllHandler = waitAll(2, new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
 				server.close();
@@ -135,27 +137,27 @@ public class TestHttpsClientServer {
 		client.send(httpsRequest, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				callbackHttps.onResult(decodeAscii(result.getBody()));
-				waitAll.onComplete();
+				callbackHttps.sendResult(decodeAscii(result.getBody()));
+				waitAllHandler.getCallback().complete();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callbackHttps.onException(e);
-				waitAll.onException(e);
+				callbackHttps.fireException(e);
+				waitAllHandler.getCallback().fireException(e);
 			}
 		});
 		client.send(httpRequest, 500, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				callbackHttp.onResult(decodeAscii(result.getBody()));
-				waitAll.onComplete();
+				callbackHttp.sendResult(decodeAscii(result.getBody()));
+				waitAllHandler.getCallback().complete();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callbackHttp.onException(e);
-				waitAll.onException(e);
+				callbackHttp.fireException(e);
+				waitAllHandler.getCallback().fireException(e);
 			}
 		});
 

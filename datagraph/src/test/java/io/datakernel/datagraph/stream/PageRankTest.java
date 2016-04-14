@@ -20,6 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Ordering;
 import com.google.common.net.InetAddresses;
+import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.datagraph.dataset.Dataset;
@@ -255,30 +256,30 @@ public class PageRankTest {
 		server1.listen();
 		server2.listen();
 
-		final CompletionCallback waitAllCallback = waitAll(2, new CompletionCallback() {
+		final WaitAllHandler waitAllHandler = waitAll(2, new CompletionCallback() {
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				server1.close();
 				server2.close();
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				onComplete();
+			protected void onException(Exception exception) {
+				complete();
 			}
 		});
 
 		result1.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
-			public void onCompleteOrException() {
-				waitAllCallback.onComplete();
+			protected void onCompleteOrException() {
+				waitAllHandler.getCallback().complete();
 			}
 		});
 
 		result2.setCompletionCallback(new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				waitAllCallback.onComplete();
+				waitAllHandler.getCallback().complete();
 			}
 		});
 

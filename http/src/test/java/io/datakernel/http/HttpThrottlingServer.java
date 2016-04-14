@@ -88,7 +88,7 @@ public class HttpThrottlingServer {
 		return new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.onResult(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
+				callback.sendResult(longBusinessLogic(TEST_RESPONSE, loadBusinessLogic));
 			}
 		});
 	}

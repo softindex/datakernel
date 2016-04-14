@@ -28,7 +28,7 @@ public class AbstractHttpConnectionTest {
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.onResult(createMultiLineHeaderWithInitialBodySpacesResponse());
+				callback.sendResult(createMultiLineHeaderWithInitialBodySpacesResponse());
 			}
 		});
 		server.setListenPort(PORT);

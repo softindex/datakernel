@@ -21,22 +21,25 @@ package io.datakernel.async;
  *
  * @param <T>
  */
-public interface IteratorCallback<T> extends ExceptionCallback {
+public abstract class IteratorCallback<T> extends ExceptionCallback {
+	public final void sendNext(T item) {
+		onNext(item);
+	}
+
 	/**
 	 * Calls after calling next() from iterator, processed received value
 	 *
 	 * @param item received value from iterator
 	 */
-	void onNext(T item);
+	protected abstract void onNext(T item);
 
 	/**
 	 * Calls after ending elements in iterator
 	 */
-	void onEnd();
+	public final void end() {
+		CallbackRegistry.complete(this);
+		onEnd();
+	}
 
-	/**
-	 * Handles the exception from argument
-	 */
-	@Override
-	void onException(Exception e);
+	protected abstract void onEnd();
 }

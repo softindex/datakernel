@@ -333,17 +333,17 @@ public class StreamMemoryReducerTest {
 		assertThat(eventloop, doesntHaveFatals());
 	}
 
-	class CheckCallCallback implements CompletionCallback {
+	class CheckCallCallback extends CompletionCallback {
 		private int onComplete;
 		private int onException;
 
 		@Override
-		public void onComplete() {
+		protected void onComplete() {
 			onComplete++;
 		}
 
 		@Override
-		public void onException(Exception exception) {
+		protected void onException(Exception exception) {
 			onException++;
 		}
 

@@ -25,7 +25,7 @@ import java.util.concurrent.TimeoutException;
  * It is CompletionCallback which has time to live, in this time this callback will work as usual CompletionCallback,
  * after timeout, calling of it will throw TimeoutException.
  */
-public final class CompletionCallbackWithTimeout implements CompletionCallback, AsyncCancellable {
+public final class CompletionCallbackWithTimeout extends CompletionCallback implements AsyncCancellable {
 	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private final CompletionCallback callback;
 	private final ScheduledRunnable timeouter;
@@ -42,23 +42,23 @@ public final class CompletionCallbackWithTimeout implements CompletionCallback, 
 		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {
 			@Override
 			public void run() {
-				callback.onException(TIMEOUT_EXCEPTION);
+				callback.fireException(TIMEOUT_EXCEPTION);
 			}
 		});
 	}
 
 	@Override
-	public void onComplete() {
+	protected void onComplete() {
 		if (!timeouter.isCancelled() && !timeouter.isComplete()) {
-			callback.onComplete();
+			callback.complete();
 			timeouter.cancel();
 		}
 	}
 
 	@Override
-	public void onException(Exception exception) {
+	protected void onException(Exception exception) {
 		if (!timeouter.isCancelled() && !timeouter.isComplete()) {
-			callback.onException(exception);
+			callback.fireException(exception);
 			timeouter.cancel();
 		}
 	}

@@ -60,12 +60,12 @@ public final class CubeAutoReloadingChunks implements EventloopService {
 			public void run() {
 				cube.loadChunks(new CompletionCallback() {
 					@Override
-					public void onComplete() {
+					protected void onComplete() {
 						scheduleChunksRefresh();
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						logger.error("Refreshing chunks failed.");
 						scheduleChunksRefresh();
 					}
@@ -78,14 +78,14 @@ public final class CubeAutoReloadingChunks implements EventloopService {
 	public void start(final CompletionCallback callback) {
 		cube.loadChunks(new CompletionCallback() {
 			@Override
-			public void onComplete() {
-				callback.onComplete();
+			protected void onComplete() {
+				callback.complete();
 				scheduleChunksRefresh();
 			}
 
 			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
+			protected void onException(Exception e) {
+				callback.fireException(e);
 			}
 		});
 	}
@@ -95,6 +95,6 @@ public final class CubeAutoReloadingChunks implements EventloopService {
 		if (scheduledRefreshChunksTask != null)
 			scheduledRefreshChunksTask.cancel();
 
-		callback.onComplete();
+		callback.complete();
 	}
 }

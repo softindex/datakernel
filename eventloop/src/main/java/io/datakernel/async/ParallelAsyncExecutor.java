@@ -55,16 +55,16 @@ public final class ParallelAsyncExecutor implements AsyncExecutor {
 	private CompletionCallback getInternalCallback(final CompletionCallback realCallback) {
 		return new CompletionCallback() {
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				--executing;
-				realCallback.onComplete();
+				realCallback.complete();
 				executeNextTask();
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				--executing;
-				realCallback.onException(exception);
+				realCallback.fireException(exception);
 				executeNextTask();
 			}
 		};

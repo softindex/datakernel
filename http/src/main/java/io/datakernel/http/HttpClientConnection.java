@@ -64,7 +64,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			ResultCallback<HttpResponse> callback = this.callback;
 			this.callback = null;
 			onClosed();
-			callback.onException(e);
+			callback.fireException(e);
 		} else {
 			onClosed();
 		}
@@ -125,7 +125,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.response = null;
 		this.callback = null;
 		// important: process callback before returnToPool!
-		callback.onResult(response);
+		callback.sendResult(response);
 
 		// jmx
 		boolean isHttpsConnection = asyncTcpSocket.getClass() == AsyncSslSocket.class;

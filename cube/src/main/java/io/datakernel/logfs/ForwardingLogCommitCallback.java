@@ -17,10 +17,21 @@
 package io.datakernel.logfs;
 
 import io.datakernel.async.ExceptionCallback;
-import io.datakernel.async.ForwardingCallback;
 
-public abstract class ForwardingLogCommitCallback extends ForwardingCallback implements LogCommitCallback {
+public abstract class ForwardingLogCommitCallback extends LogCommitCallback {
+	private final ExceptionCallback callback;
+
 	public ForwardingLogCommitCallback(ExceptionCallback callback) {
-		super(callback);
+		this.callback = callback;
+	}
+
+	/**
+	 * Redirects the processing exception to other callback
+	 *
+	 * @param exception exception that was throwing
+	 */
+	@Override
+	protected void onException(Exception exception) {
+		callback.fireException(exception);
 	}
 }

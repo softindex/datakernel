@@ -32,8 +32,7 @@ public class ListenableResultCallbackTest {
 		listenableCallback.addListener(callback2);
 		listenableCallback.addListener(callback3);
 
-		listenableCallback.onResult(42);
-		listenableCallback.onResult(11);
+		listenableCallback.sendResult(42);
 
 		assertTrue(callback1.results == 1);
 		assertTrue(callback2.results == 1);
@@ -58,9 +57,7 @@ public class ListenableResultCallbackTest {
 		listenableCallback.addListener(callback3);
 
 		Exception exception1 = new Exception("Exception1");
-		Exception exception2 = new Exception("Exception2");
-		listenableCallback.onException(exception1);
-		listenableCallback.onException(exception2);
+		listenableCallback.fireException(exception1);
 
 		assertTrue(callback1.results == 0);
 		assertTrue(callback2.results == 0);
@@ -80,9 +77,9 @@ public class ListenableResultCallbackTest {
 		ListenableResultCallback<Integer> listenableCallback1 = new ListenableResultCallback<>();
 		ListenableResultCallback<Integer> listenableCallback2 = new ListenableResultCallback<>();
 
-		listenableCallback1.onResult(42);
+		listenableCallback1.sendResult(42);
 		Exception exception1 = new Exception("Exception1");
-		listenableCallback2.onException(exception1);
+		listenableCallback2.fireException(exception1);
 
 		listenableCallback1.addListener(simpleCallback1);
 		listenableCallback2.addListener(simpleCallback2);

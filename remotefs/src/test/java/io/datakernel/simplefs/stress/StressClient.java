@@ -254,7 +254,7 @@ class StressClient {
 					StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, downloads.resolve(name));
 					producer.streamTo(writer);
 				} catch (IOException e) {
-					this.onException(e);
+					this.fireException(e);
 				}
 			}
 

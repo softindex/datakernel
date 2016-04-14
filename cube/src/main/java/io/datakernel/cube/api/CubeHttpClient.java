@@ -62,27 +62,27 @@ public final class CubeHttpClient {
 				try {
 					response = ByteBufStrings.decodeUtf8(httpResponse.getBody());
 				} catch (ParseException e) {
-					callback.onException(new ParseException("Cube HTTP query failed. Invalid data received", e));
+					callback.fireException(new ParseException("Cube HTTP query failed. Invalid data received", e));
 					return;
 				}
 
 				if (httpResponse.getCode() != 200) {
-					callback.onException(new ParseException("Cube HTTP query failed. Response code: "
+					callback.fireException(new ParseException("Cube HTTP query failed. Response code: "
 							+ httpResponse.getCode() + " Body: " + response));
 					return;
 				}
 
 				try {
 					ReportingQueryResult result = gson.fromJson(response, ReportingQueryResult.class);
-					callback.onResult(result);
+					callback.sendResult(result);
 				} catch (RuntimeException e) {
-					callback.onException(new ParseException("Could not parse cube HTTP query response", e));
+					callback.fireException(new ParseException("Could not parse cube HTTP query response", e));
 				}
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.onException(new ParseException("Cube HTTP request failed", e));
+				callback.fireException(new ParseException("Cube HTTP request failed", e));
 			}
 		});
 	}

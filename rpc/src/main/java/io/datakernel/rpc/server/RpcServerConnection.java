@@ -68,7 +68,7 @@ public final class RpcServerConnection implements RpcConnection, JmxRefreshable 
 	private void apply(Object request, ResultCallback<Object> callback) {
 		RpcRequestHandler requestHandler = handlers.get(request.getClass());
 		if (requestHandler == null) {
-			callback.onException(new ParseException("Failed to process request " + request));
+			callback.fireException(new ParseException("Failed to process request " + request));
 			return;
 		}
 		requestHandler.run(request, callback);

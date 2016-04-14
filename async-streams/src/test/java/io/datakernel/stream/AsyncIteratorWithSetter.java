@@ -49,10 +49,10 @@ public class AsyncIteratorWithSetter<T> implements AsyncIterator<T> {
 	@Override
 	public void next(IteratorCallback<T> callback) {
 		if (next != null) {
-			fireNext(callback, next);
+			sendNext(callback, next);
 			this.next = null;
 		} else if (end) {
-			fireEnd(callback);
+			end(callback);
 		} else if (exception != null) {
 			fireException(callback, exception);
 			this.exception = null;
@@ -61,20 +61,20 @@ public class AsyncIteratorWithSetter<T> implements AsyncIterator<T> {
 		}
 	}
 
-	private void fireNext(final IteratorCallback<T> callback, final T next) {
+	private void sendNext(final IteratorCallback<T> callback, final T next) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onNext(next);
+				callback.sendNext(next);
 			}
 		});
 	}
 
-	private void fireEnd(final IteratorCallback<T> callback) {
+	private void end(final IteratorCallback<T> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onEnd();
+				callback.end();
 			}
 		});
 	}
@@ -83,7 +83,7 @@ public class AsyncIteratorWithSetter<T> implements AsyncIterator<T> {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onException(exception);
+				callback.fireException(exception);
 			}
 		});
 	}
@@ -92,7 +92,7 @@ public class AsyncIteratorWithSetter<T> implements AsyncIterator<T> {
 		checkState(next == null && !end && exception == null);
 		checkNotNull(item);
 		if (callback != null) {
-			fireNext(callback, item);
+			sendNext(callback, item);
 			callback = null;
 		} else {
 			this.next = item;
@@ -102,7 +102,7 @@ public class AsyncIteratorWithSetter<T> implements AsyncIterator<T> {
 	public void onEnd() {
 		checkState(next == null && !end && exception == null);
 		if (callback != null) {
-			fireEnd(callback);
+			end(callback);
 			callback = null;
 		} else {
 			this.end = true;

@@ -76,7 +76,7 @@ public class RpcBinaryProtocolTest {
 				.on(String.class, new RpcRequestHandler<String, String>() {
 					@Override
 					public void run(String request, ResultCallback<String> callback) {
-						callback.onResult("Hello, " + request + "!");
+						callback.sendResult("Hello, " + request + "!");
 					}
 				})
 				.setListenAddress(address);
@@ -132,7 +132,7 @@ public class RpcBinaryProtocolTest {
 
 			@Override
 			public void onException(Exception e) {
-				resultsObserver.onException(e);
+				resultsObserver.fireException(e);
 			}
 		});
 

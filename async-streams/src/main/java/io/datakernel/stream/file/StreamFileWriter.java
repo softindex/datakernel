@@ -83,12 +83,12 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 	public void setFlushCallback(CompletionCallback flushCallback) {
 		if (queue.isEmpty() && !pendingAsyncOperation) {
 			if (getConsumerStatus() == END_OF_STREAM) {
-				flushCallback.onComplete();
+				flushCallback.complete();
 				return;
 			}
 
 			if (getConsumerStatus() == CLOSED_WITH_ERROR) {
-				flushCallback.onException(getConsumerException());
+				flushCallback.fireException(getConsumerException());
 				return;
 			}
 		}
@@ -110,7 +110,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 		final int length = buf.headRemaining();
 		asyncFile.writeFully(buf, position, new CompletionCallback() {
 			@Override
-			public void onComplete() {
+			protected void onComplete() {
 				logger.trace("{}: completed flush", StreamFileWriter.this);
 				position += length;
 				buf.recycle();
@@ -122,7 +122,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			}
 
 			@Override
-			public void onException(final Exception e) {
+			protected void onException(final Exception e) {
 				logger.error("{}: failed to flush", StreamFileWriter.this, e);
 				buf.recycle();
 				doCleanup(false, new SimpleCompletionCallback() {
@@ -151,16 +151,16 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			pendingAsyncOperation = true;
 			doCleanup(forceOnClose, new CompletionCallback() {
 				@Override
-				public void onComplete() {
+				protected void onComplete() {
 					pendingAsyncOperation = false;
 					logger.info("{}: finished writing", StreamFileWriter.this);
 					if (flushCallback != null) {
-						flushCallback.onComplete();
+						flushCallback.complete();
 					}
 				}
 
 				@Override
-				public void onException(Exception e) {
+				protected void onException(Exception e) {
 					pendingAsyncOperation = false;
 					closeWithError(new Exception("Can't do cleanup for file\t" + asyncFile));
 				}
@@ -210,7 +210,7 @@ public final class StreamFileWriter extends AbstractStreamConsumer<ByteBuf> impl
 			protected void onCompleteOrException() {
 				pendingAsyncOperation = false;
 				if (flushCallback != null)
-					flushCallback.onException(e);
+					flushCallback.fireException(e);
 			}
 		});
 	}

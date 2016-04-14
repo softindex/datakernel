@@ -76,13 +76,13 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 			@Override
 			public void onResult(List<AggregationChunk.NewChunk> result) {
 				operationTracker.reportCompletion(AggregationGroupReducer.this);
-				chunksCallback.onResult(result);
+				chunksCallback.sendResult(result);
 			}
 
 			@Override
 			public void onException(Exception e) {
 				operationTracker.reportCompletion(AggregationGroupReducer.this);
-				chunksCallback.onException(e);
+				chunksCallback.fireException(e);
 			}
 		});
 		this.classLoader = classLoader;
@@ -145,7 +145,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 				partitionPredicate, storage, metadataStorage, chunkSize, classLoader,
 				new ResultCallback<List<AggregationChunk.NewChunk>>() {
 					@Override
-					public void onResult(List<AggregationChunk.NewChunk> newChunks) {
+					protected void onResult(List<AggregationChunk.NewChunk> newChunks) {
 						resultsTracker.completeWithResults(newChunks);
 
 						if (resultsTracker.getOperationsCount() <= MAX_OUTPUT_STREAMS)
@@ -153,7 +153,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 					}
 
 					@Override
-					public void onException(Exception e) {
+					protected void onException(Exception e) {
 						logger.error("Streaming to chunker failed", e);
 						closeWithError(e);
 						resultsTracker.completeWithException(e);

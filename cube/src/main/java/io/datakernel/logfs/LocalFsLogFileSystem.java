@@ -131,7 +131,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 			});
 		} catch (RejectedExecutionException e) {
 			concurrentOperationTracker.complete();
-			callback.onException(e);
+			callback.fireException(e);
 		}
 	}
 
@@ -139,13 +139,13 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	public void read(String logPartition, LogFile logFile, final long startPosition, final StreamConsumer<ByteBuf> consumer) {
 		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override
-			public void onResult(AsyncFile file) {
+			protected void onResult(AsyncFile file) {
 				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, startPosition);
 				fileReader.streamTo(consumer);
 			}
 
 			@Override
-			public void onException(Exception e) {
+			protected void onException(Exception e) {
 				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(consumer);
 			}
 		});
@@ -155,7 +155,7 @@ public final class LocalFsLogFileSystem extends AbstractLogFileSystem {
 	public void write(String logPartition, LogFile logFile, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
 		AsyncFile.open(eventloop, executorService, path(logPartition, logFile), StreamFileWriter.CREATE_OPTIONS, new ForwardingResultCallback<AsyncFile>(callback) {
 			@Override
-			public void onResult(AsyncFile file) {
+			protected void onResult(AsyncFile file) {
 				StreamFileWriter fileWriter = StreamFileWriter.create(eventloop, file, true);
 				producer.streamTo(fileWriter);
 				fileWriter.setFlushCallback(callback);

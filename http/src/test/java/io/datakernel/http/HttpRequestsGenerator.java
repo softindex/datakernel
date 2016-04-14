@@ -206,7 +206,7 @@ public final class HttpRequestsGenerator {
 		if (!options.permanentProcess()) {
 			if (scheduleTimeMillis != 0 &&
 					(scheduleTimeMillis >= endTimestamp || sentRequests >= (options.processTimeSeconds() * options.requestsPerSecond()))) {
-				completionCallback.onComplete();
+				completionCallback.complete();
 				return;
 			}
 		}

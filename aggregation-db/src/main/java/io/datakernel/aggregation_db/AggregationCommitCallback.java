@@ -24,7 +24,7 @@ import java.util.List;
 
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 
-public class AggregationCommitCallback implements ResultCallback<List<AggregationChunk.NewChunk>> {
+public class AggregationCommitCallback extends ResultCallback<List<AggregationChunk.NewChunk>> {
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
 	private final Aggregation aggregation;

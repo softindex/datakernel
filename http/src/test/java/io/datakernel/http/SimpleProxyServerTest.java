@@ -55,14 +55,14 @@ public class SimpleProxyServerTest {
 			public void serveAsync(HttpRequest request, final Callback callback) {
 				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
 					@Override
-					public void onResult(final HttpResponse result) {
+					protected void onResult(final HttpResponse result) {
 						HttpResponse res = HttpResponse.create(result.getCode());
 						res.body(encodeAscii("FORWARDED: " + decodeAscii(result.getBody())));
-						callback.onResult(res);
+						callback.sendResult(res);
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						callback.onHttpError(new HttpServletError(500, exception));
 					}
 				});
@@ -75,7 +75,7 @@ public class SimpleProxyServerTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.create().body(encodeAscii(request.getUrl().getPathAndQuery()));
-				callback.onResult(content);
+				callback.sendResult(content);
 			}
 
 		});

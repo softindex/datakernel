@@ -16,18 +16,16 @@
 
 package io.datakernel.async;
 
-import io.datakernel.annotation.Nullable;
+import java.util.concurrent.ConcurrentHashMap;
 
-public abstract class SimpleResultCallback<T> extends ResultCallback<T> {
-	protected abstract void onResultOrException(@Nullable T result);
+public final class CallbackRegistry {
+	private static final ConcurrentHashMap<Object, Long> REGISTRY = new ConcurrentHashMap<>();
 
-	@Override
-	protected void onResult(T result) {
-		onResultOrException(result);
+	public static void register(Object callback) {
+		assert REGISTRY.put(callback, System.currentTimeMillis()) == null : "Callback " + callback + " has already been registered";
 	}
 
-	@Override
-	protected void onException(Exception exception) {
-		onResultOrException(null);
+	public static void complete(Object callback) {
+		assert REGISTRY.remove(callback) != null : "Callback " + callback + " has already been completed";
 	}
 }

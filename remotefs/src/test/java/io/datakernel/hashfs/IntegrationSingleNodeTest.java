@@ -18,6 +18,7 @@ package io.datakernel.hashfs;
 
 import io.datakernel.FsClient;
 import io.datakernel.async.*;
+import io.datakernel.async.AsyncCallbacks.WaitAllHandler;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.StreamConsumer;
@@ -44,6 +45,7 @@ import java.util.concurrent.ExecutorService;
 import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.async.AsyncCallbacks.waitAll;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.helper.TestUtils.doesntHaveFatals;
 import static io.datakernel.stream.StreamProducers.ofValue;
@@ -136,13 +138,13 @@ public class IntegrationSingleNodeTest {
 		client.upload("non_existing_file.txt", producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
-				callback.onComplete();
+				callback.complete();
 				server.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.onException(e);
+				callback.fireException(e);
 				server.close();
 			}
 		});
@@ -170,7 +172,7 @@ public class IntegrationSingleNodeTest {
 		HashFsClient client = createClient(eventloop);
 		StreamFileWriter consumerD = create(eventloop, executor, clientStorage.resolve("d_downloaded.txt"));
 		StreamFileWriter consumerG = create(eventloop, executor, clientStorage.resolve("g_downloaded.txt"));
-		CompletionCallback waitAll = AsyncCallbacks.waitAll(2, new CompletionCallback() {
+		WaitAllHandler waitAllHandler = waitAll(2, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				server.close();
@@ -181,8 +183,8 @@ public class IntegrationSingleNodeTest {
 				server.close();
 			}
 		});
-		consumerD.setFlushCallback(waitAll);
-		consumerG.setFlushCallback(waitAll);
+		consumerD.setFlushCallback(waitAllHandler.getCallback());
+		consumerG.setFlushCallback(waitAllHandler.getCallback());
 
 		server.listen();
 		client.download("this/g.txt", 0, streamTo(eventloop, consumerG));
@@ -274,13 +276,13 @@ public class IntegrationSingleNodeTest {
 			@Override
 			public void onComplete() {
 				server.close();
-				callback.onComplete();
+				callback.complete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				server.close();
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 		eventloop.run();

@@ -16,6 +16,7 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.CallbackRegistry;
 import io.datakernel.async.ParseException;
 
 /**
@@ -23,10 +24,24 @@ import io.datakernel.async.ParseException;
  * Receives {@link HttpRequest},  creates {@link HttpResponse} and sends it.
  */
 public interface AsyncHttpServlet {
-	interface Callback {
-		void onResult(HttpResponse httpResponse);
+	abstract class Callback {
+		public Callback() {
+			CallbackRegistry.register(this);
+		}
 
-		void onHttpError(HttpServletError httpServletError);
+		public final void sendResult(HttpResponse httpResponse) {
+			CallbackRegistry.complete(this);
+			onResult(httpResponse);
+		}
+
+		public final void sendHttpError(HttpServletError httpServletError) {
+			CallbackRegistry.complete(this);
+			onHttpError(httpServletError);
+		}
+
+		protected abstract void onResult(HttpResponse httpResponse);
+
+		protected abstract void onHttpError(HttpServletError httpServletError);
 	}
 
 	interface HttpErrorFormatter {

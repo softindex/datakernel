@@ -68,13 +68,13 @@ public class TestHttpsClient {
 		client.send(get(url), 5000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				callback.onResult(result.getCode());
+				callback.sendResult(result.getCode());
 				client.close();
 			}
 
 			@Override
 			public void onException(Exception e) {
-				callback.onException(e);
+				callback.fireException(e);
 				client.close();
 			}
 		});

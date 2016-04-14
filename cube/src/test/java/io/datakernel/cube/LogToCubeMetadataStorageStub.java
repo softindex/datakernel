@@ -57,7 +57,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 			logPositionMap.put(partition, new LogPosition());
 		}
 		logPositionMap.putAll(ensureLogPositions(log));
-		callback.onResult(filterKeys(logPositionMap, in(partitions)));
+		callback.sendResult(filterKeys(logPositionMap, in(partitions)));
 	}
 
 	@Override
@@ -68,7 +68,7 @@ public final class LogToCubeMetadataStorageStub implements LogToCubeMetadataStor
 	                       CompletionCallback callback) {
 		Map<String, LogPosition> logPositionMap = ensureLogPositions(log);
 		logPositionMap.putAll(newPositions);
-		callback.onComplete();
+		callback.complete();
 		for (Map.Entry<AggregationMetadata, AggregationChunk.NewChunk> entry : newChunks.entries()) {
 			AggregationChunk.NewChunk newChunk = entry.getValue();
 			String aggregationId = idMap.get(entry.getKey());

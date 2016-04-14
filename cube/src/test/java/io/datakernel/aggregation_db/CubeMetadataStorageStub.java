@@ -40,7 +40,7 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 		return new AggregationMetadataStorage() {
 			@Override
 			public void createChunkId(ResultCallback<Long> callback) {
-				callback.onResult(++chunkId);
+				callback.sendResult(++chunkId);
 			}
 
 			@Override
@@ -50,7 +50,7 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 
 			@Override
 			public void startConsolidation(List<AggregationChunk> chunksToConsolidate, CompletionCallback callback) {
-				callback.onComplete();
+				callback.complete();
 			}
 
 			@Override
@@ -60,7 +60,7 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 				if (newChunks == null)
 					newChunks = new ArrayList<>();
 
-				callback.onResult(new LoadedChunks(lastRevisionId + 1, Collections.<Long>emptyList(),
+				callback.sendResult(new LoadedChunks(lastRevisionId + 1, Collections.<Long>emptyList(),
 						Collections2.transform(newChunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
 							@Override
 							public AggregationChunk apply(AggregationChunk.NewChunk input) {
@@ -71,7 +71,7 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 
 			@Override
 			public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
-				callback.onComplete();
+				callback.complete();
 			}
 		};
 	}
@@ -94,11 +94,11 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 			})));
 		}
 
-		callback.onResult(new CubeLoadedChunks(lastRevisionId + 1, Collections.<String, List<Long>>emptyMap(), newChunks));
+		callback.sendResult(new CubeLoadedChunks(lastRevisionId + 1, Collections.<String, List<Long>>emptyMap(), newChunks));
 	}
 
 	public void doSaveChunk(String aggregationId, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		tmpChunks.put(aggregationId, newChunks);
-		callback.onComplete();
+		callback.complete();
 	}
 }

@@ -19,7 +19,7 @@ package io.datakernel.async;
 /**
  * This callback is wrapper over other callback. It redirects callings to it to other callback.
  */
-public abstract class ForwardingCallback implements ExceptionCallback {
+public abstract class ForwardingCallback extends ExceptionCallback {
 	private final ExceptionCallback callback;
 
 	/**
@@ -37,7 +37,7 @@ public abstract class ForwardingCallback implements ExceptionCallback {
 	 * @param exception exception that was throwing
 	 */
 	@Override
-	public void onException(Exception exception) {
-		callback.onException(exception);
+	protected void onException(Exception exception) {
+		callback.fireException(exception);
 	}
 }

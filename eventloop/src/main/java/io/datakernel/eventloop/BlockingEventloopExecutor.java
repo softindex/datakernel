@@ -35,12 +35,12 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 
 	private final CompletionCallback completionCallback = new CompletionCallback() {
 		@Override
-		public void onComplete() {
+		protected void onComplete() {
 			complete();
 		}
 
 		@Override
-		public void onException(Exception exception) {
+		protected void onException(Exception exception) {
 			complete();
 		}
 	};
@@ -75,7 +75,7 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 		try {
 			post(runnable);
 		} catch (InterruptedException e) {
-			future.onException(e);
+			future.fireException(e);
 		}
 	}
 
@@ -142,9 +142,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 				}
 				complete();
 				if (exception == null) {
-					future.onResult(result);
+					future.sendResult(result);
 				} else {
-					future.onException(exception);
+					future.fireException(exception);
 				}
 			}
 		}, future);
@@ -159,15 +159,15 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 			public void run() {
 				asyncTask.execute(new CompletionCallback() {
 					@Override
-					public void onComplete() {
+					protected void onComplete() {
 						complete();
-						future.onResult(result);
+						future.sendResult(result);
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						complete();
-						future.onException(exception);
+						future.fireException(exception);
 					}
 				});
 			}
@@ -190,9 +190,9 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 				}
 				complete();
 				if (exception == null) {
-					future.onResult(result);
+					future.sendResult(result);
 				} else {
-					future.onException(exception);
+					future.fireException(exception);
 				}
 			}
 		}, future);
@@ -207,15 +207,15 @@ public final class BlockingEventloopExecutor implements EventloopExecutor {
 			public void run() {
 				asyncCallable.call(new ResultCallback<T>() {
 					@Override
-					public void onResult(T result) {
+					protected void onResult(T result) {
 						complete();
-						future.onResult(result);
+						future.sendResult(result);
 					}
 
 					@Override
-					public void onException(Exception exception) {
+					protected void onException(Exception exception) {
 						complete();
-						future.onException(exception);
+						future.fireException(exception);
 					}
 				});
 			}

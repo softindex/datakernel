@@ -86,12 +86,12 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			FirstResultCallback<O> resultCallback
 					= new FirstResultCallback<>(callback, (ResultValidator<O>) resultValidator, subSenders.length, noValidResultException);
 			for (RpcSender sender : subSenders) {
-				sender.sendRequest(request, timeout, resultCallback);
+				sender.sendRequest(request, timeout, resultCallback.getCallback());
 			}
 		}
 	}
 
-	private static final class FirstResultCallback<T> implements ResultCallback<T> {
+	private static final class FirstResultCallback<T> {
 		private final ResultCallback<T> resultCallback;
 		private final ResultValidator<T> resultValidator;
 		private final Exception noValidResultException;
@@ -110,23 +110,27 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			this.noValidResultException = noValidResultException;
 		}
 
-		@Override
-		public final void onResult(T result) {
-			--expectedCalls;
-			if (!hasResult && resultValidator.isValidResult(result)) {
-				this.result = result;  // first valid result
-				this.hasResult = true;
-			}
-			processResult();
-		}
+		public ResultCallback<T> getCallback() {
+			return new ResultCallback<T>() {
+				@Override
+				protected void onResult(T result) {
+					--expectedCalls;
+					if (!hasResult && resultValidator.isValidResult(result)) {
+						FirstResultCallback.this.result = result;  // first valid result
+						FirstResultCallback.this.hasResult = true;
+					}
+					processResult();
+				}
 
-		@Override
-		public final void onException(Exception exception) {
-			--expectedCalls;
-			if (!hasResult) {
-				this.exception = exception; // last Exception
-			}
-			processResult();
+				@Override
+				protected void onException(Exception exception) {
+					--expectedCalls;
+					if (!hasResult) {
+						FirstResultCallback.this.exception = exception; // last Exception
+					}
+					processResult();
+				}
+			};
 		}
 
 		private boolean resultReady() {
@@ -139,13 +143,13 @@ public final class RpcStrategyFirstValidResult implements RpcStrategy {
 			}
 			complete = true;
 			if (hasResult) {
-				resultCallback.onResult(result);
+				resultCallback.sendResult(result);
 			} else {
 				resolveException();
 				if (exception == null) {
-					resultCallback.onResult(null);
+					resultCallback.sendResult(null);
 				} else {
-					resultCallback.onException(exception);
+					resultCallback.fireException(exception);
 				}
 			}
 		}

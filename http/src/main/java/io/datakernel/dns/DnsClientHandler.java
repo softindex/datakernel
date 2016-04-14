@@ -61,9 +61,9 @@ public final class DnsClientHandler implements AsyncUdpSocket {
 
 				if (callback != null) {
 					if (dnsQueryResult.isSuccessful()) {
-						callback.onResult(dnsQueryResult);
+						callback.sendResult(dnsQueryResult);
 					} else {
-						callback.onException(dnsQueryResult.getException());
+						callback.fireException(dnsQueryResult.getException());
 					}
 				}
 			} catch (DnsResponseParseException e) {
@@ -121,7 +121,7 @@ public final class DnsClientHandler implements AsyncUdpSocket {
 		ResultCallback<DnsQueryResult> timeoutProcessingCallback = new ResultCallback<DnsQueryResult>() {
 			@Override
 			public void onResult(DnsQueryResult result) {
-				callback.onResult(result);
+				callback.sendResult(result);
 			}
 
 			@Override
@@ -129,7 +129,7 @@ public final class DnsClientHandler implements AsyncUdpSocket {
 				if (exception instanceof TimeoutException)
 					resultHandlers.remove(domainName);
 
-				callback.onException(exception);
+				callback.fireException(exception);
 			}
 		};
 

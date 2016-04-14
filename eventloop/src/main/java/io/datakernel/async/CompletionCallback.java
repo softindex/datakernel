@@ -19,11 +19,14 @@ package io.datakernel.async;
 /**
  * Callback which calling after completing some action.
  */
-public interface CompletionCallback extends ExceptionCallback {
-
+public abstract class CompletionCallback extends ExceptionCallback {
 	/**
 	 * Called after completing some action. This method can handle some completed action.
 	 */
-	void onComplete();
+	public final void complete() {
+		CallbackRegistry.complete(this);
+		onComplete();
+	}
 
+	protected abstract void onComplete();
 }

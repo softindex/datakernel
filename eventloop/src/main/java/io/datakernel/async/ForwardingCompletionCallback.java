@@ -17,16 +17,28 @@
 package io.datakernel.async;
 
 /**
- * This callback is wrapper over other callback. It redirects callings onException and onResult to
+ * This callback is wrapper over other callback. It redirects callings fireException and sendResult to
  * it to other callback.
  */
-public abstract class ForwardingCompletionCallback extends ForwardingCallback implements CompletionCallback {
+public abstract class ForwardingCompletionCallback extends CompletionCallback {
+	private final ExceptionCallback callback;
+
 	/**
 	 * Creates a new instance of ForwardingCompletionCallback with other callback
 	 *
 	 * @param callback callback for redirecting
 	 */
 	public ForwardingCompletionCallback(ExceptionCallback callback) {
-		super(callback);
+		this.callback = callback;
+	}
+
+	/**
+	 * Redirects the processing exception to other callback
+	 *
+	 * @param exception exception that was throwing
+	 */
+	@Override
+	protected void onException(Exception exception) {
+		callback.fireException(exception);
 	}
 }

@@ -86,10 +86,10 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		Path path = path(id);
 		try {
 			Files.delete(path);
-			callback.onComplete();
+			callback.complete();
 		} catch (IOException e) {
 			logger.error("delete error", e);
-			callback.onException(e);
+			callback.fireException(e);
 		}
 	}
 
@@ -104,13 +104,13 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 		AsyncFile.open(eventloop, executorService, path(id), new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {
 			@Override
-			public void onResult(AsyncFile file) {
+			protected void onResult(AsyncFile file) {
 				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, 0L);
 				fileReader.streamTo(decompressor.getInput());
 			}
 
 			@Override
-			public void onException(Exception e) {
+			protected void onException(Exception e) {
 				StreamProducers.<ByteBuf>closingWithError(eventloop, e).streamTo(decompressor.getInput());
 			}
 		});
@@ -133,7 +133,7 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 		AsyncFile.open(eventloop, executorService, path(id), StreamFileWriter.CREATE_OPTIONS,
 				new ForwardingResultCallback<AsyncFile>(callback) {
 					@Override
-					public void onResult(AsyncFile file) {
+					protected void onResult(AsyncFile file) {
 						StreamFileWriter writer = StreamFileWriter.create(eventloop, file, true);
 						compressor.getOutput().streamTo(writer);
 						writer.setFlushCallback(callback);

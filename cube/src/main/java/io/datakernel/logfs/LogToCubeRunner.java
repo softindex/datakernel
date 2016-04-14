@@ -81,7 +81,7 @@ public final class LogToCubeRunner<T> {
 	public void processLog(final CompletionCallback callback) {
 		metadataStorage.loadLogPositions(log, partitions, new ForwardingResultCallback<Map<String, LogPosition>>(callback) {
 			@Override
-			public void onResult(Map<String, LogPosition> positions) {
+			protected void onResult(Map<String, LogPosition> positions) {
 				processLog_gotPositions(positions, callback);
 			}
 		});
@@ -93,7 +93,7 @@ public final class LogToCubeRunner<T> {
 		final AggregatorSplitter<T> aggregator = aggregatorSplitterFactory.create(eventloop);
 		LogCommitTransaction<T> logCommitTransaction = new LogCommitTransaction<>(eventloop, logManager, log, positions, new ForwardingLogCommitCallback(callback) {
 			@Override
-			public void onCommit(String log, Map<String, LogPosition> oldPositions,
+			protected void handleCommit(String log, Map<String, LogPosition> oldPositions,
 			                     Map<String, LogPosition> newPositions,
 			                     Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks) {
 				processLog_doCommit(log, oldPositions, newPositions, newChunks, callback);
@@ -135,7 +135,7 @@ public final class LogToCubeRunner<T> {
 		metadataStorage.saveCommit(log, idMap, oldPositions, newPositions, newChunks,
 				new ForwardingCompletionCallback(callback) {
 					@Override
-					public void onComplete() {
+					protected void onComplete() {
 						logger.info("Completed saving commit to metadata storage. Log: {}", log);
 						processLog_afterCommit(newChunks, callback);
 					}
@@ -144,6 +144,6 @@ public final class LogToCubeRunner<T> {
 
 	private void processLog_afterCommit(Multimap<AggregationMetadata, AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {
 		logger.trace("processLog_afterCommit called. New chunks: {}", newChunks);
-		callback.onComplete();
+		callback.complete();
 	}
 }

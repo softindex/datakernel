@@ -124,7 +124,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			callback.onException(closedException);
+			callback.fireException(closedException);
 			return;
 		}
 
@@ -138,7 +138,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
-			callback.onException(closedException);
+			callback.fireException(closedException);
 			return;
 		}
 
@@ -152,7 +152,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 		writeCallbacks.clear();
 		if (closedException != null) {
-			callback.onException(closedException);
+			callback.fireException(closedException);
 			return;
 		}
 
@@ -164,7 +164,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		checkState(this.socketReader == null && this.receiveMessageCallback == null);
 
 		if (closedException != null) {
-			callback.onException(closedException);
+			callback.fireException(closedException);
 			return;
 		}
 
@@ -258,7 +258,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			List<CompletionCallback> callbacks = this.writeCallbacks;
 			writeCallbacks = new ArrayList<>();
 			for (CompletionCallback callback : callbacks) {
-				callback.onComplete();
+				callback.complete();
 			}
 			if (writeEndOfStreamRequest)
 				writeDone = true;
@@ -286,7 +286,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			receiveMessageCallback.onException(e);
 		} else if (!writeCallbacks.isEmpty()) {
 			for (CompletionCallback writeCallback : writeCallbacks) {
-				writeCallback.onException(e);
+				writeCallback.fireException(e);
 			}
 		}
 

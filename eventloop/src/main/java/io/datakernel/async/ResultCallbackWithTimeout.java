@@ -26,7 +26,7 @@ import java.util.concurrent.TimeoutException;
  *
  * @param <T> type of received result
  */
-public final class ResultCallbackWithTimeout<T> implements ResultCallback<T>, AsyncCancellable {
+public final class ResultCallbackWithTimeout<T> extends ResultCallback<T> implements AsyncCancellable {
 	public static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private final ResultCallback<T> callback;
 	private final ScheduledRunnable timeouter;
@@ -44,24 +44,24 @@ public final class ResultCallbackWithTimeout<T> implements ResultCallback<T>, As
 		timeouter = eventloop.schedule(eventloop.currentTimeMillis() + timeoutMillis, new Runnable() {
 			@Override
 			public void run() {
-				callback.onException(TIMEOUT_EXCEPTION);
+				callback.fireException(TIMEOUT_EXCEPTION);
 			}
 		});
 	}
 
 	@Override
-	public void onResult(T result) {
+	protected void onResult(T result) {
 		if (!timeouter.isCancelled() && !timeouter.isComplete()) {
 			timeouter.cancel();
-			callback.onResult(result);
+			callback.sendResult(result);
 		}
 	}
 
 	@Override
-	public void onException(Exception exception) {
+	protected void onException(Exception exception) {
 		if (!timeouter.isCancelled() && !timeouter.isComplete()) {
 			timeouter.cancel();
-			callback.onException(exception);
+			callback.fireException(exception);
 		}
 	}
 

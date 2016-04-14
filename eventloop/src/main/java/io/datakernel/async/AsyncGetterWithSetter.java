@@ -26,7 +26,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
  *
  * @param <T> type of result
  */
-public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCallback<T> {
+public final class AsyncGetterWithSetter<T> extends ResultCallback<T> implements AsyncGetter<T> {
 
 	private final Eventloop eventloop;
 	private T result;
@@ -41,11 +41,11 @@ public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCal
 		this.eventloop = eventloop;
 	}
 
-	private void fireResult() {
+	private void sendResult() {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onResult(AsyncGetterWithSetter.this.result);
+				callback.sendResult(AsyncGetterWithSetter.this.result);
 			}
 		});
 	}
@@ -54,34 +54,34 @@ public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCal
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
-				callback.onException(AsyncGetterWithSetter.this.exception);
+				callback.fireException(AsyncGetterWithSetter.this.exception);
 			}
 		});
 	}
 
 	/**
-	 * Handles result, saves it in this instance and if there is callback, posts calling its onResult() to
+	 * Handles result, saves it in this instance and if there is callback, posts calling its sendResult() to
 	 * Eventloop
 	 *
 	 * @param result received result
 	 */
 	@Override
-	public void onResult(T result) {
+	protected void onResult(T result) {
 		check(this.result == null && exception == null);
 		this.result = checkNotNull(result);
 		if (callback != null) {
-			fireResult();
+			sendResult();
 		}
 	}
 
 	/**
 	 * Handles exception , saves it in this instance and if there is callback, posts calling its
-	 * onException() to Eventloop
+	 * fireException() to Eventloop
 	 *
 	 * @param exception exception that was throwing
 	 */
 	@Override
-	public void onException(Exception exception) {
+	protected void onException(Exception exception) {
 		check(this.result == null && exception == null);
 		this.exception = exception;
 		if (callback != null) {
@@ -96,7 +96,7 @@ public final class AsyncGetterWithSetter<T> implements AsyncGetter<T>, ResultCal
 	@Override
 	public void get(ResultCallback<T> callback) {
 		if (result != null) {
-			fireResult();
+			sendResult();
 		} else if (exception != null) {
 			fireException();
 		} else {

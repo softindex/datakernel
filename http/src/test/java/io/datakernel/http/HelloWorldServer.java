@@ -29,7 +29,7 @@ public final class HelloWorldServer {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse content = HttpResponse.create().body(HELLO_WORLD);
-				callback.onResult(content);
+				callback.sendResult(content);
 			}
 		});
 		return httpServer.setListenPort(port).acceptOnce(false);

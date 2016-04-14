@@ -220,7 +220,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 
 	private void returnError(ResultCallback<?> callback, Exception exception) {
 		if (callback != null) {
-			callback.onException(exception);
+			callback.fireException(exception);
 		}
 	}
 
@@ -256,7 +256,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		ResultCallback<Object> callback = getResultCallback(message);
 		if (callback == null)
 			return;
-		callback.onResult(message.getData());
+		callback.sendResult(message.getData());
 	}
 
 	@SuppressWarnings("unchecked")
@@ -336,7 +336,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 		requestsStats.refresh(timestamp);
 	}
 
-	private final class JmxConnectionMonitoringResultCallback<T> implements ResultCallback<T> {
+	private final class JmxConnectionMonitoringResultCallback<T> extends ResultCallback<T> {
 
 		private final Stopwatch stopwatch;
 		private final ResultCallback<T> callback;
@@ -357,7 +357,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 			rpcClient.ensureRequestStatsPerClass(requestClass).getResponseTime().recordValue(responseTime);
 			rpcClient.getGeneralRequestsStats().getResponseTime().recordValue(responseTime);
 
-			callback.onResult(result);
+			callback.sendResult(result);
 		}
 
 		@Override
@@ -379,7 +379,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender, JmxR
 				rpcClient.ensureRequestStatsPerClass(requestClass).getRejectedRequests().recordEvent();
 			}
 
-			callback.onException(exception);
+			callback.fireException(exception);
 		}
 
 		private int timeElapsed() {

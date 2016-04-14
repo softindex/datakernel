@@ -436,13 +436,13 @@ public final class Cube implements EventloopJmxMBean {
 			public void onResult(CubeLoadedChunks result) {
 				loadChunksIntoAggregations(result, incremental);
 				logger.info("Loading chunks for cube completed");
-				callback.onComplete();
+				callback.complete();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				logger.error("Loading chunks for cube failed", e);
-				callback.onException(e);
+				callback.fireException(e);
 			}
 		});
 	}
@@ -500,7 +500,7 @@ public final class Cube implements EventloopJmxMBean {
 						}
 					});
 				} else {
-					callback.onResult(found);
+					callback.sendResult(found);
 				}
 			}
 		});

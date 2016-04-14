@@ -121,7 +121,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 				checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 				if (HttpUtils.isInetAddress(domainName)) {
-					callback.onResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
+					callback.sendResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
 					return;
 				}
 
@@ -178,7 +178,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 		checkArgument(domainName != null && !domainName.isEmpty(), "Domain name cannot be null or empty");
 
 		if (HttpUtils.isInetAddress(domainName)) {
-			callback.onResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
+			callback.sendResult(new InetAddress[]{HttpUtils.inetAddress(domainName)});
 			return;
 		}
 
@@ -195,22 +195,22 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 
 		final ResultCallback<DnsQueryResult> queryCachingCallback = new ResultCallback<DnsQueryResult>() {
 			@Override
-			public void onResult(DnsQueryResult result) {
+			protected void onResult(DnsQueryResult result) {
 				if (callback != null && !resolvedFromCache) {
-					callback.onResult(result.getIps());
+					callback.sendResult(result.getIps());
 				}
 				cache.add(result);
 				closeConnectionIfDone();
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			protected void onException(Exception exception) {
 				if (exception instanceof DnsException) {
 					DnsException dnsException = (DnsException) exception;
 					cache.add(dnsException);
 				}
 				if (callback != null && !resolvedFromCache) {
-					callback.onException(exception);
+					callback.fireException(exception);
 				}
 				closeConnectionIfDone();
 			}

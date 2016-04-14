@@ -63,19 +63,19 @@ public final class LogCommitTransaction<T> {
 		logger.trace("Added commit callback. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);
 		return new ResultCallback<Multimap<AggregationMetadata, AggregationChunk.NewChunk>>() {
 			@Override
-			public void onResult(Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks) {
+			protected void onResult(Multimap<AggregationMetadata, AggregationChunk.NewChunk> resultChunks) {
 				newChunks.putAll(resultChunks);
 				commitCallbacks--;
-				logger.trace("Commit callback onCommit called. Commit callbacks: {}. Log callbacks: {}",
+				logger.trace("Commit callback onResult called. Commit callbacks: {}. Log callbacks: {}",
 						commitCallbacks, logCallbacks);
 				tryCommit();
 			}
 
 			@Override
-			public void onException(Exception e) {
+			protected void onException(Exception e) {
 				exception = e;
 				commitCallbacks--;
-				logger.error("Commit callback onException called. Commit callbacks: {}. Log callbacks: {}",
+				logger.error("Commit callback fireException called. Commit callbacks: {}. Log callbacks: {}",
 						commitCallbacks, logCallbacks, e);
 				tryCommit();
 			}
@@ -87,19 +87,19 @@ public final class LogCommitTransaction<T> {
 		logger.trace("Added log callback. Commit callbacks: {}. Log callbacks: {}", commitCallbacks, logCallbacks);
 		return new ResultCallback<Map<String, LogPosition>>() {
 			@Override
-			public void onResult(Map<String, LogPosition> resultPositions) {
+			protected void onResult(Map<String, LogPosition> resultPositions) {
 				logCallbacks--;
-				logger.trace("Log callback onResult called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks,
+				logger.trace("Log callback sendResult called. Commit callbacks: {}. Log callbacks: {}", commitCallbacks,
 						logCallbacks);
 				newPositions.putAll(resultPositions);
 				tryCommit();
 			}
 
 			@Override
-			public void onException(Exception e) {
+			protected void onException(Exception e) {
 				exception = e;
 				logCallbacks--;
-				logger.error("Log callback onException called. Commit callbacks: {}. Log callbacks: {}",
+				logger.error("Log callback fireException called. Commit callbacks: {}. Log callbacks: {}",
 						commitCallbacks, logCallbacks, e);
 				tryCommit();
 			}
@@ -118,7 +118,7 @@ public final class LogCommitTransaction<T> {
 			@Override
 			public void run() {
 				if (exception != null)
-					callback.onException(exception);
+					callback.fireException(exception);
 				else
 					callback.onCommit(log, oldPositions, newPositions, newChunks);
 			}
@@ -131,15 +131,15 @@ public final class LogCommitTransaction<T> {
 		return logManager.producer(logPartition, logPosition.getLogFile(), logPosition.getPosition(),
 				new ResultCallback<LogPosition>() {
 					@Override
-					public void onResult(LogPosition result) {
+					protected void onResult(LogPosition result) {
 						Map<String, LogPosition> map = new HashMap<>();
 						map.put(logPartition, result);
-						logCallback.onResult(map);
+						logCallback.sendResult(map);
 					}
 
 					@Override
-					public void onException(Exception exception) {
-						logCallback.onException(exception);
+					protected void onException(Exception exception) {
+						logCallback.fireException(exception);
 						logger.error("Log producer exception. Log partition: {}. Log position: {}", logPartition, logPosition);
 					}
 				});
