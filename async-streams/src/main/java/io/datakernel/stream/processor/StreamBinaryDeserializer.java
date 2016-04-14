@@ -16,6 +16,7 @@
 
 package io.datakernel.stream.processor;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
@@ -131,7 +132,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 							if (bufferPos == 0 && len >= MAX_HEADER_BYTES) {
 								int sizeLen = tryReadSize(b, off);
 								if (sizeLen > MAX_HEADER_BYTES)
-									throw new IllegalArgumentException("Parsed size length > MAX_HEADER_BYTES");
+									throw new ParseException("Parsed size length > MAX_HEADER_BYTES");
 								len -= sizeLen;
 								off += sizeLen;
 								bufferPos = 0;
@@ -153,16 +154,20 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 								bufferPos = 0;
 							}
 							if (dataSize > maxMessageSize)
-								throw new IllegalArgumentException("Parsed data size > message size");
+								throw new ParseException("Parsed data size > message size");
 						}
 
 						// read message body:
 						T item;
 						if (bufferPos == 0 && len >= dataSize) {
 							arrayInputBuffer.set(b, off);
-							item = valueSerializer.deserialize(arrayInputBuffer);
+							try {
+								item = valueSerializer.deserialize(arrayInputBuffer);
+							} catch (Exception e) {
+								throw new ParseException("Cannot deserialize stream ", e);
+							}
 							if ((arrayInputBuffer.position() - off) != dataSize)
-								throw new IllegalArgumentException("Deserialized size != parsed data size");
+								throw new ParseException("Deserialized size != parsed data size");
 							len -= dataSize;
 							off += dataSize;
 							bufferPos = 0;
@@ -175,9 +180,13 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 							if (bufferPos != dataSize)
 								break;
 							arrayInputBuffer.set(buffer, 0);
-							item = valueSerializer.deserialize(arrayInputBuffer);
+							try {
+								item = valueSerializer.deserialize(arrayInputBuffer);
+							} catch (Exception e) {
+								throw new ParseException("Cannot finish deserialization", e);
+							}
 							if (arrayInputBuffer.position() != dataSize)
-								throw new IllegalArgumentException("Deserialized size != parsed data size");
+								throw new ParseException("Deserialized size != parsed data size");
 							bufferPos = 0;
 							dataSize = 0;
 						}
@@ -209,7 +218,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						}
 					}
 				}
-			} catch (Exception e) {
+			} catch (ParseException e) {
 				closeWithError(e);
 			}
 		}

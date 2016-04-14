@@ -250,7 +250,14 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 						generalConnectsStats.getClosedConnects().recordEvent();
 						connectsStatsPerAddress.get(address).getClosedConnects().recordEvent();
 
-						connect(address);
+						eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
+							@Override
+							public void run() {
+								if (running) {
+									connect(address);
+								}
+							}
+						});
 					}
 				};
 				RpcClientConnection connection = new RpcClientConnection(eventloop, socketChannel,

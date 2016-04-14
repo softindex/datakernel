@@ -64,6 +64,7 @@ abstract class RpcStreamProtocol implements RpcProtocol {
 		protected void onError(Exception e) {
 			logger.error("RpcStreamProtocol was closed with error", e);
 			sender.closeWithError(e);
+			connection.close();
 		}
 
 		public void closeWithError(Exception e) {
