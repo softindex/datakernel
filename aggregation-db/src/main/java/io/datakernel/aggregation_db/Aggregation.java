@@ -341,7 +341,7 @@ public class Aggregation {
 		if (sortingRequired(resultKeys, getKeys())) {
 			Comparator keyComparator = structure.createKeyComparator(outputClass, resultKeys);
 			Path path = Paths.get("sorterStorage", "%d.part");
-			BufferSerializer bufferSerializer = structure.createBufferSerializer(outputClass, getKeys(), aggregationFields);
+			BufferSerializer bufferSerializer = structure.createBufferSerializer(outputClass, resultKeys, aggregationFields);
 			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
 					bufferSerializer, path, sorterBlockSize);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
