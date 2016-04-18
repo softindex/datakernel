@@ -18,6 +18,7 @@ package io.datakernel.stream.processor;
 
 import com.google.common.base.Function;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -55,6 +56,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 		private StreamForwarder<T> forwarder;
 
 		private boolean writing;
+		private int readPartitions;
 
 		protected InputConsumer(Eventloop eventloop, int itemsInMemorySize, Comparator<T> itemComparator, StreamMergeSorterStorage<T> storage, StreamMerger<K, T> merger) {
 			super(eventloop);
@@ -109,7 +111,15 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 				queueProducer.streamTo(merger.newInput());
 
 				for (int partition : listOfPartitions) {
-					storage.read(partition).streamTo(merger.newInput());
+					storage.read(partition, new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							++readPartitions;
+							if (readPartitions == listOfPartitions.size()) {
+								storage.cleanup(listOfPartitions);
+							}
+						}
+					}).streamTo(merger.newInput());
 				}
 				merger.getOutput().streamTo(forwarder.getInput());
 
@@ -119,8 +129,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 			if (bufferFull) {
 				Collections.sort(list, itemComparator);
 				writing = true;
-				listOfPartitions.add(storage.nextPartition());
-				storage.write(StreamProducers.ofIterable(eventloop, list), new CompletionCallback() {
+				int partition = storage.write(StreamProducers.ofIterable(eventloop, list), new CompletionCallback() {
 					@Override
 					public void onComplete() {
 						eventloop.post(new Runnable() {
@@ -139,6 +148,7 @@ public final class StreamSorter<K, T> implements StreamTransformer<T, T>, Eventl
 
 					}
 				});
+				listOfPartitions.add(partition);
 				list = new ArrayList<>(list.size() + (list.size() >> 8));
 				return;
 			}

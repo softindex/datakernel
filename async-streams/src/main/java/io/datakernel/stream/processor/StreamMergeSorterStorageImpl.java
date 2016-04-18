@@ -33,8 +33,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -49,6 +51,8 @@ import static java.nio.file.StandardOpenOption.READ;
  * @param <T> type of storing data
  */
 public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterStorage<T> {
+	private static final AtomicInteger PARTITION = new AtomicInteger();
+
 	private static final Logger logger = LoggerFactory.getLogger(StreamMergeSorterStorageImpl.class);
 
 	private final Eventloop eventloop;
@@ -57,7 +61,6 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	private final Path path;
 	private final String filePattern;
 	private final int blockSize;
-	private int partition;
 
 	/**
 	 * Creates a new storage
@@ -85,12 +88,11 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		} catch (IOException e) {
 			logger.error("createDirectories error", e);
 		}
-		return path.resolve(format(filePattern, i + 1));
+		return path.resolve(format(filePattern, i));
 	}
 
 	@Override
-	public void write(final StreamProducer<T> producer, final CompletionCallback completionCallback) {
-		assert partition >= 0;
+	public int write(final StreamProducer<T> producer, final CompletionCallback completionCallback) {
 		StreamBinarySerializer<T> streamSerializer = new StreamBinarySerializer<>(eventloop, serializer,
 				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 		StreamByteChunker streamByteChunkerBefore = new StreamByteChunker(eventloop, blockSize / 2, blockSize);
@@ -102,7 +104,8 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 		streamByteChunkerBefore.getOutput().streamTo(streamCompressor.getInput());
 		streamCompressor.getOutput().streamTo(streamByteChunkerAfter.getInput());
 
-		AsyncFile.open(eventloop, executorService, partitionPath(partition++), StreamFileWriter.CREATE_OPTIONS,
+		int partition = PARTITION.incrementAndGet();
+		AsyncFile.open(eventloop, executorService, partitionPath(partition), StreamFileWriter.CREATE_OPTIONS,
 				new ForwardingResultCallback<AsyncFile>(completionCallback) {
 					@Override
 					public void onResult(AsyncFile file) {
@@ -111,6 +114,7 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 						streamWriter.setFlushCallback(completionCallback);
 					}
 				});
+		return partition;
 	}
 
 	/**
@@ -120,7 +124,7 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	 * @param partition index of partition to read
 	 */
 	@Override
-	public StreamProducer<T> read(int partition) {
+	public StreamProducer<T> read(int partition, final CompletionCallback callback) {
 		assert partition >= 0;
 
 		final StreamLZ4Decompressor streamDecompressor = new StreamLZ4Decompressor(eventloop);
@@ -133,6 +137,17 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 			public void onResult(AsyncFile file) {
 				StreamFileReader fileReader = StreamFileReader.readFileFrom(eventloop, file, 1024 * 1024, 0L);
 				fileReader.streamTo(streamDecompressor.getInput());
+				fileReader.setPositionCallback(new ResultCallback<Long>() {
+					@Override
+					public void onResult(Long position) {
+						callback.onComplete();
+					}
+
+					@Override
+					public void onException(Exception e) {
+						callback.onException(e);
+					}
+				});
 			}
 
 			@Override
@@ -149,7 +164,7 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 	 * Method which removes all creating files
 	 */
 	@Override
-	public void cleanup() {
+	public void cleanup(final List<Integer> partitionsToDelete) {
 		try {
 			executorService.execute(new Runnable() {
 				@Override
@@ -158,21 +173,21 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 						Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
 							@Override
 							public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-								Files.delete(file);
+								for (Integer partitionToDelete : partitionsToDelete) {
+									if (file.getFileName().toString().equals(format(filePattern, partitionToDelete))) {
+										Files.delete(file);
+									}
+								}
 								return FileVisitResult.CONTINUE;
 							}
 						});
-					} catch (IOException ignored) {
+					} catch (IOException e) {
+						logger.error("Exception occurred while trying to perform cleanup", e);
 					}
 				}
 			});
 		} catch (RejectedExecutionException e) {
-			logger.error("Cleanup error", e);
+			logger.error("Cleanup task has been rejected", e);
 		}
-	}
-
-	@Override
-	public int nextPartition() {
-		return partition;
 	}
 }

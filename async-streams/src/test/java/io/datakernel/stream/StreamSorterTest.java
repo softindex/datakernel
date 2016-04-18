@@ -51,7 +51,6 @@ public class StreamSorterTest {
 		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
-		storage.cleanup();
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
@@ -76,8 +75,6 @@ public class StreamSorterTest {
 
 		sorter.getOutput().streamTo(consumerToList);
 		eventloop.run();
-
-		storage.cleanup();
 
 		assertEquals(asList(1, 2, 3, 4, 5), consumerToList.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
@@ -137,7 +134,6 @@ public class StreamSorterTest {
 		sorter2.getOutput().streamTo(consumerToList2);
 
 		eventloop.run();
-		storage.cleanup();
 
 		assertEquals(consumerToList1.getList(), asList(0, 1, 2, 3, 4, 5, 6, 7, 8, 9));
 		assertEquals(consumerToList2.getList(), asList(10, 20, 30, 40, 50));
@@ -159,9 +155,10 @@ public class StreamSorterTest {
 
 		StreamMergeSorterStorage<Integer> storage = new StreamMergeSorterStorageStub<Integer>(eventloop) {
 			@Override
-			public void write(StreamProducer<Integer> producer, final CompletionCallback completionCallback) {
+			public int write(StreamProducer<Integer> producer, final CompletionCallback completionCallback) {
 				final List<Integer> list = new ArrayList<>();
-				storage.put(partition++, list);
+				int newPartition = partition++;
+				storage.put(newPartition, list);
 				TestStreamConsumers.TestConsumerToList<Integer> consumer = new TestStreamConsumers.TestConsumerToList<Integer>(eventloop, list) {
 					@Override
 					public void onData(Integer item) {
@@ -174,6 +171,7 @@ public class StreamSorterTest {
 				producer.streamTo(consumer);
 
 				consumer.setCompletionCallback(completionCallback);
+				return newPartition;
 			}
 		};
 		StreamSorter<Integer, Integer> sorter = new StreamSorter<>(eventloop,
@@ -186,7 +184,6 @@ public class StreamSorterTest {
 		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
-		storage.cleanup();
 
 		assertTrue(list.size() == 0);
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
@@ -220,7 +217,6 @@ public class StreamSorterTest {
 		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
-		storage.cleanup();
 
 		assertTrue(list.size() == 2);
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
@@ -249,7 +245,6 @@ public class StreamSorterTest {
 		sorter.getOutput().streamTo(consumerToList);
 
 		eventloop.run();
-		storage.cleanup();
 
 		assertTrue(list.size() == 0);
 		assertTrue(sorter.getItems() == 4);

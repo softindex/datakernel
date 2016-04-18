@@ -38,27 +38,27 @@ public class StreamMergeSorterStorageStub<T> implements StreamMergeSorterStorage
 	}
 
 	@Override
-	public void write(StreamProducer<T> producer, CompletionCallback completionCallback) {
+	public int write(StreamProducer<T> producer, CompletionCallback completionCallback) {
 		List<T> list = new ArrayList<>();
-		storage.put(partition++, list);
+		int newPartition = partition++;
+		storage.put(newPartition, list);
 		StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, list);
 		producer.streamTo(consumer);
-
 		consumer.setCompletionCallback(completionCallback);
+		return newPartition;
 	}
 
 	@Override
-	public StreamProducer<T> read(int partition) {
-		return StreamProducers.ofIterable(eventloop, storage.get(partition));
+	public StreamProducer<T> read(int partition, CompletionCallback callback) {
+		List<T> iterable = storage.get(partition);
+		callback.onComplete();
+		return StreamProducers.ofIterable(eventloop, iterable);
 	}
 
 	@Override
-	public void cleanup() {
-		storage.clear();
-	}
-
-	@Override
-	public int nextPartition() {
-		return partition;
+	public void cleanup(List<Integer> partitionsToDelete) {
+		for (Integer partition : partitionsToDelete) {
+			storage.remove(partition);
+		}
 	}
 }

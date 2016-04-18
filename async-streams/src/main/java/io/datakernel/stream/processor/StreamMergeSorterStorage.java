@@ -17,8 +17,9 @@
 package io.datakernel.stream.processor;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
+
+import java.util.List;
 
 /**
  * This class uses for  splitting a single input stream into smaller partitions during merge sort,
@@ -29,11 +30,11 @@ import io.datakernel.stream.StreamProducer;
  */
 public interface StreamMergeSorterStorage<T> {
 	/**
-	 * Method for creating consumer for writing to storage partition of elements
+	 * Method for writing to storage partition of elements
 	 *
-	 * @return consumer for streaming to storage
+	 * @return partition number
 	 */
-	void write(StreamProducer<T> producer, CompletionCallback completionCallback);
+	int write(StreamProducer<T> producer, CompletionCallback completionCallback);
 
 	/**
 	 * Method for creating producer for reading from storage partition of elements
@@ -41,17 +42,10 @@ public interface StreamMergeSorterStorage<T> {
 	 * @param partition index of partition
 	 * @return producer for streaming to storage
 	 */
-	StreamProducer<T> read(int partition);
+	StreamProducer<T> read(int partition, CompletionCallback callback);
 
 	/**
 	 * Method for removing all stored created objects
 	 */
-	void cleanup();
-
-	/**
-	 * Returns next partition which will be filled for this storage
-	 *
-	 * @return next partition which will be filled
-	 */
-	int nextPartition();
+	void cleanup(List<Integer> partitionsToDelete);
 }

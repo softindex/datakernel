@@ -31,9 +31,9 @@ import net.jpountz.util.SafeUtils;
 import net.jpountz.xxhash.StreamingXXHash32;
 import net.jpountz.xxhash.XXHashFactory;
 
-import static com.google.common.base.Preconditions.checkState;
 import static io.datakernel.stream.processor.StreamLZ4Compressor.*;
 import static java.lang.Math.min;
+import static java.lang.String.format;
 
 public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> implements EventloopJmxMBean {
 	private final InputConsumer inputConsumer;
@@ -89,7 +89,9 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 			jmxBufsInput++;
 			jmxBytesInput += buf.remaining();
 			try {
-				checkState(!header.finished, "Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf);
+				if (header.finished) {
+					throw new ParseException(format("Unexpected byteBuf after LZ4 EOS packet %s : %s", this, buf));
+				}
 				consumeInputByteBuffer(buf);
 			} catch (ParseException e) {
 				inputConsumer.closeWithError(e);

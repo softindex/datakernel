@@ -28,6 +28,7 @@ import org.junit.rules.TemporaryFolder;
 
 import java.io.File;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -59,11 +60,8 @@ public class StreamSorterStorageImplTest {
 		File workPath = tempFolder.newFolder("tmp");
 		StreamMergeSorterStorageImpl<Integer> storage = new StreamMergeSorterStorageImpl<>(eventloop, executor, intSerializer(), Paths.get(workPath.getAbsolutePath(), "%d.part"), 64);
 
-		int firstStorage = storage.nextPartition();
-		storage.write(source1, ignoreCompletionCallback());
-
-		int secondStorage = storage.nextPartition();
-		storage.write(source2, ignoreCompletionCallback());
+		int firstStorage = storage.write(source1, ignoreCompletionCallback());
+		int secondStorage = storage.write(source2, ignoreCompletionCallback());
 
 		eventloop.run();
 
@@ -72,13 +70,13 @@ public class StreamSorterStorageImplTest {
 
 		TestStreamConsumers.TestConsumerToList<Integer> consumer1 = TestStreamConsumers.toListOneByOne(eventloop);
 		TestStreamConsumers.TestConsumerToList<Integer> consumer2 = TestStreamConsumers.toListRandomlySuspending(eventloop);
-		storage.read(firstStorage).streamTo(consumer1);
-		storage.read(secondStorage).streamTo(consumer2);
+		storage.read(firstStorage, ignoreCompletionCallback()).streamTo(consumer1);
+		storage.read(secondStorage, ignoreCompletionCallback()).streamTo(consumer2);
 		eventloop.run();
 
 		assertEquals(asList(1, 2, 3, 4, 5, 6, 7), consumer1.getList());
 		assertEquals(asList(111), consumer2.getList());
-		storage.cleanup();
+		storage.cleanup(Arrays.asList(firstStorage, secondStorage));
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
 
