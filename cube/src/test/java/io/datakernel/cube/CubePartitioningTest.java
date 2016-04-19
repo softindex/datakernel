@@ -171,7 +171,7 @@ public class CubePartitioningTest {
 			else
 				break;
 		}
-		assertEquals(11, consolidations);
+		assertEquals(6, consolidations);
 
 		// Load metadata
 		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());

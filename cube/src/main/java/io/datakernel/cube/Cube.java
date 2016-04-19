@@ -440,16 +440,11 @@ public final class Cube implements EventloopJmxMBean {
 	}
 
 	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
-		consolidate(maxChunksToConsolidate, 1.0, callback);
-	}
-
-	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, ResultCallback<Boolean> callback) {
 		logger.info("Launching consolidation");
-		consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, false,
-				new ArrayList<>(this.aggregations.values()).iterator(), callback);
+		consolidate(maxChunksToConsolidate, false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	private void consolidate(final int maxChunksToConsolidate, final double preferHotSegmentsCoef, final boolean found,
+	private void consolidate(final int maxChunksToConsolidate, final boolean found,
 	                         final Iterator<Aggregation> iterator, final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
@@ -459,24 +454,46 @@ public final class Cube implements EventloopJmxMBean {
 					aggregation.loadChunks(new CompletionCallback() {
 						@Override
 						public void onComplete() {
-							aggregation.consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, new ResultCallback<Boolean>() {
+							aggregation.consolidateHotSegment(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 								@Override
-								public void onResult(Boolean result) {
-									consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, result || found, iterator, callback);
+								public void onResult(final Boolean hotSegmentConsolidated) {
+									aggregation.loadChunks(new CompletionCallback() {
+										@Override
+										public void onComplete() {
+											aggregation.consolidateMinKey(maxChunksToConsolidate, new ResultCallback<Boolean>() {
+												@Override
+												public void onResult(Boolean minKeyConsolidated) {
+													consolidate(maxChunksToConsolidate, hotSegmentConsolidated || minKeyConsolidated || found, iterator, callback);
+												}
+
+												@Override
+												public void onException(Exception exception) {
+													logger.error("Min key consolidation in aggregation '{}' failed", aggregation, exception);
+													consolidate(maxChunksToConsolidate, found, iterator, callback);
+												}
+											});
+										}
+
+										@Override
+										public void onException(Exception exception) {
+											logger.error("Loading chunks for aggregation '{}' before starting min key consolidation failed", aggregation, exception);
+											consolidate(maxChunksToConsolidate, found, iterator, callback);
+										}
+									});
 								}
 
 								@Override
 								public void onException(Exception exception) {
-									logger.error("Consolidating aggregation '{}' failed", aggregation, exception);
-									consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, found, iterator, callback);
+									logger.error("Consolidating hot segment in aggregation '{}' failed", aggregation, exception);
+									consolidate(maxChunksToConsolidate, found, iterator, callback);
 								}
 							});
 						}
 
 						@Override
 						public void onException(Exception exception) {
-							logger.error("Loading chunks for aggregation '{}' before starting consolidation failed", aggregation, exception);
-							consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, found, iterator, callback);
+							logger.error("Loading chunks for aggregation '{}' before starting consolidation of hot segment failed", aggregation, exception);
+							consolidate(maxChunksToConsolidate, found, iterator, callback);
 						}
 					});
 				} else {

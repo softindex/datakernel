@@ -596,24 +596,24 @@ public class Aggregation {
 		return aggregationMetadata.findOverlappingChunks().size();
 	}
 
-	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, final ResultCallback<Boolean> callback) {
-		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidation(maxChunksToConsolidate,
-				aggregationChunkSize, partitioningKey == null ? 0 : partitioningKey.size(), preferHotSegmentsCoef);
+	public void consolidateMinKey(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
+		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidationHotSegment(maxChunksToConsolidate);
+		consolidate(chunks, callback);
+	}
 
+	public void consolidateHotSegment(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
+		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidationMinKey(maxChunksToConsolidate,
+				aggregationChunkSize, partitioningKey == null ? 0 : partitioningKey.size());
+		consolidate(chunks, callback);
+	}
+
+	private void consolidate(final List<AggregationChunk> chunks, final ResultCallback<Boolean> callback) {
 		if (chunks.isEmpty()) {
+			logger.info("Nothing to consolidate in aggregation '{}", this);
 			callback.onResult(false);
 			return;
 		}
 
-		consolidate(chunks, new ForwardingCompletionCallback(callback) {
-			@Override
-			public void onComplete() {
-				callback.onResult(true);
-			}
-		});
-	}
-
-	private void consolidate(final List<AggregationChunk> chunks, final CompletionCallback callback) {
 		logger.info("Starting consolidation of aggregation '{}'", this);
 		metadataStorage.startConsolidation(chunks, new ForwardingCompletionCallback(callback) {
 			@Override
@@ -630,7 +630,7 @@ public class Aggregation {
 												"in aggregation '{}': [{}]. Created chunks ({}): [{}]",
 										chunks.size(), aggregationMetadata, getChunkIds(chunks),
 										consolidatedChunks.size(), getNewChunkIds(consolidatedChunks));
-								callback.onComplete();
+								callback.onResult(true);
 							}
 
 							@Override
@@ -674,15 +674,17 @@ public class Aggregation {
 			@Override
 			public void onResult(LoadedChunks loadedChunks) {
 				loadChunks(loadedChunks);
-				loadChunksCallback.onComplete();
+				CompletionCallback currentCallback = loadChunksCallback;
 				loadChunksCallback = null;
+				currentCallback.onComplete();
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				logger.error("Loading chunks for aggregation {} failed", this, exception);
-				loadChunksCallback.onException(exception);
+				CompletionCallback currentCallback = loadChunksCallback;
 				loadChunksCallback = null;
+				currentCallback.onException(exception);
 			}
 		});
 	}

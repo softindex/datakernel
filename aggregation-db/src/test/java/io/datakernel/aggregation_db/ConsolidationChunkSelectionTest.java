@@ -45,10 +45,10 @@ public class ConsolidationChunkSelectionTest {
 
 		addChunks(am, chunks);
 
-		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100, 4000, 1.0);
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidationHotSegment(100);
 		assertEquals(chunks, newHashSet(selectedChunks));
 
-		selectedChunks = am.findChunksForConsolidation(5, 4000, 1.0);
+		selectedChunks = am.findChunksForConsolidationHotSegment(5);
 		assertEquals(5, selectedChunks.size());
 
 		chunks.clear();
@@ -80,7 +80,7 @@ public class ConsolidationChunkSelectionTest {
 
 		addChunks(am, concat(chunks1, chunks2));
 
-		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(100, 4000, 0.0);
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidationMinKey(100, 4000, 0);
 		assertEquals(chunks1, newHashSet(selectedChunks));
 	}
 
@@ -107,7 +107,7 @@ public class ConsolidationChunkSelectionTest {
 
 		addChunks(am, concat(chunks1, chunks2, chunks3));
 
-		List<AggregationChunk> selectedChunks = am.findChunksForConsolidation(maxChunks, optimalChunkSize, 0.0);
+		List<AggregationChunk> selectedChunks = am.findChunksForConsolidationMinKey(maxChunks, optimalChunkSize, 0);
 		assertEquals(chunks2, newHashSet(selectedChunks));
 	}
 
