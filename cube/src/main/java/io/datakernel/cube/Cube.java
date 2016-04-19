@@ -451,48 +451,27 @@ public final class Cube implements EventloopJmxMBean {
 			public void run() {
 				if (iterator.hasNext()) {
 					final Aggregation aggregation = iterator.next();
-					aggregation.loadChunks(new CompletionCallback() {
+					aggregation.consolidateHotSegment(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 						@Override
-						public void onComplete() {
-							aggregation.consolidateHotSegment(maxChunksToConsolidate, new ResultCallback<Boolean>() {
+						public void onResult(final Boolean hotSegmentConsolidated) {
+							aggregation.consolidateMinKey(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 								@Override
-								public void onResult(final Boolean hotSegmentConsolidated) {
-									aggregation.loadChunks(new CompletionCallback() {
-										@Override
-										public void onComplete() {
-											aggregation.consolidateMinKey(maxChunksToConsolidate, new ResultCallback<Boolean>() {
-												@Override
-												public void onResult(Boolean minKeyConsolidated) {
-													consolidate(maxChunksToConsolidate, hotSegmentConsolidated || minKeyConsolidated || found, iterator, callback);
-												}
-
-												@Override
-												public void onException(Exception exception) {
-													logger.error("Min key consolidation in aggregation '{}' failed", aggregation, exception);
-													consolidate(maxChunksToConsolidate, found, iterator, callback);
-												}
-											});
-										}
-
-										@Override
-										public void onException(Exception exception) {
-											logger.error("Loading chunks for aggregation '{}' before starting min key consolidation failed", aggregation, exception);
-											consolidate(maxChunksToConsolidate, found, iterator, callback);
-										}
-									});
+								public void onResult(Boolean minKeyConsolidated) {
+									consolidate(maxChunksToConsolidate,
+											hotSegmentConsolidated || minKeyConsolidated || found, iterator, callback);
 								}
 
 								@Override
-								public void onException(Exception exception) {
-									logger.error("Consolidating hot segment in aggregation '{}' failed", aggregation, exception);
+								public void onException(Exception e) {
+									logger.error("Min key consolidation in aggregation '{}' failed", aggregation, e);
 									consolidate(maxChunksToConsolidate, found, iterator, callback);
 								}
 							});
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							logger.error("Loading chunks for aggregation '{}' before starting consolidation of hot segment failed", aggregation, exception);
+						public void onException(Exception e) {
+							logger.error("Consolidating hot segment in aggregation '{}' failed", aggregation, e);
 							consolidate(maxChunksToConsolidate, found, iterator, callback);
 						}
 					});

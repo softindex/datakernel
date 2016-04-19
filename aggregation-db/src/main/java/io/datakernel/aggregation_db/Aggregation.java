@@ -596,15 +596,39 @@ public class Aggregation {
 		return aggregationMetadata.findOverlappingChunks().size();
 	}
 
-	public void consolidateMinKey(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
-		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidationHotSegment(maxChunksToConsolidate);
-		consolidate(chunks, callback);
+	public void consolidateMinKey(final int maxChunksToConsolidate, final ResultCallback<Boolean> callback) {
+		loadChunks(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidationMinKey(maxChunksToConsolidate,
+						aggregationChunkSize, partitioningKey == null ? 0 : partitioningKey.size());
+				consolidate(chunks, callback);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Loading chunks for aggregation '{}' before starting min key consolidation failed",
+						Aggregation.this, e);
+				callback.onException(e);
+			}
+		});
 	}
 
-	public void consolidateHotSegment(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
-		List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidationMinKey(maxChunksToConsolidate,
-				aggregationChunkSize, partitioningKey == null ? 0 : partitioningKey.size());
-		consolidate(chunks, callback);
+	public void consolidateHotSegment(final int maxChunksToConsolidate, final ResultCallback<Boolean> callback) {
+		loadChunks(new CompletionCallback() {
+			@Override
+			public void onComplete() {
+				List<AggregationChunk> chunks = aggregationMetadata.findChunksForConsolidationHotSegment(maxChunksToConsolidate);
+				consolidate(chunks, callback);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				logger.error("Loading chunks for aggregation '{}' before starting consolidation of hot segment failed",
+						Aggregation.this, e);
+				callback.onException(e);
+			}
+		});
 	}
 
 	private void consolidate(final List<AggregationChunk> chunks, final ResultCallback<Boolean> callback) {
@@ -634,8 +658,8 @@ public class Aggregation {
 							}
 
 							@Override
-							public void onException(Exception exception) {
-								callback.onException(exception);
+							public void onException(Exception e) {
+								callback.onException(e);
 							}
 						});
 					}
