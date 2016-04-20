@@ -24,6 +24,7 @@ import io.datakernel.cube.CubeMetadataStorage;
 
 import java.util.*;
 
+import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.aggregation_db.AggregationChunk.createChunk;
 
 public class CubeMetadataStorageStub implements CubeMetadataStorage {
@@ -73,6 +74,27 @@ public class CubeMetadataStorageStub implements CubeMetadataStorage {
 				callback.onComplete();
 			}
 		};
+	}
+
+	@Override
+	public void loadChunks(final int lastRevisionId, Map<String, AggregationMetadata> aggregations, AggregationStructure aggregationStructure, ResultCallback<CubeLoadedChunks> callback) {
+		Map<String, List<AggregationChunk>> newChunks = new HashMap<>();
+
+		for (String aggregationId : aggregations.keySet()) {
+			List<AggregationChunk.NewChunk> chunks = tmpChunks.get(aggregationId);
+
+			if (chunks == null)
+				chunks = new ArrayList<>();
+
+			newChunks.put(aggregationId, newArrayList(Collections2.transform(chunks, new Function<AggregationChunk.NewChunk, AggregationChunk>() {
+				@Override
+				public AggregationChunk apply(AggregationChunk.NewChunk input) {
+					return createChunk(lastRevisionId, input);
+				}
+			})));
+		}
+
+		callback.onResult(new CubeLoadedChunks(lastRevisionId + 1, Collections.<String, List<Long>>emptyMap(), newChunks));
 	}
 
 	public void doSaveChunk(String aggregationId, List<AggregationChunk.NewChunk> newChunks, CompletionCallback callback) {

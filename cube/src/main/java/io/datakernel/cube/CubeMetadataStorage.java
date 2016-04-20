@@ -16,11 +16,32 @@
 
 package io.datakernel.cube;
 
+import io.datakernel.aggregation_db.AggregationChunk;
 import io.datakernel.aggregation_db.AggregationMetadata;
 import io.datakernel.aggregation_db.AggregationMetadataStorage;
 import io.datakernel.aggregation_db.AggregationStructure;
+import io.datakernel.async.ResultCallback;
+
+import java.util.List;
+import java.util.Map;
 
 public interface CubeMetadataStorage {
 	AggregationMetadataStorage aggregationMetadataStorage(String aggregationId, AggregationMetadata aggregationMetadata,
 	                                                      AggregationStructure aggregationStructure);
+
+	final class CubeLoadedChunks {
+		public final int lastRevisionId;
+		public final Map<String, List<Long>> consolidatedChunkIds;
+		public final Map<String, List<AggregationChunk>> newChunks;
+
+		public CubeLoadedChunks(int lastRevisionId, Map<String, List<Long>> consolidatedChunkIds,
+		                        Map<String, List<AggregationChunk>> newChunks) {
+			this.lastRevisionId = lastRevisionId;
+			this.consolidatedChunkIds = consolidatedChunkIds;
+			this.newChunks = newChunks;
+		}
+	}
+
+	void loadChunks(int lastRevisionId, Map<String, AggregationMetadata> aggregations,
+	                AggregationStructure aggregationStructure, ResultCallback<CubeLoadedChunks> callback);
 }

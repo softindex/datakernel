@@ -24,14 +24,15 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.Sets;
 import io.datakernel.aggregation_db.*;
+import io.datakernel.aggregation_db.AggregationMetadataStorage.LoadedChunks;
 import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerMultimap;
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.ExpressionComparator;
 import io.datakernel.codegen.utils.DefiningClassLoader;
+import io.datakernel.cube.CubeMetadataStorage.CubeLoadedChunks;
 import io.datakernel.cube.api.AttributeResolver;
 import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
@@ -85,6 +86,7 @@ public final class Cube implements EventloopJmxMBean {
 	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
 
 	private Map<String, Aggregation> aggregations = new LinkedHashMap<>();
+	private Map<String, AggregationMetadata> aggregationMetadatas = new LinkedHashMap<>();
 	private AggregationKeyRelationships childParentRelationships;
 
 	private int lastRevisionId;
@@ -155,18 +157,21 @@ public final class Cube implements EventloopJmxMBean {
 	 *
 	 * @param aggregationMetadata metadata of aggregation
 	 */
-	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata, String partitioningKey) {
-		AggregationMetadataStorage aggregationMetadataStorage = cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
+	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata,
+	                           List<String> partitioningKey, int chunkSize) {
+		AggregationMetadataStorage aggregationMetadataStorage =
+				cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
 		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
-				aggregationChunkStorage, aggregationMetadata, structure, partitioningKey, sorterItemsInMemory,
-				sorterBlockSize, aggregationChunkSize);
+				aggregationChunkStorage, aggregationMetadata, structure, chunkSize, sorterItemsInMemory,
+				sorterBlockSize, partitioningKey);
 		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
 		aggregations.put(aggregationId, aggregation);
+		aggregationMetadatas.put(aggregationId, aggregationMetadata);
 		logger.info("Added aggregation {} for id '{}'", aggregation, aggregationId);
 	}
 
 	public void addAggregation(String aggregationId, AggregationMetadata aggregationMetadata) {
-		addAggregation(aggregationId, aggregationMetadata, null);
+		addAggregation(aggregationId, aggregationMetadata, null, aggregationChunkSize);
 	}
 
 	public void incrementLastRevisionId() {
@@ -339,6 +344,8 @@ public final class Cube implements EventloopJmxMBean {
 
 		CubeQueryPlan queryPlan = new CubeQueryPlan();
 
+		StreamProducer<T> queryResultProducer = streamReducer.getOutput();
+
 		for (Map.Entry<Aggregation, List<String>> entry : aggregationsToAppliedPredicateKeys.entrySet()) {
 			Aggregation aggregation = entry.getKey();
 			CubeQuery filteredQuery = getQueryWithoutAppliedPredicateKeys(query, entry.getValue());
@@ -354,8 +361,24 @@ public final class Cube implements EventloopJmxMBean {
 
 			Class aggregationClass = structure.createRecordClass(aggregation.getKeys(), aggregationMeasures);
 
-			StreamProducer<T> queryResultProducer = aggregation.query(filteredQuery.getAggregationQuery(),
+			StreamProducer aggregationProducer = aggregation.query(filteredQuery.getAggregationQuery(),
 					aggregationMeasures, aggregationClass);
+
+			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregationMeasures))));
+
+			if (queryMeasures.isEmpty() && streamReducer.getInputs().isEmpty()) {
+				/*
+				If query is fulfilled from the single aggregation,
+				just use mapper instead of reducer to copy requested fields.
+				 */
+				StreamMap.MapperProjection mapper = structure.createMapper(aggregationClass, resultClass,
+						resultDimensions, aggregationMeasures);
+				StreamMap streamMap = new StreamMap<>(eventloop, mapper);
+				aggregationProducer.streamTo(streamMap.getInput());
+				queryResultProducer = streamMap.getOutput();
+				queryPlan.setOptimizedAwayReducer(true);
+				break;
+			}
 
 			Function keyFunction = structure.createKeyFunction(aggregationClass, resultKeyClass, resultDimensions);
 
@@ -364,87 +387,97 @@ public final class Cube implements EventloopJmxMBean {
 
 			StreamConsumer streamReducerInput = streamReducer.newInput(keyFunction, reducer);
 
-			queryResultProducer.streamTo(streamReducerInput);
-
-			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregation.getFields()))));
+			aggregationProducer.streamTo(streamReducerInput);
 		}
 
 		if (!queryMeasures.isEmpty()) {
 			logger.info("Could not build query plan for {}. Incomplete plan: {}", query, queryPlan);
 			throw new QueryException("Could not find suitable aggregation(s)");
 		} else
-			logger.info("Built query plan for {}: {}", query, queryPlan);
+			logger.info("Picked following aggregations ({}) for {}: {}", queryPlan.getNumberOfAggregations(), query,
+					queryPlan);
 
-		return getOrderedResultStream(query, resultClass, streamReducer,
-				query.getResultDimensions(), query.getResultMeasures());
+		return getOrderedResultStream(query, resultClass, queryResultProducer, resultDimensions, query.getResultMeasures());
 	}
 
 	public boolean containsExcessiveNumberOfOverlappingChunks() {
+		boolean excessive = false;
+
 		for (Aggregation aggregation : aggregations.values()) {
-			if (aggregation.getNumberOfOverlappingChunks() > overlappingChunksThreshold)
-				return true;
+			int numberOfOverlappingChunks = aggregation.getNumberOfOverlappingChunks();
+			if (numberOfOverlappingChunks > overlappingChunksThreshold) {
+				logger.info("Aggregation {} contains {} overlapping chunks", aggregation, numberOfOverlappingChunks);
+				excessive = true;
+			}
 		}
 
-		return false;
+		return excessive;
 	}
 
-	public void loadChunks(CompletionCallback callback) {
+	public void loadChunks(final CompletionCallback callback) {
 		logger.info("Loading chunks");
-		loadChunks(new ArrayList<>(this.aggregations.values()).iterator(), callback);
-	}
 
-	private void loadChunks(final Iterator<Aggregation> iterator, final CompletionCallback callback) {
-		if (iterator.hasNext()) {
-			iterator.next().loadChunks(new ForwardingCompletionCallback(callback) {
-				@Override
-				public void onComplete() {
-					loadChunks(iterator, callback);
-				}
-			});
-		} else {
-			logger.info("Loading chunks completed");
-			callback.onComplete();
-		}
+		cubeMetadataStorage.loadChunks(lastRevisionId, aggregationMetadatas, structure,
+				new ResultCallback<CubeLoadedChunks>() {
+					@Override
+					public void onResult(CubeLoadedChunks result) {
+						for (Map.Entry<String, Aggregation> entry : aggregations.entrySet()) {
+							String aggregationId = entry.getKey();
+							List<Long> consolidatedChunkIds = result.consolidatedChunkIds.get(aggregationId);
+							List<AggregationChunk> newChunks = result.newChunks.get(aggregationId);
+							LoadedChunks loadedChunks = new LoadedChunks(result.lastRevisionId,
+									consolidatedChunkIds == null ? Collections.<Long>emptyList() : consolidatedChunkIds,
+									newChunks == null ?  Collections.<AggregationChunk>emptyList() : newChunks);
+							entry.getValue().loadChunks(loadedChunks);
+						}
+
+						Cube.this.lastRevisionId = result.lastRevisionId;
+						logger.info("Loading chunks completed");
+						callback.onComplete();
+					}
+
+					@Override
+					public void onException(Exception e) {
+						logger.error("Loading chunks failed");
+						callback.onException(e);
+					}
+				});
 	}
 
 	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
-		consolidate(maxChunksToConsolidate, 1.0, callback);
-	}
-
-	public void consolidate(int maxChunksToConsolidate, double preferHotSegmentsCoef, ResultCallback<Boolean> callback) {
 		logger.info("Launching consolidation");
-		consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, false,
-				new ArrayList<>(this.aggregations.values()).iterator(), callback);
+		consolidate(maxChunksToConsolidate, false, new ArrayList<>(this.aggregations.values()).iterator(), callback);
 	}
 
-	private void consolidate(final int maxChunksToConsolidate, final double preferHotSegmentsCoef, final boolean found,
+	private void consolidate(final int maxChunksToConsolidate, final boolean found,
 	                         final Iterator<Aggregation> iterator, final ResultCallback<Boolean> callback) {
 		eventloop.post(new Runnable() {
 			@Override
 			public void run() {
 				if (iterator.hasNext()) {
 					final Aggregation aggregation = iterator.next();
-					aggregation.loadChunks(new CompletionCallback() {
+					aggregation.consolidateHotSegment(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 						@Override
-						public void onComplete() {
-							aggregation.consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, new ResultCallback<Boolean>() {
+						public void onResult(final Boolean hotSegmentConsolidated) {
+							aggregation.consolidateMinKey(maxChunksToConsolidate, new ResultCallback<Boolean>() {
 								@Override
-								public void onResult(Boolean result) {
-									consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, result || found, iterator, callback);
+								public void onResult(Boolean minKeyConsolidated) {
+									consolidate(maxChunksToConsolidate,
+											hotSegmentConsolidated || minKeyConsolidated || found, iterator, callback);
 								}
 
 								@Override
-								public void onException(Exception exception) {
-									logger.error("Consolidating aggregation '{}' failed", aggregation, exception);
-									consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, found, iterator, callback);
+								public void onException(Exception e) {
+									logger.error("Min key consolidation in aggregation '{}' failed", aggregation, e);
+									consolidate(maxChunksToConsolidate, found, iterator, callback);
 								}
 							});
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							logger.error("Loading chunks for aggregation '{}' before starting consolidation failed", aggregation, exception);
-							consolidate(maxChunksToConsolidate, preferHotSegmentsCoef, found, iterator, callback);
+						public void onException(Exception e) {
+							logger.error("Consolidating hot segment in aggregation '{}' failed", aggregation, e);
+							consolidate(maxChunksToConsolidate, found, iterator, callback);
 						}
 					});
 				} else {
@@ -544,7 +577,7 @@ public final class Cube implements EventloopJmxMBean {
 	}
 
 	private <T> StreamProducer<T> getOrderedResultStream(CubeQuery query, Class<T> resultClass,
-	                                                     StreamReducer<Comparable, T, Object> rawResultStream,
+	                                                     StreamProducer<T> rawResultStream,
 	                                                     List<String> dimensions, List<String> measures) {
 		if (queryRequiresSorting(query)) {
 			Comparator fieldComparator = createFieldComparator(query, resultClass);
@@ -554,10 +587,10 @@ public final class Cube implements EventloopJmxMBean {
 					bufferSerializer, path, sorterBlockSize);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
 					fieldComparator, false, sorterItemsInMemory);
-			rawResultStream.getOutput().streamTo(sorter.getInput());
+			rawResultStream.streamTo(sorter.getInput());
 			return sorter.getOutput();
 		} else {
-			return rawResultStream.getOutput();
+			return rawResultStream;
 		}
 	}
 

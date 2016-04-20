@@ -18,9 +18,6 @@ package io.datakernel.codegen;
 
 import io.datakernel.codegen.utils.DefiningClassLoader;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.nio.file.Paths;
 import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
@@ -825,5 +822,24 @@ public class ExpressionTest {
 		Collections.sort(strings2, new StringHolderComparator());
 
 		assertEquals(strings, strings2);
+	}
+
+	public interface TestInterface {
+		double returnDouble();
+	}
+
+	public static abstract class TestAbstract implements TestInterface {
+		protected abstract int returnInt();
+	}
+
+	@org.junit.Test
+	public void testAbstractClassWithInterface() throws Exception {
+		DefiningClassLoader classLoader = new DefiningClassLoader();
+		TestAbstract testObj = new AsmBuilder<>(classLoader, TestAbstract.class)
+				.method("returnInt", value(42))
+				.method("returnDouble", value(-1.0))
+				.newInstance();
+		assertEquals(42, testObj.returnInt());
+		assertEquals(-1.0, testObj.returnDouble(), 1E-5);
 	}
 }

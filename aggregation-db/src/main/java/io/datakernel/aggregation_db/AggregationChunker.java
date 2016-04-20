@@ -18,6 +18,7 @@ package io.datakernel.aggregation_db;
 
 import io.datakernel.aggregation_db.util.AsyncResultsTracker;
 import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerList;
+import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
@@ -38,16 +39,19 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private final List<String> keys;
 	private final List<String> fields;
 	private final Class<T> recordClass;
+	private final BiPredicate<T, T> partitionPredicate;
 	private AggregationChunkStorage storage;
 	private AggregationMetadataStorage metadataStorage;
 	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
 
 	public AggregationChunker(Eventloop eventloop, List<String> keys, List<String> fields,
-	                          Class<T> recordClass, AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
+	                          Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
+	                          AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
 	                          int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		this.keys = keys;
 		this.fields = fields;
 		this.recordClass = recordClass;
+		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
 		this.resultsTracker = AsyncResultsTracker.ofList(chunksCallback);
@@ -101,7 +105,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 
 			@Override
 			public void onData(T item) {
-				if (count >= chunkSize) {
+				if (count >= chunkSize || !partitionPredicate.test(last, item)) {
 					rotateChunk();
 					first = item;
 				}

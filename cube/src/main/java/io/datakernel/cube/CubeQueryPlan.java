@@ -24,21 +24,33 @@ import java.util.Map;
 
 final class CubeQueryPlan {
 	private Map<Aggregation, List<String>> aggregationToMeasures = new LinkedHashMap<>();
+	private boolean optimizedAwayReducer;
 
 	public void addAggregationMeasures(Aggregation aggregation, List<String> measures) {
 		aggregationToMeasures.put(aggregation, measures);
 	}
 
+	public void setOptimizedAwayReducer(boolean optimizedAwayReducer) {
+		this.optimizedAwayReducer = optimizedAwayReducer;
+	}
+
+	public int getNumberOfAggregations() {
+		return aggregationToMeasures.size();
+	}
+
 	@Override
 	public String toString() {
+		if (aggregationToMeasures.isEmpty())
+			return "empty";
+
 		StringBuilder sb = new StringBuilder();
 
 		for (Map.Entry<Aggregation, List<String>> entry : aggregationToMeasures.entrySet()) {
-			sb.append("{");
-			sb.append("aggregation=").append(entry.getKey());
-			sb.append(", measures=").append(entry.getValue());
-			sb.append("} ");
+			sb.append("{").append("aggregation=").append(entry.getKey());
+			sb.append(", measures=").append(entry.getValue()).append("} ");
 		}
+
+		sb.append("\nOptimized away reducer: ").append(optimizedAwayReducer).append(". ");
 
 		return sb.toString();
 	}

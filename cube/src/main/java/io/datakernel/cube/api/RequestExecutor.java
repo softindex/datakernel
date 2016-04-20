@@ -19,6 +19,7 @@ package io.datakernel.cube.api;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Ordering;
 import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.api.QueryException;
@@ -105,9 +106,9 @@ public final class RequestExecutor {
 		List<String> attributes = newArrayList();
 
 		List<CubeQuery.Ordering> queryOrderings;
-		List<CubeQuery.Ordering> additionalOrderings = newArrayList();
+		List<CubeQuery.Ordering> orderings = newArrayList();
 		List<String> appliedOrderings = newArrayList();
-		boolean additionalSortingRequired;
+		boolean sortingRequired;
 
 		Class<QueryResultPlaceholder> resultClass;
 		Comparator<QueryResultPlaceholder> comparator;
@@ -142,7 +143,7 @@ public final class RequestExecutor {
 
 			resultClass = createResultClass();
 			StreamConsumers.ToList<QueryResultPlaceholder> consumerStream = queryCube();
-			comparator = additionalSortingRequired ? generateComparator() : null;
+			comparator = sortingRequired ? generateComparator() : null;
 
 			consumerStream.setResultCallback(new ResultCallback<List<QueryResultPlaceholder>>() {
 				@Override
@@ -278,24 +279,14 @@ public final class RequestExecutor {
 
 			for (CubeQuery.Ordering ordering : queryOrderings) {
 				String orderingField = ordering.getPropertyName();
-				additionalSortingRequired |= computedMeasures.contains(orderingField)
-						|| attributeTypes.containsKey(orderingField);
-			}
-
-			for (CubeQuery.Ordering ordering : queryOrderings) {
-				String orderingField = ordering.getPropertyName();
 
 				if (predicates.get(orderingField) instanceof AggregationQuery.PredicateEq)
 					continue;
 
-				if (additionalSortingRequired) {
-					if (computedMeasures.contains(orderingField) || attributeTypes.containsKey(orderingField) ||
-							storedDimensions.contains(orderingField) || storedMeasures.contains(orderingField)) {
-						additionalOrderings.add(ordering);
-						appliedOrderings.add(orderingField);
-					}
-				} else if (storedDimensions.contains(orderingField) || storedMeasures.contains(orderingField)) {
-					query.ordering(ordering);
+				if (computedMeasures.contains(orderingField) || attributeTypes.containsKey(orderingField) ||
+						storedDimensions.contains(orderingField) || storedMeasures.contains(orderingField)) {
+					sortingRequired = true;
+					orderings.add(ordering);
 					appliedOrderings.add(orderingField);
 				}
 			}
@@ -338,7 +329,7 @@ public final class RequestExecutor {
 			AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
 			ExpressionComparatorNullable comparator = comparatorNullable();
 
-			for (CubeQuery.Ordering ordering : additionalOrderings) {
+			for (CubeQuery.Ordering ordering : orderings) {
 				if (ordering.isAsc())
 					comparator.add(
 							getter(cast(arg(0), resultClass), ordering.getPropertyName()),
@@ -368,7 +359,6 @@ public final class RequestExecutor {
 			computeMeasures(results);
 			resolver.resolve((List) results, resultClass, attributeTypes, resolverKeys, keyConstants);
 			performSearch(results);
-			sort(results);
 			TotalsPlaceholder totalsPlaceholder = computeTotals(results);
 
 			List<String> resultMeasures = newArrayList(filter(concat(storedMeasures, computedMeasures),
@@ -409,19 +399,28 @@ public final class RequestExecutor {
 			int start;
 			int end;
 
-			if (offset == null)
+			if (offset == null) {
 				start = 0;
-			else if (offset >= results.size())
+				offset = 0;
+			} else if (offset >= results.size()) {
 				return newArrayList();
-			else
+			} else {
 				start = offset;
+			}
 
-			if (limit == null)
+			if (limit == null) {
 				end = results.size();
-			else if (start + limit > results.size())
+				limit = results.size();
+			} else if (start + limit > results.size()) {
 				end = results.size();
-			else
+			} else {
 				end = start + limit;
+			}
+
+			if (comparator != null) {
+				int upperBound = offset + limit > results.size() ? results.size() : offset + limit;
+				return Ordering.from(comparator).leastOf(results, upperBound).subList(offset, upperBound);
+			}
 
 			return results.subList(start, end);
 		}
@@ -483,12 +482,6 @@ public final class RequestExecutor {
 		void computeMeasures(List<QueryResultPlaceholder> results) {
 			for (QueryResultPlaceholder queryResult : results) {
 				queryResult.computeMeasures();
-			}
-		}
-
-		void sort(List<QueryResultPlaceholder> results) {
-			if (comparator != null) {
-				Collections.sort(results, comparator);
 			}
 		}
 

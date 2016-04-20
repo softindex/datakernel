@@ -19,6 +19,7 @@ package io.datakernel.aggregation_db;
 import com.google.common.base.Function;
 import io.datakernel.aggregation_db.util.AsyncResultsTracker;
 import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerList;
+import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
@@ -43,7 +44,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final AggregationMetadataStorage metadataStorage;
 	private final List<String> keys;
 	private final List<String> fields;
-	private final PartitioningStrategy partitioningStrategy;
+	private final BiPredicate<T, T> partitionPredicate;
 	private final Class<?> recordClass;
 	private final Function<T, Comparable<?>> keyFunction;
 	private final Aggregate aggregate;
@@ -54,7 +55,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
 	                               AggregationMetadataStorage metadataStorage, List<String> keys, List<String> fields,
-	                               PartitioningStrategy partitioningStrategy, Class<?> recordClass,
+	                               Class<?> recordClass, BiPredicate<T, T> partitionPredicate,
 	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
 	                               ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback, int chunkSize) {
 		super(eventloop);
@@ -62,7 +63,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.metadataStorage = metadataStorage;
 		this.keys = keys;
 		this.fields = fields;
-		this.partitioningStrategy = partitioningStrategy;
+		this.partitionPredicate = partitionPredicate;
 		this.recordClass = recordClass;
 		this.keyFunction = keyFunction;
 		this.aggregate = aggregate;
@@ -122,24 +123,23 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 		final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 
-		producer.streamTo(Aggregation.createChunker(partitioningStrategy, eventloop, keys, fields,
-				recordClass, storage, metadataStorage, chunkSize,
-				new ResultCallback<List<AggregationChunk.NewChunk>>() {
-					@Override
-					public void onResult(List<AggregationChunk.NewChunk> newChunks) {
-						resultsTracker.completeWithResults(newChunks);
+		producer.streamTo(new AggregationChunker(eventloop, keys, fields, recordClass, partitionPredicate, storage,
+				metadataStorage, chunkSize, new ResultCallback<List<AggregationChunk.NewChunk>>() {
+			@Override
+			public void onResult(List<AggregationChunk.NewChunk> newChunks) {
+				resultsTracker.completeWithResults(newChunks);
 
-						if (resultsTracker.getOperationsCount() <= MAX_OUTPUT_STREAMS)
-							resume();
-					}
+				if (resultsTracker.getOperationsCount() <= MAX_OUTPUT_STREAMS)
+					resume();
+			}
 
-					@Override
-					public void onException(Exception e) {
-						logger.error("Streaming to chunker failed", e);
-						closeWithError(e);
-						resultsTracker.completeWithException(e);
-					}
-				}));
+			@Override
+			public void onException(Exception e) {
+				logger.error("Streaming to chunker failed", e);
+				closeWithError(e);
+				resultsTracker.completeWithException(e);
+			}
+		}));
 	}
 
 	@Override

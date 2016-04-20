@@ -252,10 +252,20 @@ public final class AggregationQuery {
 		return unmodifiableList(fields);
 	}
 
+	public List<String> getRequestedKeys() {
+		LinkedHashSet<String> result = new LinkedHashSet<>();
+		for (Predicate predicate : predicates.asCollection()) {
+			if (predicate instanceof PredicateEq)
+				result.add(predicate.key);
+		}
+		result.addAll(keys);
+		return new ArrayList<>(result);
+	}
+
 	public List<String> getAllKeys() {
 		LinkedHashSet<String> result = new LinkedHashSet<>();
-		result.addAll(keys);
 		result.addAll(predicates.keys());
+		result.addAll(keys);
 		return new ArrayList<>(result);
 	}
 

@@ -26,10 +26,7 @@ import org.objectweb.asm.commons.Method;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.datakernel.codegen.Utils.loadAndCast;
@@ -73,38 +70,34 @@ public class AsmBuilder<T> {
 	}
 
 	private class AsmFunctionKey {
+		private final Class<T> type;
 		private final Map<String, Class<?>> fields;
 		private final Map<Method, Expression> expressionMap;
 		private final Map<Method, Expression> expressionStaticMap;
 
-		@Override
-		public boolean equals(Object o) {
-			if (this == o) return true;
-			if (o == null || getClass() != o.getClass()) return false;
-
-			AsmFunctionKey that = (AsmFunctionKey) o;
-
-			if (fields != null ? !fields.equals(that.fields) : that.fields != null) return false;
-			if (expressionMap != null ? !expressionMap.equals(that.expressionMap) : that.expressionMap != null)
-				return false;
-			return !(expressionStaticMap != null ? !expressionStaticMap.equals(that.expressionStaticMap) : that.expressionStaticMap != null);
-
-		}
-
-		@Override
-		public int hashCode() {
-			int result = fields != null ? fields.hashCode() : 0;
-			result = 31 * result + (expressionMap != null ? expressionMap.hashCode() : 0);
-			result = 31 * result + (expressionStaticMap != null ? expressionStaticMap.hashCode() : 0);
-			return result;
-		}
-
-		public AsmFunctionKey(Map<String, Class<?>> fields, Map<Method, Expression> expressionMap, Map<Method, Expression> expressionStaticMap) {
+		public AsmFunctionKey(Class<T> type, Map<String, Class<?>> fields, Map<Method, Expression> expressionMap,
+		                      Map<Method, Expression> expressionStaticMap) {
+			this.type = type;
 			this.fields = fields;
 			this.expressionMap = expressionMap;
 			this.expressionStaticMap = expressionStaticMap;
 		}
 
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (o == null || getClass() != o.getClass()) return false;
+			AsmFunctionKey that = (AsmFunctionKey) o;
+			return Objects.equals(type, that.type) &&
+					Objects.equals(fields, that.fields) &&
+					Objects.equals(expressionMap, that.expressionMap) &&
+					Objects.equals(expressionStaticMap, that.expressionStaticMap);
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(type, fields, expressionMap, expressionStaticMap);
+		}
 	}
 
 	/**
@@ -213,7 +206,7 @@ public class AsmBuilder<T> {
 
 	public Class<T> defineClass(String className) {
 		synchronized (classLoader) {
-			AsmFunctionKey key = new AsmFunctionKey(fields, expressionMap, expressionStaticMap);
+			AsmFunctionKey key = new AsmFunctionKey(type, fields, expressionMap, expressionStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
@@ -260,7 +253,13 @@ public class AsmBuilder<T> {
 			Method m = getMethod("void <init> ()");
 			GeneratorAdapter g = new GeneratorAdapter(ACC_PUBLIC, m, null, null, cw);
 			g.loadThis();
-			g.invokeConstructor(getType(Object.class), m);
+
+			if (type.isInterface()) {
+				g.invokeConstructor(getType(Object.class), m);
+			} else {
+				g.invokeConstructor(getType(type), m);
+			}
+
 			g.returnValue();
 			g.endMethod();
 		}

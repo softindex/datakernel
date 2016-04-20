@@ -16,21 +16,19 @@
 
 package io.datakernel.aggregation_db;
 
-import java.util.Iterator;
 import java.util.List;
 
 import static com.google.common.collect.Lists.newArrayList;
+import static io.datakernel.aggregation_db.AggregationQueryPlan.chunksToString;
 
-final class AggregationQueryPlan {
+public final class ConsolidationPlan {
 	private static class FieldsWithChunks {
 		private final List<String> fields;
 		private final List<AggregationChunk> chunks;
-		private final boolean sorted;
 
-		public FieldsWithChunks(List<String> fields, List<AggregationChunk> chunks, boolean sorted) {
+		public FieldsWithChunks(List<String> fields, List<AggregationChunk> chunks) {
 			this.fields = fields;
 			this.chunks = chunks;
-			this.sorted = sorted;
 		}
 
 		@Override
@@ -38,46 +36,14 @@ final class AggregationQueryPlan {
 			return "{" +
 					"fields=" + fields +
 					", chunks=" + chunksToString(chunks) +
-					", sorted=" + sorted +
 					'}';
 		}
 	}
 
 	private List<FieldsWithChunks> sequentialChunkGroups = newArrayList();
-	private boolean postFiltering;
-	private boolean optimizedAwayReducer;
 
-	public void addChunkGroup(List<String> fields, List<AggregationChunk> sequentialChunkGroup, boolean sorted) {
-		sequentialChunkGroups.add(new FieldsWithChunks(fields, sequentialChunkGroup, sorted));
-	}
-
-	public void setPostFiltering(boolean postFiltering) {
-		this.postFiltering = postFiltering;
-	}
-
-	public void setOptimizedAwayReducer(boolean optimizedAwayReducer) {
-		this.optimizedAwayReducer = optimizedAwayReducer;
-	}
-
-	public static String chunksToString(List<AggregationChunk> chunks) {
-		Iterator<AggregationChunk> it = chunks.iterator();
-		if (!it.hasNext())
-			return "[]";
-
-		StringBuilder sb = new StringBuilder();
-		sb.append('[');
-		for (;;) {
-			AggregationChunk chunk = it.next();
-			sb.append("{" + "revision=").append(chunk.getRevisionId())
-					.append(", id=").append(chunk.getChunkId())
-					.append(", minKey=").append(chunk.getMinPrimaryKey())
-					.append(", maxKey=").append(chunk.getMaxPrimaryKey())
-					.append(", count=").append(chunk.getCount())
-					.append('}');
-			if (!it.hasNext())
-				return sb.append(']').toString();
-			sb.append(',').append(' ');
-		}
+	public void addChunkGroup(List<String> fields, List<AggregationChunk> sequentialChunkGroup) {
+		sequentialChunkGroups.add(new FieldsWithChunks(fields, sequentialChunkGroup));
 	}
 
 	@Override
@@ -94,9 +60,6 @@ final class AggregationQueryPlan {
 			sb.append(i + 1).append(" (").append(sequentialChunkGroups.get(i).chunks.size()).append("). ");
 			sb.append(sequentialChunkGroups.get(i)).append(" ");
 		}
-
-		sb.append("\nPost-filtering: ").append(postFiltering).append(". ");
-		sb.append("\nOptimized away reducer: ").append(optimizedAwayReducer).append(". ");
 
 		return sb.toString();
 	}

@@ -85,7 +85,8 @@ public class CubePartitioningTest {
 		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, aggregationChunkStorage,
 				cubeStructure, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
 				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD);
-		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES), "date");
+		cube.addAggregation("date", new AggregationMetadata(asList("date"), LogItem.MEASURES), asList("date"),
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE);
 		cube.setChildParentRelationships(ImmutableMap.<String, String>builder()
 				.put("campaign", "advertiser")
 				.put("banner", "campaign")
@@ -170,7 +171,7 @@ public class CubePartitioningTest {
 			else
 				break;
 		}
-		assertEquals(11, consolidations);
+		assertEquals(6, consolidations);
 
 		// Load metadata
 		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
