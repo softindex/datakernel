@@ -299,7 +299,7 @@ public class AggregationMetadata {
 		return result;
 	}
 
-	private static PickedChunks findChunksWithMinKeyOrSizeFixStrategy(Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree,
+	private static PickedChunks findChunksWithMinKeyOrSizeFixStrategy(SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree,
 	                                                                  int maxChunks, int optimalChunkSize) {
 		int minChunks = 2;
 		for (Map.Entry<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> entry : partitioningKeyToTree.entrySet()) {
@@ -391,8 +391,8 @@ public class AggregationMetadata {
 		}
 	}
 
-	Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> groupByPartition(int partitioningKeyLength) {
-		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = new HashMap<>();
+	SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> groupByPartition(int partitioningKeyLength) {
+		SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = new TreeMap<>();
 
 		Set<AggregationChunk> allChunks = prefixRanges[0].getAll();
 		for (AggregationChunk chunk : allChunks) {
@@ -435,7 +435,7 @@ public class AggregationMetadata {
 
 	public List<AggregationChunk> findChunksForConsolidationMinKey(int maxChunks, int optimalChunkSize,
 	                                                               int partitioningKeyLength) {
-		Map<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = groupByPartition(partitioningKeyLength);
+		SortedMap<PrimaryKey, RangeTree<PrimaryKey, AggregationChunk>> partitioningKeyToTree = groupByPartition(partitioningKeyLength);
 		if (partitioningKeyToTree == null) { // not partitioned
 			List<AggregationChunk> chunks = findChunksForPartitioning(partitioningKeyLength, maxChunks);
 			logChunksAndStrategy(chunks, PickingStrategy.PARTITIONING);
