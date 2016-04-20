@@ -401,12 +401,17 @@ public final class Cube implements EventloopJmxMBean {
 	}
 
 	public boolean containsExcessiveNumberOfOverlappingChunks() {
+		boolean excessive = false;
+
 		for (Aggregation aggregation : aggregations.values()) {
-			if (aggregation.getNumberOfOverlappingChunks() > overlappingChunksThreshold)
-				return true;
+			int numberOfOverlappingChunks = aggregation.getNumberOfOverlappingChunks();
+			if (numberOfOverlappingChunks > overlappingChunksThreshold) {
+				logger.info("Aggregation {} contains {} overlapping chunks", aggregation, numberOfOverlappingChunks);
+				excessive = true;
+			}
 		}
 
-		return false;
+		return excessive;
 	}
 
 	public void loadChunks(final CompletionCallback callback) {
