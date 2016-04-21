@@ -480,7 +480,7 @@ public class Aggregation {
 			from record class to result class.
 			 */
 			StreamMap.MapperProjection mapper = structure.createMapper(producerClasses.get(0),
-					resultClass, queryKeys, fields);
+					resultClass, queryKeys, newArrayList(filter(fields, in(producersFields.get(0)))));
 			StreamMap<Object, T> streamMap = new StreamMap<>(eventloop, mapper);
 			producers.get(0).streamTo(streamMap.getInput());
 			if (queryPlan != null)
