@@ -38,6 +38,7 @@ import io.datakernel.cube.api.ReportingConfiguration;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxOperation;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
@@ -76,19 +77,20 @@ public final class Cube implements EventloopJmxMBean {
 	private final DefiningClassLoader classLoader;
 	private final CubeMetadataStorage cubeMetadataStorage;
 	private final AggregationChunkStorage aggregationChunkStorage;
+	private final AggregationStructure structure;
+	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
+
+	// settings
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
 	private int sorterBlockSize;
 	private int overlappingChunksThreshold;
 	private boolean ignoreChunkReadingExceptions;
 
-	private final AggregationStructure structure;
-	private ReportingConfiguration reportingConfiguration = new ReportingConfiguration();
-
+	// state
 	private Map<String, Aggregation> aggregations = new LinkedHashMap<>();
 	private Map<String, AggregationMetadata> aggregationMetadatas = new LinkedHashMap<>();
 	private AggregationKeyRelationships childParentRelationships;
-
 	private int lastRevisionId;
 
 	/**
@@ -427,7 +429,7 @@ public final class Cube implements EventloopJmxMBean {
 							List<AggregationChunk> newChunks = result.newChunks.get(aggregationId);
 							LoadedChunks loadedChunks = new LoadedChunks(result.lastRevisionId,
 									consolidatedChunkIds == null ? Collections.<Long>emptyList() : consolidatedChunkIds,
-									newChunks == null ?  Collections.<AggregationChunk>emptyList() : newChunks);
+									newChunks == null ? Collections.<AggregationChunk>emptyList() : newChunks);
 							entry.getValue().loadChunks(loadedChunks);
 						}
 
@@ -642,6 +644,44 @@ public final class Cube implements EventloopJmxMBean {
 	}
 
 	// jmx
+	@JmxOperation
+	public void flushBuffers() {
+		for (Aggregation aggregation : aggregations.values()) {
+			aggregation.flushBuffers();
+		}
+	}
+
+	@JmxOperation
+	public void flushBuffers(final String aggregationId) {
+		Aggregation aggregation = aggregations.get(aggregationId);
+		if (aggregation != null)
+			aggregation.flushBuffers();
+	}
+
+	@JmxOperation
+	public void setChunkSize(String aggregationId, int chunkSize) {
+		Aggregation aggregation = aggregations.get(aggregationId);
+		if (aggregation != null)
+			aggregation.setAggregationChunkSize(chunkSize);
+	}
+
+	@JmxAttribute
+	public int getBuffersSize() {
+		int size = 0;
+		for (Aggregation aggregation : aggregations.values()) {
+			size += aggregation.getBuffersSize();
+		}
+		return size;
+	}
+
+	@JmxAttribute
+	public Map<String, Integer> getBuffersSizeByAggregation() {
+		Map<String, Integer> map = new HashMap<>();
+		for (Map.Entry<String, Aggregation> entry : aggregations.entrySet()) {
+			map.put(entry.getKey(), entry.getValue().getBuffersSize());
+		}
+		return map;
+	}
 
 	@JmxAttribute
 	public void setIgnoreChunkReadingExceptions(boolean ignoreChunkReadingExceptions) {

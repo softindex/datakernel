@@ -22,8 +22,6 @@ import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTracker
 import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxOperation;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamProducer;
@@ -35,7 +33,7 @@ import java.util.*;
 
 import static com.google.common.collect.Iterables.transform;
 
-public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T>, EventloopJmxMBean {
+public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> implements StreamDataReceiver<T> {
 	private static final Logger logger = LoggerFactory.getLogger(AggregationGroupReducer.class);
 
 	private static final int MAX_OUTPUT_STREAMS = 1;
@@ -49,15 +47,17 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final Function<T, Comparable<?>> keyFunction;
 	private final Aggregate aggregate;
 	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
-	private final int chunkSize;
+	private final AggregationOperationTracker operationTracker;
+	private int chunkSize;
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
 
 	public AggregationGroupReducer(Eventloop eventloop, AggregationChunkStorage storage,
+	                               final AggregationOperationTracker operationTracker,
 	                               AggregationMetadataStorage metadataStorage, List<String> keys, List<String> fields,
 	                               Class<?> recordClass, BiPredicate<T, T> partitionPredicate,
 	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
-	                               ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback, int chunkSize) {
+	                               int chunkSize, final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		super(eventloop);
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
@@ -68,7 +68,21 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		this.keyFunction = keyFunction;
 		this.aggregate = aggregate;
 		this.chunkSize = chunkSize;
-		this.resultsTracker = AsyncResultsTracker.ofList(chunksCallback);
+		this.operationTracker = operationTracker;
+		this.resultsTracker = AsyncResultsTracker.ofList(new ResultCallback<List<AggregationChunk.NewChunk>>() {
+			@Override
+			public void onResult(List<AggregationChunk.NewChunk> result) {
+				operationTracker.reportCompletion(AggregationGroupReducer.this);
+				chunksCallback.onResult(result);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				operationTracker.reportCompletion(AggregationGroupReducer.this);
+				chunksCallback.onException(e);
+			}
+		});
+		operationTracker.reportStart(this);
 	}
 
 	@Override
@@ -123,23 +137,24 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 
 		final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 
-		producer.streamTo(new AggregationChunker(eventloop, keys, fields, recordClass, partitionPredicate, storage,
-				metadataStorage, chunkSize, new ResultCallback<List<AggregationChunk.NewChunk>>() {
-			@Override
-			public void onResult(List<AggregationChunk.NewChunk> newChunks) {
-				resultsTracker.completeWithResults(newChunks);
+		producer.streamTo(new AggregationChunker(eventloop, operationTracker, keys, fields, recordClass,
+				partitionPredicate, storage, metadataStorage, chunkSize,
+				new ResultCallback<List<AggregationChunk.NewChunk>>() {
+					@Override
+					public void onResult(List<AggregationChunk.NewChunk> newChunks) {
+						resultsTracker.completeWithResults(newChunks);
 
-				if (resultsTracker.getOperationsCount() <= MAX_OUTPUT_STREAMS)
-					resume();
-			}
+						if (resultsTracker.getOperationsCount() <= MAX_OUTPUT_STREAMS)
+							resume();
+					}
 
-			@Override
-			public void onException(Exception e) {
-				logger.error("Streaming to chunker failed", e);
-				closeWithError(e);
-				resultsTracker.completeWithException(e);
-			}
-		}));
+					@Override
+					public void onException(Exception e) {
+						logger.error("Streaming to chunker failed", e);
+						closeWithError(e);
+						resultsTracker.completeWithException(e);
+					}
+				}));
 	}
 
 	@Override
@@ -154,14 +169,15 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	}
 
 	// jmx
-
-	@JmxOperation
 	public void flush() {
 		doFlush();
 	}
 
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
+	public int getBufferSize() {
+		return map.size();
+	}
+
+	public void setChunkSize(int chunkSize) {
+		this.chunkSize = chunkSize;
 	}
 }

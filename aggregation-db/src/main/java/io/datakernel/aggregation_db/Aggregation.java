@@ -58,7 +58,7 @@ import static java.util.Arrays.asList;
  * Provides methods for loading and querying data.
  */
 @SuppressWarnings("unchecked")
-public class Aggregation {
+public class Aggregation implements AggregationOperationTracker {
 	private static final Logger logger = LoggerFactory.getLogger(Aggregation.class);
 	private static final Joiner JOINER = Joiner.on(", ");
 
@@ -73,20 +73,23 @@ public class Aggregation {
 	private final AggregationChunkStorage aggregationChunkStorage;
 	private final AggregationMetadata aggregationMetadata;
 	private final List<String> partitioningKey;
+	private final AggregationStructure structure;
+	private final ProcessorFactory processorFactory;
+
+	// settings
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
 	private int sorterBlockSize;
 	private boolean ignoreChunkReadingExceptions;
 
-	private final AggregationStructure structure;
-
-	private final ProcessorFactory processorFactory;
-
+	// state
 	private final Map<Long, AggregationChunk> chunks = new LinkedHashMap<>();
-
 	private int lastRevisionId;
-
 	private ListenableCompletionCallback loadChunksCallback;
+
+	// jmx
+	private final List<AggregationGroupReducer> activeGroupReducers = new ArrayList<>();
+	private final List<AggregationChunker> activeChunkers = new ArrayList<>();
 
 	/**
 	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
@@ -289,9 +292,9 @@ public class Aggregation {
 		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, getKeys(),
 				fields, outputToInputFields);
 
-		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, metadataStorage, getKeys(),
+		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, this, metadataStorage, getKeys(),
 				outputFields, aggregationClass, createPartitionPredicate(aggregationClass), keyFunction, aggregate,
-				chunksCallback, aggregationChunkSize);
+				aggregationChunkSize, chunksCallback);
 	}
 
 	/**
@@ -395,7 +398,7 @@ public class Aggregation {
 
 		ConsolidationPlan consolidationPlan = new ConsolidationPlan();
 		consolidatedProducer(getKeys(), getKeys(), fields, resultClass, null, chunksToConsolidate, null, consolidationPlan)
-				.streamTo(new AggregationChunker(eventloop, getKeys(), fields, resultClass,
+				.streamTo(new AggregationChunker(eventloop, this, getKeys(), fields, resultClass,
 						createPartitionPredicate(resultClass), aggregationChunkStorage, metadataStorage,
 						aggregationChunkSize, callback));
 		logger.info("Consolidation plan: {}", consolidationPlan);
@@ -738,12 +741,19 @@ public class Aggregation {
 		return aggregationMetadata.getConsolidationDebugInfo();
 	}
 
+	// jmx
 	public int getAggregationChunkSize() {
 		return aggregationChunkSize;
 	}
 
-	public void setAggregationChunkSize(int aggregationChunkSize) {
-		this.aggregationChunkSize = aggregationChunkSize;
+	public void setAggregationChunkSize(int chunkSize) {
+		this.aggregationChunkSize = chunkSize;
+		for (AggregationChunker chunker : activeChunkers) {
+			chunker.setChunkSize(chunkSize);
+		}
+		for (AggregationGroupReducer groupReducer : activeGroupReducers) {
+			groupReducer.setChunkSize(chunkSize);
+		}
 	}
 
 	public int getSorterItemsInMemory() {
@@ -768,6 +778,40 @@ public class Aggregation {
 
 	public void setIgnoreChunkReadingExceptions(boolean ignoreChunkReadingExceptions) {
 		this.ignoreChunkReadingExceptions = ignoreChunkReadingExceptions;
+	}
+
+	public void flushBuffers() {
+		for (AggregationGroupReducer groupReducer : activeGroupReducers) {
+			groupReducer.flush();
+		}
+	}
+
+	public int getBuffersSize() {
+		int size = 0;
+		for (AggregationGroupReducer groupReducer : activeGroupReducers) {
+			size += groupReducer.getBufferSize();
+		}
+		return size;
+	}
+
+	@Override
+	public void reportStart(AggregationChunker chunker) {
+		activeChunkers.add(chunker);
+	}
+
+	@Override
+	public void reportCompletion(AggregationChunker chunker) {
+		activeChunkers.remove(chunker);
+	}
+
+	@Override
+	public void reportStart(AggregationGroupReducer groupReducer) {
+		activeGroupReducers.add(groupReducer);
+	}
+
+	@Override
+	public void reportCompletion(AggregationGroupReducer groupReducer) {
+		activeGroupReducers.remove(groupReducer);
 	}
 
 	@Override

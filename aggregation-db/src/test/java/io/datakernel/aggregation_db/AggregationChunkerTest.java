@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import static io.datakernel.aggregation_db.AggregationGroupReducerTest.NO_OP_TRACKER;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.intSum;
 import static io.datakernel.aggregation_db.fieldtype.FieldTypes.longSum;
 import static io.datakernel.aggregation_db.keytype.KeyTypes.intKey;
@@ -112,7 +113,7 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
+		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
 				aggregationMetadataStorage, 1, resultCallback);
 
@@ -202,7 +203,7 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
+		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
 				aggregationMetadataStorage, 1, resultCallback);
 
@@ -306,7 +307,7 @@ public class AggregationChunkerTest {
 
 		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
 
-		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop,
+		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
 				aggregationMetadataStorage, 1, resultCallback);
 

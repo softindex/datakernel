@@ -40,23 +40,42 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private final List<String> fields;
 	private final Class<T> recordClass;
 	private final BiPredicate<T, T> partitionPredicate;
-	private AggregationChunkStorage storage;
-	private AggregationMetadataStorage metadataStorage;
+	private final AggregationChunkStorage storage;
+	private final AggregationMetadataStorage metadataStorage;
+	private final Chunker chunker;
 	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
 
-	public AggregationChunker(Eventloop eventloop, List<String> keys, List<String> fields,
+	public AggregationChunker(Eventloop eventloop, final AggregationOperationTracker operationTracker,
+	                          List<String> keys, List<String> fields,
 	                          Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
 	                          AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-	                          int chunkSize, ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	                          int chunkSize, final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		this.keys = keys;
 		this.fields = fields;
 		this.recordClass = recordClass;
 		this.partitionPredicate = partitionPredicate;
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
-		this.resultsTracker = AsyncResultsTracker.ofList(chunksCallback);
-		Chunker chunker = new Chunker(eventloop, chunkSize);
+		this.resultsTracker = AsyncResultsTracker.ofList(new ResultCallback<List<AggregationChunk.NewChunk>>() {
+			@Override
+			public void onResult(List<AggregationChunk.NewChunk> result) {
+				operationTracker.reportCompletion(AggregationChunker.this);
+				chunksCallback.onResult(result);
+			}
+
+			@Override
+			public void onException(Exception e) {
+				operationTracker.reportCompletion(AggregationChunker.this);
+				chunksCallback.onException(e);
+			}
+		});
+		this.chunker = new Chunker(eventloop, chunkSize);
 		setActualConsumer(chunker.getInput());
+		operationTracker.reportStart(this);
+	}
+
+	public void setChunkSize(int chunkSize) {
+		this.chunker.inputConsumer.chunkSize = chunkSize;
 	}
 
 	private class Chunker extends AbstractStreamTransformer_1_1<T, T> {
@@ -70,7 +89,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 		}
 
 		private class InputConsumer extends AbstractInputConsumer implements StreamDataReceiver<T> {
-			private final int chunkSize;
+			private int chunkSize;
 
 			private T first;
 			private T last;

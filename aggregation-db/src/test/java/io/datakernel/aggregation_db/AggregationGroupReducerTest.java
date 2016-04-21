@@ -47,6 +47,20 @@ public class AggregationGroupReducerTest {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
+	public static AggregationOperationTracker NO_OP_TRACKER = new AggregationOperationTracker() {
+		@Override
+		public void reportStart(AggregationChunker chunker) { }
+
+		@Override
+		public void reportCompletion(AggregationChunker chunker) { }
+
+		@Override
+		public void reportStart(AggregationGroupReducer groupReducer) { }
+
+		@Override
+		public void reportCompletion(AggregationGroupReducer groupReducer) { }
+	};
+
 	@Test
 	public void test() throws IOException {
 		final Eventloop eventloop = new Eventloop();
@@ -111,10 +125,9 @@ public class AggregationGroupReducerTest {
 		};
 
 		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop,
-				aggregationChunkStorage, aggregationMetadataStorage, aggregationMetadata.getKeys(),
+				aggregationChunkStorage, NO_OP_TRACKER, aggregationMetadataStorage, aggregationMetadata.getKeys(),
 				aggregationMetadata.getFields(), aggregationClass,
-				Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, chunksCallback,
-				aggregationChunkSize);
+				Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, aggregationChunkSize, chunksCallback);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
 				new InvertedIndexRecord("brown", 2), new InvertedIndexRecord("fox", 3),
@@ -200,10 +213,9 @@ public class AggregationGroupReducerTest {
 		};
 
 		AggregationGroupReducer<InvertedIndexRecord> aggregationGroupReducer = new AggregationGroupReducer<>(eventloop,
-				aggregationChunkStorage, aggregationMetadataStorage, aggregationMetadata.getKeys(),
+				aggregationChunkStorage, NO_OP_TRACKER, aggregationMetadataStorage, aggregationMetadata.getKeys(),
 				aggregationMetadata.getFields(), aggregationClass,
-				Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, chunksCallback,
-				aggregationChunkSize);
+				Predicates.<InvertedIndexRecord, InvertedIndexRecord>alwaysTrue(), keyFunction, aggregate, aggregationChunkSize, chunksCallback);
 
 		StreamProducer<InvertedIndexRecord> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(new InvertedIndexRecord("fox", 1),
