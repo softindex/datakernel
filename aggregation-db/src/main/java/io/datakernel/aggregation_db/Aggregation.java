@@ -557,7 +557,8 @@ public class Aggregation implements AggregationOperationTracker {
 
 	private Predicate createPredicate(AggregationChunk chunk,
 	                                  Class<?> chunkRecordClass, AggregationQuery.Predicates predicates) {
-		List<String> keysAlreadyInChunk = new ArrayList<>();
+		List<String> keysInChunk = new ArrayList<>();
+		List<Object> objectsInChunk = new ArrayList<>();
 		for (int i = 0; i < getKeys().size(); i++) {
 			String key = getKeys().get(i);
 			Object min = chunk.getMinPrimaryKey().get(i);
@@ -565,17 +566,19 @@ public class Aggregation implements AggregationOperationTracker {
 			if (!min.equals(max)) {
 				break;
 			}
-			keysAlreadyInChunk.add(key);
+			keysInChunk.add(key);
+			objectsInChunk.add(min);
 		}
 
-		AsmBuilder builder = new AsmBuilder(classLoader, Predicate.class);
+		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 
 		for (AggregationQuery.Predicate predicate : predicates.asCollection()) {
 			if (predicate instanceof AggregationQuery.PredicateEq) {
-				if (keysAlreadyInChunk.contains(predicate.key))
-					continue;
 				Object value = ((AggregationQuery.PredicateEq) predicate).value;
+				int indexInChunk = keysInChunk.indexOf(predicate.key);
+				if (indexInChunk != -1 && objectsInChunk.get(indexInChunk).equals(value))
+					continue;
 
 				predicateDefAnd.add(cmpEq(
 						getter(cast(arg(0), chunkRecordClass), predicate.key),
@@ -594,7 +597,7 @@ public class Aggregation implements AggregationOperationTracker {
 			}
 		}
 		builder.method("apply", boolean.class, asList(Object.class), predicateDefAnd);
-		return (Predicate) builder.newInstance();
+		return builder.newInstance();
 	}
 
 	public int getNumberOfOverlappingChunks() {
