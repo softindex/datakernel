@@ -22,6 +22,8 @@ import io.datakernel.codegen.utils.Preconditions;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -43,6 +45,8 @@ import static org.objectweb.asm.commons.Method.getMethod;
  */
 @SuppressWarnings("unchecked")
 public class AsmBuilder<T> {
+	private static final Logger logger = LoggerFactory.getLogger(AsmBuilder.class);
+	
 	public static final String DEFAULT_CLASS_NAME = AsmBuilder.class.getPackage().getName() + ".Class";
 	private static final AtomicInteger COUNTER = new AtomicInteger();
 
@@ -210,6 +214,7 @@ public class AsmBuilder<T> {
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
+				logger.trace("Fetching class {} for type {} from cache", cachedClass, type);
 				return (Class<T>) cachedClass;
 			}
 
@@ -311,7 +316,7 @@ public class AsmBuilder<T> {
 		cw.visitEnd();
 
 		Class<?> definedClass = classLoader.defineClass(className, key, cw.toByteArray());
-
+		logger.trace("Defined new class {} for type {}", definedClass, type);
 		return (Class<T>) definedClass;
 	}
 

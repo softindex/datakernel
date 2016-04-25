@@ -394,6 +394,8 @@ public class Aggregation implements AggregationOperationTracker {
 			}
 		}
 
+		Collections.sort(fields);
+
 		Class resultClass = structure.createRecordClass(getKeys(), fields);
 
 		ConsolidationPlan consolidationPlan = new ConsolidationPlan();
