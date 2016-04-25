@@ -871,12 +871,12 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 	public void recordFatalError(Throwable e, Object context) {
 		logger.error("Fatal Error in {}", context, e);
-		stats.recordFatalError(e, context, currentTimeMillis());
+		stats.recordFatalError(e, context);
 	}
 
 	public void recordIoError(Exception e, Object context) {
 		logger.warn("IO Error in {}", context, e.toString());
-		stats.recordIoError(e, context, currentTimeMillis());
+		stats.recordIoError(e, context);
 	}
 
 	public String getThreadName() {

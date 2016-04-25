@@ -23,6 +23,7 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 import io.datakernel.util.Stopwatch;
 
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class EventloopStats {
@@ -51,6 +52,29 @@ public final class EventloopStats {
 		}
 	}
 
+	private static final class StackTrace {
+		private final StackTraceElement[] stackTraceElements;
+
+		public StackTrace(StackTraceElement[] stackTraceElements) {
+			this.stackTraceElements = stackTraceElements;
+		}
+
+		@Override
+		public boolean equals(Object o) {
+			if (this == o) return true;
+			if (!(o instanceof StackTrace)) return false;
+
+			StackTrace that = (StackTrace) o;
+
+			return Arrays.equals(stackTraceElements, that.stackTraceElements);
+		}
+
+		@Override
+		public int hashCode() {
+			return stackTraceElements != null ? Arrays.hashCode(stackTraceElements) : 0;
+		}
+	}
+
 	private final ValueStats selectorSelectTime = new ValueStats();
 	private final ValueStats businessLogicTime = new ValueStats();
 	private final EventStats selectedKeys = new EventStats();
@@ -75,9 +99,8 @@ public final class EventloopStats {
 	private final ValueStats concurrentTasksTime = new ValueStats();
 	private final ValueStats scheduledTasksTime = new ValueStats();
 
-	private final ExceptionStats fatalErrors = new ExceptionStats();
-
-	private final ExceptionStats ioErrors = new ExceptionStats();
+	private final Map<StackTrace, ExceptionStats> fatalErrors = new HashMap<>();
+	private final Map<StackTrace, ExceptionStats> ioErrors = new HashMap<>();
 
 	public void updateBusinessLogicTime(long businessLogicTime) {
 		this.businessLogicTime.recordValue((int) businessLogicTime);
@@ -141,12 +164,22 @@ public final class EventloopStats {
 		scheduledTasks.recordEvents(newTasks);
 	}
 
-	public void recordFatalError(Throwable throwable, Object causedObject, long timestamp) {
-		fatalErrors.recordException(throwable, causedObject);
+	public void recordFatalError(Throwable throwable, Object causedObject) {
+		StackTrace stackTrace = new StackTrace(throwable.getStackTrace());
+		if (!fatalErrors.containsKey(stackTrace)) {
+			fatalErrors.put(stackTrace, new ExceptionStats());
+		}
+		ExceptionStats stats = fatalErrors.get(stackTrace);
+		stats.recordException(throwable, causedObject);
 	}
 
-	public void recordIoError(Throwable e, Object o, long timestamp) {
-		ioErrors.recordException(e, o);
+	public void recordIoError(Throwable throwable, Object causedObject) {
+		StackTrace stackTrace = new StackTrace(throwable.getStackTrace());
+		if (!ioErrors.containsKey(stackTrace)) {
+			ioErrors.put(stackTrace, new ExceptionStats());
+		}
+		ExceptionStats stats = ioErrors.get(stackTrace);
+		stats.recordException(throwable, causedObject);
 	}
 
 	public void resetStats() {
@@ -173,8 +206,8 @@ public final class EventloopStats {
 		concurrentTasksTime.resetStats();
 		scheduledTasksTime.resetStats();
 
-		fatalErrors.resetStats();
-		ioErrors.resetStats();
+		fatalErrors.clear();
+		ioErrors.clear();
 
 		lastLongestLocalRunnable.reset();
 		lastLongestConcurrentRunnable.reset();
@@ -284,12 +317,12 @@ public final class EventloopStats {
 	}
 
 	@JmxAttribute
-	public ExceptionStats getIoErrors() {
-		return ioErrors;
+	public List<ExceptionStats> getIoErrors() {
+		return new ArrayList<>(ioErrors.values());
 	}
 
 	@JmxAttribute
-	public ExceptionStats getFatalErrors() {
-		return fatalErrors;
+	public List<ExceptionStats> getFatalErrors() {
+		return new ArrayList<>(fatalErrors.values());
 	}
 }
