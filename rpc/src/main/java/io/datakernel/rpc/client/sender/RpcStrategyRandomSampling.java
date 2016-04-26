@@ -49,11 +49,18 @@ public class RpcStrategyRandomSampling implements RpcStrategy {
 	@Override
 	public RpcSender createSender(RpcClientConnectionPool pool) {
 		Map<RpcSender, Integer> senderToWeight = new HashMap<>();
+		int totalWeight = 0;
 		for (RpcStrategy rpcStrategy : strategyToWeight.keySet()) {
 			RpcSender sender = rpcStrategy.createSender(pool);
 			if (sender != null) {
-				senderToWeight.put(sender, strategyToWeight.get(rpcStrategy));
+				int weight = strategyToWeight.get(rpcStrategy);
+				senderToWeight.put(sender, weight);
+				totalWeight += weight;
 			}
+		}
+
+		if (totalWeight == 0) {
+			return null;
 		}
 
 		long randomLong = random.nextLong();
