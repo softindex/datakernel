@@ -32,6 +32,8 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileAttribute;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -75,7 +77,7 @@ public final class AsyncFile {
 	 */
 	public static AsyncFile open(final Eventloop eventloop, final ExecutorService executor,
 	                             final Path path, final OpenOption[] openOptions) throws IOException {
-		AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, openOptions);
+		AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, new HashSet<>(Arrays.asList(openOptions)), executor);
 		return new AsyncFile(eventloop, executor, channel, path);
 	}
 
@@ -88,14 +90,12 @@ public final class AsyncFile {
 	 * @param openOptions options specifying how the file is opened
 	 * @param callback    callback which will be called after opening
 	 */
-	@SuppressWarnings("unchecked")
-	public static <T extends AsyncFile> void open(final Eventloop eventloop, final ExecutorService executor,
-	                                              final Path path, final OpenOption[] openOptions, ResultCallback<T> callback) {
-		eventloop.callConcurrently(executor, new Callable<T>() {
+	public static void open(final Eventloop eventloop, final ExecutorService executor,
+	                        final Path path, final OpenOption[] openOptions, ResultCallback<AsyncFile> callback) {
+		eventloop.callConcurrently(executor, new Callable<AsyncFile>() {
 			@Override
-			public T call() throws Exception {
-				AsynchronousFileChannel channel = AsynchronousFileChannel.open(path, openOptions);
-				return (T) new AsyncFile(eventloop, executor, channel, path);
+			public AsyncFile call() throws Exception {
+				return open(eventloop, executor, path, openOptions);
 			}
 		}, callback);
 	}
