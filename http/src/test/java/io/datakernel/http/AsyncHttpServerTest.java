@@ -258,9 +258,9 @@ public class AsyncHttpServerTest {
 		}
 		server.closeFuture().await();
 		thread.join();
-		assertEquals(1, eventloop.getStats().getIoErrors().get(0).getTotal());
+		assertEquals(1, eventloop.getStats().getIoErrors().getTotal());
 		assertEquals("Too big HttpMessage",
-				eventloop.getStats().getIoErrors().get(0).getLastException().getMessage());
+				eventloop.getStats().getIoErrors().getLastException().getMessage());
 	}
 
 	public static void main(String[] args) throws Exception {
