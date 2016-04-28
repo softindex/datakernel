@@ -62,6 +62,11 @@ public class AggregationMetadataStorageStub implements AggregationMetadataStorag
 	}
 
 	@Override
+	public void loadChunks(ResultCallback<LoadedChunks> callback) {
+		loadChunks(0, callback);
+	}
+
+	@Override
 	public void saveConsolidatedChunks(List<AggregationChunk> originalChunks, List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
 		callback.onComplete();
 	}

@@ -76,9 +76,7 @@ public class AggregationMetadata {
 		this.keys = ImmutableList.copyOf(keys);
 		this.fields = ImmutableList.copyOf(fields);
 		this.prefixRanges = new RangeTree[keys.size() + 1];
-		for (int size = 0; size <= keys.size(); size++) {
-			this.prefixRanges[size] = new RangeTree<>();
-		}
+		initIndex();
 	}
 
 	public int getNumberOfPredicates() {
@@ -195,6 +193,16 @@ public class AggregationMetadata {
 			PrimaryKey lower = chunk.getMinPrimaryKey().prefix(size);
 			PrimaryKey upper = chunk.getMaxPrimaryKey().prefix(size);
 			index.remove(lower, upper, chunk);
+		}
+	}
+
+	public void clearIndex() {
+		initIndex();
+	}
+
+	public void initIndex() {
+		for (int size = 0; size <= keys.size(); size++) {
+			this.prefixRanges[size] = new RangeTree<>();
 		}
 	}
 

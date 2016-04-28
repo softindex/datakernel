@@ -85,6 +85,7 @@ public final class Cube implements EventloopJmxMBean {
 	private int sorterItemsInMemory;
 	private int sorterBlockSize;
 	private int overlappingChunksThreshold;
+	private int maxIncrementalReloadPeriodMillis;
 	private boolean ignoreChunkReadingExceptions;
 
 	// state
@@ -92,6 +93,7 @@ public final class Cube implements EventloopJmxMBean {
 	private Map<String, AggregationMetadata> aggregationMetadatas = new LinkedHashMap<>();
 	private AggregationKeyRelationships childParentRelationships;
 	private int lastRevisionId;
+	private long lastReloadTimestamp;
 
 	/**
 	 * Instantiates a cube with the specified structure, that runs in a given event loop,
@@ -103,13 +105,13 @@ public final class Cube implements EventloopJmxMBean {
 	 * @param cubeMetadataStorage     storage for aggregations metadata
 	 * @param aggregationChunkStorage storage for data chunks
 	 * @param structure               structure of a cube
-	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
 	 * @param aggregationChunkSize    maximum size of aggregation chunk
+	 * @param sorterItemsInMemory     maximum number of records that can stay in memory while sorting
 	 */
 	public Cube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	            CubeMetadataStorage cubeMetadataStorage, AggregationChunkStorage aggregationChunkStorage,
-	            AggregationStructure structure, int sorterItemsInMemory, int sorterBlockSize, int aggregationChunkSize,
-	            int overlappingChunksThreshold) {
+	            AggregationStructure structure, int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize,
+	            int overlappingChunksThreshold, int maxIncrementalReloadPeriodMillis) {
 		this.eventloop = eventloop;
 		this.executorService = executorService;
 		this.classLoader = classLoader;
@@ -120,6 +122,7 @@ public final class Cube implements EventloopJmxMBean {
 		this.sorterItemsInMemory = sorterItemsInMemory;
 		this.sorterBlockSize = sorterBlockSize;
 		this.overlappingChunksThreshold = overlappingChunksThreshold;
+		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 	}
 
 	public void setChildParentRelationships(Map<String, String> childParentRelationships) {
@@ -165,7 +168,7 @@ public final class Cube implements EventloopJmxMBean {
 				cubeMetadataStorage.aggregationMetadataStorage(aggregationId, aggregationMetadata, structure);
 		Aggregation aggregation = new Aggregation(eventloop, executorService, classLoader, aggregationMetadataStorage,
 				aggregationChunkStorage, aggregationMetadata, structure, chunkSize, sorterItemsInMemory,
-				sorterBlockSize, partitioningKey);
+				sorterBlockSize, maxIncrementalReloadPeriodMillis, partitioningKey);
 		checkArgument(!aggregations.containsKey(aggregationId), "Aggregation '%s' is already defined", aggregationId);
 		aggregations.put(aggregationId, aggregation);
 		aggregationMetadatas.put(aggregationId, aggregationMetadata);
@@ -419,31 +422,58 @@ public final class Cube implements EventloopJmxMBean {
 	public void loadChunks(final CompletionCallback callback) {
 		logger.info("Loading chunks");
 
-		cubeMetadataStorage.loadChunks(lastRevisionId, aggregationMetadatas, structure,
-				new ResultCallback<CubeLoadedChunks>() {
-					@Override
-					public void onResult(CubeLoadedChunks result) {
-						for (Map.Entry<String, Aggregation> entry : aggregations.entrySet()) {
-							String aggregationId = entry.getKey();
-							List<Long> consolidatedChunkIds = result.consolidatedChunkIds.get(aggregationId);
-							List<AggregationChunk> newChunks = result.newChunks.get(aggregationId);
-							LoadedChunks loadedChunks = new LoadedChunks(result.lastRevisionId,
-									consolidatedChunkIds == null ? Collections.<Long>emptyList() : consolidatedChunkIds,
-									newChunks == null ? Collections.<AggregationChunk>emptyList() : newChunks);
-							entry.getValue().loadChunks(loadedChunks);
+		if (eventloop.currentTimeMillis() - lastReloadTimestamp > maxIncrementalReloadPeriodMillis) {
+			// full sync
+			cubeMetadataStorage.loadChunks(aggregationMetadatas, structure, new ResultCallback<CubeLoadedChunks>() {
+				@Override
+				public void onResult(CubeLoadedChunks result) {
+					loadChunksIntoAggregations(result, true);
+					logger.info("Loading chunks completed");
+					callback.onComplete();
+				}
+
+				@Override
+				public void onException(Exception e) {
+					logger.error("Loading chunks failed");
+					callback.onException(e);
+				}
+			});
+		} else {
+			// incremental sync
+			cubeMetadataStorage.loadChunks(lastRevisionId, aggregationMetadatas, structure,
+					new ResultCallback<CubeLoadedChunks>() {
+						@Override
+						public void onResult(CubeLoadedChunks result) {
+							loadChunksIntoAggregations(result, false);
+							logger.info("Loading chunks incrementally completed");
+							callback.onComplete();
 						}
 
-						Cube.this.lastRevisionId = result.lastRevisionId;
-						logger.info("Loading chunks completed");
-						callback.onComplete();
-					}
+						@Override
+						public void onException(Exception e) {
+							logger.error("Loading chunks incrementally failed");
+							callback.onException(e);
+						}
+					});
+		}
+	}
 
-					@Override
-					public void onException(Exception e) {
-						logger.error("Loading chunks failed");
-						callback.onException(e);
-					}
-				});
+	private void loadChunksIntoAggregations(CubeLoadedChunks result, boolean fullReload) {
+		this.lastRevisionId = result.lastRevisionId;
+		this.lastReloadTimestamp = eventloop.currentTimeMillis();
+
+		for (Map.Entry<String, Aggregation> entry : aggregations.entrySet()) {
+			String aggregationId = entry.getKey();
+			List<Long> consolidatedChunkIds = result.consolidatedChunkIds.get(aggregationId);
+			List<AggregationChunk> newChunks = result.newChunks.get(aggregationId);
+			LoadedChunks loadedChunks = new LoadedChunks(result.lastRevisionId,
+					consolidatedChunkIds == null ? Collections.<Long>emptyList() : consolidatedChunkIds,
+					newChunks == null ? Collections.<AggregationChunk>emptyList() : newChunks);
+			Aggregation aggregation = entry.getValue();
+			if (fullReload)
+				aggregation.clearIndex();
+			aggregation.loadChunks(loadedChunks);
+		}
 	}
 
 	public void consolidate(int maxChunksToConsolidate, ResultCallback<Boolean> callback) {
@@ -634,6 +664,14 @@ public final class Cube implements EventloopJmxMBean {
 		return m;
 	}
 
+	// visible for testing
+	public void setLastReloadTimestamp(long lastReloadTimestamp) {
+		this.lastReloadTimestamp = lastReloadTimestamp;
+		for (Aggregation aggregation : aggregations.values()) {
+			aggregation.setLastReloadTimestamp(lastReloadTimestamp);
+		}
+	}
+
 	@Override
 	public String toString() {
 		return MoreObjects.toStringHelper(this)
@@ -681,6 +719,19 @@ public final class Cube implements EventloopJmxMBean {
 			map.put(entry.getKey(), entry.getValue().getBuffersSize());
 		}
 		return map;
+	}
+
+	@JmxAttribute
+	public void setMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
+		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+		for (Aggregation aggregation : aggregations.values()) {
+			aggregation.setMaxIncrementalReloadPeriodMillis(maxIncrementalReloadPeriodMillis);
+		}
+	}
+
+	@JmxAttribute
+	public int getMaxIncrementalReloadPeriodMillis() {
+		return maxIncrementalReloadPeriodMillis;
 	}
 
 	@JmxAttribute

@@ -62,9 +62,10 @@ public class Aggregation implements AggregationOperationTracker {
 	private static final Logger logger = LoggerFactory.getLogger(Aggregation.class);
 	private static final Joiner JOINER = Joiner.on(", ");
 
-	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
 	public static final int DEFAULT_AGGREGATION_CHUNK_SIZE = 1_000_000;
+	public static final int DEFAULT_SORTER_ITEMS_IN_MEMORY = 1_000_000;
 	public static final int DEFAULT_SORTER_BLOCK_SIZE = 256 * 1024;
+	public static final int DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS = 10 * 60 * 1000; // 10 minutes
 
 	private final Eventloop eventloop;
 	private final ExecutorService executorService;
@@ -80,11 +81,13 @@ public class Aggregation implements AggregationOperationTracker {
 	private int aggregationChunkSize;
 	private int sorterItemsInMemory;
 	private int sorterBlockSize;
+	private int maxIncrementalReloadPeriodMillis;
 	private boolean ignoreChunkReadingExceptions;
 
 	// state
 	private final Map<Long, AggregationChunk> chunks = new LinkedHashMap<>();
 	private int lastRevisionId;
+	private long lastReloadTimestamp;
 	private ListenableCompletionCallback loadChunksCallback;
 
 	// jmx
@@ -95,7 +98,8 @@ public class Aggregation implements AggregationOperationTracker {
 	 * Instantiates an aggregation with the specified structure, that runs in a given event loop,
 	 * uses the specified class loader for creating dynamic classes, saves data and metadata to given storages,
 	 * and uses the specified parameters.
-	 *  @param eventloop               event loop, in which the aggregation is to run
+	 *
+	 * @param eventloop               event loop, in which the aggregation is to run
 	 * @param classLoader             class loader for defining dynamic classes
 	 * @param metadataStorage         storage for aggregations metadata
 	 * @param aggregationChunkStorage storage for data chunks
@@ -107,7 +111,7 @@ public class Aggregation implements AggregationOperationTracker {
 	public Aggregation(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
 	                   AggregationMetadataStorage metadataStorage, AggregationChunkStorage aggregationChunkStorage,
 	                   AggregationMetadata aggregationMetadata, AggregationStructure structure,
-	                   int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize,
+	                   int aggregationChunkSize, int sorterItemsInMemory, int sorterBlockSize, int maxIncrementalReloadPeriodMillis,
 	                   List<String> partitioningKey) {
 		checkArgument(partitioningKey == null || (aggregationMetadata.getKeys().containsAll(partitioningKey) &&
 				isPrefix(partitioningKey, aggregationMetadata.getKeys())));
@@ -118,9 +122,10 @@ public class Aggregation implements AggregationOperationTracker {
 		this.aggregationChunkStorage = aggregationChunkStorage;
 		this.aggregationMetadata = aggregationMetadata;
 		this.partitioningKey = partitioningKey;
+		this.aggregationChunkSize = aggregationChunkSize;
 		this.sorterItemsInMemory = sorterItemsInMemory;
 		this.sorterBlockSize = sorterBlockSize;
-		this.aggregationChunkSize = aggregationChunkSize;
+		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 		this.structure = structure;
 		this.processorFactory = new ProcessorFactory(classLoader, structure);
 	}
@@ -145,7 +150,7 @@ public class Aggregation implements AggregationOperationTracker {
 	                   AggregationMetadata aggregationMetadata, AggregationStructure structure) {
 		this(eventloop, executorService, classLoader, metadataStorage, aggregationChunkStorage, aggregationMetadata,
 				structure, DEFAULT_AGGREGATION_CHUNK_SIZE, DEFAULT_SORTER_ITEMS_IN_MEMORY, DEFAULT_SORTER_BLOCK_SIZE,
-				null);
+				DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS, null);
 	}
 
 	public List<String> getAggregationFieldsForConsumer(List<String> fields) {
@@ -177,6 +182,16 @@ public class Aggregation implements AggregationOperationTracker {
 		chunks.put(chunk.getChunkId(), chunk);
 	}
 
+	public void removeFromIndex(AggregationChunk chunk) {
+		aggregationMetadata.removeFromIndex(chunk);
+		chunks.remove(chunk.getChunkId());
+	}
+
+	public void clearIndex() {
+		aggregationMetadata.clearIndex();
+		chunks.clear();
+	}
+
 	public boolean hasPredicates() {
 		return aggregationMetadata.hasPredicates();
 	}
@@ -187,11 +202,6 @@ public class Aggregation implements AggregationOperationTracker {
 
 	public AggregationFilteringResult applyQueryPredicates(AggregationQuery query, AggregationStructure structure) {
 		return aggregationMetadata.applyQueryPredicates(query, structure);
-	}
-
-	public void removeFromIndex(AggregationChunk chunk) {
-		aggregationMetadata.removeFromIndex(chunk);
-		chunks.remove(chunk.getChunkId());
 	}
 
 	public List<String> getKeys() {
@@ -702,23 +712,50 @@ public class Aggregation implements AggregationOperationTracker {
 		logger.info("Loading chunks for aggregation {}", this);
 		loadChunksCallback = new ListenableCompletionCallback();
 		loadChunksCallback.addListener(callback);
-		metadataStorage.loadChunks(lastRevisionId, new ResultCallback<LoadedChunks>() {
-			@Override
-			public void onResult(LoadedChunks loadedChunks) {
-				loadChunks(loadedChunks);
-				CompletionCallback currentCallback = loadChunksCallback;
-				loadChunksCallback = null;
-				currentCallback.onComplete();
-			}
 
-			@Override
-			public void onException(Exception exception) {
-				logger.error("Loading chunks for aggregation {} failed", this, exception);
-				CompletionCallback currentCallback = loadChunksCallback;
-				loadChunksCallback = null;
-				currentCallback.onException(exception);
-			}
-		});
+		if (eventloop.currentTimeMillis() - lastReloadTimestamp > maxIncrementalReloadPeriodMillis) {
+			// full sync
+			metadataStorage.loadChunks(new ResultCallback<LoadedChunks>() {
+				@Override
+				public void onResult(LoadedChunks loadedChunks) {
+					clearIndex();
+					completeLoadingChunks(loadedChunks);
+				}
+
+				@Override
+				public void onException(Exception exception) {
+					logger.error("Loading chunks for aggregation {} failed", this, exception);
+					completeLoadingChunksExceptionally(exception);
+				}
+			});
+		} else {
+			// incremental sync
+			metadataStorage.loadChunks(lastRevisionId, new ResultCallback<LoadedChunks>() {
+				@Override
+				public void onResult(LoadedChunks loadedChunks) {
+					completeLoadingChunks(loadedChunks);
+				}
+
+				@Override
+				public void onException(Exception exception) {
+					logger.error("Loading chunks incrementally for aggregation {} failed", this, exception);
+					completeLoadingChunksExceptionally(exception);
+				}
+			});
+		}
+	}
+
+	private void completeLoadingChunks(LoadedChunks loadedChunks) {
+		loadChunks(loadedChunks);
+		CompletionCallback currentCallback = loadChunksCallback;
+		loadChunksCallback = null;
+		currentCallback.onComplete();
+	}
+
+	private void completeLoadingChunksExceptionally(Exception exception) {
+		CompletionCallback currentCallback = loadChunksCallback;
+		loadChunksCallback = null;
+		currentCallback.onException(exception);
 	}
 
 	public void loadChunks(LoadedChunks loadedChunks) {
@@ -736,6 +773,8 @@ public class Aggregation implements AggregationOperationTracker {
 		}
 
 		this.lastRevisionId = loadedChunks.lastRevisionId;
+		this.lastReloadTimestamp = eventloop.currentTimeMillis();
+
 		logger.info("Loading chunks for aggregation {} completed. " +
 						"Loaded {} new chunks and {} consolidated chunks. Revision id: {}",
 				this, loadedChunks.newChunks.size(), loadedChunks.consolidatedChunkIds.size(),
@@ -746,7 +785,21 @@ public class Aggregation implements AggregationOperationTracker {
 		return aggregationMetadata.getConsolidationDebugInfo();
 	}
 
+	// visible for testing
+	public void setLastReloadTimestamp(long lastReloadTimestamp) {
+		this.lastReloadTimestamp = lastReloadTimestamp;
+	}
+
 	// jmx
+
+	public int getMaxIncrementalReloadPeriodMillis() {
+		return maxIncrementalReloadPeriodMillis;
+	}
+
+	public void setMaxIncrementalReloadPeriodMillis(int maxIncrementalReloadPeriodMillis) {
+		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
+	}
+
 	public int getAggregationChunkSize() {
 		return aggregationChunkSize;
 	}

@@ -74,8 +74,9 @@ public class CubeTest {
 	                           AggregationChunkStorage storage, AggregationStructure aggregationStructure) {
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
 		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, storage,
-				aggregationStructure, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
-				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD);
+				aggregationStructure, Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
+				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
+				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
 		cube.addAggregation("detailedAggregation", new AggregationMetadata(asList("key1", "key2"),
 				asList("metric1", "metric2", "metric3")));
 		return cube;
@@ -86,8 +87,9 @@ public class CubeTest {
 	                                        AggregationStructure aggregationStructure) {
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
 		Cube cube = new Cube(eventloop, executorService, classLoader, cubeMetadataStorage, storage, aggregationStructure,
-				Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY, Aggregation.DEFAULT_SORTER_BLOCK_SIZE,
-				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD);
+				Aggregation.DEFAULT_AGGREGATION_CHUNK_SIZE, Aggregation.DEFAULT_SORTER_ITEMS_IN_MEMORY,
+				Aggregation.DEFAULT_SORTER_BLOCK_SIZE, Cube.DEFAULT_OVERLAPPING_CHUNKS_THRESHOLD,
+				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
 		cube.addAggregation("detailedAggregation", new AggregationMetadata(asList("key1", "key2", "key3", "key4", "key5"),
 				asList("metric1", "metric2", "metric3")));
 		return cube;
@@ -524,6 +526,7 @@ public class CubeTest {
 				.streamTo(cube.consumer(DataItem2.class, DataItem2.DIMENSIONS, DataItem2.METRICS, new MyCommitCallback(cube)));
 		eventloop.run();
 
+		cube.setLastReloadTimestamp(eventloop.currentTimeMillis());
 		ResultCallbackFuture<Boolean> future = new ResultCallbackFuture<>();
 		cube.consolidate(100, future);
 
