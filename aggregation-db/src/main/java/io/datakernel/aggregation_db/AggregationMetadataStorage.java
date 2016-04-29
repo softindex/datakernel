@@ -61,8 +61,6 @@ public interface AggregationMetadataStorage {
 	 */
 	void loadChunks(int lastRevisionId, ResultCallback<LoadedChunks> callback);
 
-	void loadChunks(ResultCallback<LoadedChunks> callback);
-
 	/**
 	 * Asynchronously saves the metadata of the given list of new chunks that are result of consolidation of the list of specified chunks.
 	 * @param originalChunks      list of original chunks

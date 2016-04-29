@@ -420,45 +420,27 @@ public final class Cube implements EventloopJmxMBean {
 	}
 
 	public void loadChunks(final CompletionCallback callback) {
-		logger.info("Loading chunks");
+		final boolean incremental = eventloop.currentTimeMillis() - lastReloadTimestamp <= maxIncrementalReloadPeriodMillis;
+		logger.info("Loading chunks for cube (incremental={})", incremental);
+		int revisionId = incremental ? lastRevisionId : 0;
 
-		if (eventloop.currentTimeMillis() - lastReloadTimestamp > maxIncrementalReloadPeriodMillis) {
-			// full sync
-			cubeMetadataStorage.loadChunks(aggregationMetadatas, structure, new ResultCallback<CubeLoadedChunks>() {
-				@Override
-				public void onResult(CubeLoadedChunks result) {
-					loadChunksIntoAggregations(result, true);
-					logger.info("Loading chunks completed");
-					callback.onComplete();
-				}
+		cubeMetadataStorage.loadChunks(revisionId, aggregationMetadatas, structure, new ResultCallback<CubeLoadedChunks>() {
+			@Override
+			public void onResult(CubeLoadedChunks result) {
+				loadChunksIntoAggregations(result, incremental);
+				logger.info("Loading chunks for cube completed");
+				callback.onComplete();
+			}
 
-				@Override
-				public void onException(Exception e) {
-					logger.error("Loading chunks failed");
-					callback.onException(e);
-				}
-			});
-		} else {
-			// incremental sync
-			cubeMetadataStorage.loadChunks(lastRevisionId, aggregationMetadatas, structure,
-					new ResultCallback<CubeLoadedChunks>() {
-						@Override
-						public void onResult(CubeLoadedChunks result) {
-							loadChunksIntoAggregations(result, false);
-							logger.info("Loading chunks incrementally completed");
-							callback.onComplete();
-						}
-
-						@Override
-						public void onException(Exception e) {
-							logger.error("Loading chunks incrementally failed");
-							callback.onException(e);
-						}
-					});
-		}
+			@Override
+			public void onException(Exception e) {
+				logger.error("Loading chunks for cube failed", e);
+				callback.onException(e);
+			}
+		});
 	}
 
-	private void loadChunksIntoAggregations(CubeLoadedChunks result, boolean fullReload) {
+	private void loadChunksIntoAggregations(CubeLoadedChunks result, boolean incremental) {
 		this.lastRevisionId = result.lastRevisionId;
 		this.lastReloadTimestamp = eventloop.currentTimeMillis();
 
@@ -470,9 +452,7 @@ public final class Cube implements EventloopJmxMBean {
 					consolidatedChunkIds == null ? Collections.<Long>emptyList() : consolidatedChunkIds,
 					newChunks == null ? Collections.<AggregationChunk>emptyList() : newChunks);
 			Aggregation aggregation = entry.getValue();
-			if (fullReload)
-				aggregation.clearIndex();
-			aggregation.loadChunks(loadedChunks);
+			aggregation.loadChunks(loadedChunks, incremental);
 		}
 	}
 

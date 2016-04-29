@@ -44,7 +44,4 @@ public interface CubeMetadataStorage {
 
 	void loadChunks(int lastRevisionId, Map<String, AggregationMetadata> aggregations,
 	                AggregationStructure aggregationStructure, ResultCallback<CubeLoadedChunks> callback);
-
-	void loadChunks(Map<String, AggregationMetadata> aggregations,
-	                AggregationStructure aggregationStructure, ResultCallback<CubeLoadedChunks> callback);
 }

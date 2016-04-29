@@ -115,23 +115,16 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 				eventloop.callConcurrently(executor, new Callable<LoadedChunks>() {
 					@Override
 					public LoadedChunks call() {
-						return doLoadChunksIncrementally(DSL.using(jooqConfiguration), aggregationId, aggregationMetadata, aggregationStructure, lastRevisionId);
+						return doLoadChunks(DSL.using(jooqConfiguration), aggregationId, aggregationMetadata,
+								aggregationStructure, lastRevisionId);
 					}
 				}, callback);
 			}
 
 			@Override
-			public void loadChunks(ResultCallback<LoadedChunks> callback) {
-				eventloop.callConcurrently(executor, new Callable<LoadedChunks>() {
-					@Override
-					public LoadedChunks call() throws Exception {
-						return doLoadChunks(DSL.using(jooqConfiguration), aggregationId, aggregationMetadata, aggregationStructure);
-					}
-				}, callback);
-			}
-
-			@Override
-			public void saveConsolidatedChunks(final List<AggregationChunk> originalChunks, final List<AggregationChunk.NewChunk> consolidatedChunks, CompletionCallback callback) {
+			public void saveConsolidatedChunks(final List<AggregationChunk> originalChunks,
+			                                   final List<AggregationChunk.NewChunk> consolidatedChunks,
+			                                   CompletionCallback callback) {
 				eventloop.runConcurrently(executor, new Runnable() {
 					@Override
 					public void run() {
@@ -251,17 +244,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		eventloop.callConcurrently(executor, new Callable<CubeLoadedChunks>() {
 			@Override
 			public CubeLoadedChunks call() {
-				return doLoadChunksIncrementally(DSL.using(jooqConfiguration), aggregations, aggregationStructure, lastRevisionId);
-			}
-		}, callback);
-	}
-
-	@Override
-	public void loadChunks(final Map<String, AggregationMetadata> aggregations, final AggregationStructure aggregationStructure, ResultCallback<CubeLoadedChunks> callback) {
-		eventloop.callConcurrently(executor, new Callable<CubeLoadedChunks>() {
-			@Override
-			public CubeLoadedChunks call() throws Exception {
-				return doLoadChunks(DSL.using(jooqConfiguration), aggregations, aggregationStructure);
+				return doLoadChunks(DSL.using(jooqConfiguration), aggregations, aggregationStructure, lastRevisionId);
 			}
 		}, callback);
 	}
@@ -363,35 +346,7 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 	}
 
 	public CubeLoadedChunks doLoadChunks(DSLContext jooq, Map<String, AggregationMetadata> aggregations,
-	                                     AggregationStructure aggregationStructure) {
-		Record1<Integer> maxRevisionRecord = jooq
-				.select(DSL.max(AGGREGATION_DB_CHUNK.REVISION_ID))
-				.from(AGGREGATION_DB_CHUNK)
-				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
-				.fetchOne();
-		if (maxRevisionRecord.value1() == null) {
-			return new CubeLoadedChunks(0, Collections.<String, List<Long>>emptyMap(),
-					Collections.<String, List<AggregationChunk>>emptyMap());
-		}
-		int revisionId = maxRevisionRecord.value1();
-
-		int maxKeyLength = getMaxKeyLength(aggregations.values());
-		List<Field<?>> fieldsToSelect = getChunkSelectFieldsWithAggregationId(maxKeyLength);
-
-		List<Record> chunkRecords = jooq
-				.select(fieldsToSelect)
-				.from(AGGREGATION_DB_CHUNK)
-				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.notEqual(""))
-				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull())
-				.fetch();
-
-		Map<String, List<AggregationChunk>> chunks = transformToAggregationChunks(chunkRecords, aggregations, aggregationStructure);
-
-		return new CubeLoadedChunks(revisionId, Collections.<String, List<Long>>emptyMap(), chunks);
-	}
-
-	public CubeLoadedChunks doLoadChunksIncrementally(DSLContext jooq, Map<String, AggregationMetadata> aggregations,
-	                                                  AggregationStructure aggregationStructure, int lastRevisionId) {
+	                                     AggregationStructure aggregationStructure, int lastRevisionId) {
 		Record1<Integer> maxRevisionRecord = jooq
 				.select(DSL.max(AGGREGATION_DB_CHUNK.REVISION_ID))
 				.from(AGGREGATION_DB_CHUNK)
@@ -440,35 +395,9 @@ public class CubeMetadataStorageSql implements CubeMetadataStorage {
 		return new CubeLoadedChunks(newRevisionId, consolidatedChunkIds, newChunks);
 	}
 
-	public LoadedChunks doLoadChunks(DSLContext jooq, String aggregationId, AggregationMetadata aggregationMetadata,
-	                                 AggregationStructure aggregationStructure) {
-		Record1<Integer> maxRevisionRecord = jooq
-				.select(DSL.max(AGGREGATION_DB_CHUNK.REVISION_ID))
-				.from(AGGREGATION_DB_CHUNK)
-				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.equal(aggregationId))
-				.fetchOne();
-		if (maxRevisionRecord.value1() == null) {
-			return new LoadedChunks(0, Collections.<Long>emptyList(), Collections.<AggregationChunk>emptyList());
-		}
-		int revisionId = maxRevisionRecord.value1();
-
-		List<Field<?>> fieldsToSelect = getChunkSelectFields(aggregationMetadata.getKeys().size());
-
-		List<Record> chunkRecords = jooq
-				.select(fieldsToSelect)
-				.from(AGGREGATION_DB_CHUNK)
-				.where(AGGREGATION_DB_CHUNK.AGGREGATION_ID.eq(aggregationId))
-				.and(AGGREGATION_DB_CHUNK.CONSOLIDATED_REVISION_ID.isNull())
-				.fetch();
-
-		List<AggregationChunk> chunks = transformToChunks(chunkRecords, aggregationMetadata, aggregationStructure);
-
-		return new LoadedChunks(revisionId, Collections.<Long>emptyList(), chunks);
-	}
-
-	public LoadedChunks doLoadChunksIncrementally(DSLContext jooq, String aggregationId,
-	                                              AggregationMetadata aggregationMetadata,
-	                                              AggregationStructure aggregationStructure, int lastRevisionId) {
+	public LoadedChunks doLoadChunks(DSLContext jooq, String aggregationId,
+	                                 AggregationMetadata aggregationMetadata,
+	                                 AggregationStructure aggregationStructure, int lastRevisionId) {
 		Record1<Integer> maxRevisionRecord = jooq
 				.select(DSL.max(AGGREGATION_DB_CHUNK.REVISION_ID))
 				.from(AGGREGATION_DB_CHUNK)

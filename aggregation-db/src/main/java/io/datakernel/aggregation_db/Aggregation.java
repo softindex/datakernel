@@ -709,56 +709,37 @@ public class Aggregation implements AggregationOperationTracker {
 			return;
 		}
 
-		logger.info("Loading chunks for aggregation {}", this);
 		loadChunksCallback = new ListenableCompletionCallback();
 		loadChunksCallback.addListener(callback);
 
-		if (eventloop.currentTimeMillis() - lastReloadTimestamp > maxIncrementalReloadPeriodMillis) {
-			// full sync
-			metadataStorage.loadChunks(new ResultCallback<LoadedChunks>() {
-				@Override
-				public void onResult(LoadedChunks loadedChunks) {
-					clearIndex();
-					completeLoadingChunks(loadedChunks);
-				}
+		final boolean incremental = eventloop.currentTimeMillis() - lastReloadTimestamp <= maxIncrementalReloadPeriodMillis;
+		logger.info("Loading chunks for aggregation {} (incremental={})", this, incremental);
+		int revisionId = incremental ? lastRevisionId : 0;
 
-				@Override
-				public void onException(Exception exception) {
-					logger.error("Loading chunks for aggregation {} failed", this, exception);
-					completeLoadingChunksExceptionally(exception);
-				}
-			});
-		} else {
-			// incremental sync
-			metadataStorage.loadChunks(lastRevisionId, new ResultCallback<LoadedChunks>() {
-				@Override
-				public void onResult(LoadedChunks loadedChunks) {
-					completeLoadingChunks(loadedChunks);
-				}
+		metadataStorage.loadChunks(revisionId, new ResultCallback<LoadedChunks>() {
+			@Override
+			public void onResult(LoadedChunks loadedChunks) {
+				loadChunks(loadedChunks, incremental);
+				CompletionCallback currentCallback = loadChunksCallback;
+				loadChunksCallback = null;
+				currentCallback.onComplete();
+			}
 
-				@Override
-				public void onException(Exception exception) {
-					logger.error("Loading chunks incrementally for aggregation {} failed", this, exception);
-					completeLoadingChunksExceptionally(exception);
-				}
-			});
+			@Override
+			public void onException(Exception exception) {
+				logger.error("Loading chunks for aggregation {} failed", this, exception);
+				CompletionCallback currentCallback = loadChunksCallback;
+				loadChunksCallback = null;
+				currentCallback.onException(exception);
+			}
+		});
+	}
+
+	public void loadChunks(LoadedChunks loadedChunks, boolean incremental) {
+		if (!incremental) {
+			clearIndex();
 		}
-	}
 
-	private void completeLoadingChunks(LoadedChunks loadedChunks) {
-		loadChunks(loadedChunks);
-		CompletionCallback currentCallback = loadChunksCallback;
-		loadChunksCallback = null;
-		currentCallback.onComplete();
-	}
-
-	private void completeLoadingChunksExceptionally(Exception exception) {
-		CompletionCallback currentCallback = loadChunksCallback;
-		loadChunksCallback = null;
-		currentCallback.onException(exception);
-	}
-
-	public void loadChunks(LoadedChunks loadedChunks) {
 		for (AggregationChunk newChunk : loadedChunks.newChunks) {
 			addToIndex(newChunk);
 			logger.trace("Added chunk {} to index", newChunk);
