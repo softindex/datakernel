@@ -99,7 +99,8 @@ public final class EventloopStats {
 	private final ValueStats concurrentTasksTime = new ValueStats();
 	private final ValueStats scheduledTasksTime = new ValueStats();
 
-	private final Map<StackTrace, ExceptionStats> fatalErrors = new HashMap<>();
+	private final ExceptionStats fatalErrors = new ExceptionStats();
+	private final Map<StackTrace, ExceptionStats> allFatalErrors = new HashMap<>();
 	private final ExceptionStats ioErrors = new ExceptionStats();
 
 	public void updateBusinessLogicTime(long businessLogicTime) {
@@ -166,10 +167,13 @@ public final class EventloopStats {
 
 	public void recordFatalError(Throwable throwable, Object causedObject) {
 		StackTrace stackTrace = new StackTrace(throwable.getStackTrace());
-		if (!fatalErrors.containsKey(stackTrace)) {
-			fatalErrors.put(stackTrace, new ExceptionStats());
+
+		fatalErrors.recordException(throwable, causedObject);
+
+		if (!allFatalErrors.containsKey(stackTrace)) {
+			allFatalErrors.put(stackTrace, new ExceptionStats());
 		}
-		ExceptionStats stats = fatalErrors.get(stackTrace);
+		ExceptionStats stats = allFatalErrors.get(stackTrace);
 		stats.recordException(throwable, causedObject);
 	}
 
@@ -201,7 +205,8 @@ public final class EventloopStats {
 		concurrentTasksTime.resetStats();
 		scheduledTasksTime.resetStats();
 
-		fatalErrors.clear();
+		fatalErrors.resetStats();
+		allFatalErrors.clear();
 		ioErrors.resetStats();
 
 		lastLongestLocalRunnable.reset();
@@ -317,7 +322,12 @@ public final class EventloopStats {
 	}
 
 	@JmxAttribute
-	public List<ExceptionStats> getFatalErrors() {
-		return new ArrayList<>(fatalErrors.values());
+	public List<ExceptionStats> getAllFatalErrors() {
+		return new ArrayList<>(allFatalErrors.values());
+	}
+
+	@JmxAttribute
+	public ExceptionStats getFatalErrors() {
+		return fatalErrors;
 	}
 }
