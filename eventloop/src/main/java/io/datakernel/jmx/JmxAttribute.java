@@ -29,4 +29,6 @@ public @interface JmxAttribute {
 	String name() default USE_GETTER_NAME;
 
 	Class<? extends JmxReducer<?>> reducer() default JmxReducers.JmxReducerDistinct.class;
+
+	String[] fields() default {};
 }
