@@ -100,30 +100,51 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	private static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
-		List<AttributeNode> subNodes = createNodesFor(clazz, clazz);
+		List<AttributeNode> subNodes = createNodesFor(clazz, clazz, new String[0], null);
 		AttributeNodeForPojo root = new AttributeNodeForPojo("", new ValueFetcherDirect(), subNodes);
 		return root;
 	}
 
-	private static List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> mbeanClass) {
+	private static List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> mbeanClass,
+	                                                  String[] includedOptionalAttrs, Method getter) {
+
+		Set<String> includedOptionals = new HashSet<>(asList(includedOptionalAttrs));
 		List<AttributeDescriptor> attrDescriptors = fetchAttributeDescriptors(clazz);
 		List<AttributeNode> attrNodes = new ArrayList<>();
 		for (AttributeDescriptor descriptor : attrDescriptors) {
 			check(descriptor.getGetter() != null, "@JmxAttribute \"%s\" does not have getter", descriptor.getName());
 
 			String attrName;
-			Method getter = descriptor.getGetter();
-			JmxAttribute attrAnnotation = getter.getAnnotation(JmxAttribute.class);
+			Method attrGetter = descriptor.getGetter();
+			JmxAttribute attrAnnotation = attrGetter.getAnnotation(JmxAttribute.class);
 			String attrAnnotationName = attrAnnotation.name();
 			if (attrAnnotationName.equals(JmxAttribute.USE_GETTER_NAME)) {
-				attrName = extractFieldNameFromGetter(getter);
+				attrName = extractFieldNameFromGetter(attrGetter);
 			} else {
 				attrName = attrAnnotationName;
 			}
 			checkArgument(!attrName.contains("_"), "@JmxAttribute with name \"%s\" contains underscores", attrName);
-			Type type = getter.getGenericReturnType();
+
+			if (attrAnnotation.optional()) {
+				if (!includedOptionals.contains(attrName)) {
+					// do not include optional attributes by default
+					continue;
+				}
+
+				includedOptionals.remove(attrName);
+			}
+
+			if (includedOptionals.size() > 0) {
+				// in this case getter cannot be null
+				throw new RuntimeException(format("Error in \"extraSubAttributes\" parameter in @JmxAnnotation on %s.%s(). " +
+								"There is no field \"%s\" in %s.",
+						getter.getDeclaringClass().getName(), getter.getName(),
+						includedOptionals.iterator().next(), getter.getReturnType().getName()));
+			}
+
+			Type type = attrGetter.getGenericReturnType();
 			attrNodes.add(
-					createAttributeNodeFor(attrName, type, attrAnnotation, getter, descriptor.getSetter(), mbeanClass));
+					createAttributeNodeFor(attrName, type, attrAnnotation, attrGetter, descriptor.getSetter(), mbeanClass));
 		}
 		return attrNodes;
 	}
@@ -212,11 +233,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 				checkJmxStatsAreValid(returnClass, mbeanClass, getter);
 
-				List<AttributeNode> subNodes = createNodesFor(returnClass, mbeanClass);
-
-				if (attrAnnotation != null && attrAnnotation.fields().length > 0) {
-					subNodes = processSpecifiedFields(getter, subNodes, attrAnnotation.fields());
-				}
+				String[] extraSubAttributes =
+						attrAnnotation != null ? attrAnnotation.extraSubAttributes() : new String[0];
+				List<AttributeNode> subNodes =
+						createNodesFor(returnClass, mbeanClass, extraSubAttributes, getter);
 
 				if (subNodes.size() == 0) {
 					throw new IllegalArgumentException(format(
@@ -235,11 +255,10 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				}
 
 			} else {
-				List<AttributeNode> subNodes = createNodesFor(returnClass, mbeanClass);
-
-				if (attrAnnotation != null && attrAnnotation.fields().length > 0) {
-					subNodes = processSpecifiedFields(getter, subNodes, attrAnnotation.fields());
-				}
+				String[] extraSubAttributes =
+						attrAnnotation != null ? attrAnnotation.extraSubAttributes() : new String[0];
+				List<AttributeNode> subNodes =
+						createNodesFor(returnClass, mbeanClass, extraSubAttributes, getter);
 
 				if (subNodes.size() == 0) {
 					return new AttributeNodeForAnyOtherType(attrName, defaultFetcher);
@@ -255,28 +274,28 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private static List<AttributeNode> processSpecifiedFields(Method getter, List<AttributeNode> source,
-	                                                          String[] specifiedFields) {
-		List<AttributeNode> filtered = new ArrayList<>();
-		Set<String> acceptableNamesSet = new HashSet<>(asList(specifiedFields));
-		for (AttributeNode attributeNode : source) {
-			String attrName = attributeNode.getName();
-			if (acceptableNamesSet.contains(attrName)) {
-				filtered.add(attributeNode);
-				acceptableNamesSet.remove(attrName);
-			}
-		}
-
-		if (acceptableNamesSet.size() > 0) {
-			// in this case getter cannot be null
-			throw new RuntimeException(format("Error in \"fields\" parameter in @JmxAnnotation on %s.%s(). " +
-							"There is no field \"%s\" in %s.",
-					getter.getDeclaringClass().getName(), getter.getName(),
-					acceptableNamesSet.iterator().next(), getter.getReturnType().getName()));
-		}
-
-		return filtered;
-	}
+//	private static List<AttributeNode> createExtraSubNodes(Method getter, List<AttributeNode> source,
+//	                                                       String[] specifiedFields) {
+//		List<AttributeNode> filtered = new ArrayList<>();
+//		Set<String> acceptableNamesSet = new HashSet<>(asList(specifiedFields));
+//		for (AttributeNode attributeNode : source) {
+//			String attrName = attributeNode.getName();
+//			if (acceptableNamesSet.contains(attrName)) {
+//				filtered.add(attributeNode);
+//				acceptableNamesSet.remove(attrName);
+//			}
+//		}
+//
+//		if (acceptableNamesSet.size() > 0) {
+//			// in this case getter cannot be null
+//			throw new RuntimeException(format("Error in \"fields\" parameter in @JmxAnnotation on %s.%s(). " +
+//							"There is no field \"%s\" in %s.",
+//					getter.getDeclaringClass().getName(), getter.getName(),
+//					acceptableNamesSet.iterator().next(), getter.getReturnType().getName()));
+//		}
+//
+//		return filtered;
+//	}
 
 	private static JmxReducer<?> fetchReducerFrom(Method getter) throws IllegalAccessException, InstantiationException {
 		if (getter == null) {

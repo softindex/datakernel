@@ -140,7 +140,7 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 		return totalCount;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public double getSmoothingWindow() {
 		return smoothingWindow;
 	}

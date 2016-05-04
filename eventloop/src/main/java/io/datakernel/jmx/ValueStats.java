@@ -226,7 +226,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 *
 	 * @return minimum of all added values
 	 */
-	@JmxAttribute(name = "min")
+	@JmxAttribute(name = "min", optional = true)
 	public int getTotalMin() {
 		return totalMin;
 	}
@@ -236,7 +236,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	 *
 	 * @return maximum of all added values
 	 */
-	@JmxAttribute(name = "max")
+	@JmxAttribute(name = "max", optional = true)
 	public int getTotalMax() {
 		return totalMax;
 	}
@@ -246,7 +246,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 		return totalCount != 0L ? totalSum / (double) totalCount : 0.0;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(optional = true)
 	public double getSmoothingWindow() {
 		return smoothingWindow;
 	}

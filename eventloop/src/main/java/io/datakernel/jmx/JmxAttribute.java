@@ -30,5 +30,7 @@ public @interface JmxAttribute {
 
 	Class<? extends JmxReducer<?>> reducer() default JmxReducers.JmxReducerDistinct.class;
 
-	String[] fields() default {};
+	boolean optional() default false;
+
+	String[] extraSubAttributes() default {};
 }
