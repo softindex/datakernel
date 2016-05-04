@@ -274,29 +274,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-//	private static List<AttributeNode> createExtraSubNodes(Method getter, List<AttributeNode> source,
-//	                                                       String[] specifiedFields) {
-//		List<AttributeNode> filtered = new ArrayList<>();
-//		Set<String> acceptableNamesSet = new HashSet<>(asList(specifiedFields));
-//		for (AttributeNode attributeNode : source) {
-//			String attrName = attributeNode.getName();
-//			if (acceptableNamesSet.contains(attrName)) {
-//				filtered.add(attributeNode);
-//				acceptableNamesSet.remove(attrName);
-//			}
-//		}
-//
-//		if (acceptableNamesSet.size() > 0) {
-//			// in this case getter cannot be null
-//			throw new RuntimeException(format("Error in \"fields\" parameter in @JmxAnnotation on %s.%s(). " +
-//							"There is no field \"%s\" in %s.",
-//					getter.getDeclaringClass().getName(), getter.getName(),
-//					acceptableNamesSet.iterator().next(), getter.getReturnType().getName()));
-//		}
-//
-//		return filtered;
-//	}
-
 	private static JmxReducer<?> fetchReducerFrom(Method getter) throws IllegalAccessException, InstantiationException {
 		if (getter == null) {
 			return DEFAULT_REDUCER;

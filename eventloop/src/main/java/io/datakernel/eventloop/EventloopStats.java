@@ -170,10 +170,11 @@ public final class EventloopStats {
 
 		fatalErrors.recordException(throwable, causedObject);
 
-		if (!allFatalErrors.containsKey(stackTrace)) {
-			allFatalErrors.put(stackTrace, new ExceptionStats());
-		}
 		ExceptionStats stats = allFatalErrors.get(stackTrace);
+		if (stats == null) {
+			stats = new ExceptionStats();
+			allFatalErrors.put(stackTrace, stats);
+		}
 		stats.recordException(throwable, causedObject);
 	}
 
