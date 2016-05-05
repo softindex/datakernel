@@ -122,6 +122,13 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			ByteBuf buf = readQueue.peekBuf(i);
 			for (int p = buf.position(); p < buf.limit(); p++) {
 				if (buf.at(p) == LF) {
+
+					// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
+					if ((p + 1 < buf.limit()) && (buf.at(p + 1) == SP || buf.at(p + 1) == HT)) {
+						preprocessMultiLine(buf, p);
+						continue;
+					}
+
 					ByteBuf line = readQueue.takeExactSize(offset + p - buf.position() + 1);
 					if (line.remaining() >= 2 && line.peek(line.remaining() - 2) == CR) {
 						line.limit(line.limit() - 2);
@@ -134,6 +141,13 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			offset += buf.remaining();
 		}
 		return null;
+	}
+
+	private void preprocessMultiLine(ByteBuf buf, int pos) {
+		buf.array()[pos] = SP;
+		if (buf.at(pos - 1) == CR) {
+			buf.array()[pos - 1] = SP;
+		}
 	}
 
 	private void onHeader(ByteBuf line) throws ParseException {
