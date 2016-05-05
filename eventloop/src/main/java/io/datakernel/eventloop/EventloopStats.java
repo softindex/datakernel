@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public final class EventloopStats {
-
 	private static final class DurationRunnable {
 		private Runnable runnable;
 		private long duration;
@@ -75,33 +74,86 @@ public final class EventloopStats {
 		}
 	}
 
-	private final ValueStats selectorSelectTime = new ValueStats();
-	private final ValueStats businessLogicTime = new ValueStats();
-	private final EventStats selectedKeys = new EventStats();
-	private final EventStats invalidKeys = new EventStats();
-	private final EventStats acceptKeys = new EventStats();
-	private final EventStats connectKeys = new EventStats();
-	private final EventStats readKeys = new EventStats();
-	private final EventStats writeKeys = new EventStats();
-	private final EventStats localTasks = new EventStats();
-	private final EventStats concurrentTasks = new EventStats();
-	private final EventStats scheduledTasks = new EventStats();
+	private final ValueStats selectorSelectTime;
+	private final ValueStats businessLogicTime;
+	private final EventStats selectedKeys;
+	private final EventStats invalidKeys;
+	private final EventStats acceptKeys;
+	private final EventStats connectKeys;
+	private final EventStats readKeys;
+	private final EventStats writeKeys;
+	private final EventStats localTasks;
+	private final EventStats concurrentTasks;
+	private final EventStats scheduledTasks;
 
-	private final ValueStats localTaskDuration = new ValueStats();
-	private final DurationRunnable lastLongestLocalRunnable = new DurationRunnable();
-	private final ValueStats concurrentTaskDuration = new ValueStats();
-	private final DurationRunnable lastLongestConcurrentRunnable = new DurationRunnable();
-	private final ValueStats scheduledTaskDuration = new ValueStats();
-	private final DurationRunnable lastLongestScheduledRunnable = new DurationRunnable();
+	private final ValueStats localTaskDuration;
+	private final DurationRunnable lastLongestLocalRunnable;
+	private final ValueStats concurrentTaskDuration;
+	private final DurationRunnable lastLongestConcurrentRunnable;
+	private final ValueStats scheduledTaskDuration;
+	private final DurationRunnable lastLongestScheduledRunnable;
 
-	private final ValueStats selectedKeysTime = new ValueStats();
-	private final ValueStats localTasksTime = new ValueStats();
-	private final ValueStats concurrentTasksTime = new ValueStats();
-	private final ValueStats scheduledTasksTime = new ValueStats();
+	private final ValueStats selectedKeysTime;
+	private final ValueStats localTasksTime;
+	private final ValueStats concurrentTasksTime;
+	private final ValueStats scheduledTasksTime;
 
-	private final ExceptionStats fatalErrors = new ExceptionStats();
-	private final Map<StackTrace, ExceptionStats> allFatalErrors = new HashMap<>();
-	private final ExceptionStats ioErrors = new ExceptionStats();
+	private final ExceptionStats fatalErrors;
+	private final Map<StackTrace, ExceptionStats> allFatalErrors;
+	private final ExceptionStats ioErrors;
+
+	public EventloopStats(double smoothingWindow) {
+		selectorSelectTime = new ValueStats(smoothingWindow);
+		businessLogicTime = new ValueStats(smoothingWindow);
+		selectedKeys = new EventStats(smoothingWindow);
+		invalidKeys = new EventStats(smoothingWindow);
+		acceptKeys = new EventStats(smoothingWindow);
+		connectKeys = new EventStats(smoothingWindow);
+		readKeys = new EventStats(smoothingWindow);
+		writeKeys = new EventStats(smoothingWindow);
+		localTasks = new EventStats(smoothingWindow);
+		concurrentTasks = new EventStats(smoothingWindow);
+		scheduledTasks = new EventStats(smoothingWindow);
+
+		localTaskDuration = new ValueStats(smoothingWindow);
+		lastLongestLocalRunnable = new DurationRunnable();
+		concurrentTaskDuration = new ValueStats(smoothingWindow);
+		lastLongestConcurrentRunnable = new DurationRunnable();
+		scheduledTaskDuration = new ValueStats(smoothingWindow);
+		lastLongestScheduledRunnable = new DurationRunnable();
+
+		selectedKeysTime = new ValueStats(smoothingWindow);
+		localTasksTime = new ValueStats(smoothingWindow);
+		concurrentTasksTime = new ValueStats(smoothingWindow);
+		scheduledTasksTime = new ValueStats(smoothingWindow);
+
+		fatalErrors = new ExceptionStats();
+		allFatalErrors = new HashMap<>();
+		ioErrors = new ExceptionStats();
+	}
+
+	public void setSmoothingWindow(double smoothingWindow) {
+		selectorSelectTime.setSmoothingWindow(smoothingWindow);
+		businessLogicTime.setSmoothingWindow(smoothingWindow);
+		selectedKeys.setSmoothingWindow(smoothingWindow);
+		invalidKeys.setSmoothingWindow(smoothingWindow);
+		acceptKeys.setSmoothingWindow(smoothingWindow);
+		connectKeys.setSmoothingWindow(smoothingWindow);
+		readKeys.setSmoothingWindow(smoothingWindow);
+		writeKeys.setSmoothingWindow(smoothingWindow);
+		localTasks.setSmoothingWindow(smoothingWindow);
+		concurrentTasks.setSmoothingWindow(smoothingWindow);
+		scheduledTasks.setSmoothingWindow(smoothingWindow);
+
+		localTaskDuration.setSmoothingWindow(smoothingWindow);
+		concurrentTaskDuration.setSmoothingWindow(smoothingWindow);
+		scheduledTaskDuration.setSmoothingWindow(smoothingWindow);
+
+		selectedKeysTime.setSmoothingWindow(smoothingWindow);
+		localTasksTime.setSmoothingWindow(smoothingWindow);
+		concurrentTasksTime.setSmoothingWindow(smoothingWindow);
+		scheduledTasksTime.setSmoothingWindow(smoothingWindow);
+	}
 
 	public void updateBusinessLogicTime(long businessLogicTime) {
 		this.businessLogicTime.recordValue((int) businessLogicTime);

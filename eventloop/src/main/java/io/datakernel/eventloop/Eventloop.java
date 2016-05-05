@@ -123,8 +123,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 
 	// JMX
 
-	private final EventloopStats stats = new EventloopStats();
-	private final ConcurrentCallsStats concurrentCallsStats = new ConcurrentCallsStats();
+	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
+	private final EventloopStats stats = new EventloopStats(DEFAULT_SMOOTHING_WINDOW);
+	private final ConcurrentCallsStats concurrentCallsStats = new ConcurrentCallsStats(DEFAULT_SMOOTHING_WINDOW);
 
 	private boolean monitoring;
 
@@ -835,50 +837,6 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		return timestamp;
 	}
 
-	// TODO(vmykhalko): are next three methods essential for api ??
-	public int getConcurrentRunnables() {
-		return concurrentTasks.size();
-	}
-
-	public int getLocalRunnables() {
-		return localTasks.size();
-	}
-
-	public int getScheduledRunnables() {
-		return scheduledTasks.size();
-	}
-
-	// JMX
-	@JmxOperation
-	public void startMonitoring() {
-		this.monitoring = true;
-	}
-
-	@JmxOperation
-	public void stopMonitoring() {
-		this.monitoring = false;
-	}
-
-	@JmxOperation
-	public void resetStats() {
-		stats.resetStats();
-	}
-
-	@JmxAttribute
-	public EventloopStats getStats() {
-		return stats;
-	}
-
-	public void recordFatalError(Throwable e, Object context) {
-		logger.error("Fatal Error in {}", context, e);
-		stats.recordFatalError(e, context);
-	}
-
-	public void recordIoError(Exception e, Object context) {
-		logger.warn("IO Error in {}", context, e.toString());
-		stats.recordIoError(e, context);
-	}
-
 	public String getThreadName() {
 		return (eventloopThread == null) ? null : eventloopThread.getName();
 	}
@@ -1116,6 +1074,32 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 		}
 	}
 
+	// JMX
+	@JmxOperation
+	public void startMonitoring() {
+		this.monitoring = true;
+	}
+
+	@JmxOperation
+	public void stopMonitoring() {
+		this.monitoring = false;
+	}
+
+	@JmxOperation
+	public void resetStats() {
+		stats.resetStats();
+	}
+
+	public void recordFatalError(Throwable e, Object context) {
+		logger.error("Fatal Error in {}", context, e);
+		stats.recordFatalError(e, context);
+	}
+
+	public void recordIoError(Exception e, Object context) {
+		logger.warn("IO Error in {}", context, e.toString());
+		stats.recordIoError(e, context);
+	}
+
 	private void updateConcurrentCallsStatsTimings(String taskName,
 	                                               long submissionStart, long executingStart, long executingFinish) {
 		concurrentCallsStats.recordAwaitingStartDuration(
@@ -1147,7 +1131,25 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	public boolean getKeepAlive() { return keepAlive; }
 
 	@JmxAttribute
+	public EventloopStats getStats() {
+		return stats;
+	}
+
+	@JmxAttribute
 	public ConcurrentCallsStats getConcurrentCallsStats() {
 		return concurrentCallsStats;
+	}
+
+	@JmxAttribute
+	public double getSmoothingWindow() {
+		return smoothingWindow;
+	}
+
+	@JmxAttribute
+	public void setSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
+
+		stats.setSmoothingWindow(smoothingWindow);
+		concurrentCallsStats.setSmoothingWindow(smoothingWindow);
 	}
 }

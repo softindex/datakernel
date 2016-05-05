@@ -24,14 +24,22 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class ConcurrentCallsStats {
-	private final EventStats totalCalls = new EventStats();
-	private final EventStats rejectedCalls = new EventStats();
-	private final ValueStats executionDuration = new ValueStats();
-	private final ValueStats awaitingStartDuration = new ValueStats();
+	private final EventStats totalCalls;
+	private final EventStats rejectedCalls;
+	private final ValueStats executionDuration;
+	private final ValueStats awaitingStartDuration;
+
+	private double smoothingWindow;
 
 	private final Map<String, DistributedStats> taskNameToStats = new HashMap<>();
 
-	public ConcurrentCallsStats() {
+	public ConcurrentCallsStats(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
+
+		totalCalls = new EventStats(smoothingWindow);
+		rejectedCalls = new EventStats(smoothingWindow);
+		executionDuration = new ValueStats(smoothingWindow);
+		awaitingStartDuration = new ValueStats(smoothingWindow);
 	}
 
 	public void recordCall(String taskName) {
@@ -80,12 +88,16 @@ public final class ConcurrentCallsStats {
 	}
 
 	public static final class DistributedStats {
-		private final EventStats totalCalls = new EventStats();
-		private final EventStats rejectedCalls = new EventStats();
-		private final ValueStats executionDuration = new ValueStats();
-		private final ValueStats awaitingStartDuration = new ValueStats();
+		private final EventStats totalCalls;
+		private final EventStats rejectedCalls;
+		private final ValueStats executionDuration;
+		private final ValueStats awaitingStartDuration;
 
-		public DistributedStats() {
+		public DistributedStats(double smoothingWindow) {
+			totalCalls = new EventStats(smoothingWindow);
+			rejectedCalls = new EventStats(smoothingWindow);
+			executionDuration = new ValueStats(smoothingWindow);
+			awaitingStartDuration = new ValueStats(smoothingWindow);
 		}
 
 		@JmxAttribute
@@ -107,12 +119,33 @@ public final class ConcurrentCallsStats {
 		public ValueStats getAwaitingStartDuration() {
 			return awaitingStartDuration;
 		}
+
+		private void setSmoothingWindow(double smoothingWindow) {
+			totalCalls.setSmoothingWindow(smoothingWindow);
+			rejectedCalls.setSmoothingWindow(smoothingWindow);
+			executionDuration.setSmoothingWindow(smoothingWindow);
+			awaitingStartDuration.setSmoothingWindow(smoothingWindow);
+		}
 	}
 
 	private DistributedStats ensureConcurrentCallsStatsForTaskName(String taskName) {
 		if (!taskNameToStats.containsKey(taskName)) {
-			taskNameToStats.put(taskName, new DistributedStats());
+			DistributedStats stats = new DistributedStats(smoothingWindow);
+			taskNameToStats.put(taskName, stats);
 		}
 		return taskNameToStats.get(taskName);
+	}
+
+	public void setSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
+
+		totalCalls.setSmoothingWindow(smoothingWindow);
+		rejectedCalls.setSmoothingWindow(smoothingWindow);
+		executionDuration.setSmoothingWindow(smoothingWindow);
+		awaitingStartDuration.setSmoothingWindow(smoothingWindow);
+
+		for (DistributedStats distributedStats : taskNameToStats.values()) {
+			distributedStats.setSmoothingWindow(smoothingWindow);
+		}
 	}
 }

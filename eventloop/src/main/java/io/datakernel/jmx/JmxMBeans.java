@@ -136,15 +136,17 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			if (includedOptionals.size() > 0) {
 				// in this case getter cannot be null
-				throw new RuntimeException(format("Error in \"extraSubAttributes\" parameter in @JmxAnnotation on %s.%s(). " +
-								"There is no field \"%s\" in %s.",
+				throw new RuntimeException(format("Error in \"extraSubAttributes\" parameter in @JmxAnnotation" +
+								" on %s.%s(). There is no field \"%s\" in %s.",
 						getter.getDeclaringClass().getName(), getter.getName(),
 						includedOptionals.iterator().next(), getter.getReturnType().getName()));
 			}
 
 			Type type = attrGetter.getGenericReturnType();
-			attrNodes.add(
-					createAttributeNodeFor(attrName, type, attrAnnotation, attrGetter, descriptor.getSetter(), mbeanClass));
+			Method attrSetter = descriptor.getSetter();
+			AttributeNode attrNode =
+					createAttributeNodeFor(attrName, type, attrAnnotation, attrGetter, attrSetter, mbeanClass);
+			attrNodes.add(attrNode);
 		}
 		return attrNodes;
 	}
@@ -639,8 +641,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public void setAttribute(final Attribute attribute) throws AttributeNotFoundException, InvalidAttributeValueException,
-				MBeanException, ReflectionException {
+		public void setAttribute(final Attribute attribute)
+				throws AttributeNotFoundException, InvalidAttributeValueException, MBeanException, ReflectionException {
 			final String attrName = attribute.getName();
 			final Object attrValue = attribute.getValue();
 
