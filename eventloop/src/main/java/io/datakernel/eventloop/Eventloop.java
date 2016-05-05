@@ -50,7 +50,7 @@ import static io.datakernel.async.AsyncCallbacks.notCancellable;
  * because it is implementation of {@link Runnable}. Working of this eventloop will be ended, when it has
  * not selected keys and its queues with tasks are empty.
  */
-public final class Eventloop implements Runnable, CurrentTimeProvider, EventloopExecutor, EventloopJmxMBean {
+public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler, EventloopExecutor, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(Eventloop.class);
 
 	public static final TimeoutException CONNECT_TIMEOUT = new TimeoutException("Connection timed out");
@@ -771,6 +771,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	 * @param runnable  runnable of this task
 	 * @return scheduledRunnable, which could used for cancelling the task
 	 */
+	@Override
 	public ScheduledRunnable schedule(long timestamp, Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, false);
@@ -785,6 +786,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Eventloop
 	 * @param runnable  runnable of this task
 	 * @return scheduledRunnable, which could used for cancelling the task
 	 */
+	@Override
 	public ScheduledRunnable scheduleBackground(long timestamp, Runnable runnable) {
 		assert inEventloopThread();
 		return addScheduledTask(timestamp, runnable, true);
