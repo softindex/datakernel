@@ -66,9 +66,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private ServerSocketChannel[] serverSocketChannels;
 
 	// JMX
-	protected EventStats totalAccepts = new EventStats();
-	protected ExceptionStats prepareSocketException = new ExceptionStats();
-	protected ExceptionStats closeException = new ExceptionStats();
+	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+
+	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
+	private final EventStats totalAccepts = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final ExceptionStats prepareSocketException = new ExceptionStats();
+	private final ExceptionStats closeException = new ExceptionStats();
 
 	public AbstractServer(Eventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
@@ -279,5 +282,17 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	@JmxAttribute
 	public EventStats getTotalAccepts() {
 		return totalAccepts;
+	}
+
+	@JmxAttribute
+	public final double getSmoothingWindow() {
+		return smoothingWindow;
+	}
+
+	@JmxAttribute
+	public void setSmoothingWindow(double smoothingWindow) {
+		this.smoothingWindow = smoothingWindow;
+
+		totalAccepts.setSmoothingWindow(smoothingWindow);
 	}
 }

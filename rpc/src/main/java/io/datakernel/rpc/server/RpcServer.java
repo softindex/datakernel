@@ -127,6 +127,10 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		BufferSerializer<RpcMessage> messageSerializer = getSerializer();
 		RpcServerConnection serverConnection = new RpcServerConnection(eventloop, socketChannel,
 				messageSerializer, handlers, protocolFactory, statusListener);
+
+		//jmx
+		serverConnection.setSmoothingWindow(getSmoothingWindow());
+
 		return serverConnection.getSocketConnection();
 	}
 
@@ -181,7 +185,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return monitoring;
 	}
 
-	@JmxAttribute(name = "currentConnections")
+	@JmxAttribute(name = "currentConnections", reducer = JmxReducers.JmxReducerSum.class)
 	public CountStats getConnectionsCount() {
 		return connectionsCount;
 	}
@@ -217,6 +221,16 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 			requestHandlingTime.add(connection.getRequestHandlingTime());
 		}
 		return requestHandlingTime;
+	}
+
+	@Override
+	@JmxAttribute
+	public void setSmoothingWindow(double smoothingWindow) {
+		super.setSmoothingWindow(smoothingWindow);
+
+		for (RpcServerConnection connection : connections.values()) {
+			connection.setSmoothingWindow(smoothingWindow);
+		}
 	}
 }
 

@@ -164,4 +164,10 @@ public final class RpcServerConnection implements RpcConnection {
 	public ExceptionStats getLastResponseException() {
 		return lastRemoteException;
 	}
+
+	public void setSmoothingWindow(double smoothingWindow) {
+		successfulResponses.setSmoothingWindow(smoothingWindow);
+		errorResponses.setSmoothingWindow(smoothingWindow);
+		requestHandlingTime.setSmoothingWindow(smoothingWindow);
+	}
 }

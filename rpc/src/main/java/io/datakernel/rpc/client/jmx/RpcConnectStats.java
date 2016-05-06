@@ -20,20 +20,14 @@ import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 
 public final class RpcConnectStats {
-	private final EventStats successfulConnects = new EventStats();
-	private final EventStats failedConnects = new EventStats();
-	private final EventStats closedConnects = new EventStats();
+	private final EventStats successfulConnects;
+	private final EventStats failedConnects;
+	private final EventStats closedConnects;
 
-	public void reset() {
-		successfulConnects.resetStats();
-		failedConnects.resetStats();
-		closedConnects.resetStats();
-	}
-
-	public void add(RpcConnectStats statsSet) {
-		successfulConnects.add(statsSet.getSuccessfulConnects());
-		failedConnects.add(statsSet.getFailedConnects());
-		closedConnects.add(statsSet.getClosedConnects());
+	public RpcConnectStats(double smoothingWindow) {
+		successfulConnects = new EventStats(smoothingWindow);
+		failedConnects = new EventStats(smoothingWindow);
+		closedConnects = new EventStats(smoothingWindow);
 	}
 
 	@JmxAttribute
@@ -51,4 +45,15 @@ public final class RpcConnectStats {
 		return closedConnects;
 	}
 
+	public void resetStats() {
+		successfulConnects.resetStats();
+		failedConnects.resetStats();
+		closedConnects.resetStats();
+	}
+
+	public void setSmoothingWindow(double smoothingWindow) {
+		successfulConnects.setSmoothingWindow(smoothingWindow);
+		failedConnects.setSmoothingWindow(smoothingWindow);
+		closedConnects.setSmoothingWindow(smoothingWindow);
+	}
 }

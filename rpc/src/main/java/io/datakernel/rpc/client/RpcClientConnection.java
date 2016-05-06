@@ -345,4 +345,8 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 			return (int) (stopwatch.elapsed(TimeUnit.MILLISECONDS));
 		}
 	}
+
+	public void setSmoothingWindow(double smoothingWindow) {
+		requestsStats.setSmoothingWindow(smoothingWindow);
+	}
 }

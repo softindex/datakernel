@@ -89,7 +89,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 		assert eventloop.inEventloopThread();
 
 		// jmx
-		totalAccepts.recordEvent();
+		getTotalAccepts().recordEvent();
 
 		final EventloopServer server = workerServers[currentAcceptor];
 		currentAcceptor = (currentAcceptor + 1) % workerServers.length;
