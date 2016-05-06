@@ -66,7 +66,7 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 					((JsonArray) value).get(0).getAsString().equals("ne") && ((JsonArray) value).get(1) instanceof JsonPrimitive) {
 				queryPredicates.ne(key, parseKey(key, ((JsonArray) value).get(1)));
 			} else {
-				throw new QueryException("Incorrect filters format.");
+				throw new QueryException("Incorrect filters format");
 			}
 		}
 		return queryPredicates;

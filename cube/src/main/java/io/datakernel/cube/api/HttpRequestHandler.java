@@ -32,6 +32,9 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static io.datakernel.http.HttpResponse.badRequest400;
+import static io.datakernel.util.ByteBufStrings.wrapUTF8;
+
 public final class HttpRequestHandler implements RequestHandler {
 	private static final Logger logger = LoggerFactory.getLogger(HttpRequestHandler.class);
 
@@ -48,6 +51,7 @@ public final class HttpRequestHandler implements RequestHandler {
 
 	@Override
 	public void process(final HttpRequest httpRequest, final AsyncHttpServlet.Callback resultCallback) throws ParseException {
+		logger.info("Received request: {}", httpRequest);
 		try {
 			final Stopwatch totalTimeStopwatch = Stopwatch.createStarted();
 			final ReportingQuery reportingQuery = httpRequestProcessor.apply(httpRequest);
@@ -68,11 +72,11 @@ public final class HttpRequestHandler implements RequestHandler {
 				}
 			});
 		} catch (QueryException e) {
-			logger.info("Request {} could not be processed because of error: {}", httpRequest, e.getMessage());
-			resultCallback.onHttpError(new HttpServletError(400, e));
+			logger.info("Request {} could not be processed because of error", httpRequest, e);
+			resultCallback.onResult(badRequest400().body(wrapUTF8(e.getMessage())));
 		} catch (JsonParseException e) {
-			logger.info("Failed to parse JSON in request {}", httpRequest);
-			resultCallback.onHttpError(new HttpServletError(400, e));
+			logger.info("Failed to parse JSON in request {}", httpRequest, e);
+			resultCallback.onResult(badRequest400().body(wrapUTF8("Failed to parse JSON")));
 		}
 	}
 }

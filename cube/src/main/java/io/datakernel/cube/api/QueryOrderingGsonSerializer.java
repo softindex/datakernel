@@ -22,8 +22,15 @@ import io.datakernel.cube.CubeQuery;
 
 import java.lang.reflect.Type;
 
+import static java.lang.String.format;
+
 public final class QueryOrderingGsonSerializer implements JsonSerializer<CubeQuery.Ordering>,
 		JsonDeserializer<CubeQuery.Ordering> {
+	private static final String FIELD = "field";
+	private static final String DIRECTION = "direction";
+	private static final String ASC = "asc";
+	private static final String DESC = "desc";
+
 	@Override
 	public CubeQuery.Ordering deserialize(JsonElement json, Type type, JsonDeserializationContext ctx)
 			throws JsonParseException {
@@ -32,23 +39,30 @@ public final class QueryOrderingGsonSerializer implements JsonSerializer<CubeQue
 
 		JsonObject orderingJson = (JsonObject) json;
 
-		String orderingField = orderingJson.get("field").getAsString();
-		String direction = orderingJson.get("direction").getAsString();
+		String orderingField = getOrThrow(FIELD, orderingJson);
+		String direction = getOrThrow(DIRECTION, orderingJson);
 
-		if (direction.equals("asc"))
+		if (direction.equals(ASC))
 			return CubeQuery.Ordering.asc(orderingField);
 
-		if (direction.equals("desc"))
+		if (direction.equals(DESC))
 			return CubeQuery.Ordering.desc(orderingField);
 
-		throw new QueryException("Unknown 'direction' property value in sort object. Should be either 'asc' or 'desc'");
+		throw new QueryException(format("Unknown '%s' property value in sort object. Should be either '%s' or '%s'", DIRECTION, ASC, DESC));
+	}
+
+	private static String getOrThrow(String property, JsonObject json) throws QueryException {
+		JsonElement fieldJson = json.get(property);
+		if (fieldJson == null)
+			throw new QueryException(format("Incorrect sort format. Does not contain property '%s'", property));
+		return fieldJson.getAsString();
 	}
 
 	@Override
 	public JsonElement serialize(CubeQuery.Ordering ordering, Type type, JsonSerializationContext ctx) {
 		JsonObject orderingJson = new JsonObject();
-		orderingJson.addProperty("field", ordering.getPropertyName());
-		orderingJson.addProperty("direction", ordering.isAsc() ? "asc" : "desc");
+		orderingJson.addProperty(FIELD, ordering.getPropertyName());
+		orderingJson.addProperty(DIRECTION, ordering.isAsc() ? ASC : DESC);
 		return orderingJson;
 	}
 }
