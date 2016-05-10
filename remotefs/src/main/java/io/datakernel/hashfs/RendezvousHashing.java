@@ -33,31 +33,30 @@ final class RendezvousHashing implements HashingStrategy {
 	};
 
 	@Override
-	public List<ServerInfo> sortServers(String fileName, Collection<ServerInfo> servers) {
-		Map<Integer, ServerInfo> map = new HashMap<>(servers.size());
-
+	public List<Replica> sortReplicas(String file, List<Replica> servers) {
 		int[] serverIds = new int[servers.size()];
 		double[] serverWeights = new double[servers.size()];
-		int aliveServersCount = 0;
-		for (ServerInfo server : servers) {
-			map.put(server.getServerId(), server);
-			serverIds[aliveServersCount] = server.getServerId();
-			serverWeights[aliveServersCount] = server.getWeight();
-			aliveServersCount++;
+
+		Map<Integer, Replica> alive = new HashMap<>();
+
+		for (int i = 0; i < servers.size(); i++) {
+			Replica server = servers.get(i);
+			serverIds[i] = server.getId().hashCode();
+			serverWeights[i] = server.getWeight();
+			alive.put(serverIds[i], server);
 		}
-		serverIds = Arrays.copyOf(serverIds, aliveServersCount);
-		serverWeights = Arrays.copyOf(serverWeights, aliveServersCount);
-		int[] replicas = replicas(fileName.hashCode(), serverIds, serverWeights);
-		List<ServerInfo> orderedServers = new ArrayList<>();
+
+		int[] replicas = replicas(file.hashCode(), serverIds, serverWeights, serverIds.length);
+
+		List<Replica> orderedServers = new ArrayList<>();
 		for (int serverId : replicas) {
-			orderedServers.add(map.get(serverId));
+			orderedServers.add(alive.get(serverId));
 		}
 
 		return orderedServers;
 	}
 
 	public int[] replicas(int itemId, int[] serverIds, double[] weights, int replicas) {
-		checkArgument(serverIds.length == weights.length);
 		checkArgument(replicas >= 0 && replicas <= serverIds.length);
 		List<Entry> list = new ArrayList<>(serverIds.length);
 		for (int i = 0; i < serverIds.length; i++) {
@@ -72,10 +71,6 @@ final class RendezvousHashing implements HashingStrategy {
 			result[i] = list.get(i).serverId;
 		}
 		return result;
-	}
-
-	public int[] replicas(int itemId, int[] serverIds, double[] weights) {
-		return replicas(itemId, serverIds, weights, serverIds.length);
 	}
 
 	private int rehash(int k) {

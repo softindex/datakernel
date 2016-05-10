@@ -24,7 +24,7 @@ import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
-import io.datakernel.protocol.FsResponses;
+import io.datakernel.FsResponses;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
 import java.io.IOException;
@@ -37,25 +37,25 @@ import java.util.Set;
 import static com.google.common.base.Preconditions.checkArgument;
 
 final class HashFsResponses extends FsResponses {
-	static Gson responseGSON = new GsonBuilder()
+	public static Gson responseGSON = new GsonBuilder()
 			.registerTypeAdapter(InetSocketAddress.class, new GsonInetSocketAddressAdapter())
 			.registerTypeAdapter(FsResponse.class, GsonSubclassesAdapter.builder()
 					.subclassField("responseType")
 					.subclass("Error", Err.class)
-					.subclass("FileList", ListFiles.class)
+					.subclass("FilesList", ListOfFiles.class)
 					.subclass("ResponseOk", Ok.class)
 					.subclass("Acknowledge", Acknowledge.class)
 					.subclass("ReadyBytes", Ready.class)
-					.subclass("ServersList", ListServers.class)
+					.subclass("ServersList", ListOfServers.class)
 					.build())
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()
 			.create();
 
-	static class ListServers extends FsResponse {
-		public final Set<ServerInfo> servers;
+	static class ListOfServers extends FsResponse {
+		public final Set<Replica> servers;
 
-		public ListServers(Set<ServerInfo> infos) {
+		public ListOfServers(Set<Replica> infos) {
 			servers = Collections.unmodifiableSet(infos);
 		}
 

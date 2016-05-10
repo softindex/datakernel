@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel;
+package io.datakernel.hashfs;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.stream.AbstractStreamTransformer_1_1;
-import io.datakernel.stream.StreamDataReceiver;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class Util {
-	public static <T> ResultCallback<T> waitAllResults(final int count, final Resolver<T> resolver) {
+final class Utils {
+	static <T> ResultCallback<T> waitAllResults(final int count, final Resolver<T> resolver) {
 		return new ResultCallback<T>() {
 			List<T> results = new ArrayList<>();
 			List<Exception> exceptions = new ArrayList<>();
@@ -35,18 +31,19 @@ public class Util {
 
 			@Override
 			public void onResult(T result) {
-				results.add(result);
 				completed++;
-				onComplete();
+				results.add(result);
+				onCompleteOrException();
 			}
 
 			@Override
 			public void onException(Exception e) {
 				failed++;
-				onComplete();
+				exceptions.add(e);
+				onCompleteOrException();
 			}
 
-			private void onComplete() {
+			private void onCompleteOrException() {
 				if (completed + failed == count) {
 					resolver.resolve(results, exceptions);
 				}
@@ -54,8 +51,7 @@ public class Util {
 		};
 	}
 
-	public interface Resolver<T> {
-		void resolve(List<T> results, List<Exception> exceptions);
+	interface Resolver<T> {
+		void resolve(List<T> results, List<Exception> e);
 	}
-
 }

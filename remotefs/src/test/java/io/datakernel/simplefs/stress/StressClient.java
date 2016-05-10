@@ -50,13 +50,13 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
-public class StressClient {
+class StressClient {
 	private static final Logger logger = LoggerFactory.getLogger(StressClient.class);
 	private InetSocketAddress address = new InetSocketAddress(5560);
 	private Eventloop eventloop = new Eventloop();
 	private ExecutorService executor = Executors.newCachedThreadPool();
 
-	private SimpleFsClient client = SimpleFsClient.build(eventloop, address).build();
+	private SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
 	private static Random rand = new Random();
 
@@ -64,8 +64,8 @@ public class StressClient {
 
 	private static Path downloads;
 
-	List<String> existingClientFiles = new ArrayList<>();
-	List<Operation> operations = new ArrayList<>();
+	private List<String> existingClientFiles = new ArrayList<>();
+	private List<Operation> operations = new ArrayList<>();
 
 	public void setup() throws IOException {
 		downloads = clientStorage.resolve("downloads");
@@ -186,7 +186,7 @@ public class StressClient {
 
 	}
 
-	public void start(int operationsQuantity, int maxDuration) throws IOException {
+	void start(int operationsQuantity, int maxDuration) throws IOException {
 		setup();
 		for (int i = 0; i < operationsQuantity; i++) {
 			eventloop.schedule(eventloop.currentTimeMillis() + rand.nextInt(maxDuration), new Runnable() {
@@ -200,7 +200,7 @@ public class StressClient {
 		executor.shutdown();
 	}
 
-	interface Operation {
+	private interface Operation {
 		void go();
 	}
 
@@ -226,7 +226,7 @@ public class StressClient {
 		return name.toString();
 	}
 
-	public void uploadSerializedObject(int i) throws UnknownHostException {
+	void uploadSerializedObject(int i) throws UnknownHostException {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		BufferSerializer<TestObject> bufferSerializer = SerializerBuilder
 				.newDefaultInstance(classLoader)
@@ -245,7 +245,7 @@ public class StressClient {
 		eventloop.run();
 	}
 
-	public void downloadSmallObjects(int i) {
+	void downloadSmallObjects(int i) {
 		final String name = "someName" + i;
 		client.download(name, 0, new ResultCallback<StreamTransformerWithCounter>() {
 			@Override

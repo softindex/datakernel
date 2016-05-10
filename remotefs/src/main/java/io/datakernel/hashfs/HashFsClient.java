@@ -16,206 +16,229 @@
 
 package io.datakernel.hashfs;
 
+import com.google.gson.Gson;
 import io.datakernel.FsClient;
+import io.datakernel.FsCommands;
+import io.datakernel.FsResponses;
 import io.datakernel.StreamTransformerWithCounter;
-import io.datakernel.Util;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.net.SocketSettings;
+import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.stream.StreamProducer;
+import io.datakernel.stream.net.Messaging;
+import io.datakernel.stream.net.MessagingExceptionHandler;
+import io.datakernel.stream.net.MessagingHandler;
+import io.datakernel.stream.net.MessagingStarter;
 
+import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import static io.datakernel.util.Preconditions.check;
-import static io.datakernel.util.Preconditions.checkNotNull;
 
-public class HashFsClient implements FsClient {
-	public final static class Builder {
-		private final Eventloop eventloop;
-		private final HashFsClientProtocol.Builder protocolBuilder;
-		private final List<ServerInfo> bootstrap;
+public final class HashFsClient extends FsClient {
+	private final List<Replica> bootstrap;
 
-		private HashFsClientProtocol protocol;
-		private HashingStrategy strategy = DEFAULT_HASHING_STRATEGY;
-		private long baseRetryTimeout = DEFAULT_BASE_RETRY_TIMEOUT;
-		private int maxRetryAttempts = DEFAULT_MAX_RETRY_ATTEMPTS;
+	private HashingStrategy hashing = new RendezvousHashing();
+	private long baseRetryTimeout = 100L;
+	private int maxRetryAttempts = 3;
 
-		private Builder(Eventloop eventloop, List<ServerInfo> bootstrap) {
-			this.eventloop = eventloop;
-			this.protocolBuilder = HashFsClientProtocol.build(eventloop);
-			this.bootstrap = bootstrap;
-		}
-
-		public void setStrategy(HashingStrategy strategy) {
-			this.strategy = strategy;
-		}
-
-		public Builder setBaseRetryTimeout(long baseRetryTimeout) {
-			this.baseRetryTimeout = baseRetryTimeout;
-			return this;
-		}
-
-		public Builder setMaxRetryAttempts(int maxRetryAttempts) {
-			this.maxRetryAttempts = maxRetryAttempts;
-			return this;
-		}
-
-		public Builder setProtocol(HashFsClientProtocol protocol) {
-			this.protocol = protocol;
-			return this;
-		}
-
-		public Builder setMinChunkSize(int minChunkSize) {
-			protocolBuilder.setMinChunkSize(minChunkSize);
-			return this;
-		}
-
-		public Builder setSocketSettings(SocketSettings socketSettings) {
-			protocolBuilder.setSocketSettings(socketSettings);
-			return this;
-		}
-
-		public Builder setDeserializerBufferSize(int deserializerBufferSize) {
-			protocolBuilder.setDeserializerBufferSize(deserializerBufferSize);
-			return this;
-		}
-
-		public Builder setMaxChunkSize(int maxChunkSize) {
-			protocolBuilder.setMaxChunkSize(maxChunkSize);
-			return this;
-		}
-
-		public Builder setConnectTimeout(int connectTimeout) {
-			protocolBuilder.setConnectTimeout(connectTimeout);
-			return this;
-		}
-
-		public Builder setSerializerMaxMessageSize(int serializerMaxMessageSize) {
-			protocolBuilder.setSerializerMaxMessageSize(serializerMaxMessageSize);
-			return this;
-		}
-
-		public Builder setSerializerBufferSize(int serializerBufferSize) {
-			protocolBuilder.setSerializerBufferSize(serializerBufferSize);
-			return this;
-		}
-
-		public Builder setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
-			protocolBuilder.setSerializerFlushDelayMillis(serializerFlushDelayMillis);
-			return this;
-		}
-
-		public HashFsClient build() {
-			HashFsClientProtocol p = this.protocol == null ? protocolBuilder.build() : this.protocol;
-			return new HashFsClient(eventloop, p, strategy, bootstrap, baseRetryTimeout, maxRetryAttempts);
-		}
+	// creators & builder methods
+	public HashFsClient(Eventloop eventloop, List<Replica> bootstrap) {
+		super(eventloop);
+		check(bootstrap != null && !bootstrap.isEmpty(), "Bootstrap list can't be empty or null");
+		this.bootstrap = bootstrap;
 	}
 
-	private static final int DEFAULT_MAX_RETRY_ATTEMPTS = 3;
-	private static final long DEFAULT_BASE_RETRY_TIMEOUT = 100;
-	private static final HashingStrategy DEFAULT_HASHING_STRATEGY = new RendezvousHashing();
-
-	private final Eventloop eventloop;
-	private final HashFsClientProtocol protocol;
-	private final HashingStrategy hashing;
-	private final List<ServerInfo> bootstrap;
-
-	private final long baseRetryTimeout;
-	private final int maxRetryAttempts;
-
-	private HashFsClient(Eventloop eventloop, HashFsClientProtocol protocol, HashingStrategy hashing,
-	                     List<ServerInfo> bootstrap, long baseRetryTimeout, int maxRetryAttempts) {
-		this.eventloop = checkNotNull(eventloop);
-		this.protocol = checkNotNull(protocol);
-		this.hashing = checkNotNull(hashing);
-		this.bootstrap = checkNotNull(bootstrap);
+	public HashFsClient setBaseRetryTimeout(long baseRetryTimeout) {
 		check(baseRetryTimeout > 0, "Base retry timeout should be positive");
 		this.baseRetryTimeout = baseRetryTimeout;
+		return this;
+	}
+
+	public HashFsClient setMaxRetryAttempts(int maxRetryAttempts) {
 		check(maxRetryAttempts > 0, "Max retry attempts quantity should be positive");
 		this.maxRetryAttempts = maxRetryAttempts;
+		return this;
 	}
 
-	public static HashFsClient newInstance(Eventloop eventloop, List<ServerInfo> bootstrap) {
-		return new Builder(eventloop, bootstrap).build();
-	}
-
-	public static Builder build(Eventloop eventloop, List<ServerInfo> bootstrap) {
-		return new Builder(eventloop, bootstrap);
+	// establishing connection
+	@Override
+	protected Gson getCommandGSON() {
+		return HashFsCommands.commandGSON;
 	}
 
 	@Override
-	public void upload(final String destinationFileName, final StreamProducer<ByteBuf> producer,
-	                   final CompletionCallback callback) {
-		getAliveServers(new ResultCallback<List<ServerInfo>>() {
-			@Override
-			public void onResult(List<ServerInfo> result) {
-				List<ServerInfo> candidates = hashing.sortServers(destinationFileName, result);
-				upload(destinationFileName, 0, candidates, producer, callback);
-			}
+	protected Gson getResponseGson() {
+		return HashFsResponses.responseGSON;
+	}
 
+	private class AliveConnectCallback implements ConnectCallback {
+		private final ResultCallback<Set<Replica>> callback;
+
+		AliveConnectCallback(ResultCallback<Set<Replica>> callback) {this.callback = callback;}
+
+		@Override
+		public void onConnect(SocketChannel socketChannel) {
+			SocketConnection connection = createConnection(socketChannel)
+					.addStarter(new MessagingStarter<FsCommands.FsCommand>() {
+						@Override
+						public void onStart(Messaging<FsCommands.FsCommand> messaging) {
+							logger.trace("send command to list alive servers");
+							messaging.sendMessage(new HashFsCommands.Alive());
+						}
+					})
+					.addHandler(HashFsResponses.ListOfServers.class, new MessagingHandler<HashFsResponses.ListOfServers, FsCommands.FsCommand>() {
+						@Override
+						public void onMessage(HashFsResponses.ListOfServers item, Messaging<FsCommands.FsCommand> messaging) {
+							logger.trace("received {} alive servers", item.servers.size());
+							messaging.shutdown();
+							callback.onResult(item.servers);
+						}
+					})
+					.addHandler(FsResponses.Err.class, new MessagingHandler<FsResponses.Err, FsCommands.FsCommand>() {
+						@Override
+						public void onMessage(FsResponses.Err item, Messaging<FsCommands.FsCommand> messaging) {
+							logger.trace("failed to list alive servers");
+							messaging.shutdown();
+							Exception e = new Exception(item.msg);
+							callback.onException(e);
+						}
+					})
+					.addReadExceptionHandler(new MessagingExceptionHandler() {
+						@Override
+						public void onException(Exception e) {
+							logger.trace("caught exception while trying to list alive servers");
+							callback.onException(e);
+						}
+					});
+			connection.register();
+		}
+
+		@Override
+		public void onException(Exception e) {
+			callback.onException(e);
+		}
+	}
+
+	private class OfferConnectCallback implements ConnectCallback {
+		private final List<String> forDeletion;
+		private final List<String> forUpload;
+		private final ResultCallback<List<String>> callback;
+
+		OfferConnectCallback(List<String> forDeletion, List<String> forUpload, ResultCallback<List<String>> callback) {
+			this.forDeletion = forDeletion;
+			this.forUpload = forUpload;
+			this.callback = callback;
+		}
+
+		@Override
+		public void onConnect(SocketChannel socketChannel) {
+			SocketConnection connection = createConnection(socketChannel)
+					.addStarter(new MessagingStarter<FsCommands.FsCommand>() {
+						@Override
+						public void onStart(Messaging<FsCommands.FsCommand> messaging) {
+							logger.trace("send offer to download: {} files, to delete: {} files", forUpload.size(), forDeletion.size());
+							messaging.sendMessage(new HashFsCommands.Announce(forDeletion, forUpload));
+						}
+					})
+					.addHandler(FsResponses.ListOfFiles.class, new MessagingHandler<FsResponses.ListOfFiles, FsCommands.FsCommand>() {
+						@Override
+						public void onMessage(FsResponses.ListOfFiles item, Messaging<FsCommands.FsCommand> messaging) {
+							logger.trace("received response for file offer: {} files required", item.files.size());
+							messaging.shutdown();
+							callback.onResult(item.files);
+						}
+					})
+					.addHandler(FsResponses.Err.class, new MessagingHandler<FsResponses.Err, FsCommands.FsCommand>() {
+						@Override
+						public void onMessage(FsResponses.Err item, Messaging<FsCommands.FsCommand> messaging) {
+							logger.trace("failed to receive response for file offer");
+							messaging.shutdown();
+							Exception e = new Exception(item.msg);
+							callback.onException(e);
+						}
+					})
+					.addReadExceptionHandler(new MessagingExceptionHandler() {
+						@Override
+						public void onException(Exception e) {
+							logger.trace("caught exception while trying to offer files");
+							callback.onException(e);
+						}
+					});
+			connection.register();
+		}
+
+		@Override
+		public void onException(Exception e) {
+			callback.onException(e);
+		}
+	}
+
+	// api
+	@Override
+	public void upload(final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+		getAliveServers(new ForwardingResultCallback<List<Replica>>(callback) {
 			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
+			public void onResult(List<Replica> result) {
+				List<Replica> candidates = hashing.sortReplicas(fileName, result);
+				doUpload(fileName, 0, candidates, producer, callback);
 			}
 		});
 	}
 
 	@Override
-	public void download(final String sourceFileName, final long startPosition, final ResultCallback<StreamTransformerWithCounter> callback) {
-		getAliveServers(new ResultCallback<List<ServerInfo>>() {
+	public void download(final String fileName, final long startPosition, final ResultCallback<StreamTransformerWithCounter> callback) {
+		getAliveServers(new ForwardingResultCallback<List<Replica>>(callback) {
 			@Override
-			public void onResult(List<ServerInfo> result) {
-				List<ServerInfo> candidates = hashing.sortServers(sourceFileName, result);
-				download(sourceFileName, startPosition, 0, candidates, callback);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
+			public void onResult(List<Replica> result) {
+				List<Replica> candidates = hashing.sortReplicas(fileName, result);
+				doDownload(fileName, startPosition, 0, candidates, callback);
 			}
 		});
 	}
 
 	@Override
 	public void delete(final String fileName, final CompletionCallback callback) {
-		getAliveServers(new ResultCallback<List<ServerInfo>>() {
+		getAliveServers(new ForwardingResultCallback<List<Replica>>(callback) {
 			@Override
-			public void onResult(List<ServerInfo> result) {
-				List<ServerInfo> candidates = hashing.sortServers(fileName, result);
-				delete(fileName, 0, candidates, callback);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
+			public void onResult(List<Replica> result) {
+				List<Replica> candidates = hashing.sortReplicas(fileName, result);
+				doDelete(fileName, 0, candidates, callback);
 			}
 		});
 	}
 
 	@Override
 	public void list(final ResultCallback<List<String>> callback) {
-		getAliveServers(new ResultCallback<List<ServerInfo>>() {
+		getAliveServers(new ForwardingResultCallback<List<Replica>>(callback) {
 			@Override
-			public void onResult(List<ServerInfo> result) {
-				list(result, callback);
-			}
-
-			@Override
-			public void onException(Exception e) {
-				callback.onException(e);
+			public void onResult(List<Replica> result) {
+				doList(result, callback);
 			}
 		});
 	}
 
-	private void upload(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
-	                    final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
-		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.upload(server.getAddress(), fileName, producer, new CompletionCallback() {
+	void announce(Replica replica, List<String> forUpload, List<String> forDeletion, ResultCallback<List<String>> callback) {
+		connect(replica.getAddress(), new OfferConnectCallback(forDeletion, forUpload, callback));
+	}
+
+	void makeReplica(Replica replica, String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
+		super.doUpload(replica.getAddress(), fileName, producer, callback);
+	}
+
+	// inner
+	private void doUpload(final String fileName, final int currentAttempt, final List<Replica> candidates,
+	                      final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+		Replica server = candidates.get(currentAttempt % candidates.size());
+		doUpload(server.getAddress(), fileName, producer, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.onComplete();
@@ -228,7 +251,7 @@ public class HashFsClient implements FsClient {
 					schedule(attempt, new Runnable() {
 						@Override
 						public void run() {
-							upload(fileName, attempt, candidates, producer, callback);
+							doUpload(fileName, attempt, candidates, producer, callback);
 						}
 					});
 				} else {
@@ -238,11 +261,11 @@ public class HashFsClient implements FsClient {
 		});
 	}
 
-	private void download(final String fileName, final long startPosition, final int currentAttempt,
-	                      final List<ServerInfo> candidates, final ResultCallback<StreamTransformerWithCounter> callback) {
+	private void doDownload(final String fileName, final long startPosition, final int currentAttempt,
+	                        final List<Replica> candidates, final ResultCallback<StreamTransformerWithCounter> callback) {
 
-		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.download(server.getAddress(), fileName, startPosition, new ResultCallback<StreamTransformerWithCounter>() {
+		Replica server = candidates.get(currentAttempt % candidates.size());
+		doDownload(server.getAddress(), fileName, startPosition, new ResultCallback<StreamTransformerWithCounter>() {
 			@Override
 			public void onResult(StreamTransformerWithCounter result) {
 				callback.onResult(result);
@@ -255,7 +278,7 @@ public class HashFsClient implements FsClient {
 					schedule(attempt, new Runnable() {
 						@Override
 						public void run() {
-							download(fileName, startPosition, attempt, candidates, callback);
+							doDownload(fileName, startPosition, attempt, candidates, callback);
 						}
 					});
 				} else {
@@ -265,10 +288,9 @@ public class HashFsClient implements FsClient {
 		});
 	}
 
-	private void delete(final String fileName, final int currentAttempt, final List<ServerInfo> candidates,
-	                    final CompletionCallback callback) {
-		ServerInfo server = candidates.get(currentAttempt % candidates.size());
-		protocol.delete(server.getAddress(), fileName, new CompletionCallback() {
+	private void doDelete(final String fileName, final int currentAttempt, final List<Replica> candidates, final CompletionCallback callback) {
+		Replica server = candidates.get(currentAttempt % candidates.size());
+		doDelete(server.getAddress(), fileName, new CompletionCallback() {
 			@Override
 			public void onComplete() {
 				callback.onComplete();
@@ -281,7 +303,7 @@ public class HashFsClient implements FsClient {
 					schedule(attempt, new Runnable() {
 						@Override
 						public void run() {
-							delete(fileName, attempt, candidates, callback);
+							doDelete(fileName, attempt, candidates, callback);
 						}
 					});
 				} else {
@@ -291,10 +313,10 @@ public class HashFsClient implements FsClient {
 		});
 	}
 
-	private void list(List<ServerInfo> servers, final ResultCallback<List<String>> callback) {
-		ResultCallback<List<String>> waiter = Util.waitAllResults(servers.size(), new Util.Resolver<List<String>>() {
+	private void doList(List<Replica> servers, final ResultCallback<List<String>> callback) {
+		ResultCallback<List<String>> waiter = Utils.waitAllResults(servers.size(), new Utils.Resolver<List<String>>() {
 			@Override
-			public void resolve(List<List<String>> results, List<Exception> exceptions) {
+			public void resolve(List<List<String>> results, List<Exception> e) {
 				Set<String> files = new HashSet<>();
 				for (List<String> fileSet : results) {
 					files.addAll(fileSet);
@@ -302,21 +324,25 @@ public class HashFsClient implements FsClient {
 				callback.onResult(new ArrayList<>(files));
 			}
 		});
-		for (ServerInfo server : servers) {
-			protocol.list(server.getAddress(), waiter);
+		for (Replica server : servers) {
+			doList(server.getAddress(), waiter);
 		}
 	}
 
-	private void getAliveServers(final ResultCallback<List<ServerInfo>> callback) {
+	void alive(InetSocketAddress address, ResultCallback<Set<Replica>> callback) {
+		connect(address, new AliveConnectCallback(callback));
+	}
+
+	private void getAliveServers(final ResultCallback<List<Replica>> callback) {
 		getAliveServers(0, callback);
 	}
 
-	private void getAliveServers(final int currentAttempt, final ResultCallback<List<ServerInfo>> callback) {
-		ResultCallback<Set<ServerInfo>> waiter = Util.waitAllResults(bootstrap.size(), new Util.Resolver<Set<ServerInfo>>() {
+	private void getAliveServers(final int currentAttempt, final ResultCallback<List<Replica>> callback) {
+		ResultCallback<Set<Replica>> waiter = Utils.waitAllResults(bootstrap.size(), new Utils.Resolver<Set<Replica>>() {
 			@Override
-			public void resolve(List<Set<ServerInfo>> results, List<Exception> exceptions) {
-				Set<ServerInfo> servers = new HashSet<>();
-				for (Set<ServerInfo> serverSet : results) {
+			public void resolve(List<Set<Replica>> results, List<Exception> e) {
+				Set<Replica> servers = new HashSet<>();
+				for (Set<Replica> serverSet : results) {
 					servers.addAll(serverSet);
 				}
 				if (servers.size() == 0 && currentAttempt < maxRetryAttempts) {
@@ -333,8 +359,8 @@ public class HashFsClient implements FsClient {
 				}
 			}
 		});
-		for (ServerInfo server : bootstrap) {
-			protocol.alive(server.getAddress(), waiter);
+		for (Replica server : bootstrap) {
+			this.alive(server.getAddress(), waiter);
 		}
 	}
 

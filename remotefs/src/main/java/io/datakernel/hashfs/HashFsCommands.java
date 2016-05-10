@@ -18,7 +18,7 @@ package io.datakernel.hashfs;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.datakernel.protocol.FsCommands;
+import io.datakernel.FsCommands;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
 import java.util.List;
@@ -26,7 +26,7 @@ import java.util.List;
 import static java.util.Collections.unmodifiableList;
 
 final class HashFsCommands extends FsCommands {
-	static Gson commandGSON = new GsonBuilder()
+	public static Gson commandGSON = new GsonBuilder()
 			.registerTypeAdapter(FsCommand.class, GsonSubclassesAdapter.builder()
 					.subclassField("commandType")
 					.subclass("Upload", Upload.class)
@@ -34,25 +34,24 @@ final class HashFsCommands extends FsCommands {
 					.subclass("Delete", Delete.class)
 					.subclass("List", ListFiles.class)
 					.subclass("Alive", Alive.class)
-					.subclass("Offer", Offer.class)
+					.subclass("Announce", Announce.class)
 					.build())
 			.setPrettyPrinting()
 			.enableComplexMapKeySerialization()
 			.create();
 
 	public static class Alive extends FsCommand {
-
 		@Override
 		public String toString() {
 			return "Alive{servers}";
 		}
 	}
 
-	public static class Offer extends FsCommand {
-		public final List<String> forDeletion;
-		public final List<String> forUpload;
+	public static class Announce extends FsCommand {
+		final List<String> forDeletion;
+		final List<String> forUpload;
 
-		public Offer(List<String> forDeletion, List<String> forUpload) {
+		Announce(List<String> forDeletion, List<String> forUpload) {
 			this.forDeletion = unmodifiableList(forDeletion);
 			this.forUpload = unmodifiableList(forUpload);
 		}
@@ -61,6 +60,5 @@ final class HashFsCommands extends FsCommands {
 		public String toString() {
 			return "Offer{forDeletion:" + forDeletion.size() + ",forUpload:" + forUpload.size() + "}";
 		}
-
 	}
 }

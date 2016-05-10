@@ -218,7 +218,7 @@ public final class HttpRequest extends HttpMessage {
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
 				&& body.position() != body.limit()) {
 			if (bodyParameters == null) {
-				bodyParameters = HttpUtils.parse(decodeAscii(getBody()));
+				bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
 			}
 			return bodyParameters;
 		} else {

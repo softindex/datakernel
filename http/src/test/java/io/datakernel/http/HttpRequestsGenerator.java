@@ -17,6 +17,7 @@
 package io.datakernel.http;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.NativeDnsResolver;
@@ -170,11 +171,19 @@ public final class HttpRequestsGenerator {
 		final ResultCallback<HttpResponse> callback = new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				successfulRequests++;
 				if (options.displayResponse()) {
 					ByteBuf body = result.getBody();
-					System.out.println(body == null ? "Response empty" : ByteBufStrings.decodeUTF8(body));
+					if (body == null) {
+						System.out.println("Response empty");
+					} else {
+						try {
+							System.out.println(ByteBufStrings.decodeUTF8(body));
+						} catch (ParseException e) {
+							onException(e);
+						}
+					}
 				}
+				successfulRequests++;
 			}
 
 			@Override

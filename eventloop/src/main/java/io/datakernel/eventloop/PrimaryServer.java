@@ -85,9 +85,7 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 	 * @param socketChannel the incoming socketChannel.
 	 */
 	@Override
-	public void onAccept(final SocketChannel socketChannel) {
-		assert eventloop.inEventloopThread();
-
+	protected void doAccept(final SocketChannel socketChannel) {
 		// jmx
 		getTotalAccepts().recordEvent();
 
@@ -108,6 +106,5 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 		if (acceptOnce) {
 			close();
 		}
-
 	}
 }

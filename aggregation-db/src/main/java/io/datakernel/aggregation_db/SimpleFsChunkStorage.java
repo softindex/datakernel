@@ -43,7 +43,7 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	                            InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
 		this.aggregationStructure = aggregationStructure;
-		this.client = SimpleFsClient.newInstance(eventloop, serverAddress);
+		this.client = new SimpleFsClient(eventloop, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")

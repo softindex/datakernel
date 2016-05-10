@@ -17,6 +17,8 @@
 package io.datakernel.config;
 
 import com.google.common.base.Preconditions;
+import io.datakernel.async.ParseException;
+import io.datakernel.eventloop.InetAddressRange;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
@@ -36,6 +38,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.Integer.parseInt;
 import static java.util.Collections.emptyList;
 
+@SuppressWarnings("unused, WeakerAccess")
 public final class ConfigConverters {
 
 	private static final class ConfigConverterString extends ConfigConverterSingle<String> {
@@ -305,6 +308,24 @@ public final class ConfigConverters {
 		}
 	}
 
+	private static final class ConfigConverterInetAddressRange extends ConfigConverterSingle<InetAddressRange> {
+		static ConfigConverterInetAddressRange INSTANCE = new ConfigConverterInetAddressRange();
+
+		@Override
+		protected InetAddressRange fromString(String string) {
+			try {
+				return InetAddressRange.parse(string);
+			} catch (ParseException e) {
+				throw new IllegalArgumentException("Can't parse inetAddressRange config", e);
+			}
+		}
+
+		@Override
+		protected String toString(InetAddressRange item) {
+			return item.toString();
+		}
+	}
+
 	public static ConfigConverterSingle<String> ofString() {
 		return ConfigConverterString.INSTANCE;
 	}
@@ -363,6 +384,10 @@ public final class ConfigConverters {
 
 	public static ConfigConverter<DatagramSocketSettings> ofDatagramSocketSettings() {
 		return ConfigConverterDatagramSocketSettings.INSTANCE;
+	}
+
+	public static ConfigConverterSingle<InetAddressRange> ofInetAddressRange() {
+		return ConfigConverterInetAddressRange.INSTANCE;
 	}
 }
 

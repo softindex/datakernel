@@ -75,18 +75,18 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private boolean running;
 
-	private int inetAddressIdx = 0;
-
 	// JMX
-	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+	private final ValueStats timeCheckExpired = new ValueStats();
+	private final ValueStats expiredConnections = new ValueStats();
 
-	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final ValueStats timeCheckExpired = new ValueStats(DEFAULT_SMOOTHING_WINDOW);
-	private final ValueStats expiredConnections = new ValueStats(DEFAULT_SMOOTHING_WINDOW);
-	private final EventStats totalRequests = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats totalRequests = new EventStats();
 	private final ExceptionStats dnsErrors = new ExceptionStats();
+
 	private CountStats pendingSocketConnect = new CountStats();
+
 	private boolean monitoring;
+
+	private int inetAddressIdx = 0;
 
 	/**
 	 * Creates a new instance of HttpClientImpl with default socket settings
@@ -463,6 +463,11 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	// JMX
+
+//	public void resetStats() {
+//		timeCheckExpired.resetStats();
+//	}
+
 	@JmxOperation
 	public void startMonitoring() {
 		monitoring = true;
@@ -502,7 +507,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return result;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute
 	public int getConnectionsCount() {
 		return connectionsList.size();
 	}
@@ -558,19 +563,5 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			result.add(entry.getKey() + "," + MBeanFormat.formatDateTime(entry.getValue()));
 		}
 		return result;
-	}
-
-	@JmxAttribute
-	public double getSmoothingWindow() {
-		return smoothingWindow;
-	}
-
-	@JmxAttribute
-	public void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-
-		timeCheckExpired.setSmoothingWindow(smoothingWindow);
-		expiredConnections.setSmoothingWindow(smoothingWindow);
-		totalRequests.setSmoothingWindow(smoothingWindow);
 	}
 }

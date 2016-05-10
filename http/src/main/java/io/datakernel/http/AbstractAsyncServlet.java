@@ -34,13 +34,10 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	protected final Eventloop eventloop;
 
 	// JMX
-	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
-
-	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final EventStats requests = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats requests = new EventStats();
 	private final ExceptionStats errors = new ExceptionStats();
-	private final ValueStats requestsTimings = new ValueStats(DEFAULT_SMOOTHING_WINDOW);
-	private final ValueStats errorsTimings = new ValueStats(DEFAULT_SMOOTHING_WINDOW);
+	private final ValueStats requestsTimings = new ValueStats();
+	private final ValueStats errorsTimings = new ValueStats();
 
 	protected AbstractAsyncServlet(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -121,17 +118,4 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 		return errorsTimings;
 	}
 
-	@JmxAttribute
-	public double getSmoothingWindow() {
-		return smoothingWindow;
-	}
-
-	@JmxAttribute
-	public void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-
-		requests.setSmoothingWindow(smoothingWindow);
-		requestsTimings.setSmoothingWindow(smoothingWindow);
-		errorsTimings.setSmoothingWindow(smoothingWindow);
-	}
 }

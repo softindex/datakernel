@@ -162,7 +162,7 @@ public final class HttpUri {
 	private void parseParams() throws ParseException {
 		if (params != null)
 			return;
-		params = HttpUtils.parse(query);
+		params = HttpUtils.extractParameters(query);
 	}
 
 	@Override

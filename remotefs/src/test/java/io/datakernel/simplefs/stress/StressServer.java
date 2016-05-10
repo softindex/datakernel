@@ -19,7 +19,6 @@ package io.datakernel.simplefs.stress;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
 import io.datakernel.simplefs.SimpleFsServer;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +28,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class StressServer {
@@ -38,19 +36,19 @@ public class StressServer {
 		((Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME)).setLevel(Level.INFO);
 	}
 
-	public static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");
-	public static final int PORT = 5560;
+	static final Path STORAGE_PATH = Paths.get("./test_data/server_storage");
+	private static final int PORT = 5560;
 
 	private static final ExecutorService executor = newCachedThreadPool();
 	private static final Eventloop eventloop = new Eventloop();
 
-	public static EventloopService server = SimpleFsServer.build(eventloop, executor, STORAGE_PATH)
-			.listenPort(PORT)
-			.build();
+	public static SimpleFsServer server = new SimpleFsServer(eventloop, executor, STORAGE_PATH)
+			.setListenPort(PORT);
 
 	public static void main(String[] args) throws IOException {
 		Files.createDirectories(STORAGE_PATH);
-		server.start(ignoreCompletionCallback());
+		server.listen();
 		eventloop.run();
+		executor.shutdown();
 	}
 }

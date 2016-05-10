@@ -18,14 +18,15 @@ package io.datakernel.hashfs;
 
 import java.net.InetSocketAddress;
 
-public final class ServerInfo {
-	private final InetSocketAddress address;
+public final class Replica {
+	private final String id;
 	private final double weight;
-	private final int serverId;
+
+	private final InetSocketAddress address;
 	private long lastHeartBeatReceived;
 
-	public ServerInfo(int serverId, InetSocketAddress address, double weight) {
-		this.serverId = serverId;
+	public Replica(String id, InetSocketAddress address, double weight) {
+		this.id = id;
 		this.address = address;
 		this.weight = weight;
 	}
@@ -34,37 +35,37 @@ public final class ServerInfo {
 		return address;
 	}
 
-	public double getWeight() {
+	double getWeight() {
 		return weight;
 	}
 
-	public int getServerId() {
-		return serverId;
+	public String getId() {
+		return id;
 	}
 
-	public void updateState(long heartBeat) {
+	void updateState(long heartBeat) {
 		lastHeartBeatReceived = heartBeat;
 	}
 
-	public boolean isAlive(long expectedDieTime) {
+	boolean isAlive(long expectedDieTime) {
 		return lastHeartBeatReceived > expectedDieTime;
 	}
 
 	@Override
 	public int hashCode() {
-		return serverId;
+		return id.hashCode();
 	}
 
 	@Override
 	public boolean equals(Object o) {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
-		ServerInfo that = (ServerInfo) o;
-		return serverId == that.serverId;
+		Replica that = (Replica) o;
+		return id.equals(that.id);
 	}
 
 	@Override
 	public String toString() {
-		return "FileServer id: " + serverId;
+		return "FileServer id: " + id;
 	}
 }

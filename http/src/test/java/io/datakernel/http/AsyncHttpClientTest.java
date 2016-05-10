@@ -65,7 +65,11 @@ public class AsyncHttpClientTest {
 		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(final HttpResponse result) {
-				resultObserver.onResult(decodeUTF8(result.getBody()));
+				try {
+					resultObserver.onResult(decodeUTF8(result.getBody()));
+				} catch (ParseException e) {
+					onException(e);
+				}
 				httpClient.close();
 				httpServer.close();
 			}
@@ -112,7 +116,11 @@ public class AsyncHttpClientTest {
 		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				resultObserver.onResult(decodeUTF8(result.getBody()));
+				try {
+					resultObserver.onResult(decodeUTF8(result.getBody()));
+				} catch (ParseException e) {
+					onException(e);
+				}
 				httpClient.close();
 				httpServer.close();
 			}
@@ -146,7 +154,11 @@ public class AsyncHttpClientTest {
 		httpClient.execute(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				resultObserver.onResult(decodeUTF8(result.getBody()));
+				try {
+					resultObserver.onResult(decodeUTF8(result.getBody()));
+				} catch (ParseException e) {
+					onException(e);
+				}
 				httpClient.close();
 			}
 
@@ -182,7 +194,11 @@ public class AsyncHttpClientTest {
 		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				resultObserver.onResult(decodeUTF8(result.getBody()));
+				try {
+					resultObserver.onResult(decodeUTF8(result.getBody()));
+				} catch (ParseException e) {
+					onException(e);
+				}
 				httpClient.close();
 				httpServer.close();
 			}
@@ -232,9 +248,12 @@ public class AsyncHttpClientTest {
 		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
-				resultObserver.onResult(decodeUTF8(result.getBody()));
+				try {
+					resultObserver.onResult(decodeUTF8(result.getBody()));
+				} catch (ParseException e) {
+					onException(e);
+				}
 				httpClient.close();
-				server.close();
 			}
 
 			@Override

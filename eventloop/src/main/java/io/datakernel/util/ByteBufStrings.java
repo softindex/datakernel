@@ -235,46 +235,50 @@ public final class ByteBufStrings {
 		return byteBuffer;
 	}
 
-	public static String decodeUTF8(byte[] array, int pos, int len, char[] tmpBuffer) {
+	public static String decodeUTF8(byte[] array, int pos, int len, char[] tmpBuffer) throws ParseException {
 		int c, charIndex = 0, end = pos + len;
-		while (pos < end) {
-			c = array[pos++] & 0xff;
-			switch ((c >> 4) & 0x0F) {
-				case 0:
-				case 1:
-				case 2:
-				case 3:
-				case 4:
-				case 5:
-				case 6:
-				case 7:
-					tmpBuffer[charIndex++] = (char) c;
-					break;
-				case 12:
-				case 13:
-					tmpBuffer[charIndex++] = (char) ((c & 0x1F) << 6 | array[pos++] & 0x3F);
-					break;
-				case 14:
-					tmpBuffer[charIndex++] = (char) ((c & 0x0F) << 12 | (array[pos++] & 0x3F) << 6 | (array[pos++] & 0x3F));
-					break;
+		try {
+			while (pos < end) {
+				c = array[pos++] & 0xff;
+				switch ((c >> 4) & 0x0F) {
+					case 0:
+					case 1:
+					case 2:
+					case 3:
+					case 4:
+					case 5:
+					case 6:
+					case 7:
+						tmpBuffer[charIndex++] = (char) c;
+						break;
+					case 12:
+					case 13:
+						tmpBuffer[charIndex++] = (char) ((c & 0x1F) << 6 | array[pos++] & 0x3F);
+						break;
+					case 14:
+						tmpBuffer[charIndex++] = (char) ((c & 0x0F) << 12 | (array[pos++] & 0x3F) << 6 | (array[pos++] & 0x3F));
+						break;
+				}
 			}
+		} catch (ArrayIndexOutOfBoundsException e) {
+			throw new ParseException("Malformed utf-8 input", e);
 		}
 		return new String(tmpBuffer, 0, charIndex);
 	}
 
-	public static String decodeUTF8(byte[] array, int pos, int len) {
+	public static String decodeUTF8(byte[] array, int pos, int len) throws ParseException {
 		return decodeUTF8(array, pos, len, new char[len]);
 	}
 
-	public static String decodeUTF8(ByteBuf buf, char[] tmpBuffer) {
+	public static String decodeUTF8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
 		return decodeUTF8(buf.array(), buf.position(), buf.remaining(), tmpBuffer);
 	}
 
-	public static String decodeUTF8(ByteBuf buf) {
+	public static String decodeUTF8(ByteBuf buf) throws ParseException {
 		return decodeUTF8(buf.array(), buf.position(), buf.remaining(), new char[buf.remaining()]);
 	}
 
-	public static String decodeUTF8(byte[] array) {
+	public static String decodeUTF8(byte[] array) throws ParseException {
 		return decodeUTF8(array, 0, array.length, new char[array.length]);
 	}
 
@@ -347,5 +351,4 @@ public final class ByteBufStrings {
 		}
 		return 10;
 	}
-
 }

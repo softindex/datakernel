@@ -29,7 +29,6 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.bean.*;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
 import io.datakernel.simplefs.SimpleFsServer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamConsumers;
@@ -157,38 +156,16 @@ public class CubeTest {
 
 	private static final int LISTEN_PORT = 45578;
 
-	private EventloopService prepareServer(Eventloop eventloop, Path serverStorage) throws IOException {
+	private SimpleFsServer prepareServer(Eventloop eventloop, Path serverStorage) throws IOException {
 		final ExecutorService executor = Executors.newCachedThreadPool();
-		SimpleFsServer fileServer = SimpleFsServer.build(eventloop, executor, serverStorage)
-				.listenPort(LISTEN_PORT)
-				.build();
-
-		fileServer.start(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.info("Started server");
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.error("Failed to start server", e);
-			}
-		});
+		SimpleFsServer fileServer = new SimpleFsServer(eventloop, executor, serverStorage);
+		fileServer.setListenPort(LISTEN_PORT);
+		fileServer.listen();
 		return fileServer;
 	}
 
-	private void stop(EventloopService server) {
-		server.stop(new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				logger.info("Server has been stopped");
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				logger.info("Failed to stop server");
-			}
-		});
+	private void stop(SimpleFsServer server) {
+		server.close();
 	}
 
 	@Test
@@ -199,7 +176,7 @@ public class CubeTest {
 		AggregationStructure aggregationStructure = cubeStructure(classLoader);
 
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
-		final EventloopService simpleFsServer1 = prepareServer(eventloop, serverStorage);
+		final SimpleFsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
 
 		AggregationChunkStorage storage = new SimpleFsChunkStorage(eventloop, aggregationStructure,
 				new InetSocketAddress(InetAddress.getLocalHost(), LISTEN_PORT));
@@ -230,7 +207,7 @@ public class CubeTest {
 
 		eventloop.run();
 
-		final EventloopService simpleFsServer2 = prepareServer(eventloop, serverStorage);
+		final SimpleFsServer simpleFsServer2 = prepareServer(eventloop, serverStorage);
 		final StreamConsumers.ToList<DataItemResult> consumerToList = StreamConsumers.toList(eventloop);
 		final CubeQuery query = new CubeQuery()
 				.dimensions("key1", "key2")

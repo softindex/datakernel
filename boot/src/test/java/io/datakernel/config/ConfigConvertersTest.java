@@ -16,8 +16,10 @@
 
 package io.datakernel.config;
 
+import io.datakernel.eventloop.InetAddressRange;
 import org.junit.Test;
 
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -89,7 +91,7 @@ public class ConfigConvertersTest {
 		assertEquals(Color.BLUE, root.get(enumConverter, "key3"));
 	}
 
-	public enum Color {
+	private enum Color {
 		RED, GREEN, BLUE
 	}
 
@@ -156,4 +158,17 @@ public class ConfigConvertersTest {
 		assertEquals(expected, listConverter.get(root.getChild("key1")));
 	}
 
+	@Test
+	public void testInetAddressRange() throws Exception {
+		ConfigConverter<InetAddressRange> rangeConverter = ConfigConverters.ofInetAddressRange();
+		String inputData = "192.168.0.0/16";
+		Config root = Config.create();
+		root.set("key1", inputData);
+
+		InetAddressRange expected = InetAddressRange.fromRange(
+				(Inet4Address) InetAddress.getByName("192.168.0.0"),
+				(Inet4Address) InetAddress.getByName("192.168.255.255")
+		);
+		assertEquals(expected, rangeConverter.get(root.getChild("key1")));
+	}
 }

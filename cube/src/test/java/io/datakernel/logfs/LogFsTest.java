@@ -16,12 +16,17 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.async.*;
+import io.datakernel.FsServer;
+import io.datakernel.async.AsyncCallbacks;
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.async.SimpleCompletionCallback;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.hashfs.HashFsServer;
-import io.datakernel.hashfs.ServerInfo;
+import io.datakernel.hashfs.LocalReplica;
+import io.datakernel.hashfs.Replica;
 import io.datakernel.serializer.asm.BufferSerializers;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.simplefs.SimpleFsServer;
@@ -30,14 +35,13 @@ import io.datakernel.stream.StreamProducers;
 import io.datakernel.time.SettableCurrentTimeProvider;
 import org.joda.time.format.DateTimeFormatter;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 import java.net.InetSocketAddress;
 import java.nio.file.Path;
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -140,7 +144,7 @@ public class LogFsTest {
 		CompletionCallback stopCallback = new SimpleCompletionCallback() {
 			@Override
 			protected void onCompleteOrException() {
-				server.stop(ignoreCompletionCallback());
+				server.close();
 			}
 		};
 
@@ -189,9 +193,9 @@ public class LogFsTest {
 	@Test
 	public void testHashFs() throws Exception {
 		String logName = "log";
-		ServerInfo serverInfo = new ServerInfo(0, new InetSocketAddress(33333), 1.0);
-		List<ServerInfo> servers = singletonList(serverInfo);
-		final HashFsServer server = createServer(serverInfo, servers, path);
+		Replica replica = new Replica("", new InetSocketAddress(33333), 1.0);
+		List<Replica> servers = singletonList(replica);
+		final HashFsServer server = createServer(replica, servers, path);
 		HashFsClient client = createClient(servers);
 
 		LogFileSystem fileSystem = new RemoteLogFileSystem(eventloop, logName, client);
@@ -203,7 +207,8 @@ public class LogFsTest {
 			protected void onCompleteOrException() {
 				try {
 					stopServer(server);
-				} catch (Exception ignored) { }
+				} catch (Exception ignored) {
+				}
 			}
 		};
 
@@ -248,51 +253,32 @@ public class LogFsTest {
 		assertEquals(asList("8", "10", "12"), consumer.getList());
 	}
 
-	private void startServer(SimpleFsServer server) throws Exception {
-		CompletionCallbackFuture startFuture = new CompletionCallbackFuture();
-		server.start(startFuture);
-		startFuture.get();
-	}
-
-	private void startServer(final HashFsServer server) throws Exception {
-		final CompletionCallbackFuture startFuture = new CompletionCallbackFuture();
-		serverEventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				server.start(startFuture);
-			}
-		});
-		startFuture.get();
+	private <T extends FsServer<T>> void startServer(FsServer<T> server) throws Exception {
+		server.listen();
 	}
 
 	private void stopServer(final HashFsServer server) throws Exception {
-		final CompletionCallbackFuture stopFuture = new CompletionCallbackFuture();
-		serverEventloop.execute(new Runnable() {
-			@Override
-			public void run() {
-				server.stop(stopFuture);
-			}
-		});
-		stopFuture.get();
+		server.close();
 	}
 
 	private SimpleFsServer createServer(InetSocketAddress address, Path serverStorage) {
-		return SimpleFsServer.build(eventloop, executor, serverStorage)
-				.listenAddress(address)
-				.build();
+		return new SimpleFsServer(eventloop, executor, serverStorage)
+				.setListenAddress(address);
 	}
 
-	private HashFsServer createServer(ServerInfo serverInfo, List<ServerInfo> servers, Path serverStorage) {
-		return HashFsServer.newInstance(serverEventloop, executor, serverStorage, serverInfo, new HashSet<>(servers));
+	private HashFsServer createServer(Replica replica, List<Replica> servers, Path serverStorage) {
+		LocalReplica localReplica = new LocalReplica(eventloop, executor, serverStorage, new ArrayList<>(servers), replica);
+		localReplica.start(ignoreCompletionCallback());
+		return new HashFsServer(eventloop, localReplica)
+				.setListenAddress(replica.getAddress());
 	}
 
-	private HashFsClient createClient(List<ServerInfo> servers) {
-		return HashFsClient.build(eventloop, servers)
-				.setMaxRetryAttempts(1)
-				.build();
+	private HashFsClient createClient(List<Replica> servers) {
+		return new HashFsClient(eventloop, servers)
+				.setMaxRetryAttempts(1);
 	}
 
 	private SimpleFsClient createClient(InetSocketAddress address) {
-		return SimpleFsClient.newInstance(eventloop, address);
+		return new SimpleFsClient(eventloop, address);
 	}
 }

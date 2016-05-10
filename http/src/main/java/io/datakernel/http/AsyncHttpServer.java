@@ -20,18 +20,13 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers;
-import io.datakernel.jmx.MBeanFormat;
+import io.datakernel.jmx.ValueStats;
+import io.datakernel.util.Stopwatch;
 
 import java.nio.channels.SocketChannel;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
-import static io.datakernel.util.StringUtils.join;
-import static java.util.Arrays.asList;
 
 /**
  * A HttpServer is bound to an IP address and port number and listens for incoming connections
@@ -51,7 +46,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	//JMX
-	private final EventStats expiredConnections;
+	private final ValueStats timeCheckExpired;
+	private final ValueStats expiredConnections;
+	private boolean monitoring;
+	private volatile double smoothingWindow = 10.0;
 
 	/**
 	 * Creates new instance of AsyncHttpServer
@@ -71,7 +69,8 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		this.headerChars = chars;
 
 		// JMX
-		this.expiredConnections = new EventStats(getSmoothingWindow());
+		this.timeCheckExpired = new ValueStats();
+		this.expiredConnections = new ValueStats();
 	}
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
@@ -96,21 +95,28 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 
 	private int checkExpiredConnections() {
 		scheduleExpiredConnectionCheck = null;
+		Stopwatch stopwatch = (monitoring) ? Stopwatch.createStarted() : null;
 		int count = 0;
-		final long now = eventloop.currentTimeMillis();
-		ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
-		while (node != null) {
-			AbstractHttpConnection connection = node.getValue();
-			node = node.getNext();
+		try {
+			final long now = eventloop.currentTimeMillis();
 
-			assert connection.getEventloop().inEventloopThread();
-			long idleTime = now - connection.getActivityTime();
-			if (idleTime > MAX_IDLE_CONNECTION_TIME) {
-				connection.close(); // self removing from this pool
-				count++;
+			ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
+			while (node != null) {
+				AbstractHttpConnection connection = node.getValue();
+				node = node.getNext();
+
+				assert connection.getEventloop().inEventloopThread();
+				long idleTime = now - connection.getActivityTime();
+				if (idleTime > MAX_IDLE_CONNECTION_TIME) {
+					connection.close(); // self removing from this pool
+					count++;
+				}
 			}
+			expiredConnections.recordValue(count);
+		} finally {
+			if (stopwatch != null)
+				timeCheckExpired.recordValue((int) stopwatch.elapsed(TimeUnit.MICROSECONDS));
 		}
-		expiredConnections.recordEvents(count);
 		return count;
 	}
 
@@ -157,40 +163,62 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	// JMX
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+
+//	@JmxAttribute
+//	public JmxRefreshableStats<?> getConnectionsCount() {
+//		return JmxStatsWrappers.forSummableValue(connectionsList.size());
+//	}
+
+	// TODO (vmykhalko)
+/*	@Override
+	public void startMonitoring() {
+		monitoring = true;
+	}
+
+	@Override
+	public void stopMonitoring() {
+		monitoring = false;
+	}
+
+	@Override
+	public void resetStats() {
+		timeCheckExpired.resetStats();
+	}
+
+	@Override
+	public int getTimeCheckExpiredMicros() {
+		return (int)timeCheckExpired.getLastValue();
+	}
+
+	@Override
+	public String getTimeCheckExpiredMicrosStats() {
+		return timeCheckExpired.toString();
+	}
+
+	@Override
+	public String getExpiredConnectionsStats() {
+		return expiredConnections.toString();
+	}
+
+	@Override
 	public int getConnectionsCount() {
 		return connectionsList.size();
 	}
 
-	@JmxAttribute
-	public EventStats getExpiredConnections() {
-		return expiredConnections;
-	}
-
-	@JmxAttribute
-	public List<String> getConnections() {
+	@Override
+	public String[] getConnections() {
+		Joiner joiner = Joiner.on(',');
 		List<String> info = new ArrayList<>();
 		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
-
-		ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
-		while (node != null) {
+		for (Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
 			AbstractHttpConnection connection = node.getValue();
-			node = node.getNext();
-
-			String connectionInfo = join(',', asList(connection.getRemoteSocketAddress(), connection.isRegistered(),
+			String string = joiner.join(connection.getRemoteSocketAddress(), connection.isRegistered(),
 					MBeanFormat.formatPeriodAgo(connection.getLifeTime()),
-					MBeanFormat.formatPeriodAgo(connection.getActivityTime())));
-
-			info.add(connectionInfo);
+					MBeanFormat.formatPeriodAgo(connection.getActivityTime())
+			);
+			info.add(string);
 		}
-
-		return info;
+		return info.toArray(new String[info.size()]);
 	}
-
-	@Override
-	@JmxAttribute
-	public void setSmoothingWindow(double smoothingWindow) {
-		super.setSmoothingWindow(smoothingWindow);
-		expiredConnections.setSmoothingWindow(smoothingWindow);
-	}
+	*/
 }

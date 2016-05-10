@@ -23,7 +23,7 @@ import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
 import io.datakernel.stream.StreamStatus;
 
-public class StreamTransformerWithCounter extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public final class StreamTransformerWithCounter extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 	private InputConsumer inputConsumer;
 	private OutputProducer outputProducer;
 	private final long expectedSize;

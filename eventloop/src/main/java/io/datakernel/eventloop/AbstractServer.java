@@ -28,6 +28,7 @@ import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -47,14 +48,12 @@ import static org.slf4j.LoggerFactory.getLogger;
  *
  * @param <S> type of AbstractNioServer which extends from it
  */
+@SuppressWarnings("WeakerAccess, unused")
 public abstract class AbstractServer<S extends AbstractServer<S>> implements EventloopServer, EventloopJmxMBean {
 	private static final Logger logger = getLogger(AbstractServer.class);
 
 	public static final ServerSocketSettings DEFAULT_SERVER_SOCKET_SETTINGS = new ServerSocketSettings(DEFAULT_BACKLOG);
 
-	/**
-	 * Creates a new default socket settings for creating new sockets with its values.
-	 */
 	private ServerSocketSettings serverSocketSettings = DEFAULT_SERVER_SOCKET_SETTINGS;
 	private SocketSettings socketSettings = defaultSocketSettings();
 
@@ -62,17 +61,21 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	private boolean running = false;
 	protected boolean acceptOnce;
+
 	private InetSocketAddress[] listenAddresses;
 	private ServerSocketChannel[] serverSocketChannels;
+	protected InetAddressRange range;
 
 	// JMX
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	private final EventStats totalAccepts = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats rangeBlocked = new EventStats();
 	private final ExceptionStats prepareSocketException = new ExceptionStats();
 	private final ExceptionStats closeException = new ExceptionStats();
 
+	// creators & builder methods
 	public AbstractServer(Eventloop eventloop) {
 		this.eventloop = checkNotNull(eventloop);
 	}
@@ -80,6 +83,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	@SuppressWarnings("unchecked")
 	protected S self() {
 		return (S) this;
+	}
+
+	public S acceptedIpAddresses(InetAddressRange range) {
+		this.range = range;
+		return self();
 	}
 
 	public S serverSocketSettings(ServerSocketSettings serverSocketSettings) {
@@ -129,11 +137,12 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return self();
 	}
 
-	/**
-	 * Begins to listen all addresses which was added to this server.
-	 *
-	 * @throws IOException If some  I/O error occurs
-	 */
+	// eventloop server api
+	@Override
+	public final Eventloop getEventloop() {
+		return eventloop;
+	}
+
 	@Override
 	public final void listen() throws IOException {
 		check(eventloop.inEventloopThread());
@@ -156,9 +165,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 	}
 
-	protected void onListen() {
-	}
-
 	@Override
 	public final void close() {
 		check(eventloop.inEventloopThread());
@@ -169,8 +175,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		onClose();
 	}
 
-	protected boolean isRunning() {
-		return running;
+	protected void onListen() {
+	}
+
+	protected void onClose() {
 	}
 
 	public CompletionCallbackFuture listenFuture() {
@@ -181,13 +189,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return AsyncCallbacks.closeFuture(this);
 	}
 
-	protected void onClose() {
+	protected boolean isRunning() {
+		return running;
 	}
 
-	/**
-	 * Closes all server socket channels for safe ending of acceptor's work. Releases resources
-	 * that the object holds.
-	 */
 	private void closeServerSocketChannels() {
 		if (serverSocketChannels == null || serverSocketChannels.length == 0) {
 			return;
@@ -216,41 +221,27 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 	}
 
-	/**
-	 * Returns eventloop which is related with this NioServer
-	 */
+	// core
 	@Override
-	public final Eventloop getEventloop() {
-		return eventloop;
-	}
-
-	protected void prepareSocket(SocketChannel socketChannel) {
+	public final void onAccept(SocketChannel socketChannel) {
+		assert eventloop.inEventloopThread();
 		try {
-			socketSettings.applySettings(socketChannel);
+			InetAddress remoteAddress = ((InetSocketAddress) socketChannel.getRemoteAddress()).getAddress();
+			if (isInRange(remoteAddress) && checkRemoteAddress(remoteAddress)) {
+				doAccept(socketChannel);
+			} else {
+				rangeBlocked.recordEvent();
+				resolveRangeBlock(socketChannel);
+			}
 		} catch (IOException e) {
-
-			// jmx
-			prepareSocketException.recordException(e, socketChannel);
-
-			if (logger.isErrorEnabled()) {
-				logger.error("Exception thrown while apply settings socket {}", socketChannel, e);
+			if (logger.isWarnEnabled()) {
+				logger.warn("Exception thrown while trying to get remoteAddress from socket {}", socketChannel, e);
 			}
 		}
 	}
 
-	/**
-	 * Accepts incoming socket connections without blocking event loop thread. Creates a new connection
-	 * and registers it in eventloop.
-	 *
-	 * @param socketChannel the incoming socketChannel.
-	 */
-	@Override
-	public void onAccept(SocketChannel socketChannel) {
-		assert eventloop.inEventloopThread();
-
-		//jmx
+	protected void doAccept(SocketChannel socketChannel) {
 		totalAccepts.recordEvent();
-
 		prepareSocket(socketChannel);
 		SocketConnection connection = createConnection(socketChannel);
 		connection.register();
@@ -259,13 +250,35 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 	}
 
-	/**
-	 * Returns connection from this socketChannel. You should override it to create connection
-	 * with your logic.
-	 *
-	 * @param socketChannel the socketChannel for creating connection.
-	 * @return new SocketConnection.
-	 */
+	protected void prepareSocket(SocketChannel socketChannel) {
+		try {
+			socketSettings.applySettings(socketChannel);
+		} catch (IOException e) {
+			prepareSocketException.recordException(e, socketChannel);
+			if (logger.isErrorEnabled()) {
+				logger.error("Exception thrown while apply settings socket {}", socketChannel, e);
+			}
+		}
+	}
+
+	protected boolean checkRemoteAddress(InetAddress address) {
+		return true;
+	}
+
+	private boolean isInRange(InetAddress address) {
+		return range == null || range.contains(address);
+	}
+
+	protected void resolveRangeBlock(SocketChannel socketChannel) {
+		try {
+			socketChannel.close();
+		} catch (IOException e) {
+			if (logger.isWarnEnabled()) {
+				logger.warn("Exception thrown on socket close {} while trying to resolve range block", socketChannel, e);
+			}
+		}
+	}
+
 	protected abstract SocketConnection createConnection(SocketChannel socketChannel);
 
 	// jmx
@@ -282,6 +295,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	@JmxAttribute
 	public EventStats getTotalAccepts() {
 		return totalAccepts;
+	}
+
+	@JmxAttribute
+	public EventStats getRangeBlocked() {
+		return rangeBlocked;
 	}
 
 	@JmxAttribute

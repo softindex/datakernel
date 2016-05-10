@@ -84,25 +84,22 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	};
 
 	// JMX
-	public static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
-
-	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 
 	private boolean monitoring;
 
-	private final RpcRequestStats generalRequestsStats = new RpcRequestStats(DEFAULT_SMOOTHING_WINDOW);
-	private final RpcConnectStats generalConnectsStats = new RpcConnectStats(DEFAULT_SMOOTHING_WINDOW);
-	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass = new HashMap<>();
-	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress = new HashMap<>();
+	private final RpcRequestStats generalRequestsStats;
+	private final RpcConnectStats generalConnectsStats;
+	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass;
+	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress;
 
 	private RpcClient(Eventloop eventloop) {
 		this.eventloop = eventloop;
 
 		// JMX
-//		this.generalRequestsStats = new RpcRequestStats(D);
-//		this.generalConnectsStats = new RpcConnectStats();
-//		this.requestStatsPerClass = new HashMap<>();
-//		this.connectsStatsPerAddress = new HashMap<>(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
+		this.generalRequestsStats = new RpcRequestStats();
+		this.generalConnectsStats = new RpcConnectStats();
+		this.requestStatsPerClass = new HashMap<>();
+		this.connectsStatsPerAddress = new HashMap<>(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
 	}
 
 	public static RpcClient create(final Eventloop eventloop) {
@@ -132,7 +129,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		// jmx
 		for (InetSocketAddress address : this.addresses) {
 			if (!connectsStatsPerAddress.containsKey(address)) {
-				connectsStatsPerAddress.put(address, new RpcConnectStats(smoothingWindow));
+				connectsStatsPerAddress.put(address, new RpcConnectStats());
 			}
 		}
 
@@ -397,7 +394,7 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	public void resetStats() {
 		generalRequestsStats.resetStats();
 		for (InetSocketAddress address : connectsStatsPerAddress.keySet()) {
-			connectsStatsPerAddress.get(address).resetStats();
+			connectsStatsPerAddress.get(address).reset();
 		}
 		for (Class<?> requestClass : requestStatsPerClass.keySet()) {
 			requestStatsPerClass.get(requestClass).resetStats();
@@ -446,34 +443,9 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return countStats;
 	}
 
-	@JmxAttribute
-	public double getSmoothingWindow() {
-		return smoothingWindow;
-	}
-
-	@JmxAttribute
-	public void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-
-		generalRequestsStats.setSmoothingWindow(smoothingWindow);
-		for (InetSocketAddress address : connectsStatsPerAddress.keySet()) {
-			connectsStatsPerAddress.get(address).setSmoothingWindow(smoothingWindow);
-		}
-		for (Class<?> requestClass : requestStatsPerClass.keySet()) {
-			requestStatsPerClass.get(requestClass).setSmoothingWindow(smoothingWindow);
-		}
-
-		for (InetSocketAddress address : addresses) {
-			RpcClientConnection connection = connections.get(address);
-			if (connection != null) {
-				connection.setSmoothingWindow(smoothingWindow);
-			}
-		}
-	}
-
 	private RpcRequestStats ensureRequestStatsPerClass(Class<?> requestClass) {
 		if (!requestStatsPerClass.containsKey(requestClass)) {
-			requestStatsPerClass.put(requestClass, new RpcRequestStats(smoothingWindow));
+			requestStatsPerClass.put(requestClass, new RpcRequestStats());
 		}
 		return requestStatsPerClass.get(requestClass);
 	}

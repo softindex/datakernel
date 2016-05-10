@@ -22,32 +22,32 @@ import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.ValueStats;
 
 public final class RpcRequestStats {
-	private final EventStats totalRequests;
-	private final EventStats successfulRequests;
-	private final EventStats failedRequests;
-	private final EventStats rejectedRequests;
-	private final EventStats expiredRequests;
-	private final ValueStats responseTimeStats;
-	private final ExceptionStats serverExceptions;
+	private final EventStats totalRequests = new EventStats();
+	private final EventStats successfulRequests = new EventStats();
+	private final EventStats failedRequests = new EventStats();
+	private final EventStats rejectedRequests = new EventStats();
+	private final EventStats expiredRequests = new EventStats();
+	private final ValueStats responseTimeStats = new ValueStats();
+	private final ExceptionStats serverExceptions = new ExceptionStats();
 
-	public RpcRequestStats(double smoothingWindow) {
-		totalRequests = new EventStats(smoothingWindow);
-		successfulRequests = new EventStats(smoothingWindow);
-		failedRequests = new EventStats(smoothingWindow);
-		rejectedRequests = new EventStats(smoothingWindow);
-		expiredRequests = new EventStats(smoothingWindow);
-		responseTimeStats = new ValueStats(smoothingWindow);
-		serverExceptions = new ExceptionStats();
+	public void resetStats() {
+		totalRequests.resetStats();
+		successfulRequests.resetStats();
+		failedRequests.resetStats();
+		rejectedRequests.resetStats();
+		expiredRequests.resetStats();
+		responseTimeStats.resetStats();
+		serverExceptions.resetStats();
 	}
 
-	public RpcRequestStats() {
-		totalRequests = new EventStats();
-		successfulRequests = new EventStats();
-		failedRequests = new EventStats();
-		rejectedRequests = new EventStats();
-		expiredRequests = new EventStats();
-		responseTimeStats = new ValueStats();
-		serverExceptions = new ExceptionStats();
+	public void add(RpcRequestStats statsSet) {
+		totalRequests.add(statsSet.getTotalRequests());
+		successfulRequests.add(statsSet.getSuccessfulRequests());
+		failedRequests.add(statsSet.getFailedRequests());
+		rejectedRequests.add(statsSet.getRejectedRequests());
+		expiredRequests.add(statsSet.getExpiredRequests());
+		responseTimeStats.add(statsSet.getResponseTime());
+		serverExceptions.add(statsSet.getServerExceptions());
 	}
 
 	@JmxAttribute
@@ -83,25 +83,6 @@ public final class RpcRequestStats {
 	@JmxAttribute
 	public ExceptionStats getServerExceptions() {
 		return serverExceptions;
-	}
-
-	public void resetStats() {
-		totalRequests.resetStats();
-		successfulRequests.resetStats();
-		failedRequests.resetStats();
-		rejectedRequests.resetStats();
-		expiredRequests.resetStats();
-		responseTimeStats.resetStats();
-		serverExceptions.resetStats();
-	}
-
-	public void setSmoothingWindow(double smoothingWindow) {
-		totalRequests.setSmoothingWindow(smoothingWindow);
-		successfulRequests.setSmoothingWindow(smoothingWindow);
-		failedRequests.setSmoothingWindow(smoothingWindow);
-		rejectedRequests.setSmoothingWindow(smoothingWindow);
-		expiredRequests.setSmoothingWindow(smoothingWindow);
-		responseTimeStats.setSmoothingWindow(smoothingWindow);
 	}
 
 }

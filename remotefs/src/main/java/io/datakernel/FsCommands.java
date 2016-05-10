@@ -14,18 +14,31 @@
  * limitations under the License.
  */
 
-package io.datakernel.protocol;
+package io.datakernel;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import io.datakernel.serializer.GsonSubclassesAdapter;
 
+@SuppressWarnings("WeakerAccess")
 public abstract class FsCommands {
+	static Gson commandGSON = new GsonBuilder()
+			.registerTypeAdapter(FsCommand.class, GsonSubclassesAdapter.builder()
+					.subclassField("commandType")
+					.subclass("Upload", Upload.class)
+					.subclass("Download", Download.class)
+					.subclass("Delete", Delete.class)
+					.subclass("List", ListFiles.class)
+					.build())
+			.setPrettyPrinting()
+			.enableComplexMapKeySerialization()
+			.create();
+
 	public static abstract class FsCommand {
 
 	}
 
-	public static class Upload extends FsCommand {
+	public static final class Upload extends FsCommand {
 		public final String filePath;
 
 		public Upload(String filePath) {
@@ -38,7 +51,7 @@ public abstract class FsCommands {
 		}
 	}
 
-	public static class Delete extends FsCommand {
+	public static final class Delete extends FsCommand {
 		public final String filePath;
 
 		public Delete(String filePath) {
@@ -51,7 +64,7 @@ public abstract class FsCommands {
 		}
 	}
 
-	public static class Download extends FsCommand {
+	public static final class Download extends FsCommand {
 		public final String filePath;
 		public final long startPosition;
 
@@ -66,22 +79,10 @@ public abstract class FsCommands {
 		}
 	}
 
-	public static class ListFiles extends FsCommand {
+	public static final class ListFiles extends FsCommand {
 		@Override
 		public String toString() {
 			return "List{all files}";
 		}
 	}
-
-	public static Gson commandGSON = new GsonBuilder()
-			.registerTypeAdapter(FsCommand.class, GsonSubclassesAdapter.builder()
-					.subclassField("commandType")
-					.subclass("Upload", Upload.class)
-					.subclass("Download", Download.class)
-					.subclass("Delete", Delete.class)
-					.subclass("List", ListFiles.class)
-					.build())
-			.setPrettyPrinting()
-			.enableComplexMapKeySerialization()
-			.create();
 }

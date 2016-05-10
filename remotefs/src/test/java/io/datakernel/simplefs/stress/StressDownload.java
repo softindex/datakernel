@@ -4,10 +4,8 @@ import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.file.AsyncFile;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.file.StreamFileWriter;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -19,6 +17,10 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import static io.datakernel.file.AsyncFile.open;
+import static io.datakernel.stream.file.StreamFileWriter.CREATE_OPTIONS;
+import static io.datakernel.stream.file.StreamFileWriter.create;
 
 public class StressDownload {
 	private static final int OPERATIONS_QUANTITY = 10 * 1024;
@@ -38,7 +40,7 @@ public class StressDownload {
 
 		final int[] failures = new int[1];
 
-		SimpleFsClient client = SimpleFsClient.newInstance(eventloop, new InetSocketAddress(5560));
+		SimpleFsClient client = new SimpleFsClient(eventloop, new InetSocketAddress(5560));
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			FILES.add(createFile());
@@ -50,11 +52,10 @@ public class StressDownload {
 				@Override
 				public void onResult(StreamTransformerWithCounter result) {
 					try {
-						StreamConsumer<ByteBuf> consumer =
-								StreamFileWriter.create(eventloop,
-										AsyncFile.open(eventloop,
-												executor,
-												CLIENT_STORAGE.resolve(file), StreamFileWriter.CREATE_OPTIONS));
+						StreamConsumer<ByteBuf> consumer = create(eventloop,
+								open(eventloop, executor,
+										CLIENT_STORAGE.resolve(file),
+										CREATE_OPTIONS));
 						result.getOutput().streamTo(consumer);
 					} catch (IOException e) {
 						onException(e);

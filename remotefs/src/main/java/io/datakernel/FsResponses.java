@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.datakernel.protocol;
+package io.datakernel;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -23,7 +23,21 @@ import io.datakernel.serializer.GsonSubclassesAdapter;
 import java.util.Collections;
 import java.util.List;
 
+@SuppressWarnings("WeakerAccess")
 public abstract class FsResponses {
+	static Gson responseGson = new GsonBuilder()
+			.registerTypeAdapter(FsResponse.class, GsonSubclassesAdapter.builder()
+					.subclassField("commandType")
+					.subclass("Error", Err.class)
+					.subclass("FileList", ListOfFiles.class)
+					.subclass("ResponseOk", Ok.class)
+					.subclass("Acknowledge", Acknowledge.class)
+					.subclass("ReadyBytes", Ready.class)
+					.build())
+			.setPrettyPrinting()
+			.enableComplexMapKeySerialization()
+			.create();
+
 	public static abstract class FsResponse {
 
 	}
@@ -68,10 +82,10 @@ public abstract class FsResponses {
 		}
 	}
 
-	public static class ListFiles extends FsResponse {
+	public static class ListOfFiles extends FsResponse {
 		public final List<String> files;
 
-		public ListFiles(List<String> files) {
+		public ListOfFiles(List<String> files) {
 			this.files = Collections.unmodifiableList(files);
 		}
 
@@ -80,16 +94,4 @@ public abstract class FsResponses {
 			return "Listed{" + files.size() + "}";
 		}
 	}
-
-	public static Gson responseGson = new GsonBuilder()
-			.registerTypeAdapter(FsResponse.class, GsonSubclassesAdapter.builder()
-					.subclassField("commandType")
-					.subclass("Error", Err.class)
-					.subclass("FileList", ListFiles.class)
-					.subclass("ResponseOk", Ok.class)
-					.subclass("Acknowledge", Acknowledge.class)
-					.subclass("ReadyBytes", Ready.class)
-					.build())
-			.enableComplexMapKeySerialization()
-			.create();
 }

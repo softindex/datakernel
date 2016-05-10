@@ -58,7 +58,13 @@ public final class CubeHttpClient {
 		httpClient.execute(buildRequest(query), timeout, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse httpResponse) {
-				String response = decodeUTF8(httpResponse.getBody());
+				String response;
+				try {
+					response = decodeUTF8(httpResponse.getBody());
+				} catch (ParseException e) {
+					callback.onException(new ParseException("Cube HTTP query failed. Invalid data received", e));
+					return;
+				}
 
 				if (httpResponse.getCode() != 200) {
 					callback.onException(new ParseException("Cube HTTP query failed. Response code: "
