@@ -21,6 +21,7 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.simplefs.SimpleFsClient;
@@ -36,22 +37,22 @@ import java.util.List;
 
 public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	private final Eventloop eventloop;
-	private final AggregationStructure aggregationStructure;
+	private final AggregationStructure structure;
 	private final SimpleFsClient client;
 
-	public SimpleFsChunkStorage(Eventloop eventloop, AggregationStructure aggregationStructure,
+	public SimpleFsChunkStorage(Eventloop eventloop, AggregationStructure structure,
 	                            InetSocketAddress serverAddress) {
 		this.eventloop = eventloop;
-		this.aggregationStructure = aggregationStructure;
+		this.structure = structure;
 		this.client = new SimpleFsClient(eventloop, serverAddress);
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
-	                                         Class<T> recordClass, final long id) {
+	                                         Class<T> recordClass, long id, DefiningClassLoader classLoader) {
 		final StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
-		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, keys, fields);
+		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE);
 		decompressor.getOutput().streamTo(deserializer.getInput());
@@ -74,9 +75,10 @@ public class SimpleFsChunkStorage implements AggregationChunkStorage {
 	@SuppressWarnings("unchecked")
 	@Override
 	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass,
-	                            final long id, final StreamProducer<T> producer, final CompletionCallback callback) {
+	                            final long id, StreamProducer<T> producer, DefiningClassLoader classLoader,
+	                            final CompletionCallback callback) {
 		StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		BufferSerializer<T> bufferSerializer = aggregationStructure.createBufferSerializer(recordClass, keys, fields);
+		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 

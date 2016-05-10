@@ -72,11 +72,10 @@ public class ResolverTest {
 		Map<String, Object> keyConstants = newHashMap();
 		keyConstants.put("constantId", "ab");
 
- 		Resolver resolver = new Resolver(new DefiningClassLoader(), attributeResolvers);
+ 		Resolver resolver = new Resolver(attributeResolvers);
 
-
-		List<Object> resultRecords = resolver.resolve(records, Record.class, attributeTypes, resolverKeys, keyConstants);
-
+		List<Object> resultRecords = resolver.resolve(records, Record.class, attributeTypes, resolverKeys, keyConstants,
+				new DefiningClassLoader());
 
 		assertEquals("1ab", ((Record) resultRecords.get(0)).name1);
 		assertEquals("2ab", ((Record) resultRecords.get(1)).name1);

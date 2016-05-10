@@ -16,50 +16,29 @@
 
 package io.datakernel.cube.api;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import io.datakernel.aggregation_db.AggregationQuery;
-import io.datakernel.aggregation_db.gson.QueryPredicatesGsonSerializer;
-import io.datakernel.async.ParseException;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
-import io.datakernel.cube.CubeQuery;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.AsyncHttpServer;
-import io.datakernel.http.AsyncHttpServlet;
-import io.datakernel.http.HttpRequest;
 import io.datakernel.http.MiddlewareServlet;
 
 public final class CubeHttpServer {
 	public static final String QUERY_REQUEST_PATH = "/";
 
-	public static MiddlewareServlet createServlet(Cube cube, Eventloop eventloop, DefiningClassLoader classLoader) {
-		final Gson gson = new GsonBuilder()
-				.registerTypeAdapter(AggregationQuery.Predicates.class, new QueryPredicatesGsonSerializer(cube.getStructure()))
-				.registerTypeAdapter(CubeQuery.Ordering.class, new QueryOrderingGsonSerializer())
-				.create();
-
+	private static MiddlewareServlet createServlet(Cube cube, ReportingServiceServlet reportingServiceServlet) {
 		MiddlewareServlet servlet = new MiddlewareServlet();
-
-		final HttpRequestHandler handler = new HttpRequestHandler(gson, cube, eventloop, classLoader);
-
-		servlet.get(QUERY_REQUEST_PATH, new AsyncHttpServlet() {
-			@Override
-			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				handler.process(request, callback);
-			}
-		});
-
+		servlet.get(QUERY_REQUEST_PATH, reportingServiceServlet);
 		servlet.get("/consolidation-debug", new ConsolidationDebugServlet(cube));
-
 		return servlet;
 	}
 
-	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, DefiningClassLoader classLoader) {
-		return new AsyncHttpServer(eventloop, createServlet(cube, eventloop, classLoader));
+	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop,
+	                                           ReportingServiceServlet reportingServiceServlet) {
+		return new AsyncHttpServer(eventloop, createServlet(cube, reportingServiceServlet));
 	}
 
-	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, DefiningClassLoader classLoader, int port) {
-		return createServer(cube, eventloop, classLoader).setListenPort(port);
+	public static AsyncHttpServer createServer(Cube cube, Eventloop eventloop, int classLoaderCacheSize, int port) {
+		return createServer(cube, eventloop, new ReportingServiceServlet(eventloop, cube,
+				new LRUCache<ClassLoaderCacheKey, DefiningClassLoader>(classLoaderCacheSize))).setListenPort(port);
 	}
 }

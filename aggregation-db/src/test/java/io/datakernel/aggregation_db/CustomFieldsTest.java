@@ -114,7 +114,7 @@ public class CustomFieldsTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KEYS, FIELDS);
-		AggregationStructure structure = new AggregationStructure(classLoader,
+		AggregationStructure structure = new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("siteId", intKey())
 						.build(),

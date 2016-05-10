@@ -20,10 +20,7 @@ import com.google.common.base.Function;
 import com.google.common.base.MoreObjects;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
-import io.datakernel.codegen.AsmBuilder;
-import io.datakernel.codegen.Expression;
-import io.datakernel.codegen.ExpressionComparator;
-import io.datakernel.codegen.ExpressionSequence;
+import io.datakernel.codegen.*;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -33,10 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static com.google.common.base.Throwables.propagate;
 import static com.google.common.collect.Iterables.concat;
@@ -53,21 +47,16 @@ import static io.datakernel.codegen.Expressions.*;
 public class AggregationStructure {
 	private final static Logger logger = LoggerFactory.getLogger(AggregationStructure.class);
 
-	private final DefiningClassLoader classLoader;
 	private final Map<String, KeyType> keys;
 	private final Map<String, FieldType> fields;
 
 	/**
 	 * Constructs a new aggregation structure with the given class loader, keys and fields.
 	 *
-	 * @param classLoader class loader for loading dynamically created classes
 	 * @param keys        map of aggregation keys (key is key name)
 	 * @param fields      map of aggregation fields (key is field name)
 	 */
-	public AggregationStructure(DefiningClassLoader classLoader,
-	                            Map<String, KeyType> keys,
-	                            Map<String, FieldType> fields) {
-		this.classLoader = classLoader;
+	public AggregationStructure(Map<String, KeyType> keys, Map<String, FieldType> fields) {
 		this.keys = new LinkedHashMap<>(keys);
 		this.fields = new LinkedHashMap<>(fields);
 	}
@@ -96,7 +85,7 @@ public class AggregationStructure {
 		return fields.containsKey(field);
 	}
 
-	public Class<?> createKeyClass(List<String> keys) {
+	public Class<?> createKeyClass(List<String> keys, DefiningClassLoader classLoader) {
 		logger.trace("Creating key class for keys {}", keys);
 		AsmBuilder builder = new AsmBuilder(classLoader, Comparable.class);
 		for (String key : keys) {
@@ -111,7 +100,7 @@ public class AggregationStructure {
 		return builder.defineClass();
 	}
 
-	public Comparator createKeyComparator(Class<?> recordClass, List<String> keys) {
+	public static Comparator createKeyComparator(Class<?> recordClass, List<String> keys, DefiningClassLoader classLoader) {
 		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();
 
@@ -124,8 +113,8 @@ public class AggregationStructure {
 		return builder.newInstance();
 	}
 
-	public StreamMap.MapperProjection createMapper(Class<?> recordClass, Class<?> resultClass,
-	                                               List<String> keys, List<String> fields) {
+	public static StreamMap.MapperProjection createMapper(Class<?> recordClass, Class<?> resultClass, List<String> keys,
+	                                                      List<String> fields, DefiningClassLoader classLoader) {
 		AsmBuilder<StreamMap.MapperProjection> builder = new AsmBuilder<>(classLoader, StreamMap.MapperProjection.class);
 		Expression result = let(constructor(resultClass));
 		ExpressionSequence applyDef = sequence(result);
@@ -139,7 +128,8 @@ public class AggregationStructure {
 		return builder.newInstance();
 	}
 
-	public Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> keys) {
+	public static Function createKeyFunction(Class<?> recordClass, Class<?> keyClass, List<String> keys,
+	                                         DefiningClassLoader classLoader) {
 		logger.trace("Creating key function for keys {}", keys);
 		AsmBuilder factory = new AsmBuilder<>(classLoader, Function.class);
 		Expression key = let(constructor(keyClass));
@@ -154,7 +144,7 @@ public class AggregationStructure {
 		return (Function) factory.newInstance();
 	}
 
-	public Class<?> createRecordClass(List<String> keys, List<String> fields) {
+	public Class<?> createRecordClass(List<String> keys, List<String> fields, DefiningClassLoader classLoader) {
 		logger.trace("Creating record class for keys {}, fields {}", keys, fields);
 		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
 		for (String key : keys) {
@@ -169,7 +159,7 @@ public class AggregationStructure {
 		return builder.defineClass();
 	}
 
-	public Class<?> createResultClass(AggregationQuery query) {
+	public Class<?> createResultClass(AggregationQuery query, DefiningClassLoader classLoader) {
 		logger.trace("Creating result class for query {}", query.toString());
 		AsmBuilder<Object> builder = new AsmBuilder<>(classLoader, Object.class);
 		List<String> resultKeys = query.getResultKeys();
@@ -192,7 +182,8 @@ public class AggregationStructure {
 		return builder.defineClass();
 	}
 
-	public <T> BufferSerializer<T> createBufferSerializer(Class<T> recordClass, List<String> keys, List<String> fields) {
+	public <T> BufferSerializer<T> createBufferSerializer(Class<T> recordClass, List<String> keys, List<String> fields,
+	                                                      DefiningClassLoader classLoader) {
 		SerializerGenClass serializerGenClass = new SerializerGenClass(recordClass);
 		for (String key : keys) {
 			KeyType keyType = this.keys.get(key);

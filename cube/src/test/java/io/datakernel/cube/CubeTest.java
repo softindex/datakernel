@@ -94,8 +94,8 @@ public class CubeTest {
 		return cube;
 	}
 
-	public static AggregationStructure cubeStructure(DefiningClassLoader classLoader) {
-		return new AggregationStructure(classLoader,
+	public static AggregationStructure cubeStructure() {
+		return new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key1", intKey())
 						.put("key2", intKey())
@@ -107,8 +107,8 @@ public class CubeTest {
 						.build());
 	}
 
-	public static AggregationStructure sophisticatedCubeStructure(DefiningClassLoader classLoader) {
-		return new AggregationStructure(classLoader,
+	public static AggregationStructure sophisticatedCubeStructure() {
+		return new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key1", intKey())
 						.put("key2", intKey())
@@ -128,7 +128,7 @@ public class CubeTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure aggregationStructure = cubeStructure(classLoader);
+		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
 				.streamTo(cube.consumer(DataItem1.class, DataItem1.DIMENSIONS, DataItem1.METRICS, new MyCommitCallback(cube)));
@@ -173,7 +173,7 @@ public class CubeTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		final Eventloop eventloop = new Eventloop();
 
-		AggregationStructure aggregationStructure = cubeStructure(classLoader);
+		AggregationStructure aggregationStructure = cubeStructure();
 
 		Path serverStorage = temporaryFolder.newFolder("storage").toPath();
 		final SimpleFsServer simpleFsServer1 = prepareServer(eventloop, serverStorage);
@@ -244,7 +244,7 @@ public class CubeTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure aggregationStructure = cubeStructure(classLoader);
+		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 30, 25), new DataItem1(1, 3, 40, 10),
 				new DataItem1(1, 4, 23, 48), new DataItem1(1, 3, 4, 18)))
@@ -279,7 +279,7 @@ public class CubeTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure aggregationStructure = cubeStructure(classLoader);
+		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 3, 30, 25), new DataItem1(1, 4, 40, 10),
 				new DataItem1(1, 5, 23, 48), new DataItem1(1, 6, 4, 18)))
@@ -320,7 +320,7 @@ public class CubeTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure aggregationStructure = cubeStructure(classLoader);
+		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(
 				new DataItem1(14, 1, 30, 25),
@@ -370,7 +370,7 @@ public class CubeTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure aggregationStructure = sophisticatedCubeStructure(classLoader);
+		AggregationStructure aggregationStructure = sophisticatedCubeStructure();
 		Cube cube = newSophisticatedCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(
 				new DataItem3(14, 1, 42, 25, 53, 30, 25),
@@ -420,7 +420,7 @@ public class CubeTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure aggregationStructure = cubeStructure(classLoader);
+		AggregationStructure aggregationStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20),
 				new DataItem1(1, 2, 15, 25), new DataItem1(1, 1, 95, 85), new DataItem1(2, 1, 55, 65),
@@ -455,7 +455,7 @@ public class CubeTest {
 		Eventloop eventloop = new Eventloop();
 		ExecutorService executorService = newSingleThreadExecutor();
 		Path dir = temporaryFolder.newFolder().toPath();
-		AggregationStructure aggregationStructure = cubeStructure(classLoader);
+		AggregationStructure aggregationStructure = cubeStructure();
 		AggregationChunkStorage storage = new LocalFsChunkStorage(eventloop, executorService, aggregationStructure, dir);
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, aggregationStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
@@ -491,7 +491,7 @@ public class CubeTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure cubeStructure = cubeStructure(classLoader);
+		AggregationStructure cubeStructure = cubeStructure();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, cubeStructure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItem1(1, 2, 10, 20), new DataItem1(1, 3, 10, 20)))
 				.streamTo(cube.consumer(DataItem1.class, DataItem1.DIMENSIONS, DataItem1.METRICS, new MyCommitCallback(cube)));

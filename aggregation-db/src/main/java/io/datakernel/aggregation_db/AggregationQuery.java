@@ -113,11 +113,16 @@ public final class AggregationQuery {
 	/**
 	 * Represents a query predicate.
 	 */
-	public static abstract class Predicate {
+	public static abstract class Predicate implements Comparable<Predicate> {
 		public final String key;
 
 		protected Predicate(String key) {
 			this.key = key;
+		}
+
+		@Override
+		public int compareTo(Predicate o) {
+			return this.key.compareTo(o.key);
 		}
 	}
 

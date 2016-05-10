@@ -31,14 +31,37 @@ import io.datakernel.http.HttpResponse;
 import io.datakernel.http.MediaTypes;
 import io.datakernel.stream.StreamConsumers;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Type;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
 import static io.datakernel.util.ByteBufStrings.wrapUTF8;
 
 public class CommonUtils {
+	// Reflection
+	public static Object getFieldValue(String fieldName, Object obj) {
+		Field field = getField(fieldName, obj.getClass());
+		return getFieldValue(field, obj);
+	}
+
+	public static Object getFieldValue(Field field, Object obj) {
+		try {
+			return field.get(obj);
+		} catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static Field getField(String fieldName, Class<?> c) {
+		try {
+			return c.getField(fieldName);
+		} catch (NoSuchFieldException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	// Codegen
 	public static FieldGetter generateGetter(DefiningClassLoader classLoader, Class<?> objClass, String propertyName) {
 		return new AsmBuilder<>(classLoader, FieldGetter.class)
 				.method("get", getter(cast(arg(0), objClass), propertyName))
@@ -79,6 +102,17 @@ public class CommonUtils {
 
 	public static boolean nullOrContains(Set<String> set, String s) {
 		return set == null || set.contains(s);
+	}
+
+	public static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c) {
+		List<T> list = new ArrayList<>(c);
+		Collections.sort(list);
+		return list;
+	}
+
+	public static <T extends Comparable<? super T>> List<T> asSorted(List<T> l) {
+		Collections.sort(l);
+		return l;
 	}
 
 	public static Object instantiate(Class<?> clazz) {

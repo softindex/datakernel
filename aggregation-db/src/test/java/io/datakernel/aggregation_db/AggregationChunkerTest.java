@@ -53,7 +53,7 @@ public class AggregationChunkerTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
-		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
+		AggregationStructure aggregationStructure = new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key", intKey())
 						.build(),
@@ -67,12 +67,15 @@ public class AggregationChunkerTest {
 		AggregationChunkStorage aggregationChunkStorage = new AggregationChunkStorage() {
 
 			@Override
-			public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+			public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass,
+			                                         long id, DefiningClassLoader classLoader) {
 				return new StreamProducers.OfIterator<T>(eventloop, items.iterator());
 			}
 
 			@Override
-			public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
+			public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id,
+			                            StreamProducer<T> producer, DefiningClassLoader classLoader,
+			                            CompletionCallback callback) {
 				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, items);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
@@ -111,11 +114,11 @@ public class AggregationChunkerTest {
 			}
 		}
 
-		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
+		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields, classLoader);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
-				aggregationMetadataStorage, 1, resultCallback);
+				aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop,
 				asList(new KeyValuePair(3, 4, 6), new KeyValuePair(3, 6, 7), new KeyValuePair(1, 2, 1)));
@@ -144,7 +147,7 @@ public class AggregationChunkerTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
-		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
+		AggregationStructure aggregationStructure = new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key", intKey())
 						.build(),
@@ -157,12 +160,15 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+			public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass,
+			                                         long id, DefiningClassLoader classLoader) {
 				return new StreamProducers.OfIterator<T>(eventloop, items.iterator());
 			}
 
 			@Override
-			public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
+			public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id,
+			                            StreamProducer<T> producer, DefiningClassLoader classLoader,
+			                            CompletionCallback callback) {
 				StreamConsumers.ToList<T> consumer = StreamConsumers.toList(eventloop, items);
 				consumer.setCompletionCallback(callback);
 				listConsumers.add(consumer);
@@ -201,11 +207,11 @@ public class AggregationChunkerTest {
 			}
 		}
 
-		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
+		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields, classLoader);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
-				aggregationMetadataStorage, 1, resultCallback);
+				aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.concat(eventloop,
 				StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
@@ -242,7 +248,7 @@ public class AggregationChunkerTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(KeyValuePair.KEYS, KeyValuePair.FIELDS);
-		AggregationStructure aggregationStructure = new AggregationStructure(classLoader,
+		AggregationStructure aggregationStructure = new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key", intKey())
 						.build(),
@@ -255,12 +261,15 @@ public class AggregationChunkerTest {
 			final List items = new ArrayList();
 
 			@Override
-			public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass, long id) {
+			public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass,
+			                                         long id, DefiningClassLoader classLoader) {
 				return new StreamProducers.OfIterator<T>(eventloop, items.iterator());
 			}
 
 			@Override
-			public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id, StreamProducer<T> producer, CompletionCallback callback) {
+			public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id,
+			                            StreamProducer<T> producer, DefiningClassLoader classLoader,
+			                            CompletionCallback callback) {
 				if (id == 1) {
 					StreamConsumers.ToList<T> toList = StreamConsumers.toList(eventloop, items);
 					listConsumers.add(toList);
@@ -305,11 +314,11 @@ public class AggregationChunkerTest {
 			}
 		}
 
-		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields);
+		Class<?> recordClass = aggregationStructure.createRecordClass(keys, fields, classLoader);
 
 		AggregationChunker aggregationChunker = new AggregationChunker<>(eventloop, NO_OP_TRACKER,
 				keys, fields, recordClass, (BiPredicate) Predicates.alwaysTrue(), aggregationChunkStorage,
-				aggregationMetadataStorage, 1, resultCallback);
+				aggregationMetadataStorage, 1, classLoader, resultCallback);
 
 		StreamProducer<KeyValuePair> producer = StreamProducers.ofIterable(eventloop, asList(new KeyValuePair(1, 1, 0), new KeyValuePair(1, 2, 1),
 				new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2), new KeyValuePair(1, 1, 2))

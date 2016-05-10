@@ -75,8 +75,8 @@ public class CubeMeasureRemovalTest {
 			.put("banner", "campaign")
 			.build();
 
-	private static AggregationStructure getStructure(DefiningClassLoader classLoader) {
-		return new AggregationStructure(classLoader,
+	private static AggregationStructure getStructure() {
+		return new AggregationStructure(
 				KEYS,
 				ImmutableMap.<String, FieldType>builder()
 						.put("impressions", longSum())
@@ -129,7 +129,7 @@ public class CubeMeasureRemovalTest {
 		Eventloop eventloop = new Eventloop();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
-		AggregationStructure structure = getStructure(classLoader);
+		AggregationStructure structure = getStructure();
 
 		Configuration jooqConfiguration = getJooqConfiguration(DATABASE_PROPERTIES_PATH, DATABASE_DIALECT);
 		AggregationChunkStorage aggregationChunkStorage =
@@ -161,7 +161,7 @@ public class CubeMeasureRemovalTest {
 		assertTrue(chunks.get(0).getFields().contains("revenue"));
 
 		// Initialize cube with new structure (removed measure)
-		structure = getStructure(classLoader);
+		structure = getStructure();
 		aggregationChunkStorage = getAggregationChunkStorage(eventloop, executor, structure, aggregationsDir);
 		cube = getNewCube(eventloop, executor, classLoader, cubeMetadataStorageSql, aggregationChunkStorage, structure);
 		logToCubeRunner = new LogToCubeRunner<>(eventloop, cube, logManager,

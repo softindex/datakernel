@@ -20,6 +20,7 @@ import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.file.AsyncFile;
 import io.datakernel.serializer.BufferSerializer;
@@ -94,9 +95,9 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 
 	@Override
 	public <T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields,
-	                                         Class<T> recordClass, long id) {
+	                                         Class<T> recordClass, long id, DefiningClassLoader classLoader) {
 		final StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
-		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
+		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
 		StreamBinaryDeserializer<T> deserializer = new StreamBinaryDeserializer<>(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE);
 		decompressor.getOutput().streamTo(deserializer.getInput());
@@ -118,10 +119,11 @@ public class LocalFsChunkStorage implements AggregationChunkStorage {
 	}
 
 	@Override
-	public <T> void chunkWriter(final List<String> keys, final List<String> fields, final Class<T> recordClass,
-	                            long id, final StreamProducer<T> producer, final CompletionCallback callback) {
+	public <T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass, long id,
+	                            StreamProducer<T> producer, DefiningClassLoader classLoader,
+	                            final CompletionCallback callback) {
 		final StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields);
+		BufferSerializer<T> bufferSerializer = structure.createBufferSerializer(recordClass, keys, fields, classLoader);
 		StreamBinarySerializer<T> serializer = new StreamBinarySerializer<>(eventloop, bufferSerializer,
 				StreamBinarySerializer.MAX_SIZE_2_BYTE, StreamBinarySerializer.MAX_SIZE, 1000, false);
 

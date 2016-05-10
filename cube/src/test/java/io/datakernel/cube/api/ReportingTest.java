@@ -140,8 +140,8 @@ public class ReportingTest {
 		OUTPUT_TO_INPUT_FIELDS.put("uniqueUserIdsCount", "userId");
 	}
 
-	private static AggregationStructure getStructure(DefiningClassLoader classLoader) {
-		return new AggregationStructure(classLoader, DIMENSIONS, MEASURES);
+	private static AggregationStructure getStructure() {
+		return new AggregationStructure(DIMENSIONS, MEASURES);
 	}
 
 	private static Cube getCube(Eventloop eventloop, ExecutorService executorService, DefiningClassLoader classLoader,
@@ -276,7 +276,7 @@ public class ReportingTest {
 		eventloop = new Eventloop();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
-		AggregationStructure structure = getStructure(classLoader);
+		AggregationStructure structure = getStructure();
 
 		ReportingConfiguration reportingConfiguration = getReportingConfiguration();
 		Configuration jooqConfiguration = getJooqConfiguration(DATABASE_PROPERTIES_PATH, DATABASE_DIALECT);
@@ -307,7 +307,7 @@ public class ReportingTest {
 		cube.loadChunks(AsyncCallbacks.ignoreCompletionCallback());
 		eventloop.run();
 
-		server = CubeHttpServer.createServer(cube, eventloop, classLoader, SERVER_PORT);
+		server = CubeHttpServer.createServer(cube, eventloop, 100, SERVER_PORT);
 		final CompletionCallbackFuture serverStartFuture = new CompletionCallbackFuture();
 		eventloop.execute(new RunnableWithException() {
 			@Override

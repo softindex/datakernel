@@ -52,8 +52,8 @@ public class StringDimensionTest {
 		return cube;
 	}
 
-	public static AggregationStructure cubeStructureWithStringDimension(DefiningClassLoader classLoader) {
-		return new AggregationStructure(classLoader,
+	public static AggregationStructure cubeStructureWithStringDimension() {
+		return new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("key1", stringKey())
 						.put("key2", intKey())
@@ -70,7 +70,7 @@ public class StringDimensionTest {
 		DefiningClassLoader classLoader = new DefiningClassLoader();
 		Eventloop eventloop = new Eventloop();
 		AggregationChunkStorageStub storage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure structure = cubeStructureWithStringDimension(classLoader);
+		AggregationStructure structure = cubeStructureWithStringDimension();
 		Cube cube = newCube(eventloop, Executors.newCachedThreadPool(), classLoader, storage, structure);
 		StreamProducers.ofIterable(eventloop, asList(new DataItemString1("str1", 2, 10, 20), new DataItemString1("str2", 3, 10, 20)))
 				.streamTo(cube.consumer(DataItemString1.class, DataItemString1.DIMENSIONS, DataItemString1.METRICS, new CubeTest.MyCommitCallback(cube)));

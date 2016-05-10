@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package io.datakernel.codegen.utils;
+package io.datakernel.cube.api;
 
 import java.util.Map;
 
-public interface DefiningClassLoaderMBean {
-	int getDefinedClassesCount();
+public interface LRUCacheMBean {
+	int getCurrentCacheSize();
 
-	Map<String, String> getDefinedClasses();
+	int getCacheRequestsCount();
 
-	Map<String, Integer> getDefinedClassesByType();
+	int getCachePutCount();
+
+	double getCacheHitRate();
+
+	Map<String, String> getCacheContents();
 }

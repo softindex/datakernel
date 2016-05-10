@@ -21,6 +21,7 @@ import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTracker
 import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamConsumerDecorator;
@@ -44,12 +45,14 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 	private final AggregationMetadataStorage metadataStorage;
 	private final Chunker chunker;
 	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
+	private final DefiningClassLoader classLoader;
 
 	public AggregationChunker(Eventloop eventloop, final AggregationOperationTracker operationTracker,
 	                          List<String> keys, List<String> fields,
 	                          Class<T> recordClass, BiPredicate<T, T> partitionPredicate,
 	                          AggregationChunkStorage storage, AggregationMetadataStorage metadataStorage,
-	                          int chunkSize, final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	                          int chunkSize, DefiningClassLoader classLoader,
+	                          final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		this.keys = keys;
 		this.fields = fields;
 		this.recordClass = recordClass;
@@ -69,6 +72,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 				chunksCallback.onException(e);
 			}
 		});
+		this.classLoader = classLoader;
 		this.chunker = new Chunker(eventloop, chunkSize);
 		setActualConsumer(chunker.getInput());
 		operationTracker.reportStart(this);
@@ -165,7 +169,7 @@ public final class AggregationChunker<T> extends StreamConsumerDecorator<T> {
 					@Override
 					public void onResult(final Long chunkId) {
 						logger.info("Retrieved new chunk id '{}' for aggregation {}", chunkId, keys);
-						storage.chunkWriter(keys, fields, recordClass, chunkId, forwarder.getOutput(),
+						storage.chunkWriter(keys, fields, recordClass, chunkId, forwarder.getOutput(), classLoader,
 								new CompletionCallback() {
 									@Override
 									public void onComplete() {

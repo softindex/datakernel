@@ -50,8 +50,11 @@ import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Iterables.filter;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Sets.*;
+import static io.datakernel.aggregation_db.AggregationStructure.createKeyComparator;
+import static io.datakernel.aggregation_db.AggregationStructure.createKeyFunction;
+import static io.datakernel.aggregation_db.AggregationStructure.createMapper;
 import static io.datakernel.codegen.Expressions.*;
-import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 
 /**
  * Represents an aggregation, which aggregates data using custom reducer and preaggregator.
@@ -127,7 +130,7 @@ public class Aggregation implements AggregationOperationTracker {
 		this.sorterBlockSize = sorterBlockSize;
 		this.maxIncrementalReloadPeriodMillis = maxIncrementalReloadPeriodMillis;
 		this.structure = structure;
-		this.processorFactory = new ProcessorFactory(classLoader, structure);
+		this.processorFactory = new ProcessorFactory(structure);
 	}
 
 	/**
@@ -241,8 +244,8 @@ public class Aggregation implements AggregationOperationTracker {
 	}
 
 	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass, List<String> keys,
-	                                                 List<String> fields) {
-		return processorFactory.aggregationReducer(inputClass, outputClass, keys, fields);
+	                                                 List<String> fields, DefiningClassLoader classLoader) {
+		return processorFactory.aggregationReducer(inputClass, outputClass, keys, fields, classLoader);
 	}
 
 	private BiPredicate createPartitionPredicate(Class recordClass) {
@@ -294,17 +297,17 @@ public class Aggregation implements AggregationOperationTracker {
 
 		List<String> outputFields = fields == null ? getFields() : fields;
 
-		Class<?> keyClass = structure.createKeyClass(getKeys());
-		Class<?> aggregationClass = structure.createRecordClass(getKeys(), outputFields);
+		Class<?> keyClass = structure.createKeyClass(getKeys(), classLoader);
+		Class<?> aggregationClass = structure.createRecordClass(getKeys(), outputFields, classLoader);
 
-		Function<T, Comparable<?>> keyFunction = structure.createKeyFunction(inputClass, keyClass, getKeys());
+		Function<T, Comparable<?>> keyFunction = createKeyFunction(inputClass, keyClass, getKeys(), classLoader);
 
-		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, getKeys(),
-				fields, outputToInputFields);
+		Aggregate aggregate = processorFactory.createPreaggregator(inputClass, aggregationClass, getKeys(), fields,
+				outputToInputFields, classLoader);
 
 		return new AggregationGroupReducer<>(eventloop, aggregationChunkStorage, this, metadataStorage, getKeys(),
 				outputFields, aggregationClass, createPartitionPredicate(aggregationClass), keyFunction, aggregate,
-				aggregationChunkSize, chunksCallback);
+				aggregationChunkSize, classLoader, chunksCallback);
 	}
 
 	/**
@@ -316,7 +319,8 @@ public class Aggregation implements AggregationOperationTracker {
 	 * @return producer that streams query results
 	 */
 	@SuppressWarnings("unchecked")
-	public <T> StreamProducer<T> query(AggregationQuery query, List<String> fields, Class<T> outputClass) {
+	public <T> StreamProducer<T> query(AggregationQuery query, List<String> fields, Class<T> outputClass,
+	                                   DefiningClassLoader classLoader) {
 		List<String> resultKeys = query.getResultKeys();
 
 		List<String> aggregationFields = getAggregationFieldsForQuery(fields);
@@ -326,7 +330,7 @@ public class Aggregation implements AggregationOperationTracker {
 		AggregationQueryPlan queryPlan = new AggregationQueryPlan();
 
 		StreamProducer streamProducer = consolidatedProducer(query.getResultKeys(), query.getRequestedKeys(),
-				aggregationFields, outputClass, query.getPredicates(), allChunks, queryPlan, null);
+				aggregationFields, outputClass, query.getPredicates(), allChunks, queryPlan, null, classLoader);
 
 		StreamProducer queryResultProducer = streamProducer;
 
@@ -339,7 +343,8 @@ public class Aggregation implements AggregationOperationTracker {
 		}
 
 		if (!notEqualsPredicates.isEmpty()) {
-			StreamFilter streamFilter = new StreamFilter<>(eventloop, createNotEqualsPredicate(outputClass, notEqualsPredicates));
+			StreamFilter streamFilter = new StreamFilter<>(eventloop,
+					createNotEqualsPredicate(outputClass, notEqualsPredicates, classLoader));
 			streamProducer.streamTo(streamFilter.getInput());
 			queryResultProducer = streamFilter.getOutput();
 			queryPlan.setPostFiltering(true);
@@ -351,14 +356,14 @@ public class Aggregation implements AggregationOperationTracker {
 	}
 
 	public <T> StreamProducer<T> query(AggregationQuery query, Class<T> outputClass) {
-		return query(query, query.getResultFields(), outputClass);
+		return query(query, query.getResultFields(), outputClass, classLoader);
 	}
 
 	private <T> StreamProducer<T> getOrderedStream(StreamProducer<T> rawStream, Class<T> resultClass,
-	                                               List<String> keys, List<String> fields) {
-		Comparator keyComparator = structure.createKeyComparator(resultClass, keys);
+	                                               List<String> keys, List<String> fields, DefiningClassLoader classLoader) {
+		Comparator keyComparator = createKeyComparator(resultClass, keys, classLoader);
 		Path path = Paths.get("sorterStorage", "%d.part");
-		BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, getKeys(), fields);
+		BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, getKeys(), fields, classLoader);
 		StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
 				bufferSerializer, path, sorterBlockSize);
 		StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(), keyComparator, false,
@@ -406,13 +411,13 @@ public class Aggregation implements AggregationOperationTracker {
 
 		Collections.sort(fields);
 
-		Class resultClass = structure.createRecordClass(getKeys(), fields);
+		Class resultClass = structure.createRecordClass(getKeys(), fields, classLoader);
 
 		ConsolidationPlan consolidationPlan = new ConsolidationPlan();
-		consolidatedProducer(getKeys(), getKeys(), fields, resultClass, null, chunksToConsolidate, null, consolidationPlan)
+		consolidatedProducer(getKeys(), getKeys(), fields, resultClass, null, chunksToConsolidate, null, consolidationPlan, classLoader)
 				.streamTo(new AggregationChunker(eventloop, this, getKeys(), fields, resultClass,
 						createPartitionPredicate(resultClass), aggregationChunkStorage, metadataStorage,
-						aggregationChunkSize, callback));
+						aggregationChunkSize, classLoader, callback));
 		logger.info("Consolidation plan: {}", consolidationPlan);
 	}
 
@@ -421,7 +426,8 @@ public class Aggregation implements AggregationOperationTracker {
 	                                                   AggregationQuery.Predicates predicates,
 	                                                   List<AggregationChunk> individualChunks,
 	                                                   AggregationQueryPlan queryPlan,
-	                                                   ConsolidationPlan consolidationPlan) {
+	                                                   ConsolidationPlan consolidationPlan,
+	                                                   DefiningClassLoader classLoader) {
 		Set<String> fieldsSet = newHashSet(fields);
 		individualChunks = newArrayList(individualChunks);
 		Collections.sort(individualChunks, new Comparator<AggregationChunk>() {
@@ -451,7 +457,7 @@ public class Aggregation implements AggregationOperationTracker {
 				List<String> sequenceFields = chunks.get(0).getFields();
 				Set<String> requestedFieldsInSequence = intersection(fieldsSet, newLinkedHashSet(sequenceFields));
 
-				Class<?> chunksClass = structure.createRecordClass(getKeys(), sequenceFields);
+				Class<?> chunksClass = structure.createRecordClass(getKeys(), sequenceFields, this.classLoader);
 
 				producersFields.add(sequenceFields);
 				producersClasses.add(chunksClass);
@@ -459,9 +465,9 @@ public class Aggregation implements AggregationOperationTracker {
 				List<AggregationChunk> sequentialChunkGroup = newArrayList(chunks);
 
 				boolean sorted = false;
-				StreamProducer producer = sequentialProducer(predicates, sequentialChunkGroup, chunksClass);
+				StreamProducer producer = sequentialProducer(predicates, sequentialChunkGroup, chunksClass, classLoader);
 				if (sortingRequired(requestedKeys, getKeys())) {
-					producer = getOrderedStream(producer, chunksClass, requestedKeys, sequenceFields);
+					producer = getOrderedStream(producer, chunksClass, requestedKeys, sequenceFields, this.classLoader);
 					sorted = true;
 				}
 				producers.add(producer);
@@ -481,21 +487,21 @@ public class Aggregation implements AggregationOperationTracker {
 		}
 
 		return mergeProducers(queryKeys, requestedKeys, fields, resultClass, producers, producersFields,
-				producersClasses, queryPlan);
+				producersClasses, queryPlan, classLoader);
 	}
 
 	private <T> StreamProducer<T> mergeProducers(List<String> queryKeys, List<String> requestedKeys, List<String> fields,
 	                                             Class<?> resultClass, List<StreamProducer> producers,
 	                                             List<List<String>> producersFields, List<Class<?>> producerClasses,
-	                                             AggregationQueryPlan queryPlan) {
+	                                             AggregationQueryPlan queryPlan, DefiningClassLoader classLoader) {
 		if (newHashSet(requestedKeys).equals(newHashSet(getKeys())) && producers.size() == 1) {
 			/*
 			If there is only one sequential producer and all aggregation keys are requested, then there is no need for
 			using StreamReducer, because all records have unique keys and all we need to do is copy requested fields
 			from record class to result class.
 			 */
-			StreamMap.MapperProjection mapper = structure.createMapper(producerClasses.get(0),
-					resultClass, queryKeys, newArrayList(filter(fields, in(producersFields.get(0)))));
+			StreamMap.MapperProjection mapper = createMapper(producerClasses.get(0), resultClass, queryKeys,
+					newArrayList(filter(fields, in(producersFields.get(0)))), classLoader);
 			StreamMap<Object, T> streamMap = new StreamMap<>(eventloop, mapper);
 			producers.get(0).streamTo(streamMap.getInput());
 			if (queryPlan != null)
@@ -505,15 +511,15 @@ public class Aggregation implements AggregationOperationTracker {
 
 		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
 
-		Class<?> keyClass = structure.createKeyClass(queryKeys);
+		Class<?> keyClass = structure.createKeyClass(queryKeys, this.classLoader);
 
 		for (int i = 0; i < producers.size(); i++) {
 			StreamProducer producer = producers.get(i);
 
-			Function extractKeyFunction = structure.createKeyFunction(producerClasses.get(i), keyClass, queryKeys);
+			Function extractKeyFunction = createKeyFunction(producerClasses.get(i), keyClass, queryKeys, this.classLoader);
 
 			StreamReducers.Reducer reducer = processorFactory.aggregationReducer(producerClasses.get(i), resultClass,
-					queryKeys, newArrayList(filter(fields, in(producersFields.get(i)))));
+					queryKeys, newArrayList(filter(fields, in(producersFields.get(i)))), classLoader);
 
 			producer.streamTo(streamReducer.newInput(extractKeyFunction, reducer));
 		}
@@ -522,22 +528,23 @@ public class Aggregation implements AggregationOperationTracker {
 	}
 
 	private StreamProducer sequentialProducer(final AggregationQuery.Predicates predicates,
-	                                          List<AggregationChunk> individualChunks, final Class<?> sequenceClass) {
+	                                          List<AggregationChunk> individualChunks, final Class<?> sequenceClass,
+	                                          final DefiningClassLoader classLoader) {
 		checkArgument(!individualChunks.isEmpty());
 		AsyncIterator<StreamProducer<Object>> producerAsyncIterator = AsyncIterators.transform(individualChunks.iterator(),
 				new AsyncFunction<AggregationChunk, StreamProducer<Object>>() {
 					@Override
 					public void apply(AggregationChunk chunk, ResultCallback<StreamProducer<Object>> producerCallback) {
-						producerCallback.onResult(chunkReaderWithFilter(predicates, chunk, sequenceClass));
+						producerCallback.onResult(chunkReaderWithFilter(predicates, chunk, sequenceClass, classLoader));
 					}
 				});
 		return StreamProducers.concat(eventloop, producerAsyncIterator);
 	}
 
-	private StreamProducer chunkReaderWithFilter(AggregationQuery.Predicates predicates,
-	                                             AggregationChunk chunk, Class<?> chunkRecordClass) {
+	private StreamProducer chunkReaderWithFilter(AggregationQuery.Predicates predicates, AggregationChunk chunk,
+	                                             Class<?> chunkRecordClass, DefiningClassLoader classLoader) {
 		StreamProducer chunkReader = aggregationChunkStorage.chunkReader(getKeys(),
-				chunk.getFields(), chunkRecordClass, chunk.getChunkId());
+				chunk.getFields(), chunkRecordClass, chunk.getChunkId(), this.classLoader);
 		StreamProducer chunkProducer = chunkReader;
 		if (ignoreChunkReadingExceptions) {
 			ErrorIgnoringTransformer errorIgnoringTransformer = new ErrorIgnoringTransformer<>(eventloop);
@@ -547,12 +554,14 @@ public class Aggregation implements AggregationOperationTracker {
 		if (predicates == null)
 			return chunkProducer;
 		StreamFilter streamFilter = new StreamFilter<>(eventloop,
-				createPredicate(chunk, chunkRecordClass, predicates));
+				createPredicate(chunk, chunkRecordClass, predicates, classLoader));
 		chunkProducer.streamTo(streamFilter.getInput());
 		return streamFilter.getOutput();
 	}
 
-	private Predicate createNotEqualsPredicate(Class<?> recordClass, List<AggregationQuery.PredicateNotEquals> notEqualsPredicates) {
+	private static Predicate createNotEqualsPredicate(Class<?> recordClass,
+	                                                  List<AggregationQuery.PredicateNotEquals> notEqualsPredicates,
+	                                                  DefiningClassLoader classLoader) {
 		AsmBuilder<Predicate> builder = new AsmBuilder<>(classLoader, Predicate.class);
 		PredicateDefAnd predicateDefAnd = and();
 		for (AggregationQuery.PredicateNotEquals notEqualsPredicate : notEqualsPredicates) {
@@ -561,12 +570,12 @@ public class Aggregation implements AggregationOperationTracker {
 					value(notEqualsPredicate.value)
 			));
 		}
-		builder.method("apply", boolean.class, asList(Object.class), predicateDefAnd);
+		builder.method("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
 		return builder.newInstance();
 	}
 
-	private Predicate createPredicate(AggregationChunk chunk,
-	                                  Class<?> chunkRecordClass, AggregationQuery.Predicates predicates) {
+	private Predicate createPredicate(AggregationChunk chunk, Class<?> chunkRecordClass,
+	                                  AggregationQuery.Predicates predicates, DefiningClassLoader classLoader) {
 		List<String> keysInChunk = new ArrayList<>();
 		List<Object> objectsInChunk = new ArrayList<>();
 		for (int i = 0; i < getKeys().size(); i++) {
@@ -606,7 +615,7 @@ public class Aggregation implements AggregationOperationTracker {
 						value(to)));
 			}
 		}
-		builder.method("apply", boolean.class, asList(Object.class), predicateDefAnd);
+		builder.method("apply", boolean.class, singletonList(Object.class), predicateDefAnd);
 		return builder.newInstance();
 	}
 

@@ -73,25 +73,39 @@ public class AsmBuilder<T> {
 		return this;
 	}
 
-	private class AsmFunctionKey {
+	public static class AsmClassKey<T> {
 		private final Class<T> type;
 		private final Map<String, Class<?>> fields;
 		private final Map<Method, Expression> expressionMap;
 		private final Map<Method, Expression> expressionStaticMap;
 
-		public AsmFunctionKey(Class<T> type, Map<String, Class<?>> fields, Map<Method, Expression> expressionMap,
-		                      Map<Method, Expression> expressionStaticMap) {
+		public AsmClassKey(Class<T> type, Map<String, Class<?>> fields, Map<Method, Expression> expressionMap,
+		                   Map<Method, Expression> expressionStaticMap) {
 			this.type = type;
 			this.fields = fields;
 			this.expressionMap = expressionMap;
 			this.expressionStaticMap = expressionStaticMap;
 		}
 
+		public Class<T> getType() {
+			return type;
+		}
+
+		@Override
+		public String toString() {
+			return "AsmClassKey{" +
+					"type=" + type +
+					", fields=" + fields +
+					", expressionMap=" + expressionMap +
+					", expressionStaticMap=" + expressionStaticMap +
+					'}';
+		}
+
 		@Override
 		public boolean equals(Object o) {
 			if (this == o) return true;
 			if (o == null || getClass() != o.getClass()) return false;
-			AsmFunctionKey that = (AsmFunctionKey) o;
+			AsmClassKey that = (AsmClassKey) o;
 			return Objects.equals(type, that.type) &&
 					Objects.equals(fields, that.fields) &&
 					Objects.equals(expressionMap, that.expressionMap) &&
@@ -210,11 +224,11 @@ public class AsmBuilder<T> {
 
 	public Class<T> defineClass(String className) {
 		synchronized (classLoader) {
-			AsmFunctionKey key = new AsmFunctionKey(type, fields, expressionMap, expressionStaticMap);
+			AsmClassKey key = new AsmClassKey(type, fields, expressionMap, expressionStaticMap);
 			Class<?> cachedClass = classLoader.getClassByKey(key);
 
 			if (cachedClass != null) {
-				logger.trace("Fetching class {} for type {} from cache", cachedClass, type);
+				logger.trace("Fetching {} for key {} from cache", cachedClass, key);
 				return (Class<T>) cachedClass;
 			}
 
@@ -228,7 +242,7 @@ public class AsmBuilder<T> {
 	 * @param key key
 	 * @return completed class
 	 */
-	private Class<T> defineNewClass(AsmFunctionKey key, String newClassName) {
+	private Class<T> defineNewClass(AsmClassKey key, String newClassName) {
 		DefiningClassWriter cw = new DefiningClassWriter(classLoader);
 
 		String className;
@@ -316,7 +330,7 @@ public class AsmBuilder<T> {
 		cw.visitEnd();
 
 		Class<?> definedClass = classLoader.defineClass(className, key, cw.toByteArray());
-		logger.trace("Defined new class {} for type {}", definedClass, type);
+		logger.trace("Defined new {} for key {}", definedClass, key);
 		return (Class<T>) definedClass;
 	}
 

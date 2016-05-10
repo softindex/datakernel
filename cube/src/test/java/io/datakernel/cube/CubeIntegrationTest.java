@@ -64,8 +64,8 @@ public class CubeIntegrationTest {
 	private static final List<String> LOG_PARTITIONS = asList(LOG_PARTITION_NAME);
 	private static final String LOG_NAME = "testlog";
 
-	private static AggregationStructure getStructure(DefiningClassLoader classLoader) {
-		return new AggregationStructure(classLoader,
+	private static AggregationStructure getStructure() {
+		return new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("date", dateKey())
 						.put("advertiser", intKey())
@@ -108,7 +108,7 @@ public class CubeIntegrationTest {
 		Eventloop eventloop = new Eventloop();
 		Path aggregationsDir = temporaryFolder.newFolder().toPath();
 		Path logsDir = temporaryFolder.newFolder().toPath();
-		AggregationStructure structure = getStructure(classLoader);
+		AggregationStructure structure = getStructure();
 
 		Configuration jooqConfiguration = getJooqConfiguration(DATABASE_PROPERTIES_PATH, DATABASE_DIALECT);
 		AggregationChunkStorage aggregationChunkStorage =

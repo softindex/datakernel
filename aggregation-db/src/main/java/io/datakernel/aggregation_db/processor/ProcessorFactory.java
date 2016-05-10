@@ -31,16 +31,14 @@ import java.util.Map;
 import static io.datakernel.codegen.Expressions.*;
 
 public final class ProcessorFactory {
-	private final DefiningClassLoader classLoader;
 	private final AggregationStructure structure;
 
-	public ProcessorFactory(DefiningClassLoader classLoader, AggregationStructure structure) {
-		this.classLoader = classLoader;
+	public ProcessorFactory(AggregationStructure structure) {
 		this.structure = structure;
 	}
 
 	public StreamReducers.Reducer aggregationReducer(Class<?> inputClass, Class<?> outputClass, List<String> keys,
-	                                                 List<String> fields) {
+	                                                 List<String> fields, DefiningClassLoader classLoader) {
 		AsmBuilder<StreamReducers.Reducer> builder = new AsmBuilder<>(classLoader, StreamReducers.Reducer.class);
 
 		Expression accumulator = let(constructor(outputClass));
@@ -83,7 +81,8 @@ public final class ProcessorFactory {
 	}
 
 	public Aggregate createPreaggregator(Class<?> inputClass, Class<?> outputClass, List<String> keys,
-	                                     List<String> fields, Map<String, String> outputToInputFields) {
+	                                     List<String> fields, Map<String, String> outputToInputFields,
+	                                     DefiningClassLoader classLoader) {
 		AsmBuilder<Aggregate> builder = new AsmBuilder<>(classLoader, Aggregate.class);
 
 		Expression accumulator = let(constructor(outputClass));

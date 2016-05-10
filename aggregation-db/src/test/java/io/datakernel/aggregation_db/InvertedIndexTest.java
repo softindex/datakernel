@@ -90,7 +90,7 @@ public class InvertedIndexTest {
 		AggregationMetadataStorage aggregationMetadataStorage = new AggregationMetadataStorageStub();
 		AggregationMetadata aggregationMetadata = new AggregationMetadata(InvertedIndexRecord.KEYS,
 				InvertedIndexRecord.OUTPUT_FIELDS);
-		AggregationStructure structure = new AggregationStructure(classLoader,
+		AggregationStructure structure = new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("word", stringKey())
 						.build(),

@@ -58,6 +58,8 @@ import static com.google.common.collect.Iterables.*;
 import static com.google.common.collect.Lists.newArrayList;
 import static com.google.common.collect.Maps.newHashMap;
 import static com.google.common.collect.Sets.newHashSet;
+import static io.datakernel.aggregation_db.AggregationStructure.createKeyFunction;
+import static io.datakernel.aggregation_db.AggregationStructure.createMapper;
 import static io.datakernel.aggregation_db.util.AsyncResultsTracker.ofMultimap;
 import static io.datakernel.codegen.Expressions.*;
 import static java.util.Collections.sort;
@@ -330,6 +332,10 @@ public final class Cube implements EventloopJmxMBean {
 				AggregationQuery.Predicates.fromMap(filteredQueryPredicates), query.getOrderings());
 	}
 
+	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query) {
+		return query(resultClass, query, classLoader);
+	}
+
 	/**
 	 * Returns a {@link StreamProducer} of the records retrieved from cube for the specified query.
 	 *
@@ -338,14 +344,14 @@ public final class Cube implements EventloopJmxMBean {
 	 * @param query       query
 	 * @return producer that streams query results
 	 */
-	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query) {
+	public <T> StreamProducer<T> query(Class<T> resultClass, CubeQuery query, DefiningClassLoader classLoader) {
 		StreamReducer<Comparable, T, Object> streamReducer = new StreamReducer<>(eventloop, Ordering.natural());
 
 		Map<Aggregation, List<String>> aggregationsToAppliedPredicateKeys = findAggregationsForQuery(query.getAggregationQuery());
 
 		List<String> queryMeasures = newArrayList(query.getResultMeasures());
 		List<String> resultDimensions = query.getResultDimensions();
-		Class resultKeyClass = structure.createKeyClass(resultDimensions);
+		Class resultKeyClass = structure.createKeyClass(resultDimensions, this.classLoader);
 
 		CubeQueryPlan queryPlan = new CubeQueryPlan();
 
@@ -364,10 +370,10 @@ public final class Cube implements EventloopJmxMBean {
 			if (aggregationMeasures.isEmpty())
 				continue;
 
-			Class aggregationClass = structure.createRecordClass(aggregation.getKeys(), aggregationMeasures);
+			Class aggregationClass = structure.createRecordClass(aggregation.getKeys(), aggregationMeasures, classLoader);
 
 			StreamProducer aggregationProducer = aggregation.query(filteredQuery.getAggregationQuery(),
-					aggregationMeasures, aggregationClass);
+					aggregationMeasures, aggregationClass, classLoader);
 
 			queryMeasures = newArrayList(filter(queryMeasures, not(in(aggregationMeasures))));
 
@@ -376,8 +382,8 @@ public final class Cube implements EventloopJmxMBean {
 				If query is fulfilled from the single aggregation,
 				just use mapper instead of reducer to copy requested fields.
 				 */
-				StreamMap.MapperProjection mapper = structure.createMapper(aggregationClass, resultClass,
-						resultDimensions, aggregationMeasures);
+				StreamMap.MapperProjection mapper = createMapper(aggregationClass, resultClass, resultDimensions,
+						aggregationMeasures, classLoader);
 				StreamMap streamMap = new StreamMap<>(eventloop, mapper);
 				aggregationProducer.streamTo(streamMap.getInput());
 				queryResultProducer = streamMap.getOutput();
@@ -385,10 +391,10 @@ public final class Cube implements EventloopJmxMBean {
 				break;
 			}
 
-			Function keyFunction = structure.createKeyFunction(aggregationClass, resultKeyClass, resultDimensions);
+			Function keyFunction = createKeyFunction(aggregationClass, resultKeyClass, resultDimensions, classLoader);
 
 			StreamReducers.Reducer reducer = aggregation.aggregationReducer(aggregationClass, resultClass,
-					resultDimensions, aggregationMeasures);
+					resultDimensions, aggregationMeasures, classLoader);
 
 			StreamConsumer streamReducerInput = streamReducer.newInput(keyFunction, reducer);
 
@@ -402,7 +408,8 @@ public final class Cube implements EventloopJmxMBean {
 			logger.info("Picked following aggregations ({}) for {}: {}", queryPlan.getNumberOfAggregations(), query,
 					queryPlan);
 
-		return getOrderedResultStream(query, resultClass, queryResultProducer, resultDimensions, query.getResultMeasures());
+		return getOrderedResultStream(query, resultClass, queryResultProducer, resultDimensions,
+				query.getResultMeasures(), classLoader);
 	}
 
 	public boolean containsExcessiveNumberOfOverlappingChunks() {
@@ -590,11 +597,12 @@ public final class Cube implements EventloopJmxMBean {
 
 	private <T> StreamProducer<T> getOrderedResultStream(CubeQuery query, Class<T> resultClass,
 	                                                     StreamProducer<T> rawResultStream,
-	                                                     List<String> dimensions, List<String> measures) {
+	                                                     List<String> dimensions, List<String> measures,
+	                                                     DefiningClassLoader classLoader) {
 		if (queryRequiresSorting(query)) {
-			Comparator fieldComparator = createFieldComparator(query, resultClass);
+			Comparator fieldComparator = createFieldComparator(query, resultClass, classLoader);
 			Path path = Paths.get("sorterStorage", "%d.part");
-			BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, dimensions, measures);
+			BufferSerializer bufferSerializer = structure.createBufferSerializer(resultClass, dimensions, measures, classLoader);
 			StreamMergeSorterStorage sorterStorage = new StreamMergeSorterStorageImpl(eventloop, executorService,
 					bufferSerializer, path, sorterBlockSize);
 			StreamSorter sorter = new StreamSorter(eventloop, sorterStorage, Functions.identity(),
@@ -606,7 +614,7 @@ public final class Cube implements EventloopJmxMBean {
 		}
 	}
 
-	public Comparator createFieldComparator(CubeQuery query, Class<?> fieldClass) {
+	public static Comparator createFieldComparator(CubeQuery query, Class<?> fieldClass, DefiningClassLoader classLoader) {
 		logger.trace("Creating field comparator for query {}", query.toString());
 		AsmBuilder<Comparator> builder = new AsmBuilder<>(classLoader, Comparator.class);
 		ExpressionComparator comparator = comparator();
@@ -642,6 +650,10 @@ public final class Cube implements EventloopJmxMBean {
 		}
 
 		return m;
+	}
+
+	public DefiningClassLoader getClassLoader() {
+		return classLoader;
 	}
 
 	// visible for testing

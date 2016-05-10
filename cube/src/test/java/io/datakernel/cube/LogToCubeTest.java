@@ -62,8 +62,8 @@ public class LogToCubeTest {
 				Aggregation.DEFAULT_MAX_INCREMENTAL_RELOAD_PERIOD_MILLIS);
 	}
 
-	public static AggregationStructure getStructure(DefiningClassLoader classLoader) {
-		return new AggregationStructure(classLoader,
+	public static AggregationStructure getStructure() {
+		return new AggregationStructure(
 				ImmutableMap.<String, KeyType>builder()
 						.put("pub", intKey())
 						.put("adv", intKey())
@@ -81,7 +81,7 @@ public class LogToCubeTest {
 		ExecutorService executor = Executors.newCachedThreadPool();
 		CubeMetadataStorageStub cubeMetadataStorage = new CubeMetadataStorageStub();
 		AggregationChunkStorageStub aggregationStorage = new AggregationChunkStorageStub(eventloop, classLoader);
-		AggregationStructure structure = getStructure(classLoader);
+		AggregationStructure structure = getStructure();
 		LogToCubeMetadataStorageStub logToCubeMetadataStorageStub = new LogToCubeMetadataStorageStub(cubeMetadataStorage);
 		Cube cube = newCube(eventloop, executor, classLoader, cubeMetadataStorage, aggregationStorage, structure);
 		cube.addAggregation("pub", new AggregationMetadata(asList("pub"), asList("pubRequests")));

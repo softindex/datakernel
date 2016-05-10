@@ -21,6 +21,7 @@ import io.datakernel.aggregation_db.util.AsyncResultsTracker;
 import io.datakernel.aggregation_db.util.AsyncResultsTracker.AsyncResultsTrackerList;
 import io.datakernel.aggregation_db.util.BiPredicate;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamConsumer;
 import io.datakernel.stream.StreamDataReceiver;
@@ -48,6 +49,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	private final Aggregate aggregate;
 	private final AsyncResultsTrackerList<AggregationChunk.NewChunk> resultsTracker;
 	private final AggregationOperationTracker operationTracker;
+	private final DefiningClassLoader classLoader;
 	private int chunkSize;
 
 	private final HashMap<Comparable<?>, Object> map = new HashMap<>();
@@ -57,7 +59,8 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 	                               AggregationMetadataStorage metadataStorage, List<String> keys, List<String> fields,
 	                               Class<?> recordClass, BiPredicate<T, T> partitionPredicate,
 	                               Function<T, Comparable<?>> keyFunction, Aggregate aggregate,
-	                               int chunkSize, final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
+	                               int chunkSize, DefiningClassLoader classLoader,
+	                               final ResultCallback<List<AggregationChunk.NewChunk>> chunksCallback) {
 		super(eventloop);
 		this.storage = storage;
 		this.metadataStorage = metadataStorage;
@@ -82,6 +85,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 				chunksCallback.onException(e);
 			}
 		});
+		this.classLoader = classLoader;
 		operationTracker.reportStart(this);
 	}
 
@@ -138,7 +142,7 @@ public final class AggregationGroupReducer<T> extends AbstractStreamConsumer<T> 
 		final StreamProducer producer = StreamProducers.ofIterable(eventloop, list);
 
 		producer.streamTo(new AggregationChunker(eventloop, operationTracker, keys, fields, recordClass,
-				partitionPredicate, storage, metadataStorage, chunkSize,
+				partitionPredicate, storage, metadataStorage, chunkSize, classLoader,
 				new ResultCallback<List<AggregationChunk.NewChunk>>() {
 					@Override
 					public void onResult(List<AggregationChunk.NewChunk> newChunks) {

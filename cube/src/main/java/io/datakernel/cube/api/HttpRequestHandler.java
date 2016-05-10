@@ -42,11 +42,12 @@ public final class HttpRequestHandler implements RequestHandler {
 	private final RequestExecutor requestExecutor;
 	private final HttpResultProcessor httpResultProcessor;
 
-	public HttpRequestHandler(Gson gson, Cube cube, Eventloop eventloop, DefiningClassLoader classLoader) {
+	public HttpRequestHandler(Gson gson, Cube cube, Eventloop eventloop,
+	                          LRUCache<ClassLoaderCacheKey, DefiningClassLoader> classLoaderCache) {
 		this.httpRequestProcessor = new HttpRequestProcessor(gson);
 		this.requestExecutor = new RequestExecutor(cube, cube.getStructure(), cube.getReportingConfiguration(),
-				eventloop, classLoader, new Resolver(classLoader, cube.getResolvers()));
-		this.httpResultProcessor = new HttpResultProcessor(classLoader, cube.getStructure(), cube.getReportingConfiguration());
+				eventloop, new Resolver(cube.getResolvers()), classLoaderCache);
+		this.httpResultProcessor = new HttpResultProcessor(cube.getStructure(), cube.getReportingConfiguration());
 	}
 
 	@Override

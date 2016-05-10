@@ -17,6 +17,7 @@
 package io.datakernel.aggregation_db;
 
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.stream.StreamProducer;
 
 import java.util.List;
@@ -35,7 +36,7 @@ public interface AggregationChunkStorage {
 	 * @return StreamProducer, which will stream read records to its wired consumer.
 	 */
 	<T> StreamProducer<T> chunkReader(List<String> keys, List<String> fields, Class<T> recordClass,
-	                                  long id);
+	                                  long id, DefiningClassLoader classLoader);
 
 	/**
 	 * Creates a {@code StreamConsumer} that persists streamed records.
@@ -46,7 +47,7 @@ public interface AggregationChunkStorage {
 	 * @param producer      producer of records
 	 */
 	<T> void chunkWriter(List<String> keys, List<String> fields, Class<T> recordClass,
-	                     long id, StreamProducer<T> producer, CompletionCallback callback);
+	                     long id, StreamProducer<T> producer, DefiningClassLoader classLoader, CompletionCallback callback);
 
 	/**
 	 * Removes the chunk determined by {@code aggregationId} and {@code id}.

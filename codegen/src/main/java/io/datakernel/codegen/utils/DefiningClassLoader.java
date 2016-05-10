@@ -16,6 +16,8 @@
 
 package io.datakernel.codegen.utils;
 
+import io.datakernel.codegen.AsmBuilder.AsmClassKey;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -24,10 +26,7 @@ import java.util.Map;
  * Also contains cache, that speeds up loading of classes, which have the same structure as the ones already loaded.
  */
 public class DefiningClassLoader extends ClassLoader implements DefiningClassLoaderMBean {
-	private final Map<Object, Class<?>> definedClasses = new HashMap<>();
-
-	// jmx
-	private String lastDefinedClass;
+	private final Map<AsmClassKey<?>, Class<?>> definedClasses = new HashMap<>();
 
 	public DefiningClassLoader() {
 	}
@@ -36,25 +35,51 @@ public class DefiningClassLoader extends ClassLoader implements DefiningClassLoa
 		super(parent);
 	}
 
-	public Class<?> defineClass(String name, Object key, byte[] b) {
+	public Class<?> defineClass(String name, AsmClassKey<?> key, byte[] b) {
 		Class<?> definedClass = defineClass(name, b, 0, b.length);
 		definedClasses.put(key, definedClass);
-		lastDefinedClass = name;
 		return definedClass;
 	}
 
-	public Class<?> getClassByKey(Object key) {
+	public Class<?> getClassByKey(AsmClassKey<?> key) {
 		return definedClasses.get(key);
 	}
 
 	// jmx
 	@Override
-	public int getDefinedClassesAmount() {
+	public int getDefinedClassesCount() {
 		return definedClasses.size();
 	}
 
 	@Override
-	public String getLastDefinedClass() {
-		return lastDefinedClass;
+	public Map<String, String> getDefinedClasses() {
+		Map<String, String> map = new HashMap<>(definedClasses.size());
+
+		for (Map.Entry<AsmClassKey<?>, Class<?>> entry : definedClasses.entrySet()) {
+			map.put(entry.getKey().toString(), entry.getValue().toString());
+		}
+
+		return map;
+	}
+
+	@Override
+	public Map<String, Integer> getDefinedClassesByType() {
+		Map<String, Integer> map = new HashMap<>();
+
+		for (Map.Entry<AsmClassKey<?>, Class<?>> entry : definedClasses.entrySet()) {
+			String type = entry.getKey().getType().toString();
+			Integer count = map.get(type);
+			map.put(type, count == null ? 1 : count + 1);
+		}
+
+		return map;
+	}
+
+	@Override
+	public String toString() {
+		return "DefiningClassLoader{" +
+				"classes=" + definedClasses.size() +
+				", definedClassesByType=" + getDefinedClassesByType() +
+				'}';
 	}
 }
