@@ -400,16 +400,16 @@ public class Aggregation implements AggregationOperationTracker {
 
 	private void doConsolidation(final List<AggregationChunk> chunksToConsolidate,
 	                             final ResultCallback<List<AggregationChunk.NewChunk>> callback) {
-		List<String> fields = new ArrayList<>();
+		Set<String> aggregationFields = newHashSet(getFields());
+		Set<String> chunkFields = newHashSet();
 		for (AggregationChunk chunk : chunksToConsolidate) {
 			for (String field : chunk.getFields()) {
-				if (!fields.contains(field) && getFields().contains(field)) {
-					fields.add(field);
-				}
+				if (aggregationFields.contains(field))
+					chunkFields.add(field);
 			}
 		}
 
-		Collections.sort(fields);
+		List<String> fields = Ordering.explicit(getFields()).sortedCopy(chunkFields);
 
 		Class resultClass = structure.createRecordClass(getKeys(), fields, classLoader);
 
