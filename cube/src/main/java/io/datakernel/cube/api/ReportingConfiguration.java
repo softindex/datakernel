@@ -18,6 +18,7 @@ package io.datakernel.cube.api;
 
 import com.google.common.collect.ImmutableMap;
 import io.datakernel.codegen.Expression;
+import io.datakernel.util.Function;
 
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ public final class ReportingConfiguration {
 	private Map<String, Class<?>> attributeTypes = newHashMap();
 	private Map<String, AttributeResolver> attributeResolvers = newHashMap();
 	private Map<AttributeResolver, List<String>> resolverKeys = newHashMap();
+	private Map<String, Function> dimensionPostFilteringFunctions = newHashMap();
 
 	private Map<String, String> attributeDimensions = newHashMap();
 
@@ -54,6 +56,11 @@ public final class ReportingConfiguration {
 		this.attributeTypes.put(name, type);
 		this.attributeResolvers.put(name, resolver);
 		this.attributeDimensions.put(name, dimension);
+		return this;
+	}
+
+	public ReportingConfiguration addDimensionPostFilteringFunction(String dimension, Function function) {
+		this.dimensionPostFilteringFunctions.put(dimension, function);
 		return this;
 	}
 
@@ -103,5 +110,9 @@ public final class ReportingConfiguration {
 
 	public Set<String> getComputedMeasureDependencies(String computedMeasure) {
 		return computedMeasures.get(computedMeasure).getMeasureDependencies();
+	}
+
+	public Function getPostFilteringFunctionForDimension(String dimension) {
+		return dimensionPostFilteringFunctions.get(dimension);
 	}
 }

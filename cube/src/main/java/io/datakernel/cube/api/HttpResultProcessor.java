@@ -26,6 +26,7 @@ import io.datakernel.aggregation_db.keytype.KeyType;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.DrillDown;
 import io.datakernel.http.HttpResponse;
+import io.datakernel.util.Function;
 
 import java.util.List;
 import java.util.Set;
@@ -36,10 +37,13 @@ import static io.datakernel.cube.api.HttpJsonConstants.*;
 public final class HttpResultProcessor implements ResultProcessor<HttpResponse> {
 	private final DefiningClassLoader classLoader;
 	private final AggregationStructure structure;
+	private final ReportingConfiguration reportingConfiguration;
 
-	public HttpResultProcessor(DefiningClassLoader classLoader, AggregationStructure structure) {
+	public HttpResultProcessor(DefiningClassLoader classLoader, AggregationStructure structure,
+	                           ReportingConfiguration reportingConfiguration) {
 		this.classLoader = classLoader;
 		this.structure = structure;
+		this.reportingConfiguration = reportingConfiguration;
 	}
 
 	@Override
@@ -159,6 +163,12 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 
 				Object value = dimensionGetters[n].get(result);
 				Object printable = keyTypes[n].getPrintable(value);
+				Function postFilteringFunction = reportingConfiguration.getPostFilteringFunctionForDimension(dimension);
+
+				if (postFilteringFunction != null) {
+					printable = postFilteringFunction.apply(printable);
+				}
+
 				JsonElement json = printable instanceof Number ?
 						new JsonPrimitive((Number) printable) : new JsonPrimitive(printable.toString());
 				resultJsonObject.add(dimension, json);

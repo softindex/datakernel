@@ -46,7 +46,7 @@ public final class HttpRequestHandler implements RequestHandler {
 		this.httpRequestProcessor = new HttpRequestProcessor(gson);
 		this.requestExecutor = new RequestExecutor(cube, cube.getStructure(), cube.getReportingConfiguration(),
 				eventloop, classLoader, new Resolver(classLoader, cube.getResolvers()));
-		this.httpResultProcessor = new HttpResultProcessor(classLoader, cube.getStructure());
+		this.httpResultProcessor = new HttpResultProcessor(classLoader, cube.getStructure(), cube.getReportingConfiguration());
 	}
 
 	@Override
