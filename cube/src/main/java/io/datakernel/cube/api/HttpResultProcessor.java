@@ -16,10 +16,8 @@
 
 package io.datakernel.cube.api;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
+import com.google.common.io.CharStreams;
+import com.google.gson.stream.JsonWriter;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.fieldtype.FieldType;
 import io.datakernel.aggregation_db.keytype.KeyType;
@@ -27,6 +25,7 @@ import io.datakernel.cube.DrillDown;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.util.Function;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Set;
@@ -45,19 +44,23 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 
 	@Override
 	public HttpResponse apply(QueryResult result) {
-		String response = constructResult(result.getRecords(), result.getRecordClass(), result.getTotals(),
-				result.getCount(), result.getDrillDowns(), result.getChains(), result.getDimensions(),
-				result.getAttributes(), result.getMeasures(), result.getSortedBy(),
-				result.getFilterAttributesPlaceholder(), result.getFilterAttributes(), result.getFields(),
-				result.getMetadataFields());
-		return createResponse(response);
+		try {
+			String response = constructResult(result.getRecords(), result.getRecordClass(), result.getTotals(),
+					result.getCount(), result.getDrillDowns(), result.getChains(), result.getDimensions(),
+					result.getAttributes(), result.getMeasures(), result.getSortedBy(),
+					result.getFilterAttributesPlaceholder(), result.getFilterAttributes(), result.getFields(),
+					result.getMetadataFields());
+			return createResponse(response);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	private String constructResult(List results, Class resultClass, TotalsPlaceholder totals, int count,
 	                               Set<DrillDown> drillDowns, Set<List<String>> chains, List<String> dimensions,
 	                               List<String> attributes, List<String> measures, List<String> sortedBy,
 	                               Object filterAttributesPlaceholder, List<String> filterAttributes,
-	                               Set<String> fields, Set<String> metadataFields) {
+	                               Set<String> fields, Set<String> metadataFields) throws IOException {
 		Field[] dimensionFields = new Field[dimensions.size()];
 		KeyType[] keyTypes = new KeyType[dimensions.size()];
 		for (int i = 0; i < dimensions.size(); ++i) {
@@ -74,82 +77,39 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 
 		Field[] measureFields = new Field[measures.size()];
 		FieldType[] fieldTypes = new FieldType[measures.size()];
- 		for (int i = 0; i < measures.size(); ++i) {
+		for (int i = 0; i < measures.size(); ++i) {
 			String field = measures.get(i);
-		    measureFields[i] = getField(field, resultClass);
-		    fieldTypes[i] = structure.getFieldType(field);
+			measureFields[i] = getField(field, resultClass);
+			fieldTypes[i] = structure.getFieldType(field);
 		}
 
-		JsonObject jsonMetadata = new JsonObject();
+		StringBuilder sb = new StringBuilder();
+		JsonWriter writer = new JsonWriter(CharStreams.asWriter(sb));
 
-		if (nullOrContains(metadataFields, DIMENSIONS_FIELD))
-			jsonMetadata.add(DIMENSIONS_FIELD, getJsonArrayFromList(dimensions));
+		writer.beginObject();
+		writeRecords(writer, results, fields, dimensions, attributes, measures, dimensionFields,
+				keyTypes, measureFields, fieldTypes, attributeFields, reportingConfiguration);
+		writeTotals(writer, totals, measures, structure);
 
-		if (nullOrContains(metadataFields, ATTRIBUTES_FIELD))
-			jsonMetadata.add(ATTRIBUTES_FIELD, getJsonArrayFromList(attributes));
-
-		if (nullOrContains(metadataFields, MEASURES_FIELD))
-			jsonMetadata.add(MEASURES_FIELD, getJsonArrayFromList(measures));
-
-		if (nullOrContains(metadataFields, FILTER_ATTRIBUTES_FIELD))
-			jsonMetadata.add(FILTER_ATTRIBUTES_FIELD, getFilterAttributesJson(filterAttributes, filterAttributesPlaceholder));
-
-		if (nullOrContains(metadataFields, DRILLDOWNS_FIELD))
-			jsonMetadata.add(DRILLDOWNS_FIELD, getDrillDownsJson(drillDowns));
-
-		if (nullOrContains(metadataFields, CHAINS_FIELD))
-			jsonMetadata.add(CHAINS_FIELD, getJsonArrayFromSetOfStrings(chains));
-
-		if (nullOrContains(metadataFields, SORTED_BY_FIELD))
-			jsonMetadata.add(SORTED_BY_FIELD, getJsonArrayFromList(sortedBy));
-
-		JsonArray jsonRecords = getRecordsJson(results, fields, dimensions, attributes, measures, dimensionFields,
-				keyTypes, measureFields, fieldTypes, attributeFields);
-
-		JsonObject jsonResult = new JsonObject();
-		jsonResult.add(RECORDS_FIELD, jsonRecords);
-		jsonResult.add(TOTALS_FIELD, getTotalsJson(totals, measures));
-
-		if (metadataFields == null || !metadataFields.isEmpty())
-			jsonResult.add(METADATA_FIELD, jsonMetadata);
-
-		jsonResult.addProperty(COUNT_FIELD, count);
-		return jsonResult.toString();
-	}
-
-	private static JsonArray getJsonArrayFromSetOfStrings(Set<List<String>> set) {
-		JsonArray outer = new JsonArray();
-
-		for (List<String> l : set) {
-			JsonArray inner = new JsonArray();
-
-			for (String s : l) {
-				inner.add(new JsonPrimitive(s));
-			}
-
-			outer.add(inner);
+		if (metadataFields == null || !metadataFields.isEmpty()) {
+			writeMetadata(writer, metadataFields, dimensions, attributes, measures, filterAttributes,
+					filterAttributesPlaceholder, drillDowns, chains, sortedBy);
 		}
 
-		return outer;
+		writer.name(COUNT_FIELD).value(count);
+		writer.endObject();
+
+		return sb.toString();
 	}
 
-	private static JsonArray getJsonArrayFromList(List<String> strings) {
-		JsonArray jsonArray = new JsonArray();
-
-		for (String s : strings) {
-			jsonArray.add(new JsonPrimitive(s));
-		}
-
-		return jsonArray;
-	}
-
-	private JsonArray getRecordsJson(List results, Set<String> fields, List<String> dimensions, List<String> attributes,
+	private static void writeRecords(JsonWriter writer, List results, Set<String> fields, List<String> dimensions, List<String> attributes,
 	                                 List<String> measures, Field[] dimensionFields, KeyType[] keyTypes,
-	                                 Field[] measureFields, FieldType[] fieldTypes, Field[] attributeFields) {
-		JsonArray jsonRecords = new JsonArray();
+	                                 Field[] measureFields, FieldType[] fieldTypes, Field[] attributeFields,
+	                                 ReportingConfiguration reportingConfiguration) throws IOException {
+		writer.name(RECORDS_FIELD).beginArray();
 
 		for (Object result : results) {
-			JsonObject resultJsonObject = new JsonObject();
+			writer.beginObject();
 
 			for (int n = 0; n < dimensions.size(); ++n) {
 				String dimension = dimensions.get(n);
@@ -162,12 +122,12 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 				Function postFilteringFunction = reportingConfiguration.getPostFilteringFunctionForDimension(dimension);
 
 				if (postFilteringFunction != null) {
+					//noinspection unchecked
 					printable = postFilteringFunction.apply(printable);
 				}
 
-				JsonElement json = printable instanceof Number ?
-						new JsonPrimitive((Number) printable) : new JsonPrimitive(printable.toString());
-				resultJsonObject.add(dimension, json);
+				writer.name(dimension);
+				writeNumberOrString(writer, printable);
 			}
 
 			for (int m = 0; m < attributes.size(); ++m) {
@@ -177,7 +137,8 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 					continue;
 
 				Object value = getFieldValue(attributeFields[m], result);
-				resultJsonObject.add(attribute, value == null ? null : new JsonPrimitive(value.toString()));
+				writer.name(attribute);
+				writeNullOrString(writer, value);
 			}
 
 			for (int k = 0; k < measures.size(); ++k) {
@@ -187,77 +148,149 @@ public final class HttpResultProcessor implements ResultProcessor<HttpResponse> 
 					continue;
 
 				Object value = getFieldValue(measureFields[k], result);
-
-				JsonElement json;
-				if (fieldTypes[k] == null)
-					json = new JsonPrimitive((Number) value);
-				else {
-					Object printable = fieldTypes[k].getPrintable(value);
-					json = printable instanceof Number ?
-							new JsonPrimitive((Number) printable) : new JsonPrimitive(printable.toString());
-				}
-
-				resultJsonObject.add(measure, json);
+				writer.name(measure);
+				writeNumberOrPrintable(writer, value, fieldTypes[k]);
 			}
 
-			jsonRecords.add(resultJsonObject);
+			writer.endObject();
 		}
 
-		return jsonRecords;
+		writer.endArray();
 	}
 
-	private JsonObject getTotalsJson(TotalsPlaceholder totals, List<String> measures) {
-		JsonObject jsonTotals = new JsonObject();
+	private static void writeTotals(JsonWriter writer, TotalsPlaceholder totals, List<String> measures,
+	                                AggregationStructure structure) throws IOException {
+		writer.name(TOTALS_FIELD).beginObject();
 
 		for (String field : measures) {
 			FieldType fieldType = structure.getFieldType(field);
 			Object totalFieldValue = getFieldValue(field, totals);
-
-			JsonElement json;
-			if (fieldType == null)
-				json = new JsonPrimitive((Number) totalFieldValue);
-			else {
-				Object printable = fieldType.getPrintable(totalFieldValue);
-				json = printable instanceof Number ?
-						new JsonPrimitive((Number) printable) : new JsonPrimitive(printable.toString());
-			}
-
-			jsonTotals.add(field, json);
+			writer.name(field);
+			writeNumberOrPrintable(writer, totalFieldValue, fieldType);
 		}
 
-		return jsonTotals;
+		writer.endObject();
 	}
 
-	private JsonArray getDrillDownsJson(Set<DrillDown> drillDowns) {
-		JsonArray jsonDrillDowns = new JsonArray();
+	private static void writeMetadata(JsonWriter writer, Set<String> metadataFields, List<String> dimensions,
+	                                  List<String> attributes, List<String> measures, List<String> filterAttributes,
+	                                  Object filterAttributesPlaceholder, Set<DrillDown> drillDowns,
+	                                  Set<List<String>> chains, List<String> sortedBy) throws IOException {
+		writer.name(METADATA_FIELD).beginObject();
 
-		for (DrillDown drillDown : drillDowns) {
-			JsonArray jsonDrillDownDimensions = new JsonArray();
-			for (String drillDownDimension : drillDown.getChain()) {
-				jsonDrillDownDimensions.add(new JsonPrimitive(drillDownDimension));
-			}
+		if (nullOrContains(metadataFields, DIMENSIONS_FIELD))
+			writeArrayToField(writer, DIMENSIONS_FIELD, dimensions);
 
-			JsonArray jsonDrillDownMeasures = new JsonArray();
-			for (String drillDownMeasure : drillDown.getMeasures()) {
-				jsonDrillDownMeasures.add(new JsonPrimitive(drillDownMeasure));
-			}
+		if (nullOrContains(metadataFields, ATTRIBUTES_FIELD))
+			writeArrayToField(writer, ATTRIBUTES_FIELD, attributes);
 
-			JsonObject jsonDrillDown = new JsonObject();
-			jsonDrillDown.add(DIMENSIONS_FIELD, jsonDrillDownDimensions);
-			jsonDrillDown.add(MEASURES_FIELD, jsonDrillDownMeasures);
-			jsonDrillDowns.add(jsonDrillDown);
-		}
+		if (nullOrContains(metadataFields, MEASURES_FIELD))
+			writeArrayToField(writer, MEASURES_FIELD, measures);
 
-		return jsonDrillDowns;
+		if (nullOrContains(metadataFields, FILTER_ATTRIBUTES_FIELD))
+			writeFilterAttributes(writer, filterAttributes, filterAttributesPlaceholder);
+
+		if (nullOrContains(metadataFields, DRILLDOWNS_FIELD))
+			writeDrillDowns(writer, drillDowns);
+
+		if (nullOrContains(metadataFields, CHAINS_FIELD))
+			writeArrayToField(writer, CHAINS_FIELD, chains);
+
+		if (nullOrContains(metadataFields, SORTED_BY_FIELD))
+			writeArrayToField(writer, SORTED_BY_FIELD, sortedBy);
+
+		writer.endObject();
 	}
 
-	private JsonObject getFilterAttributesJson(List<String> filterAttributes, Object filterAttributesPlaceholder) {
-		JsonObject jsonFilterAttributes = new JsonObject();
+	private static void writeFilterAttributes(JsonWriter writer, List<String> filterAttributes, Object filterAttributesPlaceholder) throws IOException {
+		writer.name(FILTER_ATTRIBUTES_FIELD).beginObject();
+
 		for (String attribute : filterAttributes) {
 			Object resolvedAttribute = getFieldValue(attribute, filterAttributesPlaceholder);
-			jsonFilterAttributes.add(attribute, resolvedAttribute == null ?
-					null : new JsonPrimitive(resolvedAttribute.toString()));
+			writer.name(attribute);
+			writeNullOrString(writer, resolvedAttribute);
 		}
-		return jsonFilterAttributes;
+
+		writer.endObject();
+	}
+
+	private static void writeDrillDowns(JsonWriter writer, Set<DrillDown> drillDowns) throws IOException {
+		writer.name(DRILLDOWNS_FIELD).beginArray();
+
+		for (DrillDown drillDown : drillDowns) {
+			writer.beginObject();
+
+			writer.name(DIMENSIONS_FIELD).beginArray();
+			for (String drillDownDimension : drillDown.getChain()) {
+				writer.value(drillDownDimension);
+			}
+			writer.endArray();
+
+			writer.name(MEASURES_FIELD).beginArray();
+			for (String drillDownMeasure : drillDown.getMeasures()) {
+				writer.value(drillDownMeasure);
+			}
+			writer.endArray();
+
+			writer.endObject();
+		}
+
+		writer.endArray();
+	}
+
+	private static void writeNullOrString(JsonWriter writer, Object o) throws IOException {
+		writer.value(o == null ? null : o.toString());
+	}
+
+	private static void writeNumberOrString(JsonWriter writer, Object o) throws IOException {
+		if (o instanceof Number)
+			writer.value((Number) o);
+		else
+			writer.value(o.toString());
+	}
+
+	private static void writeNumberOrPrintable(JsonWriter writer, Object o, FieldType fieldType) throws IOException {
+		if (fieldType == null) {
+			writer.value((Number) o);
+		} else {
+			Object printable = fieldType.getPrintable(o);
+			writeNumberOrString(writer, printable);
+		}
+	}
+
+	private static void writeArray(JsonWriter writer, List<String> strings) throws IOException {
+		writer.beginArray();
+
+		for (String s : strings) {
+			writer.value(s);
+		}
+
+		writer.endArray();
+	}
+
+	private static void writeArray(JsonWriter writer, Set<List<String>> set) throws IOException {
+		writer.beginArray();
+
+		for (List<String> l : set) {
+			writer.beginArray();
+
+			for (String s : l) {
+				writer.value(s);
+			}
+
+			writer.endArray();
+		}
+
+		writer.endArray();
+	}
+
+	private static void writeArrayToField(JsonWriter writer, String fieldName, List<String> strings) throws IOException {
+		writer.name(fieldName);
+		writeArray(writer, strings);
+	}
+
+	private static void writeArrayToField(JsonWriter writer, String fieldName, Set<List<String>> set) throws IOException {
+		writer.name(fieldName);
+		writeArray(writer, set);
 	}
 }
