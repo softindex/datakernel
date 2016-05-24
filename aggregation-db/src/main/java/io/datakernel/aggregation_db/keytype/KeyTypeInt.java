@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenInt;
 
@@ -30,8 +31,12 @@ public final class KeyTypeInt extends KeyType implements KeyTypeEnumerable {
 	}
 
 	@Override
-	public Object fromString(String str) {
-		return Integer.parseInt(str);
+	public Object fromString(String str) throws ParseException {
+		try {
+			return Integer.parseInt(str);
+		} catch (NumberFormatException e) {
+			throw new ParseException("Invalid integer string: '" + str + "'", e);
+		}
 	}
 
 	@Override

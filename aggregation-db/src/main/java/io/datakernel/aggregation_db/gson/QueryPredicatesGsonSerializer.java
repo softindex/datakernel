@@ -21,6 +21,7 @@ import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.api.QueryException;
 import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.async.ParseException;
 
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -41,7 +42,11 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 
 	private Object parseKey(String key, JsonElement value) {
 		KeyType keyType = structure.getKeyType(key);
-		return keyType.fromString(value.getAsString());
+		try {
+			return keyType.fromString(value.getAsString());
+		} catch (ParseException e) {
+			throw new QueryException(e.getMessage());
+		}
 	}
 
 	@SuppressWarnings("ConstantConditions")

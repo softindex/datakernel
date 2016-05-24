@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenEnum;
 
@@ -38,8 +39,12 @@ public final class KeyTypeEnum<T extends Enum<T>> extends KeyType {
 	}
 
 	@Override
-	public Object fromString(String str) {
-		return Enum.valueOf(enumClass, str);
+	public Object fromString(String str) throws ParseException {
+		try {
+			return Enum.valueOf(enumClass, str);
+		} catch (IllegalArgumentException e) {
+			throw new ParseException("Unknown enum in string: '" + str + "'", e);
+		}
 	}
 
 	@SuppressWarnings("unchecked")

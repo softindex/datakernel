@@ -20,6 +20,7 @@ import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import io.datakernel.aggregation_db.AggregationStructure;
 import io.datakernel.aggregation_db.keytype.KeyType;
+import io.datakernel.async.ParseException;
 import io.datakernel.cube.DrillDown;
 
 import java.lang.reflect.Type;
@@ -100,9 +101,13 @@ public class ReportingQueryResponseDeserializer implements JsonDeserializer<Repo
 				JsonElement propertyValue = jsonRecordEntry.getValue();
 
 				KeyType keyType = structure.getKeyType(property);
-				if (keyType != null)
-					record.put(property, keyType.fromString(propertyValue.getAsString()));
-				else if (structure.containsField(property) || reportingConfiguration.containsComputedMeasure(property))
+				if (keyType != null) {
+					try {
+						record.put(property,  keyType.fromString(propertyValue.getAsString()));
+					} catch (ParseException e) {
+						throw new JsonParseException("Could not parse value of property '" + property + "'", e);
+					}
+				} else if (structure.containsField(property) || reportingConfiguration.containsComputedMeasure(property))
 					record.put(property, propertyValue.getAsNumber());
 				else if (reportingConfiguration.containsAttribute(property))
 					record.put(property, propertyValue.getAsString());

@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.serializer.asm.SerializerGen;
 
 import java.util.Comparator;
@@ -50,7 +51,7 @@ public abstract class KeyType implements Comparator<Object> {
 		return value;
 	}
 
-	public abstract Object fromString(String str);
+	public abstract Object fromString(String str) throws ParseException;
 
 	@Override
 	public String toString() {

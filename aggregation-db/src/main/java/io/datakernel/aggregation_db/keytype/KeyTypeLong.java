@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenLong;
 
@@ -30,8 +31,12 @@ public final class KeyTypeLong extends KeyType implements KeyTypeEnumerable {
 	}
 
 	@Override
-	public Object fromString(String str) {
-		return Long.parseLong(str);
+	public Object fromString(String str) throws ParseException {
+		try {
+			return Long.parseLong(str);
+		} catch (NumberFormatException e) {
+			throw new ParseException("Invalid long integer string: '" + "'", e);
+		}
 	}
 
 	@Override

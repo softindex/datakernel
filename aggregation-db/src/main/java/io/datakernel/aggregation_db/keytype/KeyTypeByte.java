@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenByte;
 
@@ -30,8 +31,12 @@ public final class KeyTypeByte extends KeyType implements KeyTypeEnumerable {
 	}
 
 	@Override
-	public Object fromString(String str) {
-		return Byte.parseByte(str);
+	public Object fromString(String str) throws ParseException {
+		try {
+			return Byte.parseByte(str);
+		} catch (NumberFormatException e) {
+			throw new ParseException("Invalid byte string: '" + str + "'", e);
+		}
 	}
 
 	@Override

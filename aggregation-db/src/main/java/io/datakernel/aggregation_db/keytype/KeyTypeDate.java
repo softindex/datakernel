@@ -16,6 +16,7 @@
 
 package io.datakernel.aggregation_db.keytype;
 
+import io.datakernel.async.ParseException;
 import io.datakernel.serializer.asm.SerializerGen;
 import io.datakernel.serializer.asm.SerializerGenInt;
 import org.joda.time.Days;
@@ -44,9 +45,13 @@ public final class KeyTypeDate extends KeyType implements KeyTypeEnumerable {
 	}
 
 	@Override
-	public Object fromString(String str) {
-		LocalDate date = LocalDate.parse(str);
-		return Days.daysBetween(startDate, date).getDays();
+	public Object fromString(String str) throws ParseException {
+		try {
+			LocalDate date = LocalDate.parse(str);
+			return Days.daysBetween(startDate, date).getDays();
+		} catch (IllegalArgumentException e) {
+			throw new ParseException("Could not parse date string: '" + str + "'", e);
+		}
 	}
 
 	@Override
