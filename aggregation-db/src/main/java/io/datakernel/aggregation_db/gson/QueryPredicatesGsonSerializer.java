@@ -26,6 +26,8 @@ import io.datakernel.async.ParseException;
 import java.lang.reflect.Type;
 import java.util.Map;
 
+import static java.lang.String.format;
+
 public final class QueryPredicatesGsonSerializer implements JsonSerializer<AggregationQuery.Predicates>,
 		JsonDeserializer<AggregationQuery.Predicates> {
 	private final AggregationStructure structure;
@@ -42,6 +44,8 @@ public final class QueryPredicatesGsonSerializer implements JsonSerializer<Aggre
 
 	private Object parseKey(String key, JsonElement value) {
 		KeyType keyType = structure.getKeyType(key);
+		if (keyType == null)
+			throw new QueryException(format("Filter is specified for unknown dimension '%s'", key));
 		try {
 			return keyType.fromString(value.getAsString());
 		} catch (ParseException e) {
