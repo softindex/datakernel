@@ -28,7 +28,6 @@ import java.util.Iterator;
 import java.util.Map;
 
 import static java.lang.ClassLoader.getSystemClassLoader;
-import static java.lang.ClassLoader.getSystemResources;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static org.objectweb.asm.Type.CHAR_TYPE;
@@ -182,11 +181,12 @@ public class Utils {
 			if (type.equals(getType(Object[].class))) {
 				result = Object[].class;
 			} else {
-				result = type.getClass();
-			}
-			try {
-				result = Class.forName(type.getDescriptor());
-			} catch (ClassNotFoundException e) {
+				final String className = type.getDescriptor().replace('/', '.');
+				try {
+					result = Class.forName(className);
+				} catch (ClassNotFoundException e) {
+					throw new RuntimeException(format("No class %s in Class.forName", className), e);
+				}
 			}
 			return result;
 		}
@@ -233,11 +233,12 @@ public class Utils {
 			if (type.equals(getType(Object[].class))) {
 				result = Object[].class;
 			} else {
-				result = type.getClass();
-			}
-			try {
-				result = Class.forName(type.getDescriptor());
-			} catch (ClassNotFoundException e) {
+				final String className = type.getDescriptor().replace('/', '.');
+				try {
+					result = Class.forName(className);
+				} catch (ClassNotFoundException e) {
+					throw new RuntimeException(format("No class %s in Class.forName", className), e);
+				}
 			}
 			return result;
 		}
