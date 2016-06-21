@@ -116,7 +116,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 */
 	protected abstract void onHttpMessage(ByteBuf bodyBuf);
 
-	private ByteBuf takeLine() {
+	private ByteBuf takeHeader() {
 		int offset = 0;
 		for (int i = 0; i < readQueue.remainingBufs(); i++) {
 			ByteBuf buf = readQueue.peekBuf(i);
@@ -124,7 +124,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 				if (buf.at(p) == LF) {
 
 					// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
-					if ((p + 1 < buf.limit()) && (buf.at(p + 1) == SP || buf.at(p + 1) == HT)) {
+					if (isMultilineHeader(buf, p)) {
 						preprocessMultiLine(buf, p);
 						continue;
 					}
@@ -141,6 +141,15 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			offset += buf.remaining();
 		}
 		return null;
+	}
+
+	private boolean isMultilineHeader(ByteBuf buf, int p) {
+		return p + 1 < buf.limit() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT) &&
+				isDataBetweenStartAndLF(buf, p);
+	}
+
+	private boolean isDataBetweenStartAndLF(ByteBuf buf, int p) {
+		return !(p == buf.position() || (p - buf.position() == 1 && buf.at(p - 1) == CR));
 	}
 
 	private void preprocessMultiLine(ByteBuf buf, int pos) {
@@ -300,14 +309,14 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			while (true) {
 				assert isRegistered();
 				assert reading == FIRSTLINE || reading == HEADERS;
-				ByteBuf line = takeLine();
-				if (line == null) {
+				ByteBuf headerBuf = takeHeader();
+				if (headerBuf == null) {
 					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE), TOO_LONG_HEADER);
 					return;
 				}
 
-				if (!line.hasRemaining()) {
-					line.recycle();
+				if (!headerBuf.hasRemaining()) {
+					headerBuf.recycle();
 
 					if (reading == FIRSTLINE)
 						throw new ParseException("Empty response from server");
@@ -322,13 +331,13 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 				}
 
 				if (reading == FIRSTLINE) {
-					onFirstLine(line);
-					line.recycle();
+					onFirstLine(headerBuf);
+					headerBuf.recycle();
 					reading = HEADERS;
 					maxHeaders = MAX_HEADERS;
 				} else {
 					check(--maxHeaders >= 0, TOO_MANY_HEADERS);
-					onHeader(line);
+					onHeader(headerBuf);
 				}
 			}
 		}
