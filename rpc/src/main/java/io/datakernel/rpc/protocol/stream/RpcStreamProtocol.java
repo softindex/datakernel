@@ -16,203 +16,108 @@
 
 package io.datakernel.rpc.protocol.stream;
 
-import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.rpc.protocol.RpcConnection;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocol;
 import io.datakernel.serializer.BufferSerializer;
-import io.datakernel.stream.*;
-import io.datakernel.stream.net.TcpStreamSocketConnection;
-import io.datakernel.stream.processor.*;
+import io.datakernel.stream.SimpleStreamConsumer;
+import io.datakernel.stream.SimpleStreamProducer;
+import io.datakernel.stream.StreamStatus;
+import io.datakernel.stream.net.SocketStreamingConnection;
+import io.datakernel.stream.processor.StreamBinaryDeserializer;
+import io.datakernel.stream.processor.StreamBinarySerializer;
+import io.datakernel.stream.processor.StreamLZ4Compressor;
+import io.datakernel.stream.processor.StreamLZ4Decompressor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.channels.SocketChannel;
+import java.nio.channels.ClosedChannelException;
 
-abstract class RpcStreamProtocol implements RpcProtocol {
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+
+@SuppressWarnings("unchecked")
+final class RpcStreamProtocol implements RpcProtocol {
 	private static final Logger logger = LoggerFactory.getLogger(RpcStreamProtocol.class);
 
-	private class Receiver extends AbstractStreamConsumer<RpcMessage> implements StreamDataReceiver<RpcMessage> {
+	private final RpcConnection rpcConnection;
+	private final AsyncTcpSocket asyncTcpSocket;
+	private final SimpleStreamProducer<RpcMessage> sender;
+	private final SimpleStreamConsumer<RpcMessage> receiver;
+	private final SocketStreamingConnection connection;
 
-		public Receiver(Eventloop eventloop) {
-			super(eventloop);
-		}
-
-		@Override
-		protected void onStarted() {
-
-		}
-
-		@Override
-		public StreamDataReceiver<RpcMessage> getDataReceiver() {
-			return this;
-		}
-
-		@Override
-		public void onData(RpcMessage message) {
-			onReceiveMessage(message);
-		}
-
-		@Override
-		protected void onEndOfStream() {
-			sender.close();
-			connection.close();
-		}
-
-		@Override
-		protected void onError(Exception e) {
-			logger.error("RpcStreamProtocol was closed with error", e);
-			sender.closeWithError(e);
-			connection.close();
-		}
-
-		public void closeWithError(Exception e) {
-			super.closeWithError(e);
-		}
-
-	}
-
-	private class Sender extends AbstractStreamProducer<RpcMessage> {
-		private boolean channelOpen;
-
-		public Sender(Eventloop eventloop) {
-			super(eventloop);
-			channelOpen = true;
-		}
-
-		@Override
-		protected void onStarted() {
-
-		}
-
-		@Override
-		protected void onDataReceiverChanged() {
-
-		}
-
-		@Override
-		public void onSuspended() {
-		}
-
-		@Override
-		public void onResumed() {
-		}
-
-		@Override
-		protected void doCleanup() {
-			channelOpen = false;
-		}
-
-		public boolean isOverloaded() {
-			return getProducerStatus() != StreamStatus.READY;
-		}
-
-		public void sendMessage(RpcMessage item) {
-			if (channelOpen) {
-				super.send(item);
-			} else {
-				// ignore message
-			}
-		}
-
-		public void close() {
-			sendEndOfStream();
-		}
-
-		public void closeWithError(Exception e) {
-			super.closeWithError(e);
-		}
-
-		@Override
-		protected void onError(Exception e) {
-			// we do not log error here, because it [was logged] / [will be logged] in Receiver
-			receiver.closeWithError(e);
-		}
-	}
-
-	private final Sender sender;
-	private final Receiver receiver;
-	private final StreamLZ4Compressor compressor;
-	private final StreamLZ4Decompressor decompressor;
-	private final StreamSerializer<RpcMessage> serializer;
-	private final StreamDeserializer<RpcMessage> deserializer;
-	private final boolean compression;
-	private final TcpStreamSocketConnection connection;
-
-	protected RpcStreamProtocol(Eventloop eventloop, SocketChannel socketChannel,
+	protected RpcStreamProtocol(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                            RpcConnection rpcConnection,
 	                            BufferSerializer<RpcMessage> messageSerializer,
 	                            int defaultPacketSize, int maxPacketSize, boolean compression) {
-		sender = new Sender(eventloop);
-		receiver = new Receiver(eventloop);
+		this.rpcConnection = rpcConnection;
+		this.asyncTcpSocket = asyncTcpSocket;
+		sender = new SimpleStreamProducer<>(eventloop, new SimpleStreamProducer.StatusListener() {
+			@Override
+			public void onResumed() {
+			}
 
-		serializer = new StreamBinarySerializer<>(eventloop, messageSerializer, defaultPacketSize,
+			@Override
+			public void onSuspended() {
+			}
+
+			@Override
+			public void onClosedWithError(Exception e) {
+			}
+		});
+
+		receiver = new SimpleStreamConsumer<>(eventloop, new SimpleStreamConsumer.StatusListener() {
+			@Override
+			public void onEndOfStream() {
+			}
+
+			@Override
+			public void onClosedWithError(Exception e) {
+				RpcStreamProtocol.this.rpcConnection.onClosed();
+			}
+		}, rpcConnection);
+
+		StreamBinarySerializer<RpcMessage> serializer = new StreamBinarySerializer<>(eventloop, messageSerializer, defaultPacketSize,
 				maxPacketSize, 0, true);
-		deserializer = new StreamBinaryDeserializer<>(eventloop, messageSerializer, maxPacketSize);
-		this.compression = compression;
+		StreamBinaryDeserializer<RpcMessage> deserializer = new StreamBinaryDeserializer<>(eventloop, messageSerializer, maxPacketSize);
+		this.connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
+
 		if (compression) {
-			compressor = StreamLZ4Compressor.fastCompressor(eventloop);
-			decompressor = new StreamLZ4Decompressor(eventloop);
+			StreamLZ4Compressor compressor = StreamLZ4Compressor.fastCompressor(eventloop);
+			StreamLZ4Decompressor decompressor = new StreamLZ4Decompressor(eventloop);
+			connection.receiveStreamTo(decompressor.getInput(), ignoreCompletionCallback());
+			decompressor.getOutput().streamTo(deserializer.getInput());
+
+			serializer.getOutput().streamTo(compressor.getInput());
+			connection.sendStreamFrom(compressor.getOutput(), ignoreCompletionCallback());
 		} else {
-			compressor = null;
-			decompressor = null;
+			connection.receiveStreamTo(deserializer.getInput(), ignoreCompletionCallback());
+			connection.sendStreamFrom(serializer.getOutput(), ignoreCompletionCallback());
 		}
 
-		connection = new TcpStreamSocketConnection(eventloop, socketChannel) {
-			@Override
-			protected void wire(StreamProducer<ByteBuf> socketReader, StreamConsumer<ByteBuf> socketWriter) {
-				if (RpcStreamProtocol.this.compression) {
-					socketReader.streamTo(decompressor.getInput());
-					decompressor.getOutput().streamTo(deserializer.getInput());
-
-					RpcStreamProtocol.this.serializer.getOutput().streamTo(compressor.getInput());
-					compressor.getOutput().streamTo(socketWriter);
-				} else {
-					socketReader.streamTo(deserializer.getInput());
-					RpcStreamProtocol.this.serializer.getOutput().streamTo(socketWriter);
-				}
-				deserializer.getOutput().streamTo(receiver);
-				sender.streamTo(RpcStreamProtocol.this.serializer.getInput());
-
-				onWired();
-			}
-
-			@Override
-			public void onClosed() {
-				RpcStreamProtocol.this.onClosed();
-			}
-		};
+		deserializer.getOutput().streamTo(receiver);
+		sender.streamTo(serializer.getInput());
 	}
 
 	@Override
 	public void sendMessage(RpcMessage message) {
-		sender.sendMessage(message);
+		sender.send(message);
 	}
 
 	@Override
 	public boolean isOverloaded() {
-		return sender.isOverloaded();
+		return sender.getProducerStatus() == StreamStatus.SUSPENDED;
 	}
 
 	@Override
-	public SocketConnection getSocketConnection() {
+	public AsyncTcpSocket.EventHandler getSocketConnection() {
 		return connection;
 	}
 
-	protected abstract void onWired();
-
-	protected abstract void onReceiveMessage(RpcMessage message);
-
-	protected abstract void onClosed();
-
 	@Override
 	public void close() {
-		sender.close();
-		if (compression) {
-			decompressor.getInput().onProducerEndOfStream();
-		} else {
-			deserializer.getInput().onProducerEndOfStream();
-		}
-		connection.close();
+		asyncTcpSocket.close();
+		connection.onClosedWithError(new ClosedChannelException());
 	}
 }

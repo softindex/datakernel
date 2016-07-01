@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.net;
+package io.datakernel.eventloop;
 
-public interface MessagingEndOfStreamHandler {
-	void onEndOfStream();
+public interface NioChannelEventHandler {
+	void onReadReady();
+
+	void onWriteReady();
 }

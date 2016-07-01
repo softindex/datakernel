@@ -19,21 +19,20 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.util.ByteBufStrings;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.nio.channels.SocketChannel;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
@@ -62,7 +61,7 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(final HttpResponse result) {
 				try {
@@ -113,7 +112,7 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
@@ -134,6 +133,7 @@ public class AsyncHttpClientTest {
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + resultObserver.get());
@@ -151,7 +151,7 @@ public class AsyncHttpClientTest {
 				new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L, HttpUtils.inetAddress("8.8.8.8")));
 		final ResultCallbackFuture<String> resultObserver = new ResultCallbackFuture<>();
 
-		httpClient.execute(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://google.com"), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
@@ -170,6 +170,7 @@ public class AsyncHttpClientTest {
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + resultObserver.get());
@@ -190,8 +191,8 @@ public class AsyncHttpClientTest {
 
 		httpServer.listen();
 
-		httpClient.setMaxHttpMessageSize(12);
-		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.maxHttpMessageSize(12);
+		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
@@ -212,6 +213,7 @@ public class AsyncHttpClientTest {
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + resultObserver.get());
@@ -226,14 +228,32 @@ public class AsyncHttpClientTest {
 
 		final AbstractServer server = new AbstractServer(eventloop) {
 			@Override
-			protected SocketConnection createConnection(SocketChannel socketChannel) {
-				return new TcpSocketConnection(eventloop, socketChannel) {
+			protected AsyncTcpSocket.EventHandler createSocketHandler(final AsyncTcpSocket asyncTcpSocket) {
+				return new AsyncTcpSocket.EventHandler() {
 					@Override
-					protected void onRead() {
-						readInterest(false);
-						write(ByteBufStrings.wrapAscii("\r\n"));
-						writeInterest(false);
-						this.close();
+					public void onRegistered() {
+						asyncTcpSocket.read();
+					}
+
+					@Override
+					public void onRead(ByteBuf buf) {
+						buf.recycle();
+						asyncTcpSocket.write(ByteBufStrings.wrapAscii("\r\n"));
+					}
+
+					@Override
+					public void onReadEndOfStream() {
+						// empty
+					}
+
+					@Override
+					public void onWrite() {
+						asyncTcpSocket.close();
+					}
+
+					@Override
+					public void onClosedWithError(Exception e) {
+						// empty
 					}
 				};
 			}
@@ -245,7 +265,7 @@ public class AsyncHttpClientTest {
 
 		server.listen();
 
-		httpClient.execute(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
+		httpClient.send(HttpRequest.get("http://127.0.0.1:" + PORT), TIMEOUT, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
@@ -265,6 +285,7 @@ public class AsyncHttpClientTest {
 		});
 
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		try {
 			System.err.println("Result: " + resultObserver.get());

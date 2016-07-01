@@ -34,12 +34,12 @@ import static java.lang.Math.max;
 
 /**
  * Represent serializer which serializes data from some type to ByteBuffer.It is a {@link AbstractStreamTransformer_1_1}
- * which receives specified type and streams ByteBufs . It is one of implementation of {@link StreamSerializer}.
+ * which receives specified type and streams ByteBufs.
  *
  * @param <T> original type of data
  */
 @SuppressWarnings({"rawtypes", "unchecked"})
-public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements StreamSerializer<T>, EventloopJmxMBean {
+public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1_1<T, ByteBuf> implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinarySerializer.class);
 	private static final ArrayIndexOutOfBoundsException OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException();
 
@@ -122,15 +122,15 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void allocateBuffer() {
-			byteBuf = ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
+			byteBuf = ByteBufPool.allocateAtLeast(max(defaultBufferSize, headerSize + estimatedMessageSize));
 			outputBuffer.set(byteBuf.array(), 0);
 		}
 
 		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
-			byteBuf.position(0);
+			byteBuf.setReadPosition(0);
 			int size = outputBuffer.position();
 			if (size != 0) {
-				byteBuf.limit(size);
+				byteBuf.setWritePosition(size);
 				jmxBytes += size;
 				jmxBufs++;
 				if (outputProducer.getProducerStatus().isOpen()) {
@@ -289,10 +289,6 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		this.outputProducer = new OutputProducer(serializer, defaultBufferSize, maxMessageSize, flushDelayMillis, skipSerializationErrors);
 	}
 
-	/**
-	 * Bytes will be sent immediately.
-	 */
-	@Override
 	public void flush() {
 		outputProducer.flush();
 	}

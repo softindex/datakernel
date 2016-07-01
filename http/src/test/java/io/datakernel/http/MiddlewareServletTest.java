@@ -23,6 +23,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
 
 public class MiddlewareServletTest {
@@ -40,6 +41,7 @@ public class MiddlewareServletTest {
 				assertEquals(expectedBody, result.getBody() == null ? "" : result.getBody().toString());
 				assertEquals(expectedCode, result.getCode());
 				System.out.println(result + "  " + result.getBody());
+				result.recycleBufs();
 			}
 
 			@Override
@@ -91,6 +93,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(request7, callback("Executed: /b/f", 200));
 		main.serveAsync(request8, callback("Executed: /b/g", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -131,6 +134,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(request7, callback("Executed: /b/f", 200));
 		main.serveAsync(request8, callback("Executed: /b/g", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -158,7 +162,7 @@ public class MiddlewareServletTest {
 		expectedException.expect(RuntimeException.class);
 		expectedException.expectMessage("Can't map. Handler already exists");
 		s1.get("/", anotherAction);
-
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -201,6 +205,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(request6, callback("Executed: /a/e", 200));
 		main.serveAsync(request7, callback("Executed: /a/c/f", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -237,6 +242,7 @@ public class MiddlewareServletTest {
 		main.get("/", exc);
 
 		main.serveAsync(request, callback("SHALL NOT BE EXECUTED", 500));
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -249,6 +255,7 @@ public class MiddlewareServletTest {
 						+ " " + request.getUrlParameter("uid")
 						+ " " + request.getUrlParameter("eid")));
 				callback.onResult(response);
+				request.recycleBufs();
 			}
 		};
 
@@ -261,6 +268,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(HttpRequest.get("http://www.coursera.org/555/a/777"), callback("555 777 null", 200));
 		main.serveAsync(HttpRequest.get("http://www.coursera.org"), callback("", 404));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -291,6 +299,7 @@ public class MiddlewareServletTest {
 		ms.serveAsync(HttpRequest.get(TEMPLATE + "/serve/1/wash"), callback("served car: 1", 200));
 		ms.serveAsync(HttpRequest.get(TEMPLATE + "/serve/2/feed"), callback("served man: 2", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -336,6 +345,7 @@ public class MiddlewareServletTest {
 		servlet.serveAsync(request2, callback("POST", 200));
 		servlet.serveAsync(request3, callback("WILDCARD", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -365,6 +375,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(request1, callback("Action executed", 200));
 		main.serveAsync(request2, callback("Stopped at admin: /action/ban", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -382,5 +393,6 @@ public class MiddlewareServletTest {
 		System.out.println("404 " + DELIM);
 		main.serveAsync(HttpRequest.get(TEMPLATE + "/a/123/b/c"), callback("", 404));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

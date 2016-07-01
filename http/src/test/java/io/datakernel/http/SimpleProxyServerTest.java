@@ -53,7 +53,7 @@ public class SimpleProxyServerTest {
 		return new AsyncHttpServer(primaryEventloop, new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, final Callback callback) {
-				httpClient.execute(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
+				httpClient.send(HttpRequest.get("http://127.0.0.1:" + ECHO_SERVER_PORT + request.getUrl().getPath()), 1000, new ResultCallback<HttpResponse>() {
 					@Override
 					public void onResult(final HttpResponse result) {
 						HttpResponse res = HttpResponse.create(result.getCode());
@@ -115,11 +115,11 @@ public class SimpleProxyServerTest {
 		stream.write(encodeAscii("GET /hello HTTP1.1\r\nHost: localhost\r\nConnection: close\n\r\n"));
 		readAndAssert(socket.getInputStream(), "HTTP/1.1 200 OK\r\nContent-Length: 17\r\n\r\nFORWARDED: /hello");
 
+		httpClient.closeFuture().await();
+
 		echoServer.closeFuture().await();
 
 		proxyServer.closeFuture().await();
-
-		httpClient.closeFuture().await();
 
 		assertTrue(toByteArray(socket.getInputStream()).length == 0);
 		socket.close();

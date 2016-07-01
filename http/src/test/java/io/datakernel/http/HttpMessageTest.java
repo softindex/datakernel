@@ -76,9 +76,8 @@ public class HttpMessageTest {
 				HttpRequest.get("http://test.com/index.html").cookies(asList(new HttpCookie("cookie1", "value1"), new HttpCookie("cookie2", "value2"))));
 
 		HttpRequest request = HttpRequest.post("http://test.com/index.html");
-		ByteBuf buf = ByteBufPool.allocate(100);
+		ByteBuf buf = ByteBufPool.allocateAtLeast(100);
 		buf.put("/abc".getBytes(), 0, 4);
-		buf.flip();
 		request.setBody(buf);
 		assertHttpRequestEquals("POST /index.html HTTP/1.1\r\nHost: test.com\r\nContent-Length: 4\r\n\r\n/abc", request);
 		buf.recycle();

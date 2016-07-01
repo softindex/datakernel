@@ -68,7 +68,7 @@ public abstract class HttpMessage {
 
 	protected void setHeader(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		setHeader(HttpHeaders.asBytes(header, value.array(), value.position(), value.remaining()));
+		setHeader(HttpHeaders.asBytes(header, value.array(), value.getReadPosition(), value.remainingToRead()));
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
 				headerBufs = new ArrayList<>(4);
@@ -79,7 +79,7 @@ public abstract class HttpMessage {
 
 	protected void addHeader(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		addHeader(HttpHeaders.asBytes(header, value.array(), value.position(), value.remaining()));
+		addHeader(HttpHeaders.asBytes(header, value.array(), value.getReadPosition(), value.remainingToRead()));
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
 				headerBufs = new ArrayList<>(4);
@@ -187,21 +187,18 @@ public abstract class HttpMessage {
 		for (HttpHeaders.Value entry : this.headers) {
 			HttpHeader header = entry.getKey();
 
-			buf.set(0, CR);
-			buf.set(1, LF);
-			buf.advance(2);
+			buf.put(CR);
+			buf.put(LF);
 			header.writeTo(buf);
-			buf.set(0, (byte) ':');
-			buf.set(1, SP);
-			buf.advance(2);
+			buf.put((byte) ':');
+			buf.put(SP);
 			entry.writeTo(buf);
 		}
 
-		buf.set(0, CR);
-		buf.set(1, LF);
-		buf.set(2, CR);
-		buf.set(3, LF);
-		buf.advance(4);
+		buf.put(CR);
+		buf.put(LF);
+		buf.put(CR);
+		buf.put(LF);
 	}
 
 	protected void writeBody(ByteBuf buf) {
@@ -220,7 +217,7 @@ public abstract class HttpMessage {
 		}
 		size += 4; // CR,LF,CR,LF
 		if (body != null)
-			size += body.remaining();
+			size += body.remainingToRead();
 		return size;
 	}
 

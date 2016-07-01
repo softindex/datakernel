@@ -17,19 +17,21 @@
 package io.datakernel.stream.net;
 
 import io.datakernel.async.CompletionCallback;
-import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamProducer;
 
-public interface Messaging<O> {
-	void sendMessage(O outputItem);
+public interface Messaging<I, O> {
+	interface ReceiveMessageCallback<I> {
+		void onReceive(I msg);
 
-	void write(StreamProducer<ByteBuf> producer, CompletionCallback completionCallback);
+		void onReceiveEndOfStream();
 
-	StreamProducer<ByteBuf> read();
+		void onException(Exception e);
+	}
 
-	void shutdown();
+	void receive(ReceiveMessageCallback<I> callback);
 
-	void shutdownReader();
+	void send(O msg, CompletionCallback callback);
 
-	void shutdownWriter();
+	void sendEndOfStream(CompletionCallback callback);
+
+	void close();
 }

@@ -27,7 +27,7 @@ public class ByteArraySlabPoolTest {
 	private void checkAllocate(int size, int expectedSize, int[] poolSizes) {
 		ByteBufPool.clear();
 
-		ByteBuf bytes = ByteBufPool.allocate(size);
+		ByteBuf bytes = ByteBufPool.allocateAtLeast(size);
 		assertEquals(expectedSize, bytes.array().length);
 		for (int i = 0; i < poolSizes.length; i++) {
 			assertTrue(ByteBufPool.getPool()[i].isEmpty());
@@ -40,7 +40,7 @@ public class ByteArraySlabPoolTest {
 			assertEquals(poolSizes[i] == 0 ? 0 : 1, slab.size());
 			if (!slab.isEmpty()) {
 				assertTrue(slab.peek().isRecycled());
-				assertEquals(poolSizes[i], slab.peek().capacity());
+				assertEquals(poolSizes[i], slab.peek().getLimit());
 			}
 		}
 	}
@@ -70,10 +70,10 @@ public class ByteArraySlabPoolTest {
 	private void checkReallocate(int size1, int size2, boolean equals) {
 		ByteBufPool.clear();
 
-		ByteBuf bytes1 = ByteBufPool.allocate(size1);
+		ByteBuf bytes1 = ByteBufPool.allocateAtLeast(size1);
 		assertTrue(size1 <= bytes1.array().length);
 
-		ByteBuf bytes2 = ByteBufPool.reallocate(bytes1, size2);
+		ByteBuf bytes2 = ByteBufPool.reallocateAtLeast(bytes1, size2);
 		assertTrue(size2 <= bytes2.array().length);
 
 		assertEquals(equals, bytes1 == bytes2);

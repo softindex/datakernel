@@ -1,0 +1,38 @@
+package io.datakernel.stream.net;
+
+import io.datakernel.async.ParseException;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.net.MessagingSerializers.ByteBufPoolAppendable;
+import io.datakernel.util.ByteBufStrings;
+import org.junit.Test;
+
+import static io.datakernel.bytebuf.ByteBufPool.*;
+import static org.junit.Assert.assertEquals;
+
+public class ByteBufPoolAppendableTest {
+	private static final String HELLO_WORLD = "Hello, World!";
+
+	@Test
+	public void testAppendSimple() {
+		ByteBufPoolAppendable appendable = new ByteBufPoolAppendable();
+		appendable.append(HELLO_WORLD);
+		ByteBuf buf = appendable.get();
+		assertEquals(0, buf.getReadPosition());
+		assertEquals(13, buf.getWritePosition());
+		assertEquals(ByteBufStrings.decodeAscii(buf), HELLO_WORLD);
+		buf.recycle();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
+	public void testAppendWithResizing() throws ParseException {
+		ByteBufPoolAppendable appendable = new ByteBufPoolAppendable(8);
+		appendable.append(HELLO_WORLD);
+		ByteBuf buf = appendable.get();
+		assertEquals(0, buf.getReadPosition());
+		assertEquals(13, buf.getWritePosition());
+		assertEquals(ByteBufStrings.decodeAscii(buf), HELLO_WORLD);
+		buf.recycle();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+}

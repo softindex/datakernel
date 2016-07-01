@@ -16,8 +16,8 @@
 
 package io.datakernel.logfs;
 
-import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
@@ -84,8 +84,8 @@ public class LogManagerTest {
 
 		LocalFsLogFileSystem fileSystem = new LocalFsLogFileSystem(eventloop, executor, testDir);
 		final LogManagerImpl<String> logManager = new LogManagerImpl<>(eventloop, fileSystem, BufferSerializers.utf16Serializer());
-		final StreamSender<String> streamSender = new StreamSender<>(eventloop, false);
-		streamSender.streamTo(logManager.consumer(logPartition));
+		final SimpleStreamProducer<String> sender = new SimpleStreamProducer<>(eventloop);
+		sender.streamTo(logManager.consumer(logPartition));
 
 		Map<Long, String> testData = new LinkedHashMap<>();
 		testData.put(ONE_HOUR - 2 * ONE_SECOND, "1");
@@ -103,7 +103,7 @@ public class LogManagerTest {
 				public void run() {
 					timeProvider.setTime(entry.getKey());
 					long timestamp = eventloop.refreshTimestampAndGet();
-					streamSender.trySend(entry.getValue());
+					sender.send(entry.getValue());
 					timeProvider.setTime(timestamp + LogManagerImpl.DEFAULT_FLUSH_DELAY + 1);
 					eventloop.refreshTimestampAndGet();
 				}
@@ -115,7 +115,7 @@ public class LogManagerTest {
 		eventloop.execute(new Runnable() {
 			@Override
 			public void run() {
-				streamSender.endStreaming();
+				sender.sendEndOfStream();
 			}
 		});
 

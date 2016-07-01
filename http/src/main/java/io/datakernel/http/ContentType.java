@@ -90,8 +90,8 @@ public final class ContentType {
 	}
 
 	static void render(ContentType type, ByteBuf buf) {
-		int pos = render(type, buf.array(), buf.position());
-		buf.position(pos);
+		int pos = render(type, buf.array(), buf.getWritePosition());
+		buf.setWritePosition(pos);
 	}
 
 	static int render(ContentType type, byte[] container, int pos) {

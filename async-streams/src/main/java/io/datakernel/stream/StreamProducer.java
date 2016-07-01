@@ -59,5 +59,4 @@ public interface StreamProducer<T> {
 	StreamStatus getProducerStatus();
 
 	Exception getProducerException();
-
 }

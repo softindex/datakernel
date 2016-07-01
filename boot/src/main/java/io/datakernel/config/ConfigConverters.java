@@ -281,6 +281,10 @@ public final class ConfigConverters {
 				result = result.keepAlive(config.get(ofBoolean(), "keepAlive"));
 			if (config.hasValue("tcpNoDelay"))
 				result = result.tcpNoDelay(config.get(ofBoolean(), "tcpNoDelay"));
+			if (config.hasValue("readTimeout"))
+				result = result.readTimeout(config.get(ofLong(), "readTimeout"));
+			if (config.hasValue("writeTimeout"))
+				result = result.writeTimeout(config.get(ofLong(), "writeTimeout"));
 			return result;
 		}
 	}

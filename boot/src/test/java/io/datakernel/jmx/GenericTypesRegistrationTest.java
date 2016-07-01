@@ -37,7 +37,7 @@ public class GenericTypesRegistrationTest {
 	private final String domain = ServiceStubOne.class.getPackage().getName();
 
 	@Test
-	public void itShouldFormProperlyNameForTypeWithSingleGenericParameter() throws Exception {
+	public void itShouldFormProperNameForTypeWithSingleGenericParameter() throws Exception {
 		final ServiceStubOne service = new ServiceStubOne();
 
 		context.checking(new Expectations() {{
@@ -51,8 +51,8 @@ public class GenericTypesRegistrationTest {
 	}
 
 	@Test
-	public void itShouldFormProperlyNameForTypeWithSeveralGenericParameter() throws Exception {
-		final ServiceStubOne service = new ServiceStubOne();
+	public void itShouldFormProperNameForTypeWithSeveralGenericParameter() throws Exception {
+		final ServiceStubThree<String, Integer, Long> service = new ServiceStubThree<>();
 
 		context.checking(new Expectations() {{
 			oneOf(mBeanServer).registerMBean(with(service),

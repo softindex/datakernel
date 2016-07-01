@@ -50,7 +50,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
 import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.logfs.LogManagerImpl.DEFAULT_FILE_SWITCH_PERIOD;
 import static org.junit.Assert.assertEquals;
 
@@ -138,7 +138,7 @@ public class LogStreamConsumer_ByteBufferTest {
 
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -210,7 +210,7 @@ public class LogStreamConsumer_ByteBufferTest {
 		}
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 	}
 

@@ -14,19 +14,34 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamDataReceiver;
 
-/**
- * Represent deserializer which deserializes data from ByteBuffer to some type. Is a {@link AbstractStreamConsumer} which
- * receives ByteBuffers and {@link AbstractStreamProducer} which streams specified type.
- *
- * @param <T> original type of data
- */
-public interface StreamDeserializer<T> extends StreamTransformer<ByteBuf, T> {
-	void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver);
+import java.net.InetSocketAddress;
+
+public interface AsyncTcpSocket {
+	interface EventHandler {
+		void onRegistered();
+
+		void onRead(ByteBuf buf);
+
+		void onReadEndOfStream();
+
+		void onWrite();
+
+		void onClosedWithError(Exception e);
+	}
+
+	void setEventHandler(EventHandler eventHandler);
+
+	void read();
+
+	void write(ByteBuf buf);
+
+	void writeEndOfStream();
+
+	void close();
+
+	InetSocketAddress getRemoteSocketAddress();
 }

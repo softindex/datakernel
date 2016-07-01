@@ -26,6 +26,7 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.OpenOption;
@@ -44,7 +45,7 @@ public class AsyncFileTest {
 
 	@Test
 	public void testReadFully() throws Exception {
-		final java.io.File tempFile = temporaryFolder.newFile("hello-2.html");
+		final File tempFile = temporaryFolder.newFile("hello-2.html");
 		final Eventloop eventloop = new Eventloop();
 		final Path srcPath = Paths.get("test_data/hello.html");
 		AsyncFile.open(eventloop, Executors.newCachedThreadPool(), srcPath, new OpenOption[]{READ}, new ResultCallback<AsyncFile>() {

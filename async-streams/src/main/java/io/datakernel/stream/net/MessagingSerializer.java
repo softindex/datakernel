@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream.net;
 
+import io.datakernel.annotation.Nullable;
+import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.StreamConsumer;
-import io.datakernel.stream.StreamProducer;
 
-/**
- * Represent serializer which serializes data from some type to ByteBuffer. Is a {@link StreamConsumer} which
- * receives specified type and {@link StreamProducer} which streams ByteBuffers
- *
- * @param <T> original type of data
- */
-public interface StreamSerializer<T> extends StreamTransformer<T, ByteBuf> {
-	void flush();
+public interface MessagingSerializer<I, O> {
+	@Nullable
+	I tryDeserialize(ByteBuf buf) throws ParseException;
+
+	ByteBuf serialize(O item);
 }

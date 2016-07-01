@@ -65,7 +65,7 @@ public class HttpTolerantApplicationTest {
 
 	private static void write(Socket socket, String string) throws IOException {
 		ByteBuf buf = ByteBuf.wrap(encodeAscii(string));
-		socket.getOutputStream().write(buf.array(), buf.position(), buf.remaining());
+		socket.getOutputStream().write(buf.array(), buf.getReadPosition(), buf.remainingToRead());
 	}
 
 	private static void readAndAssert(InputStream is, String expected) throws IOException {
@@ -144,7 +144,7 @@ public class HttpTolerantApplicationTest {
 			final AsyncHttpClient httpClient = new AsyncHttpClient(eventloop, new NativeDnsResolver(eventloop, DEFAULT_DATAGRAM_SOCKET_SETTINGS, 3_000L,
 					HttpUtils.inetAddress("8.8.8.8")));
 
-			httpClient.execute(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
+			httpClient.send(HttpRequest.get("http://127.0.0.1:" + port), 1_000, new ResultCallback<HttpResponse>() {
 				@Override
 				public void onResult(HttpResponse response) {
 					resultObserver.onResult(response.getHeader(HttpHeaders.CONTENT_TYPE));

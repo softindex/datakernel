@@ -29,6 +29,7 @@ public final class HttpUri {
 
 	private static final String SCHEMA_DELIM = "://";
 	private static final String HTTP = "http";
+	private static final String HTTPS = "https";
 	private static final char IPV6_OPENING_BRACKET = '[';
 	private static final String IPV6_CLOSING_SECTION_WITH_PORT = "]:";
 
@@ -56,6 +57,7 @@ public final class HttpUri {
 		}
 	}
 
+	private final String schema;
 	private final String uri;
 	private final String hostPort;
 	private final String host;
@@ -75,9 +77,10 @@ public final class HttpUri {
 			host = null;
 			port = -1;
 			pathAndQuery = uri.isEmpty() ? "/" : uri;
+			schema = "";
 		} else {
-			String schema = uri.substring(0, index);
-			if (!schema.equals(HTTP))
+			schema = uri.substring(0, index);
+			if (!(schema.equals(HTTP) || schema.equals(HTTPS)))
 				throw new IllegalArgumentException("Unsupported schema: " + schema);
 			index += SCHEMA_DELIM.length();
 			int slash = uri.indexOf('/', index);
@@ -91,7 +94,7 @@ public final class HttpUri {
 					port = parseInt(hostPort.substring(closingSection + 2));
 				} else {
 					host = hostPort;
-					port = 80;
+					port = schema.equals(HTTPS) ? 443 : 80;
 				}
 			} else {
 				// parse IPv4
@@ -101,7 +104,7 @@ public final class HttpUri {
 					port = parseInt(hostPort.substring(colon + 1));
 				} else {
 					host = hostPort;
-					port = 80;
+					port = schema.equals(HTTPS) ? 443 : 80;
 				}
 			}
 
@@ -119,6 +122,10 @@ public final class HttpUri {
 
 	public boolean isPartial() {
 		return host == null;
+	}
+
+	public String getSchema() {
+		return schema;
 	}
 
 	public String getUri() {

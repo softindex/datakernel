@@ -131,12 +131,12 @@ class StressClient {
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							throw new RuntimeException();
+						public void onException(Exception e) {
+							logger.info("can't download: {}", e.getMessage());
 						}
 					});
 				} catch (IOException e) {
-					throw new RuntimeException(e);
+					logger.info("can't create consumer: {}", e.getMessage());
 				}
 
 			}
@@ -260,7 +260,7 @@ class StressClient {
 
 			@Override
 			public void onException(Exception e) {
-				throw new RuntimeException(e);
+				logger.error("can't download", e);
 			}
 		});
 		eventloop.run();

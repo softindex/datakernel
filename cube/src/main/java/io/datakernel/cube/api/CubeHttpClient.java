@@ -55,7 +55,7 @@ public final class CubeHttpClient {
 	}
 
 	public void query(ReportingQuery query, final ResultCallback<ReportingQueryResult> callback) {
-		httpClient.execute(buildRequest(query), timeout, new ResultCallback<HttpResponse>() {
+		httpClient.send(buildRequest(query), timeout, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse httpResponse) {
 				String response;

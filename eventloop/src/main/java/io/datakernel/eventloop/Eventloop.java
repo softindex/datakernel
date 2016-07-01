@@ -540,7 +540,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		}
 
 		if (connected) {
-			connectCallback.onConnect(channel);
+			AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(Eventloop.this, channel);
+			AsyncTcpSocket.EventHandler eventHandler = connectCallback.onConnect(asyncTcpSocket);
+			asyncTcpSocket.setEventHandler(eventHandler);
+			asyncTcpSocket.register();
 		} else {
 			connectCallback.onException(new SimpleException("Not connected"));
 		}
@@ -553,8 +556,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	private void onRead(SelectionKey key) {
 		assert inEventloopThread();
-		SocketConnection connection = (SocketConnection) key.attachment();
-		connection.onReadReady();
+		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
+		handler.onReadReady();
 	}
 
 	/**
@@ -564,8 +567,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	private void onWrite(SelectionKey key) {
 		assert inEventloopThread();
-		SocketConnection connection = (SocketConnection) key.attachment();
-		connection.onWriteReady();
+		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
+		handler.onWriteReady();
 	}
 
 	private static void closeQuietly(AutoCloseable closeable) {
@@ -664,6 +667,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			socketChannel.connect(address);
 			socketChannel.register(ensureSelector(), SelectionKey.OP_CONNECT,
 					timeoutConnectCallback(socketChannel, timeout, connectCallback));
+
 		} catch (IOException e) {
 			recordIoError(e, address);
 			closeQuietly(socketChannel);
@@ -696,17 +700,17 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 			});
 
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				if (scheduledTimeout.isComplete())
-					return;
+					throw new AssertionError();
 				scheduledTimeout.cancel();
-				connectCallback.onConnect(socketChannel);
+				return connectCallback.onConnect(asyncTcpSocket);
 			}
 
 			@Override
 			public void onException(Exception exception) {
 				if (scheduledTimeout.isComplete())
-					return;
+					throw new AssertionError();
 				scheduledTimeout.cancel();
 				connectCallback.onException(exception);
 			}

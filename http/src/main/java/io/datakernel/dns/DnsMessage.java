@@ -74,10 +74,10 @@ public final class DnsMessage {
 	 * @return ByteBuf with DnsMessage
 	 */
 	public static ByteBuf newQuery(String domainName, boolean ipv6) {
-		ByteBuf byteBuf = ByteBufPool.allocate(MAX_SIZE);
+		ByteBuf byteBuf = ByteBufPool.allocateAtLeast(MAX_SIZE);
 		DnsMessage m = new DnsMessage(byteBuf.array());
 		m.generateRequest(domainName, ipv6);
-		byteBuf.limit(m.idx);
+		byteBuf.setWritePosition(m.idx);
 		return byteBuf;
 	}
 

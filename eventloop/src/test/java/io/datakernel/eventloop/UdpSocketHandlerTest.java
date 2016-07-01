@@ -38,72 +38,67 @@ public class UdpSocketHandlerTest {
 
 	private final byte[] bytesToSend = new byte[]{-127, 100, 0, 5, 11, 13, 17, 99};
 
-	private class ClientUdpHandler extends UdpSocketHandler {
-		public ClientUdpHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
-			super(eventloop, datagramChannel);
-		}
-
-		@Override
-		protected void onRead(UdpPacket packet) {
-			System.out.println("Client read completed");
-
-			byte[] bytesReceived = packet.getBuf().array();
-			byte[] message = new byte[packet.getBuf().limit()];
-
-			System.out.print("Received " + packet.getBuf().limit() + " bytes: ");
-			for (int i = 0; i < packet.getBuf().limit(); ++i) {
-				message[i] = bytesReceived[i];
-
-				if (i > 0) {
-					System.out.print(", ");
-				}
-				System.out.print(bytesReceived[i]);
+	private AsyncUdpSocketImpl getEchoServerUdpSocket(DatagramChannel serverChannel) {
+		final AsyncUdpSocketImpl socket = new AsyncUdpSocketImpl(eventloop, serverChannel);
+		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
+			@Override
+			public void onRegistered() {
+				socket.read();
 			}
 
-			System.out.println("");
-
-			assertArrayEquals(bytesToSend, message);
-
-			packet.recycle();
-
-			close();
-		}
-
-		public void sendTestData(byte[] data, InetSocketAddress address) {
-			send(new UdpPacket(ByteBuf.wrap(data), address));
-
-			System.out.print("Sent " + data.length + " bytes: ");
-			for (int i = 0; i < data.length; ++i) {
-				System.out.print(data[i]);
-				if (i != data.length - 1) {
-					System.out.print(", ");
-				}
+			@Override
+			public void onRead(UdpPacket packet) {
+				socket.send(packet);
 			}
-			System.out.println("");
-		}
 
-		@Override
-		protected void onWriteFlushed() {
-			System.out.println("Client write completed");
-		}
+			@Override
+			public void onSent() {
+				socket.close();
+			}
+
+			@Override
+			public void onClosedWithError(Exception e) {
+				// empty
+			}
+		});
+		return socket;
 	}
 
-	private class EchoServerUdpHandler extends UdpSocketHandler {
-		public EchoServerUdpHandler(Eventloop eventloop, DatagramChannel datagramChannel) {
-			super(eventloop, datagramChannel);
-		}
+	private AsyncUdpSocketImpl getClientUdpSocket(DatagramChannel clientChannel) {
+		final AsyncUdpSocketImpl socket = new AsyncUdpSocketImpl(eventloop, clientChannel);
+		socket.setEventHandler(new AsyncUdpSocket.EventHandler() {
+			@Override
+			public void onRegistered() {
+				sendTestData(bytesToSend, SERVER_ADDRESS);
+			}
 
-		@Override
-		protected void onRead(UdpPacket packet) {
-			System.out.println("Server read completed from port " + packet.getSocketAddress().getPort());
-			send(packet);
-		}
+			@Override
+			public void onRead(UdpPacket packet) {
+				byte[] bytesReceived = packet.getBuf().array();
+				byte[] message = new byte[packet.getBuf().remainingToRead()];
 
-		@Override
-		protected void onWriteFlushed() {
-			System.out.println("Server write completed");
-			close();
-		}
+				System.arraycopy(bytesReceived, 0, message, 0, packet.getBuf().remainingToRead());
+				assertArrayEquals(bytesToSend, message);
+
+				packet.recycle();
+				socket.close();
+			}
+
+			@Override
+			public void onSent() {
+				socket.read();
+			}
+
+			@Override
+			public void onClosedWithError(Exception e) {
+				throw new AssertionError(e);
+			}
+
+			void sendTestData(byte[] data, InetSocketAddress address) {
+				socket.send(new UdpPacket(ByteBuf.wrap(data), address));
+			}
+		});
+		return socket;
 	}
 
 	@Before
@@ -120,15 +115,14 @@ public class UdpSocketHandlerTest {
 				try {
 					//  server
 					DatagramChannel serverChannel = createDatagramChannel(defaultDatagramSocketSettings(), SERVER_ADDRESS, null);
-					EchoServerUdpHandler serverConnection = new EchoServerUdpHandler(eventloop, serverChannel);
+					AsyncUdpSocketImpl serverConnection = getEchoServerUdpSocket(serverChannel);
 					serverConnection.register();
 
 					// client
 					DatagramChannel clientChannel = createDatagramChannel(defaultDatagramSocketSettings(), null, null);
-					ClientUdpHandler clientConnection = new ClientUdpHandler(eventloop, clientChannel);
+					AsyncUdpSocketImpl clientConnection = getClientUdpSocket(clientChannel);
 					clientConnection.register();
 
-					clientConnection.sendTestData(bytesToSend, SERVER_ADDRESS);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}

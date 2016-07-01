@@ -19,9 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.*;
 import io.datakernel.dns.DnsClient;
 import io.datakernel.dns.DnsException;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.*;
 import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
@@ -30,16 +28,18 @@ import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -53,7 +53,7 @@ import static java.util.Arrays.asList;
 public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
-	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
+	private static final long DEFAULT_KEEP_CONNECTION_IN_POOL_TIME = 30 * 1000L;
 
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final BindException BIND_EXCEPTION = new BindException();
@@ -73,7 +73,12 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private long bindExceptionBlockTimeout = 24 * 60 * 60 * 1000L;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
-	private boolean running;
+	// timeouts
+	private long keepConnectionInPoolTime = DEFAULT_KEEP_CONNECTION_IN_POOL_TIME;
+
+	// SSL
+	private SSLContext sslContext;
+	private ExecutorService executor;
 
 	// JMX
 	private final ValueStats timeCheckExpired = new ValueStats();
@@ -88,23 +93,10 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	private int inetAddressIdx = 0;
 
-	/**
-	 * Creates a new instance of HttpClientImpl with default socket settings
-	 *
-	 * @param eventloop eventloop in which will handle this connection
-	 * @param dnsClient DNS client for resolving IP addresses for the specified host names
-	 */
 	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient) {
 		this(eventloop, dnsClient, defaultSocketSettings());
 	}
 
-	/**
-	 * Creates a new instance of HttpClientImpl
-	 *
-	 * @param eventloop      eventloop in which will handle this connection
-	 * @param dnsClient      DNS client for resolving IP addresses for the specified host names
-	 * @param socketSettings settings for creating socket
-	 */
 	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
 		this.dnsClient = dnsClient;
@@ -118,17 +110,28 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		this.headerChars = chars;
 	}
 
-	public AsyncHttpClient setBindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
+	public AsyncHttpClient enableSsl(SSLContext sslContext, ExecutorService executor) {
+		this.sslContext = sslContext;
+		this.executor = executor;
+		return this;
+	}
+
+	public AsyncHttpClient keepConnectionAlive(long time) {
+		this.keepConnectionInPoolTime = time;
+		return this;
+	}
+
+	public AsyncHttpClient bindExceptionBlockTimeout(long bindExceptionBlockTimeout) {
 		this.bindExceptionBlockTimeout = bindExceptionBlockTimeout;
 		return this;
 	}
 
-	public AsyncHttpClient setBlockLocalAddresses(boolean blockLocalAddresses) {
+	public AsyncHttpClient blockLocalAddresses(boolean blockLocalAddresses) {
 		this.blockLocalAddresses = blockLocalAddresses;
 		return this;
 	}
 
-	public AsyncHttpClient setMaxHttpMessageSize(int size) {
+	public AsyncHttpClient maxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
 		return this;
 	}
@@ -157,12 +160,12 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 			ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
 			while (node != null) {
-				AbstractHttpConnection connection = node.getValue();
+				HttpClientConnection connection = (HttpClientConnection) node.getValue();
 				node = node.getNext();
 
-				assert connection.getEventloop().inEventloopThread();
-				long idleTime = now - connection.getActivityTime();
-				if (idleTime < MAX_IDLE_CONNECTION_TIME)
+				assert eventloop.inEventloopThread();
+				long idleTime = now - connection.getLastUsedTime();
+				if (idleTime < keepConnectionInPoolTime)
 					break; // connections must back ordered by activity
 				connection.close();
 				count++;
@@ -175,14 +178,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return count;
 	}
 
-	private HttpClientConnection createConnection(SocketChannel socketChannel) {
-		HttpClientConnection connection = new HttpClientConnection(eventloop, socketChannel, this, headerChars, maxHttpMessageSize);
-		if (connectionsList.isEmpty())
-			scheduleCheck();
-		return connection;
-	}
-
-	private HttpClientConnection getFreeConnection(InetSocketAddress address) {
+	private HttpClientConnection getFreeConnection(HttpRequest request, InetSocketAddress address) {
 		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
 		if (list == null)
 			return null;
@@ -190,12 +186,25 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			HttpClientConnection connection = list.removeFirstValue();
 			if (connection == null)
 				break;
-			if (connection.isRegistered()) {
+			if (!connection.isClosed()) {
+				if (isHttpsRequest(request)) {
+					if (!connection.isSecuredConnection()) {
+						return null;
+					}
+				} else {
+					if (connection.isSecuredConnection()) {
+						return null;
+					}
+				}
 				connection.ipConnectionListNode = null;
 				return connection;
 			}
 		}
 		return null;
+	}
+
+	private boolean isHttpsRequest(HttpRequest request) {
+		return request.getUrl().getSchema().equals("https");
 	}
 
 	/**
@@ -204,7 +213,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	 * @param connection connections for putting
 	 */
 	protected void addToIpPool(HttpClientConnection connection) {
-		assert connection.isRegistered();
+		assert !connection.isClosed();
 		assert connection.ipConnectionListNode == null;
 
 		InetSocketAddress address = connection.getRemoteSocketAddress();
@@ -246,7 +255,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	 * @param timeout  time which client will wait result
 	 * @param callback callback for handling result
 	 */
-	public void execute(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
+	public void send(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
 		checkNotNull(request);
 		assert eventloop.inEventloopThread();
 
@@ -300,27 +309,33 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		final long timeoutTime = eventloop.currentTimeMillis() + timeout;
 		final InetSocketAddress address = new InetSocketAddress(inetAddress, request.getUrl().getPort());
 
-		HttpClientConnection connection = getFreeConnection(address);
+		HttpClientConnection connection = getFreeConnection(request, address);
 		if (connection != null) {
 			sendRequest(connection, request, timeoutTime, callback);
 			return;
 		}
 
-		logger.trace("eventloop.connect Calling {}", request);
 		eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				logger.trace("eventloop.connect.onConnect Calling {}", request);
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				removePendingSocketConnect(address);
-				HttpClientConnection connection = createConnection(socketChannel);
-				connection.register();
-				if (timeoutTime <= eventloop.currentTimeMillis()) {
-					// timeout for this request, reuse for other requests
-					addToIpPool(connection);
-					callback.onException(TIMEOUT_EXCEPTION);
-					return;
+				socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+				AsyncSslSocket asyncSslSocket = null;
+				if (sslContext != null && isHttpsRequest(request)) {
+					SSLEngine ssl = sslContext.createSSLEngine();
+					ssl.setUseClientMode(true);
+					asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
 				}
+
+				HttpClientConnection connection = new HttpClientConnection(eventloop, address,
+						asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
+						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
+				if (asyncSslSocket != null)
+					asyncSslSocket.setEventHandler(connection);
+				if (connectionsList.isEmpty())
+					scheduleCheck();
 				sendRequest(connection, request, timeoutTime, callback);
+				return asyncSslSocket != null ? asyncSslSocket : connection;
 			}
 
 			@Override
@@ -350,7 +365,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
 		connectionsList.moveNodeToLast(connection.connectionsListNode); // back-order connections
 		logger.trace("sendRequest Calling {}", request);
-		connection.request(request, timeoutTime, callback);
+		connection.send(request, timeoutTime, callback);
 	}
 
 	private void addPendingSocketConnect(InetSocketAddress address) {
@@ -406,9 +421,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return false;
 	}
 
-	/**
-	 * Closes this client's handler without callback
-	 */
 	public void close() {
 		checkState(eventloop.inEventloopThread());
 		if (scheduleExpiredConnectionCheck != null)
@@ -419,7 +431,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			AbstractHttpConnection connection = node.getValue();
 			node = node.getNext();
 
-			assert connection.getEventloop().inEventloopThread();
+			assert eventloop.inEventloopThread();
 			connection.close();
 		}
 	}
@@ -429,32 +441,16 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return eventloop;
 	}
 
-	/**
-	 * Starts this client's handler and handles completing of this action with callback
-	 *
-	 * @param callback for handling completing of start
-	 */
 	@Override
 	public void start(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
-		checkState(!running);
-		running = true;
 		callback.onComplete();
 	}
 
-	/**
-	 * Stops this clients handler ,close all connections and handles completing of this
-	 * action with callback
-	 *
-	 * @param callback for handling completing of stop
-	 */
 	@Override
 	public void stop(final CompletionCallback callback) {
 		checkState(eventloop.inEventloopThread());
-		if (running) {
-			running = false;
-			close();
-		}
+		close();
 		callback.onComplete();
 	}
 
@@ -462,12 +458,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return AsyncCallbacks.stopFuture(this);
 	}
 
-	// JMX
-
-//	public void resetStats() {
-//		timeCheckExpired.resetStats();
-//	}
-
+	// jmx
 	@JmxOperation
 	public void startMonitoring() {
 		monitoring = true;
@@ -517,13 +508,12 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		List<String> info = new ArrayList<>();
 		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
 		for (Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
-			AbstractHttpConnection connection = node.getValue();
+			HttpClientConnection connection = (HttpClientConnection) node.getValue();
 			String string = StringUtils.join(",",
 					asList(
 							connection.getRemoteSocketAddress(),
-							connection.isRegistered(),
-							MBeanFormat.formatPeriodAgo(connection.getLifeTime()),
-							MBeanFormat.formatPeriodAgo(connection.getActivityTime())
+							!connection.isClosed(),
+							MBeanFormat.formatPeriodAgo(connection.getLastUsedTime())
 					)
 			);
 			info.add(string);

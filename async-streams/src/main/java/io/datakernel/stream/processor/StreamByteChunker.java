@@ -47,7 +47,7 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		public OutputProducer(int minChunkSize, int maxChunkSize) {
 			this.minChunkSize = minChunkSize;
 			this.maxChunkSize = maxChunkSize;
-			this.internalBuf = ByteBufPool.allocate(maxChunkSize);
+			this.internalBuf = ByteBufPool.allocateAtLeast(maxChunkSize);
 		}
 
 		@Override
@@ -62,28 +62,27 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 
 		@Override
 		public void onData(ByteBuf buf) {
-			while (internalBuf.position() + buf.remaining() >= minChunkSize) {
-				if (internalBuf.position() == 0) {
-					int chunkSize = Math.min(maxChunkSize, buf.remaining());
-					send(buf.slice(buf.position(), chunkSize));
-					buf.advance(chunkSize);
+			while (internalBuf.getWritePosition() + buf.remainingToRead() >= minChunkSize) {
+				if (internalBuf.getWritePosition() == 0) {
+					int chunkSize = Math.min(maxChunkSize, buf.remainingToRead());
+					ByteBuf slice = buf.slice(chunkSize);
+					send(slice);
+					buf.skip(chunkSize);
 				} else {
-					buf.drainTo(internalBuf, minChunkSize - internalBuf.position());
-					internalBuf.flip();
+					buf.drainTo(internalBuf, minChunkSize - internalBuf.getWritePosition());
 					send(internalBuf);
-					internalBuf = ByteBufPool.allocate(maxChunkSize);
+					internalBuf = ByteBufPool.allocateAtLeast(maxChunkSize);
 				}
 			}
 
-			buf.drainTo(internalBuf, buf.remaining());
-			assert internalBuf.position() < minChunkSize;
+			buf.drainTo(internalBuf, buf.remainingToRead());
+			assert internalBuf.getWritePosition() < minChunkSize;
 
 			buf.recycle();
 		}
 
 		private void flushAndClose() {
-			internalBuf.flip();
-			if (internalBuf.hasRemaining()) {
+			if (internalBuf.canRead()) {
 				outputProducer.send(internalBuf);
 			} else {
 				internalBuf.recycle();
@@ -106,5 +105,4 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		this.inputConsumer = new InputConsumer();
 		this.outputProducer = new OutputProducer(minChunkSize, maxChunkSize);
 	}
-
 }

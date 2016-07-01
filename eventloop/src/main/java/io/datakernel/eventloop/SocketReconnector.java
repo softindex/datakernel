@@ -16,21 +16,18 @@
 
 package io.datakernel.eventloop;
 
-import io.datakernel.async.AsyncGetter;
-import io.datakernel.async.ResultCallback;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
-import java.nio.channels.SocketChannel;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 /**
  * Class which handles connections to some eventloop.
  */
-public final class SocketReconnector implements AsyncGetter<SocketChannel> {
+public final class SocketReconnector {
 	private static final Logger logger = LoggerFactory.getLogger(SocketReconnector.class);
 
 	public static final int RECONNECT_ALWAYS = Integer.MAX_VALUE;
@@ -70,21 +67,6 @@ public final class SocketReconnector implements AsyncGetter<SocketChannel> {
 		this(eventloop, address, socketSettings, 0, 0);
 	}
 
-	@Override
-	public void get(final ResultCallback<SocketChannel> callback) {
-		reconnect(eventloop, address, socketSettings, reconnectAttempts, reconnectTimeout, new ConnectCallback() {
-			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				callback.onResult(socketChannel);
-			}
-
-			@Override
-			public void onException(Exception exception) {
-				callback.onException(exception);
-			}
-		});
-	}
-
 	/**
 	 * Creates a new connection with settings from this reconnector.
 	 *
@@ -111,9 +93,9 @@ public final class SocketReconnector implements AsyncGetter<SocketChannel> {
 		logger.info("Connecting {}", address);
 		eventloop.connect(address, socketSettings, new ConnectCallback() {
 			@Override
-			public void onConnect(SocketChannel socketChannel) {
-				logger.trace("Connection succeeded {}", socketChannel);
-				callback.onConnect(socketChannel);
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+				logger.trace("Connection succeeded {}", asyncTcpSocket);
+				return callback.onConnect(asyncTcpSocket);
 			}
 
 			@Override

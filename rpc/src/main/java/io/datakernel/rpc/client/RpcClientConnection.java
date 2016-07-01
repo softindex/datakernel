@@ -18,8 +18,8 @@ package io.datakernel.rpc.client;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcSender;
 import io.datakernel.rpc.protocol.*;
@@ -27,7 +27,7 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 
-import java.nio.channels.SocketChannel;
+import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -38,12 +38,6 @@ import static org.slf4j.LoggerFactory.getLogger;
 
 public final class RpcClientConnection implements RpcConnection, RpcSender {
 	public static final int DEFAULT_TIMEOUT_PRECISION = 10; //ms
-
-	interface StatusListener {
-		void onOpen(RpcClientConnection connection);
-
-		void onClosed();
-	}
 
 	private final class TimeoutCookie implements Comparable<TimeoutCookie> {
 		private final int timeout;
@@ -83,8 +77,9 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 	private static final RpcOverloadException OVERLOAD_EXCEPTION =
 			new RpcOverloadException("Write connection is overloaded");
 	private final Eventloop eventloop;
+	private final RpcClient rpcClient;
 	private final RpcProtocol protocol;
-	private final StatusListener statusListener;
+	private final InetSocketAddress address;
 	private final Map<Integer, ResultCallback<?>> requests = new HashMap<>();
 	private final PriorityQueue<TimeoutCookie> timeoutCookies = new PriorityQueue<>();
 	private final Runnable expiredResponsesTask = createExpiredResponsesTask();
@@ -97,12 +92,14 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 	private boolean monitoring;
 	private RpcRequestStats requestsStats;
 
-	public RpcClientConnection(Eventloop eventloop, SocketChannel socketChannel,
+	public RpcClientConnection(Eventloop eventloop, RpcClient rpcClient,
+	                           AsyncTcpSocket asyncTcpSocket, InetSocketAddress address,
 	                           BufferSerializer<RpcMessage> messageSerializer,
-	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
+	                           RpcProtocolFactory protocolFactory) {
 		this.eventloop = eventloop;
-		this.statusListener = statusListener;
-		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, false);
+		this.rpcClient = rpcClient;
+		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
+		this.address = address;
 
 		// JMX
 		this.monitoring = false;
@@ -117,7 +114,6 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 		requestsStats.getTotalRequests().recordEvent();
 
 		if (!(request instanceof RpcMandatoryData) && protocol.isOverloaded()) {
-
 			// jmx
 			requestsStats.getRejectedRequests().recordEvent();
 
@@ -223,7 +219,7 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 	}
 
 	@Override
-	public void onReceiveMessage(RpcMessage message) {
+	public void onData(RpcMessage message) {
 		if (message.getData().getClass() == RpcRemoteException.class) {
 			RpcRemoteException remoteException = (RpcRemoteException) message.getData();
 			processError(message, remoteException);
@@ -252,33 +248,24 @@ public final class RpcClientConnection implements RpcConnection, RpcSender {
 	}
 
 	@Override
-	public void ready() {
-		statusListener.onOpen(this);
-	}
-
-	@Override
 	public void onClosed() {
 		if (scheduleExpiredResponsesTask != null)
 			scheduleExpiredResponsesTask.cancel();
 		if (!requests.isEmpty()) {
 			closeNotify();
 		}
-		statusListener.onClosed();
+		rpcClient.removeConnection(address);
+	}
+
+	@Override
+	public AsyncTcpSocket.EventHandler getSocketConnection() {
+		return protocol.getSocketConnection();
 	}
 
 	private void closeNotify() {
 		for (Integer cookie : new HashSet<>(requests.keySet())) {
 			returnProtocolError(requests.remove(cookie), new RpcException("Connection closed."));
 		}
-	}
-
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
-	}
-
-	public SocketConnection getSocketConnection() {
-		return protocol.getSocketConnection();
 	}
 
 	public void close() {

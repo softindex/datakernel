@@ -16,12 +16,11 @@
 
 package io.datakernel.rpc.protocol;
 
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
 
-import java.nio.channels.SocketChannel;
-
 public interface RpcProtocolFactory {
-	RpcProtocol create(RpcConnection connection, SocketChannel socketChannel,
-	                   BufferSerializer<RpcMessage> messageSerializer,
-	                   boolean isServer);
+	RpcProtocol create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                   RpcConnection connection, BufferSerializer<RpcMessage> messageSerializer);
 }

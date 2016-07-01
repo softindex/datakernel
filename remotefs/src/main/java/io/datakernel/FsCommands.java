@@ -75,7 +75,7 @@ public abstract class FsCommands {
 
 		@Override
 		public String toString() {
-			return "Delete{filepath=\'" + filePath + "\',startPosition=" + startPosition + "}";
+			return "Download{filepath=\'" + filePath + "\',startPosition=" + startPosition + "}";
 		}
 	}
 

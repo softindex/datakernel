@@ -16,14 +16,11 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.stream.StreamDataReceiver;
 
-public interface RpcConnection {
-	void onReceiveMessage(RpcMessage message);
-
-	void ready();
-
+public interface RpcConnection extends StreamDataReceiver<RpcMessage> {
 	void onClosed();
 
-	Eventloop getEventloop();
+	AsyncTcpSocket.EventHandler getSocketConnection();
 }

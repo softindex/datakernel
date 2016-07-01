@@ -28,7 +28,6 @@ import javax.management.MBeanServer;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.concurrent.Executor;
 
 import static io.datakernel.jmx.helper.CustomMatchers.objectname;
 import static java.util.Arrays.asList;
@@ -130,7 +129,6 @@ public class JmxRegistryTest {
 		final ServiceStub worker_1 = new ServiceStub();
 		final ServiceStub worker_2 = new ServiceStub();
 		final ServiceStub worker_3 = new ServiceStub();
-		// TODO(vmykhalko) make separate mocked dynamicMBeans for every worker
 
 		context.checking(new Expectations() {{
 			// creating DynamicMBeans for each worker separately

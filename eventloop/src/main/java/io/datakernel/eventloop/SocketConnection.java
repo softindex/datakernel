@@ -27,7 +27,7 @@ import java.nio.channels.SelectionKey;
 /**
  * Common abstract class, which represents any kind of connection.
  */
-public abstract class SocketConnection {
+public abstract class SocketConnection implements NioChannelEventHandler {
 	private static final Logger logger = LoggerFactory.getLogger(SocketConnection.class);
 	private static final int DEFAULT_RECEIVE_BUFFER_SIZE = 8 * 1024;
 
@@ -93,15 +93,6 @@ public abstract class SocketConnection {
 		interests(writeInterest ? (ops | SelectionKey.OP_WRITE) : (ops & ~SelectionKey.OP_WRITE));
 	}
 
-	private static int ops(boolean readInterest, boolean writeInterest) {
-		return (readInterest ? SelectionKey.OP_READ : 0) | (writeInterest ? SelectionKey.OP_WRITE : 0);
-	}
-
-	@SuppressWarnings("MagicConstant")
-	protected void interests(boolean readInterest, boolean writeInterest) {
-		interests(ops(readInterest, writeInterest));
-	}
-
 	protected void onReadException(Exception e) {
 		eventloop.recordIoError(e, this);
 		close();
@@ -145,7 +136,7 @@ public abstract class SocketConnection {
 	/**
 	 * Closes current channel.  It can be called only from this connection's eventloop's thread.
 	 */
-	public final void close() {
+	public void close() {
 		assert eventloop.inEventloopThread();
 		if (key == null) return;
 		closeChannel();
@@ -216,4 +207,5 @@ public abstract class SocketConnection {
 	protected String getDebugName() {
 		return getClass().getSimpleName();
 	}
+
 }

@@ -19,21 +19,16 @@ package io.datakernel.http;
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufQueue;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.TcpSocketConnection;
 import io.datakernel.util.ByteBufStrings;
 
-import java.nio.channels.SocketChannel;
-
+import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.ByteBufStrings.*;
 
-/**
- * Realization of the {@link TcpSocketConnection} which handles the HTTP messages. It is used by server and client.
- */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public abstract class AbstractHttpConnection extends TcpSocketConnection {
-	public static final int DEFAULT_HTTP_BUFFER_SIZE = 16 * 1024;
+abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	public static final int MAX_HEADER_LINE_SIZE = 8 * 1024; // http://stackoverflow.com/questions/686217/maximum-on-http-header-values
 	public static final int MAX_HEADERS = 100; // http://httpd.apache.org/docs/2.2/mod/core.html#limitrequestfields
 
@@ -47,18 +42,31 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	public static final ParseException TOO_LONG_HEADER = new ParseException("Header line exceeds max header size");
 	public static final ParseException TOO_MANY_HEADERS = new ParseException("Too many headers");
 
+	protected final Eventloop eventloop;
+
+	protected final AsyncTcpSocket asyncTcpSocket;
+	protected final ByteBufQueue readQueue = new ByteBufQueue();
+
+	private boolean closed;
+	private long lastUsedTime;
+
 	protected boolean keepAlive = true;
 
 	protected final ByteBufQueue bodyQueue = new ByteBufQueue();
 
 	protected static final byte NOTHING = 0;
-	protected static final byte FIRSTLINE = 1;
-	protected static final byte HEADERS = 2;
-	protected static final byte BODY = 3;
-	protected static final byte CHUNK_LENGTH = 4;
-	protected static final byte CHUNK = 5;
+	protected static final byte END_OF_STREAM = 1;
+	protected static final byte FIRSTLINE = 2;
+	protected static final byte HEADERS = 3;
+	protected static final byte BODY = 4;
+	protected static final byte CHUNK_LENGTH = 5;
+	protected static final byte CHUNK = 6;
 
 	protected byte reading;
+
+	protected static final byte[] CONTENT_ENCODING_GZIP = encodeAscii("gzip");
+	private boolean isGzipped = false;
+	protected boolean shouldGzip = false;
 
 	private boolean isChunked = false;
 	private int chunkSize = 0;
@@ -77,17 +85,21 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 * Creates a new instance of AbstractHttpConnection
 	 *
 	 * @param eventloop       eventloop which will handle its I/O operations
-	 * @param socketChannel   socket for this connection
 	 * @param connectionsList pool in which will stored this connection
 	 */
-	public AbstractHttpConnection(Eventloop eventloop, SocketChannel socketChannel, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel);
-		this.receiveBufferSize = DEFAULT_HTTP_BUFFER_SIZE;
+	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
+		this.eventloop = eventloop;
 		this.connectionsList = connectionsList;
 		this.headerChars = headerChars;
 		assert headerChars.length >= MAX_HEADER_LINE_SIZE;
 		this.maxHttpMessageSize = maxHttpMessageSize;
+		this.asyncTcpSocket = asyncTcpSocket;
 		reset();
+		connectionsListNode = connectionsList.addLastValue(this);
+	}
+
+	protected boolean isClosed() {
+		return closed;
 	}
 
 	/**
@@ -95,15 +107,31 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	 */
 	@Override
 	public void onRegistered() {
-		assert connectionsListNode == null;
-		assert isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
+	}
 
-		connectionsListNode = connectionsList.addLastValue(this);
+	public final void close() {
+		asyncTcpSocket.close();
+		readQueue.clear();
+		onClosed();
+	}
+
+	protected final void closeWithError(final Exception e) {
+		if (isClosed()) return;
+		eventloop.recordIoError(e, this);
+		asyncTcpSocket.close();
+		readQueue.clear();
+		onClosedWithError(e);
+	}
+
+	protected void onClosed() {
+		closed = true;
 	}
 
 	protected void reset() {
 		assert eventloop.inEventloopThread();
+		this.lastUsedTime = eventloop.currentTimeMillis();
 		contentLength = UNKNOWN_LENGTH;
 		isChunked = false;
 		bodyQueue.clear();
@@ -120,7 +148,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 		int offset = 0;
 		for (int i = 0; i < readQueue.remainingBufs(); i++) {
 			ByteBuf buf = readQueue.peekBuf(i);
-			for (int p = buf.position(); p < buf.limit(); p++) {
+			for (int p = buf.getReadPosition(); p < buf.getWritePosition(); p++) {
 				if (buf.at(p) == LF) {
 
 					// check if multiline header(CRLF + 1*(SP|HT)) rfc2616#2.2
@@ -129,40 +157,46 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 						continue;
 					}
 
-					ByteBuf line = readQueue.takeExactSize(offset + p - buf.position() + 1);
-					if (line.remaining() >= 2 && line.peek(line.remaining() - 2) == CR) {
-						line.limit(line.limit() - 2);
+					ByteBuf line = readQueue.takeExactSize(offset + p - buf.getReadPosition() + 1);
+					if (line.remainingToRead() >= 2 && line.peek(line.remainingToRead() - 2) == CR) {
+						line.setWritePosition(line.getWritePosition() - 2);
 					} else {
-						line.limit(line.limit() - 1);
+						line.setWritePosition(line.getWritePosition() - 1);
 					}
 					return line;
 				}
 			}
-			offset += buf.remaining();
+			offset += buf.remainingToRead();
 		}
 		return null;
 	}
 
 	private boolean isMultilineHeader(ByteBuf buf, int p) {
-		return p + 1 < buf.limit() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT) &&
-				isDataBetweenStartAndLF(buf, p);
-	}
-
-	private boolean isDataBetweenStartAndLF(ByteBuf buf, int p) {
-		return !(p == buf.position() || (p - buf.position() == 1 && buf.at(p - 1) == CR));
+		// ensure CRLF
+		if (p + 1 < buf.getWritePosition() && (buf.at(p + 1) == SP || buf.at(p + 1) == HT)) {
+			if (p > 0 && buf.at(p - 1) == CR) {
+				if (p > 1 && buf.at(p - 2) == LF) {
+					return false;
+				}
+			} else if (buf.at(p - 1) == LF) {
+				return false;
+			}
+			return true;
+		}
+		return false;
 	}
 
 	private void preprocessMultiLine(ByteBuf buf, int pos) {
-		buf.array()[pos] = SP;
+		buf.set(pos, SP);
 		if (buf.at(pos - 1) == CR) {
-			buf.array()[pos - 1] = SP;
+			buf.set(pos - 1, SP);
 		}
 	}
 
 	private void onHeader(ByteBuf line) throws ParseException {
-		int pos = line.position();
+		int pos = line.getReadPosition();
 		int hashCode = 1;
-		while (pos < line.limit()) {
+		while (pos < line.getWritePosition()) {
 			byte b = line.at(pos);
 			if (b == ':')
 				break;
@@ -171,15 +205,15 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			hashCode = 31 * hashCode + b;
 			pos++;
 		}
-		check(pos != line.limit(), HEADER_NAME_ABSENT);
-		HttpHeader httpHeader = HttpHeaders.of(line.array(), line.position(), pos - line.position(), hashCode);
+		check(pos != line.getWritePosition(), HEADER_NAME_ABSENT);
+		HttpHeader httpHeader = HttpHeaders.of(line.array(), line.getReadPosition(), pos - line.getReadPosition(), hashCode);
 		pos++;
 
 		// RFC 2616, section 19.3 Tolerant Applications
-		while (pos < line.limit() && (line.at(pos) == SP || line.at(pos) == HT)) {
+		while (pos < line.getWritePosition() && (line.at(pos) == SP || line.at(pos) == HT)) {
 			pos++;
 		}
-		line.position(pos);
+		line.setReadPosition(pos);
 		onHeader(httpHeader, line);
 	}
 
@@ -191,21 +225,45 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
 
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
-		assert isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
 
 		if (header == CONTENT_LENGTH) {
-			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.position(), value.remaining());
-			check(contentLength <= maxHttpMessageSize, TOO_BIG_HTTP_MESSAGE);
+			contentLength = ByteBufStrings.decodeDecimal(value.array(), value.getReadPosition(), value.remainingToRead());
+
+			if (contentLength > maxHttpMessageSize) {
+				value.recycle();
+				throw TOO_BIG_HTTP_MESSAGE;
+			}
 		} else if (header == CONNECTION) {
-			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.position(), value.remaining());
+			keepAlive = equalsLowerCaseAscii(CONNECTION_KEEP_ALIVE, value.array(), value.getReadPosition(), value.remainingToRead());
 		} else if (header == TRANSFER_ENCODING) {
-			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.position(), value.remaining());
+			isChunked = equalsLowerCaseAscii(TRANSFER_ENCODING_CHUNKED, value.array(), value.getReadPosition(), value.remainingToRead());
+		} else if (header == CONTENT_ENCODING) {
+			isGzipped = equalsLowerCaseAscii(CONTENT_ENCODING_GZIP, value.array(), value.getReadPosition(), value.remainingToRead());
+		} else if (header == ACCEPT_ENCODING) {
+			shouldGzip = contains(value, CONTENT_ENCODING_GZIP);
 		}
 	}
 
+	private boolean contains(ByteBuf value, byte[] bytes) {
+		int pos = value.getReadPosition();
+		while (pos < value.getWritePosition()) {
+			if (value.array()[pos] == bytes[0] && value.remainingToRead() >= bytes.length) {
+				if (equalsLowerCaseAscii(bytes, value.array(), pos, bytes.length)) {
+					return true;
+				} else {
+					pos += bytes.length;
+				}
+			} else {
+				pos++;
+			}
+		}
+		return false;
+	}
+
 	private void readBody() throws ParseException {
-		assert isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
 
 		if (reading == BODY) {
@@ -219,7 +277,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			if (actualBytes == bytesToRead) {
 //				if (!readQueue.isEmpty())
 //					throw new IllegalStateException("Extra bytes outside of HTTP message");
-				onHttpMessage(bodyQueue.takeRemaining());
+				onHttpMessage(isGzipped ? fromGzip(bodyQueue.takeRemaining()) : bodyQueue.takeRemaining());
 			}
 		} else {
 			assert reading == CHUNK || reading == CHUNK_LENGTH;
@@ -229,7 +287,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 
 	@SuppressWarnings("ConstantConditions")
 	private void readChunks() throws ParseException {
-		assert isRegistered();
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
 
 		while (!readQueue.isEmpty()) {
@@ -267,7 +325,7 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 						check(c1 == CR && c2 == LF && c3 == CR && c4 == LF, MALFORMED_CHUNK);
 //						if (!readQueue.isEmpty())
 //							throw new IllegalStateException("Extra bytes outside of chunk");
-						onHttpMessage(bodyQueue.takeRemaining());
+						onHttpMessage(isGzipped ? fromGzip(bodyQueue.takeRemaining()) : bodyQueue.takeRemaining());
 						return;
 					}
 				}
@@ -291,31 +349,42 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 	}
 
 	@Override
-	protected void onRead() {
+	public void onRead(ByteBuf buf) {
 		assert eventloop.inEventloopThread();
+		assert !isClosed();
+		if (buf != null) readQueue.add(buf);
+
 		if (reading == NOTHING) {
-			readInterest(false);
 			return;
 		}
 		try {
-			doRead();
+			if (readQueue.hasRemaining()) {
+				doRead();
+			}
+			if ((reading != NOTHING || readQueue.isEmpty()) && !isClosed()) {
+				asyncTcpSocket.read();
+			}
 		} catch (ParseException e) {
-			onReadException(e);
+			closeWithError(e);
 		}
+	}
+
+	public void onReadEndOfStream() {
+		close();
 	}
 
 	private void doRead() throws ParseException {
 		if (reading < BODY) {
 			while (true) {
-				assert isRegistered();
+				assert !isClosed();
 				assert reading == FIRSTLINE || reading == HEADERS;
 				ByteBuf headerBuf = takeHeader();
-				if (headerBuf == null) {
+				if (headerBuf == null) { // states that more bytes are being required
 					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE), TOO_LONG_HEADER);
 					return;
 				}
 
-				if (!headerBuf.hasRemaining()) {
+				if (!headerBuf.canRead()) {
 					headerBuf.recycle();
 
 					if (reading == FIRSTLINE)
@@ -342,9 +411,13 @@ public abstract class AbstractHttpConnection extends TcpSocketConnection {
 			}
 		}
 
-		assert isRegistered();
+		assert !isClosed();
 		assert reading >= BODY;
 		readBody();
+	}
+
+	public final long getLastUsedTime() {
+		return lastUsedTime;
 	}
 
 	private static void check(boolean expression, ParseException e) throws ParseException {

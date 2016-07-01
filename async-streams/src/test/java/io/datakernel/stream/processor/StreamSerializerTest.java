@@ -29,7 +29,7 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.serializer.asm.BufferSerializers.intSerializer;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
@@ -58,8 +58,8 @@ public class StreamSerializerTest {
 		eventloop.run();
 		List<ByteBuf> result = consumer.getList();
 		Assert.assertEquals(2, result.size());
-		Assert.assertEquals(15, result.get(0).limit());
-		Assert.assertEquals(5, result.get(1).limit());
+		Assert.assertEquals(16, result.get(0).getLimit());
+		Assert.assertEquals(16, result.get(1).getLimit());
 		Assert.assertEquals(10, result.get(0).array()[4]);
 		Assert.assertEquals(20, result.get(0).array()[9]);
 		Assert.assertEquals(30, result.get(0).array()[14]);
@@ -68,7 +68,7 @@ public class StreamSerializerTest {
 			buf.recycle();
 		}
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
 	}
@@ -91,7 +91,7 @@ public class StreamSerializerTest {
 		assertEquals(asList(1, 2, 3), consumer.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
@@ -122,7 +122,7 @@ public class StreamSerializerTest {
 		assertEquals(asList(1, 2, 3), consumer.getList());
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		assertEquals(END_OF_STREAM, serializerStream.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, serializerStream.getOutput().getProducerStatus());
@@ -149,7 +149,7 @@ public class StreamSerializerTest {
 		assertEquals(CLOSED_WITH_ERROR, consumer.getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, source.getProducerStatus());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		assertEquals(CLOSED_WITH_ERROR, serializerStream.getInput().getConsumerStatus());
 		assertEquals(CLOSED_WITH_ERROR, serializerStream.getOutput().getProducerStatus());

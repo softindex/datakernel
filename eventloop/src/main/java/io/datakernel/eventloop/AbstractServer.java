@@ -27,14 +27,17 @@ import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.Preconditions.check;
@@ -62,9 +65,14 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private boolean running = false;
 	protected boolean acceptOnce;
 
-	private InetSocketAddress[] listenAddresses;
-	private ServerSocketChannel[] serverSocketChannels;
+	private List<InetSocketAddress> listenAddresses;
+	private List<ServerSocketChannel> serverSocketChannels;
 	protected InetAddressRange range;
+
+	// ssl
+	private SSLContext sslContext;
+	private ExecutorService executor;
+	private List<InetSocketAddress> secureListenAddresses;
 
 	// JMX
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
@@ -100,32 +108,49 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return self();
 	}
 
-	public S setListenAddresses(InetSocketAddress... listenAddresses) {
-		this.listenAddresses = checkNotNull(listenAddresses);
+	public S setListenAddresses(List<InetSocketAddress> addresses) {
+		ensureNotIntersect(secureListenAddresses, addresses);
+		this.listenAddresses = checkNotNull(addresses);
 		return self();
 	}
 
-	public S setListenAddresses(List<InetSocketAddress> addresses) {
-		setListenAddresses(addresses.toArray(new InetSocketAddress[addresses.size()]));
-		return self();
+	public S setListenAddresses(InetSocketAddress... addresses) {
+		return setListenAddresses(Arrays.asList(addresses));
 	}
 
 	public S setListenAddress(InetSocketAddress address) {
-		setListenAddresses(address);
-		return self();
+		return setListenAddresses(address);
 	}
 
 	public S setListenPort(int port) {
-		setListenAddress(new InetSocketAddress(port));
+		return setListenAddress(new InetSocketAddress(port));
+	}
+
+	public S setListenSecureAddresses(SSLContext sslContext, ExecutorService executor, List<InetSocketAddress> addresses) {
+		ensureNotIntersect(listenAddresses, addresses);
+		this.sslContext = checkNotNull(sslContext);
+		this.executor = checkNotNull(executor);
+		this.secureListenAddresses = checkNotNull(addresses);
 		return self();
+	}
+
+	public S setListenSecureAddresses(SSLContext sslContext, ExecutorService executor, InetSocketAddress... addresses) {
+		return setListenSecureAddresses(sslContext, executor, Arrays.asList(addresses));
+	}
+
+	public S setListenSecureAddress(SSLContext sslContext, ExecutorService executor, InetSocketAddress address) {
+		return this.setListenSecureAddresses(sslContext, executor, Collections.singletonList(address));
+	}
+
+	public S setListenSecurePort(SSLContext sslContext, ExecutorService executor, int port) {
+		return setListenSecureAddress(sslContext, executor, new InetSocketAddress(port));
 	}
 
 	/**
 	 * Sets the flag as true, which means that this server can handle only one accepting.
 	 */
 	public S acceptOnce() {
-		this.acceptOnce = true;
-		return self();
+		return acceptOnce(true);
 	}
 
 	/**
@@ -151,17 +176,28 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		running = true;
 		onListen();
 		if (listenAddresses != null) {
-			serverSocketChannels = new ServerSocketChannel[listenAddresses.length];
-			for (int i = 0; i < listenAddresses.length; i++) {
-				try {
-					serverSocketChannels[i] = eventloop.listen(listenAddresses[i], serverSocketSettings, this);
-				} catch (IOException exception) {
-					logger.error("Can't listen on {}", this, listenAddresses[i]);
-					close();
-					throw exception;
-				}
+			serverSocketChannels = new ArrayList<>(listenAddresses.size());
+			listenAddresses(listenAddresses);
+			logger.info("Listening on {}", listenAddresses);
+		}
+		if (secureListenAddresses != null) {
+			if (serverSocketChannels == null) {
+				serverSocketChannels = new ArrayList<>(secureListenAddresses.size());
 			}
-			logger.info("Listening on {}", Arrays.toString(listenAddresses));
+			listenAddresses(secureListenAddresses);
+			logger.info("Listening securely on {}", secureListenAddresses);
+		}
+	}
+
+	private void listenAddresses(List<InetSocketAddress> addresses) throws IOException {
+		for (InetSocketAddress address : addresses) {
+			try {
+				serverSocketChannels.add(eventloop.listen(address, serverSocketSettings, this));
+			} catch (IOException e) {
+				logger.error("Can't listen securely on {}", this, address);
+				close();
+				throw e;
+			}
 		}
 	}
 
@@ -194,15 +230,16 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	private void closeServerSocketChannels() {
-		if (serverSocketChannels == null || serverSocketChannels.length == 0) {
+		if (serverSocketChannels == null || serverSocketChannels.isEmpty()) {
 			return;
 		}
-		for (int i = 0; i < serverSocketChannels.length; i++) {
-			if (serverSocketChannels[i] == null) {
+		for (Iterator<ServerSocketChannel> it = serverSocketChannels.iterator(); it.hasNext(); ) {
+			ServerSocketChannel serverSocketChannel = it.next();
+			if (serverSocketChannel == null) {
 				continue;
 			}
-			closeQuietly(serverSocketChannels[i]);
-			serverSocketChannels[i] = null;
+			closeQuietly(serverSocketChannel);
+			it.remove();
 		}
 	}
 
@@ -243,12 +280,31 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected void doAccept(SocketChannel socketChannel) {
 		totalAccepts.recordEvent();
 		prepareSocket(socketChannel);
-		SocketConnection connection = createConnection(socketChannel);
-		connection.register();
+		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+
+		socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+
+		AsyncSslSocket asyncSslSocket = null;
+		if (isSslOn() && isAcceptedOnSecuredPort(asyncTcpSocket)) {
+			asyncSslSocket = createSecureSocket(asyncTcpSocket);
+		}
+
+		EventHandler handler = createSocketHandler(asyncSslSocket == null ? asyncTcpSocket : asyncSslSocket);
+
+		if (asyncSslSocket != null) {
+			asyncSslSocket.setEventHandler(handler);
+			handler = asyncSslSocket;
+		}
+
+		asyncTcpSocket.setEventHandler(handler);
+
+		asyncTcpSocket.register();
 		if (acceptOnce) {
 			close();
 		}
 	}
+
+	protected abstract EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket);
 
 	protected void prepareSocket(SocketChannel socketChannel) {
 		try {
@@ -279,7 +335,46 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 	}
 
-	protected abstract SocketConnection createConnection(SocketChannel socketChannel);
+	private AsyncSslSocket createSecureSocket(AsyncTcpSocketImpl asyncTcpSocket) {
+		AsyncSslSocket asyncSslSocket;
+		SSLEngine ssl = sslContext.createSSLEngine();
+		ssl.setUseClientMode(false);
+		asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
+		return asyncSslSocket;
+	}
+
+	private boolean isAcceptedOnSecuredPort(AsyncTcpSocketImpl asyncTcpSocket) {
+		if (secureListenAddresses.isEmpty()) return false;
+		SocketChannel socketChannel = asyncTcpSocket.getSocketChannel();
+		try {
+			InetSocketAddress address = (InetSocketAddress) socketChannel.getLocalAddress();
+			for (InetSocketAddress listenAddress : secureListenAddresses) {
+				if ((isInetAddressAny(listenAddress) && listenAddress.getPort() == address.getPort()) || listenAddress.equals(address)) {
+					return true;
+				}
+			}
+			return false;
+		} catch (IOException e) {
+			logger.warn("Exception thrown while trying to get local address: {}", socketChannel, e);
+			return false;
+		}
+	}
+
+	private boolean isSslOn() {
+		return sslContext != null;
+	}
+
+	private boolean isInetAddressAny(InetSocketAddress listenAddress) {
+		return listenAddress.getAddress().isAnyLocalAddress();
+	}
+
+	private void ensureNotIntersect(List<InetSocketAddress> container, List<InetSocketAddress> addresses) {
+		if (container != null) {
+			for (InetSocketAddress address : addresses) {
+				check(!container.contains(address), "{} already listened to", address);
+			}
+		}
+	}
 
 	// jmx
 	@JmxAttribute

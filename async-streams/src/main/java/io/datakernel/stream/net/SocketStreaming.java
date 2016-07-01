@@ -16,6 +16,13 @@
 
 package io.datakernel.stream.net;
 
-public interface MessagingStarter<O> {
-	void onStart(Messaging<O> messaging);
+import io.datakernel.async.CompletionCallback;
+import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
+
+public interface SocketStreaming {
+	void receiveStreamTo(StreamConsumer<ByteBuf> streamConsumer, CompletionCallback callback);
+
+	void sendStreamFrom(StreamProducer<ByteBuf> streamProducer, CompletionCallback callback);
 }

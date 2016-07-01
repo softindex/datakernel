@@ -23,6 +23,7 @@ import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
@@ -37,12 +38,11 @@ public final class SimpleFsServer extends FsServer<SimpleFsServer> {
 	}
 
 	@Override
-	public void upload(String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	public void upload(String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
 		fileManager.save(fileName, new ForwardingResultCallback<StreamFileWriter>(callback) {
 			@Override
-			public void onResult(StreamFileWriter writer) {
-				writer.setFlushCallback(callback);
-				producer.streamTo(writer);
+			public void onResult(StreamFileWriter result) {
+				callback.onResult(result);
 			}
 		});
 	}
@@ -51,8 +51,8 @@ public final class SimpleFsServer extends FsServer<SimpleFsServer> {
 	public void download(String fileName, long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
 		fileManager.get(fileName, startPosition, new ForwardingResultCallback<StreamFileReader>(callback) {
 			@Override
-			public void onResult(StreamFileReader reader) {
-				callback.onResult(reader);
+			public void onResult(StreamFileReader result) {
+				callback.onResult(result);
 			}
 		});
 	}

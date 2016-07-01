@@ -21,8 +21,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.file.StreamFileReader;
-import io.datakernel.stream.file.StreamFileWriter;
 
 import java.util.List;
 

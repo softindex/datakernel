@@ -36,18 +36,17 @@ import static java.lang.Math.min;
 
 /**
  * Represent deserializer which deserializes data from ByteBuffer to some type. Is a {@link AbstractStreamTransformer_1_1}
- * which receives ByteBufs and streams specified type. It is one of implementation of {@link StreamDeserializer}.
+ * which receives ByteBufs and streams specified type.
  *
  * @param <T> original type of data
  */
-public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements StreamDeserializer<T>, EventloopJmxMBean {
+public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer_1_1<ByteBuf, T> implements EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(StreamBinaryDeserializer.class);
 
 	private final InputConsumer inputConsumer;
 	private final OutputProducer outputProducer;
 
 	private final class InputConsumer extends AbstractInputConsumer {
-
 		@Override
 		protected void onUpstreamEndOfStream() {
 			outputProducer.produce();
@@ -94,7 +93,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		@Override
 		public void onData(ByteBuf buf) {
 			jmxBufs++;
-			jmxBytes += buf.remaining();
+			jmxBytes += buf.remainingToRead();
 			this.byteBufs.offer(buf);
 			outputProducer.produce();
 			if (this.byteBufs.size() == this.buffersPoolSize) {
@@ -122,8 +121,8 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						break;
 
 					byte[] b = nextBuf.array();
-					int off = nextBuf.position();
-					int len = nextBuf.remaining();
+					int off = nextBuf.getReadPosition();
+					int len = nextBuf.remainingToRead();
 					while (isStatusReady() && len > 0) {
 						if (dataSize == 0) {
 							assert bufferPos < MAX_HEADER_BYTES;
@@ -190,7 +189,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 							bufferPos = 0;
 							dataSize = 0;
 						}
-						nextBuf.position(off);
+						nextBuf.setReadPosition(off);
 						++jmxItems;
 						downstreamDataReceiver.onData(item);
 					}
@@ -199,7 +198,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 						return;
 
 					if (len != 0) {
-						nextBuf.position(off);
+						nextBuf.setReadPosition(off);
 						return;
 					}
 
@@ -229,8 +228,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		}
 
 		private void growBuf(int newSize) {
-			buf.limit(bufferPos);
-			buf = ByteBufPool.resize(buf, newSize);
+			buf = ByteBufPool.reallocateAtLeast(buf, newSize);
 			buffer = buf.array();
 		}
 
@@ -305,7 +303,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		checkArgument(maxMessageSize < (1 << (OutputProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
 		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
 
-		ByteBuf buf = ByteBufPool.allocate(OutputProducer.INITIAL_BUFFER_SIZE);
+		ByteBuf buf = ByteBufPool.allocateAtLeast(OutputProducer.INITIAL_BUFFER_SIZE);
 
 		this.inputConsumer = new InputConsumer();
 		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize),
@@ -316,18 +314,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 				buf.array());
 	}
 
-	@Override
-	public void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver) {
-		for (ByteBuf byteBuf : outputProducer.byteBufs) {
-			dataReceiver.onData(byteBuf);
-		}
-		outputProducer.byteBufs.clear();
-		outputProducer.sendEndOfStream();
-		logger.info("Deserialized {} objects from {}", outputProducer.jmxItems, inputConsumer.getUpstream());
-	}
-
 	// jmx
-
 	@Override
 	public Eventloop getEventloop() {
 		return eventloop;

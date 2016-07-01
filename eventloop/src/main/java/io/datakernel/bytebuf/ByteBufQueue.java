@@ -18,9 +18,6 @@ package io.datakernel.bytebuf;
 
 import static java.lang.System.arraycopy;
 
-/**
- * It is the queue which has array of {@link ByteBuf}
- */
 public final class ByteBufQueue {
 	private static final int DEFAULT_CAPACITY = 8;
 
@@ -29,18 +26,10 @@ public final class ByteBufQueue {
 	private int first = 0;
 	private int last = 0;
 
-	/**
-	 * Creates a new instance of ByteBufQueue with capacity ByteBufs
-	 *
-	 * @param capacity number of ByteBufs
-	 */
 	public ByteBufQueue(int capacity) {
 		this.bufs = new ByteBuf[capacity];
 	}
 
-	/**
-	 * Creates a new instance of ByteBufQueue with 8 ByteBufs
-	 */
 	public ByteBufQueue() {
 		this(DEFAULT_CAPACITY);
 	}
@@ -54,10 +43,6 @@ public final class ByteBufQueue {
 		first = next(first);
 	}
 
-	/**
-	 * Multiplies (increases) amount of ByteBufs by 2.
-	 * Method is called if and only if {@code last} reaches {@code firstRef} or {@code first}
-	 */
 	private void grow() {
 		ByteBuf[] newBufs = new ByteBuf[bufs.length * 2];
 		arraycopy(bufs, last, newBufs, 0, bufs.length - last);
@@ -67,13 +52,8 @@ public final class ByteBufQueue {
 		bufs = newBufs;
 	}
 
-	/**
-	 * Adds the ByteBuf to the end of this queue
-	 *
-	 * @param buf ByteBuf for adding
-	 */
 	public void add(ByteBuf buf) {
-		if (!buf.hasRemaining()) {
+		if (!buf.canRead()) {
 			buf.recycle();
 			return;
 		}
@@ -91,9 +71,6 @@ public final class ByteBufQueue {
 		}
 	}
 
-	/**
-	 * Returns the first ByteBuf from this queue and removes it
-	 */
 	public ByteBuf take() {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
@@ -102,7 +79,7 @@ public final class ByteBufQueue {
 	}
 
 	/**
-	 * Creates and returns ByteBuf that contains {@code maxSize} bytes from queue's first ByteBuf
+	 * Creates and returns ByteBufSlice that contains {@code maxSize} bytes from queue's first ByteBuf
 	 * if latter contains enough bytes. Otherwise creates and returns ByteBuf that contains all bytes
 	 * from first ByteBuf in queue.
 	 *
@@ -112,12 +89,12 @@ public final class ByteBufQueue {
 	public ByteBuf takeMaxSize(int maxSize) {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
-		if (maxSize >= buf.remaining()) {
+		if (maxSize >= buf.remainingToRead()) {
 			first = next(first);
 			return buf;
 		}
-		ByteBuf result = buf.slice(buf.position(), maxSize);
-		buf.advance(maxSize);
+		ByteBuf result = buf.slice(buf.getReadPosition(), maxSize);
+		buf.skip(maxSize);
 		return result;
 	}
 
@@ -132,16 +109,16 @@ public final class ByteBufQueue {
 		if (!hasRemaining())
 			return ByteBuf.empty();
 		ByteBuf buf = bufs[first];
-		if (buf.remaining() == exactSize) {
+		if (buf.remainingToRead() == exactSize) {
 			first = next(first);
 			return buf;
-		} else if (exactSize < buf.remaining()) {
-			ByteBuf result = buf.slice(buf.position(), exactSize);
-			buf.advance(exactSize);
+		} else if (exactSize < buf.remainingToRead()) {
+			ByteBuf result = buf.slice(buf.getReadPosition(), buf.getReadPosition() + exactSize);
+			buf.skip(exactSize);
 			return result;
 		}
-		ByteBuf result = ByteBufPool.allocate(exactSize);
-		drainTo(result.array(), 0, exactSize);
+		ByteBuf result = ByteBufPool.allocateAtLeast(exactSize);
+		drainTo(result, exactSize);
 		return result;
 	}
 
@@ -158,8 +135,7 @@ public final class ByteBufQueue {
 	 * Returns the first ByteBuf from this queue
 	 */
 	public ByteBuf peekBuf() {
-		assert hasRemaining();
-		return bufs[first];
+		return hasRemaining() ? bufs[first] : null;
 	}
 
 	/**
@@ -188,7 +164,7 @@ public final class ByteBufQueue {
 	public int remainingBytes() {
 		int result = 0;
 		for (int i = first; i != last; i = next(i)) {
-			result += bufs[i].remaining();
+			result += bufs[i].remainingToRead();
 		}
 		return result;
 	}
@@ -214,7 +190,7 @@ public final class ByteBufQueue {
 	 */
 	public boolean hasRemainingBytes(int remaining) {
 		for (int i = first; i != last; i = next(i)) {
-			int bufRemaining = bufs[i].remaining();
+			int bufRemaining = bufs[i].remainingToRead();
 			if (bufRemaining >= remaining)
 				return true;
 			remaining -= bufRemaining;
@@ -228,9 +204,9 @@ public final class ByteBufQueue {
 	public byte getByte() {
 		assert hasRemaining();
 		ByteBuf buf = bufs[first];
-		assert buf.hasRemaining();
+		assert buf.canRead();
 		byte result = buf.get();
-		if (!buf.hasRemaining()) {
+		if (!buf.canRead()) {
 			doPoll();
 		}
 		return result;
@@ -254,9 +230,9 @@ public final class ByteBufQueue {
 		assert hasRemainingBytes(index + 1);
 		for (int i = first; ; i = next(i)) {
 			ByteBuf buf = bufs[i];
-			if (index < buf.remaining())
+			if (index < buf.remainingToRead())
 				return buf.peek(index);
-			index -= buf.remaining();
+			index -= buf.remainingToRead();
 		}
 	}
 
@@ -266,16 +242,16 @@ public final class ByteBufQueue {
 	 * @param maxSize number of bytes for removing
 	 * @return number of removed bytes
 	 */
-	public int advance(int maxSize) {
+	public int skip(int maxSize) {
 		int s = maxSize;
 		while (hasRemaining()) {
 			ByteBuf buf = bufs[first];
-			int remaining = buf.remaining();
+			int remaining = buf.remainingToRead();
 			if (s < remaining) {
-				buf.advance(s);
+				buf.skip(s);
 				return maxSize;
 			} else {
-				buf.position(buf.limit());
+				buf.setReadPosition(buf.getWritePosition());
 				doPoll();
 				s -= remaining;
 			}
@@ -296,14 +272,14 @@ public final class ByteBufQueue {
 		int s = maxSize;
 		while (hasRemaining()) {
 			ByteBuf buf = bufs[first];
-			int remaining = buf.remaining();
+			int remaining = buf.remainingToRead();
 			if (s < remaining) {
-				arraycopy(buf.array(), buf.position(), dest, destOffset, s);
-				buf.advance(s);
+				arraycopy(buf.array(), buf.getReadPosition(), dest, destOffset, s);
+				buf.skip(s);
 				return maxSize;
 			} else {
-				arraycopy(buf.array(), buf.position(), dest, destOffset, remaining);
-				buf.position(buf.limit());
+				arraycopy(buf.array(), buf.getReadPosition(), dest, destOffset, remaining);
+				buf.setReadPosition(buf.getWritePosition());
 				doPoll();
 				s -= remaining;
 				destOffset += remaining;
@@ -321,7 +297,7 @@ public final class ByteBufQueue {
 	 * @return number of drained bytes.
 	 */
 	public int drainTo(ByteBuf dest, int maxSize) {
-		int actualSize = drainTo(dest.array(), dest.position(), maxSize);
+		int actualSize = drainTo(dest.array(), dest.getWritePosition(), maxSize);
 		dest.advance(actualSize);
 		return actualSize;
 	}
@@ -334,7 +310,7 @@ public final class ByteBufQueue {
 	 * @return number of drained bytes
 	 */
 	public int drainTo(ByteBuf dest) {
-		return drainTo(dest, dest.remaining());
+		return drainTo(dest, dest.remainingToWrite());
 	}
 
 	/**
@@ -348,7 +324,7 @@ public final class ByteBufQueue {
 		while (hasRemaining()) {
 			ByteBuf buf = take();
 			dest.add(buf);
-			size += buf.remaining();
+			size += buf.remainingToRead();
 		}
 		return size;
 	}
@@ -366,7 +342,7 @@ public final class ByteBufQueue {
 		while (s != 0 && hasRemaining()) {
 			ByteBuf buf = takeMaxSize(s);
 			dest.add(buf);
-			s -= buf.remaining();
+			s -= buf.remainingToRead();
 		}
 		return maxSize - s;
 	}
@@ -379,5 +355,10 @@ public final class ByteBufQueue {
 			bufs[i].recycle();
 		}
 		first = last = 0;
+	}
+
+	@Override
+	public String toString() {
+		return "bufs:" + remainingBufs() + " bytes:" + remainingBytes();
 	}
 }

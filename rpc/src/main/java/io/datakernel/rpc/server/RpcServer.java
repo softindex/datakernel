@@ -17,19 +17,17 @@
 package io.datakernel.rpc.server;
 
 import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.*;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
-import io.datakernel.rpc.server.RpcServerConnection.StatusListener;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.serializer.SerializerBuilder;
 import org.slf4j.Logger;
 
-import java.nio.channels.SocketChannel;
 import java.util.*;
 
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
@@ -46,7 +44,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	private SerializerBuilder serializerBuilder;
 	private final Set<Class<?>> messageTypes = new LinkedHashSet<>();
 
-	private final Map<SocketChannel, RpcServerConnection> connections = new HashMap<>();
+	private final List<RpcServerConnection> connections = new ArrayList<>();
 
 	private BufferSerializer<RpcMessage> serializer;
 
@@ -106,54 +104,34 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@Override
-	protected SocketConnection createConnection(final SocketChannel socketChannel) {
-		StatusListener statusListener = new StatusListener() {
-			@Override
-			public void onOpen(RpcServerConnection connection) {
-				connections.put(socketChannel, connection);
-
-				// jmx
-				connectionsCount.setCount(connections.size());
-			}
-
-			@Override
-			public void onClosed() {
-				connections.remove(socketChannel);
-
-				// jmx
-				connectionsCount.setCount(connections.size());
-			}
-		};
+	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		BufferSerializer<RpcMessage> messageSerializer = getSerializer();
-		RpcServerConnection serverConnection = new RpcServerConnection(eventloop, socketChannel,
-				messageSerializer, handlers, protocolFactory, statusListener);
-		return serverConnection.getSocketConnection();
+		RpcServerConnection connection = new RpcServerConnection(eventloop, this, asyncTcpSocket,
+				messageSerializer, handlers, protocolFactory);
+		add(connection);
+		return connection.getSocketConnection();
 	}
 
 	@Override
 	protected void onClose() {
-		closeConnections();
-	}
-
-	private void closeConnections() {
-		for (final RpcServerConnection connection : new ArrayList<>(connections.values())) {
+		for (final RpcServerConnection connection : new ArrayList<>(connections)) {
 			connection.close();
 		}
 	}
 
-	public void add(SocketChannel socketChannel, RpcServerConnection connection) {
+	public void add(RpcServerConnection connection) {
 		if (logger.isInfoEnabled())
-			logger.info("Client connected on {}", socketChannel);
-		connections.put(socketChannel, connection);
+			logger.info("Client connected on {}", connection);
+		connections.add(connection);
 
 		// jmx
 		connectionsCount.setCount(connections.size());
 	}
 
-	public void remove(SocketChannel socketChannel) {
+	public void remove(RpcServerConnection connection) {
 		if (logger.isInfoEnabled())
-			logger.info("Client disconnected on {}", socketChannel);
-		connections.remove(socketChannel);
+			logger.info("Client disconnected on {}", connection);
+		connections.remove(connection);
 
 		// jmx
 		connectionsCount.setCount(connections.size());
@@ -163,7 +141,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@JmxOperation
 	public void startMonitoring() {
 		monitoring = true;
-		for (RpcServerConnection connection : connections.values()) {
+		for (RpcServerConnection connection : connections) {
 			connection.startMonitoring();
 		}
 	}
@@ -171,7 +149,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@JmxOperation
 	public void stopMonitoring() {
 		monitoring = false;
-		for (RpcServerConnection connection : connections.values()) {
+		for (RpcServerConnection connection : connections) {
 			connection.stopMonitoring();
 		}
 	}
@@ -188,13 +166,13 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	@JmxAttribute
 	public List<RpcServerConnection> getConnections() {
-		return new ArrayList<>(connections.values());
+		return new ArrayList<>(connections);
 	}
 
 	@JmxAttribute
 	public EventStats getRequests() {
 		EventStats totalRequests = new EventStats();
-		for (RpcServerConnection connection : connections.values()) {
+		for (RpcServerConnection connection : connections) {
 			totalRequests.add(connection.getSuccessfulResponses());
 			totalRequests.add(connection.getErrorResponses());
 		}
@@ -204,7 +182,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@JmxAttribute
 	public EventStats getProcessingErrors() {
 		EventStats errors = new EventStats();
-		for (RpcServerConnection connection : connections.values()) {
+		for (RpcServerConnection connection : connections) {
 			errors.add(connection.getErrorResponses());
 		}
 		return errors;
@@ -213,7 +191,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	@JmxAttribute
 	public ValueStats getRequestHandlingTime() {
 		ValueStats requestHandlingTime = new ValueStats();
-		for (RpcServerConnection connection : connections.values()) {
+		for (RpcServerConnection connection : connections) {
 			requestHandlingTime.add(connection.getRequestHandlingTime());
 		}
 		return requestHandlingTime;

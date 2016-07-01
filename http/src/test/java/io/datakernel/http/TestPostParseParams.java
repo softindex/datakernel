@@ -17,10 +17,12 @@
 package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
+import io.datakernel.bytebuf.ByteBuf;
 import org.junit.Test;
 
 import java.util.Map;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.HttpHeaders.CONTENT_TYPE;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static io.datakernel.util.ByteBufStrings.wrapAscii;
@@ -29,14 +31,19 @@ import static org.junit.Assert.assertEquals;
 public class TestPostParseParams {
 	@Test
 	public void testParameters() throws ParseException {
+		ByteBuf body = wrapAscii("hello=world&value=1234");
+
 		HttpRequest request = HttpRequest.post("http://127.0.0.1")
 				.header(CONTENT_TYPE, encodeAscii("application/x-www-form-urlencoded"))
-				.body(wrapAscii("hello=world&value=1234"));
+				.body(body);
 
 		Map<String, String> params = request.getPostParameters();
 
 		assertEquals(2, params.size());
 		assertEquals("world", params.get("hello"));
 		assertEquals("1234", params.get("value"));
+		body.recycle();
+
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

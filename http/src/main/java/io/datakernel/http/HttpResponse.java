@@ -258,16 +258,14 @@ public final class HttpResponse extends HttpMessage {
 		if (code >= 400 && getBody() == null) {
 			setBody(DEFAULT_CODE_BODIES.get(code));
 		}
-		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remainingToRead()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
-		ByteBuf buf = ByteBufPool.allocate(estimateSize);
+		ByteBuf buf = ByteBufPool.allocateAtLeast(estimateSize);
 
 		writeCodeMessage(buf, code);
 
 		writeHeaders(buf);
 		writeBody(buf);
-
-		buf.flip();
 
 		return buf;
 	}

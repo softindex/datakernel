@@ -29,7 +29,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Random;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.http.TestUtils.readFully;
 import static io.datakernel.http.TestUtils.toByteArray;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
@@ -90,10 +90,10 @@ public class AsyncHttpServerTest {
 	public static void writeByRandomParts(Socket socket, String string) throws IOException {
 		ByteBuf buf = ByteBuf.wrap(encodeAscii(string));
 		Random random = new Random();
-		while (buf.hasRemaining()) {
-			int count = min(1 + random.nextInt(5), buf.remaining());
-			socket.getOutputStream().write(buf.array(), buf.position(), count);
-			buf.advance(count);
+		while (buf.canRead()) {
+			int count = min(1 + random.nextInt(5), buf.remainingToRead());
+			socket.getOutputStream().write(buf.array(), buf.getReadPosition(), count);
+			buf.skip(count);
 		}
 	}
 
@@ -111,6 +111,7 @@ public class AsyncHttpServerTest {
 		thread.start();
 
 		Socket socket = new Socket();
+		socket.setTcpNoDelay(true);
 		socket.connect(new InetSocketAddress(port));
 
 		for (int i = 0; i < 100; i++) {
@@ -253,7 +254,8 @@ public class AsyncHttpServerTest {
 
 		try (Socket socket = new Socket()) {
 			socket.connect(new InetSocketAddress(port));
-			socket.getOutputStream().write(buf.array(), buf.position(), buf.remaining());
+			socket.getOutputStream().write(buf.array(), buf.getReadPosition(), buf.remainingToRead());
+			buf.recycle();
 			Thread.sleep(100);
 		}
 		server.closeFuture().await();
@@ -261,6 +263,8 @@ public class AsyncHttpServerTest {
 		assertEquals(1, eventloop.getStats().getIoErrors().getTotal());
 		assertEquals("Too big HttpMessage",
 				eventloop.getStats().getIoErrors().getLastException().getMessage());
+
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	public static void main(String[] args) throws Exception {

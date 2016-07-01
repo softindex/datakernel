@@ -31,23 +31,22 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.stream.StreamStatus.END_OF_STREAM;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 public class StreamLZ4Test {
-
 	private static ByteBuf createRandomByteBuf(Random random) {
 		int offset = random.nextInt(10);
-		int len = random.nextInt(100);
 		int tail = random.nextInt(10);
-		ByteBuf result = ByteBuf.allocate(offset + len + tail);
-		result.position(offset);
-		result.limit(offset + len);
+		int len = random.nextInt(100);
+		ByteBuf result = ByteBuf.create(offset + len + tail);
 		int lenUnique = 1 + random.nextInt(len + 1);
+		result.setWritePosition(offset);
+		result.setReadPosition(offset);
 		for (int i = 0; i < len; i++) {
-			result.array()[offset + i] = (byte) (i % lenUnique);
+			result.put((byte) (i % lenUnique));
 		}
 		return result;
 	}
@@ -55,7 +54,7 @@ public class StreamLZ4Test {
 	private static byte[] byteBufsToByteArray(List<ByteBuf> byteBufs) {
 		ByteBufQueue queue = new ByteBufQueue();
 		for (ByteBuf buf : byteBufs) {
-			queue.add(buf.slice(0, buf.remaining()));
+			queue.add(buf.slice());
 		}
 		byte[] bytes = new byte[queue.remainingBytes()];
 		queue.drainTo(bytes, 0, bytes.length);
@@ -76,9 +75,7 @@ public class StreamLZ4Test {
 		Random random = new Random(123456);
 		int buffersCount = 1000;
 		for (int i = 0; i < buffersCount; i++) {
-			ByteBuf buffer = createRandomByteBuf(random);
-			buffer.flip();
-			buffers.add(buffer);
+			buffers.add(createRandomByteBuf(random));
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
@@ -104,7 +101,7 @@ public class StreamLZ4Test {
 
 		assertArrayEquals(expected, actual);
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		assertEquals(END_OF_STREAM, preBuf.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, preBuf.getOutput().getProducerStatus());
@@ -129,7 +126,6 @@ public class StreamLZ4Test {
 		int buffersCount = 1000;
 		for (int i = 0; i < buffersCount; i++) {
 			ByteBuf buffer = createRandomByteBuf(random);
-			buffer.flip();
 			buffers.add(buffer);
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
@@ -163,7 +159,7 @@ public class StreamLZ4Test {
 
 		assertArrayEquals(expected, actual);
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 		assertEquals(END_OF_STREAM, preBuf.getInput().getConsumerStatus());
 		assertEquals(END_OF_STREAM, preBuf.getOutput().getProducerStatus());
@@ -212,9 +208,8 @@ public class StreamLZ4Test {
 
 	private void doTest(Eventloop eventloop, StreamLZ4Compressor compressor) {
 		byte data[] = "1".getBytes();
-		ByteBuf buf = ByteBuf.allocate(data.length);
+		ByteBuf buf = ByteBuf.create(data.length);
 		buf.put(data);
-		buf.flip();
 		List<ByteBuf> buffers = new ArrayList<>();
 		buffers.add(buf);
 
@@ -236,7 +231,7 @@ public class StreamLZ4Test {
 		assertArrayEquals(actual, expected);
 
 		assertEquals(END_OF_STREAM, source.getProducerStatus());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 }

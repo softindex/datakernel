@@ -105,7 +105,6 @@ final class AttributeNodeForList implements AttributeNode {
 	private Object[] createArrayFrom(List<Map<String, Object>> attributesFromAllElements) {
 		OpenType<?> arrayElementOpenType = arrayType.getElementOpenType();
 		if (arrayElementOpenType instanceof ArrayType) {
-			// TODO(vmykhalko): add support for multidimensional arrays
 			throw new RuntimeException("Multidimensional arrays are not supported");
 		} else {
 			try {
