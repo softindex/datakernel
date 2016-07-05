@@ -18,10 +18,11 @@ package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.bytebuf.ByteBufPool;
 
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -29,34 +30,69 @@ class GzipProcessor {
 	static ByteBuf fromGzip(ByteBuf raw) throws ParseException {
 		try {
 			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.getReadPosition(), raw.remainingToRead()));
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			int nRead;
-			byte[] data = new byte[256];
-			while ((nRead = gzip.read(data, 0, data.length)) != -1) {
-				out.write(data, 0, nRead);
+			ByteBuf data = ByteBufPool.allocateAtLeast(256);
+			while ((nRead = gzip.read(data.array(), data.getWritePosition(), data.remainingToWrite())) != -1) {
+				data.advance(nRead);
+				if (!data.canWrite()) {
+					data = ByteBufPool.reallocateAtLeast(data, data.getLimit() * 2);
+				}
 			}
-			byte[] bytes = out.toByteArray();
 			gzip.close();
-			out.close();
 			raw.recycle();
-			return ByteBuf.wrap(bytes);
+			return data;
 		} catch (IOException e) {
-			throw new ParseException("Can't decode", e);
+			throw new ParseException("Can't decode gzip", e);
 		}
 	}
 
 	static ByteBuf toGzip(ByteBuf raw) throws ParseException {
 		try {
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			ByteBufOutputStream out = new ByteBufOutputStream();
 			GZIPOutputStream gzip = new GZIPOutputStream(out);
 			gzip.write(raw.array(), raw.getReadPosition(), raw.remainingToRead());
 			gzip.close();
-			byte[] compressed = out.toByteArray();
-			out.close();
 			raw.recycle();
-			return ByteBuf.wrap(compressed);
+			return out.getBuf();
 		} catch (IOException e) {
-			throw new ParseException("Can't encode", e);
+			throw new ParseException("Can't encode gzip", e);
+		}
+	}
+
+	private static class ByteBufOutputStream extends OutputStream {
+		private ByteBuf container;
+
+		@Override
+		public void write(int b) {
+			if (container == null) {
+				container = ByteBufPool.allocateAtLeast(256);
+			}
+			if (!container.canWrite()) {
+				container = ByteBufPool.reallocateAtLeast(container, container.getLimit() * 2);
+			}
+			container.put((byte) b);
+		}
+
+		@Override
+		public void write(byte[] bytes) {
+			write(bytes, 0, bytes.length);
+		}
+
+		@Override
+		public void write(byte[] bytes, int off, int len) {
+			if (container == null) {
+				container = ByteBufPool.allocateAtLeast(256);
+			}
+			while (container.remainingToWrite() < len) {
+				container = ByteBufPool.reallocateAtLeast(container, container.getLimit() * 2);
+			}
+			container.put(bytes, off, off + len);
+		}
+
+		public ByteBuf getBuf() {
+			ByteBuf res = container;
+			container = null;
+			return res;
 		}
 	}
 }

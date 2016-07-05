@@ -199,7 +199,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 						try {
 							if (shouldGzip && httpResponse.getBody() != null) {
 								httpResponse.setHeader(CONTENT_ENCODING, CONTENT_ENCODING_GZIP);
-								httpResponse.setBody(toGzip(httpResponse.getBody()));
+								httpResponse.body = toGzip(httpResponse.getBody());
 							}
 						} catch (ParseException e) {
 							writeException(new HttpServletError(500));

@@ -22,6 +22,7 @@ import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.util.ByteBufStrings;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -57,7 +58,9 @@ public class TestGzipProcessor {
 		AsyncHttpServlet servlet = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) throws ParseException {
-				callback.onResult(create().body(request.getBody()));
+				String receivedData = ByteBufStrings.decodeAscii(request.getBody());
+				assertEquals(TEST_PHRASE, receivedData);
+				callback.onResult(create().body(ByteBufStrings.wrapAscii(receivedData)));
 			}
 		};
 
