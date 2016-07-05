@@ -141,7 +141,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		int compressionLevel = compressionLevel(len < MIN_BLOCK_SIZE ? MIN_BLOCK_SIZE : len);
 
 		int outputBufMaxSize = HEADER_LENGTH + ((compressor == null) ? len : compressor.maxCompressedLength(len));
-		ByteBuf outputBuf = ByteBufPool.allocateAtLeast(outputBufMaxSize);
+		ByteBuf outputBuf = ByteBufPool.allocate(outputBufMaxSize);
 		outputBuf.put(MAGIC);
 
 		byte[] outputBytes = outputBuf.array();
@@ -178,7 +178,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 	private static ByteBuf createEndOfStreamBlock() {
 		int compressionLevel = compressionLevel(MIN_BLOCK_SIZE);
 
-		ByteBuf outputBuf = ByteBufPool.allocateAtLeast(HEADER_LENGTH);
+		ByteBuf outputBuf = ByteBufPool.allocate(HEADER_LENGTH);
 		byte[] outputBytes = outputBuf.array();
 		System.arraycopy(MAGIC, 0, outputBytes, 0, MAGIC_LENGTH);
 

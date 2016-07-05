@@ -47,7 +47,7 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 		public OutputProducer(int minChunkSize, int maxChunkSize) {
 			this.minChunkSize = minChunkSize;
 			this.maxChunkSize = maxChunkSize;
-			this.internalBuf = ByteBufPool.allocateAtLeast(maxChunkSize);
+			this.internalBuf = ByteBufPool.allocate(maxChunkSize);
 		}
 
 		@Override
@@ -71,7 +71,7 @@ public final class StreamByteChunker extends AbstractStreamTransformer_1_1<ByteB
 				} else {
 					buf.drainTo(internalBuf, minChunkSize - internalBuf.getWritePosition());
 					send(internalBuf);
-					internalBuf = ByteBufPool.allocateAtLeast(maxChunkSize);
+					internalBuf = ByteBufPool.allocate(maxChunkSize);
 				}
 			}
 

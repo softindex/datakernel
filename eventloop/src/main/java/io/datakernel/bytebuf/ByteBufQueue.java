@@ -93,7 +93,7 @@ public final class ByteBufQueue {
 			first = next(first);
 			return buf;
 		}
-		ByteBuf result = buf.slice(buf.getReadPosition(), maxSize);
+		ByteBuf result = buf.slice(maxSize);
 		buf.skip(maxSize);
 		return result;
 	}
@@ -113,11 +113,11 @@ public final class ByteBufQueue {
 			first = next(first);
 			return buf;
 		} else if (exactSize < buf.remainingToRead()) {
-			ByteBuf result = buf.slice(buf.getReadPosition(), buf.getReadPosition() + exactSize);
+			ByteBuf result = buf.slice(exactSize);
 			buf.skip(exactSize);
 			return result;
 		}
-		ByteBuf result = ByteBufPool.allocateAtLeast(exactSize);
+		ByteBuf result = ByteBufPool.allocate(exactSize);
 		drainTo(result, exactSize);
 		return result;
 	}

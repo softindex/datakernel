@@ -122,7 +122,7 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void allocateBuffer() {
-			byteBuf = ByteBufPool.allocateAtLeast(max(defaultBufferSize, headerSize + estimatedMessageSize));
+			byteBuf = ByteBufPool.allocate(max(defaultBufferSize, headerSize + estimatedMessageSize));
 			outputBuffer.set(byteBuf.array(), 0);
 		}
 

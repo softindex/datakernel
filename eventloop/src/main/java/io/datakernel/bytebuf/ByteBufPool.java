@@ -20,7 +20,7 @@ public class ByteBufPool {
 	private static final int[] created = new int[NUMBER_SLABS];
 
 	// allocating
-	public static ByteBuf allocateAtLeast(int size) {
+	public static ByteBuf allocate(int size) {
 		if (size < minSize || size >= maxSize) {
 			return ByteBuf.create(size); // не хотим регистрировать в пуле
 		}
@@ -37,13 +37,13 @@ public class ByteBufPool {
 		return buf;
 	}
 
-	public static ByteBuf reallocateAtLeast(ByteBuf buf, int newSize) {
+	public static ByteBuf ensureWriteSize(ByteBuf buf, int newSize) {
 		assert !(buf instanceof ByteBuf.ByteBufSlice);
 		int limit = buf.getLimit();
-		if (limit >= newSize && (limit <= minSize || numberOfLeadingZeros(limit - 1) == numberOfLeadingZeros(newSize - 1))) {
+		if (buf.remainingToWrite() >= newSize && (limit <= minSize || numberOfLeadingZeros(limit - 1) == numberOfLeadingZeros(newSize - 1))) {
 			return buf;
 		} else {
-			ByteBuf newBuf = allocateAtLeast(newSize);
+			ByteBuf newBuf = allocate(newSize + buf.remainingToRead());
 			newBuf.put(buf);
 			buf.recycle();
 			return newBuf;
@@ -53,7 +53,8 @@ public class ByteBufPool {
 	public static ByteBuf concat(ByteBuf buf1, ByteBuf buf2) {
 		assert !buf1.isRecycled() && !buf2.isRecycled();
 		if (buf1.remainingToWrite() < buf2.remainingToRead()) {
-			ByteBuf newBuf = allocateAtLeast(buf1.remainingToRead() + buf2.remainingToRead());
+			ByteBuf newBuf = allocate(buf1.remainingToRead() + buf2.remainingToRead());
+			// TODO: (arashev) simplify  ensureWriteSize()
 			newBuf.put(buf1);
 			buf1.recycle();
 			buf1 = newBuf;

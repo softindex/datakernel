@@ -6,8 +6,8 @@ public class ByteBuf {
 	static final class ByteBufSlice extends ByteBuf {
 		private ByteBuf root;
 
-		private ByteBufSlice(ByteBuf buf, int rPos, int wPos, int limit) {
-			super(buf.array, rPos, wPos, limit);
+		private ByteBufSlice(ByteBuf buf, int readPosition, int writePosition) {
+			super(buf.array, readPosition, writePosition);
 			this.root = buf;
 		}
 
@@ -17,8 +17,8 @@ public class ByteBuf {
 		}
 
 		@Override
-		public ByteBuf slice(int offset, int limit) {
-			return root.slice(offset, limit);
+		public ByteBuf slice(int offset, int length) {
+			return root.slice(offset, length);
 		}
 
 		@Override
@@ -34,45 +34,47 @@ public class ByteBuf {
 
 	protected final byte[] array;
 
-	private int rPos;
-	private int wPos;
+	private int readPosition;
+	private int writePosition;
 
 	int refs;
 
 	// creators
-	private ByteBuf(byte[] array, int rPos, int wPos, int limit) {
-		assert rPos >= 0 && wPos <= limit && rPos <= wPos && limit <= array.length;
+	private ByteBuf(byte[] array, int readPosition, int writePosition) {
+		assert readPosition >= 0 && readPosition <= writePosition && writePosition <= array.length;
 		this.array = array;
-		this.rPos = rPos;
-		this.wPos = wPos;
+		this.readPosition = readPosition;
+		this.writePosition = writePosition;
 	}
 
 	public static ByteBuf empty() {
-		return new ByteBuf(new byte[0], 0, 0, 0);
+		return new ByteBuf(new byte[0], 0, 0);
 	}
 
+	// TODO: (arashev)
 	public static ByteBuf create(int size) {
-		return new ByteBuf(new byte[size], 0, 0, size);
+		return new ByteBuf(new byte[size], 0, 0);
 	}
+
+	// TODO: (arashev) add 'wrapForRead/wrapForWrite'
 
 	public static ByteBuf wrap(byte[] bytes) {
 		return wrap(bytes, 0, bytes.length);
 	}
 
 	public static ByteBuf wrap(byte[] bytes, int offset, int length) {
-		int limit = offset + length;
-		return new ByteBuf(bytes, offset, limit, limit);
+		return new ByteBuf(bytes, offset, offset + length);
 	}
 
 	// getters & setters
 	public int getReadPosition() {
 		assert !isRecycled();
-		return rPos;
+		return readPosition;
 	}
 
 	public int getWritePosition() {
 		assert !isRecycled();
-		return wPos;
+		return writePosition;
 	}
 
 	public int getLimit() {
@@ -81,32 +83,33 @@ public class ByteBuf {
 
 	public void setReadPosition(int pos) {
 		assert !isRecycled();
-		assert pos >= rPos && pos <= wPos;
-		this.rPos = pos;
+		assert pos >= readPosition && pos <= writePosition;
+		this.readPosition = pos;
 	}
 
 	public void setWritePosition(int pos) {
 		assert !isRecycled();
-		assert pos >= rPos && pos <= array.length;
-		this.wPos = pos;
+		assert pos >= readPosition && pos <= array.length;
+		this.writePosition = pos;
 	}
 
 	// slicing
 	public ByteBuf slice() {
-		return slice(rPos, wPos);
+		return slice(readPosition, remainingToRead());
 	}
 
-	public ByteBuf slice(int size) {
-		return slice(rPos, rPos + size);
+	public ByteBuf slice(int length) {
+		return slice(readPosition, length);
 	}
 
-	public ByteBuf slice(int offset, int limit) {
+	// TODO: (arashev) switch to off + length
+	public ByteBuf slice(int offset, int length) {
 		assert !isRecycled();
 		if (!isRecycleNeeded()) {
-			return ByteBuf.wrap(array, offset, limit - offset);
+			return ByteBuf.wrap(array, offset, length);
 		}
 		refs++;
-		return new ByteBufSlice(this, offset, limit, limit);
+		return new ByteBufSlice(this, offset, offset + length);
 	}
 
 	// recycling
@@ -130,8 +133,8 @@ public class ByteBuf {
 
 	public void rewind() {
 		assert !isRecycled();
-		wPos = 0;
-		rPos = 0;
+		writePosition = 0;
+		readPosition = 0;
 	}
 
 	public boolean isRecycleNeeded() {
@@ -141,12 +144,12 @@ public class ByteBuf {
 	// byte buffers
 	public ByteBuffer toByteBufferInReadMode() {
 		assert !isRecycled();
-		return ByteBuffer.wrap(array, rPos, wPos - rPos);
+		return ByteBuffer.wrap(array, readPosition, writePosition - readPosition);
 	}
 
 	public ByteBuffer toByteBufferInWriteMode() {
 		assert !isRecycled();
-		return ByteBuffer.wrap(array, wPos, array.length - wPos);
+		return ByteBuffer.wrap(array, writePosition, array.length - writePosition);
 	}
 
 //	public ByteBuffer toByteBuffer() {
@@ -173,40 +176,40 @@ public class ByteBuf {
 
 	public int remainingToWrite() {
 		assert !isRecycled();
-		return array.length - wPos;
+		return array.length - writePosition;
 	}
 
 	public int remainingToRead() {
 		assert !isRecycled();
-		return wPos - rPos;
+		return writePosition - readPosition;
 	}
 
 	public boolean canWrite() {
 		assert !isRecycled();
-		return wPos != array.length;
+		return writePosition != array.length;
 	}
 
 	public boolean canRead() {
 		assert !isRecycled();
-		return rPos != wPos;
+		return readPosition != writePosition;
 	}
 
 	public void advance(int size) {
 		assert !isRecycled();
-		assert wPos + size <= array.length;
-		wPos += size;
+		assert writePosition + size <= array.length;
+		writePosition += size;
 	}
 
 	public void skip(int size) {
 		assert !isRecycled();
-		assert rPos + size <= array.length;
-		rPos += size;
+		assert readPosition + size <= array.length;
+		readPosition += size;
 	}
 
 	public byte get() {
 		assert !isRecycled();
-		assert rPos < wPos;
-		return array[rPos++];
+		assert readPosition < writePosition;
+		return array[readPosition++];
 	}
 
 	public byte at(int index) {
@@ -216,27 +219,27 @@ public class ByteBuf {
 
 	public byte peek() {
 		assert !isRecycled();
-		return array[rPos];
+		return array[readPosition];
 	}
 
 	public byte peek(int offset) {
 		assert !isRecycled();
-		assert (rPos + offset) < wPos;
-		return array[rPos + offset];
+		assert (readPosition + offset) < writePosition;
+		return array[readPosition + offset];
 	}
 
 	public void drainTo(byte[] array, int offset, int size) {
 		assert !isRecycled();
 		assert size >= 0 && (offset + size) <= array.length;
-		assert this.rPos + size <= this.wPos;
-		System.arraycopy(this.array, this.rPos, array, offset, size);
-		this.rPos += size;
+		assert this.readPosition + size <= this.writePosition;
+		System.arraycopy(this.array, this.readPosition, array, offset, size);
+		this.readPosition += size;
 	}
 
 	public void drainTo(ByteBuf buf, int size) {
 		assert !buf.isRecycled();
-		drainTo(buf.array, buf.wPos, size);
-		buf.wPos += size;
+		drainTo(buf.array, buf.writePosition, size);
+		buf.writePosition += size;
 	}
 
 	// editing
@@ -246,13 +249,13 @@ public class ByteBuf {
 	}
 
 	public void put(byte b) {
-		set(wPos, b);
-		wPos++;
+		set(writePosition, b);
+		writePosition++;
 	}
 
 	public void put(ByteBuf buf) {
-		put(buf.array, buf.rPos, buf.wPos);
-		buf.rPos = buf.wPos;
+		put(buf.array, buf.readPosition, buf.writePosition);
+		buf.readPosition = buf.writePosition;
 	}
 
 	public void put(byte[] bytes) {
@@ -261,11 +264,11 @@ public class ByteBuf {
 
 	public void put(byte[] bytes, int off, int lim) {
 		assert !isRecycled();
-		assert wPos + (lim - off) <= array.length;
+		assert writePosition + (lim - off) <= array.length;
 		assert bytes.length >= lim;
 		int length = lim - off;
-		System.arraycopy(bytes, off, array, wPos, length);
-		wPos += length;
+		System.arraycopy(bytes, off, array, writePosition, length);
+		writePosition += length;
 	}
 
 	// miscellaneous
@@ -278,7 +281,7 @@ public class ByteBuf {
 		ByteBuf buf = (ByteBuf) o;
 
 		return remainingToRead() == buf.remainingToRead() &&
-				arraysEquals(this.array, this.rPos, this.wPos, buf.array, buf.rPos);
+				arraysEquals(this.array, this.readPosition, this.writePosition, buf.array, buf.readPosition);
 	}
 
 	private boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {
@@ -294,7 +297,7 @@ public class ByteBuf {
 	public int hashCode() {
 		assert !isRecycled();
 		int result = 1;
-		for (int i = rPos; i < wPos; i++) {
+		for (int i = readPosition; i < writePosition; i++) {
 			result = 31 * result + array[i];
 		}
 		return result;
@@ -304,7 +307,7 @@ public class ByteBuf {
 	public String toString() {
 		char[] chars = new char[remainingToRead() < 256 ? remainingToRead() : 256];
 		for (int i = 0; i < chars.length; i++) {
-			byte b = array[rPos + i];
+			byte b = array[readPosition + i];
 			chars[i] = (b >= ' ') ? (char) b : (char) 65533;
 		}
 		return new String(chars);

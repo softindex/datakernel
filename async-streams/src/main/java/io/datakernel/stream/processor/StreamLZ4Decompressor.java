@@ -80,7 +80,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		private OutputProducer(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum) {
 			this.decompressor = decompressor;
 			this.checksum = checksum;
-			this.inputBuf = ByteBufPool.allocateAtLeast(INITIAL_BUFFER_SIZE);
+			this.inputBuf = ByteBufPool.allocate(INITIAL_BUFFER_SIZE);
 		}
 
 		@Override
@@ -136,7 +136,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 					outputBuf = readBody(decompressor, checksum, header, buf.array(), buf.getReadPosition());
 					buf.skip(header.compressedLen);
 				} else {
-					inputBuf = ByteBufPool.reallocateAtLeast(inputBuf, header.compressedLen);
+					inputBuf = ByteBufPool.ensureWriteSize(inputBuf, header.compressedLen);
 					int remainingToProcessBytes = header.compressedLen - inputBuf.remainingToRead();
 					int size = min(remainingToProcessBytes, buf.remainingToRead());
 					buf.drainTo(inputBuf, size);
@@ -191,7 +191,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 
 	private static ByteBuf readBody(LZ4FastDecompressor decompressor, StreamingXXHash32 checksum, Header header,
 	                                byte[] bytes, int off) throws ParseException {
-		ByteBuf outputBuf = ByteBufPool.allocateAtLeast(header.originalLen);
+		ByteBuf outputBuf = ByteBufPool.allocate(header.originalLen);
 		outputBuf.setWritePosition(header.originalLen);
 		switch (header.compressionMethod) {
 			case COMPRESSION_METHOD_RAW:

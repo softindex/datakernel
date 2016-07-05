@@ -1,12 +1,17 @@
 package io.datakernel.stream.net;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.util.ByteBufStrings;
 
+import static io.datakernel.util.ByteBufStrings.decodeUTF8;
+import static io.datakernel.util.ByteBufStrings.putUtf8;
+
+@SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
 public class MessagingSerializers {
+	public static final ParseException DESERIALIZE_ERR = new ParseException("Cant deserialize message");
 
 	private MessagingSerializers() {
 	}
@@ -16,18 +21,16 @@ public class MessagingSerializers {
 		return new MessagingSerializer<I, O>() {
 			@Override
 			public I tryDeserialize(ByteBuf buf) throws ParseException {
-				int delim = -1;
-				for (int i = buf.getReadPosition(); i < buf.getWritePosition(); i++) {
-					if (buf.array()[i] == '\0') {
-						delim = i;
-						break;
+				for (int len = 0; len < buf.remainingToRead(); len++) {
+					if (buf.peek(len) == '\0') {
+						try {
+							I item = in.fromJson(decodeUTF8(buf.array(), buf.getReadPosition(), len), inputClass);
+							buf.skip(len + 1); // skipping msg + delimiter
+							return item;
+						} catch (JsonSyntaxException e) {
+							throw DESERIALIZE_ERR;
+						}
 					}
-				}
-				if (delim != -1) {
-					int len = delim - buf.getReadPosition();
-					I item = in.fromJson(ByteBufStrings.decodeUTF8(buf.array(), buf.getReadPosition(), len), inputClass);
-					buf.setReadPosition(delim + 1); // skipping msg + delimiter
-					return item;
 				}
 				return null;
 			}
@@ -49,19 +52,15 @@ public class MessagingSerializers {
 		ByteBufPoolAppendable() {this(INITIAL_BUF_SIZE);}
 
 		ByteBufPoolAppendable(int size) {
-			this.container = ByteBufPool.allocateAtLeast(size);
+			this.container = ByteBufPool.allocate(size);
 		}
 
 		@Override
 		public Appendable append(CharSequence csq) {
-			while (container.remainingToWrite() < csq.length() * 3) {
-				container = ByteBufPool.reallocateAtLeast(container, container.getLimit() * 2);
-			}
-			int pos = container.getWritePosition();
+			container = ByteBufPool.ensureWriteSize(container, csq.length() * 3);
 			for (int i = 0; i < csq.length(); i++) {
-				pos = writeUtfChar(container.array(), pos, csq.charAt(i));
+				putUtf8(container, csq.charAt(i));
 			}
-			container.setWritePosition(pos);
 			return this;
 		}
 
@@ -72,28 +71,9 @@ public class MessagingSerializers {
 
 		@Override
 		public Appendable append(char c) {
-			if (container.remainingToWrite() < 3) {
-				container = ByteBufPool.reallocateAtLeast(container, container.getLimit() * 2);
-			}
-			int pos = writeUtfChar(container.array(), container.getWritePosition(), c);
-			container.setWritePosition(pos);
+			container = ByteBufPool.ensureWriteSize(container, 3);
+			putUtf8(container, c);
 			return this;
-		}
-
-		private int writeUtfChar(byte[] buf, int pos, char c) {
-			if (c <= 0x007F) {
-				buf[pos] = (byte) c;
-				return pos + 1;
-			} else if (c <= 0x07FF) {
-				buf[pos] = (byte) (0xC0 | c >> 6 & 0x1F);
-				buf[pos + 1] = (byte) (0x80 | c & 0x3F);
-				return pos + 2;
-			} else {
-				buf[pos] = (byte) (0xE0 | c >> 12 & 0x0F);
-				buf[pos + 1] = (byte) (0x80 | c >> 6 & 0x3F);
-				buf[pos + 2] = (byte) (0x80 | c & 0x3F);
-				return pos + 3;
-			}
 		}
 
 		public ByteBuf get() {

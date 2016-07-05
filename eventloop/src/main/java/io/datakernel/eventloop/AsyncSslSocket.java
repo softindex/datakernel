@@ -192,7 +192,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	private SSLEngineResult tryToWriteToApp() throws SSLException {
-		ByteBuf dstBuf = ByteBufPool.allocateAtLeast(engine.getSession().getPacketBufferSize());
+		ByteBuf dstBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
 		ByteBuffer srcBuffer = net2engine.toByteBufferInReadMode();
 		ByteBuffer dstBuffer = dstBuf.toByteBufferInWriteMode();
 
@@ -224,7 +224,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private SSLEngineResult tryToWriteToNet() throws SSLException {
 		ByteBuf sourceBuf = app2engineQueue.takeRemaining();
 
-		ByteBuf dstBuf = ByteBufPool.allocateAtLeast(engine.getSession().getPacketBufferSize());
+		ByteBuf dstBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
 		ByteBuffer srcBuffer = sourceBuf.toByteBufferInReadMode();
 		ByteBuffer dstBuffer = dstBuf.toByteBufferInWriteMode();
 

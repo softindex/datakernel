@@ -31,11 +31,11 @@ class GzipProcessor {
 		try {
 			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.getReadPosition(), raw.remainingToRead()));
 			int nRead;
-			ByteBuf data = ByteBufPool.allocateAtLeast(256);
+			ByteBuf data = ByteBufPool.allocate(256);
 			while ((nRead = gzip.read(data.array(), data.getWritePosition(), data.remainingToWrite())) != -1) {
 				data.advance(nRead);
 				if (!data.canWrite()) {
-					data = ByteBufPool.reallocateAtLeast(data, data.getLimit() * 2);
+					data = ByteBufPool.ensureWriteSize(data, data.getLimit() * 2);
 				}
 			}
 			gzip.close();
@@ -65,10 +65,10 @@ class GzipProcessor {
 		@Override
 		public void write(int b) {
 			if (container == null) {
-				container = ByteBufPool.allocateAtLeast(256);
+				container = ByteBufPool.allocate(256);
 			}
 			if (!container.canWrite()) {
-				container = ByteBufPool.reallocateAtLeast(container, container.getLimit() * 2);
+				container = ByteBufPool.ensureWriteSize(container, container.getLimit() * 2);
 			}
 			container.put((byte) b);
 		}
@@ -81,10 +81,10 @@ class GzipProcessor {
 		@Override
 		public void write(byte[] bytes, int off, int len) {
 			if (container == null) {
-				container = ByteBufPool.allocateAtLeast(256);
+				container = ByteBufPool.allocate(256);
 			}
 			while (container.remainingToWrite() < len) {
-				container = ByteBufPool.reallocateAtLeast(container, container.getLimit() * 2);
+				container = ByteBufPool.ensureWriteSize(container, container.getLimit() * 2);
 			}
 			container.put(bytes, off, off + len);
 		}

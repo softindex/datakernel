@@ -460,7 +460,7 @@ public final class AsyncFile {
 			return;
 		}
 
-		final ByteBuf buf = ByteBufPool.allocateAtLeast((int) size);
+		final ByteBuf buf = ByteBufPool.allocate((int) size);
 		readFully(buf, 0, new ForwardingCompletionCallback(callback) {
 			@Override
 			public void onComplete() {

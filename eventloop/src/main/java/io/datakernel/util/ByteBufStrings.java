@@ -25,6 +25,8 @@ public final class ByteBufStrings {
 	public static final byte LF = (byte) '\n';
 	public static final byte SP = (byte) ' ';
 	public static final byte HT = (byte) '\t';
+	public static final ParseException READ_PAST_LIMIT = new ParseException("Malformed utf-8 input: Read past end");
+	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException("Malformed utf-8 input");
 
 	private ByteBufStrings() {
 	}
@@ -50,7 +52,7 @@ public final class ByteBufStrings {
 	}
 
 	public static ByteBuf wrapAscii(String string) {
-		ByteBuf buf = ByteBufPool.allocateAtLeast(string.length());
+		ByteBuf buf = ByteBufPool.allocate(string.length());
 		byte[] array = buf.array();
 		for (int i = 0; i < string.length(); i++) {
 			array[i] = (byte) string.charAt(i);
@@ -204,32 +206,42 @@ public final class ByteBufStrings {
 	}
 
 	// UTF-8
-	public static int encodeUTF8(byte[] array, int pos, String string) {
-		int c, p = pos;
+	public static int encodeUtf8(byte[] array, int pos, String string) {
+		int p = pos;
 		for (int i = 0; i < string.length(); i++) {
-			c = string.charAt(i);
-			if (c <= 0x007F) {
-				array[p++] = (byte) c;
-			} else if (c > 0x07FF) {
-				array[p++] = ((byte) (0xE0 | c >> 12 & 0x0F));
-				array[p++] = ((byte) (0x80 | c >> 6 & 0x3F));
-				array[p++] = ((byte) (0x80 | c & 0x3F));
-			} else {
-				array[p++] = ((byte) (0xC0 | c >> 6 & 0x1F));
-				array[p++] = ((byte) (0x80 | c & 0x3F));
-			}
+			p += encodeUtf8(array, p, string.charAt(i));
 		}
 		return p - pos;
 	}
 
-	public static void putUTF8(ByteBuf buf, String string) {
-		int size = encodeUTF8(buf.array(), buf.getReadPosition(), string);
+	public static int encodeUtf8(byte[] array, int pos, char c) {
+		int p = pos;
+		if (c <= 0x007F) {
+			array[p++] = (byte) c;
+		} else if (c > 0x07FF) {
+			array[p++] = ((byte) (0xE0 | c >> 12 & 0x0F));
+			array[p++] = ((byte) (0x80 | c >> 6 & 0x3F));
+			array[p++] = ((byte) (0x80 | c & 0x3F));
+		} else {
+			array[p++] = ((byte) (0xC0 | c >> 6 & 0x1F));
+			array[p++] = ((byte) (0x80 | c & 0x3F));
+		}
+		return p - pos;
+	}
+
+	public static void putUtf8(ByteBuf buf, String string) {
+		int size = encodeUtf8(buf.array(), buf.getWritePosition(), string);
+		buf.advance(size);
+	}
+
+	public static void putUtf8(ByteBuf buf, char c) {
+		int size = encodeUtf8(buf.array(), buf.getWritePosition(), c);
 		buf.advance(size);
 	}
 
 	public static ByteBuf wrapUTF8(String string) {
-		ByteBuf byteBuffer = ByteBufPool.allocateAtLeast(string.length() * 3);
-		int size = encodeUTF8(byteBuffer.array(), 0, string);
+		ByteBuf byteBuffer = ByteBufPool.allocate(string.length() * 3);
+		int size = encodeUtf8(byteBuffer.array(), 0, string);
 		byteBuffer.advance(size);
 		return byteBuffer;
 	}
@@ -259,8 +271,9 @@ public final class ByteBufStrings {
 						break;
 				}
 			}
+			if (pos > end) throw READ_PAST_LIMIT;
 		} catch (ArrayIndexOutOfBoundsException e) {
-			throw new ParseException("Malformed utf-8 input", e);
+			throw READ_PAST_ARRAY_LENGTH;
 		}
 		return new String(tmpBuffer, 0, charIndex);
 	}

@@ -334,7 +334,7 @@ public final class HttpRequest extends HttpMessage {
 				+ 1 // SPACE
 				+ url.getPathAndQuery().length())
 				+ HTTP_1_1_SIZE;
-		ByteBuf buf = ByteBufPool.allocateAtLeast(estimatedSize);
+		ByteBuf buf = ByteBufPool.allocate(estimatedSize);
 
 		method.write(buf);
 		buf.put(SP);

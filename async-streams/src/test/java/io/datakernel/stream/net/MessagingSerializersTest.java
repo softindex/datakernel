@@ -11,14 +11,13 @@ import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-@SuppressWarnings("ALL")
 public class MessagingSerializersTest {
 	private class Req {
 		String text;
 		int num;
 		double val;
 
-		public Req(String text, int num, double val) {
+		Req(String text, int num, double val) {
 			this.text = text;
 			this.num = num;
 			this.val = val;
@@ -52,7 +51,7 @@ public class MessagingSerializersTest {
 	private class Res {
 		boolean bool;
 
-		public Res(boolean bool) {
+		Res(boolean bool) {
 			this.bool = bool;
 		}
 
@@ -124,6 +123,26 @@ public class MessagingSerializersTest {
 		assertEquals(135, readBuf.getWritePosition());
 
 		readBuf.recycle();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
+	}
+
+	@Test
+	public void testDeserializeBadMessage() throws ParseException {
+		ByteBuf badInput = ByteBufStrings.wrapUTF8("{\"text\":\"Greetings\",\"num\":1,\"val\":3.12}\0" +
+				"{\"text\":\"Hi\",\"num\":s2,\"val\":6.2sad4}\0" +
+				"{\"text\":\"Good morning\",\"num\":3,\"val\":9.36edc}\0" +
+				"{\"text\":\"Shalom\",\"n");
+
+		Req req1 = serializer.tryDeserialize(badInput);
+		assertEquals(req1, new Req("Greetings", 1, 3.12));
+
+		try {
+			serializer.tryDeserialize(badInput);
+		} catch (ParseException e) {
+			assert e == MessagingSerializers.DESERIALIZE_ERR;
+		}
+
+		badInput.recycle();
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

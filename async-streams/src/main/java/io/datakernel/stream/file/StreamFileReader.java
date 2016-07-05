@@ -117,7 +117,7 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 			return;
 		}
 
-		final ByteBuf buf = ByteBufPool.allocateAtLeast((int) min(bufferSize, length));
+		final ByteBuf buf = ByteBufPool.allocate((int) min(bufferSize, length));
 
 		asyncFile.read(buf, position, new ResultCallback<Integer>() {
 			@Override

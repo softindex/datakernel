@@ -228,7 +228,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		}
 
 		private void growBuf(int newSize) {
-			buf = ByteBufPool.reallocateAtLeast(buf, newSize);
+			buf = ByteBufPool.ensureWriteSize(buf, newSize);
 			buffer = buf.array();
 		}
 
@@ -303,7 +303,7 @@ public final class StreamBinaryDeserializer<T> extends AbstractStreamTransformer
 		checkArgument(maxMessageSize < (1 << (OutputProducer.MAX_HEADER_BYTES * 7)), "maxMessageSize must be less than 2 MB");
 		checkArgument(buffersPoolSize > 0, "buffersPoolSize must be positive value, got %s", buffersPoolSize);
 
-		ByteBuf buf = ByteBufPool.allocateAtLeast(OutputProducer.INITIAL_BUFFER_SIZE);
+		ByteBuf buf = ByteBufPool.allocate(OutputProducer.INITIAL_BUFFER_SIZE);
 
 		this.inputConsumer = new InputConsumer();
 		this.outputProducer = new OutputProducer(new ArrayDeque<ByteBuf>(buffersPoolSize),

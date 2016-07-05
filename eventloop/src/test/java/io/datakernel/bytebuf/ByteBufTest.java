@@ -24,7 +24,7 @@ public class ByteBufTest {
 		byte[] bytes = ByteBufStrings.encodeAscii("Hello, World");
 		ByteBuf buf = ByteBuf.wrap(bytes);
 
-		ByteBuf slice = buf.slice(7, 12);
+		ByteBuf slice = buf.slice(7, 5);
 
 		assertFalse(buf == slice);
 		assertEquals("World", slice.toString());
@@ -96,7 +96,7 @@ public class ByteBufTest {
 	@Test
 	public void testPoolAndRecycleMechanism() {
 		int size = 500;
-		ByteBuf buf = ByteBufPool.allocateAtLeast(size);
+		ByteBuf buf = ByteBufPool.allocate(size);
 		assertNotEquals(size, buf.getLimit()); // {expected to create 2^N sized bufs only, 500 not in {a}|a == 2^N } => size != limit
 		assertEquals(512, buf.getLimit());
 
@@ -110,7 +110,7 @@ public class ByteBufTest {
 			assertEquals(AssertionError.class, e.getClass());
 		}
 
-		buf = ByteBufPool.allocateAtLeast(300);
+		buf = ByteBufPool.allocate(300);
 		buf.setWritePosition(BYTES.length);
 		byte[] bytes = new byte[BYTES.length];
 		buf.drainTo(bytes, 0, bytes.length);
@@ -122,10 +122,10 @@ public class ByteBufTest {
 
 	@Test
 	public void testSliceAndRecycleMechanism() {
-		ByteBuf buf = ByteBufPool.allocateAtLeast(5);
-		ByteBuf slice0 = buf.slice(1, 4);
-		ByteBuf slice01 = slice0.slice(2, 3);
-		ByteBuf slice1 = buf.slice(4, 5);
+		ByteBuf buf = ByteBufPool.allocate(5);
+		ByteBuf slice0 = buf.slice(1, 3);
+		ByteBuf slice01 = slice0.slice(2, 1);
+		ByteBuf slice1 = buf.slice(4, 1);
 
 		assertTrue(buf.canWrite());
 		slice1.recycle();
@@ -150,7 +150,7 @@ public class ByteBufTest {
 
 		MockConsumer consumer = new MockConsumer();
 		for (int i = 0; i < 100; i++) {
-			ByteBuf buf = ByteBufPool.allocateAtLeast(32);
+			ByteBuf buf = ByteBufPool.allocate(32);
 			ByteBuffer buffer = buf.toByteBufferInWriteMode();
 			buffer.put(("Test message " + i).getBytes());
 			buffer.flip();
@@ -165,10 +165,10 @@ public class ByteBufTest {
 
 	@Test
 	public void testConcat() {
-		ByteBuf buf = ByteBufPool.allocateAtLeast(64);
+		ByteBuf buf = ByteBufPool.allocate(64);
 		buf.put(BYTES);
 
-		ByteBuf secondBuf = ByteBufPool.allocateAtLeast(32);
+		ByteBuf secondBuf = ByteBufPool.allocate(32);
 		secondBuf.put(BYTES);
 
 		buf = ByteBufPool.concat(buf, secondBuf.slice());

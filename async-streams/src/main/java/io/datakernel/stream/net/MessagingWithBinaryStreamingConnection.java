@@ -210,7 +210,7 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 		assert eventloop.inEventloopThread();
 		if (socketReader == null) {
 			if (readBuf == null) {
-				readBuf = ByteBufPool.allocateAtLeast(Math.max(8192, buf.remainingToWrite()));
+				readBuf = ByteBufPool.allocate(Math.max(8192, buf.remainingToWrite()));
 			}
 			readBuf = ByteBufPool.concat(readBuf, buf);
 			tryReadMessage();

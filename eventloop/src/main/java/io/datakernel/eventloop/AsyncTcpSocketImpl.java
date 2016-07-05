@@ -185,7 +185,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	private void doRead() {
-		ByteBuf buf = ByteBufPool.allocateAtLeast(receiveBufferSize);
+		ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
 		ByteBuffer buffer = buf.toByteBufferInWriteMode();
 
 		int numRead;
