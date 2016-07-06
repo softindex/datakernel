@@ -70,7 +70,7 @@ public class TestHttpsClientServer {
 	@Test
 	public void testClientServerInteraction() throws Exception {
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
-				.setListenSecurePort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
+				.setSslListenPort(createSslContext("TLSv1.2", keyManagers, trustManagers, new SecureRandom()), executor, SSL_PORT);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,
 				new NativeDnsResolver(eventloop, defaultDatagramSocketSettings(), 500, inetAddress("8.8.8.8")))
@@ -106,7 +106,7 @@ public class TestHttpsClientServer {
 	@Test
 	public void testServesTwoPortsSimultaneously() throws Exception {
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
-				.setListenSecurePort(context, executor, SSL_PORT)
+				.setSslListenPort(context, executor, SSL_PORT)
 				.setListenPort(PORT);
 
 		final AsyncHttpClient client = new AsyncHttpClient(eventloop,

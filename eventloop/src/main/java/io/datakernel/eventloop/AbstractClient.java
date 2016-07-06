@@ -1,5 +1,6 @@
 package io.datakernel.eventloop;
 
+import io.datakernel.async.ExceptionCallback;
 import io.datakernel.net.SocketSettings;
 
 import javax.net.ssl.SSLContext;
@@ -11,7 +12,7 @@ import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
-public abstract class AbstractConnector<S extends AbstractConnector<S, E>, E extends EventHandler> {
+public abstract class AbstractClient<S extends AbstractClient<S>> {
 	protected final Eventloop eventloop;
 	protected final SocketSettings settings;
 
@@ -19,7 +20,7 @@ public abstract class AbstractConnector<S extends AbstractConnector<S, E>, E ext
 	private SSLContext sslContext;
 	private ExecutorService executor;
 
-	public AbstractConnector(Eventloop eventloop, SocketSettings settings) {
+	public AbstractClient(Eventloop eventloop, SocketSettings settings) {
 		this.eventloop = checkNotNull(eventloop);
 		this.settings = checkNotNull(settings);
 	}
@@ -35,27 +36,28 @@ public abstract class AbstractConnector<S extends AbstractConnector<S, E>, E ext
 		return self();
 	}
 
-	public void connect(final SocketAddress address, int timeout, final boolean secure) {
+	public void connect(final SocketAddress address, int timeout, final boolean secure, final SpecialConnectCallback callback) {
 		eventloop.connect(address, settings, timeout, new ConnectCallback() {
 			@Override
 			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
 				settings.applyReadWriteTimeoutsTo(asyncTcpSocket);
-
-				E eventHandler = createEventHandler(asyncTcpSocket);
 				if (secure) {
 					check(sslContext != null, "Can't establish secure connection");
 					AsyncSslSocket sslSocket = createAsyncSslSocket(asyncTcpSocket);
-					sslSocket.setEventHandler(eventHandler);
-//					onSuccessfulConnect(eventHandler);
+					asyncTcpSocket.setEventHandler(sslSocket);
+					EventHandler handler = callback.onConnect(sslSocket);
+					sslSocket.setEventHandler(handler);
 					return sslSocket;
 				} else {
-					return eventHandler;
+					EventHandler handler = callback.onConnect(asyncTcpSocket);
+					asyncTcpSocket.setEventHandler(handler);
+					return handler;
 				}
 			}
 
 			@Override
 			public void onException(Exception e) {
-//				onConnectFailed(e);
+				callback.onException(e);
 			}
 
 			@Override
@@ -71,5 +73,7 @@ public abstract class AbstractConnector<S extends AbstractConnector<S, E>, E ext
 		return new AsyncSslSocket(eventloop, asyncTcpSocket, engine, executor);
 	}
 
-	protected abstract E createEventHandler(AsyncTcpSocket socket);
+	public interface SpecialConnectCallback extends ExceptionCallback {
+		EventHandler onConnect(AsyncTcpSocket socket);
+	}
 }

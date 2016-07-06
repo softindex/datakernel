@@ -19,7 +19,10 @@ package io.datakernel.http;
 import io.datakernel.async.*;
 import io.datakernel.dns.DnsClient;
 import io.datakernel.dns.DnsException;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AbstractClient;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
@@ -28,8 +31,6 @@ import io.datakernel.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
 import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
@@ -39,7 +40,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -50,17 +50,14 @@ import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
-public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
+public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements EventloopService, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long DEFAULT_KEEP_CONNECTION_IN_POOL_TIME = 30 * 1000L;
 
-	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final BindException BIND_EXCEPTION = new BindException();
 
-	private final Eventloop eventloop;
 	private final DnsClient dnsClient;
-	private final SocketSettings socketSettings;
 	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
 	private final Runnable expiredConnectionsTask = createExpiredConnectionsTask();
 	private final HashMap<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> ipConnectionLists = new HashMap<>();
@@ -75,10 +72,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 
 	// timeouts
 	private long keepConnectionInPoolTime = DEFAULT_KEEP_CONNECTION_IN_POOL_TIME;
-
-	// SSL
-	private SSLContext sslContext;
-	private ExecutorService executor;
 
 	// JMX
 	private final ValueStats timeCheckExpired = new ValueStats();
@@ -98,9 +91,8 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
-		this.eventloop = eventloop;
+		super(eventloop, socketSettings);
 		this.dnsClient = dnsClient;
-		this.socketSettings = checkNotNull(socketSettings);
 		this.connectionsList = new ExposedLinkedList<>();
 		char[] chars = eventloop.get(char[].class);
 		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
@@ -108,12 +100,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
-	}
-
-	public AsyncHttpClient enableSsl(SSLContext sslContext, ExecutorService executor) {
-		this.sslContext = sslContext;
-		this.executor = executor;
-		return this;
 	}
 
 	public AsyncHttpClient keepConnectionAlive(long time) {
@@ -315,43 +301,30 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			return;
 		}
 
-		eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
+		connect(address, timeout, isSecure(request), new SpecialConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket conn) {
 				removePendingSocketConnect(address);
-				socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
-				AsyncSslSocket asyncSslSocket = null;
-				if (sslContext != null && isHttpsRequest(request)) {
-					SSLEngine ssl = sslContext.createSSLEngine();
-					ssl.setUseClientMode(true);
-					asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
-				}
-
-				HttpClientConnection connection = new HttpClientConnection(eventloop, address,
-						asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
-						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
-				if (asyncSslSocket != null)
-					asyncSslSocket.setEventHandler(connection);
+				HttpClientConnection connection = new HttpClientConnection(eventloop, address, conn, AsyncHttpClient.this, headerChars, maxHttpMessageSize);
 				if (connectionsList.isEmpty())
 					scheduleCheck();
 				sendRequest(connection, request, timeoutTime, callback);
-				return asyncSslSocket != null ? asyncSslSocket : connection;
+				return connection;
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			public void onException(Exception e) {
 				logger.trace("eventloop.connect.onException Calling {}", request);
 				removePendingSocketConnect(address);
-				if (exception instanceof BindException) {
+				if (e instanceof BindException) {
 					if (bindExceptionBlockTimeout != 0) {
 						bindExceptionBlockedHosts.put(inetAddress, eventloop.currentTimeMillis());
 					}
 				}
-
 				if (logger.isWarnEnabled()) {
-					logger.warn("Connect error to {} : {}", address, exception.getMessage());
+					logger.warn("Connect error to {} : {}", address, e.getMessage());
 				}
-				callback.onException(exception);
+				callback.onException(e);
 			}
 
 			@Override
@@ -359,7 +332,56 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 				return address.toString();
 			}
 		});
+
+//		eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
+//			@Override
+//			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+//				removePendingSocketConnect(address);
+//				socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+//				AsyncSslSocket asyncSslSocket = null;
+//				if (sslContext != null && isHttpsRequest(request)) {
+//					SSLEngine ssl = sslContext.createSSLEngine();
+//					ssl.setUseClientMode(true);
+//					asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
+//				}
+//
+//				HttpClientConnection connection = new HttpClientConnection(eventloop, address,
+//						asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
+//						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
+//				if (asyncSslSocket != null)
+//					asyncSslSocket.setEventHandler(connection);
+//				if (connectionsList.isEmpty())
+//					scheduleCheck();
+//				sendRequest(connection, request, timeoutTime, callback);
+//				return asyncSslSocket != null ? asyncSslSocket : connection;
+//			}
+//
+//			@Override
+//			public void onException(Exception exception) {
+//				logger.trace("eventloop.connect.onException Calling {}", request);
+//				removePendingSocketConnect(address);
+//				if (exception instanceof BindException) {
+//					if (bindExceptionBlockTimeout != 0) {
+//						bindExceptionBlockedHosts.put(inetAddress, eventloop.currentTimeMillis());
+//					}
+//				}
+//
+//				if (logger.isWarnEnabled()) {
+//					logger.warn("Connect error to {} : {}", address, exception.getMessage());
+//				}
+//				callback.onException(exception);
+//			}
+//
+//			@Override
+//			public String toString() {
+//				return address.toString();
+//			}
+//		});
 		addPendingSocketConnect(address);
+	}
+
+	private boolean isSecure(HttpRequest request) {
+		return isHttpsRequest(request);
 	}
 
 	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {

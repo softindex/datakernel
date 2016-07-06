@@ -40,7 +40,7 @@ public class ByteBufferQueueTest {
 		int pos = 0;
 		while (left > 0) {
 			int bufSize = random.nextInt(Math.min(10, left) + 1);
-			ByteBuf buf = ByteBuf.wrapForReading(test, pos, bufSize);
+			ByteBuf buf = ByteBuf.wrap(test, pos, pos + bufSize);
 			queue.add(buf);
 			left -= bufSize;
 			pos += bufSize;

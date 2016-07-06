@@ -181,11 +181,11 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.callback = callback;
 		writeHttpRequest(request);
 		request.recycleBufs();
-		scheduleTimeout(timeout); // FIXME connection closes before we set timeout
+		scheduleTimeout(timeout);
 	}
 
 	private void scheduleTimeout(final long timeoutTime) {
-		assert !isClosed();
+		if (isClosed()) return;
 
 		cancellable = eventloop.scheduleBackground(timeoutTime, new Runnable() {
 			@Override

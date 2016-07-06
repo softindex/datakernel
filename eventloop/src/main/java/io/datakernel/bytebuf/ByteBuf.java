@@ -52,15 +52,15 @@ public class ByteBuf {
 	}
 
 	public static ByteBuf wrapForWriting(byte[] bytes) {
-		return new ByteBuf(bytes, 0, 0);
+		return wrap(bytes, 0, 0);
 	}
 
 	public static ByteBuf wrapForReading(byte[] bytes) {
-		return wrapForReading(bytes, 0, bytes.length);
+		return wrap(bytes, 0, bytes.length);
 	}
 
-	public static ByteBuf wrapForReading(byte[] bytes, int offset, int length) {
-		return new ByteBuf(bytes, offset, offset + length);
+	public static ByteBuf wrap(byte[] bytes, int readPosition, int writePosition) {
+		return new ByteBuf(bytes, readPosition, writePosition);
 	}
 
 	// getters & setters
@@ -102,7 +102,7 @@ public class ByteBuf {
 	public ByteBuf slice(int offset, int length) {
 		assert !isRecycled();
 		if (!isRecycleNeeded()) {
-			return ByteBuf.wrapForReading(array, offset, length);
+			return ByteBuf.wrap(array, offset, offset + length);
 		}
 		refs++;
 		return new ByteBufSlice(this, offset, offset + length);

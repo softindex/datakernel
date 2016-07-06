@@ -41,7 +41,7 @@ public final class JmxRegistrator {
 
 	public void registerJmxMBeans() {
 		// register ByteBufPool
-		Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufNPoolStats.class);
+		Key<?> byteBufPoolKey = Key.get(ByteBufPool.ByteBufPoolStats.class);
 		jmxRegistry.registerSingleton(byteBufPoolKey, ByteBufPool.getStats());
 
 		// register singletons

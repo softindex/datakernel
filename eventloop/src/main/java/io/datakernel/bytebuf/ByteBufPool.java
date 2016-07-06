@@ -88,9 +88,9 @@ public class ByteBufPool {
 	//region  +jmx
 	public static final ObjectName JMX_NAME = MBeanFormat.name(ByteBufPool.class.getPackage().getName(), ByteBufPool.class.getSimpleName());
 
-	private static final ByteBufPool.ByteBufNPoolStats stats = new ByteBufPool.ByteBufNPoolStats();
+	private static final ByteBufPoolStats stats = new ByteBufPoolStats();
 
-	public static ByteBufPool.ByteBufNPoolStats getStats() {
+	public static ByteBufPoolStats getStats() {
 		return stats;
 	}
 
@@ -162,7 +162,7 @@ public class ByteBufPool {
 		List<String> getPoolSlabs();
 	}
 
-	public static final class ByteBufNPoolStats implements ByteBufPool.ByteBufPoolStatsMXBean {
+	public static final class ByteBufPoolStats implements ByteBufPool.ByteBufPoolStatsMXBean {
 
 		@Override
 		public int getCreatedItems() {
