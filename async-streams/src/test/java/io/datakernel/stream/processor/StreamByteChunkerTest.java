@@ -40,12 +40,10 @@ public class StreamByteChunkerTest {
 
 	private static ByteBuf createRandomByteBuf(Random random) {
 		int len = random.nextInt(100);
-		ByteBuf result = ByteBuf.create(len);
-		result.setReadPosition(0);
-		result.setWritePosition(len);
+		ByteBuf result = ByteBuf.wrapForWriting(new byte[len]);
 		int lenUnique = 1 + random.nextInt(len + 1);
 		for (int i = 0; i < len; i++) {
-			result.array()[i] = (byte) (i % lenUnique);
+			result.put((byte) (i % lenUnique));
 		}
 		return result;
 	}

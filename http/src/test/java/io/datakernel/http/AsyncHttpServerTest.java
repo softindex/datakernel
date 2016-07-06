@@ -88,7 +88,7 @@ public class AsyncHttpServerTest {
 	}
 
 	public static void writeByRandomParts(Socket socket, String string) throws IOException {
-		ByteBuf buf = ByteBuf.wrap(encodeAscii(string));
+		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii(string));
 		Random random = new Random();
 		while (buf.canRead()) {
 			int count = min(1 + random.nextInt(5), buf.remainingToRead());
@@ -232,7 +232,7 @@ public class AsyncHttpServerTest {
 		int port = (int) (System.currentTimeMillis() % 1000 + 40000);
 		final Eventloop eventloop = new Eventloop();
 		final ByteBuf buf = HttpRequest.post("http://127.0.0.1:" + port)
-				.body(ByteBuf.wrap(encodeAscii("Test big HTTP message body"))).write();
+				.body(ByteBuf.wrapForReading(encodeAscii("Test big HTTP message body"))).write();
 
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, new AsyncHttpServlet() {
 			@Override

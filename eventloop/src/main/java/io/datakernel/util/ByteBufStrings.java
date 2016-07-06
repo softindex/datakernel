@@ -21,12 +21,13 @@ import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 
 public final class ByteBufStrings {
+	public static final ParseException READ_PAST_LIMIT = new ParseException("Malformed utf-8 input: Read past end");
+	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException("Malformed utf-8 input");
+
 	public static final byte CR = (byte) '\r';
 	public static final byte LF = (byte) '\n';
 	public static final byte SP = (byte) ' ';
 	public static final byte HT = (byte) '\t';
-	public static final ParseException READ_PAST_LIMIT = new ParseException("Malformed utf-8 input: Read past end");
-	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException("Malformed utf-8 input");
 
 	private ByteBufStrings() {
 	}
@@ -312,7 +313,7 @@ public final class ByteBufStrings {
 
 	public static ByteBuf wrapDecimal(int value) {
 		int digits = digits(value);
-		ByteBuf buf = ByteBuf.create(digits);
+		ByteBuf buf = ByteBufPool.allocate(digits);
 		byte[] array = buf.array();
 		for (int i = digits - 1; i >= 0; i--) {
 			int digit = value % 10;

@@ -87,7 +87,7 @@ public final class HttpResponse extends HttpMessage {
 	}
 
 	public HttpResponse body(byte[] array) {
-		return body(ByteBuf.wrap(array));
+		return body(ByteBuf.wrapForReading(array));
 	}
 
 	// specific builder methods
@@ -241,11 +241,11 @@ public final class HttpResponse extends HttpMessage {
 
 	static {
 		DEFAULT_CODE_BODIES = new HashMap<>();
-		DEFAULT_CODE_BODIES.put(400, ByteBuf.wrap(encodeAscii("Your browser (or proxy) sent a request that this server could not understand.")));
-		DEFAULT_CODE_BODIES.put(403, ByteBuf.wrap(encodeAscii("You don't have permission to access the requested directory.")));
-		DEFAULT_CODE_BODIES.put(404, ByteBuf.wrap(encodeAscii("The requested URL was not found on this server.")));
-		DEFAULT_CODE_BODIES.put(500, ByteBuf.wrap(encodeAscii("The server encountered an internal error and was unable to complete your request.")));
-		DEFAULT_CODE_BODIES.put(503, ByteBuf.wrap(encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems.")));
+		DEFAULT_CODE_BODIES.put(400, ByteBuf.wrapForReading(encodeAscii("Your browser (or proxy) sent a request that this server could not understand.")));
+		DEFAULT_CODE_BODIES.put(403, ByteBuf.wrapForReading(encodeAscii("You don't have permission to access the requested directory.")));
+		DEFAULT_CODE_BODIES.put(404, ByteBuf.wrapForReading(encodeAscii("The requested URL was not found on this server.")));
+		DEFAULT_CODE_BODIES.put(500, ByteBuf.wrapForReading(encodeAscii("The server encountered an internal error and was unable to complete your request.")));
+		DEFAULT_CODE_BODIES.put(503, ByteBuf.wrapForReading(encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems.")));
 	}
 
 	/**

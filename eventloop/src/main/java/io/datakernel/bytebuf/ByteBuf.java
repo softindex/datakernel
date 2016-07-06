@@ -48,21 +48,18 @@ public class ByteBuf {
 	}
 
 	public static ByteBuf empty() {
-		return new ByteBuf(new byte[0], 0, 0);
+		return wrapForWriting(new byte[0]);
 	}
 
-	// TODO: (arashev)
-	public static ByteBuf create(int size) {
-		return new ByteBuf(new byte[size], 0, 0);
+	public static ByteBuf wrapForWriting(byte[] bytes) {
+		return new ByteBuf(bytes, 0, 0);
 	}
 
-	// TODO: (arashev) add 'wrapForRead/wrapForWrite'
-
-	public static ByteBuf wrap(byte[] bytes) {
-		return wrap(bytes, 0, bytes.length);
+	public static ByteBuf wrapForReading(byte[] bytes) {
+		return wrapForReading(bytes, 0, bytes.length);
 	}
 
-	public static ByteBuf wrap(byte[] bytes, int offset, int length) {
+	public static ByteBuf wrapForReading(byte[] bytes, int offset, int length) {
 		return new ByteBuf(bytes, offset, offset + length);
 	}
 
@@ -102,11 +99,10 @@ public class ByteBuf {
 		return slice(readPosition, length);
 	}
 
-	// TODO: (arashev) switch to off + length
 	public ByteBuf slice(int offset, int length) {
 		assert !isRecycled();
 		if (!isRecycleNeeded()) {
-			return ByteBuf.wrap(array, offset, length);
+			return ByteBuf.wrapForReading(array, offset, length);
 		}
 		refs++;
 		return new ByteBufSlice(this, offset, offset + length);

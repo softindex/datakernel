@@ -81,7 +81,7 @@ public class ContentTypeTest {
 	@Test
 	public void testRenderMime() {
 		String expected = "application/json";
-		ByteBuf buf = ByteBuf.create(expected.length());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		MediaTypes.render(JSON, buf);
 		String actual = decodeAscii(buf);
 		assertEquals(expected, actual);
@@ -90,7 +90,7 @@ public class ContentTypeTest {
 	@Test
 	public void testRenderContentType() {
 		String expected = "text/html; charset=utf-8";
-		ByteBuf buf = ByteBuf.create(expected.length());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		ContentType type = ContentType.of(HTML, StandardCharsets.UTF_8);
 		ContentType.render(type, buf);
 		String actual = decodeAscii(buf);
@@ -100,7 +100,7 @@ public class ContentTypeTest {
 	@Test
 	public void testRenderAcceptContentType() {
 		String expected = "text/html, application/xhtml+xml, application/xml; q=0.9, image/webp, */*; q=0.8";
-		ByteBuf buf = ByteBuf.create(expected.length());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		List<AcceptMediaType> acts = new ArrayList<>();
 		acts.add(AcceptMediaType.of(HTML));
 		acts.add(AcceptMediaType.of(XHTML_APP));

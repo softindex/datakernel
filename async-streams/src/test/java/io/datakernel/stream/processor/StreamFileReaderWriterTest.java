@@ -109,7 +109,7 @@ public class StreamFileReaderWriterTest {
 			byteQueue.add(buf);
 		}
 
-		ByteBuf buf = ByteBuf.create(byteQueue.remainingBytes());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[byteQueue.remainingBytes()]);
 		byteQueue.drainTo(buf);
 
 		assertArrayEquals(fileBytes, buf.array());
@@ -176,7 +176,7 @@ public class StreamFileReaderWriterTest {
 			byteQueue.add(buf);
 		}
 
-		ByteBuf buf = ByteBuf.create(byteQueue.remainingBytes());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[byteQueue.remainingBytes()]);
 		byteQueue.drainTo(buf);
 
 		assertArrayEquals(fileBytes, buf.array());
@@ -190,7 +190,7 @@ public class StreamFileReaderWriterTest {
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
-		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
+		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes));
 
 		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
 
@@ -210,7 +210,7 @@ public class StreamFileReaderWriterTest {
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		StreamProducer<ByteBuf> producer = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes)),
+				StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes)),
 				StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Test Exception")));
 
 		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));

@@ -64,7 +64,7 @@ public class HttpTolerantApplicationTest {
 	}
 
 	private static void write(Socket socket, String string) throws IOException {
-		ByteBuf buf = ByteBuf.wrap(encodeAscii(string));
+		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii(string));
 		socket.getOutputStream().write(buf.array(), buf.getReadPosition(), buf.remainingToRead());
 	}
 

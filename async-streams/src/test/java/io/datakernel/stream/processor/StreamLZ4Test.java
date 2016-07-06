@@ -41,7 +41,7 @@ public class StreamLZ4Test {
 		int offset = random.nextInt(10);
 		int tail = random.nextInt(10);
 		int len = random.nextInt(100);
-		ByteBuf result = ByteBuf.create(offset + len + tail);
+		ByteBuf result = ByteBuf.wrapForWriting(new byte[offset + len + tail]);
 		int lenUnique = 1 + random.nextInt(len + 1);
 		result.setWritePosition(offset);
 		result.setReadPosition(offset);
@@ -208,8 +208,7 @@ public class StreamLZ4Test {
 
 	private void doTest(Eventloop eventloop, StreamLZ4Compressor compressor) {
 		byte data[] = "1".getBytes();
-		ByteBuf buf = ByteBuf.create(data.length);
-		buf.put(data);
+		ByteBuf buf = ByteBuf.wrapForReading(data);
 		List<ByteBuf> buffers = new ArrayList<>();
 		buffers.add(buf);
 

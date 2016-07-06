@@ -95,7 +95,7 @@ public class UdpSocketHandlerTest {
 			}
 
 			void sendTestData(byte[] data, InetSocketAddress address) {
-				socket.send(new UdpPacket(ByteBuf.wrap(data), address));
+				socket.send(new UdpPacket(ByteBuf.wrapForReading(data), address));
 			}
 		});
 		return socket;

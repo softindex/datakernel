@@ -60,7 +60,7 @@ public class HttpsClientTest {
 
 		final ResultCallbackFuture<Integer> callback = new ResultCallbackFuture<>();
 
-		String url = "https://docs.oracle.com/javase/8/docs/api/javax/net/ssl/SSLEngine.html";
+		String url = "https://en.wikipedia.org/wiki/Wikipedia";
 		client.send(get(url), 500000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {

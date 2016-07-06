@@ -65,7 +65,7 @@ public class HttpCookieTest {
 
 		String expected = "name=\"value\"; Expires=Thu, 19 Apr 2001 04:25:21 GMT; Max-Age=10; Domain=www.google.com; " +
 				"Path=/test; Secure; HttpOnly; \"Alhambra site\"";
-		ByteBuf buf = ByteBuf.create(expected.length());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		cookie.renderFull(buf);
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 	}
@@ -86,7 +86,7 @@ public class HttpCookieTest {
 
 		String expected = "name1=\"value1\"; name2=\"value2\"; name3";
 
-		ByteBuf buf = ByteBuf.create(expected.length());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		HttpCookie.renderSimple(Arrays.asList(cookie1, cookie2, cookie3), buf);
 		assertEquals(expected, ByteBufStrings.decodeAscii(buf));
 	}

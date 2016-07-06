@@ -479,10 +479,7 @@ public class AsyncSslSocketTest {
 	}
 
 	public static ByteBuf createByteBufFromString(String message) {
-		byte[] messageBytes = message.getBytes();
-		final ByteBuf messageByteBuf = ByteBuf.create(messageBytes.length);
-		messageByteBuf.put(messageBytes);
-		return messageByteBuf;
+		return ByteBuf.wrapForReading(message.getBytes());
 	}
 
 	public static String extractMessageFromByteBuf(ByteBuf buf) {

@@ -262,7 +262,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpResponse formatException(HttpServletError e) {
 		logger.error("Error processing http request", e);
-		ByteBuf message = ByteBuf.wrap(INTERNAL_ERROR_MESSAGE);
+		ByteBuf message = ByteBuf.wrapForReading(INTERNAL_ERROR_MESSAGE);
 		return HttpResponse.create(e.getCode()).noCache().body(message);
 	}
 

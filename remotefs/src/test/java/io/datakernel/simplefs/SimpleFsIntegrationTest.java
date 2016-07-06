@@ -110,7 +110,7 @@ public class SimpleFsIntegrationTest {
 
 		server.listen();
 		for (int i = 0; i < files; i++) {
-			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(CONTENT));
+			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
 			client.upload("file" + i, producer, callback);
 		}
 
@@ -182,7 +182,7 @@ public class SimpleFsIntegrationTest {
 								ByteBufStrings.wrapUTF8("Test1"),
 								ByteBufStrings.wrapUTF8(" Test2"),
 								ByteBufStrings.wrapUTF8(" Test3"))),
-						StreamProducers.ofValue(eventloop, ByteBuf.wrap(BIG_FILE)),
+						StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)),
 						StreamProducers.<ByteBuf>closingWithError(eventloop, new SimpleException("Test exception")),
 						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUTF8("Test4")));
 
@@ -467,7 +467,7 @@ public class SimpleFsIntegrationTest {
 		SimpleFsClient client = createClient(eventloop);
 
 		server.listen();
-		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
+		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes));
 		client.upload(resultFile, producer, new CloseCompletionCallback(server, callback));
 		eventloop.run();
 		executor.shutdown();

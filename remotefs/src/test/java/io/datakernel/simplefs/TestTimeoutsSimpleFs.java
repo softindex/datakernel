@@ -49,7 +49,7 @@ public class TestTimeoutsSimpleFs {
 
 		CompletionCallbackFuture callback = new CompletionCallbackFuture();
 
-		client.upload("fileName.txt", StreamProducers.ofValue(eventloop, ByteBuf.wrap(BIG_FILE)), callback);
+		client.upload("fileName.txt", StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)), callback);
 
 		eventloop.run();
 		executorService.shutdown();

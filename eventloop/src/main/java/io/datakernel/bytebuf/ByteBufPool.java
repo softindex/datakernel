@@ -19,10 +19,10 @@ public class ByteBufPool {
 	private static final ConcurrentStack<ByteBuf>[] slabs = createSlabs(NUMBER_SLABS);
 	private static final int[] created = new int[NUMBER_SLABS];
 
-	// allocating
 	public static ByteBuf allocate(int size) {
 		if (size < minSize || size >= maxSize) {
-			return ByteBuf.create(size); // не хотим регистрировать в пуле
+			// not willing to register in pool
+			return ByteBuf.wrapForWriting(new byte[size]);
 		}
 		int index = 32 - numberOfLeadingZeros(size - 1); // index==32 for size==0
 		ConcurrentStack<ByteBuf> queue = slabs[index];
@@ -30,7 +30,7 @@ public class ByteBufPool {
 		if (buf != null) {
 			buf.reset();
 		} else {
-			buf = ByteBuf.create(1 << index);
+			buf = ByteBuf.wrapForWriting(new byte[1 << index]);
 			buf.refs++;
 			created[index]++;
 		}
@@ -52,13 +52,7 @@ public class ByteBufPool {
 
 	public static ByteBuf concat(ByteBuf buf1, ByteBuf buf2) {
 		assert !buf1.isRecycled() && !buf2.isRecycled();
-		if (buf1.remainingToWrite() < buf2.remainingToRead()) {
-			ByteBuf newBuf = allocate(buf1.remainingToRead() + buf2.remainingToRead());
-			// TODO: (arashev) simplify  ensureWriteSize()
-			newBuf.put(buf1);
-			buf1.recycle();
-			buf1 = newBuf;
-		}
+		buf1 = ensureWriteSize(buf1, buf2.remainingToRead());
 		buf1.put(buf2);
 		buf2.recycle();
 		return buf1;
@@ -82,7 +76,6 @@ public class ByteBufPool {
 		}
 	}
 
-	/*inner*/
 	private static ConcurrentStack<ByteBuf>[] createSlabs(int numberOfSlabs) {
 		//noinspection unchecked
 		ConcurrentStack<ByteBuf>[] slabs = new ConcurrentStack[numberOfSlabs];

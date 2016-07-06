@@ -67,7 +67,7 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 		private final LZ4FastDecompressor decompressor;
 		private final StreamingXXHash32 checksum;
 
-		private final ByteBuf headerBuf = ByteBuf.create(HEADER_LENGTH);
+		private final ByteBuf headerBuf = ByteBuf.wrapForWriting(new byte[HEADER_LENGTH]);
 
 		private ByteBuf inputBuf;
 		private long inputStreamPosition;

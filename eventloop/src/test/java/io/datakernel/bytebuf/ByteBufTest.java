@@ -22,14 +22,14 @@ public class ByteBufTest {
 	@Test
 	public void testSlice() {
 		byte[] bytes = ByteBufStrings.encodeAscii("Hello, World");
-		ByteBuf buf = ByteBuf.wrap(bytes);
+		ByteBuf buf = ByteBuf.wrapForReading(bytes);
 
 		ByteBuf slice = buf.slice(7, 5);
 
 		assertFalse(buf == slice);
 		assertEquals("World", slice.toString());
 
-		buf = ByteBuf.create(16);
+		buf = createEmptyByteBufOfSize(16);
 		buf.put(bytes);
 
 		slice = buf.slice();
@@ -40,7 +40,7 @@ public class ByteBufTest {
 
 	@Test
 	public void testEditing() {
-		ByteBuf buf = ByteBuf.create(256);
+		ByteBuf buf = createEmptyByteBufOfSize(256);
 		assertEquals(0, buf.getReadPosition());
 
 		buf.put((byte) 'H');
@@ -51,7 +51,7 @@ public class ByteBufTest {
 		buf.put(new byte[]{';', ' ', ',', ' ', '.', ' ', '!', ' '}, 2, 4);
 		assertEquals(7, buf.getWritePosition());
 
-		ByteBuf worldBuf = ByteBuf.wrap(new byte[]{'W', 'o', 'r', 'l', 'd', '!'});
+		ByteBuf worldBuf = ByteBuf.wrapForReading(new byte[]{'W', 'o', 'r', 'l', 'd', '!'});
 		buf.put(worldBuf);
 
 		assertEquals(worldBuf.getLimit(), worldBuf.getReadPosition());
@@ -59,7 +59,7 @@ public class ByteBufTest {
 		assertEquals(13, buf.getWritePosition());
 
 		ByteBuf slice = buf.slice();
-		ByteBuf newBuf = ByteBuf.create(slice.getLimit());
+		ByteBuf newBuf = createEmptyByteBufOfSize(slice.getLimit());
 		slice.drainTo(newBuf, 10);
 		assertEquals(10, slice.getReadPosition());
 		assertEquals(10, newBuf.getWritePosition());
@@ -71,7 +71,7 @@ public class ByteBufTest {
 
 	@Test
 	public void transformsToByteBufferInReadMode() {
-		ByteBuf buf = ByteBuf.create(8);
+		ByteBuf buf = createEmptyByteBufOfSize(8);
 		buf.setWritePosition(5);
 		buf.setReadPosition(2);
 
@@ -83,7 +83,7 @@ public class ByteBufTest {
 
 	@Test
 	public void transformsToByteBufferInWriteMode() {
-		ByteBuf buf = ByteBuf.create(8);
+		ByteBuf buf = createEmptyByteBufOfSize(8);
 		buf.setWritePosition(5);
 		buf.setReadPosition(2);
 
@@ -191,7 +191,7 @@ public class ByteBufTest {
 
 	@Test
 	public void testSkipAndAdvance() {
-		ByteBuf buf = ByteBuf.create(5);
+		ByteBuf buf = createEmptyByteBufOfSize(5);
 		buf.put(new byte[]{'a', 'b', 'c'});
 		buf.skip(2);
 		assertEquals('c', buf.get());
@@ -207,11 +207,15 @@ public class ByteBufTest {
 
 	@Test
 	public void testGet() {
-		ByteBuf buf = ByteBuf.create(3);
+		ByteBuf buf = createEmptyByteBufOfSize(3);
 		buf.put(new byte[]{'a', 'b', 'c'});
 
 		assertEquals('a', buf.get());
 		assertEquals('b', buf.get());
 		assertEquals('c', buf.get());
+	}
+
+	private ByteBuf createEmptyByteBufOfSize(int size) {
+		return ByteBuf.wrapForWriting(new byte[size]);
 	}
 }

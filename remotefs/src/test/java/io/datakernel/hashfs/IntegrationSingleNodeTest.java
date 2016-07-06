@@ -45,7 +45,6 @@ import java.util.concurrent.ExecutorService;
 import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.collect.Lists.newArrayList;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebuf.ByteBuf.wrap;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.stream.StreamProducers.ofValue;
 import static io.datakernel.stream.file.StreamFileWriter.create;
@@ -108,7 +107,7 @@ public class IntegrationSingleNodeTest {
 
 		client.upload(
 				"this/is/a.txt",
-				ofValue(eventloop, wrap(CONTENT)),
+				ofValue(eventloop, ByteBuf.wrapForReading(CONTENT)),
 				new SimpleCompletionCallback() {
 					@Override
 					protected void onCompleteOrException() {

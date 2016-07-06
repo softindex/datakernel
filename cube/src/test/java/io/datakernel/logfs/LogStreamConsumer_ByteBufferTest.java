@@ -98,7 +98,7 @@ public class LogStreamConsumer_ByteBufferTest {
 				if (nom == 4) {
 					timeProvider.setTime(new LocalDateTime("1970-01-01T01:00:00").toDateTime(DateTimeZone.UTC).getMillis());
 				}
-				send(ByteBuf.wrap(new byte[]{1}));
+				send(ByteBuf.wrapForReading(new byte[]{1}));
 				onConsumerSuspended();
 				eventloop.schedule(5L, new Runnable() {
 					@Override
@@ -169,7 +169,7 @@ public class LogStreamConsumer_ByteBufferTest {
 					sendEndOfStream();
 					return;
 				}
-				send(ByteBuf.wrap(new byte[]{1}));
+				send(ByteBuf.wrapForReading(new byte[]{1}));
 				onConsumerSuspended();
 				eventloop.schedule(100L, new Runnable() {
 					@Override

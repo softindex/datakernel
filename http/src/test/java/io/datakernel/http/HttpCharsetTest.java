@@ -70,7 +70,7 @@ public class HttpCharsetTest {
 	@Test
 	public void testRenderAcceptCharset() {
 		String expected = "iso-8859-1, UTF-16; q=0.8";
-		ByteBuf buf = ByteBuf.create(expected.length());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[expected.length()]);
 		List<AcceptCharset> chs = new ArrayList<>();
 		chs.add(AcceptCharset.of(StandardCharsets.ISO_8859_1));
 		chs.add(AcceptCharset.of(StandardCharsets.UTF_16, 80));

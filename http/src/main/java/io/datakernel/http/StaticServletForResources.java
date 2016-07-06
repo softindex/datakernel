@@ -72,7 +72,7 @@ public final class StaticServletForResources extends StaticServlet {
 		byte[] bytes = cache.get(name);
 		if (bytes != null) {
 			if (bytes != ERROR_BYTES) {
-				callback.onResult(ByteBuf.wrap(bytes));
+				callback.onResult(ByteBuf.wrapForReading(bytes));
 			} else {
 				callback.onResult(null);
 			}
@@ -83,7 +83,7 @@ public final class StaticServletForResources extends StaticServlet {
 					try {
 						byte[] bytes = loadResource(root, name);
 						cache.put(name, bytes);
-						return ByteBuf.wrap(bytes);
+						return ByteBuf.wrapForReading(bytes);
 					} catch (IOException e) {
 						cache.put(name, ERROR_BYTES);
 						if (e instanceof FileNotFoundException) {
