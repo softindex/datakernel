@@ -165,6 +165,34 @@ public class ByteBuf {
 //		setWritePosition(buffer.limit());
 //	}
 
+	public int find(byte b) {
+		assert !isRecycled();
+		for (int i = readPosition; i < writePosition; i++) {
+			if (array[i] == b) return i;
+		}
+		return -1;
+	}
+
+	public int find(byte[] bytes) {
+		return find(bytes, 0, bytes.length);
+	}
+
+	public int find(byte[] bytes, int off, int len) {
+		assert !isRecycled();
+		for (int pos = readPosition; pos < writePosition; pos++) {
+			if (array[pos] == bytes[off] && remainingToRead() >= bytes.length) {
+				for (int i = 1; i < len; i++) {
+					if (array[pos + i] != bytes[off + i]) {
+						break;
+					} else if (i == len - 1) {
+						return pos;
+					}
+				}
+			}
+		}
+		return -1;
+	}
+
 	// getters
 	public byte[] array() {
 		return array;

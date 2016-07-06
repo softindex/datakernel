@@ -215,6 +215,16 @@ public class ByteBufTest {
 		assertEquals('c', buf.get());
 	}
 
+	@Test
+	public void testFind() {
+		ByteBuf buf = createEmptyByteBufOfSize(BYTES.length);
+		buf.put(BYTES);
+
+		assertEquals(5, buf.find((byte) 'm'));
+		assertEquals(-1, buf.find(new byte[]{'T', 'e', 's', 's'}));
+		assertEquals(1, buf.find(new byte[]{'T', 'e', 's', 's'}, 1, 2));
+	}
+
 	private ByteBuf createEmptyByteBufOfSize(int size) {
 		return ByteBuf.wrapForWriting(new byte[size]);
 	}
