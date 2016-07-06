@@ -5,8 +5,8 @@ import com.google.gson.JsonSyntaxException;
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.util.ByteBufStrings;
 
-import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 import static io.datakernel.util.ByteBufStrings.putUtf8;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown, WeakerAccess")
@@ -24,7 +24,7 @@ public class MessagingSerializers {
 				for (int len = 0; len < buf.remainingToRead(); len++) {
 					if (buf.peek(len) == '\0') {
 						try {
-							I item = in.fromJson(decodeUTF8(buf.array(), buf.getReadPosition(), len), inputClass);
+							I item = in.fromJson(ByteBufStrings.decodeUtf8(buf.array(), buf.getReadPosition(), len), inputClass);
 							buf.skip(len + 1); // skipping msg + delimiter
 							return item;
 						} catch (JsonSyntaxException e) {

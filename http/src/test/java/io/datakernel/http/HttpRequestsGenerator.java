@@ -177,7 +177,7 @@ public final class HttpRequestsGenerator {
 						System.out.println("Response empty");
 					} else {
 						try {
-							System.out.println(ByteBufStrings.decodeUTF8(body));
+							System.out.println(ByteBufStrings.decodeUtf8(body));
 						} catch (ParseException e) {
 							onException(e);
 						}

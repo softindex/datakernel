@@ -34,7 +34,7 @@ import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static io.datakernel.util.ByteBufStrings.decodeUTF8;
+import static io.datakernel.util.ByteBufStrings.decodeUtf8;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 import static org.junit.Assert.assertEquals;
 
@@ -65,7 +65,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(final HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUTF8(result.getBody()));
+					resultObserver.onResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -83,7 +83,7 @@ public class AsyncHttpClientTest {
 
 		eventloop.run();
 
-		assertEquals(decodeUTF8(HelloWorldServer.HELLO_WORLD), resultObserver.get());
+		assertEquals(decodeUtf8(HelloWorldServer.HELLO_WORLD), resultObserver.get());
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
 	}
@@ -116,7 +116,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUTF8(result.getBody()));
+					resultObserver.onResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -155,7 +155,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUTF8(result.getBody()));
+					resultObserver.onResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -196,7 +196,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUTF8(result.getBody()));
+					resultObserver.onResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}
@@ -269,7 +269,7 @@ public class AsyncHttpClientTest {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUTF8(result.getBody()));
+					resultObserver.onResult(decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}

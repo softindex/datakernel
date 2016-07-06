@@ -22,7 +22,6 @@ import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.http.AcceptMediaType;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
@@ -35,9 +34,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
-import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpUtils.inetAddress;
-import static io.datakernel.http.MediaTypes.*;
 import static io.datakernel.net.DatagramSocketSettings.defaultDatagramSocketSettings;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 import static junit.framework.TestCase.assertEquals;
@@ -83,16 +80,16 @@ public class HttpsClientTest {
 	}
 
 	private HttpRequest get(String url) {
-		return HttpRequest.get(url)
-				.header(CONNECTION, "keep-alive")
-				.header(CACHE_CONTROL, "max-age=0")
-				.header(ACCEPT_ENCODING, "gzip, deflate, sdch")
-				.header(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
-				.header(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
-				.accept(AcceptMediaType.of(HTML),
-						AcceptMediaType.of(XHTML_APP),
-						AcceptMediaType.of(XML_APP, 90),
-						AcceptMediaType.of(WEBP),
-						AcceptMediaType.of(ANY, 80));
+		return HttpRequest.get(url);
+//				.header(CONNECTION, "keep-alive")
+//				.header(CACHE_CONTROL, "max-age=0")
+//				.header(ACCEPT_ENCODING, "gzip, deflate, sdch")
+//				.header(ACCEPT_LANGUAGE, "en-US,en;q=0.8")
+//				.header(USER_AGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
+//				.accept(AcceptMediaType.of(HTML),
+//						AcceptMediaType.of(XHTML_APP),
+//						AcceptMediaType.of(XML_APP, 90),
+//						AcceptMediaType.of(WEBP),
+//						AcceptMediaType.of(ANY, 80));
 	}
 }

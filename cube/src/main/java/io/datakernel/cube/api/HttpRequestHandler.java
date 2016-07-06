@@ -33,7 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static io.datakernel.http.HttpResponse.badRequest400;
-import static io.datakernel.util.ByteBufStrings.wrapUTF8;
+import static io.datakernel.util.ByteBufStrings.wrapUtf8;
 
 public final class HttpRequestHandler implements RequestHandler {
 	private static final Logger logger = LoggerFactory.getLogger(HttpRequestHandler.class);
@@ -74,10 +74,10 @@ public final class HttpRequestHandler implements RequestHandler {
 			});
 		} catch (QueryException e) {
 			logger.info("Request {} could not be processed because of error", httpRequest, e);
-			resultCallback.onResult(badRequest400().body(wrapUTF8(e.getMessage())));
+			resultCallback.onResult(badRequest400().body(wrapUtf8(e.getMessage())));
 		} catch (JsonParseException e) {
 			logger.info("Failed to parse JSON in request {}", httpRequest, e);
-			resultCallback.onResult(badRequest400().body(wrapUTF8("Failed to parse JSON")));
+			resultCallback.onResult(badRequest400().body(wrapUtf8("Failed to parse JSON")));
 		}
 	}
 }

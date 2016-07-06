@@ -179,12 +179,12 @@ public class SimpleFsIntegrationTest {
 		StreamProducer<ByteBuf> producer =
 				StreamProducers.concat(eventloop,
 						StreamProducers.ofIterable(eventloop, asList(
-								ByteBufStrings.wrapUTF8("Test1"),
-								ByteBufStrings.wrapUTF8(" Test2"),
-								ByteBufStrings.wrapUTF8(" Test3"))),
+								ByteBufStrings.wrapUtf8("Test1"),
+								ByteBufStrings.wrapUtf8(" Test2"),
+								ByteBufStrings.wrapUtf8(" Test3"))),
 						StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)),
 						StreamProducers.<ByteBuf>closingWithError(eventloop, new SimpleException("Test exception")),
-						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUTF8("Test4")));
+						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUtf8("Test4")));
 
 		final CompletionCallbackFuture callback = new CompletionCallbackFuture();
 		client.upload(resultFile, producer, new CompletionCallback() {

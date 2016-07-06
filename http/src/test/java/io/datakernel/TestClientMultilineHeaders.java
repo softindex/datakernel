@@ -9,11 +9,11 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.HttpUtils;
+import io.datakernel.util.ByteBufStrings;
 
 import java.util.concurrent.ExecutionException;
 
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
-import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 
 public class TestClientMultilineHeaders {
 	public static void main(String[] args) throws ExecutionException, InterruptedException {
@@ -27,7 +27,7 @@ public class TestClientMultilineHeaders {
 			@Override
 			public void onResult(final HttpResponse result) {
 				try {
-					resultObserver.onResult(decodeUTF8(result.getBody()));
+					resultObserver.onResult(ByteBufStrings.decodeUtf8(result.getBody()));
 				} catch (ParseException e) {
 					onException(e);
 				}

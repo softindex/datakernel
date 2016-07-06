@@ -20,6 +20,7 @@ import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 
+@SuppressWarnings({"ThrowableInstanceNeverThrown", "WeakerAccess", "unused"})
 public final class ByteBufStrings {
 	public static final ParseException READ_PAST_LIMIT = new ParseException("Malformed utf-8 input: Read past end");
 	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException("Malformed utf-8 input");
@@ -240,14 +241,14 @@ public final class ByteBufStrings {
 		buf.advance(size);
 	}
 
-	public static ByteBuf wrapUTF8(String string) {
+	public static ByteBuf wrapUtf8(String string) {
 		ByteBuf byteBuffer = ByteBufPool.allocate(string.length() * 3);
 		int size = encodeUtf8(byteBuffer.array(), 0, string);
 		byteBuffer.advance(size);
 		return byteBuffer;
 	}
 
-	public static String decodeUTF8(byte[] array, int pos, int len, char[] tmpBuffer) throws ParseException {
+	public static String decodeUtf8(byte[] array, int pos, int len, char[] tmpBuffer) throws ParseException {
 		int c, charIndex = 0, end = pos + len;
 		try {
 			while (pos < end) {
@@ -279,20 +280,20 @@ public final class ByteBufStrings {
 		return new String(tmpBuffer, 0, charIndex);
 	}
 
-	public static String decodeUTF8(byte[] array, int pos, int len) throws ParseException {
-		return decodeUTF8(array, pos, len, new char[len]);
+	public static String decodeUtf8(byte[] array, int pos, int len) throws ParseException {
+		return decodeUtf8(array, pos, len, new char[len]);
 	}
 
-	public static String decodeUTF8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
-		return decodeUTF8(buf.array(), buf.getReadPosition(), buf.remainingToRead(), tmpBuffer);
+	public static String decodeUtf8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
+		return decodeUtf8(buf.array(), buf.getReadPosition(), buf.remainingToRead(), tmpBuffer);
 	}
 
-	public static String decodeUTF8(ByteBuf buf) throws ParseException {
-		return decodeUTF8(buf.array(), buf.getReadPosition(), buf.remainingToRead(), new char[buf.remainingToRead()]);
+	public static String decodeUtf8(ByteBuf buf) throws ParseException {
+		return decodeUtf8(buf.array(), buf.getReadPosition(), buf.remainingToRead(), new char[buf.remainingToRead()]);
 	}
 
-	public static String decodeUTF8(byte[] array) throws ParseException {
-		return decodeUTF8(array, 0, array.length, new char[array.length]);
+	public static String decodeUtf8(byte[] array) throws ParseException {
+		return decodeUtf8(array, 0, array.length, new char[array.length]);
 	}
 
 	// Decimal (unsigned)

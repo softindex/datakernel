@@ -84,7 +84,7 @@ public class MessagingSerializersTest {
 		Req req = new Req("Hello", 1, 6.24);
 
 		ByteBuf buf = deserializer.serialize(req);
-		assertEquals("{\"text\":\"Hello\",\"num\":1,\"val\":6.24}\0", ByteBufStrings.decodeUTF8(buf));
+		assertEquals("{\"text\":\"Hello\",\"num\":1,\"val\":6.24}\0", ByteBufStrings.decodeUtf8(buf));
 
 		Req newReq = serializer.tryDeserialize(buf);
 		assertEquals(req, newReq);
@@ -93,7 +93,7 @@ public class MessagingSerializersTest {
 		Res res = new Res(true);
 
 		buf = serializer.serialize(res);
-		assertEquals("{\"bool\":true}\0", ByteBufStrings.decodeUTF8(buf));
+		assertEquals("{\"bool\":true}\0", ByteBufStrings.decodeUtf8(buf));
 
 		Res newRes = deserializer.tryDeserialize(buf);
 		assertEquals(res, newRes);
@@ -104,7 +104,7 @@ public class MessagingSerializersTest {
 
 	@Test
 	public void testSerializeSeveralMessages() throws ParseException {
-		ByteBuf readBuf = ByteBufStrings.wrapUTF8("{\"text\":\"Greetings\",\"num\":1,\"val\":3.12}\0" +
+		ByteBuf readBuf = ByteBufStrings.wrapUtf8("{\"text\":\"Greetings\",\"num\":1,\"val\":3.12}\0" +
 				"{\"text\":\"Hi\",\"num\":2,\"val\":6.24}\0" +
 				"{\"text\":\"Good morning\",\"num\":3,\"val\":9.36}\0" +
 				"{\"text\":\"Shalom\",\"n");
@@ -128,7 +128,7 @@ public class MessagingSerializersTest {
 
 	@Test
 	public void testDeserializeBadMessage() throws ParseException {
-		ByteBuf badInput = ByteBufStrings.wrapUTF8("{\"text\":\"Greetings\",\"num\":1,\"val\":3.12}\0" +
+		ByteBuf badInput = ByteBufStrings.wrapUtf8("{\"text\":\"Greetings\",\"num\":1,\"val\":3.12}\0" +
 				"{\"text\":\"Hi\",\"num\":s2,\"val\":6.2sad4}\0" +
 				"{\"text\":\"Good morning\",\"num\":3,\"val\":9.36edc}\0" +
 				"{\"text\":\"Shalom\",\"n");
