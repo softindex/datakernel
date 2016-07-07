@@ -12,17 +12,18 @@ import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import static io.datakernel.util.Preconditions.check;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
+@SuppressWarnings("WeakerAccess")
 public abstract class AbstractClient<S extends AbstractClient<S>> {
 	protected final Eventloop eventloop;
-	protected final SocketSettings settings;
+	protected final SocketSettings socketSettings;
 
 	// SSL
 	private SSLContext sslContext;
 	private ExecutorService executor;
 
-	public AbstractClient(Eventloop eventloop, SocketSettings settings) {
+	public AbstractClient(Eventloop eventloop, SocketSettings socketSettings) {
 		this.eventloop = checkNotNull(eventloop);
-		this.settings = checkNotNull(settings);
+		this.socketSettings = checkNotNull(socketSettings);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -36,12 +37,12 @@ public abstract class AbstractClient<S extends AbstractClient<S>> {
 		return self();
 	}
 
-	public void connect(final SocketAddress address, int timeout, final boolean secure, final SpecialConnectCallback callback) {
-		eventloop.connect(address, settings, timeout, new ConnectCallback() {
+	public final void connect(final SocketAddress address, int timeout, final boolean ssl, final SpecialConnectCallback callback) {
+		eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
 			@Override
 			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-				settings.applyReadWriteTimeoutsTo(asyncTcpSocket);
-				if (secure) {
+				socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+				if (ssl) {
 					check(sslContext != null, "Can't establish secure connection");
 					AsyncSslSocket sslSocket = createAsyncSslSocket(asyncTcpSocket);
 					asyncTcpSocket.setEventHandler(sslSocket);

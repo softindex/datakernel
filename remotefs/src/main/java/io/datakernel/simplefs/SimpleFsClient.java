@@ -27,7 +27,7 @@ import io.datakernel.stream.StreamProducer;
 import java.net.InetSocketAddress;
 import java.util.List;
 
-public final class SimpleFsClient extends FsClient {
+public final class SimpleFsClient extends FsClient<SimpleFsClient> {
 	private final InetSocketAddress address;
 
 	public SimpleFsClient(Eventloop eventloop, InetSocketAddress address) {

@@ -29,9 +29,8 @@ import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsCommands.Alive;
 import io.datakernel.hashfs.HashFsCommands.Announce;
@@ -47,7 +46,7 @@ import java.util.Set;
 
 import static io.datakernel.util.Preconditions.check;
 
-public final class HashFsClient extends FsClient {
+public final class HashFsClient extends FsClient<HashFsClient> {
 	private final List<Replica> bootstrap;
 
 	private HashingStrategy hashing = new RendezvousHashing();
@@ -129,9 +128,9 @@ public final class HashFsClient extends FsClient {
 	}
 
 	void announce(final Replica replica, final List<String> forUpload, final List<String> forDeletion, final ResultCallback<List<String>> callback) {
-		connect(replica.getAddress(), new ConnectCallback() {
+		connect(replica.getAddress(), new SpecialConnectCallback() {
 			@Override
-			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+			public EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
 				final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
 				messaging.send(new Announce(forDeletion, forUpload), new ForwardingCompletionCallback(callback) {
 					@Override
@@ -279,9 +278,9 @@ public final class HashFsClient extends FsClient {
 	}
 
 	void alive(InetSocketAddress address, final ResultCallback<Set<Replica>> callback) {
-		connect(address, new ConnectCallback() {
+		connect(address, new SpecialConnectCallback() {
 			@Override
-			public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+			public EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
 				final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
 				messaging.send(new Alive(), new CompletionCallback() {
 					@Override

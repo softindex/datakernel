@@ -22,9 +22,9 @@ import io.datakernel.FsResponses.*;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AbstractClient;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
-import io.datakernel.eventloop.AsyncTcpSocketImpl;
-import io.datakernel.eventloop.ConnectCallback;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducer;
@@ -34,26 +34,34 @@ import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.FsCommands.*;
 import static io.datakernel.FsResponses.*;
-import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
-public abstract class FsClient {
+public abstract class FsClient<S extends FsClient<S>> extends AbstractClient<S> {
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-	protected final Eventloop eventloop;
 	private MessagingSerializer<FsResponse, FsCommand> serializer = ofGson(getResponseGson(), FsResponse.class, getCommandGSON(), FsCommand.class);
-
-	private SocketSettings socketSettings = SocketSettings.defaultSocketSettings();
+	private boolean ssl;
 
 	// creators & builders
 	public FsClient(Eventloop eventloop) {
-		this.eventloop = checkNotNull(eventloop);
+		this(eventloop, SocketSettings.defaultSocketSettings());
+	}
+
+	public FsClient(Eventloop eventloop, SocketSettings socketSettings) {
+		super(eventloop, socketSettings);
+	}
+
+	@Override
+	public S enableSsl(SSLContext sslContext, ExecutorService executor) {
+		this.ssl = true;
+		return super.enableSsl(sslContext, executor);
 	}
 
 	// api
@@ -74,6 +82,10 @@ public abstract class FsClient {
 		connect(address, new DownloadConnectCallback(fileName, startPosition, callback));
 	}
 
+	protected void connect(InetSocketAddress address, SpecialConnectCallback callback) {
+		connect(address, 0, ssl, callback);
+	}
+
 	protected final void doDelete(InetSocketAddress address, String fileName, CompletionCallback callback) {
 		connect(address, new DeleteConnectCallback(fileName, callback));
 	}
@@ -86,15 +98,11 @@ public abstract class FsClient {
 
 	protected Gson getResponseGson() {return responseGson;}
 
-	protected MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> getMessaging(AsyncTcpSocketImpl asyncTcpSocket) {
+	protected MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> getMessaging(AsyncTcpSocket asyncTcpSocket) {
 		return new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
 	}
 
-	protected final void connect(SocketAddress address, ConnectCallback callback) {
-		eventloop.connect(address, socketSettings, 0, callback);
-	}
-
-	private class UploadConnectCallback implements ConnectCallback {
+	private class UploadConnectCallback implements SpecialConnectCallback {
 		private final String fileName;
 		private final CompletionCallback callback;
 		private final StreamProducer<ByteBuf> producer;
@@ -106,8 +114,7 @@ public abstract class FsClient {
 		}
 
 		@Override
-		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+		public EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
 			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
 			final Upload upload = new Upload(fileName);
 			messaging.send(upload, new CompletionCallback() {
@@ -200,7 +207,7 @@ public abstract class FsClient {
 		}
 	}
 
-	private class DownloadConnectCallback implements ConnectCallback {
+	private class DownloadConnectCallback implements SpecialConnectCallback {
 		private final String fileName;
 		private final long startPosition;
 		private final ResultCallback<StreamTransformerWithCounter> callback;
@@ -212,7 +219,7 @@ public abstract class FsClient {
 		}
 
 		@Override
-		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+		public EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
 			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
 			messaging.send(new Download(fileName, startPosition), new CompletionCallback() {
 				@Override
@@ -278,7 +285,7 @@ public abstract class FsClient {
 		}
 	}
 
-	private class DeleteConnectCallback implements ConnectCallback {
+	private class DeleteConnectCallback implements SpecialConnectCallback {
 		private final String fileName;
 		private final CompletionCallback callback;
 
@@ -288,7 +295,7 @@ public abstract class FsClient {
 		}
 
 		@Override
-		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+		public EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
 			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
 			messaging.send(new Delete(fileName), new CompletionCallback() {
 				@Override
@@ -340,13 +347,13 @@ public abstract class FsClient {
 		}
 	}
 
-	private class ListConnectCallback implements ConnectCallback {
+	private class ListConnectCallback implements SpecialConnectCallback {
 		private final ResultCallback<List<String>> callback;
 
 		ListConnectCallback(ResultCallback<List<String>> callback) {this.callback = callback;}
 
 		@Override
-		public EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+		public EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
 			final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
 			messaging.send(new ListFiles(), new CompletionCallback() {
 				@Override

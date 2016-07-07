@@ -19,7 +19,10 @@ package io.datakernel.rpc.client;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.eventloop.*;
+import io.datakernel.eventloop.AbstractClient;
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.Eventloop;
+import io.datakernel.eventloop.EventloopService;
 import io.datakernel.jmx.CountStats;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -37,8 +40,10 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
@@ -47,23 +52,22 @@ import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamP
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class RpcClient implements EventloopService, EventloopJmxMBean {
+public final class RpcClient extends AbstractClient<RpcClient> implements EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
 
 	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
-	private final Eventloop eventloop;
 	private RpcStrategy strategy;
 	private List<InetSocketAddress> addresses;
 	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 	private RpcProtocolFactory protocolFactory = streamProtocol();
 	private SerializerBuilder serializerBuilder;
 	private final Set<Class<?>> messageTypes = new LinkedHashSet<>();
-	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 	private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
 	private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
+	private boolean ssl;
 
 	private BufferSerializer<RpcMessage> serializer;
 
@@ -88,8 +92,8 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass;
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress;
 
-	private RpcClient(Eventloop eventloop) {
-		this.eventloop = eventloop;
+	private RpcClient(Eventloop eventloop, SocketSettings socketSettings) {
+		super(eventloop, socketSettings);
 
 		// JMX
 		this.generalRequestsStats = new RpcRequestStats();
@@ -99,7 +103,11 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	public static RpcClient create(final Eventloop eventloop) {
-		return new RpcClient(eventloop);
+		return create(eventloop, DEFAULT_SOCKET_SETTINGS);
+	}
+
+	public static RpcClient create(final Eventloop eventloop, SocketSettings socketSettings) {
+		return new RpcClient(eventloop, socketSettings);
 	}
 
 	public RpcClient messageTypes(Class<?>... messageTypes) {
@@ -137,11 +145,6 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return this;
 	}
 
-	public RpcClient socketSettings(SocketSettings socketSettings) {
-		this.socketSettings = checkNotNull(socketSettings);
-		return this;
-	}
-
 	public SocketSettings getSocketSettings() {
 		return socketSettings;
 	}
@@ -159,6 +162,12 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	public RpcClient reconnectIntervalMillis(int reconnectIntervalMillis) {
 		this.reconnectIntervalMillis = reconnectIntervalMillis;
 		return this;
+	}
+
+	@Override
+	public RpcClient enableSsl(SSLContext sslContext, ExecutorService executor) {
+		this.ssl = true;
+		return super.enableSsl(sslContext, executor);
 	}
 
 	@Override
@@ -228,10 +237,10 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 
 		logger.info("Connecting {}", address);
-		eventloop.connect(address, socketSettings, new ConnectCallback() {
+
+		connect(address, 0, ssl, new SpecialConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-				socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this,
 						asyncTcpSocket, address,
 						getSerializer(), protocolFactory);
@@ -251,14 +260,14 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			public void onException(Exception e) {
 				//jmx
 				generalConnectsStats.getFailedConnects().recordEvent();
 				connectsStatsPerAddress.get(address).getFailedConnects().recordEvent();
 
 				if (running) {
 					if (logger.isWarnEnabled()) {
-						logger.warn("Connection failed, reconnecting to {}: {}", address, exception.toString());
+						logger.warn("Connection failed, reconnecting to {}: {}", address, e.toString());
 					}
 					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
 						@Override

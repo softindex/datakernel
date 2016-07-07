@@ -49,7 +49,7 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 import static java.util.Arrays.asList;
 
-@SuppressWarnings("ThrowableInstanceNeverThrown")
+@SuppressWarnings({"ThrowableInstanceNeverThrown", "WeakerAccess"})
 public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements EventloopService, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
@@ -245,7 +245,6 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		checkNotNull(request);
 		assert eventloop.inEventloopThread();
 
-		logger.trace("Calling {}", request);
 		totalRequests.recordEvent();
 		getUrlAsync(request, timeout, callback);
 	}
@@ -254,24 +253,22 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		dnsClient.resolve4(request.getUrl().getHost(), new ResultCallback<InetAddress[]>() {
 			@Override
 			public void onResult(InetAddress[] inetAddresses) {
-				logger.trace("dnsClient.resolve4.onResult Calling {}", request);
 				getUrlForHostAsync(request, timeout, inetAddresses, callback);
 			}
 
 			@Override
-			public void onException(Exception exception) {
-				logger.trace("dnsClient.resolve4.onException Calling {}", request);
-				if (exception.getClass() == DnsException.class || exception.getClass() == TimeoutException.class) {
+			public void onException(Exception e) {
+				if (e.getClass() == DnsException.class || e.getClass() == TimeoutException.class) {
 					if (logger.isWarnEnabled()) {
-						logger.warn("DNS exception for '{}': {}", request, exception.getMessage());
+						logger.warn("DNS exception for '{}': {}", request, e.getMessage());
 					}
 				} else {
 					if (logger.isErrorEnabled()) {
-						logger.error("Unexpected DNS exception for " + request, exception);
+						logger.error("Unexpected DNS exception for " + request, e);
 					}
 				}
-				dnsErrors.recordException(exception, request);
-				callback.onException(exception);
+				dnsErrors.recordException(e, request);
+				callback.onException(e);
 			}
 		});
 	}
@@ -333,50 +330,6 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 			}
 		});
 
-//		eventloop.connect(address, socketSettings, timeout, new ConnectCallback() {
-//			@Override
-//			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-//				removePendingSocketConnect(address);
-//				socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
-//				AsyncSslSocket asyncSslSocket = null;
-//				if (sslContext != null && isHttpsRequest(request)) {
-//					SSLEngine ssl = sslContext.createSSLEngine();
-//					ssl.setUseClientMode(true);
-//					asyncSslSocket = new AsyncSslSocket(eventloop, asyncTcpSocket, ssl, executor);
-//				}
-//
-//				HttpClientConnection connection = new HttpClientConnection(eventloop, address,
-//						asyncSslSocket != null ? asyncSslSocket : asyncTcpSocket,
-//						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
-//				if (asyncSslSocket != null)
-//					asyncSslSocket.setEventHandler(connection);
-//				if (connectionsList.isEmpty())
-//					scheduleCheck();
-//				sendRequest(connection, request, timeoutTime, callback);
-//				return asyncSslSocket != null ? asyncSslSocket : connection;
-//			}
-//
-//			@Override
-//			public void onException(Exception exception) {
-//				logger.trace("eventloop.connect.onException Calling {}", request);
-//				removePendingSocketConnect(address);
-//				if (exception instanceof BindException) {
-//					if (bindExceptionBlockTimeout != 0) {
-//						bindExceptionBlockedHosts.put(inetAddress, eventloop.currentTimeMillis());
-//					}
-//				}
-//
-//				if (logger.isWarnEnabled()) {
-//					logger.warn("Connect error to {} : {}", address, exception.getMessage());
-//				}
-//				callback.onException(exception);
-//			}
-//
-//			@Override
-//			public String toString() {
-//				return address.toString();
-//			}
-//		});
 		addPendingSocketConnect(address);
 	}
 
@@ -386,7 +339,6 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 
 	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
 		connectionsList.moveNodeToLast(connection.connectionsListNode); // back-order connections
-		logger.trace("sendRequest Calling {}", request);
 		connection.send(request, timeoutTime, callback);
 	}
 
