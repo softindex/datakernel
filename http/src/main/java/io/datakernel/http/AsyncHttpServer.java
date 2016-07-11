@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
@@ -31,11 +30,16 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long DEFAULT_MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
 	private final ExposedLinkedList<AbstractHttpConnection> connectionsList;
-	private final Runnable expiredConnectionsTask = createExpiredConnectionsTask();
+
+	private final Runnable expiredConnectionsTask = new Runnable() {
+		@Override
+		public void run() {
+			checkExpiredConnections();
+		}
+	};
 
 	private final AsyncHttpServlet servlet;
 
-	private AsyncCancellable scheduleExpiredConnectionCheck;
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
@@ -50,6 +54,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
+		scheduleExpiredConnectionCheck();
 	}
 
 	public AsyncHttpServer setMaxIdleConnectionTime(long maxIdleConnectionTime) {
@@ -63,23 +68,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return this;
 	}
 
-	private Runnable createExpiredConnectionsTask() {
-		return new Runnable() {
-			@Override
-			public void run() {
-				checkExpiredConnections();
-				if (!connectionsList.isEmpty())
-					scheduleExpiredConnectionCheck();
-			}
-		};
-	}
-
 	private void scheduleExpiredConnectionCheck() {
-		scheduleExpiredConnectionCheck = eventloop.schedule(eventloop.currentTimeMillis() + CHECK_PERIOD, expiredConnectionsTask);
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, expiredConnectionsTask);
 	}
 
 	private int checkExpiredConnections() {
-		scheduleExpiredConnectionCheck = null;
 		int count = 0;
 		final long now = eventloop.currentTimeMillis();
 
@@ -95,13 +88,13 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				count++;
 			}
 		}
+		scheduleExpiredConnectionCheck();
 		return count;
 	}
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-		if (connectionsList.isEmpty()) scheduleExpiredConnectionCheck();
 		return new HttpServerConnection(
 				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
 				servlet, connectionsList, headerChars, maxHttpMessageSize);
@@ -113,9 +106,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	private void closeConnections() {
-		if (scheduleExpiredConnectionCheck != null)
-			scheduleExpiredConnectionCheck.cancel();
-
 		ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
 		while (node != null) {
 			AbstractHttpConnection connection = node.getValue();
@@ -124,10 +114,6 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			assert eventloop.inEventloopThread();
 			connection.close();
 		}
-	}
-
-	@Override
-	protected void onListen() {
 	}
 
 	// jmx

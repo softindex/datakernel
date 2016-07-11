@@ -41,6 +41,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	public static final ParseException MALFORMED_CHUNK = new ParseException("Malformed chunk");
 	public static final ParseException TOO_LONG_HEADER = new ParseException("Header line exceeds max header size");
 	public static final ParseException TOO_MANY_HEADERS = new ParseException("Too many headers");
+	public static final ParseException EMPTY_RESPONSE_FROM_SERVER = new ParseException("Empty response from server");
 
 	protected final Eventloop eventloop;
 
@@ -81,12 +82,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
 	protected ExposedLinkedList.Node<AbstractHttpConnection> connectionsListNode;
 
-	/**
-	 * Creates a new instance of AbstractHttpConnection
-	 *
-	 * @param eventloop       eventloop which will handle its I/O operations
-	 * @param connectionsList pool in which will stored this connection
-	 */
 	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
 		this.eventloop = eventloop;
 		this.connectionsList = connectionsList;
@@ -94,17 +89,14 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		assert headerChars.length >= MAX_HEADER_LINE_SIZE;
 		this.maxHttpMessageSize = maxHttpMessageSize;
 		this.asyncTcpSocket = asyncTcpSocket;
+		connectionsListNode = new ExposedLinkedList.Node<>(this);
 		reset();
-		connectionsListNode = connectionsList.addLastValue(this);
 	}
 
 	protected boolean isClosed() {
 		return closed;
 	}
 
-	/**
-	 * After creating this connection adds it to a pool of connections.
-	 */
 	@Override
 	public void onRegistered() {
 		assert !isClosed();
@@ -137,11 +129,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		bodyQueue.clear();
 	}
 
-	/**
-	 * This method is called after reading Http message.
-	 *
-	 * @param bodyBuf the received message
-	 */
 	protected abstract void onHttpMessage(ByteBuf bodyBuf);
 
 	private ByteBuf takeHeader() {
@@ -211,11 +198,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		onHeader(httpHeader, line);
 	}
 
-	/**
-	 * This method is called after receiving the line of the header.
-	 *
-	 * @param line received line of header.
-	 */
 	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
 
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
@@ -277,6 +259,14 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 			assert reading == CHUNK || reading == CHUNK_LENGTH;
 			readChunks();
 		}
+	}
+
+	protected void moveConnectionToPool() {
+		connectionsList.addLastNode(connectionsListNode);
+	}
+
+	protected void removeConnectionFromPool() {
+		connectionsList.removeNode(connectionsListNode);
 	}
 
 	@SuppressWarnings("ConstantConditions")
@@ -381,8 +371,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 				if (!headerBuf.canRead()) {
 					headerBuf.recycle();
 
-					if (reading == FIRSTLINE)
-						throw new ParseException("Empty response from server");
+					if (reading == FIRSTLINE) throw EMPTY_RESPONSE_FROM_SERVER;
 
 					if (isChunked) {
 						reading = CHUNK_LENGTH;
@@ -410,7 +399,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		readBody();
 	}
 
-	public final long getLastUsedTime() {
+	final long getLastUsedTime() {
 		return lastUsedTime;
 	}
 
@@ -419,5 +408,4 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 			throw e;
 		}
 	}
-
 }

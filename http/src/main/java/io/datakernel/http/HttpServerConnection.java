@@ -33,11 +33,12 @@ import static io.datakernel.http.HttpMethod.*;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
-/**
- * It represents server connection. It can receive requests from clients and respond to them with async servlet.
- */
+@SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final Logger logger = LoggerFactory.getLogger(HttpServerConnection.class);
+
+	public static final ParseException UNKNOWN_HTTP_METHOD_EXCEPTION = new ParseException("Unknown HTTP method");
+
 	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
@@ -66,13 +67,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private HttpRequest request;
 	private AsyncHttpServlet servlet;
 
-	/**
-	 * Creates a new instance of HttpServerConnection
-	 *
-	 * @param eventloop eventloop which will handle its tasks
-	 * @param servlet   servlet for handling requests
-	 * @param pool      pool in which will be stored this connection
-	 */
 	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, pool, headerChars, maxHttpMessageSize);
 		this.servlet = servlet;
@@ -126,18 +120,12 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		return getHttpMethodFromMap(line);
 	}
 
-	/**
-	 * This method is called after received line of header.
-	 *
-	 * @param line received line of header.
-	 */
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
 		assert eventloop.inEventloopThread();
 
 		HttpMethod method = getHttpMethod(line);
-		if (method == null)
-			throw new ParseException("Unknown HTTP method");
+		if (method == null) throw UNKNOWN_HTTP_METHOD_EXCEPTION;
 
 		request = HttpRequest.create(method);
 
@@ -156,12 +144,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
-	/**
-	 * This method is called after receiving header. It sets its value to request.
-	 *
-	 * @param header received header
-	 * @param value  value of received header
-	 */
+	// modifies inner state according to headers received in message
 	@Override
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
@@ -177,14 +160,17 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		asyncTcpSocket.write(buf);
 	}
 
-	/**
-	 * This method is called after receiving every request. It handles it,
-	 * using servlet and sends a response back to the client.
-	 * <p/>
-	 * After sending a response, request and response will be recycled and you can not use it twice.
-	 *
-	 * @param bodyBuf the received message
-	 */
+	private boolean inPool; // used to denote first call to onReadMethod -->> could be several due to the async nature of the engine
+
+	@Override
+	public void onRead(ByteBuf buf) {
+		if (inPool) {
+			removeConnectionFromPool();
+			inPool = false;
+		}
+		super.onRead(buf);
+	}
+
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		reading = NOTHING;
@@ -244,6 +230,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		assert !isClosed();
 		if (reading != NOTHING) return;
 		if (keepAlive) {
+			if (!inPool) {
+				moveConnectionToPool();
+				inPool = true;
+			}
 			reset();
 			asyncTcpSocket.read();
 			if (readQueue.hasRemaining()) {
@@ -281,8 +271,9 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
-		if (connectionsListNode != null) {
-			connectionsList.removeNode(connectionsListNode);
+		if (inPool) {
+			removeConnectionFromPool();
+			inPool = false;
 			connectionsListNode = null;
 		}
 	}

@@ -40,6 +40,7 @@ import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
+
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
@@ -107,12 +108,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		return (messageCode >= 100 && messageCode < 200) || messageCode == 204 || messageCode == 304;
 	}
 
-	/**
-	 * Calls after receiving header, sets this header to httpResponse.
-	 *
-	 * @param header received header
-	 * @param value  value of header
-	 */
 	@Override
 	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
@@ -131,6 +126,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			reset();
 			httpClient.addToIpPool(this);
+			if (connectionsList.isEmpty()) httpClient.scheduleCheck();
 		} else {
 			close();
 		}
@@ -168,15 +164,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			httpRequest.addHeader(CONNECTION_KEEP_ALIVE);
 		}
 		asyncTcpSocket.write(httpRequest.write());
+		moveConnectionToPool();
 	}
 
-	/**
-	 * Sends the request, recycles it and closes connection in case of timeout
-	 *
-	 * @param request  request for sending
-	 * @param timeout  time after which connection will be closed
-	 * @param callback callback for handling result
-	 */
 	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
 		this.callback = callback;
 		writeHttpRequest(request);
@@ -205,16 +195,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		asyncTcpSocket.read();
 	}
 
-	/**
-	 * After closing this connection it removes it from its connections cache and recycles
-	 * Http response.
-	 */
 	@Override
 	protected void onClosed() {
 		super.onClosed();
 		bodyQueue.clear();
 		if (connectionsListNode != null) {
-			connectionsList.removeNode(connectionsListNode);
+			removeConnectionFromPool();
 		}
 		if (response != null) {
 			response.recycleBufs();
@@ -223,11 +209,11 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Nullable
-	public InetSocketAddress getRemoteSocketAddress() {
+	InetSocketAddress getRemoteSocketAddress() {
 		return remoteSocketAddress;
 	}
 
-	public boolean isSecuredConnection() {
+	boolean isSslConnection() {
 		return this.asyncTcpSocket instanceof AsyncSslSocket;
 	}
 }

@@ -127,13 +127,12 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 			@Override
 			public void run() {
 				checkExpiredConnections();
-				if (!connectionsList.isEmpty())
-					scheduleCheck();
+				if (!connectionsList.isEmpty()) scheduleCheck();
 			}
 		};
 	}
 
-	private void scheduleCheck() {
+	void scheduleCheck() {
 		scheduleExpiredConnectionCheck = eventloop.schedule(eventloop.currentTimeMillis() + CHECK_PERIOD, expiredConnectionsTask);
 	}
 
@@ -174,11 +173,11 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 				break;
 			if (!connection.isClosed()) {
 				if (isHttpsRequest(request)) {
-					if (!connection.isSecuredConnection()) {
+					if (!connection.isSslConnection()) {
 						return null;
 					}
 				} else {
-					if (connection.isSecuredConnection()) {
+					if (connection.isSslConnection()) {
 						return null;
 					}
 				}
@@ -193,11 +192,6 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		return request.getUrl().getSchema().equals("https");
 	}
 
-	/**
-	 * Puts the client connection to connections cache
-	 *
-	 * @param connection connections for putting
-	 */
 	protected void addToIpPool(HttpClientConnection connection) {
 		assert !connection.isClosed();
 		assert connection.ipConnectionListNode == null;
@@ -215,11 +209,6 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		connection.ipConnectionListNode = list.addLastValue(connection);
 	}
 
-	/**
-	 * Removes the client's connection from connections cache
-	 *
-	 * @param connection connection for removing
-	 */
 	protected void removeFromIpPool(HttpClientConnection connection) {
 		if (connection.ipConnectionListNode == null)
 			return;
@@ -338,7 +327,6 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 	}
 
 	private void sendRequest(final HttpClientConnection connection, HttpRequest request, long timeoutTime, final ResultCallback<HttpResponse> callback) {
-		connectionsList.moveNodeToLast(connection.connectionsListNode); // back-order connections
 		connection.send(request, timeoutTime, callback);
 	}
 
