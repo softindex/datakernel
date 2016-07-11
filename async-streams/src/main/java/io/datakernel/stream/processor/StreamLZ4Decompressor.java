@@ -147,9 +147,9 @@ public final class StreamLZ4Decompressor extends AbstractStreamTransformer_1_1<B
 				jmxBufsOutput++;
 				jmxBytesOutput += outputBuf.remainingToRead();
 
-				downstreamDataReceiver.onData(outputBuf);
 				inputBuf.rewind();
 				headerBuf.rewind();
+				downstreamDataReceiver.onData(outputBuf);
 				assert isReadingHeader();
 			}
 		}
