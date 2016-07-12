@@ -42,46 +42,28 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	private static final byte[] INTERNAL_ERROR_MESSAGE = encodeAscii("Failed to process request");
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
-	private static final int HEADERS_SLOTS = 256;
-	private static final int MAX_PROBINGS = 2;
-	private static final HttpMethod[] METHODS = new HttpMethod[HEADERS_SLOTS];
-
-	static {
-		assert Integer.bitCount(METHODS.length) == 1;
-		nxt:
-		for (HttpMethod httpMethod : HttpMethod.values()) {
-			int hashCode = Arrays.hashCode(httpMethod.bytes);
-			for (int p = 0; p < MAX_PROBINGS; p++) {
-				int slot = (hashCode + p) & (METHODS.length - 1);
-				if (METHODS[slot] == null) {
-					METHODS[slot] = httpMethod;
-					continue nxt;
-				}
-			}
-			throw new IllegalArgumentException("HTTP METHODS hash collision, try to increase METHODS size");
-		}
-	}
-
 	private final InetAddress remoteAddress;
 
 	private HttpRequest request;
 	private AsyncHttpServlet servlet;
 
-	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, asyncTcpSocket, pool, headerChars, maxHttpMessageSize);
-		this.servlet = servlet;
-		this.remoteAddress = remoteAddress;
-	}
+	// http verb methods
+	private static final int HEADERS_SLOTS = 256;
+	private static final int MAX_PROBINGS = 2;
+	private static final HttpMethod[] METHODS = new HttpMethod[HEADERS_SLOTS];
 
-	@Override
-	public void onRegistered() {
-		super.onRegistered();
-		asyncTcpSocket.read();
-	}
-
-	@Override
-	public void onClosedWithError(Exception e) {
-		onClosed();
+	private static HttpMethod getHttpMethod(ByteBuf line) {
+		if (line.getReadPosition() == 0) {
+			if (line.remainingToRead() >= 4 && line.at(0) == 'G' && line.at(1) == 'E' && line.at(2) == 'T' && line.at(3) == SP) {
+				line.skip(4);
+				return GET;
+			}
+			if (line.remainingToRead() >= 5 && line.at(0) == 'P' && line.at(1) == 'O' && line.at(2) == 'S' && line.at(3) == 'T' && line.at(4) == SP) {
+				line.skip(5);
+				return POST;
+			}
+		}
+		return getHttpMethodFromMap(line);
 	}
 
 	private static HttpMethod getHttpMethodFromMap(ByteBuf line) {
@@ -106,18 +88,55 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		return null;
 	}
 
-	private static HttpMethod getHttpMethod(ByteBuf line) {
-		if (line.getReadPosition() == 0) {
-			if (line.remainingToRead() >= 4 && line.at(0) == 'G' && line.at(1) == 'E' && line.at(2) == 'T' && line.at(3) == SP) {
-				line.skip(4);
-				return GET;
+	static {
+		assert Integer.bitCount(METHODS.length) == 1;
+		nxt:
+		for (HttpMethod httpMethod : HttpMethod.values()) {
+			int hashCode = Arrays.hashCode(httpMethod.bytes);
+			for (int p = 0; p < MAX_PROBINGS; p++) {
+				int slot = (hashCode + p) & (METHODS.length - 1);
+				if (METHODS[slot] == null) {
+					METHODS[slot] = httpMethod;
+					continue nxt;
+				}
 			}
-			if (line.remainingToRead() >= 5 && line.at(0) == 'P' && line.at(1) == 'O' && line.at(2) == 'S' && line.at(3) == 'T' && line.at(4) == SP) {
-				line.skip(5);
-				return POST;
-			}
+			throw new IllegalArgumentException("HTTP METHODS hash collision, try to increase METHODS size");
 		}
-		return getHttpMethodFromMap(line);
+	}
+
+	// creators
+	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, asyncTcpSocket, pool, headerChars, maxHttpMessageSize);
+		this.servlet = servlet;
+		this.remoteAddress = remoteAddress;
+	}
+
+	// miscellaneous
+	@Override
+	public void onRegistered() {
+		super.onRegistered();
+		asyncTcpSocket.read();
+	}
+
+	@Override
+	protected void reset() {
+		super.reset();
+		reading = FIRSTCHAR;
+		keepAlive = false;
+		if (request != null) {
+			request.recycleBufs();
+			request = null;
+		}
+	}
+
+	// read methods
+	@Override
+	public void onRead(ByteBuf buf) {
+		assert !isClosed();
+		if (reading == FIRSTCHAR && connectionNode != null) {
+			removeConnectionFromPool();
+		}
+		super.onRead(buf);
 	}
 
 	@Override
@@ -144,31 +163,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
-	// modifies inner state according to headers received in message
 	@Override
-	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
+	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
 		request.addHeader(header, value);
-	}
-
-	private void writeHttpResult(HttpResponse httpResponse) {
-		if (keepAlive) {
-			httpResponse.addHeader(CONNECTION_KEEP_ALIVE);
-		}
-		ByteBuf buf = httpResponse.write();
-		httpResponse.recycleBufs();
-		asyncTcpSocket.write(buf);
-	}
-
-	private boolean inPool; // used to denote first call to onReadMethod -->> could be several due to the async nature of the engine
-
-	@Override
-	public void onRead(ByteBuf buf) {
-		if (inPool) {
-			removeConnectionFromPool();
-			inPool = false;
-		}
-		super.onRead(buf);
 	}
 
 	@Override
@@ -179,7 +177,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		try {
 			servlet.serveAsync(request, new AsyncHttpServlet.Callback() {
 				@Override
-				public void onResult(final HttpResponse httpResponse) {
+				public void onResult(HttpResponse httpResponse) {
 					assert eventloop.inEventloopThread();
 					if (!isClosed()) {
 						try {
@@ -214,36 +212,14 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		}
 	}
 
-	@Override
-	protected void reset() {
-		reading = FIRSTLINE;
-		keepAlive = false;
-		if (request != null) {
-			request.recycleBufs();
-			request = null;
-		}
-		super.reset();
-	}
-
-	@Override
-	public void onWrite() {
-		assert !isClosed();
-		if (reading != NOTHING) return;
+	// write methods
+	private void writeHttpResult(HttpResponse httpResponse) {
 		if (keepAlive) {
-			if (!inPool) {
-				moveConnectionToPool();
-				inPool = true;
-			}
-			reset();
-			asyncTcpSocket.read();
-			if (readQueue.hasRemaining()) {
-				// HTTP Pipelining: since readQueue is already read, onRead() may not be called
-				onRead(null);
-			}
-		} else {
-			close();
-			recycleBufs();
+			httpResponse.addHeader(CONNECTION_KEEP_ALIVE);
 		}
+		ByteBuf buf = httpResponse.write();
+		httpResponse.recycleBufs();
+		asyncTcpSocket.write(buf);
 	}
 
 	private void writeException(HttpServletError e) {
@@ -256,25 +232,52 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		return HttpResponse.create(e.getCode()).noCache().body(message);
 	}
 
-	private void recycleBufs() {
-		bodyQueue.clear();
-		if (request != null) {
-			request.recycleBufs();
-			request = null;
+	@Override
+	public void onWrite() {
+		assert !isClosed();
+		if (reading != NOTHING) return;
+		if (keepAlive) {
+			reset();
+			asyncTcpSocket.read();
+			if (readQueue.hasRemaining()) {
+				// HTTP Pipelining: since readQueue is already read, onRead() may not be called
+				reading = FIRSTLINE;
+				onRead(null);
+			} else {
+				assert reading == FIRSTCHAR;
+				moveConnectionToPool();
+			}
+		} else {
+			close();
+			recycleBufs();
 		}
+	}
+
+	// close methods
+	@Override
+	public void onClosedWithError(Exception e) {
+		onClosed();
 	}
 
 	@Override
 	protected void onClosed() {
+		if (isClosed()) return;
 		super.onClosed();
 		if (reading != NOTHING) {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
-		if (inPool) {
+		if (reading == FIRSTCHAR && connectionNode != null) {
 			removeConnectionFromPool();
-			inPool = false;
-			connectionsListNode = null;
+			connectionNode = null;
+		}
+	}
+
+	private void recycleBufs() {
+		bodyQueue.clear();
+		if (request != null) {
+			request.recycleBufs();
+			request = null;
 		}
 	}
 }

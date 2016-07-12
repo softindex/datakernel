@@ -61,7 +61,7 @@ public class TestHttpsClient {
 		final ResultCallbackFuture<Integer> callback = new ResultCallbackFuture<>();
 
 		String url = "https://en.wikipedia.org/wiki/Wikipedia";
-		client.send(get(url), 1000, new ResultCallback<HttpResponse>() {
+		client.send(get(url), 5000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				callback.onResult(result.getCode());

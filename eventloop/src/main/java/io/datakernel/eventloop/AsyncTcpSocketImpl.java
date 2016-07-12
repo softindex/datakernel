@@ -134,7 +134,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	void checkReadTimeOut() {
 		if (checkReadTimeout == null) return;
 		checkReadTimeout = null;
-		closeWithError(TIMEOUT_EXCEPTION, true);
+		closeWithError(TIMEOUT_EXCEPTION, false);
 	}
 
 	void checkWriteTimeOut() {

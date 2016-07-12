@@ -23,7 +23,6 @@ import io.datakernel.eventloop.AbstractClient;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.eventloop.EventloopService;
-import io.datakernel.http.ExposedLinkedList.Node;
 import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.util.Stopwatch;
@@ -35,10 +34,7 @@ import java.io.IOException;
 import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -53,25 +49,25 @@ import static java.util.Arrays.asList;
 public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements EventloopService, EventloopJmxMBean {
 	private static final Logger logger = LoggerFactory.getLogger(AsyncHttpClient.class);
 	private static final long CHECK_PERIOD = 1000L;
-	private static final long DEFAULT_KEEP_CONNECTION_IN_POOL_TIME = 30 * 1000L;
+	private static final long DEFAULT_MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
 	private static final BindException BIND_EXCEPTION = new BindException();
 
 	private final DnsClient dnsClient;
-	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
+	protected final ArrayList<AbstractHttpConnection> activeConnections;
+	protected final HashMap<InetSocketAddress, ExposedLinkedList<AbstractHttpConnection>> ipConnectionLists = new HashMap<>();
 	private final Runnable expiredConnectionsTask = createExpiredConnectionsTask();
-	private final HashMap<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> ipConnectionLists = new HashMap<>();
 	private final HashMap<InetSocketAddress, Integer> addressPendingConnects = new HashMap<>();
 	private final Map<InetAddress, Long> bindExceptionBlockedHosts = new HashMap<>();
 	private final char[] headerChars;
 
-	private AsyncCancellable scheduleExpiredConnectionCheck;
+	AsyncCancellable scheduleExpiredConnectionCheck;
 	private boolean blockLocalAddresses = false;
 	private long bindExceptionBlockTimeout = 24 * 60 * 60 * 1000L;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 
 	// timeouts
-	private long keepConnectionInPoolTime = DEFAULT_KEEP_CONNECTION_IN_POOL_TIME;
+	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
 
 	// JMX
 	private final ValueStats timeCheckExpired = new ValueStats();
@@ -93,7 +89,7 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 	public AsyncHttpClient(Eventloop eventloop, DnsClient dnsClient, SocketSettings socketSettings) {
 		super(eventloop, socketSettings);
 		this.dnsClient = dnsClient;
-		this.connectionsList = new ExposedLinkedList<>();
+		this.activeConnections = new ArrayList<>();
 		char[] chars = eventloop.get(char[].class);
 		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
 			chars = new char[MAX_HEADER_LINE_SIZE];
@@ -103,7 +99,7 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 	}
 
 	public AsyncHttpClient keepConnectionAlive(long time) {
-		this.keepConnectionInPoolTime = time;
+		this.maxIdleConnectionTime = time;
 		return this;
 	}
 
@@ -127,13 +123,15 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 			@Override
 			public void run() {
 				checkExpiredConnections();
-				if (!connectionsList.isEmpty()) scheduleCheck();
+				scheduleCheck();
 			}
 		};
 	}
 
 	void scheduleCheck() {
-		scheduleExpiredConnectionCheck = eventloop.schedule(eventloop.currentTimeMillis() + CHECK_PERIOD, expiredConnectionsTask);
+		if (scheduleExpiredConnectionCheck == null) {
+			scheduleExpiredConnectionCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, expiredConnectionsTask);
+		}
 	}
 
 	private int checkExpiredConnections() {
@@ -142,20 +140,22 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		int count = 0;
 		try {
 			final long now = eventloop.currentTimeMillis();
+			for (ExposedLinkedList<AbstractHttpConnection> pool : ipConnectionLists.values()) {
+				ExposedLinkedList.Node<AbstractHttpConnection> node = pool.getFirstNode();
+				while (node != null) {
+					AbstractHttpConnection connection = node.getValue();
+					node = node.getNext();
 
-			ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
-			while (node != null) {
-				HttpClientConnection connection = (HttpClientConnection) node.getValue();
-				node = node.getNext();
-
-				assert eventloop.inEventloopThread();
-				long idleTime = now - connection.getLastUsedTime();
-				if (idleTime < keepConnectionInPoolTime)
-					break; // connections must back ordered by activity
-				connection.close();
-				count++;
+					assert eventloop.inEventloopThread();
+					long idleTime = now - connection.getLastUsedTime();
+					if (idleTime < maxIdleConnectionTime)
+						break; // connections must back ordered by activity
+					activeConnections.remove(connection);
+					connection.close();
+					count++;
+				}
+				expiredConnections.recordValue(count);
 			}
-			expiredConnections.recordValue(count);
 		} finally {
 			if (stopwatch != null)
 				timeCheckExpired.recordValue((int) stopwatch.elapsed(TimeUnit.MICROSECONDS));
@@ -164,11 +164,11 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 	}
 
 	private HttpClientConnection getFreeConnection(HttpRequest request, InetSocketAddress address) {
-		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
+		ExposedLinkedList<AbstractHttpConnection> list = ipConnectionLists.get(address);
 		if (list == null)
 			return null;
 		for (; ; ) {
-			HttpClientConnection connection = list.removeFirstValue();
+			HttpClientConnection connection = (HttpClientConnection) list.removeFirstValue();
 			if (connection == null)
 				break;
 			if (!connection.isClosed()) {
@@ -192,44 +192,6 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		return request.getUrl().getSchema().equals("https");
 	}
 
-	protected void addToIpPool(HttpClientConnection connection) {
-		assert !connection.isClosed();
-		assert connection.ipConnectionListNode == null;
-
-		InetSocketAddress address = connection.getRemoteSocketAddress();
-		if (address == null) {
-			connection.close();
-			return;
-		}
-		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
-		if (list == null) {
-			list = new ExposedLinkedList<>();
-			ipConnectionLists.put(address, list);
-		}
-		connection.ipConnectionListNode = list.addLastValue(connection);
-	}
-
-	protected void removeFromIpPool(HttpClientConnection connection) {
-		if (connection.ipConnectionListNode == null)
-			return;
-		InetSocketAddress address = connection.getRemoteSocketAddress();
-		ExposedLinkedList<HttpClientConnection> list = ipConnectionLists.get(address);
-		if (list != null) {
-			list.removeNode(connection.ipConnectionListNode);
-			connection.ipConnectionListNode = null;
-			if (list.isEmpty()) {
-				ipConnectionLists.remove(address);
-			}
-		}
-	}
-
-	/**
-	 * Sends the request to server, waits the result timeout and handles result with callback
-	 *
-	 * @param request  request for server
-	 * @param timeout  time which client will wait result
-	 * @param callback callback for handling result
-	 */
 	public void send(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
 		checkNotNull(request);
 		assert eventloop.inEventloopThread();
@@ -291,9 +253,12 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 			@Override
 			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket conn) {
 				removePendingSocketConnect(address);
-				HttpClientConnection connection = new HttpClientConnection(eventloop, address, conn, AsyncHttpClient.this, headerChars, maxHttpMessageSize);
-				if (connectionsList.isEmpty())
-					scheduleCheck();
+				ExposedLinkedList<AbstractHttpConnection> pool = ipConnectionLists.get(address);
+				if (pool == null) {
+					pool = new ExposedLinkedList<>();
+				}
+				HttpClientConnection connection = new HttpClientConnection(eventloop, address, conn, AsyncHttpClient.this, pool, headerChars, maxHttpMessageSize);
+				activeConnections.add(connection);
 				sendRequest(connection, request, timeoutTime, callback);
 				return connection;
 			}
@@ -388,13 +353,11 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		if (scheduleExpiredConnectionCheck != null)
 			scheduleExpiredConnectionCheck.cancel();
 
-		ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
-		while (node != null) {
-			AbstractHttpConnection connection = node.getValue();
-			node = node.getNext();
-
-			assert eventloop.inEventloopThread();
-			connection.close();
+		assert eventloop.inEventloopThread();
+		for (Iterator<AbstractHttpConnection> it = activeConnections.iterator(); it.hasNext(); ) {
+			AbstractHttpConnection conn = it.next();
+			conn.close();
+			it.remove();
 		}
 	}
 
@@ -420,7 +383,7 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		return AsyncCallbacks.stopFuture(this);
 	}
 
-	// jmx
+	//region jmx
 	@JmxOperation
 	public void startMonitoring() {
 		monitoring = true;
@@ -452,9 +415,9 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 			return null;
 		List<String> result = new ArrayList<>();
 		result.add("SocketAddress,ConnectionsCount");
-		for (Entry<InetSocketAddress, ExposedLinkedList<HttpClientConnection>> entry : ipConnectionLists.entrySet()) {
+		for (Entry<InetSocketAddress, ExposedLinkedList<AbstractHttpConnection>> entry : ipConnectionLists.entrySet()) {
 			InetSocketAddress address = entry.getKey();
-			ExposedLinkedList<HttpClientConnection> connections = entry.getValue();
+			ExposedLinkedList<AbstractHttpConnection> connections = entry.getValue();
 			result.add(address + "," + connections.size());
 		}
 		return result;
@@ -462,15 +425,15 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 
 	@JmxAttribute
 	public int getConnectionsCount() {
-		return connectionsList.size();
+		return activeConnections.size();
 	}
 
 	@JmxAttribute
 	public List<String> getConnections() {
 		List<String> info = new ArrayList<>();
 		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
-		for (Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
-			HttpClientConnection connection = (HttpClientConnection) node.getValue();
+		for (AbstractHttpConnection activeConnection : activeConnections) {
+			HttpClientConnection connection = (HttpClientConnection) activeConnection;
 			String string = StringUtils.join(",",
 					asList(
 							connection.getRemoteSocketAddress(),
@@ -516,4 +479,5 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 		}
 		return result;
 	}
+	//endregion
 }

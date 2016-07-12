@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCancellable;
+import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
@@ -32,10 +33,6 @@ import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 
-/**
- * Realization of {@link AbstractHttpConnection},  which represents a client side and used for sending requests and
- * receiving responses.
- */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
@@ -44,19 +41,39 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
-	private AsyncCancellable cancellable;
+	private AsyncCancellable timeoutCheck;
 	private HttpResponse response;
 	private final AsyncHttpClient httpClient;
 	protected ExposedLinkedList.Node<HttpClientConnection> ipConnectionListNode;
 
 	private final InetSocketAddress remoteSocketAddress;
 
-	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteSocketAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, asyncTcpSocket, httpClient.connectionsList, headerChars, maxHttpMessageSize);
+	// creators
+	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteSocketAddress,
+	                     AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient,
+	                     ExposedLinkedList<AbstractHttpConnection> pool,
+	                     char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, asyncTcpSocket, pool, headerChars, maxHttpMessageSize);
 		this.remoteSocketAddress = remoteSocketAddress;
 		this.httpClient = httpClient;
 	}
 
+	// miscellaneous
+	@Override
+	protected void reset() {
+		reading = END_OF_STREAM;
+		if (response != null) {
+			response.recycleBufs();
+			response = null;
+		}
+		if (timeoutCheck != null) {
+			timeoutCheck.cancel();
+			timeoutCheck = null;
+		}
+		super.reset();
+	}
+
+	// close methods
 	@Override
 	public void onClosedWithError(Exception e) {
 		assert eventloop.inEventloopThread();
@@ -68,6 +85,20 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 	}
 
+	@Override
+	protected void onClosed() {
+		super.onClosed();
+		bodyQueue.clear();
+		if (response != null) {
+			response.recycleBufs();
+			response = null;
+		}
+		if (connectionNode != null) {
+			removeConnectionFromPool();
+		}
+	}
+
+	// read methods
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
 		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1')
@@ -118,15 +149,17 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
 		response.body(bodyBuf);
-		ResultCallback<HttpResponse> callback = this.callback;
-		this.callback = null;
-		callback.onResult(response);
+		if (callback != null) {
+			ResultCallback<HttpResponse> callback = this.callback;
+			this.callback = null;
+			callback.onResult(response);
+		}
 		if (isClosed())
 			return;
 		if (keepAlive) {
 			reset();
-			httpClient.addToIpPool(this);
-			if (connectionsList.isEmpty()) httpClient.scheduleCheck();
+			moveConnectionToPool();
+			httpClient.scheduleCheck();
 		} else {
 			close();
 		}
@@ -145,28 +178,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		close();
 	}
 
-	@Override
-	protected void reset() {
-		reading = END_OF_STREAM;
-		if (response != null) {
-			response.recycleBufs();
-			response = null;
-		}
-		if (cancellable != null) {
-			cancellable.cancel();
-			cancellable = null;
-		}
-		super.reset();
-	}
-
-	private void writeHttpRequest(HttpRequest httpRequest) {
-		if (keepAlive) {
-			httpRequest.addHeader(CONNECTION_KEEP_ALIVE);
-		}
-		asyncTcpSocket.write(httpRequest.write());
-		moveConnectionToPool();
-	}
-
+	// write methods
 	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
 		this.callback = callback;
 		writeHttpRequest(request);
@@ -174,38 +186,36 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		scheduleTimeout(timeout);
 	}
 
-	private void scheduleTimeout(final long timeoutTime) {
-		if (isClosed()) return;
-
-		cancellable = eventloop.scheduleBackground(timeoutTime, new Runnable() {
-			@Override
-			public void run() {
-				if (!isClosed()) {
-					closeWithError(TIMEOUT_EXCEPTION);
-				}
-			}
-		});
+	private void writeHttpRequest(HttpRequest httpRequest) {
+		if (keepAlive) {
+			httpRequest.addHeader(CONNECTION_KEEP_ALIVE);
+		}
+		asyncTcpSocket.write(httpRequest.write());
 	}
 
 	@Override
 	public void onWrite() {
 		assert !isClosed();
 		assert eventloop.inEventloopThread();
-		reading = FIRSTLINE;
+		reading = FIRSTCHAR;
 		asyncTcpSocket.read();
 	}
 
-	@Override
-	protected void onClosed() {
-		super.onClosed();
-		bodyQueue.clear();
-		if (connectionsListNode != null) {
-			removeConnectionFromPool();
-		}
-		if (response != null) {
-			response.recycleBufs();
-		}
-		httpClient.removeFromIpPool(this);
+	private void scheduleTimeout(final long timeoutTime) {
+		if (isClosed()) return;
+		timeoutCheck = eventloop.scheduleBackground(timeoutTime, new Runnable() {
+			@Override
+			public void run() {
+				closeWithError(TIMEOUT_EXCEPTION);
+				if (!isClosed()) {
+					// expect this connection to close either due to the socket r/w timeouts
+					// or due to exceeding maxHttpMessageSize
+					ExceptionCallback exceptionCallback = callback;
+					callback = null;
+					exceptionCallback.onException(TIMEOUT_EXCEPTION);
+				}
+			}
+		});
 	}
 
 	@Nullable

@@ -26,6 +26,7 @@ import io.datakernel.util.ByteBufStrings;
 import static io.datakernel.http.GzipProcessor.fromGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.util.ByteBufStrings.*;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
@@ -57,11 +58,12 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 
 	protected static final byte NOTHING = 0;
 	protected static final byte END_OF_STREAM = 1;
-	protected static final byte FIRSTLINE = 2;
-	protected static final byte HEADERS = 3;
-	protected static final byte BODY = 4;
-	protected static final byte CHUNK_LENGTH = 5;
-	protected static final byte CHUNK = 6;
+	protected static final byte FIRSTCHAR = 2;
+	protected static final byte FIRSTLINE = 3;
+	protected static final byte HEADERS = 4;
+	protected static final byte BODY = 5;
+	protected static final byte CHUNK_LENGTH = 6;
+	protected static final byte CHUNK = 7;
 
 	protected byte reading;
 
@@ -79,46 +81,27 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	private int maxChunkHeaderChars;
 	protected final char[] headerChars;
 
-	protected final ExposedLinkedList<AbstractHttpConnection> connectionsList;
-	protected ExposedLinkedList.Node<AbstractHttpConnection> connectionsListNode;
+	protected final ExposedLinkedList<AbstractHttpConnection> connectionPool;
+	protected ExposedLinkedList.Node<AbstractHttpConnection> connectionNode;
 
-	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, ExposedLinkedList<AbstractHttpConnection> connectionsList, char[] headerChars, int maxHttpMessageSize) {
-		this.eventloop = eventloop;
-		this.connectionsList = connectionsList;
-		this.headerChars = headerChars;
+	// creators
+	AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                       ExposedLinkedList<AbstractHttpConnection> connectionPool,
+	                       char[] headerChars, int maxHttpMessageSize) {
+		this.eventloop = checkNotNull(eventloop);
+		this.asyncTcpSocket = checkNotNull(asyncTcpSocket);
+		this.connectionPool = checkNotNull(connectionPool);
+		this.headerChars = checkNotNull(headerChars);
 		assert headerChars.length >= MAX_HEADER_LINE_SIZE;
 		this.maxHttpMessageSize = maxHttpMessageSize;
-		this.asyncTcpSocket = asyncTcpSocket;
-		connectionsListNode = new ExposedLinkedList.Node<>(this);
 		reset();
 	}
 
-	protected boolean isClosed() {
-		return closed;
-	}
-
+	// miscellaneous
 	@Override
 	public void onRegistered() {
 		assert !isClosed();
 		assert eventloop.inEventloopThread();
-	}
-
-	public final void close() {
-		asyncTcpSocket.close();
-		readQueue.clear();
-		onClosed();
-	}
-
-	protected final void closeWithError(final Exception e) {
-		if (isClosed()) return;
-		eventloop.recordIoError(e, this);
-		asyncTcpSocket.close();
-		readQueue.clear();
-		onClosedWithError(e);
-	}
-
-	protected void onClosed() {
-		closed = true;
 	}
 
 	protected void reset() {
@@ -129,7 +112,98 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		bodyQueue.clear();
 	}
 
-	protected abstract void onHttpMessage(ByteBuf bodyBuf);
+	// close methods
+	protected boolean isClosed() {
+		return closed;
+	}
+
+	public final void close() {
+		asyncTcpSocket.close();
+		readQueue.clear();
+		onClosed();
+	}
+
+	protected void onClosed() {
+		closed = true;
+	}
+
+	protected final void closeWithError(final Exception e) {
+		if (isClosed()) return;
+		eventloop.recordIoError(e, this);
+		asyncTcpSocket.close();
+		readQueue.clear();
+		onClosedWithError(e);
+	}
+
+	// read methods
+	@Override
+	public void onRead(ByteBuf buf) {
+		assert eventloop.inEventloopThread();
+		assert !isClosed();
+
+		if (buf != null)
+			readQueue.add(buf);
+
+		if (reading == NOTHING)
+			return;
+
+		if (reading == FIRSTCHAR) reading = FIRSTLINE;
+
+		try {
+			if (readQueue.hasRemaining()) {
+				doRead();
+			}
+
+			if ((reading != NOTHING || readQueue.isEmpty()) && !isClosed())
+				asyncTcpSocket.read();
+
+		} catch (ParseException e) {
+			closeWithError(e);
+		}
+	}
+
+	private void doRead() throws ParseException {
+		if (reading < BODY) {
+			while (true) {
+				assert !isClosed();
+				assert reading == FIRSTLINE || reading == HEADERS;
+				ByteBuf headerBuf = takeHeader();
+				if (headerBuf == null) { // states that more bytes are being required
+					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE), TOO_LONG_HEADER);
+					return;
+				}
+
+				if (!headerBuf.canRead()) {
+					headerBuf.recycle();
+
+					if (reading == FIRSTLINE)
+						throw EMPTY_RESPONSE_FROM_SERVER;
+
+					if (isChunked) {
+						reading = CHUNK_LENGTH;
+						maxChunkHeaderChars = MAX_CHUNK_HEADER_CHARS;
+					} else
+						reading = BODY;
+
+					break;
+				}
+
+				if (reading == FIRSTLINE) {
+					onFirstLine(headerBuf);
+					headerBuf.recycle();
+					reading = HEADERS;
+					maxHeaders = MAX_HEADERS;
+				} else {
+					check(--maxHeaders >= 0, TOO_MANY_HEADERS);
+					onHeader(headerBuf);
+				}
+			}
+		}
+
+		assert !isClosed();
+		assert reading >= BODY;
+		readBody();
+	}
 
 	private ByteBuf takeHeader() {
 		int offset = 0;
@@ -168,11 +242,13 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	}
 
 	private void preprocessMultiLine(ByteBuf buf, int pos) {
-		buf.array()[pos] = SP;
+		buf.set(pos, SP);
 		if (buf.at(pos - 1) == CR) {
-			buf.array()[pos - 1] = SP;
+			buf.set(pos - 1, SP);
 		}
 	}
+
+	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
 
 	private void onHeader(ByteBuf line) throws ParseException {
 		int pos = line.getReadPosition();
@@ -197,8 +273,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		line.setReadPosition(pos);
 		onHeader(httpHeader, line);
 	}
-
-	protected abstract void onFirstLine(ByteBuf line) throws ParseException;
 
 	protected void onHeader(HttpHeader header, final ByteBuf value) throws ParseException {
 		assert !isClosed();
@@ -251,8 +325,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 			int bytesToRead = contentLength - bodyQueue.remainingBytes();
 			int actualBytes = readQueue.drainTo(bodyQueue, bytesToRead);
 			if (actualBytes == bytesToRead) {
-//				if (!readQueue.isEmpty())
-//					throw new IllegalStateException("Extra bytes outside of HTTP message");
 				onHttpMessage(isGzipped ? fromGzip(bodyQueue.takeRemaining()) : bodyQueue.takeRemaining());
 			}
 		} else {
@@ -261,15 +333,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		}
 	}
 
-	protected void moveConnectionToPool() {
-		connectionsList.addLastNode(connectionsListNode);
-	}
-
-	protected void removeConnectionFromPool() {
-		connectionsList.removeNode(connectionsListNode);
-	}
-
-	@SuppressWarnings("ConstantConditions")
 	private void readChunks() throws ParseException {
 		assert !isClosed();
 		assert eventloop.inEventloopThread();
@@ -307,8 +370,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 						byte c3 = readQueue.getByte();
 						byte c4 = readQueue.getByte();
 						check(c1 == CR && c2 == LF && c3 == CR && c4 == LF, MALFORMED_CHUNK);
-//						if (!readQueue.isEmpty())
-//							throw new IllegalStateException("Extra bytes outside of chunk");
+
 						onHttpMessage(isGzipped ? fromGzip(bodyQueue.takeRemaining()) : bodyQueue.takeRemaining());
 						return;
 					}
@@ -332,71 +394,22 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		}
 	}
 
-	@Override
-	public void onRead(ByteBuf buf) {
-		assert eventloop.inEventloopThread();
-		assert !isClosed();
-		if (buf != null) readQueue.add(buf);
-
-		if (reading == NOTHING) {
-			return;
-		}
-		try {
-			if (readQueue.hasRemaining()) {
-				doRead();
-			}
-			if ((reading != NOTHING || readQueue.isEmpty()) && !isClosed()) {
-				asyncTcpSocket.read();
-			}
-		} catch (ParseException e) {
-			closeWithError(e);
-		}
-	}
-
 	public void onShutdownInput() {
 		close();
 	}
 
-	private void doRead() throws ParseException {
-		if (reading < BODY) {
-			while (true) {
-				assert !isClosed();
-				assert reading == FIRSTLINE || reading == HEADERS;
-				ByteBuf headerBuf = takeHeader();
-				if (headerBuf == null) { // states that more bytes are being required
-					check(!readQueue.hasRemainingBytes(MAX_HEADER_LINE_SIZE), TOO_LONG_HEADER);
-					return;
-				}
+	protected abstract void onHttpMessage(ByteBuf bodyBuf);
 
-				if (!headerBuf.canRead()) {
-					headerBuf.recycle();
-
-					if (reading == FIRSTLINE) throw EMPTY_RESPONSE_FROM_SERVER;
-
-					if (isChunked) {
-						reading = CHUNK_LENGTH;
-						maxChunkHeaderChars = MAX_CHUNK_HEADER_CHARS;
-					} else
-						reading = BODY;
-
-					break;
-				}
-
-				if (reading == FIRSTLINE) {
-					onFirstLine(headerBuf);
-					headerBuf.recycle();
-					reading = HEADERS;
-					maxHeaders = MAX_HEADERS;
-				} else {
-					check(--maxHeaders >= 0, TOO_MANY_HEADERS);
-					onHeader(headerBuf);
-				}
-			}
+	// connections pool management
+	protected void moveConnectionToPool() {
+		if (connectionNode == null) {
+			connectionNode = new ExposedLinkedList.Node<>(this);
 		}
+		connectionPool.addLastNode(connectionNode);
+	}
 
-		assert !isClosed();
-		assert reading >= BODY;
-		readBody();
+	protected void removeConnectionFromPool() {
+		connectionPool.removeNode(connectionNode);
 	}
 
 	final long getLastUsedTime() {
