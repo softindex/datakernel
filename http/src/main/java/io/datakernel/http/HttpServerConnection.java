@@ -220,6 +220,10 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		ByteBuf buf = httpResponse.write();
 		httpResponse.recycleBufs();
 		asyncTcpSocket.write(buf);
+		if (!keepAlive) {
+			asyncTcpSocket.flushAndClose();
+			recycleBufs();
+		}
 	}
 
 	private void writeException(HttpServletError e) {
