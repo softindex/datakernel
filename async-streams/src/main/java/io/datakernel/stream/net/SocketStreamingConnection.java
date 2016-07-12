@@ -104,7 +104,7 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	}
 
 	@Override
-	public void onReadEndOfStream() {
+	public void onShutdownInput() {
 		socketReader.onReadEndOfStream();
 	}
 

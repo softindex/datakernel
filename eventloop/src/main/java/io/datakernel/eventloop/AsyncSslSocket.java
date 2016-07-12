@@ -48,7 +48,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private boolean readInterest = false;
 	private boolean writeInterest = false;
 	private boolean syncPosted = false;
-	private boolean writeEndOfStream = false;
+	private boolean flushAndClose = false;
 
 	public AsyncSslSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLEngine engine, Executor executor) {
 		this.eventloop = eventloop;
@@ -81,7 +81,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	@Override
-	public void onReadEndOfStream() {
+	public void onShutdownInput() {
 		try {
 			engine.closeInbound();
 			status = Status.CLOSED;
@@ -143,7 +143,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void write(ByteBuf buf) {
-		assert !writeEndOfStream;
+		assert !flushAndClose;
 
 		if (!isOpen()) return;
 		app2engineQueue.add(buf);
@@ -152,11 +152,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	@Override
-	public void writeEndOfStream() {
-		assert !writeEndOfStream;
-
-		writeEndOfStream = true;
-		postSync();
+	public void shutdownOutput() {
+		throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
 	}
 
 	@Override
@@ -165,6 +162,12 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		app2engineQueue.clear();
 		engine.closeOutbound();
 		status = Status.CLOSING;
+		postSync();
+	}
+
+	@Override
+	public void flushAndClose() {
+		flushAndClose = true;
 		postSync();
 	}
 
@@ -298,15 +301,15 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 				if (net2engine != null) {
 					result = tryToWriteToApp();
 
-					// receive close_notify from other side (closing was initiated by this side)
-					if (engine.isInboundDone()) {
-						assert engine.isOutboundDone();
-
-						status = Status.CLOSED;
-						upstream.close();
-						downstreamEventHandler.onReadEndOfStream();
-						return;
-					}
+//					// receive close_notify from other side (closing was initiated by this side)
+//					if (engine.isInboundDone()) {
+//						assert engine.isOutboundDone();
+//
+//						status = Status.CLOSED;
+//						upstream.close();
+//						downstreamEventHandler.onShutdownInput();
+//						return;
+//					}
 
 					if (result.getStatus() == BUFFER_UNDERFLOW) {
 						readInterest = true;
@@ -327,7 +330,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 					} while (net2engine != null && result.getStatus() != BUFFER_UNDERFLOW);
 				}
 				if (engine.isInboundDone()) { // receive close_notify (closing was initiated by other side)
-					downstreamEventHandler.onReadEndOfStream();
+					downstreamEventHandler.onShutdownInput();
 					engine.closeOutbound();
 					status = Status.CLOSING;
 
@@ -340,7 +343,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 							result = tryToWriteToNet();
 						} while (app2engineQueue.hasRemaining());
 					}
-					if (writeEndOfStream) {
+					if (flushAndClose) {
 						engine.closeOutbound();
 					} else {
 						break;

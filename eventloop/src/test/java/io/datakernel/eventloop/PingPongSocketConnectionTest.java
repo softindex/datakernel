@@ -67,7 +67,7 @@ public class PingPongSocketConnectionTest {
 		}
 
 		@Override
-		public void onReadEndOfStream() {
+		public void onShutdownInput() {
 			asyncTcpSocket.close();
 			assertEquals(ITERATIONS, counter);
 		}
@@ -120,7 +120,7 @@ public class PingPongSocketConnectionTest {
 		}
 
 		@Override
-		public void onReadEndOfStream() {
+		public void onShutdownInput() {
 		}
 
 		@Override

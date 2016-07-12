@@ -133,7 +133,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
-	public void onReadEndOfStream() {
+	public void onShutdownInput() {
 		assert eventloop.inEventloopThread();
 		if (callback != null) {
 			if (reading == BODY && contentLength == UNKNOWN_LENGTH) {

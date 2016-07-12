@@ -242,7 +242,7 @@ public class AsyncHttpClientTest {
 					}
 
 					@Override
-					public void onReadEndOfStream() {
+					public void onShutdownInput() {
 						// empty
 					}
 

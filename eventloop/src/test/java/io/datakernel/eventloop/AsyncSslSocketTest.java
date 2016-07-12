@@ -98,9 +98,9 @@ public class AsyncSslSocketTest {
 			oneOf(serverEventHandler).onRead(with(bytebufOfMessage("Hello")));
 			oneOf(clientEventHandler).onRead(with(bytebufOfMessage("World")));
 
-			allowing(serverEventHandler).onReadEndOfStream();
+			allowing(serverEventHandler).onShutdownInput();
 			allowing(serverEventHandler).onWrite();
-			allowing(clientEventHandler).onReadEndOfStream();
+			allowing(clientEventHandler).onShutdownInput();
 			allowing(clientEventHandler).onWrite();
 
 			allowing(serverEventHandler).onRegistered();
@@ -248,7 +248,7 @@ public class AsyncSslSocketTest {
 			oneOf(serverEventHandler).onRead(with(bytebufOfMessage("Hello")));
 			oneOf(clientEventHandler).onRead(with(bytebufOfMessage("World")));
 			// check error
-			oneOf(serverEventHandler).onReadEndOfStream();
+			oneOf(serverEventHandler).onShutdownInput();
 
 			allowing(clientEventHandler).onRegistered();
 			allowing(serverEventHandler).onRegistered();
@@ -305,7 +305,7 @@ public class AsyncSslSocketTest {
 		}
 
 		public void onReadEndOfStream() {
-			downstreamEventHandler.onReadEndOfStream();
+			downstreamEventHandler.onShutdownInput();
 		}
 
 		@Override
@@ -315,6 +315,11 @@ public class AsyncSslSocketTest {
 
 		@Override
 		public void read() {
+		}
+
+		@Override
+		public void flushAndClose() {
+
 		}
 
 		@Override
@@ -338,7 +343,7 @@ public class AsyncSslSocketTest {
 		}
 
 		@Override
-		public void writeEndOfStream() {
+		public void shutdownOutput() {
 			assert !writeEndOfStream;
 
 			final AsyncTcpSocketStub cached = otherSide;
@@ -392,7 +397,7 @@ public class AsyncSslSocketTest {
 		}
 
 		@Override
-		public void onReadEndOfStream() {
+		public void onShutdownInput() {
 
 		}
 

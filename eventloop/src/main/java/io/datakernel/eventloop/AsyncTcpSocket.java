@@ -26,7 +26,7 @@ public interface AsyncTcpSocket {
 
 		void onRead(ByteBuf buf);
 
-		void onReadEndOfStream();
+		void onShutdownInput();
 
 		void onWrite();
 
@@ -39,7 +39,9 @@ public interface AsyncTcpSocket {
 
 	void write(ByteBuf buf);
 
-	void writeEndOfStream();
+	void shutdownOutput();
+
+	void flushAndClose();
 
 	void close();
 

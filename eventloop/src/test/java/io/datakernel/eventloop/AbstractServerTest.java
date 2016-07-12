@@ -40,7 +40,7 @@ public class AbstractServerTest {
 					}
 
 					@Override
-					public void onReadEndOfStream() {
+					public void onShutdownInput() {
 						asyncTcpSocket.close();
 					}
 
@@ -79,7 +79,7 @@ public class AbstractServerTest {
 					}
 
 					@Override
-					public void onReadEndOfStream() {
+					public void onShutdownInput() {
 						asyncTcpSocket.close();
 					}
 

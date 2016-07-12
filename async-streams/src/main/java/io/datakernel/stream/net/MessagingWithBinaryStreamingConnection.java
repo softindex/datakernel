@@ -138,7 +138,7 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 
 		writeEndOfStream = true;
 		writeCallbacks.add(callback);
-		asyncTcpSocket.writeEndOfStream();
+		asyncTcpSocket.shutdownOutput();
 	}
 
 	public void sendBinaryStreamFrom(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
@@ -226,8 +226,8 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 	}
 
 	@Override
-	public void onReadEndOfStream() {
-		logger.trace("onReadEndOfStream", this);
+	public void onShutdownInput() {
+		logger.trace("onShutdownInput", this);
 		readEndOfStream = true;
 		if (socketReader == null) {
 			tryReadMessage();

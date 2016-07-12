@@ -43,7 +43,7 @@ final class SocketStreamConsumer extends AbstractStreamConsumer<ByteBuf> impleme
 
 	@Override
 	public void onEndOfStream() {
-		asyncTcpSocket.writeEndOfStream();
+		asyncTcpSocket.shutdownOutput();
 	}
 
 	@Override

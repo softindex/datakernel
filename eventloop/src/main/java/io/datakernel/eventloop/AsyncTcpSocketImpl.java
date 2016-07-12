@@ -42,8 +42,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
-	private boolean readEndOfStream;
-	private boolean writeEndOfStream;
+	private boolean shutdownInput;
+	private boolean shutdownOutput;
 	private EventHandler socketEventHandler;
 	private SelectionKey key;
 
@@ -55,6 +55,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private ScheduledRunnable checkReadTimeout;
 	private ScheduledRunnable checkWriteTimeout;
+
+	private boolean flushAndClose = false;
 
 	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
 
@@ -205,11 +207,11 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 		if (numRead == -1) {
 			buf.recycle();
-			readEndOfStream = true;
-			if (isOpen() && writeEndOfStream && writeQueue.isEmpty()) {
+			shutdownInput = true;
+			if (isOpen() && shutdownOutput && writeQueue.isEmpty()) {
 				close();
 			}
-			socketEventHandler.onReadEndOfStream();
+			socketEventHandler.onShutdownInput();
 			return;
 		}
 
@@ -219,25 +221,19 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
-		assert !writeEndOfStream;
+		assert !shutdownOutput;
 		if (writeTimeout != NO_TIMEOUT) {
 			scheduleWriteTimeOut();
 		}
 		writeQueue.add(buf);
-		if (!writing) {
-			writing = true;
-			eventloop.post(writeRunnable);
-		}
+		postWriteRunnable();
 	}
 
 	@Override
-	public void writeEndOfStream() {
-		assert !writeEndOfStream;
-		writeEndOfStream = true;
-		if (!writing) {
-			writing = true;
-			eventloop.post(writeRunnable);
-		}
+	public void shutdownOutput() {
+		assert !shutdownOutput;
+		shutdownOutput = true;
+		postWriteRunnable();
 	}
 
 	@Override
@@ -290,8 +286,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				checkWriteTimeout.cancel();
 				checkWriteTimeout = null;
 			}
-			if (writeEndOfStream) {
-				if (readEndOfStream) {
+			if (flushAndClose) {
+				close();
+				return;
+			}
+			if (shutdownOutput) {
+				if (shutdownInput) {
 					close();
 				} else {
 					channel.shutdownOutput();
@@ -302,6 +302,12 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 		} else {
 			writeInterest(true);
 		}
+	}
+
+	@Override
+	public void flushAndClose() {
+		flushAndClose = true;
+		postWriteRunnable();
 	}
 
 	// close methods
@@ -336,7 +342,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void closeWithError(final Exception e, boolean fireAsync) {
 		if (isOpen()) {
-//			eventloop.recordIoError(e, this);
 			close();
 			if (fireAsync)
 				eventloop.post(new Runnable() {
@@ -351,6 +356,13 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	// miscellaneous
+	private void postWriteRunnable() {
+		if (!writing) {
+			writing = true;
+			eventloop.post(writeRunnable);
+		}
+	}
+
 	public boolean isOpen() {
 		return key != null;
 	}
