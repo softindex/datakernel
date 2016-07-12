@@ -39,6 +39,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private AsyncTcpSocket.EventHandler downstreamEventHandler;
 
+	private boolean ignoreIOErrors = false;
+
 	private ByteBuf net2engine;
 	private final ByteBufQueue app2engineQueue = new ByteBufQueue();
 
@@ -86,7 +88,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		} catch (SSLException e) {
 			status = Status.CLOSED_WITH_ERROR;
 			downstreamEventHandler.onClosedWithError(e);
-			engine.closeOutbound();
+			engine.closeOutbound();  // try to send close_notify
+			ignoreIOErrors = true;  // ignore io errors, because downstreamEventHandler was already notified about error
 			sync();
 		}
 	}
@@ -107,7 +110,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (!isOpen()) return;
+		if (!isOpen() || ignoreIOErrors) return;
 		status = Status.CLOSED_WITH_ERROR;
 		downstreamEventHandler.onClosedWithError(e);
 	}
@@ -288,6 +291,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			if (handshakeStatus == NEED_WRAP) {
 				result = tryToWriteToNet();
 				if (engine.isOutboundDone()) {
+					status = Status.CLOSING;
 					break;
 				}
 			} else if (handshakeStatus == NEED_UNWRAP) {
@@ -326,6 +330,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 					downstreamEventHandler.onReadEndOfStream();
 					engine.closeOutbound();
 					status = Status.CLOSING;
+
+					// other side may have already closed the connection, so we can get "broken pipe" exception
+					ignoreIOErrors = true;
 				} else {
 					// write data to net
 					if (writeInterest && app2engineQueue.hasRemaining()) {

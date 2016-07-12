@@ -242,7 +242,7 @@ public class AsyncSslSocketTest {
 	}
 
 	@Test
-	public void otherSideReceivesEndOfStreamInCaseOfProperClosing() {
+	public void otherSideEventHandler_ReceivesEndOfStream_InCaseOfProperClosing() {
 		context.checking(new Expectations() {{
 			// check first messages
 			oneOf(serverEventHandler).onRead(with(bytebufOfMessage("Hello")));
@@ -269,43 +269,6 @@ public class AsyncSslSocketTest {
 					@Override
 					public void run() {
 						clientSslSocket.close();
-					}
-				});
-			}
-		});
-
-		eventloop.run();
-		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
-	}
-
-	@Test
-	public void initiatorWaitsForReadEndOfStreamInCaseWhenWriteEndOfStreamWasCalledByItself() {
-		context.checking(new Expectations() {{
-			// check first messages
-			oneOf(serverEventHandler).onRead(with(bytebufOfMessage("Hello")));
-			oneOf(clientEventHandler).onRead(with(bytebufOfMessage("World")));
-			// check error
-			oneOf(clientEventHandler).onReadEndOfStream();
-			oneOf(serverEventHandler).onReadEndOfStream();
-
-			allowing(clientEventHandler).onRegistered();
-			allowing(serverEventHandler).onRegistered();
-			allowing(clientEventHandler).onWrite();
-			allowing(serverEventHandler).onWrite();
-		}});
-
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				serverSslSocket.onRegistered();
-				clientSslSocket.onRegistered();
-
-				clientSslSocket.write(createByteBufFromString("Hello"));
-				serverSslSocket.write(createByteBufFromString("World"));
-				eventloop.schedule(eventloop.currentTimeMillis() + 100, new Runnable() {
-					@Override
-					public void run() {
-						clientSslSocket.writeEndOfStream();
 					}
 				});
 			}

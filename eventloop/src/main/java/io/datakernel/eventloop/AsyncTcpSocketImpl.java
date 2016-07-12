@@ -336,7 +336,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private void closeWithError(final Exception e, boolean fireAsync) {
 		if (isOpen()) {
-			eventloop.recordIoError(e, this);
+//			eventloop.recordIoError(e, this);
 			close();
 			if (fireAsync)
 				eventloop.post(new Runnable() {
