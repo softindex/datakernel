@@ -256,6 +256,7 @@ public class AsyncHttpClient extends AbstractClient<AsyncHttpClient> implements 
 				ExposedLinkedList<AbstractHttpConnection> pool = ipConnectionLists.get(address);
 				if (pool == null) {
 					pool = new ExposedLinkedList<>();
+					ipConnectionLists.put(address, pool);
 				}
 				HttpClientConnection connection = new HttpClientConnection(eventloop, address, conn, AsyncHttpClient.this, pool, headerChars, maxHttpMessageSize);
 				activeConnections.add(connection);
