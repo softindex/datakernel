@@ -34,7 +34,7 @@ import static io.datakernel.http.HttpUtils.isNullOrEmpty;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
-@SuppressWarnings("ThrowableInstanceNeverThrown")
+@SuppressWarnings({"ThrowableInstanceNeverThrown", "WeakerAccess"})
 final class HttpServerConnection extends AbstractHttpConnection {
 	private static final Logger logger = LoggerFactory.getLogger(HttpServerConnection.class);
 
@@ -47,6 +47,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpRequest request;
 	private AsyncHttpServlet servlet;
+	private AsyncHttpServer server;
 
 	// http verb methods
 	private static final int HEADERS_SLOTS = 256;
@@ -106,10 +107,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	// creators
-	HttpServerConnection(Eventloop eventloop, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool, char[] headerChars, int maxHttpMessageSize) {
+	HttpServerConnection(Eventloop eventloop, AsyncHttpServer server, InetAddress remoteAddress, AsyncTcpSocket asyncTcpSocket,
+	                     AsyncHttpServlet servlet, ExposedLinkedList<AbstractHttpConnection> pool,
+	                     char[] headerChars, int maxHttpMessageSize) {
 		super(eventloop, asyncTcpSocket, pool, headerChars, maxHttpMessageSize);
 		this.servlet = servlet;
 		this.remoteAddress = remoteAddress;
+		this.server = server;
 	}
 
 	// miscellaneous
@@ -222,6 +226,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 		httpResponse.recycleBufs();
 		asyncTcpSocket.write(buf);
 		if (!keepAlive) {
+			server.decreaseConnectionsCount(remoteAddress);
 			asyncTcpSocket.flushAndClose();
 			recycleBufs();
 		}
@@ -272,10 +277,13 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
+
 		if (reading == FIRSTCHAR && connectionNode != null) {
 			removeConnectionFromPool();
 			connectionNode = null;
 		}
+
+		server.decreaseConnectionsCount(remoteAddress);
 	}
 
 	private void recycleBufs() {

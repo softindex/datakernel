@@ -304,7 +304,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			bannedBlocked.recordEvent();
 			return false;
 		}
-		if (!isAllowedAddressAccept(remoteAddress)) {
+		if (!canAccept(remoteAddress)) {
 			notAllowed.recordEvent();
 			return false;
 		}
@@ -319,7 +319,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return bannedAddresses != null && bannedAddresses.contains(remoteAddress);
 	}
 
-	protected boolean isAllowedAddressAccept(InetAddress address) {
+	protected boolean canAccept(InetAddress address) {
 		return true;
 	}
 

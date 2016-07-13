@@ -22,9 +22,14 @@ import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 
+import java.net.InetAddress;
+import java.util.HashMap;
+import java.util.Map;
+
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 import static io.datakernel.util.Preconditions.check;
 
+@SuppressWarnings({"unused", "WeakerAccess"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long DEFAULT_MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
@@ -43,6 +48,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
+
+	private int allowedConnectionPerIp = 0;
+	Map<InetAddress, Integer> address2connects = new HashMap<>();
 
 	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
@@ -66,6 +74,18 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
 		this.maxHttpMessageSize = size;
 		return this;
+	}
+
+	public AsyncHttpServer restrictConnectionsPerIp(int connectionsNumber) {
+		allowedConnectionPerIp = connectionsNumber;
+		return this;
+	}
+
+	@Override
+	protected boolean canAccept(InetAddress address) {
+		if (allowedConnectionPerIp == 0) return true;
+		Integer num = address2connects.get(address);
+		return num == null || num < allowedConnectionPerIp;
 	}
 
 	private void scheduleExpiredConnectionCheck() {
@@ -95,14 +115,29 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-		return new HttpServerConnection(
-				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
+		InetAddress remoteAddress = asyncTcpSocket.getRemoteSocketAddress().getAddress();
+
+		if (allowedConnectionPerIp != 0) {
+			Integer numberOfConnects = address2connects.get(remoteAddress);
+			numberOfConnects = numberOfConnects == null ? 1 : numberOfConnects + 1;
+			address2connects.put(remoteAddress, numberOfConnects);
+		}
+
+		return new HttpServerConnection(eventloop, this, remoteAddress, asyncTcpSocket,
 				servlet, connectionsList, headerChars, maxHttpMessageSize);
 	}
 
 	@Override
 	protected void onClose() {
 		closeConnections();
+	}
+
+	public void decreaseConnectionsCount(InetAddress remoteAddress) {
+		if (allowedConnectionPerIp != 0) {
+			Integer numberOfConnects = address2connects.get(remoteAddress);
+			assert numberOfConnects != null && numberOfConnects > 0;
+			address2connects.put(remoteAddress, numberOfConnects - 1);
+		}
 	}
 
 	private void closeConnections() {
