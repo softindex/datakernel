@@ -30,6 +30,7 @@ import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.http.HttpHeaders.CONTENT_ENCODING;
 import static io.datakernel.http.HttpMethod.*;
+import static io.datakernel.http.HttpUtils.isNullOrEmpty;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.encodeAscii;
 
@@ -232,8 +233,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	private HttpResponse formatException(HttpServletError e) {
 		logger.error("Error processing http request", e);
-		ByteBuf message = ByteBuf.wrapForReading(INTERNAL_ERROR_MESSAGE);
-		return HttpResponse.create(e.getCode()).noCache().body(message);
+		byte[] msg = isNullOrEmpty(e.getMessage()) ? INTERNAL_ERROR_MESSAGE : encodeAscii(e.getMessage());
+		return HttpResponse.create(e.getCode()).noCache().body(ByteBuf.wrapForReading(msg));
 	}
 
 	@Override
