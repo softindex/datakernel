@@ -67,7 +67,9 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	private List<InetSocketAddress> listenAddresses;
 	private List<ServerSocketChannel> serverSocketChannels;
+
 	protected InetAddressRange range;
+	private Set<InetAddress> bannedAddresses;
 
 	// ssl
 	private SSLContext sslContext;
@@ -80,6 +82,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	private final EventStats totalAccepts = new EventStats(DEFAULT_SMOOTHING_WINDOW);
 	private final EventStats rangeBlocked = new EventStats();
+	private final EventStats bannedBlocked = new EventStats();
+	private final EventStats notAllowed = new EventStats();
 	private final ExceptionStats prepareSocketException = new ExceptionStats();
 	private final ExceptionStats closeException = new ExceptionStats();
 
@@ -144,6 +148,19 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 
 	public S setSslListenPort(SSLContext sslContext, ExecutorService executor, int port) {
 		return setSslListenAddress(sslContext, executor, new InetSocketAddress(port));
+	}
+
+	public S banAddresses(Collection<InetAddress> addresses) {
+		bannedAddresses = new HashSet<>(checkNotNull(addresses));
+		return self();
+	}
+
+	public S banAddresses(InetAddress... addresses) {
+		return banAddresses(Arrays.asList(addresses));
+	}
+
+	public S banAddress(InetAddress address) {
+		return banAddresses(Collections.singleton(address));
 	}
 
 	/**
@@ -264,15 +281,54 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		assert eventloop.inEventloopThread();
 		try {
 			InetAddress remoteAddress = ((InetSocketAddress) socketChannel.getRemoteAddress()).getAddress();
-			if (isInRange(remoteAddress) && checkRemoteAddress(remoteAddress)) {
+
+			if (satisfiesRestrictions(remoteAddress)) {
 				doAccept(socketChannel);
 			} else {
-				rangeBlocked.recordEvent();
-				resolveRangeBlock(socketChannel);
+				resolveAddressBlock(socketChannel);
 			}
+
 		} catch (IOException e) {
 			if (logger.isWarnEnabled()) {
 				logger.warn("Exception thrown while trying to get remoteAddress from socket {}", socketChannel, e);
+			}
+		}
+	}
+
+	private boolean satisfiesRestrictions(InetAddress remoteAddress) {
+		if (!(isInRange(remoteAddress))) {
+			rangeBlocked.recordEvent();
+			return false;
+		}
+		if (isBanned(remoteAddress)) {
+			bannedBlocked.recordEvent();
+			return false;
+		}
+		if (!isAllowedAddressAccept(remoteAddress)) {
+			notAllowed.recordEvent();
+			return false;
+		}
+		return true;
+	}
+
+	private boolean isInRange(InetAddress address) {
+		return range == null || range.contains(address);
+	}
+
+	private boolean isBanned(InetAddress remoteAddress) {
+		return bannedAddresses != null && bannedAddresses.contains(remoteAddress);
+	}
+
+	protected boolean isAllowedAddressAccept(InetAddress address) {
+		return true;
+	}
+
+	protected void resolveAddressBlock(SocketChannel socketChannel) {
+		try {
+			socketChannel.close();
+		} catch (IOException e) {
+			if (logger.isWarnEnabled()) {
+				logger.warn("Exception thrown on socket close {} while trying to resolve address block", socketChannel, e);
 			}
 		}
 	}
@@ -309,24 +365,6 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			prepareSocketException.recordException(e, socketChannel);
 			if (logger.isErrorEnabled()) {
 				logger.error("Exception thrown while apply settings socket {}", socketChannel, e);
-			}
-		}
-	}
-
-	protected boolean checkRemoteAddress(InetAddress address) {
-		return true;
-	}
-
-	private boolean isInRange(InetAddress address) {
-		return range == null || range.contains(address);
-	}
-
-	protected void resolveRangeBlock(SocketChannel socketChannel) {
-		try {
-			socketChannel.close();
-		} catch (IOException e) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("Exception thrown on socket close {} while trying to resolve range block", socketChannel, e);
 			}
 		}
 	}
@@ -387,6 +425,21 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	@JmxAttribute
 	public EventStats getRangeBlocked() {
 		return rangeBlocked;
+	}
+
+	@JmxAttribute
+	public EventStats getBannedBlocked() {
+		return bannedBlocked;
+	}
+
+	@JmxAttribute
+	public EventStats getNotAllowed() {
+		return notAllowed;
+	}
+
+	@JmxAttribute
+	public long getTotalBlocked() {
+		return rangeBlocked.getTotalCount() + bannedBlocked.getTotalCount() + notAllowed.getTotalCount();
 	}
 
 	@JmxAttribute
