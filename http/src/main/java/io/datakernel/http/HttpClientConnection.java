@@ -83,10 +83,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			this.callback = null;
 			callback.onException(e);
 		}
+		httpClient.connectsMonitor.onException(remoteSocketAddress, e);
 	}
 
 	@Override
 	protected void onClosed() {
+		if (isClosed()) return;
 		super.onClosed();
 		bodyQueue.clear();
 		if (response != null) {
@@ -95,6 +97,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 		if (connectionNode != null) {
 			removeConnectionFromPool();
+			connectionNode = null;
+			httpClient.connectsMonitor.removeCached(remoteSocketAddress);
+		} else {
+			httpClient.connectsMonitor.removeActive(remoteSocketAddress);
 		}
 	}
 
@@ -159,6 +165,7 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			reset();
 			moveConnectionToPool();
+			httpClient.connectsMonitor.active2cached(remoteSocketAddress);
 			httpClient.scheduleCheck();
 		} else {
 			close();
