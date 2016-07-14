@@ -26,6 +26,7 @@ import io.datakernel.http.AcceptMediaType;
 import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +50,7 @@ public class TestHttpsClient {
 		//System.setProperty("javax.net.debug", "all");
 	}
 
+	@Ignore("requires internet connection")
 	@Test
 	public void testClient() throws NoSuchAlgorithmException, ExecutionException, InterruptedException {
 		Eventloop eventloop = new Eventloop();

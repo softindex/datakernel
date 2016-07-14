@@ -158,11 +158,16 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void close() {
-		if (!isOpen()) return;
-		app2engineQueue.clear();
-		engine.closeOutbound();
-		status = Status.CLOSING;
-		postSync();
+		eventloop.post(new Runnable() {
+			@Override
+			public void run() {
+				if (!isOpen()) return;
+				app2engineQueue.clear();
+				engine.closeOutbound();
+				status = Status.CLOSING;
+				postSync();
+			}
+		});
 	}
 
 	@Override
@@ -294,7 +299,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			if (handshakeStatus == NEED_WRAP) {
 				result = tryToWriteToNet();
 				if (engine.isOutboundDone()) {
-					status = Status.CLOSING;
 					break;
 				}
 			} else if (handshakeStatus == NEED_UNWRAP) {
@@ -330,9 +334,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 					} while (net2engine != null && result.getStatus() != BUFFER_UNDERFLOW);
 				}
 				if (engine.isInboundDone()) { // receive close_notify (closing was initiated by other side)
-					downstreamEventHandler.onShutdownInput();
-					engine.closeOutbound();
 					status = Status.CLOSING;
+					engine.closeOutbound();
+					downstreamEventHandler.onShutdownInput();
 
 					// other side may have already closed the connection, so we can get "broken pipe" exception
 					ignoreIOErrors = true;
@@ -352,6 +356,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			} else {
 				break;
 			}
+		}
+
+		if (!isOpen()) {
+			return;
 		}
 
 		if (engine.getHandshakeStatus() == NEED_UNWRAP || readInterest) {
