@@ -22,12 +22,11 @@ import java.net.InetSocketAddress;
 
 /**
  * Common interface for connection-oriented transport protocols.
- * <p/>
+ *
  * <p>
  * Contains operations for reading and writing {@link ByteBuf}.
  * All read and write operations must be performed asynchronously
  * </p>
- * <p/>
  * <p>
  * Implementations are supposed to use Decorator and Observer patterns which allows
  * to easily cascade protocol as in OSI model.
@@ -74,19 +73,31 @@ public interface AsyncTcpSocket {
 	/**
 	 * Asynchronously writes data to network.
 	 * <p/>
-	 * When written data was flushed, EventHandler.onWrite() method will be called
+	 * When written data is flushed, EventHandler.onWrite() method will be called
 	 *
 	 * @param buf bytes of data
 	 */
 	void write(ByteBuf buf);
 
 	/**
-	 * Informs socket that no more writes will be
+	 * Informs socket that no more data will be written
 	 */
 	void shutdownOutput();
 
+	/**
+	 * Closes socket when flush is done. Method is asynchronous
+	 * <p>
+	 * After calling this method no more event handler methods will be invoked
+	 * </p>
+	 */
 	void flushAndClose();
 
+	/**
+	 * Removes data that has not been flushed yet and closes socket.
+	 * <p>
+	 * After calling this method no more event handler methods will be invoked
+	 * </p>
+	 */
 	void close();
 
 	InetSocketAddress getRemoteSocketAddress();

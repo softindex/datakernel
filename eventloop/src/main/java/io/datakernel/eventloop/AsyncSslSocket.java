@@ -299,22 +299,11 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			if (handshakeStatus == NEED_WRAP) {
 				result = tryToWriteToNet();
 				if (engine.isOutboundDone()) {
-					break;
+					return;
 				}
 			} else if (handshakeStatus == NEED_UNWRAP) {
 				if (net2engine != null) {
 					result = tryToWriteToApp();
-
-//					// receive close_notify from other side (closing was initiated by this side)
-//					if (engine.isInboundDone()) {
-//						assert engine.isOutboundDone();
-//
-//						status = Status.CLOSED;
-//						upstream.close();
-//						downstreamEventHandler.onShutdownInput();
-//						return;
-//					}
-
 					if (result.getStatus() == BUFFER_UNDERFLOW) {
 						readInterest = true;
 						break;
@@ -356,10 +345,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			} else {
 				break;
 			}
-		}
-
-		if (!isOpen()) {
-			return;
 		}
 
 		if (engine.getHandshakeStatus() == NEED_UNWRAP || readInterest) {
