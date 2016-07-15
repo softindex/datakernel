@@ -121,6 +121,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		asyncTcpSocket.close();
 		readQueue.clear();
 		onClosed();
+		cleanUpPool();
 	}
 
 	protected void onClosed() {
@@ -134,6 +135,8 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 		readQueue.clear();
 		onClosedWithError(e);
 	}
+
+	protected abstract void cleanUpPool();
 
 	// read methods
 	@Override

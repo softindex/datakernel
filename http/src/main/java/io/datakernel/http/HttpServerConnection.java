@@ -270,6 +270,14 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	}
 
 	@Override
+	protected void cleanUpPool() {
+		if (reading == FIRSTCHAR && connectionNode != null) {
+			removeConnectionFromPool();
+			connectionNode = null;
+		}
+	}
+
+	@Override
 	protected void onClosed() {
 		if (isClosed()) return;
 		super.onClosed();
@@ -277,12 +285,6 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
-
-		if (reading == FIRSTCHAR && connectionNode != null) {
-			removeConnectionFromPool();
-			connectionNode = null;
-		}
-
 		server.decreaseConnectionsCount(remoteAddress);
 	}
 

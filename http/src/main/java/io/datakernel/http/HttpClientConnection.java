@@ -44,7 +44,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private AsyncCancellable timeoutCheck;
 	private HttpResponse response;
 	private final AsyncHttpClient httpClient;
-	protected ExposedLinkedList.Node<HttpClientConnection> ipConnectionListNode;
 
 	private final InetSocketAddress remoteSocketAddress;
 
@@ -87,6 +86,17 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	@Override
+	protected void cleanUpPool() {
+		if (connectionNode != null) {
+			removeConnectionFromPool();
+			httpClient.removeFromCache(remoteSocketAddress, this);
+			connectionNode = null;
+		} else {
+			httpClient.connectsMonitor.removeActive(remoteSocketAddress);
+		}
+	}
+
+	@Override
 	protected void onClosed() {
 		if (isClosed()) return;
 		super.onClosed();
@@ -94,13 +104,6 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (response != null) {
 			response.recycleBufs();
 			response = null;
-		}
-		if (connectionNode != null) {
-			removeConnectionFromPool();
-			connectionNode = null;
-			httpClient.connectsMonitor.removeCached(remoteSocketAddress);
-		} else {
-			httpClient.connectsMonitor.removeActive(remoteSocketAddress);
 		}
 	}
 
@@ -160,13 +163,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			this.callback = null;
 			callback.onResult(response);
 		}
-		if (isClosed())
-			return;
+		if (isClosed()) return;
+
 		if (keepAlive) {
 			reset();
 			moveConnectionToPool();
-			httpClient.connectsMonitor.active2cached(remoteSocketAddress);
-			httpClient.scheduleCheck();
+			httpClient.moveToCache(remoteSocketAddress, this);
 		} else {
 			close();
 		}
@@ -181,8 +183,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			} else {
 				closeWithError(CLOSED_CONNECTION);
 			}
+		} else {
+			close();
 		}
-		close();
 	}
 
 	// write methods
