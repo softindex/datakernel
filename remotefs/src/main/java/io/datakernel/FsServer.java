@@ -29,7 +29,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
 import io.datakernel.stream.net.MessagingSerializer;
-import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
+import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,7 +65,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	// set up connection
 	@Override
 	protected final EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreamingConnection<FsCommand, FsResponse> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
+		final MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
 		messaging.receive(new ReceiveMessageCallback<FsCommand>() {
 			@Override
 			public void onReceive(FsCommand msg) {
@@ -88,7 +88,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 		return messaging;
 	}
 
-	private void doRead(MessagingWithBinaryStreamingConnection<FsCommand, FsResponse> messaging, FsCommand item) {
+	private void doRead(MessagingWithBinaryStreaming<FsCommand, FsResponse> messaging, FsCommand item) {
 		MessagingHandler handler = handlers.get(item.getClass());
 		if (handler == null) {
 			messaging.close();
@@ -108,7 +108,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	}
 
 	protected interface MessagingHandler<I, O> {
-		void onMessage(MessagingWithBinaryStreamingConnection<I, O> messaging, I item);
+		void onMessage(MessagingWithBinaryStreaming<I, O> messaging, I item);
 	}
 
 	private Map<Class, MessagingHandler> createHandlers() {
@@ -123,29 +123,22 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 	// handler classes
 	private class UploadMessagingHandler implements MessagingHandler<Upload, FsResponse> {
 		@Override
-		public void onMessage(final MessagingWithBinaryStreamingConnection<Upload, FsResponse> messaging, final Upload item) {
-			final Ok ok = new Ok();
-			messaging.send(ok, new CompletionCallback() {
+		public void onMessage(final MessagingWithBinaryStreaming<Upload, FsResponse> messaging, final Upload item) {
+			upload(item.filePath, new ResultCallback<StreamConsumer<ByteBuf>>() {
 				@Override
-				public void onComplete() {
-					logger.trace("send {}", ok);
-					upload(item.filePath, new ForwardingResultCallback<StreamConsumer<ByteBuf>>(this) {
+				public void onResult(StreamConsumer<ByteBuf> result) {
+					messaging.receiveBinaryStreamTo(result, new ForwardingCompletionCallback(this) {
 						@Override
-						public void onResult(StreamConsumer<ByteBuf> result) {
-							messaging.receiveBinaryStreamTo(result, new ForwardingCompletionCallback(this) {
-								@Override
-								public void onComplete() {
-									logger.trace("read all bytes for {}", item.filePath);
-									messaging.writeAndClose(new Acknowledge());
-								}
-							});
+						public void onComplete() {
+							logger.trace("read all bytes for {}", item.filePath);
+							messaging.writeAndClose(new Acknowledge());
 						}
 					});
 				}
 
 				@Override
-				public void onException(Exception e) {
-					messaging.writeAndClose(new Err(e.getMessage()));
+				public void onException(Exception exception) {
+					messaging.close();
 				}
 			});
 		}
@@ -153,7 +146,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class DownloadMessagingHandler implements MessagingHandler<Download, FsResponse> {
 		@Override
-		public void onMessage(final MessagingWithBinaryStreamingConnection<Download, FsResponse> messaging, final Download item) {
+		public void onMessage(final MessagingWithBinaryStreaming<Download, FsResponse> messaging, final Download item) {
 			fileManager.size(item.filePath, new ResultCallback<Long>() {
 				@Override
 				public void onResult(final Long size) {
@@ -189,7 +182,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class DeleteMessagingHandler implements MessagingHandler<Delete, FsResponse> {
 		@Override
-		public void onMessage(final MessagingWithBinaryStreamingConnection<Delete, FsResponse> messaging, final Delete item) {
+		public void onMessage(final MessagingWithBinaryStreaming<Delete, FsResponse> messaging, final Delete item) {
 			delete(item.filePath, new CompletionCallback() {
 				@Override
 				public void onComplete() {
@@ -206,7 +199,7 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 	private class ListFilesMessagingHandler implements MessagingHandler<ListFiles, FsResponse> {
 		@Override
-		public void onMessage(final MessagingWithBinaryStreamingConnection<ListFiles, FsResponse> messaging, ListFiles item) {
+		public void onMessage(final MessagingWithBinaryStreaming<ListFiles, FsResponse> messaging, ListFiles item) {
 			list(new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {

@@ -16,10 +16,7 @@
 
 package io.datakernel.http;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 
 public class TestUtils {
 
@@ -47,12 +44,12 @@ public class TestUtils {
 		return bytes;
 	}
 
-	public static void readFully(InputStream is, byte[] bytes) {
+	public static void readFully(InputStream is, byte[] bytes) throws UnsupportedEncodingException {
 		DataInputStream dis = new DataInputStream(is);
 		try {
 			dis.readFully(bytes);
 		} catch (IOException e) {
-			throw new RuntimeException(e);
+			throw new RuntimeException("Could not read " + new String(bytes, "UTF-8"), e);
 		}
 	}
 }

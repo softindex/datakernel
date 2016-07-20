@@ -17,26 +17,23 @@
 package io.datakernel.hashfs;
 
 import com.google.gson.Gson;
-import io.datakernel.FsClient;
+import io.datakernel.*;
 import io.datakernel.FsCommands.FsCommand;
 import io.datakernel.FsResponses.Err;
 import io.datakernel.FsResponses.FsResponse;
 import io.datakernel.FsResponses.ListOfFiles;
-import io.datakernel.RemoteFsException;
-import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ForwardingCompletionCallback;
 import io.datakernel.async.ForwardingResultCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsCommands.Alive;
 import io.datakernel.hashfs.HashFsCommands.Announce;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
-import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
+import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -96,7 +93,7 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 	}
 
 	@Override
-	public void download(final String fileName, final long startPosition, final ResultCallback<StreamTransformerWithCounter> callback) {
+	public void download(final String fileName, final long startPosition, final ResultCallback<StreamProducer<ByteBuf>> callback) {
 		getAliveServers(new ForwardingResultCallback<List<Replica>>(callback) {
 			@Override
 			public void onResult(List<Replica> result) {
@@ -128,10 +125,9 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 	}
 
 	void announce(final Replica replica, final List<String> forUpload, final List<String> forDeletion, final ResultCallback<List<String>> callback) {
-		connect(replica.getAddress(), new SpecialConnectCallback() {
+		connect(replica.getAddress(), new MessagingConnectCallback() {
 			@Override
-			public EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
-				final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
+			public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
 				messaging.send(new Announce(forDeletion, forUpload), new ForwardingCompletionCallback(callback) {
 					@Override
 					public void onComplete() {
@@ -168,7 +164,6 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 						});
 					}
 				});
-				return messaging;
 			}
 
 			@Override
@@ -210,12 +205,12 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 	}
 
 	private void doDownload(final String fileName, final long startPosition, final int currentAttempt,
-	                        final List<Replica> candidates, final ResultCallback<StreamTransformerWithCounter> callback) {
+	                        final List<Replica> candidates, final ResultCallback<StreamProducer<ByteBuf>> callback) {
 
 		Replica server = candidates.get(currentAttempt % candidates.size());
-		doDownload(server.getAddress(), fileName, startPosition, new ResultCallback<StreamTransformerWithCounter>() {
+		doDownload(server.getAddress(), fileName, startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
-			public void onResult(StreamTransformerWithCounter result) {
+			public void onResult(StreamProducer<ByteBuf> result) {
 				callback.onResult(result);
 			}
 
@@ -278,10 +273,9 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 	}
 
 	void alive(InetSocketAddress address, final ResultCallback<Set<Replica>> callback) {
-		connect(address, new SpecialConnectCallback() {
+		connect(address, new MessagingConnectCallback() {
 			@Override
-			public EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
-				final MessagingWithBinaryStreamingConnection<FsResponse, FsCommand> messaging = getMessaging(asyncTcpSocket);
+			public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
 				messaging.send(new Alive(), new CompletionCallback() {
 					@Override
 					public void onComplete() {
@@ -321,7 +315,6 @@ public final class HashFsClient extends FsClient<HashFsClient> {
 						callback.onException(e);
 					}
 				});
-				return messaging;
 			}
 
 			@Override

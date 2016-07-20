@@ -32,13 +32,14 @@ import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.net.MessagingSerializer;
-import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
+import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinaryDeserializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -72,7 +73,7 @@ public final class DatagraphClient {
 	}
 
 	public void connectAndExecute(InetSocketAddress address, ConnectCallback callback) {
-		eventloop.connect(address, socketSettings, callback);
+		eventloop.connect(address, callback);
 	}
 
 	private class DownloadConnectCallback implements ConnectCallback {
@@ -87,11 +88,10 @@ public final class DatagraphClient {
 		}
 
 		@Override
-		public AsyncTcpSocketImpl.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			final MessagingWithBinaryStreamingConnection<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
+		public void onConnect(SocketChannel socketChannel) {
+			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
+			final MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandDownload commandDownload = new DatagraphCommandDownload(streamId);
-
-			socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
 
 			messaging.send(commandDownload, new CompletionCallback() {
 				@Override
@@ -117,7 +117,8 @@ public final class DatagraphClient {
 					callback.onException(e);
 				}
 			});
-			return messaging;
+			asyncTcpSocket.setEventHandler(messaging);
+			asyncTcpSocket.register();
 		}
 
 		@Override
@@ -136,8 +137,9 @@ public final class DatagraphClient {
 		}
 
 		@Override
-		public AsyncTcpSocketImpl.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-			final MessagingWithBinaryStreamingConnection<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
+		public void onConnect(SocketChannel socketChannel) {
+			AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, socketSettings);
+			final MessagingWithBinaryStreaming<DatagraphResponse, DatagraphCommand> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
 			DatagraphCommandExecute commandExecute = new DatagraphCommandExecute(nodes);
 			messaging.send(commandExecute, new CompletionCallback() {
 				@Override
@@ -151,7 +153,8 @@ public final class DatagraphClient {
 					callback.onException(e);
 				}
 			});
-			return messaging;
+			asyncTcpSocket.setEventHandler(messaging);
+			asyncTcpSocket.register();
 		}
 
 		@Override

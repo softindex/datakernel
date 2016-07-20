@@ -17,7 +17,6 @@
 package io.datakernel.simplefs;
 
 import com.google.common.collect.Lists;
-import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -282,9 +281,9 @@ public class SimpleFsIntegrationTest {
 		final List<Exception> expected = new ArrayList<>();
 
 		server.listen();
-		client.download(file, 0, new ResultCallback<StreamTransformerWithCounter>() {
+		client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
-			public void onResult(StreamTransformerWithCounter result) {
+			public void onResult(StreamProducer<ByteBuf> producer) {
 				server.close();
 			}
 
@@ -329,12 +328,11 @@ public class SimpleFsIntegrationTest {
 
 		for (int i = 0; i < files; i++) {
 			final int finalI = i;
-			client.download(file, 0, new ResultCallback<StreamTransformerWithCounter>() {
+			client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 				@Override
-				public void onResult(StreamTransformerWithCounter result) {
+				public void onResult(StreamProducer<ByteBuf> producer) {
 					try {
-						result.getOutput().streamTo(
-								StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
+						producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
 					} catch (IOException e) {
 						this.onException(e);
 					}
@@ -481,10 +479,10 @@ public class SimpleFsIntegrationTest {
 		final List<ByteBuf> expected = new ArrayList<>();
 
 		server.listen();
-		client.download(file, startPosition, new ResultCallback<StreamTransformerWithCounter>() {
+		client.download(file, startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
-			public void onResult(StreamTransformerWithCounter result) {
-				result.getOutput().streamTo(StreamConsumers.toList(eventloop, expected));
+			public void onResult(StreamProducer<ByteBuf> producer) {
+				producer.streamTo(StreamConsumers.toList(eventloop, expected));
 				server.close();
 			}
 

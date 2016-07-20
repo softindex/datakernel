@@ -237,15 +237,15 @@ public final class HttpResponse extends HttpMessage {
 		buf.put(result);
 	}
 
-	private static final Map<Integer, ByteBuf> DEFAULT_CODE_BODIES;
+	private static final Map<Integer, byte[]> DEFAULT_CODE_BODIES;
 
 	static {
 		DEFAULT_CODE_BODIES = new HashMap<>();
-		DEFAULT_CODE_BODIES.put(400, ByteBuf.wrapForReading(encodeAscii("Your browser (or proxy) sent a request that this server could not understand.")));
-		DEFAULT_CODE_BODIES.put(403, ByteBuf.wrapForReading(encodeAscii("You don't have permission to access the requested directory.")));
-		DEFAULT_CODE_BODIES.put(404, ByteBuf.wrapForReading(encodeAscii("The requested URL was not found on this server.")));
-		DEFAULT_CODE_BODIES.put(500, ByteBuf.wrapForReading(encodeAscii("The server encountered an internal error and was unable to complete your request.")));
-		DEFAULT_CODE_BODIES.put(503, ByteBuf.wrapForReading(encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems.")));
+		DEFAULT_CODE_BODIES.put(400, encodeAscii("Your browser (or proxy) sent a request that this server could not understand."));
+		DEFAULT_CODE_BODIES.put(403, encodeAscii("You don't have permission to access the requested directory."));
+		DEFAULT_CODE_BODIES.put(404, encodeAscii("The requested URL was not found on this server."));
+		DEFAULT_CODE_BODIES.put(500, encodeAscii("The server encountered an internal error and was unable to complete your request."));
+		DEFAULT_CODE_BODIES.put(503, encodeAscii("The server is temporarily unable to service your request due to maintenance downtime or capacity problems."));
 	}
 
 	/**
@@ -256,7 +256,8 @@ public final class HttpResponse extends HttpMessage {
 	ByteBuf write() {
 		assert !recycled;
 		if (code >= 400 && getBody() == null) {
-			setBody(DEFAULT_CODE_BODIES.get(code));
+			byte[] bytes = DEFAULT_CODE_BODIES.get(code);
+			setBody(bytes != null ? ByteBuf.wrapForReading(bytes) : null);
 		}
 		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remainingToRead()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);

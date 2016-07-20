@@ -26,7 +26,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
+import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
 import java.util.List;
 import java.util.Set;
@@ -148,7 +148,7 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 	private class AliveMessagingHandler implements MessagingHandler<Alive, FsResponse> {
 		@Override
-		public void onMessage(final MessagingWithBinaryStreamingConnection<Alive, FsResponse> messaging, Alive item) {
+		public void onMessage(final MessagingWithBinaryStreaming<Alive, FsResponse> messaging, Alive item) {
 			localReplica.showAlive(eventloop.currentTimeMillis(), new ResultCallback<Set<Replica>>() {
 				@Override
 				public void onResult(Set<Replica> result) {
@@ -175,7 +175,7 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 	private class AnnounceMessagingHandler implements MessagingHandler<Announce, FsResponse> {
 		@Override
-		public void onMessage(final MessagingWithBinaryStreamingConnection<Announce, FsResponse> messaging, Announce item) {
+		public void onMessage(final MessagingWithBinaryStreaming<Announce, FsResponse> messaging, Announce item) {
 			localReplica.onAnnounce(item.forUpload, item.forDeletion, new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {

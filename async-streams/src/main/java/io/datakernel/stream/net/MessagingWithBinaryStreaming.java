@@ -36,8 +36,8 @@ import static com.google.common.base.Preconditions.checkState;
  * Represent the TCP connection which  processes received items with {@link StreamProducer} and {@link StreamConsumer},
  * which organized by binary protocol. It is created with socketChannel and sides exchange ByteBufs.
  */
-public final class MessagingWithBinaryStreamingConnection<I, O> implements AsyncTcpSocket.EventHandler, Messaging<I, O> {
-	private static final Logger logger = LoggerFactory.getLogger(MessagingWithBinaryStreamingConnection.class);
+public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.EventHandler, Messaging<I, O> {
+	private static final Logger logger = LoggerFactory.getLogger(MessagingWithBinaryStreaming.class);
 
 	private final Eventloop eventloop;
 	private final AsyncTcpSocket asyncTcpSocket;
@@ -53,7 +53,7 @@ public final class MessagingWithBinaryStreamingConnection<I, O> implements Async
 
 	private Exception closedException;
 
-	public MessagingWithBinaryStreamingConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
+	public MessagingWithBinaryStreaming(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
 		this.eventloop = eventloop;
 		this.asyncTcpSocket = asyncTcpSocket;
 		this.serializer = serializer;

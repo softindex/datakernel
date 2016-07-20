@@ -17,7 +17,6 @@
 package io.datakernel.hashfs;
 
 import io.datakernel.FsClient;
-import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -203,9 +202,9 @@ public class IntegrationSingleNodeTest {
 
 		server.listen();
 
-		client.download("file_does_not_exist", 0, new ResultCallback<StreamTransformerWithCounter>() {
+		client.download("file_does_not_exist", 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
-			public void onResult(StreamTransformerWithCounter result) {
+			public void onResult(StreamProducer<ByteBuf> producer) {
 				try {
 					StreamFileWriter consumerA = create(eventloop, executor, clientStorage.resolve("file_should_not exist.txt"));
 					consumerA.setFlushCallback(new SimpleCompletionCallback() {
@@ -214,7 +213,7 @@ public class IntegrationSingleNodeTest {
 							server.close();
 						}
 					});
-					result.getOutput().streamTo(consumerA);
+					producer.streamTo(consumerA);
 				} catch (IOException ignored) {
 					// ignored
 				}
@@ -322,11 +321,11 @@ public class IntegrationSingleNodeTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private ResultCallback<StreamTransformerWithCounter> streamTo(final Eventloop eventloop, final StreamConsumer<ByteBuf> consumer) {
-		return new ResultCallback<StreamTransformerWithCounter>() {
+	private ResultCallback<StreamProducer<ByteBuf>> streamTo(final Eventloop eventloop, final StreamConsumer<ByteBuf> consumer) {
+		return new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
-			public void onResult(StreamTransformerWithCounter result) {
-				result.getOutput().streamTo(consumer);
+			public void onResult(StreamProducer<ByteBuf> producer) {
+				producer.streamTo(consumer);
 			}
 
 			@Override

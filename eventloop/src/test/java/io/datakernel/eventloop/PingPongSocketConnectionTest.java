@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.util.ByteBufStrings.decodeAscii;
@@ -36,10 +37,12 @@ public class PingPongSocketConnectionTest {
 		ppServer.setListenAddress(ADDRESS);
 		ppServer.listen();
 
-		eventloop.connect(ADDRESS, new SocketSettings(), new ConnectCallback() {
+		eventloop.connect(ADDRESS, new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl clientTcpSocket) {
-				return new ClientConnection(clientTcpSocket, ppServer);
+			public void onConnect(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
+				asyncTcpSocket.setEventHandler(new ClientConnection(asyncTcpSocket, ppServer));
+				asyncTcpSocket.register();
 			}
 
 			@Override

@@ -16,45 +16,31 @@
 
 package io.datakernel.http;
 
+import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 
-import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.Map;
-
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
-import static io.datakernel.util.Preconditions.check;
 
-@SuppressWarnings({"unused", "WeakerAccess"})
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
 	private static final long DEFAULT_MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
-	private final ExposedLinkedList<AbstractHttpConnection> connectionsList;
-
-	private final Runnable expiredConnectionsTask = new Runnable() {
-		@Override
-		public void run() {
-			checkExpiredConnections();
-		}
-	};
+	private final ExposedLinkedList<AbstractHttpConnection> pool;
 
 	private final AsyncHttpServlet servlet;
 
+	private AsyncCancellable expiredConnectionsCheck;
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
 
-	private int allowedConnectionPerIp = 0;
-	Map<InetAddress, Integer> address2connects = new HashMap<>();
-
 	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
-		this.connectionsList = new ExposedLinkedList<>();
+		this.pool = new ExposedLinkedList<>();
 		this.servlet = servlet;
 		char[] chars = eventloop.get(char[].class);
 		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
@@ -62,11 +48,9 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
-		scheduleExpiredConnectionCheck();
 	}
 
 	public AsyncHttpServer setMaxIdleConnectionTime(long maxIdleConnectionTime) {
-		check(maxIdleConnectionTime > 0);
 		this.maxIdleConnectionTime = maxIdleConnectionTime;
 		return this;
 	}
@@ -76,72 +60,50 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return this;
 	}
 
-	public AsyncHttpServer restrictConnectionsPerIp(int connectionsNumber) {
-		allowedConnectionPerIp = connectionsNumber;
-		return this;
-	}
-
-	@Override
-	protected boolean canAccept(InetAddress address) {
-		if (allowedConnectionPerIp == 0) return true;
-		Integer num = address2connects.get(address);
-		return num == null || num < allowedConnectionPerIp;
-	}
-
-	private void scheduleExpiredConnectionCheck() {
-		eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, expiredConnectionsTask);
+	private void scheduleExpiredConnectionsCheck() {
+		assert expiredConnectionsCheck == null;
+		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, new Runnable() {
+			@Override
+			public void run() {
+				expiredConnectionsCheck = null;
+				checkExpiredConnections();
+				if (!pool.isEmpty()) {
+					scheduleExpiredConnectionsCheck();
+				}
+			}
+		});
 	}
 
 	private int checkExpiredConnections() {
 		int count = 0;
 		final long now = eventloop.currentTimeMillis();
 
-		ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
+		ExposedLinkedList.Node<AbstractHttpConnection> node = pool.getFirstNode();
 		while (node != null) {
 			AbstractHttpConnection connection = node.getValue();
 			node = node.getNext();
 
 			assert eventloop.inEventloopThread();
-			long idleTime = now - connection.getLastUsedTime();
+			long idleTime = now - connection.poolTimestamp;
 			if (idleTime > maxIdleConnectionTime) {
 				connection.close(); // self removing from this pool
 				count++;
 			}
 		}
-		scheduleExpiredConnectionCheck();
 		return count;
 	}
 
 	@Override
 	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		assert eventloop.inEventloopThread();
-		InetAddress remoteAddress = asyncTcpSocket.getRemoteSocketAddress().getAddress();
-
-		if (allowedConnectionPerIp != 0) {
-			Integer numberOfConnects = address2connects.get(remoteAddress);
-			numberOfConnects = numberOfConnects == null ? 1 : numberOfConnects + 1;
-			address2connects.put(remoteAddress, numberOfConnects);
-		}
-
-		return new HttpServerConnection(eventloop, this, remoteAddress, asyncTcpSocket,
-				servlet, connectionsList, headerChars, maxHttpMessageSize);
+		return new HttpServerConnection(
+				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
+				this, servlet, pool, headerChars, maxHttpMessageSize);
 	}
 
 	@Override
 	protected void onClose() {
-		closeConnections();
-	}
-
-	public void decreaseConnectionsCount(InetAddress remoteAddress) {
-		if (allowedConnectionPerIp != 0) {
-			Integer numberOfConnects = address2connects.get(remoteAddress);
-			assert numberOfConnects != null && numberOfConnects > 0;
-			address2connects.put(remoteAddress, numberOfConnects - 1);
-		}
-	}
-
-	private void closeConnections() {
-		ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
+		ExposedLinkedList.Node<AbstractHttpConnection> node = pool.getFirstNode();
 		while (node != null) {
 			AbstractHttpConnection connection = node.getValue();
 			node = node.getNext();
@@ -151,9 +113,24 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		}
 	}
 
+	void addToPool(HttpServerConnection connection) {
+		pool.addLastNode(connection.poolNode);
+		connection.poolTimestamp = eventloop.currentTimeMillis();
+
+		if (expiredConnectionsCheck == null) {
+			scheduleExpiredConnectionsCheck();
+		}
+	}
+
+	void removeFromPool(HttpServerConnection connection) {
+		pool.removeNode(connection.poolNode);
+		connection.poolTimestamp = 0L;
+	}
+
 	// jmx
 	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsCount() {
-		return connectionsList.size();
+		return pool.size();
 	}
+
 }

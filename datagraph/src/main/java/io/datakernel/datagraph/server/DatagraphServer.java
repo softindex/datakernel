@@ -33,7 +33,7 @@ import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamForwarder;
 import io.datakernel.stream.net.Messaging;
 import io.datakernel.stream.net.MessagingSerializer;
-import io.datakernel.stream.net.MessagingWithBinaryStreamingConnection;
+import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import io.datakernel.stream.processor.StreamBinarySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +60,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 	}
 
 	protected interface CommandHandler<I, O> {
-		void onCommand(MessagingWithBinaryStreamingConnection<I, O> messaging, I command);
+		void onCommand(MessagingWithBinaryStreaming<I, O> messaging, I command);
 	}
 
 	/**
@@ -79,7 +79,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	private class DownloadCommandHandler implements CommandHandler<DatagraphCommandDownload, DatagraphResponse> {
 		@Override
-		public void onCommand(final MessagingWithBinaryStreamingConnection<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
+		public void onCommand(final MessagingWithBinaryStreaming<DatagraphCommandDownload, DatagraphResponse> messaging, DatagraphCommandDownload command) {
 			StreamId streamId = command.streamId;
 			StreamForwarder<ByteBuf> forwarder = pendingStreams.remove(streamId);
 			if (forwarder != null) {
@@ -106,7 +106,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	private class ExecuteCommandHandler implements CommandHandler<DatagraphCommandExecute, DatagraphResponse> {
 		@Override
-		public void onCommand(MessagingWithBinaryStreamingConnection<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
+		public void onCommand(MessagingWithBinaryStreaming<DatagraphCommandExecute, DatagraphResponse> messaging, DatagraphCommandExecute command) {
 			messaging.close();
 			TaskContext taskContext = new TaskContext(eventloop, DatagraphEnvironment.extend(environment));
 			for (Node node : command.getNodes()) {
@@ -136,7 +136,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 
 	@Override
 	protected final AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
-		final MessagingWithBinaryStreamingConnection<DatagraphCommand, DatagraphResponse> messaging = new MessagingWithBinaryStreamingConnection<>(eventloop, asyncTcpSocket, serializer);
+		final MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
 		messaging.receive(new Messaging.ReceiveMessageCallback<DatagraphCommand>() {
 			@Override
 			public void onReceive(DatagraphCommand msg) {
@@ -158,7 +158,7 @@ public final class DatagraphServer extends AbstractServer<DatagraphServer> {
 		return messaging;
 	}
 
-	private void doRead(MessagingWithBinaryStreamingConnection<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
+	private void doRead(MessagingWithBinaryStreaming<DatagraphCommand, DatagraphResponse> messaging, DatagraphCommand command) {
 		CommandHandler handler = handlers.get(command.getClass());
 		if (handler == null) {
 			messaging.close();

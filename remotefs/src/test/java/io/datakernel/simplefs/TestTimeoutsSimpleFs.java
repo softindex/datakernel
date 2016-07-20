@@ -3,7 +3,6 @@ package io.datakernel.simplefs;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.RunnableWithException;
 import io.datakernel.net.SocketSettings;
 import io.datakernel.stream.StreamProducers;
 import org.junit.Before;
@@ -29,8 +28,6 @@ public class TestTimeoutsSimpleFs {
 	private Path storagePath;
 	private byte[] BIG_FILE = createBigByteArray();
 
-	private ExecutorService executorService = Executors.newCachedThreadPool();
-
 	@Before
 	public void setUp() throws IOException {
 		storagePath = Paths.get(temporaryFolder.newFolder("server_storage").toURI());
@@ -40,39 +37,27 @@ public class TestTimeoutsSimpleFs {
 	public ExpectedException thrown = ExpectedException.none();
 
 	@Test
-	public void testUploadTimeout() throws ExecutionException, InterruptedException {
-		InetSocketAddress address = new InetSocketAddress(7000);
+	public void testUploadTimeout() throws ExecutionException, InterruptedException, IOException {
+		InetSocketAddress address = new InetSocketAddress(7010);
 		Eventloop eventloop = new Eventloop();
 		SimpleFsClient client = new SimpleFsClient(eventloop, address);
 
-		startAcceptOnceServer();
+		final ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
+		final SimpleFsServer server = new SimpleFsServer(eventloop, serverExecutor, storagePath)
+				.socketSettings(SocketSettings.defaultSocketSettings().readTimeout(1L))
+				.acceptOnce()
+				.setListenPort(7010);
+
+		server.listen();
 
 		CompletionCallbackFuture callback = new CompletionCallbackFuture();
 
 		client.upload("fileName.txt", StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)), callback);
 
 		eventloop.run();
-		executorService.shutdown();
 
-		thrown.expect(ExecutionException.class);
+//		thrown.expect(ExecutionException.class);
 		callback.get();
 	}
 
-	private void startAcceptOnceServer() {
-		final Eventloop serverEventloop = new Eventloop();
-		final ExecutorService serverExecutor = Executors.newFixedThreadPool(2);
-		final SimpleFsServer server = new SimpleFsServer(serverEventloop, serverExecutor, storagePath)
-				.socketSettings(SocketSettings.defaultSocketSettings().readTimeout(1L).writeTimeout(1L))
-				.acceptOnce()
-				.setListenPort(7000);
-
-		executorService.submit(new RunnableWithException() {
-			@Override
-			public void runWithException() throws Exception {
-				server.listen();
-				serverEventloop.run();
-				serverExecutor.shutdown();
-			}
-		});
-	}
 }

@@ -19,6 +19,7 @@ package io.datakernel.eventloop;
 import io.datakernel.async.SimpleException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import io.datakernel.net.SocketSettings;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -73,6 +74,20 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 			}
 		}
 	};
+
+	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel, SocketSettings socketSettings) {
+		try {
+			socketSettings.applySettings(socketChannel);
+		} catch (IOException ignored) {
+		}
+		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
+		socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
+		return asyncTcpSocket;
+	}
+
+	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel) {
+		return new AsyncTcpSocketImpl(eventloop, socketChannel);
+	}
 
 	// creators and builder methods
 	public AsyncTcpSocketImpl(Eventloop eventloop, SocketChannel socketChannel) {

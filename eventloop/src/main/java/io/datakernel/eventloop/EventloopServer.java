@@ -22,7 +22,7 @@ import java.io.IOException;
  * Represents non-blocking server which listens new connection and accepts it asynchronous.
  * It is {@link AcceptCallback} for handling accepting to this server.
  */
-public interface EventloopServer extends AcceptCallback {
+public interface EventloopServer {
 	Eventloop getEventloop();
 
 	/**
@@ -36,4 +36,6 @@ public interface EventloopServer extends AcceptCallback {
 	 * Closes the server. Any open channels will be closed.
 	 */
 	void close();
+
+	void onAccept(AsyncTcpSocket asyncTcpSocket);
 }

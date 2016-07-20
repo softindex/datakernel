@@ -18,11 +18,9 @@ package io.datakernel.http;
 
 import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCancellable;
-import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 
@@ -41,38 +39,21 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
-	private AsyncCancellable timeoutCheck;
+	private AsyncCancellable cancellable;
 	private HttpResponse response;
 	private final AsyncHttpClient httpClient;
 
-	private final InetSocketAddress remoteSocketAddress;
+	ExposedLinkedList<HttpClientConnection> addressPool;
+	final ExposedLinkedList.Node<HttpClientConnection> addressNode = new ExposedLinkedList.Node<>(this);
 
-	// creators
-	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteSocketAddress,
-	                     AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient,
-	                     ExposedLinkedList<AbstractHttpConnection> pool,
-	                     char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, asyncTcpSocket, pool, headerChars, maxHttpMessageSize);
-		this.remoteSocketAddress = remoteSocketAddress;
+	final InetSocketAddress remoteAddress;
+
+	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
+		this.remoteAddress = remoteAddress;
 		this.httpClient = httpClient;
 	}
 
-	// miscellaneous
-	@Override
-	protected void reset() {
-		reading = END_OF_STREAM;
-		if (response != null) {
-			response.recycleBufs();
-			response = null;
-		}
-		if (timeoutCheck != null) {
-			timeoutCheck.cancel();
-			timeoutCheck = null;
-		}
-		super.reset();
-	}
-
-	// close methods
 	@Override
 	public void onClosedWithError(Exception e) {
 		assert eventloop.inEventloopThread();
@@ -82,32 +63,8 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			this.callback = null;
 			callback.onException(e);
 		}
-		httpClient.connectsMonitor.onException(remoteSocketAddress, e);
 	}
 
-	@Override
-	protected void cleanUpPool() {
-		if (connectionNode != null) {
-			removeConnectionFromPool();
-			httpClient.removeFromCache(remoteSocketAddress, this);
-			connectionNode = null;
-		} else {
-			httpClient.connectsMonitor.removeActive(remoteSocketAddress);
-		}
-	}
-
-	@Override
-	protected void onClosed() {
-		if (isClosed()) return;
-		super.onClosed();
-		bodyQueue.clear();
-		if (response != null) {
-			response.recycleBufs();
-			response = null;
-		}
-	}
-
-	// read methods
 	@Override
 	protected void onFirstLine(ByteBuf line) throws ParseException {
 		if (line.peek(0) != 'H' || line.peek(1) != 'T' || line.peek(2) != 'T' || line.peek(3) != 'P' || line.peek(4) != '/' || line.peek(5) != '1')
@@ -158,17 +115,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
 		response.body(bodyBuf);
-		if (callback != null) {
-			ResultCallback<HttpResponse> callback = this.callback;
-			this.callback = null;
-			callback.onResult(response);
-		}
-		if (isClosed()) return;
-
+		ResultCallback<HttpResponse> callback = this.callback;
+		this.callback = null;
+		callback.onResult(response);
+		if (isClosed())
+			return;
 		if (keepAlive) {
 			reset();
-			moveConnectionToPool();
-			httpClient.moveToCache(remoteSocketAddress, this);
+			returnToPool();
 		} else {
 			close();
 		}
@@ -183,17 +137,22 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			} else {
 				closeWithError(CLOSED_CONNECTION);
 			}
-		} else {
-			close();
 		}
+		close();
 	}
 
-	// write methods
-	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
-		this.callback = callback;
-		writeHttpRequest(request);
-		request.recycleBufs();
-		scheduleTimeout(timeout);
+	@Override
+	protected void reset() {
+		reading = END_OF_STREAM;
+		if (response != null) {
+			response.recycleBufs();
+			response = null;
+		}
+		if (cancellable != null) {
+			cancellable.cancel();
+			cancellable = null;
+		}
+		super.reset();
 	}
 
 	private void writeHttpRequest(HttpRequest httpRequest) {
@@ -203,37 +162,64 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		asyncTcpSocket.write(httpRequest.write());
 	}
 
-	@Override
-	public void onWrite() {
-		assert !isClosed();
-		assert eventloop.inEventloopThread();
-		reading = FIRSTCHAR;
-		asyncTcpSocket.read();
+	/**
+	 * Sends the request, recycles it and closes connection in case of timeout
+	 *
+	 * @param request  request for sending
+	 * @param timeout  time after which connection will be closed
+	 * @param callback callback for handling result
+	 */
+	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
+		this.callback = callback;
+		writeHttpRequest(request);
+		request.recycleBufs();
+		scheduleTimeout(timeout);
 	}
 
 	private void scheduleTimeout(final long timeoutTime) {
-		if (isClosed()) return;
-		timeoutCheck = eventloop.scheduleBackground(timeoutTime, new Runnable() {
+		assert !isClosed();
+
+		cancellable = eventloop.scheduleBackground(timeoutTime, new Runnable() {
 			@Override
 			public void run() {
-				closeWithError(TIMEOUT_EXCEPTION);
 				if (!isClosed()) {
-					// expect this connection to close either due to the socket r/w timeouts
-					// or due to exceeding maxHttpMessageSize
-					ExceptionCallback exceptionCallback = callback;
-					callback = null;
-					exceptionCallback.onException(TIMEOUT_EXCEPTION);
+					closeWithError(TIMEOUT_EXCEPTION);
 				}
 			}
 		});
 	}
 
-	@Nullable
-	InetSocketAddress getRemoteSocketAddress() {
-		return remoteSocketAddress;
+	@Override
+	public void onWrite() {
+		assert !isClosed();
+		assert eventloop.inEventloopThread();
+		reading = FIRSTLINE;
+		asyncTcpSocket.read();
 	}
 
-	boolean isSslConnection() {
-		return this.asyncTcpSocket instanceof AsyncSslSocket;
+	@Override
+	protected final void returnToPool() {
+		super.returnToPool();
+		httpClient.addToPool(this);
 	}
+
+	@Override
+	protected final void removeFromPool() {
+		super.removeFromPool();
+		httpClient.removeFromPool(this);
+	}
+
+	/**
+	 * After closing this connection it removes it from its connections cache and recycles
+	 * Http response.
+	 */
+	@Override
+	protected void onClosed() {
+		super.onClosed();
+		bodyQueue.clear();
+		if (response != null) {
+			response.recycleBufs();
+		}
+	}
+
 }

@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,15 +81,15 @@ public final class SocketStreamingConnectionTest {
 		server.listen();
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
+		eventloop.connect(address, new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+			public void onConnect(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
-
 				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
-
-				return connection;
+				asyncTcpSocket.setEventHandler(connection);
+				asyncTcpSocket.register();
 			}
 
 			@Override
@@ -132,15 +133,17 @@ public final class SocketStreamingConnectionTest {
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, intSerializer(), 1, 10, 0, false);
 		final StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, intSerializer(), 10);
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
+		eventloop.connect(address, new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+			public void onConnect(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 				connection.receiveStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				streamDeserializer.getOutput().streamTo(consumerToList);
-				return connection;
+				asyncTcpSocket.setEventHandler(connection);
+				asyncTcpSocket.register();
 			}
 
 			@Override
@@ -194,15 +197,17 @@ public final class SocketStreamingConnectionTest {
 
 		final StreamBinarySerializer<Integer> streamSerializer = new StreamBinarySerializer<>(eventloop, BufferSerializers.intSerializer(), 1, 50, 0, false);
 		final StreamBinaryDeserializer<Integer> streamDeserializer = new StreamBinaryDeserializer<>(eventloop, BufferSerializers.intSerializer(), 10);
-		eventloop.connect(address, new SocketSettings(), new ConnectCallback() {
+		eventloop.connect(address, new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
+			public void onConnect(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel);
 				SocketStreamingConnection connection = new SocketStreamingConnection(eventloop, asyncTcpSocket);
 				connection.sendStreamFrom(streamSerializer.getOutput(), ignoreCompletionCallback());
 				connection.receiveStreamTo(streamDeserializer.getInput(), ignoreCompletionCallback());
 				StreamProducers.ofIterable(eventloop, source).streamTo(streamSerializer.getInput());
 				streamDeserializer.getOutput().streamTo(consumerToListWithError);
-				return connection;
+				asyncTcpSocket.setEventHandler(connection);
+				asyncTcpSocket.register();
 			}
 
 			@Override

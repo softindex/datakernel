@@ -22,6 +22,7 @@ import io.datakernel.async.*;
 import io.datakernel.dns.NativeDnsResolver;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.http.*;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +68,7 @@ public class TestHttpsClientServer {
 
 	public TestHttpsClientServer() throws Exception {}
 
+	@Ignore
 	@Test
 	public void testClientServerInteraction() throws Exception {
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)
@@ -103,6 +105,7 @@ public class TestHttpsClientServer {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
+	@Ignore
 	@Test
 	public void testServesTwoPortsSimultaneously() throws Exception {
 		final AsyncHttpServer server = new AsyncHttpServer(eventloop, bobServlet)

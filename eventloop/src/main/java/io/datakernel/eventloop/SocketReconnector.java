@@ -21,6 +21,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -34,7 +35,6 @@ public final class SocketReconnector {
 
 	private final Eventloop eventloop;
 	private final InetSocketAddress address;
-	private final SocketSettings socketSettings;
 	private final int reconnectAttempts;
 	private final long reconnectTimeout;
 
@@ -43,15 +43,13 @@ public final class SocketReconnector {
 	 *
 	 * @param eventloop         eventloop to which its instance will be related
 	 * @param address           address to which socketChannels will be connected.
-	 * @param socketSettings    sockets settings for creating new sockets
 	 * @param reconnectAttempts number for attempts to connect
 	 * @param reconnectTimeout  time after which it will begin connect
 	 */
-	public SocketReconnector(Eventloop eventloop, InetSocketAddress address, SocketSettings socketSettings,
+	public SocketReconnector(Eventloop eventloop, InetSocketAddress address,
 	                         int reconnectAttempts, long reconnectTimeout) {
 		this.eventloop = checkNotNull(eventloop);
 		this.address = checkNotNull(address);
-		this.socketSettings = checkNotNull(socketSettings);
 		this.reconnectAttempts = reconnectAttempts;
 		this.reconnectTimeout = reconnectTimeout;
 	}
@@ -64,7 +62,7 @@ public final class SocketReconnector {
 	 * @param socketSettings sockets settings for creating new sockets
 	 */
 	public SocketReconnector(Eventloop eventloop, InetSocketAddress address, SocketSettings socketSettings) {
-		this(eventloop, address, socketSettings, 0, 0);
+		this(eventloop, address, 0, 0);
 	}
 
 	/**
@@ -73,7 +71,7 @@ public final class SocketReconnector {
 	 * @param connectCallback callback which will be called after connecting
 	 */
 	public void reconnect(ConnectCallback connectCallback) {
-		reconnect(eventloop, address, socketSettings, reconnectAttempts, reconnectTimeout, connectCallback);
+		reconnect(eventloop, address, reconnectAttempts, reconnectTimeout, connectCallback);
 	}
 
 	/**
@@ -81,21 +79,19 @@ public final class SocketReconnector {
 	 *
 	 * @param eventloop         eventloop in which connection will be created
 	 * @param address           address for connecting
-	 * @param socketSettings    setting for creating socket
 	 * @param reconnectAttempts number for attempts to connect
 	 * @param reconnectTimeout  time after which it will begin connect
 	 * @param callback          callback which handles result
 	 */
 	public static void reconnect(final Eventloop eventloop, final InetSocketAddress address,
-	                             final SocketSettings socketSettings,
 	                             final int reconnectAttempts, final long reconnectTimeout,
 	                             final ConnectCallback callback) {
 		logger.info("Connecting {}", address);
-		eventloop.connect(address, socketSettings, new ConnectCallback() {
+		eventloop.connect(address, new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocketImpl asyncTcpSocket) {
-				logger.trace("Connection succeeded {}", asyncTcpSocket);
-				return callback.onConnect(asyncTcpSocket);
+			public void onConnect(SocketChannel socketChannel) {
+				logger.trace("Connection succeeded {}", socketChannel);
+				callback.onConnect(socketChannel);
 			}
 
 			@Override
@@ -107,7 +103,7 @@ public final class SocketReconnector {
 					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectTimeout, new Runnable() {
 						@Override
 						public void run() {
-							reconnect(eventloop, address, socketSettings,
+							reconnect(eventloop, address,
 									reconnectAttempts == RECONNECT_ALWAYS ? RECONNECT_ALWAYS : (reconnectAttempts - 1), reconnectTimeout,
 									callback);
 						}

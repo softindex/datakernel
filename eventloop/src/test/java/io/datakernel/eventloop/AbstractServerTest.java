@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
@@ -15,7 +16,7 @@ import static org.junit.Assert.assertEquals;
 public class AbstractServerTest {
 	@Test
 	public void testTimeouts() throws IOException {
-		Eventloop eventloop = new Eventloop();
+		final Eventloop eventloop = new Eventloop();
 
 		InetSocketAddress address = new InetSocketAddress(5588);
 		final SocketSettings settings = SocketSettings.defaultSocketSettings().readTimeout(100000L).writeTimeout(100000L);
@@ -61,11 +62,11 @@ public class AbstractServerTest {
 
 		server.listen();
 
-		eventloop.connect(address, settings, 100, new ConnectCallback() {
+		eventloop.connect(address, 1000, new ConnectCallback() {
 			@Override
-			public EventHandler onConnect(final AsyncTcpSocketImpl asyncTcpSocket) {
-				settings.applyReadWriteTimeoutsTo(asyncTcpSocket);
-				return new EventHandler() {
+			public void onConnect(SocketChannel socketChannel) {
+				final AsyncTcpSocketImpl asyncTcpSocket = AsyncTcpSocketImpl.wrapChannel(eventloop, socketChannel, settings);
+				asyncTcpSocket.setEventHandler(new EventHandler() {
 					@Override
 					public void onRegistered() {
 						asyncTcpSocket.write(ByteBufStrings.wrapAscii("Hello!"));
@@ -93,7 +94,8 @@ public class AbstractServerTest {
 						asyncTcpSocket.close();
 						server.close();
 					}
-				};
+				});
+				asyncTcpSocket.register();
 			}
 
 			@Override

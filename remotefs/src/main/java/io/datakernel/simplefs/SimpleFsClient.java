@@ -17,15 +17,18 @@
 package io.datakernel.simplefs;
 
 import io.datakernel.FsClient;
-import io.datakernel.StreamTransformerWithCounter;
+import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 
 import java.net.InetSocketAddress;
 import java.util.List;
+
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 
 public final class SimpleFsClient extends FsClient<SimpleFsClient> {
 	private final InetSocketAddress address;
@@ -41,7 +44,7 @@ public final class SimpleFsClient extends FsClient<SimpleFsClient> {
 	}
 
 	@Override
-	public void download(String fileName, long startPosition, ResultCallback<StreamTransformerWithCounter> callback) {
+	public void download(String fileName, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback) {
 		doDownload(address, fileName, startPosition, callback);
 	}
 

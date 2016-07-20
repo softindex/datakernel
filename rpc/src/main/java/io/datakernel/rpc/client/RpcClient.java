@@ -19,10 +19,7 @@ package io.datakernel.rpc.client;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.eventloop.AbstractClient;
-import io.datakernel.eventloop.AsyncTcpSocket;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.*;
 import io.datakernel.jmx.CountStats;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
@@ -42,22 +39,32 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
+import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
 import static io.datakernel.async.AsyncCallbacks.postException;
+import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
+import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
 
-public final class RpcClient extends AbstractClient<RpcClient> implements EventloopService, EventloopJmxMBean {
+public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	public static final SocketSettings DEFAULT_SOCKET_SETTINGS = new SocketSettings().tcpNoDelay(true);
 	public static final int DEFAULT_CONNECT_TIMEOUT = 10 * 1000;
 	public static final int DEFAULT_RECONNECT_INTERVAL = 1 * 1000;
 
 	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
+
+	private final Eventloop eventloop;
+	private final SocketSettings socketSettings;
+
+	// SSL
+	private SSLContext sslContext;
+	private ExecutorService sslExecutor;
 
 	private RpcStrategy strategy;
 	private List<InetSocketAddress> addresses;
@@ -67,7 +74,6 @@ public final class RpcClient extends AbstractClient<RpcClient> implements Eventl
 	private final Set<Class<?>> messageTypes = new LinkedHashSet<>();
 	private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
 	private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
-	private boolean ssl;
 
 	private BufferSerializer<RpcMessage> serializer;
 
@@ -93,7 +99,8 @@ public final class RpcClient extends AbstractClient<RpcClient> implements Eventl
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress;
 
 	private RpcClient(Eventloop eventloop, SocketSettings socketSettings) {
-		super(eventloop, socketSettings);
+		this.eventloop = eventloop;
+		this.socketSettings = socketSettings;
 
 		// JMX
 		this.generalRequestsStats = new RpcRequestStats();
@@ -164,10 +171,10 @@ public final class RpcClient extends AbstractClient<RpcClient> implements Eventl
 		return this;
 	}
 
-	@Override
 	public RpcClient enableSsl(SSLContext sslContext, ExecutorService executor) {
-		this.ssl = true;
-		return super.enableSsl(sslContext, executor);
+		this.sslContext = checkNotNull(sslContext);
+		this.sslExecutor = checkNotNull(executor);
+		return this;
 	}
 
 	@Override
@@ -238,12 +245,16 @@ public final class RpcClient extends AbstractClient<RpcClient> implements Eventl
 
 		logger.info("Connecting {}", address);
 
-		connect(address, 0, ssl, new SpecialConnectCallback() {
+		eventloop.connect(address, 0, new ConnectCallback() {
 			@Override
-			public AsyncTcpSocket.EventHandler onConnect(AsyncTcpSocket asyncTcpSocket) {
+			public void onConnect(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
+				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
 				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this,
 						asyncTcpSocket, address,
 						getSerializer(), protocolFactory);
+				asyncTcpSocket.setEventHandler(connection.getSocketConnection());
+				asyncTcpSocketImpl.register();
 
 				addConnection(address, connection);
 
@@ -256,7 +267,6 @@ public final class RpcClient extends AbstractClient<RpcClient> implements Eventl
 					postCompletion(eventloop, startCallback);
 					startCallback = null;
 				}
-				return connection.getSocketConnection();
 			}
 
 			@Override

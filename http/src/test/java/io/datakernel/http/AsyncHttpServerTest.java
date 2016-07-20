@@ -196,8 +196,8 @@ public class AsyncHttpServerTest {
 	public void testPipelining() throws Exception {
 		Eventloop eventloop = new Eventloop();
 
-		doTestPipelining(eventloop, blockingHttpServer(eventloop));
-		doTestPipelining(eventloop, asyncHttpServer(eventloop));
+//		doTestPipelining(eventloop, blockingHttpServer(eventloop));
+//		doTestPipelining(eventloop, asyncHttpServer(eventloop));
 		doTestPipelining(eventloop, delayedHttpServer(eventloop));
 
 		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());

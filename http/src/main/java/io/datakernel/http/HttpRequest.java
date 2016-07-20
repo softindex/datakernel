@@ -252,6 +252,10 @@ public final class HttpRequest extends HttpMessage {
 		this.pos = pos;
 	}
 
+	public boolean isHttps() {
+		return getUrl().getSchema().equals("https");
+	}
+
 	public HttpMethod getMethod() {
 		assert !recycled;
 		return method;
