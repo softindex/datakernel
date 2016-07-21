@@ -50,12 +50,16 @@ public class ByteBufPool {
 		}
 	}
 
-	public static ByteBuf concat(ByteBuf buf1, ByteBuf buf2) {
-		assert !buf1.isRecycled() && !buf2.isRecycled();
-		buf1 = ensureWriteSize(buf1, buf2.remainingToRead());
-		buf1.put(buf2);
-		buf2.recycle();
-		return buf1;
+	public static ByteBuf append(ByteBuf to, ByteBuf from) {
+		assert !to.isRecycled() && !from.isRecycled();
+		if (to.remainingToRead() == 0) {
+			to.recycle();
+			return from;
+		}
+		to = ensureWriteSize(to, from.remainingToRead());
+		to.put(from);
+		from.recycle();
+		return to;
 	}
 
 	public static void recycle(ByteBuf buf) {

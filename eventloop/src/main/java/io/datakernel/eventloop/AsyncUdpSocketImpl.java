@@ -71,25 +71,25 @@ public final class AsyncUdpSocketImpl implements AsyncUdpSocket, NioChannelEvent
 
 	@Override
 	public void onReadReady() {
-		ByteBuf buf = null;
-		try {
-			while (isOpen()) {
-				buf = ByteBufPool.allocate(receiveBufferSize);
-				ByteBuffer buffer = buf.toByteBufferInWriteMode();
-				InetSocketAddress sourceAddress = (InetSocketAddress) channel.receive(buffer);
-				buf.setWritePosition(buffer.position());
-
-				if (sourceAddress == null) {
-					break;
-				}
-
-				eventHandler.onRead(new UdpPacket(buf, sourceAddress));
-				buf = null;
+		while (isOpen()) {
+			ByteBuf buf = ByteBufPool.allocate(receiveBufferSize);
+			ByteBuffer buffer = buf.toByteBufferInWriteMode();
+			InetSocketAddress sourceAddress;
+			try {
+				sourceAddress = (InetSocketAddress) channel.receive(buffer);
+			} catch (IOException e) {
+				buf.recycle();
+				closeWithError(e);
+				return;
 			}
-		} catch (IOException e) {
-			closeWithError(e);
-		} finally {
-			if (buf != null) buf.recycle();
+
+			if (sourceAddress == null) {
+				buf.recycle();
+				break;
+			}
+
+			buf.setWritePosition(buffer.position());
+			eventHandler.onRead(new UdpPacket(buf, sourceAddress));
 		}
 	}
 

@@ -212,7 +212,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			if (readBuf == null) {
 				readBuf = ByteBufPool.allocate(Math.max(8192, buf.remainingToWrite()));
 			}
-			readBuf = ByteBufPool.concat(readBuf, buf);
+			readBuf = ByteBufPool.append(readBuf, buf);
 			tryReadMessage();
 			if (readBuf == null) {
 				asyncTcpSocket.read();

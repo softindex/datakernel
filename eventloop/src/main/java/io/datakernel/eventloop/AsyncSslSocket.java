@@ -18,7 +18,6 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.bytebuf.ByteBufQueue;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -42,8 +41,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private boolean ignoreIOErrors = false;
 
-	private ByteBuf net2engine;
-	private final ByteBufQueue app2engineQueue = new ByteBufQueue();
+	private ByteBuf net2engine = ByteBuf.empty();
+	private ByteBuf app2engine = ByteBuf.empty();
 
 	private Status status = Status.OPEN;
 	private boolean readInterest = false;
@@ -89,11 +88,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	@Override
 	public void onRead(ByteBuf buf) {
 		if (!isOpen()) return;
-		if (net2engine == null) {
-			net2engine = buf;
-		} else {
-			net2engine = ByteBufPool.concat(net2engine, buf);
-		}
+		net2engine = ByteBufPool.append(net2engine, buf);
 		sync();
 	}
 
@@ -119,7 +114,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			return;
 		}
 		if (!isOpen()) return;
-		if (app2engineQueue.isEmpty() && writeInterest) {
+		if (!app2engine.canRead() && writeInterest) {
 			writeInterest = false;
 			downstreamEventHandler.onWrite();
 		}
@@ -163,7 +158,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		assert !flushAndClose;
 
 		if (!isOpen()) return;
-		app2engineQueue.add(buf);
+		app2engine = ByteBufPool.append(app2engine, buf);
 		writeInterest = true;
 		postSync();
 	}
@@ -179,7 +174,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			@Override
 			public void run() {
 				if (!isOpen()) return;
-				app2engineQueue.clear();
+				app2engine.recycle();
+				app2engine = ByteBuf.empty();
+				net2engine.recycle();
+				net2engine = ByteBuf.empty();
 				engine.closeOutbound();
 				status = Status.CLOSING;
 				postSync();
@@ -236,7 +234,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		net2engine.setReadPosition(srcBuffer.position());
 		if (!net2engine.canRead()) {
 			net2engine.recycle();
-			net2engine = null;
+			net2engine = ByteBuf.empty();
 		}
 
 		dstBuf.setWritePosition(dstBuffer.position());
@@ -250,26 +248,22 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	private SSLEngineResult tryToWriteToNet() throws SSLException {
-		ByteBuf sourceBuf = app2engineQueue.takeRemaining();
-
 		ByteBuf dstBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
-		ByteBuffer srcBuffer = sourceBuf.toByteBufferInReadMode();
+		ByteBuffer srcBuffer = app2engine.toByteBufferInReadMode();
 		ByteBuffer dstBuffer = dstBuf.toByteBufferInWriteMode();
 
 		SSLEngineResult result;
 		try {
 			result = engine.wrap(srcBuffer, dstBuffer);
 		} catch (SSLException e) {
-			app2engineQueue.clear();
 			dstBuf.recycle();
 			throw e;
 		}
 
-		sourceBuf.setReadPosition(srcBuffer.position());
-		if (sourceBuf.canRead()) {
-			app2engineQueue.add(sourceBuf);
-		} else {
-			sourceBuf.recycle();
+		app2engine.setReadPosition(srcBuffer.position());
+		if (!app2engine.canRead()) {
+			app2engine.recycle();
+			app2engine = ByteBuf.empty();
 		}
 
 		dstBuf.setWritePosition(dstBuffer.position());
@@ -334,10 +328,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 				return;
 			} else if (handshakeStatus == NOT_HANDSHAKING) {
 				// read data from net
-				if (readInterest && net2engine != null) {
+				if (readInterest) {
 					do {
 						result = tryToWriteToApp();
-					} while (net2engine != null && result.getStatus() != BUFFER_UNDERFLOW);
+					} while (result.bytesConsumed() != 0 || result.bytesProduced() != 0);
 				}
 				if (engine.isInboundDone()) { // receive close_notify (closing was initiated by other side)
 					status = Status.CLOSING;
@@ -348,10 +342,10 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 					ignoreIOErrors = true;
 				} else {
 					// write data to net
-					if (writeInterest && app2engineQueue.hasRemaining()) {
+					if (writeInterest && app2engine.canRead()) {
 						do {
 							result = tryToWriteToNet();
-						} while (app2engineQueue.hasRemaining());
+						} while (app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
 					}
 					if (flushAndClose) {
 						engine.closeOutbound();

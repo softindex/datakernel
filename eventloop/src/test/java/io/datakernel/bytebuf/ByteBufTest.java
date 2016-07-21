@@ -171,11 +171,11 @@ public class ByteBufTest {
 		ByteBuf secondBuf = ByteBufPool.allocate(32);
 		secondBuf.put(BYTES);
 
-		buf = ByteBufPool.concat(buf, secondBuf.slice());
-		buf = ByteBufPool.concat(buf, secondBuf.slice());
-		buf = ByteBufPool.concat(buf, secondBuf.slice());
-		buf = ByteBufPool.concat(buf, secondBuf.slice());
-		buf = ByteBufPool.concat(buf, secondBuf.slice());
+		buf = ByteBufPool.append(buf, secondBuf.slice());
+		buf = ByteBufPool.append(buf, secondBuf.slice());
+		buf = ByteBufPool.append(buf, secondBuf.slice());
+		buf = ByteBufPool.append(buf, secondBuf.slice());
+		buf = ByteBufPool.append(buf, secondBuf.slice());
 
 		assertEquals(new String(BYTES)
 				+ new String(BYTES)
