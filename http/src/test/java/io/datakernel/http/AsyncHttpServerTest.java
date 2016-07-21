@@ -91,9 +91,9 @@ public class AsyncHttpServerTest {
 		ByteBuf buf = ByteBuf.wrapForReading(encodeAscii(string));
 		Random random = new Random();
 		while (buf.canRead()) {
-			int count = min(1 + random.nextInt(5), buf.remainingToRead());
-			socket.getOutputStream().write(buf.array(), buf.getReadPosition(), count);
-			buf.skip(count);
+			int count = min(1 + random.nextInt(5), buf.headRemaining());
+			socket.getOutputStream().write(buf.array(), buf.head(), count);
+			buf.moveHead(count);
 		}
 	}
 
@@ -254,7 +254,7 @@ public class AsyncHttpServerTest {
 
 		try (Socket socket = new Socket()) {
 			socket.connect(new InetSocketAddress(port));
-			socket.getOutputStream().write(buf.array(), buf.getReadPosition(), buf.remainingToRead());
+			socket.getOutputStream().write(buf.array(), buf.head(), buf.headRemaining());
 			buf.recycle();
 			Thread.sleep(100);
 		}

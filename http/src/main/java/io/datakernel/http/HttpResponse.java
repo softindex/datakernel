@@ -259,7 +259,7 @@ public final class HttpResponse extends HttpMessage {
 			byte[] bytes = DEFAULT_CODE_BODIES.get(code);
 			setBody(bytes != null ? ByteBuf.wrapForReading(bytes) : null);
 		}
-		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.remainingToRead()));
+		setHeader(HttpHeaders.ofDecimal(CONTENT_LENGTH, body == null ? 0 : body.headRemaining()));
 		int estimateSize = estimateSize(LONGEST_FIRST_LINE_SIZE);
 		ByteBuf buf = ByteBufPool.allocate(estimateSize);
 

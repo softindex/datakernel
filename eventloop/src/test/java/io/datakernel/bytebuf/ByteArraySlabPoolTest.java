@@ -40,7 +40,7 @@ public class ByteArraySlabPoolTest {
 			assertEquals(poolSizes[i] == 0 ? 0 : 1, slab.size());
 			if (!slab.isEmpty()) {
 				assertTrue(slab.peek().isRecycled());
-				assertEquals(poolSizes[i], slab.peek().getLimit());
+				assertEquals(poolSizes[i], slab.peek().limit());
 			}
 		}
 	}
@@ -73,7 +73,7 @@ public class ByteArraySlabPoolTest {
 		ByteBuf bytes1 = ByteBufPool.allocate(size1);
 		assertTrue(size1 <= bytes1.array().length);
 
-		ByteBuf bytes2 = ByteBufPool.ensureWriteSize(bytes1, size2);
+		ByteBuf bytes2 = ByteBufPool.ensureTailRemaining(bytes1, size2);
 		assertTrue(size2 <= bytes2.array().length);
 
 		assertEquals(equals, bytes1 == bytes2);

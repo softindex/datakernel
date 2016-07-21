@@ -68,7 +68,7 @@ public abstract class HttpMessage {
 
 	protected void setHeader(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		setHeader(HttpHeaders.asBytes(header, value.array(), value.getReadPosition(), value.remainingToRead()));
+		setHeader(HttpHeaders.asBytes(header, value.array(), value.head(), value.headRemaining()));
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
 				headerBufs = new ArrayList<>(4);
@@ -79,7 +79,7 @@ public abstract class HttpMessage {
 
 	protected void addHeader(HttpHeader header, ByteBuf value) {
 		assert !recycled;
-		addHeader(HttpHeaders.asBytes(header, value.array(), value.getReadPosition(), value.remainingToRead()));
+		addHeader(HttpHeaders.asBytes(header, value.array(), value.head(), value.headRemaining()));
 		if (value.isRecycleNeeded()) {
 			if (headerBufs == null) {
 				headerBufs = new ArrayList<>(4);
@@ -217,7 +217,7 @@ public abstract class HttpMessage {
 		}
 		size += 4; // CR,LF,CR,LF
 		if (body != null)
-			size += body.remainingToRead();
+			size += body.headRemaining();
 		return size;
 	}
 

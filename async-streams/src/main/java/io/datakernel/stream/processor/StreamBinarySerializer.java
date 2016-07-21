@@ -127,10 +127,10 @@ public final class StreamBinarySerializer<T> extends AbstractStreamTransformer_1
 		}
 
 		private void flushBuffer(StreamDataReceiver<ByteBuf> receiver) {
-			byteBuf.setReadPosition(0);
+			byteBuf.head(0);
 			int size = outputBuffer.position();
 			if (size != 0) {
-				byteBuf.setWritePosition(size);
+				byteBuf.tail(size);
 				jmxBytes += size;
 				jmxBufs++;
 				if (outputProducer.getProducerStatus().isOpen()) {

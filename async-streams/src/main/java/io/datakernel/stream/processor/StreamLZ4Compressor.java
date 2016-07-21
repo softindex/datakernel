@@ -88,9 +88,9 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		public void onData(ByteBuf buf) {
 			jmxBufs++;
 
-			jmxBytesInput += buf.remainingToRead();
-			ByteBuf outputBuffer = compressBlock(compressor, checksum, buf.array(), buf.getReadPosition(), buf.remainingToRead());
-			jmxBytesOutput += outputBuffer.remainingToRead();
+			jmxBytesInput += buf.headRemaining();
+			ByteBuf outputBuffer = compressBlock(compressor, checksum, buf.array(), buf.head(), buf.headRemaining());
+			jmxBytesOutput += outputBuffer.headRemaining();
 
 			send(outputBuffer);
 			buf.recycle();
@@ -170,7 +170,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		writeIntLE(check, outputBytes, MAGIC_LENGTH + 9);
 		assert MAGIC_LENGTH + 13 == HEADER_LENGTH;
 
-		outputBuf.setWritePosition(HEADER_LENGTH + compressedLength);
+		outputBuf.tail(HEADER_LENGTH + compressedLength);
 
 		return outputBuf;
 	}
@@ -187,7 +187,7 @@ public final class StreamLZ4Compressor extends AbstractStreamTransformer_1_1<Byt
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 5);
 		writeIntLE(0, outputBytes, MAGIC_LENGTH + 9);
 
-		outputBuf.setWritePosition(HEADER_LENGTH);
+		outputBuf.tail(HEADER_LENGTH);
 		return outputBuf;
 	}
 

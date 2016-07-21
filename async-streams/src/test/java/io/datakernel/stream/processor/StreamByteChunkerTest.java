@@ -51,13 +51,13 @@ public class StreamByteChunkerTest {
 	private static byte[] byteBufsToByteArray(List<ByteBuf> byteBufs) {
 		int size = 0;
 		for (ByteBuf byteBuf : byteBufs) {
-			size += byteBuf.remainingToRead();
+			size += byteBuf.headRemaining();
 		}
 		byte[] result = new byte[size];
 		int pos = 0;
 		for (ByteBuf byteBuf : byteBufs) {
-			System.arraycopy(byteBuf.array(), byteBuf.getReadPosition(), result, pos, byteBuf.remainingToRead());
-			pos += byteBuf.remainingToRead();
+			System.arraycopy(byteBuf.array(), byteBuf.head(), result, pos, byteBuf.headRemaining());
+			pos += byteBuf.headRemaining();
 		}
 		return result;
 	}
@@ -73,7 +73,7 @@ public class StreamByteChunkerTest {
 		for (int i = 0; i < buffersCount; i++) {
 			ByteBuf buffer = createRandomByteBuf(random);
 			buffers.add(buffer);
-			totalLen += buffer.remainingToRead();
+			totalLen += buffer.headRemaining();
 		}
 		byte[] expected = byteBufsToByteArray(buffers);
 
@@ -95,12 +95,12 @@ public class StreamByteChunkerTest {
 		int actualLen = 0;
 		for (int i = 0; i < receivedBuffers.size() - 1; i++) {
 			ByteBuf buf = receivedBuffers.get(i);
-			actualLen += buf.remainingToRead();
-			int receivedSize = buf.remainingToRead();
+			actualLen += buf.headRemaining();
+			int receivedSize = buf.headRemaining();
 			assertTrue(receivedSize >= bufSize / 2 && receivedSize <= bufSize);
 			buf.recycle();
 		}
-		actualLen += receivedBuffers.get(receivedBuffers.size() - 1).remainingToRead();
+		actualLen += receivedBuffers.get(receivedBuffers.size() - 1).headRemaining();
 		receivedBuffers.get(receivedBuffers.size() - 1).recycle();
 
 		assertEquals(totalLen, actualLen);

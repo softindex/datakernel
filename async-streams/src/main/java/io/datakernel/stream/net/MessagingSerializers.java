@@ -21,11 +21,11 @@ public class MessagingSerializers {
 		return new MessagingSerializer<I, O>() {
 			@Override
 			public I tryDeserialize(ByteBuf buf) throws ParseException {
-				for (int len = 0; len < buf.remainingToRead(); len++) {
+				for (int len = 0; len < buf.headRemaining(); len++) {
 					if (buf.peek(len) == '\0') {
 						try {
-							I item = in.fromJson(ByteBufStrings.decodeUtf8(buf.array(), buf.getReadPosition(), len), inputClass);
-							buf.skip(len + 1); // skipping msg + delimiter
+							I item = in.fromJson(ByteBufStrings.decodeUtf8(buf.array(), buf.head(), len), inputClass);
+							buf.moveHead(len + 1); // skipping msg + delimiter
 							return item;
 						} catch (JsonSyntaxException e) {
 							throw DESERIALIZE_ERR;
@@ -57,7 +57,7 @@ public class MessagingSerializers {
 
 		@Override
 		public Appendable append(CharSequence csq) {
-			container = ByteBufPool.ensureWriteSize(container, csq.length() * 3);
+			container = ByteBufPool.ensureTailRemaining(container, csq.length() * 3);
 			for (int i = 0; i < csq.length(); i++) {
 				putUtf8(container, csq.charAt(i));
 			}
@@ -71,7 +71,7 @@ public class MessagingSerializers {
 
 		@Override
 		public Appendable append(char c) {
-			container = ByteBufPool.ensureWriteSize(container, 3);
+			container = ByteBufPool.ensureTailRemaining(container, 3);
 			putUtf8(container, c);
 			return this;
 		}

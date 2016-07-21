@@ -29,13 +29,13 @@ import java.util.zip.GZIPOutputStream;
 class GzipProcessor {
 	static ByteBuf fromGzip(ByteBuf raw) throws ParseException {
 		try {
-			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.getReadPosition(), raw.remainingToRead()));
+			GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(raw.array(), raw.head(), raw.headRemaining()));
 			int nRead;
 			ByteBuf data = ByteBufPool.allocate(256);
-			while ((nRead = gzip.read(data.array(), data.getWritePosition(), data.remainingToWrite())) != -1) {
-				data.advance(nRead);
+			while ((nRead = gzip.read(data.array(), data.tail(), data.tailRemaining())) != -1) {
+				data.moveTail(nRead);
 				if (!data.canWrite()) {
-					data = ByteBufPool.ensureWriteSize(data, data.getLimit() * 2);
+					data = ByteBufPool.ensureTailRemaining(data, data.limit() * 2);
 				}
 			}
 			gzip.close();
@@ -50,7 +50,7 @@ class GzipProcessor {
 		try {
 			ByteBufOutputStream out = new ByteBufOutputStream();
 			GZIPOutputStream gzip = new GZIPOutputStream(out);
-			gzip.write(raw.array(), raw.getReadPosition(), raw.remainingToRead());
+			gzip.write(raw.array(), raw.head(), raw.headRemaining());
 			gzip.close();
 			raw.recycle();
 			return out.getBuf();
@@ -68,7 +68,7 @@ class GzipProcessor {
 				container = ByteBufPool.allocate(256);
 			}
 			if (!container.canWrite()) {
-				container = ByteBufPool.ensureWriteSize(container, container.getLimit() * 2);
+				container = ByteBufPool.ensureTailRemaining(container, container.limit() * 2);
 			}
 			container.put((byte) b);
 		}
@@ -83,10 +83,10 @@ class GzipProcessor {
 			if (container == null) {
 				container = ByteBufPool.allocate(256);
 			}
-			while (container.remainingToWrite() < len) {
-				container = ByteBufPool.ensureWriteSize(container, container.getLimit() * 2);
+			while (container.tailRemaining() < len) {
+				container = ByteBufPool.ensureTailRemaining(container, container.limit() * 2);
 			}
-			container.put(bytes, off, off + len);
+			container.put(bytes, off, len);
 		}
 
 		public ByteBuf getBuf() {

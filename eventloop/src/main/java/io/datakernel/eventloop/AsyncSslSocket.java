@@ -219,8 +219,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private SSLEngineResult tryToWriteToApp() throws SSLException {
 		ByteBuf dstBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
-		ByteBuffer srcBuffer = net2engine.toByteBufferInReadMode();
-		ByteBuffer dstBuffer = dstBuf.toByteBufferInWriteMode();
+		ByteBuffer srcBuffer = net2engine.toHeadByteBuffer();
+		ByteBuffer dstBuffer = dstBuf.toTailByteBuffer();
 
 		SSLEngineResult result;
 		try {
@@ -231,13 +231,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			throw e;
 		}
 
-		net2engine.setReadPosition(srcBuffer.position());
+		net2engine.ofHeadByteBuffer(srcBuffer);
 		if (!net2engine.canRead()) {
 			net2engine.recycle();
 			net2engine = ByteBuf.empty();
 		}
 
-		dstBuf.setWritePosition(dstBuffer.position());
+		dstBuf.ofTailByteBuffer(dstBuffer);
 		if (dstBuf.canRead()) {
 			downstreamEventHandler.onRead(dstBuf);
 		} else {
@@ -249,8 +249,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private SSLEngineResult tryToWriteToNet() throws SSLException {
 		ByteBuf dstBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
-		ByteBuffer srcBuffer = app2engine.toByteBufferInReadMode();
-		ByteBuffer dstBuffer = dstBuf.toByteBufferInWriteMode();
+		ByteBuffer srcBuffer = app2engine.toHeadByteBuffer();
+		ByteBuffer dstBuffer = dstBuf.toTailByteBuffer();
 
 		SSLEngineResult result;
 		try {
@@ -260,13 +260,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			throw e;
 		}
 
-		app2engine.setReadPosition(srcBuffer.position());
+		app2engine.ofHeadByteBuffer(srcBuffer);
 		if (!app2engine.canRead()) {
 			app2engine.recycle();
 			app2engine = ByteBuf.empty();
 		}
 
-		dstBuf.setWritePosition(dstBuffer.position());
+		dstBuf.ofTailByteBuffer(dstBuffer);
 		if (dstBuf.canRead()) {
 			upstream.write(dstBuf);
 		} else {

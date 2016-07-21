@@ -58,8 +58,8 @@ public class StreamSerializerTest {
 		eventloop.run();
 		List<ByteBuf> result = consumer.getList();
 		Assert.assertEquals(2, result.size());
-		Assert.assertEquals(16, result.get(0).getLimit());
-		Assert.assertEquals(16, result.get(1).getLimit());
+		Assert.assertEquals(16, result.get(0).limit());
+		Assert.assertEquals(16, result.get(1).limit());
 		Assert.assertEquals(10, result.get(0).array()[4]);
 		Assert.assertEquals(20, result.get(0).array()[9]);
 		Assert.assertEquals(30, result.get(0).array()[14]);

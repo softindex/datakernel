@@ -75,9 +75,9 @@ public class UdpSocketHandlerTest {
 			@Override
 			public void onRead(UdpPacket packet) {
 				byte[] bytesReceived = packet.getBuf().array();
-				byte[] message = new byte[packet.getBuf().remainingToRead()];
+				byte[] message = new byte[packet.getBuf().headRemaining()];
 
-				System.arraycopy(bytesReceived, 0, message, 0, packet.getBuf().remainingToRead());
+				System.arraycopy(bytesReceived, 0, message, 0, packet.getBuf().headRemaining());
 				assertArrayEquals(bytesToSend, message);
 
 				packet.recycle();

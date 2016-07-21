@@ -41,28 +41,28 @@ public class ByteBufTest {
 	@Test
 	public void testEditing() {
 		ByteBuf buf = createEmptyByteBufOfSize(256);
-		assertEquals(0, buf.getReadPosition());
+		assertEquals(0, buf.head());
 
 		buf.put((byte) 'H');
-		assertEquals(1, buf.getWritePosition());
+		assertEquals(1, buf.tail());
 		assertEquals('H', buf.at(0));
 
 		buf.put(new byte[]{'e', 'l', 'l', 'o'});
-		buf.put(new byte[]{';', ' ', ',', ' ', '.', ' ', '!', ' '}, 2, 4);
-		assertEquals(7, buf.getWritePosition());
+		buf.put(new byte[]{';', ' ', ',', ' ', '.', ' ', '!', ' '}, 2, 2);
+		assertEquals(7, buf.tail());
 
 		ByteBuf worldBuf = ByteBuf.wrapForReading(new byte[]{'W', 'o', 'r', 'l', 'd', '!'});
 		buf.put(worldBuf);
 
-		assertEquals(worldBuf.getLimit(), worldBuf.getReadPosition());
+		assertEquals(worldBuf.limit(), worldBuf.head());
 		assertFalse(worldBuf.canWrite());
-		assertEquals(13, buf.getWritePosition());
+		assertEquals(13, buf.tail());
 
 		ByteBuf slice = buf.slice();
-		ByteBuf newBuf = createEmptyByteBufOfSize(slice.getLimit());
+		ByteBuf newBuf = createEmptyByteBufOfSize(slice.limit());
 		slice.drainTo(newBuf, 10);
-		assertEquals(10, slice.getReadPosition());
-		assertEquals(10, newBuf.getWritePosition());
+		assertEquals(10, slice.head());
+		assertEquals(10, newBuf.tail());
 
 		slice.drainTo(newBuf, 3);
 
@@ -72,10 +72,10 @@ public class ByteBufTest {
 	@Test
 	public void transformsToByteBufferInReadMode() {
 		ByteBuf buf = createEmptyByteBufOfSize(8);
-		buf.setWritePosition(5);
-		buf.setReadPosition(2);
+		buf.tail(5);
+		buf.head(2);
 
-		ByteBuffer buffer = buf.toByteBufferInReadMode();
+		ByteBuffer buffer = buf.toHeadByteBuffer();
 
 		assertEquals(2, buffer.position());
 		assertEquals(5, buffer.limit());
@@ -84,10 +84,10 @@ public class ByteBufTest {
 	@Test
 	public void transformsToByteBufferInWriteMode() {
 		ByteBuf buf = createEmptyByteBufOfSize(8);
-		buf.setWritePosition(5);
-		buf.setReadPosition(2);
+		buf.tail(5);
+		buf.head(2);
 
-		ByteBuffer buffer = buf.toByteBufferInWriteMode();
+		ByteBuffer buffer = buf.toTailByteBuffer();
 
 		assertEquals(5, buffer.position());
 		assertEquals(8, buffer.limit());
@@ -97,8 +97,8 @@ public class ByteBufTest {
 	public void testPoolAndRecycleMechanism() {
 		int size = 500;
 		ByteBuf buf = ByteBufPool.allocate(size);
-		assertNotEquals(size, buf.getLimit()); // {expected to create 2^N sized bufs only, 500 not in {a}|a == 2^N } => size != limit
-		assertEquals(512, buf.getLimit());
+		assertNotEquals(size, buf.limit()); // {expected to create 2^N sized bufs only, 500 not in {a}|a == 2^N } => size != limit
+		assertEquals(512, buf.limit());
 
 		buf.put(BYTES);
 
@@ -111,7 +111,7 @@ public class ByteBufTest {
 		}
 
 		buf = ByteBufPool.allocate(300);
-		buf.setWritePosition(BYTES.length);
+		buf.tail(BYTES.length);
 		byte[] bytes = new byte[BYTES.length];
 		buf.drainTo(bytes, 0, bytes.length);
 		assertArrayEquals(bytes, BYTES);
@@ -151,11 +151,11 @@ public class ByteBufTest {
 		MockConsumer consumer = new MockConsumer();
 		for (int i = 0; i < 100; i++) {
 			ByteBuf buf = ByteBufPool.allocate(32);
-			ByteBuffer buffer = buf.toByteBufferInWriteMode();
+			ByteBuffer buffer = buf.toTailByteBuffer();
 			buffer.put(("Test message " + i).getBytes());
 			buffer.flip();
-			buf.setWritePosition(buffer.limit());
-			buf.setReadPosition(buffer.position());
+			buf.tail(buffer.limit());
+			buf.head(buffer.position());
 			consumer.consume(buf.slice());
 			buf.recycle();
 		}
@@ -193,12 +193,12 @@ public class ByteBufTest {
 	public void testSkipAndAdvance() {
 		ByteBuf buf = createEmptyByteBufOfSize(5);
 		buf.put(new byte[]{'a', 'b', 'c'});
-		buf.skip(2);
+		buf.moveHead(2);
 		assertEquals('c', buf.get());
 		buf.array[3] = 'd';
 		buf.array[4] = 'e';
 		assertFalse(buf.canRead());
-		buf.advance(2);
+		buf.moveTail(2);
 		assertTrue(buf.canRead());
 		byte[] bytes = new byte[2];
 		buf.drainTo(bytes, 0, 2);

@@ -34,17 +34,17 @@ public class ByteBuf {
 
 	protected final byte[] array;
 
-	private int readPosition;
-	private int writePosition;
+	private int head;
+	private int tail;
 
 	int refs;
 
 	// creators
-	private ByteBuf(byte[] array, int readPosition, int writePosition) {
-		assert readPosition >= 0 && readPosition <= writePosition && writePosition <= array.length;
+	private ByteBuf(byte[] array, int head, int tail) {
+		assert head >= 0 && head <= tail && tail <= array.length;
 		this.array = array;
-		this.readPosition = readPosition;
-		this.writePosition = writePosition;
+		this.head = head;
+		this.tail = tail;
 	}
 
 	public static ByteBuf empty() {
@@ -63,40 +63,13 @@ public class ByteBuf {
 		return new ByteBuf(bytes, readPosition, writePosition);
 	}
 
-	// getters & setters
-	public int getReadPosition() {
-		assert !isRecycled();
-		return readPosition;
-	}
-
-	public int getWritePosition() {
-		assert !isRecycled();
-		return writePosition;
-	}
-
-	public int getLimit() {
-		return array.length;
-	}
-
-	public void setReadPosition(int pos) {
-		assert !isRecycled();
-		assert pos >= readPosition && pos <= writePosition;
-		this.readPosition = pos;
-	}
-
-	public void setWritePosition(int pos) {
-		assert !isRecycled();
-		assert pos >= readPosition && pos <= array.length;
-		this.writePosition = pos;
-	}
-
 	// slicing
 	public ByteBuf slice() {
-		return slice(readPosition, remainingToRead());
+		return slice(head, headRemaining());
 	}
 
 	public ByteBuf slice(int length) {
-		return slice(readPosition, length);
+		return slice(head, length);
 	}
 
 	public ByteBuf slice(int offset, int length) {
@@ -129,8 +102,8 @@ public class ByteBuf {
 
 	public void rewind() {
 		assert !isRecycled();
-		writePosition = 0;
-		readPosition = 0;
+		tail = 0;
+		head = 0;
 	}
 
 	public boolean isRecycleNeeded() {
@@ -138,36 +111,163 @@ public class ByteBuf {
 	}
 
 	// byte buffers
-	public ByteBuffer toByteBufferInReadMode() {
+	public ByteBuffer toHeadByteBuffer() {
 		assert !isRecycled();
-		return ByteBuffer.wrap(array, readPosition, writePosition - readPosition);
+		return ByteBuffer.wrap(array, head, tail - head);
 	}
 
-	public ByteBuffer toByteBufferInWriteMode() {
+	public ByteBuffer toTailByteBuffer() {
 		assert !isRecycled();
-		return ByteBuffer.wrap(array, writePosition, array.length - writePosition);
+		return ByteBuffer.wrap(array, tail, array.length - tail);
 	}
 
-//	public ByteBuffer toByteBuffer() {
-//		// assume ByteBuffer is being passed in 'read mode' pos=0; lim=wPos
-//		assert !isRecycled();
-//		ByteBuffer buffer = ByteBuffer.wrap(array, rPos, array.length - rPos);
-//		buffer.position(wPos);
-//		return buffer;
-//	}
-//
-//	public void setByteBuffer(ByteBuffer buffer) {
-//		// assume ByteBuffer is being passed in 'read mode' pos=0, lim=wPos
-//		assert !isRecycled();
-//		assert this.array == buffer.array();
-//		assert buffer.arrayOffset() == 0;
-//		setReadPosition(buffer.position());
-//		setWritePosition(buffer.limit());
-//	}
+	public void ofHeadByteBuffer(ByteBuffer byteBuffer) {
+		assert !isRecycled();
+		assert array == byteBuffer.array();
+		assert byteBuffer.limit() == tail;
+		this.head = byteBuffer.position();
+	}
+
+	public void ofTailByteBuffer(ByteBuffer byteBuffer) {
+		assert !isRecycled();
+		assert array == byteBuffer.array();
+		assert byteBuffer.limit() == array.length;
+		this.tail = byteBuffer.position();
+	}
+
+	// getters & setters
+
+	public byte[] array() {
+		return array;
+	}
+
+	public int head() {
+		assert !isRecycled();
+		return head;
+	}
+
+	public int tail() {
+		assert !isRecycled();
+		return tail;
+	}
+
+	public int limit() {
+		return array.length;
+	}
+
+	public void head(int pos) {
+		assert !isRecycled();
+		assert pos >= head && pos <= tail;
+		this.head = pos;
+	}
+
+	public void tail(int pos) {
+		assert !isRecycled();
+		assert pos >= head && pos <= array.length;
+		this.tail = pos;
+	}
+
+	public void moveHead(int delta) {
+		assert !isRecycled();
+		assert head + delta >= 0;
+		assert head + delta <= tail;
+		head += delta;
+	}
+
+	public void moveTail(int delta) {
+		assert !isRecycled();
+		assert tail + delta >= head;
+		assert tail + delta <= array.length;
+		tail += delta;
+	}
+
+	public int tailRemaining() {
+		assert !isRecycled();
+		return array.length - tail;
+	}
+
+	public int headRemaining() {
+		assert !isRecycled();
+		return tail - head;
+	}
+
+	public boolean canWrite() {
+		assert !isRecycled();
+		return tail != array.length;
+	}
+
+	public boolean canRead() {
+		assert !isRecycled();
+		return head != tail;
+	}
+
+	public byte get() {
+		assert !isRecycled();
+		assert head < tail;
+		return array[head++];
+	}
+
+	public byte at(int index) {
+		assert !isRecycled();
+		return array[index];
+	}
+
+	public byte peek() {
+		assert !isRecycled();
+		return array[head];
+	}
+
+	public byte peek(int offset) {
+		assert !isRecycled();
+		assert (head + offset) < tail;
+		return array[head + offset];
+	}
+
+	public void drainTo(byte[] array, int offset, int length) {
+		assert !isRecycled();
+		assert length >= 0 && (offset + length) <= array.length;
+		assert this.head + length <= this.tail;
+		System.arraycopy(this.array, this.head, array, offset, length);
+		this.head += length;
+	}
+
+	public void drainTo(ByteBuf buf, int length) {
+		assert !buf.isRecycled();
+		assert buf.tail + length <= buf.array.length;
+		drainTo(buf.array, buf.tail, length);
+		buf.tail += length;
+	}
+
+	public void set(int index, byte b) {
+		assert !isRecycled();
+		array[index] = b;
+	}
+
+	public void put(byte b) {
+		set(tail, b);
+		tail++;
+	}
+
+	public void put(ByteBuf buf) {
+		put(buf.array, buf.head, buf.tail - buf.head);
+		buf.head = buf.tail;
+	}
+
+	public void put(byte[] bytes) {
+		put(bytes, 0, bytes.length);
+	}
+
+	public void put(byte[] bytes, int offset, int length) {
+		assert !isRecycled();
+		assert tail + length <= array.length;
+		assert offset + length <= bytes.length;
+		System.arraycopy(bytes, offset, array, tail, length);
+		tail += length;
+	}
 
 	public int find(byte b) {
 		assert !isRecycled();
-		for (int i = readPosition; i < writePosition; i++) {
+		for (int i = head; i < tail; i++) {
 			if (array[i] == b) return i;
 		}
 		return -1;
@@ -179,123 +279,18 @@ public class ByteBuf {
 
 	public int find(byte[] bytes, int off, int len) {
 		assert !isRecycled();
-		for (int pos = readPosition; pos < writePosition; pos++) {
-			if (array[pos] == bytes[off] && remainingToRead() >= bytes.length) {
-				for (int i = 1; i < len; i++) {
-					if (array[pos + i] != bytes[off + i]) {
-						break;
-					} else if (i == len - 1) {
-						return pos;
-					}
+		L:
+		for (int pos = head; pos < tail - len; pos++) {
+			for (int i = 0; i < len; i++) {
+				if (array[pos + i] != bytes[off + i]) {
+					continue L;
 				}
 			}
+			return pos;
 		}
 		return -1;
 	}
 
-	// getters
-	public byte[] array() {
-		return array;
-	}
-
-	public int remainingToWrite() {
-		assert !isRecycled();
-		return array.length - writePosition;
-	}
-
-	public int remainingToRead() {
-		assert !isRecycled();
-		return writePosition - readPosition;
-	}
-
-	public boolean canWrite() {
-		assert !isRecycled();
-		return writePosition != array.length;
-	}
-
-	public boolean canRead() {
-		assert !isRecycled();
-		return readPosition != writePosition;
-	}
-
-	public void advance(int size) {
-		assert !isRecycled();
-		assert writePosition + size <= array.length;
-		writePosition += size;
-	}
-
-	public void skip(int size) {
-		assert !isRecycled();
-		assert readPosition + size <= array.length;
-		readPosition += size;
-	}
-
-	public byte get() {
-		assert !isRecycled();
-		assert readPosition < writePosition;
-		return array[readPosition++];
-	}
-
-	public byte at(int index) {
-		assert !isRecycled();
-		return array[index];
-	}
-
-	public byte peek() {
-		assert !isRecycled();
-		return array[readPosition];
-	}
-
-	public byte peek(int offset) {
-		assert !isRecycled();
-		assert (readPosition + offset) < writePosition;
-		return array[readPosition + offset];
-	}
-
-	public void drainTo(byte[] array, int offset, int size) {
-		assert !isRecycled();
-		assert size >= 0 && (offset + size) <= array.length;
-		assert this.readPosition + size <= this.writePosition;
-		System.arraycopy(this.array, this.readPosition, array, offset, size);
-		this.readPosition += size;
-	}
-
-	public void drainTo(ByteBuf buf, int size) {
-		assert !buf.isRecycled();
-		drainTo(buf.array, buf.writePosition, size);
-		buf.writePosition += size;
-	}
-
-	// editing
-	public void set(int index, byte b) {
-		assert !isRecycled();
-		array[index] = b;
-	}
-
-	public void put(byte b) {
-		set(writePosition, b);
-		writePosition++;
-	}
-
-	public void put(ByteBuf buf) {
-		put(buf.array, buf.readPosition, buf.writePosition);
-		buf.readPosition = buf.writePosition;
-	}
-
-	public void put(byte[] bytes) {
-		put(bytes, 0, bytes.length);
-	}
-
-	public void put(byte[] bytes, int off, int lim) {
-		assert !isRecycled();
-		assert writePosition + (lim - off) <= array.length;
-		assert bytes.length >= lim;
-		int length = lim - off;
-		System.arraycopy(bytes, off, array, writePosition, length);
-		writePosition += length;
-	}
-
-	// miscellaneous
 	@Override
 	public boolean equals(Object o) {
 		assert !isRecycled();
@@ -304,8 +299,8 @@ public class ByteBuf {
 
 		ByteBuf buf = (ByteBuf) o;
 
-		return remainingToRead() == buf.remainingToRead() &&
-				arraysEquals(this.array, this.readPosition, this.writePosition, buf.array, buf.readPosition);
+		return headRemaining() == buf.headRemaining() &&
+				arraysEquals(this.array, this.head, this.tail, buf.array, buf.head);
 	}
 
 	private boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {
@@ -321,7 +316,7 @@ public class ByteBuf {
 	public int hashCode() {
 		assert !isRecycled();
 		int result = 1;
-		for (int i = readPosition; i < writePosition; i++) {
+		for (int i = head; i < tail; i++) {
 			result = 31 * result + array[i];
 		}
 		return result;
@@ -329,9 +324,9 @@ public class ByteBuf {
 
 	@Override
 	public String toString() {
-		char[] chars = new char[remainingToRead() < 256 ? remainingToRead() : 256];
+		char[] chars = new char[headRemaining() < 256 ? headRemaining() : 256];
 		for (int i = 0; i < chars.length; i++) {
-			byte b = array[readPosition + i];
+			byte b = array[head + i];
 			chars[i] = (b >= ' ') ? (char) b : (char) 65533;
 		}
 		return new String(chars);

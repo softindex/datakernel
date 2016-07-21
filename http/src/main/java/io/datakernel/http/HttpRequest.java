@@ -225,7 +225,7 @@ public final class HttpRequest extends HttpMessage {
 		assert !recycled;
 		if (method == POST && getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
-				&& body.getReadPosition() != body.getWritePosition()) {
+				&& body.head() != body.tail()) {
 			if (bodyParameters == null) {
 				bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
 			}
@@ -332,7 +332,7 @@ public final class HttpRequest extends HttpMessage {
 					throw new AssertionError("Can't encode http request body");
 				}
 			}
-			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.remainingToRead()));
+			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.headRemaining()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE

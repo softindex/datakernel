@@ -16,7 +16,6 @@
 
 package io.datakernel.http;
 
-import io.datakernel.annotation.Nullable;
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
@@ -72,14 +71,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		int sp1;
 		if (line.peek(6) == SP) {
-			sp1 = line.getReadPosition() + 7;
+			sp1 = line.head() + 7;
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
-			sp1 = line.getReadPosition() + 9;
+			sp1 = line.head() + 9;
 		} else
-			throw new ParseException("Invalid response: " + new String(line.array(), line.getReadPosition(), line.remainingToRead()));
+			throw new ParseException("Invalid response: " + new String(line.array(), line.head(), line.headRemaining()));
 
 		int sp2;
-		for (sp2 = sp1; sp2 < line.getWritePosition(); sp2++) {
+		for (sp2 = sp1; sp2 < line.tail(); sp2++) {
 			if (line.at(sp2) == SP) {
 				break;
 			}

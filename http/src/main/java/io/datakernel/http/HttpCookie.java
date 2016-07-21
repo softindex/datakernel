@@ -70,7 +70,7 @@ public final class HttpCookie {
 	}
 
 	static void parse(ByteBuf buf, List<HttpCookie> cookies) throws ParseException {
-		parse(buf.array(), buf.getReadPosition(), buf.getWritePosition(), cookies);
+		parse(buf.array(), buf.head(), buf.tail(), cookies);
 	}
 
 	static void parse(byte[] bytes, int pos, int end, List<HttpCookie> cookies) throws ParseException {
@@ -115,8 +115,8 @@ public final class HttpCookie {
 	}
 
 	static void renderSimple(List<HttpCookie> cookies, ByteBuf buf) {
-		int pos = renderSimple(cookies, buf.array(), buf.getWritePosition());
-		buf.setWritePosition(pos);
+		int pos = renderSimple(cookies, buf.array(), buf.tail());
+		buf.tail(pos);
 	}
 
 	static int renderSimple(List<HttpCookie> cookies, byte[] bytes, int pos) {

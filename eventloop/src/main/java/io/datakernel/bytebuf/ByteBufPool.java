@@ -37,31 +37,6 @@ public class ByteBufPool {
 		return buf;
 	}
 
-	public static ByteBuf ensureWriteSize(ByteBuf buf, int newSize) {
-		assert !(buf instanceof ByteBuf.ByteBufSlice);
-		int limit = buf.getLimit();
-		if (buf.remainingToWrite() >= newSize && (limit <= minSize || numberOfLeadingZeros(limit - 1) == numberOfLeadingZeros(newSize - 1))) {
-			return buf;
-		} else {
-			ByteBuf newBuf = allocate(newSize + buf.remainingToRead());
-			newBuf.put(buf);
-			buf.recycle();
-			return newBuf;
-		}
-	}
-
-	public static ByteBuf append(ByteBuf to, ByteBuf from) {
-		assert !to.isRecycled() && !from.isRecycled();
-		if (to.remainingToRead() == 0) {
-			to.recycle();
-			return from;
-		}
-		to = ensureWriteSize(to, from.remainingToRead());
-		to.put(from);
-		from.recycle();
-		return to;
-	}
-
 	public static void recycle(ByteBuf buf) {
 		assert buf.array.length >= minSize && buf.array.length <= maxSize;
 		ConcurrentStack<ByteBuf> queue = slabs[32 - numberOfLeadingZeros(buf.array.length - 1)];
@@ -87,6 +62,42 @@ public class ByteBufPool {
 			slabs[i] = new ConcurrentStack<>();
 		}
 		return slabs;
+	}
+
+	public static ByteBuf ensureTailRemaining(ByteBuf buf, int newSize) {
+		assert !(buf instanceof ByteBuf.ByteBufSlice);
+		int limit = buf.limit();
+		if (buf.tailRemaining() >= newSize && (limit <= minSize || numberOfLeadingZeros(limit - 1) == numberOfLeadingZeros(newSize - 1))) {
+			return buf;
+		} else {
+			ByteBuf newBuf = allocate(newSize + buf.headRemaining());
+			newBuf.put(buf);
+			buf.recycle();
+			return newBuf;
+		}
+	}
+
+	public static ByteBuf append(ByteBuf to, ByteBuf from) {
+		assert !to.isRecycled() && !from.isRecycled();
+		if (to.headRemaining() == 0) {
+			to.recycle();
+			return from;
+		}
+		to = ensureTailRemaining(to, from.headRemaining());
+		to.put(from);
+		from.recycle();
+		return to;
+	}
+
+	public static ByteBuf append(ByteBuf to, byte[] from, int offset, int length) {
+		assert !to.isRecycled();
+		to = ensureTailRemaining(to, length);
+		to.put(from, offset, length);
+		return to;
+	}
+
+	public static ByteBuf append(ByteBuf to, byte[] from) {
+		return append(to, from, 0, from.length);
 	}
 
 	//region  +jmx
