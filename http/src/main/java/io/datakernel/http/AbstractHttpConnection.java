@@ -109,6 +109,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	}
 
 	public final void close() {
+		if (isClosed()) return;
 		asyncTcpSocket.close();
 		readQueue.clear();
 		onClosed();
@@ -135,7 +136,6 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	}
 
 	protected void onClosed() {
-		assert !isClosed();
 		closed = true;
 		if (isInPool()) {
 			removeFromPool();

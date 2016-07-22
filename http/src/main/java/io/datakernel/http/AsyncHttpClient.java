@@ -198,7 +198,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	public void send(final HttpRequest request, final int timeout, final ResultCallback<HttpResponse> callback) {
 		assert eventloop.inEventloopThread();
 
-		logger.trace("Calling {}", request);
 		totalRequests.recordEvent();
 		getUrlAsync(request, timeout, callback);
 	}
@@ -243,7 +242,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 						asyncTcpSocket,
 						AsyncHttpClient.this, headerChars, maxHttpMessageSize);
 
-				asyncTcpSocketImpl.setEventHandler(connection);
+				asyncTcpSocket.setEventHandler(connection);
 				asyncTcpSocketImpl.register();
 
 				sendRequest(connection, request, timeoutTime, callback);

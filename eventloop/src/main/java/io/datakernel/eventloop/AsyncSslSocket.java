@@ -18,6 +18,8 @@ package io.datakernel.eventloop;
 
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
@@ -30,8 +32,11 @@ import java.util.concurrent.Executor;
 
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
+import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
 
 public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.EventHandler {
+	private static final Logger logger = LoggerFactory.getLogger(AsyncSslSocket.class);
+
 	private final Eventloop eventloop;
 	private final SSLEngine engine;
 	private final Executor executor;
@@ -39,14 +44,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	private AsyncTcpSocket.EventHandler downstreamEventHandler;
 
-	private boolean ignoreIOErrors = false;
-
 	private ByteBuf net2engine = ByteBuf.empty();
 	private ByteBuf app2engine = ByteBuf.empty();
 
-	private Status status = Status.OPEN;
-	private boolean readInterest = false;
-	private boolean writeInterest = false;
 	private boolean syncPosted = false;
 	private boolean flushAndClose = false;
 
@@ -75,7 +75,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void onRegistered() {
-		status = Status.OPEN;
 		downstreamEventHandler.onRegistered();
 		try {
 			engine.beginHandshake();
@@ -87,43 +86,35 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void onRead(ByteBuf buf) {
-		if (!isOpen()) return;
 		net2engine = ByteBufPool.append(net2engine, buf);
 		sync();
 	}
 
 	@Override
 	public void onShutdownInput() {
+		if (engine.isInboundDone()) return;
 		try {
 			engine.closeInbound();
-			status = Status.CLOSED;
 		} catch (SSLException e) {
-			status = Status.CLOSED_WITH_ERROR;
 			downstreamEventHandler.onClosedWithError(e);
-			engine.closeOutbound();  // try to send close_notify
-			ignoreIOErrors = true;  // ignore io errors, because downstreamEventHandler was already notified about error
+//			engine.closeOutbound();  // try to send close_notify
 			sync();
 		}
 	}
 
 	@Override
 	public void onWrite() {
-		if (status == Status.CLOSING) {
+		if (engine.isOutboundDone()) {
 			upstream.close();
-			status = Status.CLOSED;
 			return;
 		}
-		if (!isOpen()) return;
-		if (!app2engine.canRead() && writeInterest) {
-			writeInterest = false;
+		if (!app2engine.canRead() && engine.getHandshakeStatus() == NOT_HANDSHAKING) {
 			downstreamEventHandler.onWrite();
 		}
 	}
 
 	@Override
 	public void onClosedWithError(Exception e) {
-		if (!isOpen() || ignoreIOErrors) return;
-		status = Status.CLOSED_WITH_ERROR;
 		downstreamEventHandler.onClosedWithError(e);
 	}
 
@@ -134,9 +125,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void read() {
-		if (!isOpen()) return;
 		upstream.read();
-		readInterest = true;
 		postSync();
 	}
 
@@ -146,7 +135,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			eventloop.post(new Runnable() {
 				@Override
 				public void run() {
-					syncPosted = false;
 					sync();
 				}
 			});
@@ -157,9 +145,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	public void write(ByteBuf buf) {
 		assert !flushAndClose;
 
-		if (!isOpen()) return;
 		app2engine = ByteBufPool.append(app2engine, buf);
-		writeInterest = true;
 		postSync();
 	}
 
@@ -170,19 +156,8 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void close() {
-		eventloop.post(new Runnable() {
-			@Override
-			public void run() {
-				if (!isOpen()) return;
-				app2engine.recycle();
-				app2engine = ByteBuf.empty();
-				net2engine.recycle();
-				net2engine = ByteBuf.empty();
-				engine.closeOutbound();
-				status = Status.CLOSING;
-				postSync();
-			}
-		});
+		engine.closeOutbound();
+		postSync();
 	}
 
 	@Override
@@ -196,14 +171,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		return upstream.getRemoteSocketAddress();
 	}
 
-	public boolean isOpen() {
-		return status == Status.OPEN;
-	}
-
 	private void handleSSLException(final SSLException e, boolean post) {
-		if (!isOpen())
-			return;
-		status = Status.CLOSED_WITH_ERROR;
 		upstream.close();
 		if (post) {
 			eventloop.post(new Runnable() {
@@ -217,7 +185,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		}
 	}
 
-	private SSLEngineResult tryToWriteToApp() throws SSLException {
+	private SSLEngineResult tryToUnwrap() throws SSLException {
 		ByteBuf dstBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
 		ByteBuffer srcBuffer = net2engine.toHeadByteBuffer();
 		ByteBuffer dstBuffer = dstBuf.toTailByteBuffer();
@@ -225,6 +193,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		SSLEngineResult result;
 		try {
 			result = engine.unwrap(srcBuffer, dstBuffer);
+			logger.trace("" + result);
 		} catch (SSLException e) {
 			net2engine.recycle();
 			dstBuf.recycle();
@@ -247,7 +216,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		return result;
 	}
 
-	private SSLEngineResult tryToWriteToNet() throws SSLException {
+	private SSLEngineResult tryToWrap() throws SSLException {
 		ByteBuf dstBuf = ByteBufPool.allocate(engine.getSession().getPacketBufferSize());
 		ByteBuffer srcBuffer = app2engine.toHeadByteBuffer();
 		ByteBuffer dstBuffer = dstBuf.toTailByteBuffer();
@@ -255,6 +224,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		SSLEngineResult result;
 		try {
 			result = engine.wrap(srcBuffer, dstBuffer);
+			logger.trace("" + result);
 		} catch (SSLException e) {
 			dstBuf.recycle();
 			throw e;
@@ -295,6 +265,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	private void sync() {
+		syncPosted = false;
 		try {
 			doSync();
 		} catch (SSLException e) {
@@ -304,69 +275,57 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@SuppressWarnings("UnusedAssignment")
 	private void doSync() throws SSLException {
-		SSLEngineResult result;
+		HandshakeStatus handshakeStatus;
+		SSLEngineResult result = null;
 		while (true) {
-			HandshakeStatus handshakeStatus = engine.getHandshakeStatus();
+			handshakeStatus = engine.getHandshakeStatus();
 			if (handshakeStatus == NEED_WRAP) {
-				result = tryToWriteToNet();
-				if (engine.isOutboundDone()) {
-					return;
+				result = tryToWrap();
+				if (result.getHandshakeStatus() == FINISHED) {
+					upstream.read();
 				}
 			} else if (handshakeStatus == NEED_UNWRAP) {
-				if (net2engine != null) {
-					result = tryToWriteToApp();
-					if (result.getStatus() == BUFFER_UNDERFLOW) {
-						readInterest = true;
-						break;
-					}
-				} else {
-					readInterest = true;
+				result = tryToUnwrap();
+				if (result.getStatus() == BUFFER_UNDERFLOW) {
+					upstream.read();
 					break;
+				}
+				if (result.getHandshakeStatus() == FINISHED) {
+					upstream.read();
 				}
 			} else if (handshakeStatus == NEED_TASK) {
 				executeTasks();
 				return;
 			} else if (handshakeStatus == NOT_HANDSHAKING) {
-				// read data from net
-				if (readInterest) {
-					do {
-						result = tryToWriteToApp();
-					} while (result.bytesConsumed() != 0 || result.bytesProduced() != 0);
-				}
-				if (engine.isInboundDone()) { // receive close_notify (closing was initiated by other side)
-					status = Status.CLOSING;
-					engine.closeOutbound();
-					downstreamEventHandler.onShutdownInput();
 
-					// other side may have already closed the connection, so we can get "broken pipe" exception
-					ignoreIOErrors = true;
+				// read data from net
+				if (net2engine.canRead()) {
+					do {
+						result = tryToUnwrap();
+					} while (net2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
+					if (result.getStatus() == BUFFER_UNDERFLOW) {
+						upstream.read();
+					}
+					if (result.getStatus() == CLOSED) {
+						downstreamEventHandler.onShutdownInput();
+					}
+				}
+
+				// write data to net
+				if (app2engine.canRead()) {
+					do {
+						result = tryToWrap();
+					} while (app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
+				}
+				if (!app2engine.canRead() && flushAndClose) {
+					engine.closeOutbound();
 				} else {
-					// write data to net
-					if (writeInterest && app2engine.canRead()) {
-						do {
-							result = tryToWriteToNet();
-						} while (app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
-					}
-					if (flushAndClose) {
-						engine.closeOutbound();
-					} else {
-						break;
-					}
+					break;
 				}
 			} else {
 				break;
 			}
 		}
-
-		if (engine.getHandshakeStatus() == NEED_UNWRAP || readInterest) {
-			upstream.read();
-		}
 	}
 
-	private enum Status {
-		OPEN,
-		CLOSING,
-		CLOSED,
-		CLOSED_WITH_ERROR;
-	}
 }

@@ -114,9 +114,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	protected void onHttpMessage(ByteBuf bodyBuf) {
 		assert !isClosed();
 		response.body(bodyBuf);
+		HttpResponse response = this.response;
 		ResultCallback<HttpResponse> callback = this.callback;
+		this.response = null;
 		this.callback = null;
-		callback.onResult(response);
 		if (isClosed())
 			return;
 		if (keepAlive) {
@@ -125,6 +126,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		} else {
 			close();
 		}
+
+		callback.onResult(response);
+		response.recycleBufs();
 	}
 
 	@Override
