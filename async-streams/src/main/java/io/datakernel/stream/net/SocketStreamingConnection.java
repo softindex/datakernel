@@ -101,16 +101,25 @@ public final class SocketStreamingConnection implements AsyncTcpSocket.EventHand
 	public void onRead(ByteBuf buf) {
 		assert eventloop.inEventloopThread();
 		socketReader.onRead(buf);
+		closeIfDone();
 	}
 
 	@Override
-	public void onShutdownInput() {
+	public void onReadEndOfStream() {
 		socketReader.onReadEndOfStream();
+		closeIfDone();
 	}
 
 	@Override
 	public void onWrite() {
 		socketWriter.onWrite();
+		closeIfDone();
+	}
+
+	private void closeIfDone() {
+		if (socketReader.getProducerStatus().isClosed() && socketWriter.getConsumerStatus().isClosed()) {
+			asyncTcpSocket.close();
+		}
 	}
 
 	@Override

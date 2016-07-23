@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.stream.net.MessagingSerializers.ofGson;
 
 public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> {
@@ -131,7 +132,8 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 						@Override
 						public void onComplete() {
 							logger.trace("read all bytes for {}", item.filePath);
-							messaging.writeAndClose(new Acknowledge());
+							messaging.send(new Acknowledge(), ignoreCompletionCallback());
+							messaging.sendEndOfStream(ignoreCompletionCallback());
 						}
 					});
 				}
@@ -151,7 +153,8 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 				@Override
 				public void onResult(final Long size) {
 					if (size < 0) {
-						messaging.writeAndClose(new Err("File not found"));
+						messaging.send(new Err("File not found"), ignoreCompletionCallback());
+						messaging.sendEndOfStream(ignoreCompletionCallback());
 					} else {
 						messaging.send(new Ready(size), new ForwardingCompletionCallback(this) {
 							@Override
@@ -174,7 +177,8 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 
 				@Override
 				public void onException(Exception e) {
-					messaging.writeAndClose(new Err(e.getMessage()));
+					messaging.send(new Err(e.getMessage()), ignoreCompletionCallback());
+					messaging.sendEndOfStream(ignoreCompletionCallback());
 				}
 			});
 		}
@@ -186,12 +190,14 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 			delete(item.filePath, new CompletionCallback() {
 				@Override
 				public void onComplete() {
-					messaging.writeAndClose(new Ok());
+					messaging.send(new Ok(), ignoreCompletionCallback());
+					messaging.sendEndOfStream(ignoreCompletionCallback());
 				}
 
 				@Override
 				public void onException(Exception e) {
-					messaging.writeAndClose(new Err(e.getMessage()));
+					messaging.send(new Err(e.getMessage()), ignoreCompletionCallback());
+					messaging.sendEndOfStream(ignoreCompletionCallback());
 				}
 			});
 		}
@@ -203,12 +209,14 @@ public abstract class FsServer<S extends FsServer<S>> extends AbstractServer<S> 
 			list(new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {
-					messaging.writeAndClose(new ListOfFiles(result));
+					messaging.send(new ListOfFiles(result), ignoreCompletionCallback());
+					messaging.sendEndOfStream(ignoreCompletionCallback());
 				}
 
 				@Override
 				public void onException(Exception e) {
-					messaging.writeAndClose(new Err(e.getMessage()));
+					messaging.send(new Err(e.getMessage()), ignoreCompletionCallback());
+					messaging.sendEndOfStream(ignoreCompletionCallback());
 				}
 			});
 		}

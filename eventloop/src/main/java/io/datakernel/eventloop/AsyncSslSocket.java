@@ -30,6 +30,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Executor;
 
+import static io.datakernel.bytebuf.ByteBufPool.recycleIfEmpty;
 import static javax.net.ssl.SSLEngineResult.HandshakeStatus.*;
 import static javax.net.ssl.SSLEngineResult.Status.BUFFER_UNDERFLOW;
 import static javax.net.ssl.SSLEngineResult.Status.CLOSED;
@@ -48,7 +49,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	private ByteBuf app2engine = ByteBuf.empty();
 
 	private boolean syncPosted = false;
-	private boolean flushAndClose = false;
 
 	private static AsyncSslSocket wrapSocket(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, SSLContext sslContext, Executor executor, boolean clientMode) {
 		SSLEngine sslEngine = sslContext.createSSLEngine();
@@ -91,14 +91,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 	}
 
 	@Override
-	public void onShutdownInput() {
+	public void onReadEndOfStream() {
 		if (engine.isInboundDone()) return;
 		try {
 			engine.closeInbound();
 		} catch (SSLException e) {
 			downstreamEventHandler.onClosedWithError(e);
-//			engine.closeOutbound();  // try to send close_notify
-			sync();
+			upstream.close();
 		}
 	}
 
@@ -143,26 +142,18 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 
 	@Override
 	public void write(ByteBuf buf) {
-		assert !flushAndClose;
-
 		app2engine = ByteBufPool.append(app2engine, buf);
 		postSync();
 	}
 
 	@Override
-	public void shutdownOutput() {
+	public void writeEndOfStream() {
 		throw new UnsupportedOperationException("SSL cannot work in half-duplex mode");
 	}
 
 	@Override
 	public void close() {
 		engine.closeOutbound();
-		postSync();
-	}
-
-	@Override
-	public void flushAndClose() {
-		flushAndClose = true;
 		postSync();
 	}
 
@@ -193,7 +184,6 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		SSLEngineResult result;
 		try {
 			result = engine.unwrap(srcBuffer, dstBuffer);
-			logger.trace("" + result);
 		} catch (SSLException e) {
 			net2engine.recycle();
 			dstBuf.recycle();
@@ -201,10 +191,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		}
 
 		net2engine.ofHeadByteBuffer(srcBuffer);
-		if (!net2engine.canRead()) {
-			net2engine.recycle();
-			net2engine = ByteBuf.empty();
-		}
+		net2engine = recycleIfEmpty(net2engine);
 
 		dstBuf.ofTailByteBuffer(dstBuffer);
 		if (dstBuf.canRead()) {
@@ -224,17 +211,13 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 		SSLEngineResult result;
 		try {
 			result = engine.wrap(srcBuffer, dstBuffer);
-			logger.trace("" + result);
 		} catch (SSLException e) {
 			dstBuf.recycle();
 			throw e;
 		}
 
 		app2engine.ofHeadByteBuffer(srcBuffer);
-		if (!app2engine.canRead()) {
-			app2engine.recycle();
-			app2engine = ByteBuf.empty();
-		}
+		app2engine = recycleIfEmpty(app2engine);
 
 		dstBuf.ofTailByteBuffer(dstBuffer);
 		if (dstBuf.canRead()) {
@@ -281,22 +264,19 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 			handshakeStatus = engine.getHandshakeStatus();
 			if (handshakeStatus == NEED_WRAP) {
 				result = tryToWrap();
-				if (result.getHandshakeStatus() == FINISHED) {
-					upstream.read();
-				}
 			} else if (handshakeStatus == NEED_UNWRAP) {
 				result = tryToUnwrap();
 				if (result.getStatus() == BUFFER_UNDERFLOW) {
 					upstream.read();
 					break;
 				}
-				if (result.getHandshakeStatus() == FINISHED) {
-					upstream.read();
-				}
 			} else if (handshakeStatus == NEED_TASK) {
 				executeTasks();
 				return;
 			} else if (handshakeStatus == NOT_HANDSHAKING) {
+				if (result != null && result.getHandshakeStatus() == FINISHED) {
+					upstream.read();
+				}
 
 				// read data from net
 				if (net2engine.canRead()) {
@@ -307,7 +287,7 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 						upstream.read();
 					}
 					if (result.getStatus() == CLOSED) {
-						downstreamEventHandler.onShutdownInput();
+						downstreamEventHandler.onReadEndOfStream();
 					}
 				}
 
@@ -317,14 +297,9 @@ public final class AsyncSslSocket implements AsyncTcpSocket, AsyncTcpSocket.Even
 						result = tryToWrap();
 					} while (app2engine.canRead() && (result.bytesConsumed() != 0 || result.bytesProduced() != 0));
 				}
-				if (!app2engine.canRead() && flushAndClose) {
-					engine.closeOutbound();
-				} else {
-					break;
-				}
-			} else {
 				break;
-			}
+			} else
+				break;
 		}
 	}
 

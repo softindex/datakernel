@@ -44,7 +44,8 @@ public interface AsyncTcpSocket {
 		void onRegistered();
 
 		/**
-		 * Is called when new input data was received by socket
+		 * Is called when new input data was received by socket.
+		 * EventHandler must be ready to handle any read data event if it has not been requested.
 		 *
 		 * @param buf
 		 */
@@ -53,10 +54,11 @@ public interface AsyncTcpSocket {
 		/**
 		 * Is called when other side closed output, namely other side won't send any more data
 		 */
-		void onShutdownInput();
+		void onReadEndOfStream();
 
 		/**
-		 * Is called when written data was flushed to network
+		 * Is called when all buffered data is flushed to network.
+		 * This callback is called once per {@link AsyncTcpSocket#write(ByteBuf)} invocation, unless the socket is closed.
 		 */
 		void onWrite();
 
@@ -66,34 +68,33 @@ public interface AsyncTcpSocket {
 	void setEventHandler(EventHandler eventHandler);
 
 	/**
-	 * Change socket configs to be interested in reading data from network.
+	 * Must be called to inform the async socket that additional read data is needed.
+	 * Unless called, the socket does not guarantee (but still can) to return any read data in its onRead callback.
+	 * Each read invocation may result in one (or more) onRead callbacks.
+	 * This operation is idempotent and may be called several times prior actual onRead callbacks.
 	 */
 	void read();
 
 	/**
 	 * Asynchronously writes data to network.
 	 * <p/>
-	 * When written data is flushed, EventHandler.onWrite() method will be called
+	 * When written data is flushed, {@link EventHandler#onWrite()} method will be called
 	 *
 	 * @param buf bytes of data
 	 */
 	void write(ByteBuf buf);
 
 	/**
-	 * Informs socket that no more data will be written
+	 * Informs socket that no more data will be written.
+	 * Any pending write data is expected to be delivered with corresponding {@link EventHandler#onWrite()} confirmation.
+	 * This operation is idempotent.
+	 * No subsequent {@link EventHandler#onWrite()} operations on the socket must be called afterwards.
 	 */
-	void shutdownOutput();
+	void writeEndOfStream();
 
 	/**
-	 * Closes socket when flush is done. Method is asynchronous
-	 * <p>
-	 * After calling this method no more event handler methods will be invoked
-	 * </p>
-	 */
-	void flushAndClose();
-
-	/**
-	 * Removes data that has not been flushed yet and closes socket.
+	 * Closes socket, regardless of any remaining buffered data. This operation is idempotent.
+	 * No subsequent operations on the socket must be called afterwards.
 	 * <p>
 	 * After calling this method no more event handler methods will be invoked
 	 * </p>

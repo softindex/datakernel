@@ -44,6 +44,13 @@ public class ByteBufPool {
 		queue.push(buf);
 	}
 
+	public static ByteBuf recycleIfEmpty(ByteBuf buf) {
+		if (buf.canRead())
+			return buf;
+		buf.recycle();
+		return ByteBuf.empty();
+	}
+
 	public static ConcurrentStack<ByteBuf>[] getPool() {
 		return slabs;
 	}

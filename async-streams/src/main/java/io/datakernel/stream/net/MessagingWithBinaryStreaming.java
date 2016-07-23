@@ -47,11 +47,14 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	private boolean readEndOfStream;
 	private ReceiveMessageCallback<I> receiveMessageCallback;
 	private List<CompletionCallback> writeCallbacks = new ArrayList<>();
-	private boolean writeEndOfStream;
+	private boolean writeEndOfStreamRequest;
 	private SocketStreamProducer socketReader;
 	private SocketStreamConsumer socketWriter;
 
 	private Exception closedException;
+
+	private boolean readDone;
+	private boolean writeDone;
 
 	public MessagingWithBinaryStreaming(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, MessagingSerializer<I, O> serializer) {
 		this.eventloop = eventloop;
@@ -115,7 +118,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	@Override
 	public void send(O msg, CompletionCallback callback) {
-		checkState(socketWriter == null && !writeEndOfStream);
+		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
 			callback.onException(closedException);
@@ -129,21 +132,22 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 
 	@Override
 	public void sendEndOfStream(CompletionCallback callback) {
-		checkState(socketWriter == null && !writeEndOfStream);
+		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
 		if (closedException != null) {
 			callback.onException(closedException);
 			return;
 		}
 
-		writeEndOfStream = true;
+		writeEndOfStreamRequest = true;
 		writeCallbacks.add(callback);
-		asyncTcpSocket.shutdownOutput();
+		asyncTcpSocket.writeEndOfStream();
 	}
 
 	public void sendBinaryStreamFrom(StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
-		checkState(socketWriter == null && !writeEndOfStream);
+		checkState(socketWriter == null && !writeEndOfStreamRequest);
 
+		writeCallbacks.clear();
 		if (closedException != null) {
 			callback.onException(closedException);
 			return;
@@ -226,7 +230,7 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 	}
 
 	@Override
-	public void onShutdownInput() {
+	public void onReadEndOfStream() {
 		logger.trace("onShutdownInput", this);
 		readEndOfStream = true;
 		if (socketReader == null) {
@@ -236,6 +240,14 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 				readUnconsumedBuf();
 			}
 			socketReader.onReadEndOfStream();
+		}
+		readDone = true;
+		closeIfDone();
+	}
+
+	private void closeIfDone() {
+		if (readDone && writeDone) {
+			asyncTcpSocket.close();
 		}
 	}
 
@@ -248,9 +260,14 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 			for (CompletionCallback callback : callbacks) {
 				callback.onComplete();
 			}
+			if (writeEndOfStreamRequest)
+				writeDone = true;
 		} else {
 			socketWriter.onWrite();
+			if (socketWriter.getConsumerStatus().isClosed())
+				writeDone = true;
 		}
+		closeIfDone();
 	}
 
 	@Override
@@ -284,18 +301,4 @@ public final class MessagingWithBinaryStreaming<I, O> implements AsyncTcpSocket.
 		return "{asyncTcpSocket=" + asyncTcpSocket + "}";
 	}
 
-	public void writeAndClose(final O msg) {
-		send(msg, new CompletionCallback() {
-			@Override
-			public void onComplete() {
-				close();
-			}
-
-			@Override
-			public void onException(Exception e) {
-				logger.warn("can't send message: {}", msg, e);
-				close();
-			}
-		});
-	}
 }

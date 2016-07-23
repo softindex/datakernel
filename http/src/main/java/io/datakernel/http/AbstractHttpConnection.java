@@ -382,7 +382,7 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 	}
 
 	@Override
-	public void onShutdownInput() {
+	public void onReadEndOfStream() {
 		close();
 	}
 

@@ -43,8 +43,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	private final Eventloop eventloop;
 	private final SocketChannel channel;
 	private final ArrayDeque<ByteBuf> writeQueue = new ArrayDeque<>();
-	private boolean shutdownInput;
-	private boolean shutdownOutput;
+	private boolean writeEndOfStream;
 	private EventHandler socketEventHandler;
 	private SelectionKey key;
 
@@ -56,8 +55,6 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 	private ScheduledRunnable checkReadTimeout;
 	private ScheduledRunnable checkWriteTimeout;
-
-	private boolean flushAndClose = false;
 
 	protected int receiveBufferSize = DEFAULT_RECEIVE_BUFFER_SIZE;
 
@@ -222,11 +219,7 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 
 		if (numRead == -1) {
 			buf.recycle();
-			shutdownInput = true;
-			if (isOpen() && shutdownOutput && writeQueue.isEmpty()) {
-				close();
-			}
-			socketEventHandler.onShutdownInput();
+			socketEventHandler.onReadEndOfStream();
 			return;
 		}
 
@@ -236,7 +229,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	// write cycle
 	@Override
 	public void write(ByteBuf buf) {
-		assert !shutdownOutput;
+		assert eventloop.inEventloopThread();
+		assert !writeEndOfStream;
 		if (writeTimeout != NO_TIMEOUT) {
 			scheduleWriteTimeOut();
 		}
@@ -245,9 +239,10 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	}
 
 	@Override
-	public void shutdownOutput() {
-		assert !shutdownOutput;
-		shutdownOutput = true;
+	public void writeEndOfStream() {
+		assert eventloop.inEventloopThread();
+		if (writeEndOfStream) return;
+		writeEndOfStream = true;
 		postWriteRunnable();
 	}
 
@@ -301,28 +296,14 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 				checkWriteTimeout.cancel();
 				checkWriteTimeout = null;
 			}
-			if (flushAndClose) {
-				close();
-				return;
-			}
-			if (shutdownOutput) {
-				if (shutdownInput) {
-					close();
-				} else {
-					channel.shutdownOutput();
-				}
+			if (writeEndOfStream) {
+				channel.shutdownOutput();
 			}
 			writeInterest(false);
 			socketEventHandler.onWrite();
 		} else {
 			writeInterest(true);
 		}
-	}
-
-	@Override
-	public void flushAndClose() {
-		flushAndClose = true;
-		postWriteRunnable();
 	}
 
 	// close methods
