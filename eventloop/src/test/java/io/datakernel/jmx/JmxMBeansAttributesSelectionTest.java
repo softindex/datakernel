@@ -152,7 +152,7 @@ public class JmxMBeansAttributesSelectionTest {
 		}
 
 		@Override
-		public void refreshStats(long timestamp) {
+		public void refresh(long timestamp) {
 
 		}
 	}

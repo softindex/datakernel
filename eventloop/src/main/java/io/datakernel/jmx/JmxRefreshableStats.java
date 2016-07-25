@@ -16,7 +16,6 @@
 
 package io.datakernel.jmx;
 
-public interface JmxRefreshableStats<T extends JmxRefreshableStats> extends JmxStats<T> {
+public interface JmxRefreshableStats<T extends JmxRefreshableStats> extends JmxStats<T>, JmxRefreshable {
 
-	void refreshStats(long timestamp);
 }

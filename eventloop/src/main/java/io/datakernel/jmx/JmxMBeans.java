@@ -26,36 +26,46 @@ import javax.management.openmbean.SimpleType;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static io.datakernel.jmx.ReflectionUtils.*;
 import static io.datakernel.util.Preconditions.*;
+import static java.lang.Math.ceil;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 
 public final class JmxMBeans implements DynamicMBeanFactory {
 	private static final Logger logger = LoggerFactory.getLogger(JmxMBeans.class);
 
-	public static final double DEFAULT_REFRESH_PERIOD = 1.0;
+	// refreshing jmx
+	public static final double DEFAULT_REFRESH_PERIOD_IN_SECONDS = 1.0;  // one second
+	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
+	private final int maxJmxRefreshesPerOneCycle;
+	private final long specifiedRefreshPeriod;
+	private final Map<Eventloop, List<Iterable<JmxRefreshable>>> eventloopToJmxRefreshables =
+			new ConcurrentHashMap<>();
 
 	private static final JmxReducer<?> DEFAULT_REDUCER = new JmxReducers.JmxReducerDistinct();
 
-	private static final JmxMBeans INSTANCE_WITH_DEFAULT_REFRESH_PERIOD = new JmxMBeans(DEFAULT_REFRESH_PERIOD);
+	private static final JmxMBeans INSTANCE_WITH_DEFAULT_REFRESH_PERIOD
+			= new JmxMBeans(DEFAULT_REFRESH_PERIOD_IN_SECONDS, MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT);
 
-	private final double refreshPeriod;
-
-	private JmxMBeans(double refreshPeriod) {
-		this.refreshPeriod = refreshPeriod;
+	// region constructor and factory methods
+	private JmxMBeans(double refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+		this.specifiedRefreshPeriod = secondsToMillis(refreshPeriod);
+		this.maxJmxRefreshesPerOneCycle = maxJmxRefreshesPerOneCycle;
 	}
 
 	public static JmxMBeans factory() {
 		return INSTANCE_WITH_DEFAULT_REFRESH_PERIOD;
 	}
 
-	public static JmxMBeans factory(double refreshPeriod) {
-		return new JmxMBeans(refreshPeriod);
+	public static JmxMBeans factory(double refreshPeriod, int maxJmxRefreshesPerOneCycle) {
+		return new JmxMBeans(refreshPeriod, maxJmxRefreshesPerOneCycle);
 	}
+	// endregion
 
 	@Override
 	public DynamicMBean createFor(List<?> monitorables, boolean enableRefresh) {
@@ -93,18 +103,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		);
 
 		if (isRefreshEnabled) {
-			mbean.startRefreshing(refreshPeriod);
+			handleJmxRefreshables(mbeanWrappers, rootNode);
 		}
-
 		return mbean;
 	}
 
-	private static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
-		List<AttributeNode> subNodes = createNodesFor(clazz, clazz, new String[0], null);
-		AttributeNodeForPojo root = new AttributeNodeForPojo("", new ValueFetcherDirect(), subNodes);
-		return root;
-	}
-
+	// region building tree of AttributeNodes
 	private static List<AttributeNode> createNodesFor(Class<?> clazz, Class<?> mbeanClass,
 	                                                  String[] includedOptionalAttrs, Method getter) {
 
@@ -345,13 +349,23 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static AttributeNodeForList createListAttributeNodeFor(String attrName, ValueFetcher fetcher,
 	                                                               Type listElementType, Class<?> mbeanClass) {
 		if (listElementType instanceof Class<?>) {
-			String typeName = ((Class<?>) listElementType).getSimpleName();
-			return new AttributeNodeForList(attrName, fetcher,
-					createAttributeNodeFor(typeName, listElementType, null, null, null, mbeanClass));
+			Class<?> listElementClass = (Class<?>) listElementType;
+			String typeName = listElementClass.getSimpleName();
+			boolean isListOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(listElementClass));
+			return new AttributeNodeForList(
+					attrName,
+					fetcher,
+					createAttributeNodeFor(typeName, listElementType, null, null, null, mbeanClass),
+					isListOfJmxRefreshable
+			);
 		} else if (listElementType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) listElementType).getRawType()).getSimpleName();
-			return new AttributeNodeForList(attrName, fetcher,
-					createNodeForParametrizedType(typeName, (ParameterizedType) listElementType, null, mbeanClass));
+			return new AttributeNodeForList(
+					attrName,
+					fetcher,
+					createNodeForParametrizedType(typeName, (ParameterizedType) listElementType, null, mbeanClass),
+					false
+			);
 		} else {
 			throw new RuntimeException();
 		}
@@ -360,13 +374,23 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private static AttributeNodeForMap createMapAttributeNodeFor(String attrName, ValueFetcher fetcher,
 	                                                             Type valueType, Class<?> mbeanClass) {
 		if (valueType instanceof Class<?>) {
-			String typeName = ((Class<?>) valueType).getSimpleName();
-			return new AttributeNodeForMap(attrName, fetcher,
-					createAttributeNodeFor(typeName, valueType, null, null, null, mbeanClass));
+			Class<?> valueClass = (Class<?>) valueType;
+			String typeName = valueClass.getSimpleName();
+			boolean isMapOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(valueClass));
+			return new AttributeNodeForMap(
+					attrName,
+					fetcher,
+					createAttributeNodeFor(typeName, valueType, null, null, null, mbeanClass),
+					isMapOfJmxRefreshable
+			);
 		} else if (valueType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) valueType).getRawType()).getSimpleName();
-			return new AttributeNodeForMap(attrName, fetcher,
-					createNodeForParametrizedType(typeName, (ParameterizedType) valueType, null, mbeanClass));
+			return new AttributeNodeForMap(
+					attrName,
+					fetcher,
+					createNodeForParametrizedType(typeName, (ParameterizedType) valueType, null, mbeanClass),
+					false
+			);
 		} else {
 			throw new RuntimeException();
 		}
@@ -378,6 +402,123 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static ValueFetcher createAppropriateFetcher(Method getter) {
 		return getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
+	}
+	// endregion
+
+	// region refreshing jmx
+	private void handleJmxRefreshables(List<MBeanWrapper> mbeanWrappers, AttributeNodeForPojo rootNode) {
+		for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
+			Eventloop eventloop = mbeanWrapper.getEventloop();
+			Iterable<JmxRefreshable> currentRefreshables = rootNode.getAllRefreshables(mbeanWrapper.getMBean());
+			if (!eventloopToJmxRefreshables.containsKey(eventloop)) {
+				eventloopToJmxRefreshables.put(
+						eventloop,
+						asList(currentRefreshables)
+				);
+				eventloop.post(createRefreshTask(eventloop, null, 0, 0));
+			} else {
+				List<Iterable<JmxRefreshable>> previousRefreshables = eventloopToJmxRefreshables.get(eventloop);
+				List<Iterable<JmxRefreshable>> allRefreshables = new ArrayList<>(previousRefreshables);
+				allRefreshables.add(currentRefreshables);
+				eventloopToJmxRefreshables.put(eventloop, allRefreshables);
+			}
+		}
+	}
+
+	private Runnable createRefreshTask(final Eventloop eventloop,
+	                                   final Iterator<JmxRefreshable> previousIterator,
+	                                   final int previousIteratorRefreshesCount,
+	                                   final int supposedJmxRefreshablesCount) {
+		return new Runnable() {
+			@Override
+			public void run() {
+				long currentTime = eventloop.currentTimeMillis();
+
+				Iterator<JmxRefreshable> jmxRefreshableIterator;
+				if (previousIterator == null) {
+					List<Iterable<JmxRefreshable>> listOfIterables = eventloopToJmxRefreshables.get(eventloop);
+					jmxRefreshableIterator = Utils.concat(listOfIterables).iterator();
+				} else {
+					jmxRefreshableIterator = previousIterator;
+				}
+
+				int currentRefreshesCount = 0;
+				while (jmxRefreshableIterator.hasNext()) {
+					if (currentRefreshesCount > maxJmxRefreshesPerOneCycle) {
+						long period = computeEffectiveRefreshPeriod(supposedJmxRefreshablesCount);
+						eventloop.scheduleBackground(
+								currentTime + period,
+								createRefreshTask(
+										eventloop,
+										jmxRefreshableIterator,
+										previousIteratorRefreshesCount + currentRefreshesCount,
+										supposedJmxRefreshablesCount
+								)
+						);
+						return;
+					}
+					jmxRefreshableIterator.next().refresh(currentTime);
+					currentRefreshesCount++;
+				}
+
+				int freshJmxRefreshablesCount = previousIteratorRefreshesCount + currentRefreshesCount;
+				long period = computeEffectiveRefreshPeriod(freshJmxRefreshablesCount);
+				eventloop.scheduleBackground(
+						currentTime + period,
+						createRefreshTask(
+								eventloop,
+								null,
+								0,
+								freshJmxRefreshablesCount
+						)
+				);
+			}
+		};
+	}
+
+	private long computeEffectiveRefreshPeriod(int actualRefreshes) {
+		if (actualRefreshes == 0) {
+			return specifiedRefreshPeriod;
+		}
+		double ratio = ceil(actualRefreshes / (double) maxJmxRefreshesPerOneCycle);
+		return (long) (specifiedRefreshPeriod / ratio);
+	}
+
+	private static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
+		List<AttributeNode> subNodes = createNodesFor(clazz, clazz, new String[0], null);
+		AttributeNodeForPojo root = new AttributeNodeForPojo("", new ValueFetcherDirect(), subNodes);
+		return root;
+	}
+	// endregion
+
+	// region creating jmx metadata - MBeanInfo
+	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode,
+	                                         Class<?> monitorableClass,
+	                                         boolean enableRefresh) {
+		String monitorableName = "";
+		String monitorableDescription = "";
+		MBeanAttributeInfo[] attributes = fetchAttributesInfo(rootNode, enableRefresh);
+		MBeanOperationInfo[] operations = fetchOperationsInfo(monitorableClass, enableRefresh);
+		return new MBeanInfo(
+				monitorableName,
+				monitorableDescription,
+				attributes,
+				null,  // constructors
+				operations,
+				null); //notifications
+	}
+
+	private static MBeanAttributeInfo[] fetchAttributesInfo(AttributeNodeForPojo rootNode, boolean refreshEnabled) {
+		Map<String, OpenType<?>> nameToType = rootNode.getFlattenedOpenTypes();
+		List<MBeanAttributeInfo> attrsInfo = new ArrayList<>();
+		for (String attrName : nameToType.keySet()) {
+			OpenType<?> attrType = nameToType.get(attrName);
+			boolean writable = rootNode.isSettable(attrName);
+			boolean isIs = attrType.equals(SimpleType.BOOLEAN);
+			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType.getClassName(), attrName, true, writable, isIs));
+		}
+
+		return attrsInfo.toArray(new MBeanAttributeInfo[attrsInfo.size()]);
 	}
 
 	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> monitorableClass, boolean enableRefresh) {
@@ -426,56 +567,9 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 		return null;
 	}
+	// endregion
 
-	private static <T> boolean listContainsNullValues(List<T> list) {
-		for (int i = 0; i < list.size(); i++) {
-			if (list.get(i) == null) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	private static boolean allObjectsAreOfSameType(List<?> objects) {
-		for (int i = 0; i < objects.size() - 1; i++) {
-			Object current = objects.get(i);
-			Object next = objects.get(i + 1);
-			if (!current.getClass().equals(next.getClass())) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	private static MBeanInfo createMBeanInfo(AttributeNodeForPojo rootNode,
-	                                         Class<?> monitorableClass,
-	                                         boolean enableRefresh) {
-		String monitorableName = "";
-		String monitorableDescription = "";
-		MBeanAttributeInfo[] attributes = fetchAttributesInfo(rootNode, enableRefresh);
-		MBeanOperationInfo[] operations = fetchOperationsInfo(monitorableClass, enableRefresh);
-		return new MBeanInfo(
-				monitorableName,
-				monitorableDescription,
-				attributes,
-				null,  // constructors
-				operations,
-				null); //notifications
-	}
-
-	private static MBeanAttributeInfo[] fetchAttributesInfo(AttributeNodeForPojo rootNode, boolean refreshEnabled) {
-		Map<String, OpenType<?>> nameToType = rootNode.getFlattenedOpenTypes();
-		List<MBeanAttributeInfo> attrsInfo = new ArrayList<>();
-		for (String attrName : nameToType.keySet()) {
-			OpenType<?> attrType = nameToType.get(attrName);
-			boolean writable = rootNode.isSettable(attrName);
-			boolean isIs = attrType.equals(SimpleType.BOOLEAN);
-			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType.getClassName(), attrName, true, writable, isIs));
-		}
-
-		return attrsInfo.toArray(new MBeanAttributeInfo[attrsInfo.size()]);
-	}
-
+	// region jmx operations fetching
 	private static Map<OperationKey, Method> fetchOpkeyToMethod(Class<?> mbeanClass) {
 		Map<OperationKey, Method> opkeyToMethod = new HashMap<>();
 		Method[] methods = mbeanClass.getMethods();
@@ -500,7 +594,35 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 		return opkeyToMethod;
 	}
+	// endregion
 
+	// region etc
+	private static int secondsToMillis(double seconds) {
+		return (int) (seconds * 1000);
+	}
+
+	private static <T> boolean listContainsNullValues(List<T> list) {
+		for (int i = 0; i < list.size(); i++) {
+			if (list.get(i) == null) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static boolean allObjectsAreOfSameType(List<?> objects) {
+		for (int i = 0; i < objects.size() - 1; i++) {
+			Object current = objects.get(i);
+			Object next = objects.get(i + 1);
+			if (!current.getClass().equals(next.getClass())) {
+				return false;
+			}
+		}
+		return true;
+	}
+	// endregion
+
+	// region helper classes
 	private static final class AttributeDescriptor {
 		private final String name;
 		private final Type type;
@@ -559,6 +681,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			OperationKey that = (OperationKey) o;
 
 			if (!name.equals(that.name)) return false;
+
 			return Arrays.equals(argTypes, that.argTypes);
 
 		}
@@ -592,41 +715,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			this.rootNode = rootNode;
 			this.opkeyToMethod = opkeyToMethod;
-//			this.refreshEnabled = refreshEnabled;
-		}
-
-		public void startRefreshing(final double refreshPeriod) {
-			if (rootNode.isRefreshable()) {
-				for (MBeanWrapper mbeanWrapper : mbeanWrappers) {
-					final Eventloop eventloop = mbeanWrapper.getEventloop();
-					if (eventloop != null) {
-						Runnable refreshTask =
-								createRefreshTask(mbeanWrapper.getMBean(), eventloop, secondsToMillis(refreshPeriod));
-						eventloop.execute(refreshTask);
-					}
-				}
-			} else {
-				logger.warn("Refresh was enabled but MBeans are not refreshable");
-			}
-		}
-
-		private Runnable createRefreshTask(final Object mbean, final Eventloop eventloop,
-		                                   final int refreshPeriodInMillis) {
-			return new Runnable() {
-				@Override
-				public void run() {
-					long currentTime = eventloop.currentTimeMillis();
-					rootNode.refresh(asList(mbean), currentTime);
-					eventloop.scheduleBackground(
-							currentTime + refreshPeriodInMillis,
-							createRefreshTask(mbean, eventloop, refreshPeriodInMillis)
-					);
-				}
-			};
-		}
-
-		private static int secondsToMillis(double seconds) {
-			return (int) (seconds * 1000);
 		}
 
 		@SuppressWarnings("unchecked")
@@ -795,8 +883,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	private interface MBeanWrapper {
 		void execute(Runnable command);
 
-		boolean isRefreshable();
-
 		Object getMBean();
 
 		Eventloop getEventloop();
@@ -812,11 +898,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		@Override
 		public void execute(Runnable command) {
 			command.run();
-		}
-
-		@Override
-		public boolean isRefreshable() {
-			return false;
 		}
 
 		@Override
@@ -843,11 +924,6 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 
 		@Override
-		public boolean isRefreshable() {
-			return true;
-		}
-
-		@Override
 		public Object getMBean() {
 			return mbean;
 		}
@@ -857,5 +933,5 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			return mbean.getEventloop();
 		}
 	}
-
+	// endregion
 }

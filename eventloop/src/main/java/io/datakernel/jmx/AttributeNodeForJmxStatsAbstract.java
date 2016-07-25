@@ -39,7 +39,7 @@ abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbst
 	@Override
 	@SuppressWarnings("unchecked")
 	public final Map<String, Object> aggregateAllAttributes(List<?> sources) {
-		JmxStats accumulator = null;
+		JmxStats accumulator;
 		try {
 			accumulator = jmxStatsClass.newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {

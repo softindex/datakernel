@@ -16,7 +16,8 @@
 
 package io.datakernel.jmx;
 
-import static java.lang.Math.pow;
+import static java.lang.Math.exp;
+import static java.lang.Math.log;
 
 /**
  * Computes total amount of events and dynamic rate using exponential smoothing algorithm
@@ -26,6 +27,7 @@ import static java.lang.Math.pow;
 public final class EventStats implements JmxRefreshableStats<EventStats> {
 	private static final long TOO_LONG_TIME_PERIOD_BETWEEN_REFRESHES = 60 * 1000; // 1 minute
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
+	private static final double LN_2 = log(2);
 
 	private long lastTimestampMillis;
 	private int lastCount;
@@ -78,15 +80,16 @@ public final class EventStats implements JmxRefreshableStats<EventStats> {
 	}
 
 	@Override
-	public void refreshStats(long timestamp) {
+	public void refresh(long timestamp) {
 		long timeElapsedMillis = timestamp - lastTimestampMillis;
 
 		if (isTimePeriodValid(timeElapsedMillis)) {
 
 			double timeElapsedSeconds = timeElapsedMillis / 1000.0;
-			smoothedCount = lastCount + smoothedCount * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
+			double smoothingFactor = exp(-(timeElapsedSeconds / smoothingWindow) * LN_2);
+			smoothedCount = lastCount + smoothedCount * smoothingFactor;
 			smoothedTimeSeconds =
-					timeElapsedSeconds + smoothedTimeSeconds * pow(2.0, -(timeElapsedSeconds / smoothingWindow));
+					timeElapsedSeconds + smoothedTimeSeconds * smoothingFactor;
 
 			smoothedRate = smoothedCount / smoothedTimeSeconds;
 		} else {

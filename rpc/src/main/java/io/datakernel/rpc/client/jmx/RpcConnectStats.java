@@ -18,8 +18,9 @@ package io.datakernel.rpc.client.jmx;
 
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxRefreshable;
 
-public final class RpcConnectStats {
+public final class RpcConnectStats implements JmxRefreshable {
 	private final EventStats successfulConnects = new EventStats();
 	private final EventStats failedConnects = new EventStats();
 	private final EventStats closedConnects = new EventStats();
@@ -51,4 +52,10 @@ public final class RpcConnectStats {
 		return closedConnects;
 	}
 
+	@Override
+	public void refresh(long timestamp) {
+		successfulConnects.refresh(timestamp);
+		failedConnects.refresh(timestamp);
+		closedConnects.refresh(timestamp);
+	}
 }

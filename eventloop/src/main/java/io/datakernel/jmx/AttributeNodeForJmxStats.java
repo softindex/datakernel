@@ -26,12 +26,7 @@ final class AttributeNodeForJmxStats extends AttributeNodeForJmxStatsAbstract {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public boolean isRefreshable() {
-		return false;
+	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
+		return null;
 	}
 }

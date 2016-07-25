@@ -38,7 +38,7 @@ public class EventStatsTest {
 
 		for (int i = 0; i < events; i++) {
 			eventStats.recordEvent();
-			eventStats.refreshStats(currentTimestamp);
+			eventStats.refresh(currentTimestamp);
 			currentTimestamp += periodInMillis;
 		}
 
@@ -59,7 +59,7 @@ public class EventStatsTest {
 		for (int i = 0; i < events; i++) {
 			eventStats.recordEvent();
 			currentTimestamp += periodInMillis;
-			eventStats.refreshStats(currentTimestamp);
+			eventStats.refresh(currentTimestamp);
 		}
 		double rateBeforeReset = eventStats.getSmoothedRate();
 		eventStats.resetStats();
@@ -89,9 +89,9 @@ public class EventStatsTest {
 			// we do not record event to stats_3
 
 			currentTimestamp += period;
-			stats_1.refreshStats(currentTimestamp);
-			stats_2.refreshStats(currentTimestamp);
-			stats_3.refreshStats(currentTimestamp);
+			stats_1.refresh(currentTimestamp);
+			stats_2.refresh(currentTimestamp);
+			stats_3.refresh(currentTimestamp);
 		}
 
 		EventStats accumulator = new EventStats();
@@ -115,7 +115,7 @@ public class EventStatsTest {
 			int eventsPerRefresh = i % 2;
 			stats.recordEvents(eventsPerRefresh);
 			currentTimestamp += period;
-			stats.refreshStats(currentTimestamp);
+			stats.refresh(currentTimestamp);
 		}
 
 		assertEquals(500, stats.getTotalCount());
@@ -134,7 +134,7 @@ public class EventStatsTest {
 			stats.recordEvents(1);
 			int currentPeriod = period + uniformRandom(-50, 50);
 			currentTimestamp += currentPeriod;
-			stats.refreshStats(currentTimestamp);
+			stats.refresh(currentTimestamp);
 		}
 
 		assertEquals(1000, stats.getTotalCount());
@@ -152,7 +152,7 @@ public class EventStatsTest {
 		for (int i = 0; i < iterations; i++) {
 			stats.recordEvents(uniformRandom(0, 10));
 			currentTimestamp += period;
-			stats.refreshStats(currentTimestamp);
+			stats.refresh(currentTimestamp);
 		}
 
 		double acceptableError = 2.0;

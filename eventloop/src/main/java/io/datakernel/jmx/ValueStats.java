@@ -98,7 +98,7 @@ public final class ValueStats implements JmxRefreshableStats<ValueStats> {
 	}
 
 	@Override
-	public void refreshStats(long timestamp) {
+	public void refresh(long timestamp) {
 		if (lastCount == 0)
 			return;
 

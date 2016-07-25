@@ -17,10 +17,7 @@
 package io.datakernel.jmx;
 
 import javax.management.openmbean.OpenType;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 final class Utils {
 
@@ -40,5 +37,56 @@ final class Utils {
 		Map<String, OpenType<?>> map = new HashMap<>();
 		map.put(key, openType);
 		return map;
+	}
+
+	public static <T> Iterable<T> concat(final Iterable<? extends Iterable<T>> iterables) {
+		return new Iterable<T>() {
+			@Override
+			public Iterator<T> iterator() {
+				return new Iterator<T>() {
+					private final Iterator<? extends Iterable<T>> iterablesIterator = iterables.iterator();
+					// we assume that iterable.iterator() cannot return null
+					private Iterator<T> currentIterator =
+							iterablesIterator.hasNext() ? iterablesIterator.next().iterator() : null;
+
+					@Override
+					public boolean hasNext() {
+						adjustCurrentIterator();
+						return currentIterator != null;
+					}
+
+					@Override
+					public T next() {
+						adjustCurrentIterator();
+						if (currentIterator == null) {
+							throw new NoSuchElementException();
+						}
+						return currentIterator.next();
+					}
+
+					private void adjustCurrentIterator() {
+						if (currentIterator == null || currentIterator.hasNext()) {
+							return;
+						}
+
+						// find next non-empty iterator
+						while (true) {
+							// we assume that iterable.iterator() cannot return null
+							currentIterator =
+									iterablesIterator.hasNext() ? iterablesIterator.next().iterator() : null;
+							if (currentIterator == null || currentIterator.hasNext()) {
+								// currentIterator == null means that we've got to the end
+								return;
+							}
+						}
+					}
+
+					@Override
+					public void remove() {
+						throw new UnsupportedOperationException("remove");
+					}
+				};
+			}
+		};
 	}
 }
