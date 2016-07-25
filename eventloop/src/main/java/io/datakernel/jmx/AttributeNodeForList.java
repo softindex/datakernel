@@ -36,16 +36,17 @@ final class AttributeNodeForList implements AttributeNode {
 	private final AttributeNode subNode;
 	private final ArrayType<?> arrayType;
 	private final Map<String, OpenType<?>> nameToOpenType;
-	private final boolean refreshable;
+	private final boolean isListOfJmxRefreshables;
 
-	public AttributeNodeForList(String name, ValueFetcher fetcher, AttributeNode subNode) {
+	public AttributeNodeForList(String name, ValueFetcher fetcher, AttributeNode subNode,
+	                            boolean isListOfJmxRefreshables) {
 		checkArgument(!name.isEmpty(), "List attribute cannot have empty name");
 
 		this.name = name;
 		this.fetcher = fetcher;
 		this.subNode = subNode;
 		this.arrayType = createArrayType(subNode);
-		this.refreshable = subNode.isRefreshable();
+		this.isListOfJmxRefreshables = isListOfJmxRefreshables;
 		this.nameToOpenType = createMapWithOneEntry(name, arrayType);
 	}
 
@@ -105,7 +106,6 @@ final class AttributeNodeForList implements AttributeNode {
 	private Object[] createArrayFrom(List<Map<String, Object>> attributesFromAllElements) {
 		OpenType<?> arrayElementOpenType = arrayType.getElementOpenType();
 		if (arrayElementOpenType instanceof ArrayType) {
-			// TODO(vmykhalko): add support for multidimensional arrays
 			throw new RuntimeException("Multidimensional arrays are not supported");
 		} else {
 			try {
@@ -136,22 +136,11 @@ final class AttributeNodeForList implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp) {
-		if (refreshable) {
-			for (Object pojo : targets) {
-				List<?> currentList = (List<?>) fetcher.fetchFrom(pojo);
-				if (currentList != null) {
-					for (Object element : currentList) {
-						subNode.refresh(asList(element), timestamp);
-					}
-				}
-			}
-		}
-	}
-
-	@Override
-	public boolean isRefreshable() {
-		return refreshable;
+	@SuppressWarnings("unchecked")
+	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
+		return isListOfJmxRefreshables ?
+				(List<JmxRefreshable>) fetcher.fetchFrom(source) :
+				null;
 	}
 
 	@Override

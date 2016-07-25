@@ -18,6 +18,8 @@ package io.datakernel.jmx;
 
 import java.util.List;
 
+import static java.util.Collections.singletonList;
+
 final class AttributeNodeForJmxRefreshableStats extends AttributeNodeForJmxStatsAbstract {
 
 	public AttributeNodeForJmxRefreshableStats(String name, ValueFetcher fetcher,
@@ -27,14 +29,7 @@ final class AttributeNodeForJmxRefreshableStats extends AttributeNodeForJmxStats
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp) {
-		for (Object pojo : targets) {
-			((JmxRefreshableStats<?>) fetcher.fetchFrom(pojo)).refreshStats(timestamp);
-		}
-	}
-
-	@Override
-	public boolean isRefreshable() {
-		return true;
+	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
+		return singletonList((JmxRefreshable) fetcher.fetchFrom(source));
 	}
 }

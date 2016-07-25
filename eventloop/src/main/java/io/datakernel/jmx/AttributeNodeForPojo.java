@@ -21,29 +21,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static io.datakernel.jmx.Utils.concat;
 import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
-	private final List<AttributeNode> refreshableSubNodes;
-	private final boolean refreshable;
+	private final List<? extends AttributeNode> subNodes;
 
 	public AttributeNodeForPojo(String name, ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
 		super(name, fetcher, subNodes);
-
-		this.refreshableSubNodes = filterRefreshableSubNodes(subNodes);
-		this.refreshable = refreshableSubNodes.size() > 0;
-	}
-
-	private static List<AttributeNode> filterRefreshableSubNodes(List<? extends AttributeNode> subNodes) {
-		List<AttributeNode> refreshableSubNodes = new ArrayList<>();
-		for (AttributeNode subNode : subNodes) {
-			if (subNode.isRefreshable()) {
-				refreshableSubNodes.add(subNode);
-			}
-		}
-		return refreshableSubNodes;
+		this.subNodes = subNodes;
 	}
 
 	@Override
@@ -80,15 +68,15 @@ final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp) {
-		List<Object> innerPojos = fetchInnerPojos(targets);
-		for (AttributeNode refreshableSubNode : refreshableSubNodes) {
-			refreshableSubNode.refresh(innerPojos, timestamp);
+	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
+		Object pojo = fetcher.fetchFrom(source);
+		List<Iterable<JmxRefreshable>> listOfIterators = new ArrayList<>();
+		for (AttributeNode attributeNode : subNodes) {
+			Iterable<JmxRefreshable> iterable = attributeNode.getAllRefreshables(pojo);
+			if (iterable != null) {
+				listOfIterators.add(iterable);
+			}
 		}
-	}
-
-	@Override
-	public boolean isRefreshable() {
-		return refreshable;
+		return concat(listOfIterators);
 	}
 }

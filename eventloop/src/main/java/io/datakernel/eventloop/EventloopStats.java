@@ -17,14 +17,13 @@
 package io.datakernel.eventloop;
 
 import io.datakernel.annotation.Nullable;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 import io.datakernel.util.Stopwatch;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+
+import static java.util.Arrays.asList;
 
 public final class EventloopStats {
 	private static final class DurationRunnable {
@@ -102,6 +101,9 @@ public final class EventloopStats {
 	private final Map<StackTrace, ExceptionStats> allFatalErrors;
 	private final ExceptionStats ioErrors;
 
+	private final BusinessLogicTimeHistogram businessLogicTimeHistogram
+			= new BusinessLogicTimeHistogram();
+
 	public EventloopStats(double smoothingWindow) {
 		selectorSelectTime = new ValueStats(smoothingWindow);
 		businessLogicTime = new ValueStats(smoothingWindow);
@@ -157,6 +159,7 @@ public final class EventloopStats {
 
 	public void updateBusinessLogicTime(long businessLogicTime) {
 		this.businessLogicTime.recordValue((int) businessLogicTime);
+		businessLogicTimeHistogram.update(businessLogicTime);
 	}
 
 	public void updateSelectorSelectTime(long selectorSelectTime) {
@@ -382,5 +385,56 @@ public final class EventloopStats {
 	@JmxAttribute
 	public ExceptionStats getFatalErrors() {
 		return fatalErrors;
+	}
+
+	@JmxAttribute(name = "")
+	public BusinessLogicTimeHistogram getBusinessLogicTimeHistogram() {
+		return businessLogicTimeHistogram;
+	}
+
+	public static final class BusinessLogicTimeHistogram
+			implements JmxStats<BusinessLogicTimeHistogram> {
+		// BLT - business logic time
+		private static final int[] BLT_HISTOGRAM_BUCKETS = new int[]{0, 1, 10, 100, 1000, 10_000, 100_000};
+		private static final List<String> BLT_HISTOGRAM_LABELS =
+				asList(
+						"0 - 1       ->  ",
+						"1 - 10      ->  ",
+						"10 - 100    ->  ",
+						"100 - 1k    ->  ",
+						"1k - 10k    ->  ",
+						"10k - 100k  ->  ",
+						"100k+       ->  "
+				);
+
+		private final long[] businessLogicTimeHistogram = new long[7];
+
+		@JmxAttribute
+		public List<String> getBusinessLogicTimeHistogram() {
+			List<String> lines = new ArrayList<>(businessLogicTimeHistogram.length);
+			for (int i = 0; i < businessLogicTimeHistogram.length; i++) {
+				lines.add(BLT_HISTOGRAM_LABELS.get(i) + businessLogicTimeHistogram[i]);
+			}
+			return lines;
+		}
+
+		public void update(long businessLogicTime) {
+			for (int i = 1; i < BLT_HISTOGRAM_BUCKETS.length; i++) {
+				if (businessLogicTime <= BLT_HISTOGRAM_BUCKETS[i]) {
+					int bucketIndex = i - 1;
+					businessLogicTimeHistogram[bucketIndex]++;
+					return;
+				}
+			}
+			int lastBucket = BLT_HISTOGRAM_BUCKETS.length - 1;
+			businessLogicTimeHistogram[lastBucket]++;
+		}
+
+		@Override
+		public void add(BusinessLogicTimeHistogram another) {
+			for (int i = 0; i < businessLogicTimeHistogram.length; i++) {
+				businessLogicTimeHistogram[i] += another.businessLogicTimeHistogram[i];
+			}
+		}
 	}
 }

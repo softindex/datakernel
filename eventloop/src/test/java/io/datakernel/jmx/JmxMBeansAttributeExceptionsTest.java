@@ -156,7 +156,7 @@ public class JmxMBeansAttributeExceptionsTest {
 		}
 
 		@Override
-		public void refreshStats(long timestamp) {
+		public void refresh(long timestamp) {
 
 		}
 	}

@@ -30,17 +30,26 @@ import java.util.Set;
 import static io.datakernel.util.Preconditions.checkArgument;
 
 public final class JmxModule extends AbstractModule {
-	public static final double DEFAULT_REFRESH_PERIOD = 1.0;
+	public static final double REFRESH_PERIOD_DEFAULT = 1.0;
+	public static final int MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT = 50;
 
 	private final Set<Key<?>> singletonKeys = new HashSet<>();
 	private final Set<Key<?>> workerKeys = new HashSet<>();
 
-	private double refreshPeriod = DEFAULT_REFRESH_PERIOD;
+	private double refreshPeriod = REFRESH_PERIOD_DEFAULT;
+	private int maxJmxRefreshesPerOneCycle = MAX_JMX_REFRESHES_PER_ONE_CYCLE_DEFAULT;
 
 	public JmxModule withRefreshPeriod(double refreshPeriod) {
 		checkArgument(refreshPeriod > 0.0);
 
 		this.refreshPeriod = refreshPeriod;
+		return this;
+	}
+
+	public JmxModule withMaxJmxRefreshesPerOneCycle(int max) {
+		checkArgument(max > 0);
+
+		this.maxJmxRefreshesPerOneCycle = max;
 		return this;
 	}
 
@@ -111,6 +120,9 @@ public final class JmxModule extends AbstractModule {
 	@Singleton
 	JmxRegistry jmxRegistry() {
 		return new JmxRegistry(
-				ManagementFactory.getPlatformMBeanServer(), JmxMBeans.factory(refreshPeriod), refreshPeriod);
+				ManagementFactory.getPlatformMBeanServer(),
+				JmxMBeans.factory(refreshPeriod, maxJmxRefreshesPerOneCycle),
+				refreshPeriod
+		);
 	}
 }

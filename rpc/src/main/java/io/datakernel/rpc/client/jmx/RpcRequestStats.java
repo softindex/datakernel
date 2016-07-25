@@ -16,12 +16,9 @@
 
 package io.datakernel.rpc.client.jmx;
 
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 
-public final class RpcRequestStats {
+public final class RpcRequestStats implements JmxRefreshable {
 	private final EventStats totalRequests = new EventStats();
 	private final EventStats successfulRequests = new EventStats();
 	private final EventStats failedRequests = new EventStats();
@@ -85,4 +82,13 @@ public final class RpcRequestStats {
 		return serverExceptions;
 	}
 
+	@Override
+	public void refresh(long timestamp) {
+		totalRequests.refresh(timestamp);
+		successfulRequests.refresh(timestamp);
+		failedRequests.refresh(timestamp);
+		rejectedRequests.refresh(timestamp);
+		expiredRequests.refresh(timestamp);
+		responseTimeStats.refresh(timestamp);
+	}
 }

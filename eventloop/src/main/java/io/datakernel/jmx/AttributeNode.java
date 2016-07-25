@@ -31,9 +31,11 @@ interface AttributeNode {
 
 	Object aggregateAttribute(String attrName, List<?> sources);
 
-	void refresh(List<?> targets, long timestamp);
+//	void refresh(List<?> targets, long timestamp);
+//
+//	boolean isRefreshable();
 
-	boolean isRefreshable();
+	Iterable<JmxRefreshable> getAllRefreshables(Object source);
 
 	boolean isSettable(String attrName);
 

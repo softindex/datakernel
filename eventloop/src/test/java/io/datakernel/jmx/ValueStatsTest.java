@@ -40,7 +40,7 @@ public class ValueStatsTest {
 		for (int i = 0; i < iterations; i++) {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += refreshPeriod;
-			valueStats.refreshStats(currentTimestamp);
+			valueStats.refresh(currentTimestamp);
 		}
 
 		double acceptableError = 10E-5;
@@ -61,7 +61,7 @@ public class ValueStatsTest {
 			int currentValue = uniformRandom(minValue, maxValue);
 			valueStats.recordValue(currentValue);
 			currentTimestamp += refreshPeriod;
-			valueStats.refreshStats(currentTimestamp);
+			valueStats.refresh(currentTimestamp);
 		}
 
 		// standard deviation of uniform distribution
@@ -82,7 +82,7 @@ public class ValueStatsTest {
 		for (int i = 0; i < iterations; i++) {
 			valueStats.recordValue(inputValue);
 			currentTimestamp += refreshPeriod;
-			valueStats.refreshStats(currentTimestamp);
+			valueStats.refresh(currentTimestamp);
 		}
 
 		double avgBeforeReset = valueStats.getSmoothedAverage();
@@ -109,8 +109,8 @@ public class ValueStatsTest {
 			valueStats_1.recordValue(inputValue_1);
 			valueStats_2.recordValue(inputValue_2);
 			currentTimestamp += refreshPeriod;
-			valueStats_1.refreshStats(currentTimestamp);
-			valueStats_2.refreshStats(currentTimestamp);
+			valueStats_1.refresh(currentTimestamp);
+			valueStats_2.refresh(currentTimestamp);
 		}
 
 		ValueStats accumulator = new ValueStats();

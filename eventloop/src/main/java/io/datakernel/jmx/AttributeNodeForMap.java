@@ -26,7 +26,6 @@ import static io.datakernel.jmx.Utils.createMapWithOneEntry;
 import static io.datakernel.jmx.Utils.filterNulls;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static java.util.Arrays.asList;
 
 final class AttributeNodeForMap implements AttributeNode {
 	private static final String KEY_COLUMN_NAME = "_key";
@@ -39,9 +38,10 @@ final class AttributeNodeForMap implements AttributeNode {
 	private final AttributeNode subNode;
 	private final TabularType tabularType;
 	private final Map<String, OpenType<?>> nameToOpenType;
-	private final boolean refreshable;
+	private final boolean isMapOfJmxRefreshable;
 
-	public AttributeNodeForMap(String name, ValueFetcher fetcher, AttributeNode subNode) {
+	public AttributeNodeForMap(String name, ValueFetcher fetcher, AttributeNode subNode,
+	                           boolean isMapOfJmxRefreshable) {
 		checkArgument(!name.isEmpty(), "Map attribute cannot have empty name");
 
 		this.name = name;
@@ -49,7 +49,7 @@ final class AttributeNodeForMap implements AttributeNode {
 		this.nameToOpenType = createMapWithOneEntry(name, tabularType);
 		this.fetcher = fetcher;
 		this.subNode = subNode;
-		this.refreshable = subNode.isRefreshable();
+		this.isMapOfJmxRefreshable = isMapOfJmxRefreshable;
 	}
 
 	private static TabularType createTabularType(AttributeNode subNode) {
@@ -161,20 +161,11 @@ final class AttributeNodeForMap implements AttributeNode {
 	}
 
 	@Override
-	public void refresh(List<?> targets, long timestamp) {
-		if (refreshable) {
-			for (Object pojo : targets) {
-				Map<?, ?> map = (Map<?, ?>) fetcher.fetchFrom(pojo);
-				for (Object mapValue : map.values()) {
-					subNode.refresh(asList(mapValue), timestamp);
-				}
-			}
-		}
-	}
-
-	@Override
-	public boolean isRefreshable() {
-		return refreshable;
+	@SuppressWarnings("unchecked")
+	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
+		return isMapOfJmxRefreshable ?
+				((Map<?, JmxRefreshable>) fetcher.fetchFrom(source)).values() :
+				null;
 	}
 
 	@Override
