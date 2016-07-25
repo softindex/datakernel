@@ -75,7 +75,8 @@ public final class AsyncTcpSocketImpl implements AsyncTcpSocket, NioChannelEvent
 	public static AsyncTcpSocketImpl wrapChannel(Eventloop eventloop, SocketChannel socketChannel, SocketSettings socketSettings) {
 		try {
 			socketSettings.applySettings(socketChannel);
-		} catch (IOException ignored) {
+		} catch (IOException e) {
+			throw new AssertionError("Failed to apply socketSettings", e);
 		}
 		AsyncTcpSocketImpl asyncTcpSocket = new AsyncTcpSocketImpl(eventloop, socketChannel);
 		socketSettings.applyReadWriteTimeoutsTo(asyncTcpSocket);
