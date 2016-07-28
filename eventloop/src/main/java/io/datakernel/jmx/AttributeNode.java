@@ -27,13 +27,11 @@ interface AttributeNode {
 
 	Map<String, OpenType<?>> getFlattenedOpenTypes();
 
+	Map<String, Map<String, String>> getDescriptions();
+
 	Map<String, Object> aggregateAllAttributes(List<?> sources);
 
 	Object aggregateAttribute(String attrName, List<?> sources);
-
-//	void refresh(List<?> targets, long timestamp);
-//
-//	boolean isRefreshable();
 
 	Iterable<JmxRefreshable> getAllRefreshables(Object source);
 

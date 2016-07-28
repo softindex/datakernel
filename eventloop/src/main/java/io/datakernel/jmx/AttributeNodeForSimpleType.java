@@ -25,24 +25,25 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.jmx.Utils.createMapWithOneEntry;
-import static io.datakernel.jmx.Utils.filterNulls;
+import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class AttributeNodeForSimpleType implements AttributeNode {
 	private final String name;
+	private final String description;
 	private final ValueFetcher fetcher;
 	private final Method setter;
 	private final OpenType<?> openType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final JmxReducer reducer;
 
-	public AttributeNodeForSimpleType(String name, ValueFetcher fetcher, Method setter,
+	public AttributeNodeForSimpleType(String name, String description, ValueFetcher fetcher, Method setter,
 	                                  Class<?> attributeType, JmxReducer reducer) {
 		checkArgument(!name.isEmpty(), "SimpleType attribute cannot have empty name");
 
 		this.name = name;
+		this.description = description;
 		this.fetcher = fetcher;
 		this.setter = setter;
 		this.openType = simpleTypeOf(attributeType);
@@ -53,6 +54,11 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 	@Override
 	public String getName() {
 		return name;
+	}
+
+	@Override
+	public Map<String, Map<String, String>> getDescriptions() {
+		return createDescriptionMap(name, description);
 	}
 
 	@Override

@@ -22,8 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.jmx.Utils.createMapWithOneEntry;
-import static io.datakernel.jmx.Utils.filterNulls;
+import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
@@ -34,17 +33,19 @@ final class AttributeNodeForMap implements AttributeNode {
 	private static final String TABULAR_TYPE_NAME = "TabularType";
 
 	private final String name;
+	private final String description;
 	private final ValueFetcher fetcher;
 	private final AttributeNode subNode;
 	private final TabularType tabularType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean isMapOfJmxRefreshable;
 
-	public AttributeNodeForMap(String name, ValueFetcher fetcher, AttributeNode subNode,
+	public AttributeNodeForMap(String name, String description, ValueFetcher fetcher, AttributeNode subNode,
 	                           boolean isMapOfJmxRefreshable) {
 		checkArgument(!name.isEmpty(), "Map attribute cannot have empty name");
 
 		this.name = name;
+		this.description = description;
 		this.tabularType = createTabularType(subNode);
 		this.nameToOpenType = createMapWithOneEntry(name, tabularType);
 		this.fetcher = fetcher;
@@ -86,6 +87,11 @@ final class AttributeNodeForMap implements AttributeNode {
 	@Override
 	public String getName() {
 		return name;
+	}
+
+	@Override
+	public Map<String, Map<String, String>> getDescriptions() {
+		return createDescriptionMap(name, description);
 	}
 
 	@Override

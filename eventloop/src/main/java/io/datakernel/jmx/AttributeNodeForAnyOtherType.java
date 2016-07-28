@@ -23,21 +23,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.datakernel.jmx.Utils.createMapWithOneEntry;
-import static io.datakernel.jmx.Utils.filterNulls;
+import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class AttributeNodeForAnyOtherType implements AttributeNode {
 	private final String name;
+	private final String description;
 	private final ValueFetcher fetcher;
 	private final OpenType<?> openType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 
-	public AttributeNodeForAnyOtherType(String name, ValueFetcher fetcher) {
+	public AttributeNodeForAnyOtherType(String name, String description, ValueFetcher fetcher) {
 		checkArgument(!name.isEmpty(), "Leaf attribute cannot have empty name");
 
 		this.name = name;
+		this.description = description;
 		this.fetcher = fetcher;
 		this.openType = SimpleType.STRING;
 		this.nameToOpenType = createMapWithOneEntry(name, openType);
@@ -46,6 +47,11 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 	@Override
 	public String getName() {
 		return name;
+	}
+
+	@Override
+	public Map<String, Map<String, String>> getDescriptions() {
+		return createDescriptionMap(name, description);
 	}
 
 	@Override

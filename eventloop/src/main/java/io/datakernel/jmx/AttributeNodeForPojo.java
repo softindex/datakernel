@@ -29,8 +29,9 @@ import static io.datakernel.util.Preconditions.checkNotNull;
 final class AttributeNodeForPojo extends AttributeNodeForPojoAbstract {
 	private final List<? extends AttributeNode> subNodes;
 
-	public AttributeNodeForPojo(String name, ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
-		super(name, fetcher, subNodes);
+	public AttributeNodeForPojo(String name, String description,
+	                            ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
+		super(name, description, fetcher, subNodes);
 		this.subNodes = subNodes;
 	}
 

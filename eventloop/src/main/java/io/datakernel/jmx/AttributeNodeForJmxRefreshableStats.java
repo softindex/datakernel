@@ -22,10 +22,10 @@ import static java.util.Collections.singletonList;
 
 final class AttributeNodeForJmxRefreshableStats extends AttributeNodeForJmxStatsAbstract {
 
-	public AttributeNodeForJmxRefreshableStats(String name, ValueFetcher fetcher,
+	public AttributeNodeForJmxRefreshableStats(String name, String description, ValueFetcher fetcher,
 	                                           Class<? extends JmxRefreshableStats<?>> jmxStatsClass,
 	                                           List<? extends AttributeNode> subNodes) {
-		super(name, fetcher, jmxStatsClass, subNodes);
+		super(name, description, fetcher, jmxStatsClass, subNodes);
 	}
 
 	@Override
