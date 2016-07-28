@@ -18,10 +18,7 @@ package io.datakernel.jmx;
 
 import javax.management.openmbean.*;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.datakernel.jmx.Utils.createMapWithOneEntry;
 import static io.datakernel.jmx.Utils.filterNulls;
@@ -137,10 +134,19 @@ final class AttributeNodeForList implements AttributeNode {
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public Iterable<JmxRefreshable> getAllRefreshables(Object source) {
-		return isListOfJmxRefreshables ?
-				(List<JmxRefreshable>) fetcher.fetchFrom(source) :
-				null;
+	public Iterable<JmxRefreshable> getAllRefreshables(final Object source) {
+		if (!isListOfJmxRefreshables) {
+			return null;
+		}
+
+		final List<JmxRefreshable> listRef = (List<JmxRefreshable>) fetcher.fetchFrom(source);
+		return new Iterable<JmxRefreshable>() {
+			@Override
+			public Iterator<JmxRefreshable> iterator() {
+				List<JmxRefreshable> listCopy = new ArrayList<>(listRef);
+				return listCopy.iterator();
+			}
+		};
 	}
 
 	@Override
