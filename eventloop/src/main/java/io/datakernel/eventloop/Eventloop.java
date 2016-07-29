@@ -21,9 +21,9 @@ import io.datakernel.async.*;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.JmxReducers;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
 import io.datakernel.util.Stopwatch;
@@ -1110,25 +1110,37 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		);
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public long getTick() { return tick; }
 
-	@JmxAttribute
-	public int getConcurrentTasks() {return concurrentTasks.size();}
+	@JmxAttribute(
+			description = "number of concurrent tasks to be executed",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getCurrentConcurrentTasks() {return concurrentTasks.size();}
 
-	@JmxAttribute
-	public int getScheduledTasks() { return scheduledTasks.size(); }
+	@JmxAttribute(
+			description = "number of scheduled tasks to be executed",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getCurrentScheduledTasks() { return scheduledTasks.size(); }
 
-	@JmxAttribute
-	public int getBackgroundTasks() {return backgroundTasks.size(); }
+	@JmxAttribute(
+			description = "number of background tasks to be executed",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getCurrentBackgroundTasks() {return backgroundTasks.size(); }
 
-	@JmxAttribute
-	public int getLocalTasks() { return localTasks.size(); }
+	@JmxAttribute(
+			description = "amount of local tasks to be executed",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getCurrentLocalTasks() { return localTasks.size(); }
 
 	@JmxAttribute
 	public boolean getKeepAlive() { return keepAlive; }
 
-	@JmxAttribute
+	@JmxAttribute(name = "")
 	public EventloopStats getStats() {
 		return stats;
 	}

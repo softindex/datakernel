@@ -260,9 +260,9 @@ public class AsyncHttpServerTest {
 		}
 		server.closeFuture().await();
 		thread.join();
-		assertEquals(1, eventloop.getStats().getIoErrors().getTotal());
+		assertEquals(1, eventloop.getStats().getErrorStats().getIoErrors().getTotal());
 		assertEquals("Too big HttpMessage",
-				eventloop.getStats().getIoErrors().getLastException().getMessage());
+				eventloop.getStats().getErrorStats().getIoErrors().getLastException().getMessage());
 
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
