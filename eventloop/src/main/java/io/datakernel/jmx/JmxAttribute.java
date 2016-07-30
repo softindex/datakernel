@@ -24,9 +24,12 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface JmxAttribute {
-	String USE_GETTER_NAME = "USE_GETTER_NAME";
+	String USE_GETTER_NAME = "_USE_GETTER_NAME_";
+	String NO_DESCRIPTION = "_NO_DESCRIPTION_";
 
 	String name() default USE_GETTER_NAME;
+
+	String description() default NO_DESCRIPTION;
 
 	Class<? extends JmxReducer<?>> reducer() default JmxReducers.JmxReducerDistinct.class;
 

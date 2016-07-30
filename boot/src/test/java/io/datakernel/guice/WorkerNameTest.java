@@ -18,7 +18,10 @@ package io.datakernel.guice;
 
 import com.google.inject.*;
 import io.datakernel.bytebuf.ByteBufPool;
-import io.datakernel.service.*;
+import io.datakernel.service.Service;
+import io.datakernel.service.ServiceAdapter;
+import io.datakernel.service.ServiceGraph;
+import io.datakernel.service.ServiceGraphModule;
 import io.datakernel.worker.Worker;
 import io.datakernel.worker.WorkerId;
 import io.datakernel.worker.WorkerPool;
@@ -28,7 +31,7 @@ import org.junit.Test;
 import java.util.List;
 import java.util.concurrent.Executor;
 
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
 
 public class WorkerNameTest {
@@ -91,7 +94,6 @@ public class WorkerNameTest {
 			return new Element1();
 		}
 
-
 		@Provides
 		@Singleton
 		Element2 primaryServer(Element1 primaryEventloop, WorkerPool workerPool) {
@@ -136,6 +138,6 @@ public class WorkerNameTest {
 			serviceGraph.stopFuture().get();
 		}
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

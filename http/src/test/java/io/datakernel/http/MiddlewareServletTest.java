@@ -23,6 +23,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static org.junit.Assert.assertEquals;
 
 public class MiddlewareServletTest {
@@ -40,6 +41,7 @@ public class MiddlewareServletTest {
 				assertEquals(expectedBody, result.getBody() == null ? "" : result.getBody().toString());
 				assertEquals(expectedCode, result.getCode());
 				System.out.println(result + "  " + result.getBody());
+				result.recycleBufs();
 			}
 
 			@Override
@@ -62,7 +64,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -91,6 +93,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(request7, callback("Executed: /b/f", 200));
 		main.serveAsync(request8, callback("Executed: /b/g", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -107,7 +110,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -131,6 +134,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(request7, callback("Executed: /b/f", 200));
 		main.serveAsync(request8, callback("Executed: /b/g", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -138,7 +142,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -146,7 +150,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet anotherAction = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -158,7 +162,7 @@ public class MiddlewareServletTest {
 		expectedException.expect(RuntimeException.class);
 		expectedException.expectMessage("Can't map. Handler already exists");
 		s1.get("/", anotherAction);
-
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -174,7 +178,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -201,6 +205,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(request6, callback("Executed: /a/e", 200));
 		main.serveAsync(request7, callback("Executed: /a/c/f", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -210,7 +215,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Executed: " + request.getPath());
+				ByteBuf msg = ByteBufStrings.wrapUtf8("Executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -218,7 +223,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet anotherAction = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				ByteBuf msg = ByteBufStrings.wrapUTF8("Shall not be executed: " + request.getPath());
+				ByteBuf msg = ByteBufStrings.wrapUtf8("Shall not be executed: " + request.getPath());
 				callback.onResult(HttpResponse.create(200).body(msg));
 			}
 		};
@@ -237,6 +242,7 @@ public class MiddlewareServletTest {
 		main.get("/", exc);
 
 		main.serveAsync(request, callback("SHALL NOT BE EXECUTED", 500));
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -245,10 +251,11 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUTF8(request.getUrlParameter("id")
+				response.body(ByteBufStrings.wrapUtf8(request.getUrlParameter("id")
 						+ " " + request.getUrlParameter("uid")
 						+ " " + request.getUrlParameter("eid")));
 				callback.onResult(response);
+				request.recycleBufs();
 			}
 		};
 
@@ -261,6 +268,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(HttpRequest.get("http://www.coursera.org/555/a/777"), callback("555 777 null", 200));
 		main.serveAsync(HttpRequest.get("http://www.coursera.org"), callback("", 404));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -269,7 +277,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUTF8("served car: " + request.getUrlParameter("cid")));
+				response.body(ByteBufStrings.wrapUtf8("served car: " + request.getUrlParameter("cid")));
 				callback.onResult(response);
 			}
 		};
@@ -278,7 +286,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUTF8("served man: " + request.getUrlParameter("mid")));
+				response.body(ByteBufStrings.wrapUtf8("served man: " + request.getUrlParameter("mid")));
 				callback.onResult(response);
 			}
 		};
@@ -291,6 +299,7 @@ public class MiddlewareServletTest {
 		ms.serveAsync(HttpRequest.get(TEMPLATE + "/serve/1/wash"), callback("served car: 1", 200));
 		ms.serveAsync(HttpRequest.get(TEMPLATE + "/serve/2/feed"), callback("served man: 2", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -303,7 +312,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUTF8("POST"));
+				response.body(ByteBufStrings.wrapUtf8("POST"));
 				callback.onResult(response);
 			}
 		};
@@ -312,7 +321,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUTF8("GET"));
+				response.body(ByteBufStrings.wrapUtf8("GET"));
 				callback.onResult(response);
 			}
 		};
@@ -321,7 +330,7 @@ public class MiddlewareServletTest {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
 				HttpResponse response = HttpResponse.create(200);
-				response.body(ByteBufStrings.wrapUTF8("WILDCARD"));
+				response.body(ByteBufStrings.wrapUtf8("WILDCARD"));
 				callback.onResult(response);
 			}
 		};
@@ -336,6 +345,7 @@ public class MiddlewareServletTest {
 		servlet.serveAsync(request2, callback("POST", 200));
 		servlet.serveAsync(request3, callback("WILDCARD", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -343,14 +353,14 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet def = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("Stopped at admin: " + request.getRelativePath())));
+				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUtf8("Stopped at admin: " + request.getRelativePath())));
 			}
 		};
 
 		AsyncHttpServlet action = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("Action executed")));
+				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUtf8("Action executed")));
 			}
 		};
 
@@ -365,6 +375,7 @@ public class MiddlewareServletTest {
 		main.serveAsync(request1, callback("Action executed", 200));
 		main.serveAsync(request2, callback("Stopped at admin: /action/ban", 200));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -372,7 +383,7 @@ public class MiddlewareServletTest {
 		AsyncHttpServlet handler = new AsyncHttpServlet() {
 			@Override
 			public void serveAsync(HttpRequest request, Callback callback) {
-				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUTF8("All OK")));
+				callback.onResult(HttpResponse.create(200).body(ByteBufStrings.wrapUtf8("All OK")));
 			}
 		};
 		MiddlewareServlet main = new MiddlewareServlet();
@@ -382,5 +393,6 @@ public class MiddlewareServletTest {
 		System.out.println("404 " + DELIM);
 		main.serveAsync(HttpRequest.get(TEMPLATE + "/a/123/b/c"), callback("", 404));
 		System.out.println();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 }

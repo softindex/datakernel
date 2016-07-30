@@ -17,25 +17,22 @@
 package io.datakernel.hashfs;
 
 import com.google.gson.Gson;
-import io.datakernel.FsCommands;
+import io.datakernel.FsResponses.ListOfFiles;
 import io.datakernel.FsServer;
-import io.datakernel.async.CompletionCallback;
-import io.datakernel.async.ForwardingCompletionCallback;
-import io.datakernel.async.ForwardingResultCallback;
-import io.datakernel.async.ResultCallback;
+import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
 import io.datakernel.stream.file.StreamFileReader;
 import io.datakernel.stream.file.StreamFileWriter;
-import io.datakernel.stream.net.Messaging;
-import io.datakernel.stream.net.MessagingHandler;
-import io.datakernel.stream.net.StreamMessagingConnection;
+import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 
 import java.util.List;
 import java.util.Set;
 
-import static io.datakernel.FsResponses.*;
+import static io.datakernel.FsResponses.Err;
+import static io.datakernel.FsResponses.FsResponse;
 import static io.datakernel.hashfs.HashFsCommands.Alive;
 import static io.datakernel.hashfs.HashFsCommands.Announce;
 import static io.datakernel.hashfs.HashFsResponses.ListOfServers;
@@ -47,11 +44,13 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 	public HashFsServer(Eventloop eventloop, LocalReplica localReplica) {
 		super(eventloop, localReplica.getFileManager());
 		this.localReplica = localReplica;
+		this.handlers.put(Alive.class, new AliveMessagingHandler());
+		this.handlers.put(Announce.class, new AnnounceMessagingHandler());
 	}
 
 	// core
 	@Override
-	protected final void upload(final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+	protected final void upload(final String fileName, final ResultCallback<StreamConsumer<ByteBuf>> callback) {
 		if (localReplica.canUpload(fileName)) {
 			localReplica.onUploadStart(fileName);
 			fileManager.save(fileName, new ResultCallback<StreamFileWriter>() {
@@ -62,10 +61,9 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 						@Override
 						public void onComplete() {
 							localReplica.onUploadComplete(fileName);
-							callback.onComplete();
 						}
 					});
-					producer.streamTo(writer);
+					callback.onResult(writer);
 				}
 
 				@Override
@@ -138,14 +136,6 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 		localReplica.getList(callback);
 	}
 
-	// connection
-	@Override
-	protected void addHandlers(StreamMessagingConnection<FsCommands.FsCommand, FsResponse> conn) {
-		super.addHandlers(conn);
-		conn.addHandler(Alive.class, new AliveMessagingHandler());
-		conn.addHandler(Announce.class, new AnnounceMessagingHandler());
-	}
-
 	@Override
 	protected Gson getResponseGson() {
 		return HashFsResponses.responseGSON;
@@ -158,18 +148,26 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 	private class AliveMessagingHandler implements MessagingHandler<Alive, FsResponse> {
 		@Override
-		public void onMessage(Alive item, final Messaging<FsResponse> messaging) {
+		public void onMessage(final MessagingWithBinaryStreaming<Alive, FsResponse> messaging, Alive item) {
 			localReplica.showAlive(eventloop.currentTimeMillis(), new ResultCallback<Set<Replica>>() {
 				@Override
 				public void onResult(Set<Replica> result) {
-					messaging.sendMessage(new ListOfServers(result));
-					messaging.shutdown();
+					messaging.send(new ListOfServers(result), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 
 				@Override
 				public void onException(Exception e) {
-					messaging.sendMessage(new Err(e.getMessage()));
-					messaging.shutdown();
+					messaging.send(new Err(e.getMessage()), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 			});
 		}
@@ -177,18 +175,26 @@ public final class HashFsServer extends FsServer<HashFsServer> {
 
 	private class AnnounceMessagingHandler implements MessagingHandler<Announce, FsResponse> {
 		@Override
-		public void onMessage(Announce item, final Messaging<FsResponse> messaging) {
+		public void onMessage(final MessagingWithBinaryStreaming<Announce, FsResponse> messaging, Announce item) {
 			localReplica.onAnnounce(item.forUpload, item.forDeletion, new ResultCallback<List<String>>() {
 				@Override
 				public void onResult(List<String> result) {
-					messaging.sendMessage(new ListOfFiles(result));
-					messaging.shutdown();
+					messaging.send(new ListOfFiles(result), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 
 				@Override
 				public void onException(Exception e) {
-					messaging.sendMessage(new Err(e.getMessage()));
-					messaging.shutdown();
+					messaging.send(new Err(e.getMessage()), new SimpleCompletionCallback() {
+						@Override
+						protected void onCompleteOrException() {
+							messaging.close();
+						}
+					});
 				}
 			});
 		}

@@ -16,6 +16,8 @@
 
 package io.datakernel.net;
 
+import io.datakernel.eventloop.AsyncTcpSocketImpl;
+
 import java.io.IOException;
 import java.nio.channels.SocketChannel;
 
@@ -42,37 +44,49 @@ public class SocketSettings {
 	private final byte keepAlive;
 	private final byte reuseAddress;
 	private final byte tcpNoDelay;
+	private final long readTimeout;
+	private final long writeTimeout;
 
-	protected SocketSettings(int sendBufferSize, int receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay) {
+	protected SocketSettings(int sendBufferSize, int receiveBufferSize, byte keepAlive, byte reuseAddress, byte tcpNoDelay, long readTimeout, long writeTimeout) {
 		this.sendBufferSize = sendBufferSize;
 		this.receiveBufferSize = receiveBufferSize;
 		this.keepAlive = keepAlive;
 		this.reuseAddress = reuseAddress;
 		this.tcpNoDelay = tcpNoDelay;
+		this.readTimeout = readTimeout;
+		this.writeTimeout = writeTimeout;
 	}
 
 	public SocketSettings() {
-		this(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL, DEF_BOOL);
+		this(DEF_INT, DEF_INT, DEF_BOOL, DEF_BOOL, DEF_BOOL, DEF_INT, DEF_INT);
 	}
 
 	public SocketSettings sendBufferSize(int sendBufferSize) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
 	public SocketSettings receiveBufferSize(int receiveBufferSize) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
 	public SocketSettings keepAlive(boolean keepAlive) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive ? TRUE : FALSE, reuseAddress, tcpNoDelay);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive ? TRUE : FALSE, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
 	public SocketSettings reuseAddress(boolean reuseAddress) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress ? TRUE : FALSE, tcpNoDelay);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress ? TRUE : FALSE, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
 	public SocketSettings tcpNoDelay(boolean tcpNoDelay) {
-		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay ? TRUE : FALSE);
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay ? TRUE : FALSE, readTimeout, writeTimeout);
+	}
+
+	public SocketSettings readTimeout(long readTimeout) {
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
+	}
+
+	public SocketSettings writeTimeout(long writeTimeout) {
+		return new SocketSettings(sendBufferSize, receiveBufferSize, keepAlive, reuseAddress, tcpNoDelay, readTimeout, writeTimeout);
 	}
 
 	public void applySettings(SocketChannel channel) throws IOException {
@@ -90,6 +104,15 @@ public class SocketSettings {
 		}
 		if (tcpNoDelay != DEF_BOOL) {
 			channel.setOption(TCP_NODELAY, tcpNoDelay != FALSE);
+		}
+	}
+
+	public void applyReadWriteTimeoutsTo(AsyncTcpSocketImpl asyncTcpSocket) {
+		if (hasReadTimeout()) {
+			asyncTcpSocket.readTimeout(readTimeout);
+		}
+		if (hasWriteTimeout()) {
+			asyncTcpSocket.writeTimeout(writeTimeout);
 		}
 	}
 
@@ -138,4 +161,21 @@ public class SocketSettings {
 		return tcpNoDelay != FALSE;
 	}
 
+	public boolean hasReadTimeout() {
+		return readTimeout != DEF_INT;
+	}
+
+	public long getReadTimeout() {
+		assert hasReadTimeout();
+		return readTimeout;
+	}
+
+	public boolean hasWriteTimeout() {
+		return writeTimeout != DEF_INT;
+	}
+
+	public long getWriteTimeout() {
+		assert hasWriteTimeout();
+		return writeTimeout;
+	}
 }

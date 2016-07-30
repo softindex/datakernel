@@ -17,7 +17,6 @@
 package io.datakernel.simplefs;
 
 import com.google.common.collect.Lists;
-import io.datakernel.StreamTransformerWithCounter;
 import io.datakernel.async.*;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
@@ -29,7 +28,6 @@ import io.datakernel.util.ByteBufStrings;
 import org.hamcrest.BaseMatcher;
 import org.hamcrest.Description;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -47,6 +45,7 @@ import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
 import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.util.ByteBufStrings.equalsLowerCaseAscii;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -56,6 +55,11 @@ import static java.util.concurrent.Executors.newCachedThreadPool;
 import static org.junit.Assert.*;
 
 public class SimpleFsIntegrationTest {
+//	static {
+//		ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+//		logger.setLevel(Level.TRACE);
+//	}
+
 	@Rule
 	public ExpectedException thrown = ExpectedException.none();
 
@@ -65,7 +69,7 @@ public class SimpleFsIntegrationTest {
 	private static final InetSocketAddress address = new InetSocketAddress(5560);
 
 	private static Path storage;
-	private static final byte[] BIG_FILE = new byte[256 * 1024 * 1024];
+	private static final byte[] BIG_FILE = createBigByteArray();
 	private static final byte[] CONTENT = "content".getBytes(UTF_8);
 
 	@Before
@@ -78,7 +82,7 @@ public class SimpleFsIntegrationTest {
 		String resultFile = "file_uploaded.txt";
 		byte[] bytes = "content".getBytes(UTF_8);
 
-		upload(resultFile, bytes);
+		upload(resultFile, bytes, ignoreCompletionCallback());
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), bytes);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -105,7 +109,7 @@ public class SimpleFsIntegrationTest {
 
 		server.listen();
 		for (int i = 0; i < files; i++) {
-			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(CONTENT));
+			StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(CONTENT));
 			client.upload("file" + i, producer, callback);
 		}
 
@@ -121,12 +125,12 @@ public class SimpleFsIntegrationTest {
 	@Test
 	public void testUploadBigFile() throws IOException {
 		String resultFile = "big file_uploaded.txt";
-		Random rand = new Random();
+		Random rand = new Random(1L);
 		for (int i = 0; i < BIG_FILE.length; i++) {
 			BIG_FILE[i] = (byte) (rand.nextInt(256) - 128);
 		}
 
-		upload(resultFile, BIG_FILE);
+		upload(resultFile, BIG_FILE, ignoreCompletionCallback());
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), BIG_FILE);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
@@ -136,15 +140,29 @@ public class SimpleFsIntegrationTest {
 	public void testUploadLong() throws IOException {
 		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
 
-		upload(resultFile, CONTENT);
+		upload(resultFile, CONTENT, ignoreCompletionCallback());
 
 		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), CONTENT);
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	@Ignore("Depends on the open options in StreamFileWriter: {CREATE, WRITE, TRUNCATE_EXISTING}")
 	@Test
-	public void testUploadExistingFile() {
+	public void testUploadExistingFile() throws IOException {
+		String resultFile = "this/is/not/empty/directory/2/file2_uploaded.txt";
+
+		final Exception es[] = new Exception[1];
+
+		upload(resultFile, CONTENT, ignoreCompletionCallback());
+		upload(resultFile, CONTENT, new ExceptionCallback() {
+			@Override
+			public void onException(Exception e) {
+				es[0] = e;
+			}
+		});
+
+		assertNotNull(es[0]);
+		assertArrayEquals(readAllBytes(storage.resolve(resultFile)), CONTENT);
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -160,12 +178,12 @@ public class SimpleFsIntegrationTest {
 		StreamProducer<ByteBuf> producer =
 				StreamProducers.concat(eventloop,
 						StreamProducers.ofIterable(eventloop, asList(
-								ByteBufStrings.wrapUTF8("Test1"),
-								ByteBufStrings.wrapUTF8(" Test2"),
-								ByteBufStrings.wrapUTF8(" Test3"))),
-						StreamProducers.ofValue(eventloop, ByteBuf.wrap(BIG_FILE)),
+								ByteBufStrings.wrapUtf8("Test1"),
+								ByteBufStrings.wrapUtf8(" Test2"),
+								ByteBufStrings.wrapUtf8(" Test3"))),
+						StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(BIG_FILE)),
 						StreamProducers.<ByteBuf>closingWithError(eventloop, new SimpleException("Test exception")),
-						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUTF8("Test4")));
+						StreamProducers.ofValue(eventloop, ByteBufStrings.wrapUtf8("Test4")));
 
 		final CompletionCallbackFuture callback = new CompletionCallbackFuture();
 		client.upload(resultFile, producer, new CompletionCallback() {
@@ -210,8 +228,7 @@ public class SimpleFsIntegrationTest {
 
 		List<ByteBuf> expected = download(file, 0);
 
-		assertEquals(2, expected.size()); // command is the first buf
-		assertTrue(equalsLowerCaseAscii(CONTENT, expected.get(1).array(), 0, 7));
+		assertTrue(equalsLowerCaseAscii(CONTENT, expected.get(0).array(), 0, 7));
 
 		// created in 'toList' stream consumer
 		for (ByteBuf buf : expected) {
@@ -228,8 +245,7 @@ public class SimpleFsIntegrationTest {
 
 		List<ByteBuf> expected = download(file, 2);
 
-		assertEquals(2, expected.size()); // command is the first buf
-		assertTrue(equalsLowerCaseAscii("ntent".getBytes(UTF_8), expected.get(1).array(), 0, 5));
+		assertTrue(equalsLowerCaseAscii("ntent".getBytes(UTF_8), expected.get(0).array(), 0, 5));
 
 		// created in 'toList' stream consumer
 		for (ByteBuf buf : expected) {
@@ -246,8 +262,7 @@ public class SimpleFsIntegrationTest {
 
 		List<ByteBuf> expected = download(file, 0);
 
-		assertEquals(2, expected.size()); // command is the first buf
-		assertTrue(equalsLowerCaseAscii(CONTENT, expected.get(1).array(), 0, 7));
+		assertTrue(equalsLowerCaseAscii(CONTENT, expected.get(0).array(), 0, 7));
 
 		// created in 'toList' stream consumer
 		for (ByteBuf buf : expected) {
@@ -266,9 +281,9 @@ public class SimpleFsIntegrationTest {
 		final List<Exception> expected = new ArrayList<>();
 
 		server.listen();
-		client.download(file, 0, new ResultCallback<StreamTransformerWithCounter>() {
+		client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
-			public void onResult(StreamTransformerWithCounter result) {
+			public void onResult(StreamProducer<ByteBuf> producer) {
 				server.close();
 			}
 
@@ -313,12 +328,11 @@ public class SimpleFsIntegrationTest {
 
 		for (int i = 0; i < files; i++) {
 			final int finalI = i;
-			client.download(file, 0, new ResultCallback<StreamTransformerWithCounter>() {
+			client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 				@Override
-				public void onResult(StreamTransformerWithCounter result) {
+				public void onResult(StreamProducer<ByteBuf> producer) {
 					try {
-						result.getOutput().streamTo(
-								StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
+						producer.streamTo(StreamFileWriter.create(eventloop, executor, storage.resolve("file" + finalI)));
 					} catch (IOException e) {
 						this.onException(e);
 					}
@@ -350,7 +364,7 @@ public class SimpleFsIntegrationTest {
 		SimpleFsServer server = createServer(eventloop, executor);
 		server.listen();
 
-		client.delete(file, new CloseCompletionCallback(server));
+		client.delete(file, new CloseCompletionCallback(server, ignoreCompletionCallback()));
 
 		eventloop.run();
 		executor.shutdown();
@@ -444,15 +458,15 @@ public class SimpleFsIntegrationTest {
 		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
-	private void upload(String resultFile, byte[] bytes) throws IOException {
+	private void upload(String resultFile, byte[] bytes, ExceptionCallback callback) throws IOException {
 		Eventloop eventloop = new Eventloop();
 		ExecutorService executor = newCachedThreadPool();
 		final SimpleFsServer server = createServer(eventloop, executor);
 		SimpleFsClient client = createClient(eventloop);
 
 		server.listen();
-		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
-		client.upload(resultFile, producer, new CloseCompletionCallback(server));
+		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes));
+		client.upload(resultFile, producer, new CloseCompletionCallback(server, callback));
 		eventloop.run();
 		executor.shutdown();
 	}
@@ -465,10 +479,10 @@ public class SimpleFsIntegrationTest {
 		final List<ByteBuf> expected = new ArrayList<>();
 
 		server.listen();
-		client.download(file, startPosition, new ResultCallback<StreamTransformerWithCounter>() {
+		client.download(file, startPosition, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
-			public void onResult(StreamTransformerWithCounter result) {
-				result.getOutput().streamTo(StreamConsumers.toList(eventloop, expected));
+			public void onResult(StreamProducer<ByteBuf> producer) {
+				producer.streamTo(StreamConsumers.toList(eventloop, expected));
 				server.close();
 			}
 
@@ -489,10 +503,24 @@ public class SimpleFsIntegrationTest {
 				.setListenAddress(address);
 	}
 
+	static byte[] createBigByteArray() {
+		byte[] bytes = new byte[2 * 1024 * 1024];
+		Random rand = new Random(1L);
+		for (int i = 0; i < bytes.length; i++) {
+			bytes[i] = (byte) (rand.nextInt(256) - 128);
+		}
+		return bytes;
+
+	}
+
 	private static class CloseCompletionCallback implements CompletionCallback {
 		private final SimpleFsServer server;
+		private final ExceptionCallback callback;
 
-		public CloseCompletionCallback(SimpleFsServer server) {this.server = server;}
+		public CloseCompletionCallback(SimpleFsServer server, ExceptionCallback callback) {
+			this.server = server;
+			this.callback = callback;
+		}
 
 		@Override
 		public void onComplete() {
@@ -502,6 +530,7 @@ public class SimpleFsIntegrationTest {
 		@Override
 		public void onException(Exception e) {
 			server.close();
+			callback.onException(e);
 		}
 	}
 }

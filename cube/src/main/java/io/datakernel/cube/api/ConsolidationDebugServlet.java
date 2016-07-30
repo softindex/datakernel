@@ -23,7 +23,7 @@ import io.datakernel.http.*;
 
 import java.lang.reflect.Type;
 
-import static io.datakernel.util.ByteBufStrings.wrapUTF8;
+import static io.datakernel.util.ByteBufStrings.wrapUtf8;
 
 public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 	private final Gson gson;
@@ -52,6 +52,6 @@ public final class ConsolidationDebugServlet implements AsyncHttpServlet {
 		callback.onResult(HttpResponse
 				.create()
 				.contentType(ContentType.of(MediaTypes.JSON))
-				.body(wrapUTF8(gson.toJson(cube.getConsolidationDebugInfo()))));
+				.body(wrapUtf8(gson.toJson(cube.getConsolidationDebugInfo()))));
 	}
 }

@@ -20,9 +20,10 @@ import java.util.List;
 
 final class AttributeNodeForJmxStats extends AttributeNodeForJmxStatsAbstract {
 
-	public AttributeNodeForJmxStats(String name, ValueFetcher fetcher, Class<? extends JmxStats<?>> jmxStatsClass,
+	public AttributeNodeForJmxStats(String name, String description,
+	                                ValueFetcher fetcher, Class<? extends JmxStats<?>> jmxStatsClass,
 	                                List<? extends AttributeNode> subNodes) {
-		super(name, fetcher, jmxStatsClass, subNodes);
+		super(name, description, fetcher, jmxStatsClass, subNodes);
 	}
 
 	@Override

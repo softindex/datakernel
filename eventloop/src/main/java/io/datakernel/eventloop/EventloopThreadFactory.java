@@ -41,7 +41,7 @@ public final class EventloopThreadFactory implements ThreadFactory {
 
 	@Override
 	public Thread newThread(Runnable runnable) {
-		Thread thread = new Thread(runnable, "NioThread-%d" + count.getAndIncrement());
+		Thread thread = new Thread(runnable, "EventloopThread-" + count.getAndIncrement());
 		thread.setDaemon(daemon);
 		thread.setPriority(priority);
 		return thread;

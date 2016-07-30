@@ -141,6 +141,7 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 			}
 		}
 		onError(e);
+		doCleanup();
 	}
 
 	protected void closeWithError(Exception e) {
@@ -154,9 +155,8 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		status = END_OF_STREAM;
 
 		onEndOfStream();
+		doCleanup();
 	}
-
-	abstract protected void onEndOfStream();
 
 	@Override
 	public final StreamStatus getConsumerStatus() {
@@ -168,8 +168,12 @@ public abstract class AbstractStreamConsumer<T> implements StreamConsumer<T> {
 		closeWithError(e, false);
 	}
 
-	protected void onError(Exception e) {
+	abstract protected void onEndOfStream();
 
+	protected void onError(Exception e) {
+	}
+
+	protected void doCleanup() {
 	}
 
 	@Override

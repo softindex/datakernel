@@ -140,7 +140,6 @@ public final class StreamFileReader extends AbstractStreamProducer<ByteBuf> {
 					return;
 				} else {
 					position += result;
-					buf.flip();
 					send(buf);
 					if (length != Long.MAX_VALUE) {
 						length -= result;

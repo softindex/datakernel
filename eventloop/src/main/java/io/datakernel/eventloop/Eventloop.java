@@ -21,9 +21,9 @@ import io.datakernel.async.*;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
+import io.datakernel.jmx.JmxReducers;
 import io.datakernel.net.DatagramSocketSettings;
 import io.datakernel.net.ServerSocketSettings;
-import io.datakernel.net.SocketSettings;
 import io.datakernel.time.CurrentTimeProvider;
 import io.datakernel.time.CurrentTimeProviderSystem;
 import io.datakernel.util.Stopwatch;
@@ -553,8 +553,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	private void onRead(SelectionKey key) {
 		assert inEventloopThread();
-		SocketConnection connection = (SocketConnection) key.attachment();
-		connection.onReadReady();
+		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
+		handler.onReadReady();
 	}
 
 	/**
@@ -564,8 +564,8 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 */
 	private void onWrite(SelectionKey key) {
 		assert inEventloopThread();
-		SocketConnection connection = (SocketConnection) key.attachment();
-		connection.onWriteReady();
+		NioChannelEventHandler handler = (NioChannelEventHandler) key.attachment();
+		handler.onWriteReady();
 	}
 
 	private static void closeQuietly(AutoCloseable closeable) {
@@ -638,11 +638,10 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * Connects to given socket address asynchronously.
 	 *
 	 * @param address         socketChannel's address
-	 * @param socketSettings  socket's settings
 	 * @param connectCallback callback for connecting, it will be called once when connection is established or failed.
 	 */
-	public void connect(SocketAddress address, SocketSettings socketSettings, ConnectCallback connectCallback) {
-		connect(address, socketSettings, 0, connectCallback);
+	public void connect(SocketAddress address, ConnectCallback connectCallback) {
+		connect(address, 0, connectCallback);
 	}
 
 	/**
@@ -650,20 +649,19 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	 * A timeout of zero is interpreted as an default system timeout
 	 *
 	 * @param address         socketChannel's address
-	 * @param socketSettings  socket's settings
 	 * @param timeout         the timeout value to be used in milliseconds, 0 as default system connection timeout
 	 * @param connectCallback callback for connecting, it will be called once when connection is established or failed.
 	 */
-	public void connect(SocketAddress address, SocketSettings socketSettings, int timeout, ConnectCallback connectCallback) {
+	public void connect(SocketAddress address, int timeout, ConnectCallback connectCallback) {
 		assert inEventloopThread();
 		SocketChannel socketChannel = null;
 		try {
 			socketChannel = SocketChannel.open();
 			socketChannel.configureBlocking(false);
-			socketSettings.applySettings(socketChannel);
 			socketChannel.connect(address);
 			socketChannel.register(ensureSelector(), SelectionKey.OP_CONNECT,
 					timeoutConnectCallback(socketChannel, timeout, connectCallback));
+
 		} catch (IOException e) {
 			recordIoError(e, address);
 			closeQuietly(socketChannel);
@@ -697,16 +695,14 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
-				if (scheduledTimeout.isComplete())
-					return;
+				assert !scheduledTimeout.isComplete();
 				scheduledTimeout.cancel();
 				connectCallback.onConnect(socketChannel);
 			}
 
 			@Override
 			public void onException(Exception exception) {
-				if (scheduledTimeout.isComplete())
-					return;
+				assert !scheduledTimeout.isComplete();
 				scheduledTimeout.cancel();
 				connectCallback.onException(exception);
 			}
@@ -1114,25 +1110,37 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 		);
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public long getTick() { return tick; }
 
-	@JmxAttribute
-	public int getConcurrentTasks() {return concurrentTasks.size();}
+	@JmxAttribute(
+			description = "number of concurrent tasks to be executed",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getCurrentConcurrentTasks() {return concurrentTasks.size();}
 
-	@JmxAttribute
-	public int getScheduledTasks() { return scheduledTasks.size(); }
+	@JmxAttribute(
+			description = "number of scheduled tasks to be executed",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getCurrentScheduledTasks() { return scheduledTasks.size(); }
 
-	@JmxAttribute
-	public int getBackgroundTasks() {return backgroundTasks.size(); }
+	@JmxAttribute(
+			description = "number of background tasks to be executed",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getCurrentBackgroundTasks() {return backgroundTasks.size(); }
 
-	@JmxAttribute
-	public int getLocalTasks() { return localTasks.size(); }
+	@JmxAttribute(
+			description = "amount of local tasks to be executed",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getCurrentLocalTasks() { return localTasks.size(); }
 
 	@JmxAttribute
 	public boolean getKeepAlive() { return keepAlive; }
 
-	@JmxAttribute
+	@JmxAttribute(name = "")
 	public EventloopStats getStats() {
 		return stats;
 	}

@@ -50,7 +50,7 @@ import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.postExceptionConcurrently;
 import static io.datakernel.async.AsyncCallbacks.postResultConcurrently;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.logfs.LogManagerImpl.DEFAULT_FILE_SWITCH_PERIOD;
 import static org.junit.Assert.assertEquals;
 
@@ -98,7 +98,7 @@ public class LogStreamConsumer_ByteBufferTest {
 				if (nom == 4) {
 					timeProvider.setTime(new LocalDateTime("1970-01-01T01:00:00").toDateTime(DateTimeZone.UTC).getMillis());
 				}
-				send(ByteBuf.wrap(new byte[]{1}));
+				send(ByteBuf.wrapForReading(new byte[]{1}));
 				onConsumerSuspended();
 				eventloop.schedule(5L, new Runnable() {
 					@Override
@@ -138,7 +138,7 @@ public class LogStreamConsumer_ByteBufferTest {
 
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -169,7 +169,7 @@ public class LogStreamConsumer_ByteBufferTest {
 					sendEndOfStream();
 					return;
 				}
-				send(ByteBuf.wrap(new byte[]{1}));
+				send(ByteBuf.wrapForReading(new byte[]{1}));
 				onConsumerSuspended();
 				eventloop.schedule(100L, new Runnable() {
 					@Override
@@ -210,7 +210,7 @@ public class LogStreamConsumer_ByteBufferTest {
 		}
 		assertEquals(getLast(listWriter).getConsumerStatus(), StreamStatus.CLOSED_WITH_ERROR);
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 
 	}
 

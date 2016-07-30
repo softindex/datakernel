@@ -447,7 +447,7 @@ public final class SerializerBuilder {
 			SerializerGen serializer = create(rawType, typeArguments, typedModsMap.getMods());
 			return new SerializerGenBuilder.SerializerForType(rawType, serializer);
 		} else if (genericType instanceof GenericArrayType) {
-			throw new UnsupportedOperationException(); // TODO
+			throw new UnsupportedOperationException();
 		} else if (genericType instanceof Class<?>) {
 			Class<?> rawType = (Class<?>) genericType;
 			SerializerGenBuilder.SerializerForType[] generics = {};

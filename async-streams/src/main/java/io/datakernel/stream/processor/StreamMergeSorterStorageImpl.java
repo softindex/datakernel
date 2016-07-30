@@ -156,7 +156,6 @@ public final class StreamMergeSorterStorageImpl<T> implements StreamMergeSorterS
 			}
 		});
 
-
 		return streamDeserializer.getOutput();
 	}
 

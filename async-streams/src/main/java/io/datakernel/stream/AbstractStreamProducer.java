@@ -26,7 +26,6 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.stream.StreamStatus.*;
-import static java.lang.String.format;
 
 /**
  * It is basic implementation of {@link StreamProducer}
@@ -200,6 +199,7 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		if (downstreamConsumer != null) {
 			downstreamConsumer.onProducerEndOfStream();
 		}
+		onEndOfStream();
 		doCleanup();
 	}
 
@@ -226,8 +226,10 @@ public abstract class AbstractStreamProducer<T> implements StreamProducer<T> {
 		closeWithError(e, false);
 	}
 
-	protected void onError(Exception e) {
+	protected void onEndOfStream() {
+	}
 
+	protected void onError(Exception e) {
 	}
 
 	protected void doCleanup() {

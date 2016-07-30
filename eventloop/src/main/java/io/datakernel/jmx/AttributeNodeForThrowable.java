@@ -21,8 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.datakernel.jmx.Utils.createMapWithOneEntry;
-import static io.datakernel.jmx.Utils.filterNulls;
+import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.util.Arrays.asList;
@@ -33,14 +32,16 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	private static final String THROWABLE_STACK_TRACE_KEY = "stackTrace";
 
 	private final String name;
+	private final String description;
 	private final ValueFetcher fetcher;
 	private final CompositeType compositeType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 
-	public AttributeNodeForThrowable(String name, ValueFetcher fetcher) {
+	public AttributeNodeForThrowable(String name, String description, ValueFetcher fetcher) {
 		checkArgument(!name.isEmpty(), "Throwable attribute cannot have empty name");
 
 		this.name = name;
+		this.description = description;
 		this.fetcher = fetcher;
 		this.compositeType = compositeTypeForThrowable();
 		this.nameToOpenType = createMapWithOneEntry(name, compositeType);
@@ -60,6 +61,11 @@ final class AttributeNodeForThrowable implements AttributeNode {
 	@Override
 	public String getName() {
 		return name;
+	}
+
+	@Override
+	public Map<String, Map<String, String>> getDescriptions() {
+		return createDescriptionMap(name, description);
 	}
 
 	@Override

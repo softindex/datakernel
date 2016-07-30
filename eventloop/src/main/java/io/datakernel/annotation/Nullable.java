@@ -27,5 +27,4 @@ import static java.lang.annotation.ElementType.*;
 @Target({FIELD, PARAMETER, METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Nullable {
-// TODO (vmykhalko): check usage against other Nullable-s
 }

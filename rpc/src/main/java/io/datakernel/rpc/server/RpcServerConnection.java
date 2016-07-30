@@ -18,8 +18,8 @@ package io.datakernel.rpc.server;
 
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
@@ -29,22 +29,15 @@ import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.channels.SocketChannel;
 import java.util.Map;
 
 public final class RpcServerConnection implements RpcConnection {
-
-	public interface StatusListener {
-		void onOpen(RpcServerConnection connection);
-
-		void onClosed();
-	}
-
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
+
 	private final Eventloop eventloop;
+	private final RpcServer rpcServer;
 	private final RpcProtocol protocol;
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
-	private final StatusListener statusListener;
 
 	// JMX
 	private final ExceptionStats lastRemoteException = new ExceptionStats();
@@ -53,14 +46,14 @@ public final class RpcServerConnection implements RpcConnection {
 	private EventStats errorResponses = new EventStats();
 	private boolean monitoring;
 
-	public RpcServerConnection(Eventloop eventloop, SocketChannel socketChannel,
+	public RpcServerConnection(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,
 	                           BufferSerializer<RpcMessage> messageSerializer,
 	                           Map<Class<?>, RpcRequestHandler<?, ?>> handlers,
-	                           RpcProtocolFactory protocolFactory, StatusListener statusListener) {
+	                           RpcProtocolFactory protocolFactory) {
 		this.eventloop = eventloop;
-		this.protocol = protocolFactory.create(this, socketChannel, messageSerializer, true);
+		this.rpcServer = rpcServer;
+		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
 		this.handlers = handlers;
-		this.statusListener = statusListener;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -74,11 +67,12 @@ public final class RpcServerConnection implements RpcConnection {
 	}
 
 	@Override
-	public void onReceiveMessage(final RpcMessage message) {
+	public void onData(final RpcMessage message) {
 		final int cookie = message.getCookie();
 		final long startTime = monitoring ? System.currentTimeMillis() : 0;
 
-		apply(message.getData(), new ResultCallback<Object>() {
+		final Object messageData = message.getData();
+		apply(messageData, new ResultCallback<Object>() {
 			@Override
 			public void onResult(Object result) {
 				updateProcessTime();
@@ -89,7 +83,7 @@ public final class RpcServerConnection implements RpcConnection {
 			@Override
 			public void onException(Exception exception) {
 				updateProcessTime();
-				lastRemoteException.recordException(exception, message.getData());
+				lastRemoteException.recordException(exception, messageData);
 				sendError(cookie, exception);
 			}
 
@@ -109,26 +103,17 @@ public final class RpcServerConnection implements RpcConnection {
 	}
 
 	@Override
-	public void ready() {
-		statusListener.onOpen(this);
+	public void onClosed() {
+		rpcServer.remove(this);
 	}
 
 	@Override
-	public void onClosed() {
-		statusListener.onClosed();
+	public AsyncTcpSocket.EventHandler getSocketConnection() {
+		return protocol.getSocketConnection();
 	}
 
 	public void close() {
 		protocol.close();
-	}
-
-	@Override
-	public Eventloop getEventloop() {
-		return eventloop;
-	}
-
-	public SocketConnection getSocketConnection() {
-		return protocol.getSocketConnection();
 	}
 
 	// JMX

@@ -18,8 +18,6 @@ package io.datakernel.cube.api;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import io.datakernel.aggregation_db.AggregationException;
-import io.datakernel.aggregation_db.AggregationQuery;
 import io.datakernel.codegen.AsmBuilder;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.cube.Cube;
@@ -36,7 +34,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 import static io.datakernel.codegen.Expressions.*;
-import static io.datakernel.util.ByteBufStrings.wrapUTF8;
+import static io.datakernel.util.ByteBufStrings.wrapUtf8;
 
 public class CommonUtils {
 	// Reflection
@@ -86,7 +84,7 @@ public class CommonUtils {
 	public static HttpResponse createResponse(String body) {
 		return HttpResponse.create()
 				.contentType(ContentType.of(MediaTypes.JSON))
-				.body(wrapUTF8(body))
+				.body(wrapUtf8(body))
 				.header(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
 	}
 

@@ -16,14 +16,14 @@
 
 package io.datakernel.rpc.protocol.stream;
 
+import io.datakernel.eventloop.AsyncTcpSocket;
+import io.datakernel.eventloop.Eventloop;
 import io.datakernel.rpc.protocol.RpcConnection;
 import io.datakernel.rpc.protocol.RpcMessage;
 import io.datakernel.rpc.protocol.RpcProtocol;
 import io.datakernel.rpc.protocol.RpcProtocolFactory;
 import io.datakernel.serializer.BufferSerializer;
 import io.datakernel.stream.processor.StreamBinarySerializer;
-
-import java.nio.channels.SocketChannel;
 
 import static io.datakernel.util.Preconditions.checkArgument;
 
@@ -54,26 +54,11 @@ public final class RpcStreamProtocolFactory implements RpcProtocolFactory {
 		return new RpcStreamProtocolFactory(defaultPacketSize, maxPacketSize, compression);
 	}
 
-	public RpcProtocol create(final RpcConnection connection, SocketChannel socketChannel,
-	                          BufferSerializer<RpcMessage> messageSerializer,
-	                          boolean isServer) {
-		return new RpcStreamProtocol(connection.getEventloop(), socketChannel,
-				messageSerializer,
-				defaultPacketSize, maxPacketSize, compression) {
-			@Override
-			protected void onReceiveMessage(RpcMessage message) {
-				connection.onReceiveMessage(message);
-			}
-
-			@Override
-			protected void onWired() {
-				connection.ready();
-			}
-
-			@Override
-			protected void onClosed() {
-				connection.onClosed();
-			}
-		};
+	@Override
+	public RpcProtocol create(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket,
+	                          RpcConnection connection, BufferSerializer<RpcMessage> messageSerializer) {
+		return new RpcStreamProtocol(eventloop, asyncTcpSocket,
+				connection, messageSerializer,
+				defaultPacketSize, maxPacketSize, compression);
 	}
 }

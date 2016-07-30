@@ -20,8 +20,7 @@ import javax.management.openmbean.*;
 import java.lang.reflect.Array;
 import java.util.*;
 
-import static io.datakernel.jmx.Utils.createMapWithOneEntry;
-import static io.datakernel.jmx.Utils.filterNulls;
+import static io.datakernel.jmx.Utils.*;
 import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static java.lang.String.format;
@@ -29,17 +28,19 @@ import static java.util.Arrays.asList;
 
 final class AttributeNodeForList implements AttributeNode {
 	private final String name;
+	private final String description;
 	private final ValueFetcher fetcher;
 	private final AttributeNode subNode;
 	private final ArrayType<?> arrayType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 	private final boolean isListOfJmxRefreshables;
 
-	public AttributeNodeForList(String name, ValueFetcher fetcher, AttributeNode subNode,
+	public AttributeNodeForList(String name, String description, ValueFetcher fetcher, AttributeNode subNode,
 	                            boolean isListOfJmxRefreshables) {
 		checkArgument(!name.isEmpty(), "List attribute cannot have empty name");
 
 		this.name = name;
+		this.description = description;
 		this.fetcher = fetcher;
 		this.subNode = subNode;
 		this.arrayType = createArrayType(subNode);
@@ -70,6 +71,11 @@ final class AttributeNodeForList implements AttributeNode {
 	@Override
 	public String getName() {
 		return name;
+	}
+
+	@Override
+	public Map<String, Map<String, String>> getDescriptions() {
+		return createDescriptionMap(name, description);
 	}
 
 	@Override

@@ -67,44 +67,14 @@ public final class PrimaryServer extends AbstractServer<PrimaryServer> {
 		return this;
 	}
 
-	/**
-	 * Instance of this class can not create a connection, it only forwards it. That is why this method
-	 * throws Exception
-	 *
-	 * @param socketChannel the socketChannel for creating connection.
-	 */
 	@Override
-	protected SocketConnection createConnection(SocketChannel socketChannel) {
+	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
 		throw new UnsupportedOperationException();
 	}
 
-	/**
-	 * On accepting this server forwards a received socketChannel, and calls onAccept() of the specify worker server.
-	 * Method uses round-robin algorithm to select to which server task will be forwarded
-	 *
-	 * @param socketChannel the incoming socketChannel.
-	 */
 	@Override
-	protected void doAccept(final SocketChannel socketChannel) {
-		// jmx
-		getTotalAccepts().recordEvent();
-
-		final EventloopServer server = workerServers[currentAcceptor];
-		currentAcceptor = (currentAcceptor + 1) % workerServers.length;
-		Eventloop eventloop = server.getEventloop();
-		if (eventloop == this.eventloop) {
-			server.onAccept(socketChannel);
-		} else {
-			eventloop.execute(new Runnable() {
-				@Override
-				public void run() {
-					server.onAccept(socketChannel);
-				}
-			});
-		}
-
-		if (acceptOnce) {
-			close();
-		}
+	protected EventloopServer getWorkerServer() {
+		return workerServers[(currentAcceptor++) % workerServers.length];
 	}
+
 }

@@ -146,7 +146,7 @@ public class RpcHelloWorldTest {
 	@Test
 	public void testBlockingCall() throws Exception {
 		try (BlockingHelloClient client = new BlockingHelloClient(eventloop)) {
-			for (int i = 0; i < 100; i++) {
+			for (int i = 0; i < 0; i++) {
 				assertEquals("Hello, World!", client.hello("World"));
 			}
 		} finally {

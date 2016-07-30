@@ -28,13 +28,13 @@ import io.datakernel.http.AsyncHttpClient;
 import io.datakernel.http.HttpRequest;
 import io.datakernel.http.HttpResponse;
 import io.datakernel.http.HttpUtils;
+import io.datakernel.util.ByteBufStrings;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import static io.datakernel.cube.api.CubeHttpServer.QUERY_REQUEST_PATH;
 import static io.datakernel.cube.api.HttpJsonConstants.*;
-import static io.datakernel.util.ByteBufStrings.decodeUTF8;
 
 public final class CubeHttpClient {
 	private final String domain;
@@ -55,12 +55,12 @@ public final class CubeHttpClient {
 	}
 
 	public void query(ReportingQuery query, final ResultCallback<ReportingQueryResult> callback) {
-		httpClient.execute(buildRequest(query), timeout, new ResultCallback<HttpResponse>() {
+		httpClient.send(buildRequest(query), timeout, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse httpResponse) {
 				String response;
 				try {
-					response = decodeUTF8(httpResponse.getBody());
+					response = ByteBufStrings.decodeUtf8(httpResponse.getBody());
 				} catch (ParseException e) {
 					callback.onException(new ParseException("Cube HTTP query failed. Invalid data received", e));
 					return;

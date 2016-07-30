@@ -21,7 +21,6 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallbackFuture;
 import io.datakernel.async.SimpleCompletionCallback;
-import io.datakernel.bytebuf.ByteBufPool;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.hashfs.HashFsClient;
 import io.datakernel.hashfs.HashFsServer;
@@ -47,7 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.logfs.LogManagerImpl.DETAILED_DATE_TIME_FORMATTER;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -126,7 +125,7 @@ public class LogFsTest {
 		assertEquals(new LogFile(dateTimeFormatter.print(2 * ONE_HOUR_MILLIS), 0), positionFuture.get().getLogFile());
 		assertEquals(asList("4", "5", "6", "7", "8", "9", "10", "11", "12"), consumer2.getList());
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test

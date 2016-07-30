@@ -1,100 +1,14 @@
-/*
- * Copyright (C) 2015 SoftIndex LLC.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package io.datakernel.bytebuf;
 
 import java.nio.ByteBuffer;
 
-/**
- * Represent a buffer which can be recycled from itself.Byte buffers can be created either by allocation,
- * which allocates space for the buffer's content,or by wrapping an existing byte array into a buffer.
- * After using this ByteBuf, call its recycle, but after it you can not work with its instance.
- * You may don't recycle it, after it this ByteBuf can be removing with the GC
- */
 public class ByteBuf {
-	protected int refs;
+	static final class ByteBufSlice extends ByteBuf {
+		private ByteBuf root;
 
-	private static final byte[] EMPTY_ARRAY = new byte[0];
-	private static final ByteBuf EMPTY_BUF = new ByteBuf(EMPTY_ARRAY, 0, 0);
-
-	protected final byte[] array;
-	protected int position;
-	protected int limit;
-
-	private ByteBuf(byte[] array, int position, int limit) {
-		assert position >= 0 && position <= limit && limit <= array.length;
-		this.array = array;
-		this.position = position;
-		this.limit = limit;
-	}
-
-	/**
-	 * Returns an empty buffer, which position and limit will are zero.
-	 */
-	public static ByteBuf empty() {
-		assert EMPTY_BUF.position == 0;
-		assert EMPTY_BUF.limit == 0;
-		return EMPTY_BUF;
-	}
-
-	/**
-	 * Allocates a new  byte ByteBuf. The new buffer's position will be zero, its limit will be its
-	 * size.
-	 *
-	 * @param size new buffers capacity in bytes
-	 * @return the new ByteBuf
-	 */
-	public static ByteBuf allocate(int size) {
-		return new ByteBuf(new byte[size], 0, size);
-	}
-
-	/**
-	 * Wraps a byte array into a ByteBuf.
-	 * The new buffer will be backed by the given byte array.The new buffer's capacity and limit will be
-	 * array.length, its position will be zero
-	 *
-	 * @param array the array that will back this buffer
-	 * @return the new ByteBuf
-	 */
-	public static ByteBuf wrap(byte[] array) {
-		return new ByteBuf(array, 0, array.length);
-	}
-
-	/**
-	 * Wraps a byte array into a ByteBuf.
-	 * The new buffer will be backed by the given byte array. The new buffer's capacity will be array.length,
-	 * its position will be offset, its limit will be offset + length.
-	 *
-	 * @param array  the array that will back this buffer
-	 * @param offset offset of the subarray to be used; must be non-negative and no larger than array.length.
-	 *               The new buffer's position will be set to this value.
-	 * @param length length of the subarray to be used; must be non-negative and no larger than array.length
-	 *               - offset. The new buffer's limit will be set to offset + length.
-	 * @return the new ByteBuf
-	 */
-	public static ByteBuf wrap(byte[] array, int offset, int length) {
-		return new ByteBuf(array, offset, offset + length);
-	}
-
-	private final static class ByteBufSlice extends ByteBuf {
-		private final ByteBuf root;
-
-		private ByteBufSlice(ByteBuf root, byte[] array, int position, int limit) {
-			super(array, position, limit);
-			this.root = root;
+		private ByteBufSlice(ByteBuf buf, int readPosition, int writePosition) {
+			super(buf.array, readPosition, writePosition);
+			this.root = buf;
 		}
 
 		@Override
@@ -118,52 +32,56 @@ public class ByteBuf {
 		}
 	}
 
+	protected final byte[] array;
+
+	private int head;
+	private int tail;
+
+	int refs;
+
+	// creators
+	private ByteBuf(byte[] array, int head, int tail) {
+		assert head >= 0 && head <= tail && tail <= array.length;
+		this.array = array;
+		this.head = head;
+		this.tail = tail;
+	}
+
+	public static ByteBuf empty() {
+		return wrapForWriting(new byte[0]);
+	}
+
+	public static ByteBuf wrapForWriting(byte[] bytes) {
+		return wrap(bytes, 0, 0);
+	}
+
+	public static ByteBuf wrapForReading(byte[] bytes) {
+		return wrap(bytes, 0, bytes.length);
+	}
+
+	public static ByteBuf wrap(byte[] bytes, int readPosition, int writePosition) {
+		return new ByteBuf(bytes, readPosition, writePosition);
+	}
+
+	// slicing
+	public ByteBuf slice() {
+		return slice(head, headRemaining());
+	}
+
+	public ByteBuf slice(int length) {
+		return slice(head, length);
+	}
+
 	public ByteBuf slice(int offset, int length) {
 		assert !isRecycled();
 		if (!isRecycleNeeded()) {
-			return ByteBuf.wrap(array, offset, length);
+			return ByteBuf.wrap(array, offset, offset + length);
 		}
 		refs++;
-		return new ByteBufSlice(this, array, offset, offset + length);
+		return new ByteBufSlice(this, offset, offset + length);
 	}
 
-	/**
-	 * Wraps a this ByteBuf into a ByteBuffer.
-	 * The new ByteBuffer will be backed by the given ByteBuf. The new buffer's capacity will be capacity of
-	 * ByteBuf, its position will be position of ByteBuf, its limit will be limit of this ByteBuf.
-	 *
-	 * @return the new ByteBuf
-	 */
-	public ByteBuffer toByteBuffer() {
-		ByteBuffer byteBuffer = ByteBuffer.wrap(array);
-		byteBuffer.limit(limit);
-		byteBuffer.position(position);
-		return byteBuffer;
-	}
-
-	/**
-	 * Sets position and limit of this ByteBuf to be same as appropriate ByteBuffer values
-	 *
-	 * @param byteBuffer from it takes new values for position and limit
-	 */
-	public void setByteBuffer(ByteBuffer byteBuffer) {
-		assert !isRecycled();
-		assert this.array == byteBuffer.array();
-		assert byteBuffer.arrayOffset() == 0;
-		position(byteBuffer.position());
-		limit(byteBuffer.limit());
-	}
-
-	/**
-	 * Tells whether or not this byte buffer is recycled.
-	 */
-	boolean isRecycled() {
-		return refs == -1;
-	}
-
-	/**
-	 * Resets this ByteBuf, puts it back to byteBufPool
-	 */
+	// recycling
 	public void recycle() {
 		assert !isRecycled();
 		if (refs > 0 && --refs == 0) {
@@ -172,271 +90,243 @@ public class ByteBuf {
 		}
 	}
 
-	/**
-	 * Tells whether or not this byte buffer needs recycling.
-	 */
+	boolean isRecycled() {
+		return refs == -1;
+	}
+
+	void reset() {
+		assert isRecycled();
+		refs = 1;
+		rewind();
+	}
+
+	public void rewind() {
+		assert !isRecycled();
+		tail = 0;
+		head = 0;
+	}
+
 	public boolean isRecycleNeeded() {
 		return refs > 0;
 	}
 
-	/**
-	 * Flips this buffer. The limit is set to the current position and then the position is set to zero.
-	 */
-	public void flip() {
+	// byte buffers
+	public ByteBuffer toHeadByteBuffer() {
 		assert !isRecycled();
-		limit = position;
-		position = 0;
+		return ByteBuffer.wrap(array, head, tail - head);
 	}
 
-	/**
-	 * Returns the number of elements between the current position and the limit.
-	 *
-	 * @return the number of elements remaining in this buffer
-	 */
-	public int remaining() {
+	public ByteBuffer toTailByteBuffer() {
 		assert !isRecycled();
-		return limit - position;
+		return ByteBuffer.wrap(array, tail, array.length - tail);
 	}
 
-	/**
-	 * Tells whether there are any elements between the current position and the limit.
-	 *
-	 * @return true if, and only if, there is at least one element remaining in this buffer
-	 */
-	public boolean hasRemaining() {
+	public void ofHeadByteBuffer(ByteBuffer byteBuffer) {
 		assert !isRecycled();
-		return position != limit;
+		assert array == byteBuffer.array();
+		assert byteBuffer.limit() == tail;
+		this.head = byteBuffer.position();
 	}
 
-	/**
-	 * Reads the byte at this buffer's current position, and then increments the position.
-	 *
-	 * @return the  byte at the buffer's current position
-	 */
-	public byte get() {
+	public void ofTailByteBuffer(ByteBuffer byteBuffer) {
 		assert !isRecycled();
-		assert position < limit;
-		return array[position++];
+		assert array == byteBuffer.array();
+		assert byteBuffer.limit() == array.length;
+		this.tail = byteBuffer.position();
 	}
 
-	/**
-	 * Reads the byte after at this buffer's current position on i bytes , and does not change
-	 * the position.
-	 *
-	 * @return the byte which position is shifted by i from buffer's current position
-	 */
-	public byte peek(int i) {
-		assert !isRecycled();
-		assert (position + i) < limit;
-		return array[position + i];
-	}
+	// getters & setters
 
-	/**
-	 * Reads the byte at this buffer's current position, and does not increment the position.
-	 *
-	 * @return the  byte at the buffer's current position
-	 */
-	public byte peek() {
-		assert !isRecycled();
-		return array[position];
-	}
-
-	/**
-	 * Returns the byte array that backs this buffer.
-	 * Modifications to this buffer's content will cause the returned array's content to be modified
-	 *
-	 * @return the array that backs this buffer
-	 */
 	public byte[] array() {
-		assert !isRecycled();
 		return array;
 	}
 
-	/**
-	 * Returns byte at absolute position of internal array
-	 *
-	 * @param index absolute index of byte, which will be returned
-	 */
-	public byte at(int index) {
+	public int head() {
 		assert !isRecycled();
-		assert index <= array.length;
-		return array[index];
+		return head;
 	}
 
-	/**
-	 * Sets this buffer's limit.
-	 *
-	 * @param limit the new limit
-	 */
-	public void limit(int limit) {
+	public int tail() {
 		assert !isRecycled();
-		assert limit >= this.position && limit <= array.length;
-		this.limit = limit;
+		return tail;
 	}
 
-	/**
-	 * Returns this buffer's capacity.
-	 */
-	int capacity() {
+	public int limit() {
 		return array.length;
 	}
 
-	/**
-	 * Returns this buffer's position.
-	 */
-	public int position() {
+	public void head(int pos) {
 		assert !isRecycled();
-		return position;
+		assert pos >= head && pos <= tail;
+		this.head = pos;
 	}
 
-	/**
-	 * Sets this buffer's position
-	 *
-	 * @param position position to be set
-	 */
-	public void position(int position) {
+	public void tail(int pos) {
 		assert !isRecycled();
-		assert position >= 0 && position <= this.limit;
-		this.position = position;
+		assert pos >= head && pos <= array.length;
+		this.tail = pos;
 	}
 
-	/**
-	 * Increases by size position for this buffer
-	 *
-	 * @param size number for increasing
-	 */
-	public void advance(int size) {
+	public void moveHead(int delta) {
 		assert !isRecycled();
-		assert size >= 0 && (this.position + size) <= this.limit;
-		this.position += size;
+		assert head + delta >= 0;
+		assert head + delta <= tail;
+		head += delta;
 	}
 
-	/**
-	 * Writes the given byte into this buffer at the current position, and then increments the position.
-	 *
-	 * @param b the byte to be written
-	 */
+	public void moveTail(int delta) {
+		assert !isRecycled();
+		assert tail + delta >= head;
+		assert tail + delta <= array.length;
+		tail += delta;
+	}
+
+	public int tailRemaining() {
+		assert !isRecycled();
+		return array.length - tail;
+	}
+
+	public int headRemaining() {
+		assert !isRecycled();
+		return tail - head;
+	}
+
+	public boolean canWrite() {
+		assert !isRecycled();
+		return tail != array.length;
+	}
+
+	public boolean canRead() {
+		assert !isRecycled();
+		return head != tail;
+	}
+
+	public byte get() {
+		assert !isRecycled();
+		assert head < tail;
+		return array[head++];
+	}
+
+	public byte at(int index) {
+		assert !isRecycled();
+		return array[index];
+	}
+
+	public byte peek() {
+		assert !isRecycled();
+		return array[head];
+	}
+
+	public byte peek(int offset) {
+		assert !isRecycled();
+		assert (head + offset) < tail;
+		return array[head + offset];
+	}
+
+	public void drainTo(byte[] array, int offset, int length) {
+		assert !isRecycled();
+		assert length >= 0 && (offset + length) <= array.length;
+		assert this.head + length <= this.tail;
+		System.arraycopy(this.array, this.head, array, offset, length);
+		this.head += length;
+	}
+
+	public void drainTo(ByteBuf buf, int length) {
+		assert !buf.isRecycled();
+		assert buf.tail + length <= buf.array.length;
+		drainTo(buf.array, buf.tail, length);
+		buf.tail += length;
+	}
+
+	public void set(int index, byte b) {
+		assert !isRecycled();
+		array[index] = b;
+	}
+
 	public void put(byte b) {
-		assert !isRecycled();
-		assert position < limit;
-		array[position++] = b;
+		set(tail, b);
+		tail++;
 	}
 
-	/**
-	 * Transfers part or the entire content of the given source byte array into this buffer.
-	 *
-	 * @param array  the array for transferring
-	 * @param offset starting position in the source array
-	 * @param size   number of bytes for transferring
-	 */
-	public void put(byte[] array, int offset, int size) {
-		assert !isRecycled();
-		assert size >= 0 && (offset + size) <= array.length;
-		assert (this.position + size) <= this.limit;
-		System.arraycopy(array, offset, this.array, this.position, size);
-		this.position += size;
-	}
-
-	/**
-	 * Transfers entire content of source byte array into this buffer.
-	 *
-	 * @param array the array for transferring
-	 */
-	public void put(byte[] array) {
-		assert !isRecycled();
-		put(array, 0, array.length);
-	}
-
-	/**
-	 * Transfers all remaining bytes of the given ByteBuf into this buffer.
-	 *
-	 * @param buf the ByteBuf for transferring
-	 */
 	public void put(ByteBuf buf) {
-		assert !isRecycled();
-		assert (this.position + buf.remaining()) <= this.limit;
-		System.arraycopy(buf.array, buf.position, this.array, this.position, buf.remaining());
-		this.position += buf.remaining();
+		put(buf.array, buf.head, buf.tail - buf.head);
+		buf.head = buf.tail;
 	}
 
-	/**
-	 * Sets the byte with index = (position + offset) to b
-	 *
-	 * @param offset position for setting byte
-	 * @param b      the byte for setting
-	 */
-	public void set(int offset, byte b) {
-		assert !isRecycled();
-		assert (this.position + offset) < this.limit;
-		array[position + offset] = b;
+	public void put(byte[] bytes) {
+		put(bytes, 0, bytes.length);
 	}
 
-	/**
-	 * Adds size elements after position to array. Sets the position of this buffer after size elements
-	 *
-	 * @param array  the array for draining
-	 * @param offset starting position for adding elements to array
-	 * @param size   number of elements to be drained
-	 */
-	public void drainTo(byte[] array, int offset, int size) {
+	public void put(byte[] bytes, int offset, int length) {
 		assert !isRecycled();
-		assert size >= 0 && (offset + size) <= array.length;
-		assert (this.position + size) <= this.limit;
-		System.arraycopy(this.array, this.position, array, offset, size);
-		this.position += size;
+		assert tail + length <= array.length;
+		assert offset + length <= bytes.length;
+		System.arraycopy(bytes, offset, array, tail, length);
+		tail += length;
 	}
 
-	/**
-	 * Adds size elements after position to buffer from argument. Sets the position of this buffer and buf
-	 * after size elements.
-	 *
-	 * @param buf  the buffer for draining
-	 * @param size number of elements to be drained
-	 */
-	public void drainTo(ByteBuf buf, int size) {
+	public int find(byte b) {
 		assert !isRecycled();
-		assert size >= 0 && (buf.position + size) <= buf.limit;
-		assert (this.position + size) <= this.limit;
-		System.arraycopy(this.array, this.position, buf.array, buf.position, size);
-		this.position += size;
-		buf.position += size;
+		for (int i = head; i < tail; i++) {
+			if (array[i] == b) return i;
+		}
+		return -1;
 	}
 
-	/**
-	 * Returns limit of this buffer
-	 */
-	public int limit() {
-		assert !isRecycled();
-		return limit;
+	public int find(byte[] bytes) {
+		return find(bytes, 0, bytes.length);
 	}
 
-	public boolean equalsTo(byte[] array, int offset, int size) {
+	public int find(byte[] bytes, int off, int len) {
 		assert !isRecycled();
-		if (remaining() != size)
-			return false;
-		assert (this.position + size) <= this.limit;
-		for (int i = 0; i != size; i++) {
-			if (this.array[i + position] != array[i + offset])
+		L:
+		for (int pos = head; pos < tail - len; pos++) {
+			for (int i = 0; i < len; i++) {
+				if (array[pos + i] != bytes[off + i]) {
+					continue L;
+				}
+			}
+			return pos;
+		}
+		return -1;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		assert !isRecycled();
+		if (this == o) return true;
+		if (o == null || !(ByteBuf.class == o.getClass() || ByteBufSlice.class == o.getClass())) return false;
+
+		ByteBuf buf = (ByteBuf) o;
+
+		return headRemaining() == buf.headRemaining() &&
+				arraysEquals(this.array, this.head, this.tail, buf.array, buf.head);
+	}
+
+	private boolean arraysEquals(byte[] array, int offset, int limit, byte[] arr, int off) {
+		for (int i = 0; i < limit - offset; i++) {
+			if (array[offset + i] != arr[off + i]) {
 				return false;
+			}
 		}
 		return true;
 	}
 
-	public boolean equalsTo(ByteBuf buf) {
+	@Override
+	public int hashCode() {
 		assert !isRecycled();
-		return equalsTo(buf.array, buf.position, buf.remaining());
-	}
-
-	public boolean equalsTo(byte[] array) {
-		assert !isRecycled();
-		return equalsTo(array, 0, array.length);
+		int result = 1;
+		for (int i = head; i < tail; i++) {
+			result = 31 * result + array[i];
+		}
+		return result;
 	}
 
 	@Override
 	public String toString() {
-		char[] chars = new char[remaining() < 256 ? remaining() : 256];
+		char[] chars = new char[headRemaining() < 256 ? headRemaining() : 256];
 		for (int i = 0; i < chars.length; i++) {
-			byte b = array[position + i];
+			byte b = array[head + i];
 			chars[i] = (b >= ' ') ? (char) b : (char) 65533;
 		}
 		return new String(chars);

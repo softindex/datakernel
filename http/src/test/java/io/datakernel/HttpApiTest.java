@@ -33,6 +33,7 @@ import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.dns.NativeDnsResolver.DEFAULT_DATAGRAM_SOCKET_SETTINGS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -106,7 +107,7 @@ public class HttpApiTest {
 	public void test() throws IOException, ExecutionException, InterruptedException {
 		server.listen();
 		HttpRequest request = createRequest();
-		client.execute(request, 1000, new ResultCallback<HttpResponse>() {
+		client.send(request, 1000, new ResultCallback<HttpResponse>() {
 			@Override
 			public void onResult(HttpResponse result) {
 				try {
@@ -126,6 +127,7 @@ public class HttpApiTest {
 			}
 		});
 		eventloop.run();
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	private HttpResponse createResponse() {

@@ -17,308 +17,296 @@
 package io.datakernel;
 
 import com.google.gson.Gson;
-import io.datakernel.FsCommands.FsCommand;
-import io.datakernel.FsResponses.FsResponse;
+import io.datakernel.FsCommands.*;
+import io.datakernel.FsResponses.*;
 import io.datakernel.async.CompletionCallback;
+import io.datakernel.async.ExceptionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.*;
 import io.datakernel.net.SocketSettings;
+import io.datakernel.stream.StreamConsumer;
 import io.datakernel.stream.StreamProducer;
-import io.datakernel.stream.net.*;
-import io.datakernel.stream.processor.StreamByteChunker;
-import io.datakernel.stream.processor.StreamGsonDeserializer;
-import io.datakernel.stream.processor.StreamGsonSerializer;
+import io.datakernel.stream.net.Messaging.ReceiveMessageCallback;
+import io.datakernel.stream.net.MessagingSerializer;
+import io.datakernel.stream.net.MessagingWithBinaryStreaming;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.codegen.utils.Preconditions.check;
-import static io.datakernel.codegen.utils.Preconditions.checkNotNull;
+import static io.datakernel.FsCommands.*;
+import static io.datakernel.FsResponses.*;
+import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
+import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
+import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
+import static io.datakernel.stream.net.MessagingSerializers.ofGson;
+import static io.datakernel.util.Preconditions.checkNotNull;
 
-public abstract class FsClient {
+public abstract class FsClient<S extends FsClient<S>> {
 	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	protected final Eventloop eventloop;
+	protected final SocketSettings socketSettings;
 
-	private int minChunkSize = 64 * (1 << 10);
-	private int maxChunkSize = 128 * (1 << 10);
-	private int connectTimeout = 0;
-	private SocketSettings socketSettings = SocketSettings.defaultSocketSettings();
+	// SSL
+	private SSLContext sslContext;
+	private ExecutorService sslExecutor;
 
-	private int serializerBufferSize = 256 * (1 << 10);
-	private int serializerMaxMessageSize = 256 * (1 << 20);
-	private int serializerFlushDelayMillis = 0;
-	private int deserializerBufferSize = 256 * (1 << 10);
+	private MessagingSerializer<FsResponse, FsCommand> serializer = ofGson(getResponseGson(), FsResponse.class, getCommandGSON(), FsCommand.class);
 
 	// creators & builders
 	public FsClient(Eventloop eventloop) {
-		this.eventloop = checkNotNull(eventloop);
+		this(eventloop, SocketSettings.defaultSocketSettings());
 	}
 
-	public FsClient setChunkSizeRange(int min, int max) {
-		check(serializerMaxMessageSize > 0, "Min chunk size should be positive");
-		check(maxChunkSize > minChunkSize, "Max should be bigger then min");
-		this.minChunkSize = min;
-		this.maxChunkSize = max;
-		return this;
+	public FsClient(Eventloop eventloop, SocketSettings socketSettings) {
+		this.eventloop = eventloop;
+		this.socketSettings = socketSettings;
 	}
 
-	public FsClient setConnectTimeout(int connectTimeout) {
-		check(connectTimeout >= 0, "Connect timeout should be >= 0");
-		this.connectTimeout = connectTimeout;
-		return this;
+	protected S self() {
+		return (S) this;
 	}
 
-	public FsClient setSocketSettings(SocketSettings socketSettings) {
-		this.socketSettings = checkNotNull(socketSettings);
-		return this;
-	}
-
-	public FsClient setSerializerBufferSize(int serializerBufferSize) {
-		check(serializerBufferSize > 0, "Serializer buffer size should be positive");
-		this.serializerBufferSize = serializerBufferSize;
-		return this;
-	}
-
-	public FsClient setSerializerMaxMessageSize(int serializerMaxMessageSize) {
-		check(serializerMaxMessageSize > 0, "Serializer max message size should be positive");
-		this.serializerMaxMessageSize = serializerMaxMessageSize;
-		return this;
-	}
-
-	public FsClient setSerializerFlushDelayMillis(int serializerFlushDelayMillis) {
-		check(serializerFlushDelayMillis >= 0, "Serializer flush delay should be >= 0");
-		this.serializerFlushDelayMillis = serializerFlushDelayMillis;
-		return this;
-	}
-
-	public FsClient setDeserializerBufferSize(int deserializerBufferSize) {
-		check(deserializerBufferSize > 0, "Deserializer buffer size should be positive");
-		this.deserializerBufferSize = deserializerBufferSize;
-		return this;
+	public S enableSsl(SSLContext sslContext, ExecutorService executor) {
+		this.sslContext = checkNotNull(sslContext);
+		this.sslExecutor = checkNotNull(executor);
+		return self();
 	}
 
 	// api
 	public abstract void upload(String destinationFileName, StreamProducer<ByteBuf> producer, CompletionCallback callback);
 
-	public abstract void download(String sourceFileName, long startPosition, ResultCallback<StreamTransformerWithCounter> callback);
+	public abstract void download(String fileName, long startPosition, ResultCallback<StreamProducer<ByteBuf>> callback);
 
 	public abstract void list(ResultCallback<List<String>> callback);
 
 	public abstract void delete(String fileName, CompletionCallback callback);
 
 	// transport code
-	protected final void doUpload(InetSocketAddress address, String fileName, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-		connect(address, new UploadConnectCallback(fileName, producer, callback));
+	protected final void doUpload(InetSocketAddress address, final String fileName, final StreamProducer<ByteBuf> producer, final CompletionCallback callback) {
+		connect(address, new MessagingConnectCallback() {
+			@Override
+			public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
+				final Upload upload = new Upload(fileName);
+				messaging.send(upload, ignoreCompletionCallback());
+				messaging.sendBinaryStreamFrom(producer, new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.trace("send all bytes for {}", fileName);
+						messaging.receive(new ReceiveMessageCallback<FsResponse>() {
+							@Override
+							public void onReceive(FsResponse msg) {
+								logger.trace("received {}", msg);
+								if (msg instanceof Acknowledge) {
+									messaging.close();
+									callback.onComplete();
+								} else if (msg instanceof Err) {
+									messaging.close();
+									callback.onException(new RemoteFsException(((Err) msg).msg));
+								} else {
+									messaging.close();
+									callback.onException(new RemoteFsException("Invalid message received: " + msg));
+								}
+							}
+
+							@Override
+							public void onReceiveEndOfStream() {
+								logger.warn("received unexpected end of stream");
+								messaging.close();
+								callback.onException(new RemoteFsException("Unexpected end of stream for: " + fileName));
+							}
+
+							@Override
+							public void onException(Exception e) {
+								messaging.close();
+								callback.onException(e);
+							}
+						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						messaging.close();
+						callback.onException(e);
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception exception) {
+				callback.onException(exception);
+			}
+		});
 	}
 
-	protected final void doDownload(InetSocketAddress address, String fileName, long startPosition, ResultCallback<StreamTransformerWithCounter> callback) {
-		connect(address, new DownloadConnectCallback(callback, fileName, startPosition));
+	protected final void doDownload(InetSocketAddress address, final String fileName, final long startPosition,
+	                                final ResultCallback<StreamProducer<ByteBuf>> callback) {
+		connect(address, new MessagingConnectCallback() {
+			@Override
+			public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
+				messaging.send(new Download(fileName, startPosition), new CompletionCallback() {
+					@Override
+					public void onComplete() {
+						logger.trace("command to download {} send", fileName);
+						messaging.receive(new ReceiveMessageCallback<FsResponse>() {
+							@Override
+							public void onReceive(FsResponse msg) {
+								logger.trace("received {}", msg);
+								if (msg instanceof Ready) {
+									long size = ((Ready) msg).size;
+									StreamForwarderWithCounter forwarder = new StreamForwarderWithCounter(eventloop, size - startPosition);
+									messaging.receiveBinaryStreamTo(forwarder.getInput(), new CompletionCallback() {
+										@Override
+										public void onComplete() {
+											messaging.close();
+										}
+
+										@Override
+										public void onException(Exception e) {
+											messaging.close();
+										}
+									});
+									callback.onResult(forwarder.getOutput());
+								} else if (msg instanceof Err) {
+									messaging.close();
+									RemoteFsException exception = new RemoteFsException(((Err) msg).msg);
+									callback.onException(exception);
+								} else {
+									messaging.close();
+									RemoteFsException exception = new RemoteFsException("Invalid message received: " + msg);
+									callback.onException(exception);
+								}
+							}
+
+							@Override
+							public void onReceiveEndOfStream() {
+								logger.warn("received unexpected end of stream");
+								messaging.close();
+								RemoteFsException exception = new RemoteFsException("Unexpected end of stream for: " + fileName);
+								callback.onException(exception);
+							}
+
+							@Override
+							public void onException(Exception e) {
+								messaging.close();
+								callback.onException(new RemoteFsException(e));
+							}
+
+						});
+					}
+
+					@Override
+					public void onException(Exception e) {
+						messaging.close();
+						callback.onException(new RemoteFsException(e));
+					}
+				});
+			}
+
+			@Override
+			public void onException(Exception e) {
+				callback.onException(e);
+			}
+		});
 	}
 
 	protected final void doDelete(InetSocketAddress address, String fileName, CompletionCallback callback) {
-		connect(address, new DeleteConnectCallback(callback, fileName));
+		connect(address, new DeleteConnectCallback(fileName, callback));
 	}
 
-	protected final void doList(InetSocketAddress address, ResultCallback<List<String>> callback) {
+	protected final void doList(InetSocketAddress address, final ResultCallback<List<String>> callback) {
 		connect(address, new ListConnectCallback(callback));
 	}
 
-	// establishing connection
-	protected final StreamMessagingConnection<FsResponse, FsCommand> createConnection(SocketChannel channel) {
-		return new StreamMessagingConnection<>(eventloop, channel,
-				new StreamGsonDeserializer<>(eventloop, getResponseGson(), FsResponse.class, deserializerBufferSize),
-				new StreamGsonSerializer<>(eventloop, getCommandGSON(), FsCommand.class, serializerBufferSize,
-						serializerMaxMessageSize, serializerFlushDelayMillis));
+	protected interface MessagingConnectCallback extends ExceptionCallback {
+		void onConnect(MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging);
 	}
 
-	protected Gson getCommandGSON() {return FsCommands.commandGSON;}
+	protected void connect(InetSocketAddress address, final MessagingConnectCallback callback) {
+		eventloop.connect(address, new ConnectCallback() {
+			@Override
+			public void onConnect(SocketChannel socketChannel) {
+				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
+				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+				MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging = new MessagingWithBinaryStreaming<>(eventloop, asyncTcpSocket, serializer);
+				asyncTcpSocket.setEventHandler(messaging);
+				asyncTcpSocketImpl.register();
+				callback.onConnect(messaging);
+			}
 
-	protected Gson getResponseGson() {return FsResponses.responseGson;}
-
-	protected final void connect(SocketAddress address, ConnectCallback callback) {
-		eventloop.connect(address, socketSettings, connectTimeout, callback);
+			@Override
+			public void onException(Exception exception) {
+				callback.onException(exception);
+			}
+		});
 	}
 
-	private final class UploadConnectCallback implements ConnectCallback {
-		private final CompletionCallback callback;
-		private final String file;
-		private final StreamProducer<ByteBuf> producer;
-
-		UploadConnectCallback(String file, StreamProducer<ByteBuf> producer, CompletionCallback callback) {
-			this.callback = callback;
-			this.file = file;
-			this.producer = producer;
-		}
-
-		@Override
-		public void onConnect(SocketChannel channel) {
-			SocketConnection connection = createConnection(channel)
-					.addStarter(new MessagingStarter<FsCommand>() {
-						@Override
-						public void onStart(Messaging<FsCommand> messaging) {
-							logger.trace("send command to upload {}", file);
-							messaging.sendMessage(new FsCommands.Upload(file));
-						}
-					})
-					.addHandler(FsResponses.Ok.class, new MessagingHandler<FsResponses.Ok, FsCommand>() {
-						@Override
-						public void onMessage(FsResponses.Ok item, final Messaging<FsCommand> messaging) {
-							logger.trace("received ok for {}, start streaming", file);
-							StreamByteChunker byteChunker = new StreamByteChunker(eventloop, minChunkSize, maxChunkSize);
-							producer.streamTo(byteChunker.getInput());
-							messaging.write(byteChunker.getOutput(), new CompletionCallback() {
-								@Override
-								public void onComplete() {
-									logger.info("Finished streaming {}", file);
-								}
-
-								@Override
-								public void onException(Exception e) {
-									logger.info("Failed to stream {}", file);
-									callback.onException(e);
-								}
-							});
-						}
-					})
-					.addHandler(FsResponses.Acknowledge.class, new MessagingHandler<FsResponses.Acknowledge, FsCommand>() {
-						@Override
-						public void onMessage(FsResponses.Acknowledge item, Messaging<FsCommand> messaging) {
-							logger.trace("received acknowledge for {}", file);
-							messaging.shutdown();
-							callback.onComplete();
-						}
-					})
-					.addHandler(FsResponses.Err.class, new MessagingHandler<FsResponses.Err, FsCommand>() {
-						@Override
-						public void onMessage(FsResponses.Err item, Messaging<FsCommand> messaging) {
-							logger.trace("failed to upload file {}", file);
-							messaging.shutdown();
-							callback.onException(new Exception(item.msg));
-						}
-					})
-					.addReadExceptionHandler(new MessagingExceptionHandler() {
-						@Override
-						public void onException(Exception e) {
-							logger.trace("caught exception while trying to upload {}", file);
-							callback.onException(e);
-						}
-					});
-			connection.register();
-		}
-
-		@Override
-		public void onException(Exception e) {
-			callback.onException(e);
-		}
+	protected Gson getCommandGSON() {
+		return commandGSON;
 	}
 
-	private final class DeleteConnectCallback implements ConnectCallback {
-		private final CompletionCallback callback;
+	protected Gson getResponseGson() {
+		return responseGson;
+	}
+
+	private class DeleteConnectCallback implements MessagingConnectCallback {
 		private final String fileName;
+		private final CompletionCallback callback;
 
-		DeleteConnectCallback(CompletionCallback callback, String fileName) {
-			this.callback = callback;
+		DeleteConnectCallback(String fileName, CompletionCallback callback) {
 			this.fileName = fileName;
-		}
-
-		@Override
-		public void onConnect(SocketChannel channel) {
-			SocketConnection connection = createConnection(channel)
-					.addStarter(new MessagingStarter<FsCommand>() {
-						@Override
-						public void onStart(Messaging<FsCommand> messaging) {
-							logger.trace("send command to delete {}", fileName);
-							messaging.sendMessage(new FsCommands.Delete(fileName));
-						}
-					})
-					.addHandler(FsResponses.Ok.class, new MessagingHandler<FsResponses.Ok, FsCommand>() {
-						@Override
-						public void onMessage(FsResponses.Ok item, Messaging<FsCommand> messaging) {
-							logger.trace("succeed to delete {}", fileName);
-							messaging.shutdown();
-							callback.onComplete();
-						}
-					})
-					.addHandler(FsResponses.Err.class, new MessagingHandler<FsResponses.Err, FsCommand>() {
-						@Override
-						public void onMessage(FsResponses.Err item, Messaging<FsCommand> messaging) {
-							logger.trace("failed to delete {}: {}", fileName, item.msg);
-							messaging.shutdown();
-							callback.onException(new Exception(item.msg));
-						}
-					})
-					.addReadExceptionHandler(new MessagingExceptionHandler() {
-						@Override
-						public void onException(Exception e) {
-							logger.trace("caught exception while trying to delete {}", fileName);
-							callback.onException(e);
-						}
-					});
-			connection.register();
-		}
-
-		@Override
-		public void onException(Exception e) {
-			callback.onException(e);
-		}
-	}
-
-	private final class DownloadConnectCallback implements ConnectCallback {
-		private final ResultCallback<StreamTransformerWithCounter> callback;
-		private final String file;
-		private final long startPosition;
-
-		DownloadConnectCallback(ResultCallback<StreamTransformerWithCounter> callback, String file, long startPosition) {
 			this.callback = callback;
-			this.file = file;
-			this.startPosition = startPosition;
 		}
 
 		@Override
-		public void onConnect(SocketChannel channel) {
-			SocketConnection connection = createConnection(channel)
-					.addStarter(new MessagingStarter<FsCommand>() {
+		public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
+			messaging.send(new Delete(fileName), new CompletionCallback() {
+				@Override
+				public void onComplete() {
+					logger.trace("command to delete {} send", fileName);
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onStart(Messaging<FsCommand> messaging) {
-							logger.trace("send command to download {}", file);
-							messaging.sendMessage(new FsCommands.Download(file, startPosition));
+						public void onReceive(FsResponse msg) {
+							logger.trace("received {}", msg);
+							if (msg instanceof Ok) {
+								messaging.close();
+								callback.onComplete();
+							} else if (msg instanceof Err) {
+								messaging.close();
+								callback.onException(new RemoteFsException(((Err) msg).msg));
+							} else {
+								messaging.close();
+								callback.onException(new RemoteFsException("Invalid message received: " + msg));
+							}
 						}
-					})
-					.addHandler(FsResponses.Ready.class, new MessagingHandler<FsResponses.Ready, FsCommand>() {
+
 						@Override
-						public void onMessage(FsResponses.Ready item, Messaging<FsCommand> messaging) {
-							logger.trace("received acknowledge for {} bytes ready", item.size);
-							StreamTransformerWithCounter counter = new StreamTransformerWithCounter(eventloop, item.size - startPosition);
-							messaging.read().streamTo(counter.getInput());
-							callback.onResult(counter);
-							messaging.shutdown();
+						public void onReceiveEndOfStream() {
+							logger.warn("received unexpected end of stream");
+							messaging.close();
+							callback.onException(new RemoteFsException("Unexpected end of stream for: " + fileName));
 						}
-					})
-					.addHandler(FsResponses.Err.class, new MessagingHandler<FsResponses.Err, FsCommand>() {
-						@Override
-						public void onMessage(FsResponses.Err item, Messaging<FsCommand> messaging) {
-							logger.trace("failed to download {}", item.msg);
-							messaging.shutdown();
-							Exception e = new Exception(item.msg);
-							callback.onException(e);
-						}
-					})
-					.addReadExceptionHandler(new MessagingExceptionHandler() {
+
 						@Override
 						public void onException(Exception e) {
-							logger.trace("caught exception while trying to download {}", file);
+							messaging.close();
 							callback.onException(e);
 						}
 					});
-			connection.register();
+				}
+
+				@Override
+				public void onException(Exception e) {
+					messaging.close();
+					callback.onException(e);
+				}
+			});
 		}
 
 		@Override
@@ -327,45 +315,56 @@ public abstract class FsClient {
 		}
 	}
 
-	private final class ListConnectCallback implements ConnectCallback {
+	private class ListConnectCallback implements MessagingConnectCallback {
 		private final ResultCallback<List<String>> callback;
 
-		ListConnectCallback(ResultCallback<List<String>> callback) {this.callback = callback;}
+		ListConnectCallback(ResultCallback<List<String>> callback) {
+			this.callback = callback;
+		}
 
 		@Override
-		public void onConnect(SocketChannel channel) {
-			SocketConnection connection = createConnection(channel)
-					.addStarter(new MessagingStarter<FsCommand>() {
+		public void onConnect(final MessagingWithBinaryStreaming<FsResponse, FsCommand> messaging) {
+			messaging.send(new ListFiles(), new CompletionCallback() {
+				@Override
+				public void onComplete() {
+					logger.trace("command to list files send");
+					messaging.receive(new ReceiveMessageCallback<FsResponse>() {
 						@Override
-						public void onStart(Messaging<FsCommand> messaging) {
-							logger.trace("send command to list files");
-							messaging.sendMessage(new FsCommands.ListFiles());
+						public void onReceive(FsResponse msg) {
+							logger.trace("received {}", msg);
+							if (msg instanceof ListOfFiles) {
+								messaging.close();
+								callback.onResult(((ListOfFiles) msg).files);
+							} else if (msg instanceof Err) {
+								messaging.close();
+								callback.onException(new RemoteFsException(((Err) msg).msg));
+							} else {
+								messaging.close();
+								callback.onException(new RemoteFsException("Invalid message received: " + msg));
+							}
 						}
-					})
-					.addHandler(FsResponses.ListOfFiles.class, new MessagingHandler<FsResponses.ListOfFiles, FsCommand>() {
+
 						@Override
-						public void onMessage(FsResponses.ListOfFiles item, Messaging<FsCommand> messaging) {
-							logger.trace("received list of {} files", item.files.size());
-							messaging.shutdown();
-							callback.onResult(item.files);
+						public void onReceiveEndOfStream() {
+							logger.warn("received unexpected end of stream");
+							messaging.close();
+							callback.onException(new RemoteFsException("Unexpected end of stream while trying to list files"));
 						}
-					})
-					.addHandler(FsResponses.Err.class, new MessagingHandler<FsResponses.Err, FsCommand>() {
-						@Override
-						public void onMessage(FsResponses.Err item, Messaging<FsCommand> messaging) {
-							logger.trace("failed to list files {}");
-							messaging.shutdown();
-							callback.onException(new Exception(item.msg));
-						}
-					})
-					.addReadExceptionHandler(new MessagingExceptionHandler() {
+
 						@Override
 						public void onException(Exception e) {
-							logger.trace("caught exception while trying to list files");
+							messaging.close();
 							callback.onException(e);
 						}
 					});
-			connection.register();
+				}
+
+				@Override
+				public void onException(Exception e) {
+					messaging.close();
+					callback.onException(e);
+				}
+			});
 		}
 
 		@Override
@@ -373,4 +372,5 @@ public abstract class FsClient {
 			callback.onException(e);
 		}
 	}
+
 }

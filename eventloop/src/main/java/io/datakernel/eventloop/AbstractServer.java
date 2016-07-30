@@ -21,20 +21,24 @@ import io.datakernel.async.AsyncCallbacks;
 import io.datakernel.async.CompletionCallbackFuture;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.ExceptionStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.net.ServerSocketSettings;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
 
+import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
+import static io.datakernel.eventloop.AsyncSslSocket.wrapServerSocket;
+import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
+import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.net.ServerSocketSettings.DEFAULT_BACKLOG;
 import static io.datakernel.net.SocketSettings.defaultSocketSettings;
 import static io.datakernel.util.Preconditions.check;
@@ -62,9 +66,16 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private boolean running = false;
 	protected boolean acceptOnce;
 
-	private InetSocketAddress[] listenAddresses;
-	private ServerSocketChannel[] serverSocketChannels;
+	private List<InetSocketAddress> listenAddresses;
+	private List<ServerSocketChannel> serverSocketChannels;
+
 	protected InetAddressRange range;
+	private Set<InetAddress> bannedAddresses;
+
+	// ssl
+	private SSLContext sslContext;
+	private ExecutorService sslExecutor;
+	private List<InetSocketAddress> sslListenAddresses;
 
 	// JMX
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
@@ -72,8 +83,8 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
 	private final EventStats totalAccepts = new EventStats(DEFAULT_SMOOTHING_WINDOW);
 	private final EventStats rangeBlocked = new EventStats();
-	private final ExceptionStats prepareSocketException = new ExceptionStats();
-	private final ExceptionStats closeException = new ExceptionStats();
+	private final EventStats bannedBlocked = new EventStats();
+	private final EventStats notAllowed = new EventStats();
 
 	// creators & builder methods
 	public AbstractServer(Eventloop eventloop) {
@@ -85,54 +96,84 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return (S) this;
 	}
 
-	public S acceptedIpAddresses(InetAddressRange range) {
+	public final S acceptedIpAddresses(InetAddressRange range) {
 		this.range = range;
 		return self();
 	}
 
-	public S serverSocketSettings(ServerSocketSettings serverSocketSettings) {
+	public final S serverSocketSettings(ServerSocketSettings serverSocketSettings) {
 		this.serverSocketSettings = checkNotNull(serverSocketSettings);
 		return self();
 	}
 
-	public S socketSettings(SocketSettings socketSettings) {
+	public final S socketSettings(SocketSettings socketSettings) {
 		this.socketSettings = checkNotNull(socketSettings);
 		return self();
 	}
 
-	public S setListenAddresses(InetSocketAddress... listenAddresses) {
-		this.listenAddresses = checkNotNull(listenAddresses);
+	public final S setListenAddresses(List<InetSocketAddress> addresses) {
+		ensureNotIntersect(sslListenAddresses, addresses);
+		this.listenAddresses = checkNotNull(addresses);
 		return self();
 	}
 
-	public S setListenAddresses(List<InetSocketAddress> addresses) {
-		setListenAddresses(addresses.toArray(new InetSocketAddress[addresses.size()]));
+	public final S setListenAddresses(InetSocketAddress... addresses) {
+		return setListenAddresses(Arrays.asList(addresses));
+	}
+
+	public final S setListenAddress(InetSocketAddress address) {
+		return setListenAddresses(address);
+	}
+
+	public final S setListenPort(int port) {
+		return setListenAddress(new InetSocketAddress(port));
+	}
+
+	public final S setSslListenAddresses(SSLContext sslContext, ExecutorService executor, List<InetSocketAddress> addresses) {
+		ensureNotIntersect(listenAddresses, addresses);
+		this.sslContext = checkNotNull(sslContext);
+		this.sslExecutor = checkNotNull(executor);
+		this.sslListenAddresses = checkNotNull(addresses);
 		return self();
 	}
 
-	public S setListenAddress(InetSocketAddress address) {
-		setListenAddresses(address);
+	public final S setSslListenAddresses(SSLContext sslContext, ExecutorService executor, InetSocketAddress... addresses) {
+		return setSslListenAddresses(sslContext, executor, Arrays.asList(addresses));
+	}
+
+	public final S setSslListenAddress(SSLContext sslContext, ExecutorService executor, InetSocketAddress address) {
+		return this.setSslListenAddresses(sslContext, executor, Collections.singletonList(address));
+	}
+
+	public final S setSslListenPort(SSLContext sslContext, ExecutorService executor, int port) {
+		return setSslListenAddress(sslContext, executor, new InetSocketAddress(port));
+	}
+
+	public final S banAddresses(Collection<InetAddress> addresses) {
+		bannedAddresses = new HashSet<>(checkNotNull(addresses));
 		return self();
 	}
 
-	public S setListenPort(int port) {
-		setListenAddress(new InetSocketAddress(port));
-		return self();
+	public final S banAddresses(InetAddress... addresses) {
+		return banAddresses(Arrays.asList(addresses));
+	}
+
+	public final S banAddress(InetAddress address) {
+		return banAddresses(Collections.singleton(address));
 	}
 
 	/**
 	 * Sets the flag as true, which means that this server can handle only one accepting.
 	 */
-	public S acceptOnce() {
-		this.acceptOnce = true;
-		return self();
+	public final S acceptOnce() {
+		return acceptOnce(true);
 	}
 
 	/**
 	 * Sets the flag which means possible accepting to this server. If it is true, this server can
 	 * accept only one socketChannel, else - as much as you need.
 	 */
-	public S acceptOnce(boolean acceptOnce) {
+	public final S acceptOnce(boolean acceptOnce) {
 		this.acceptOnce = acceptOnce;
 		return self();
 	}
@@ -150,18 +191,31 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 			return;
 		running = true;
 		onListen();
+		serverSocketChannels = new ArrayList<>();
 		if (listenAddresses != null) {
-			serverSocketChannels = new ServerSocketChannel[listenAddresses.length];
-			for (int i = 0; i < listenAddresses.length; i++) {
-				try {
-					serverSocketChannels[i] = eventloop.listen(listenAddresses[i], serverSocketSettings, this);
-				} catch (IOException exception) {
-					logger.error("Can't listen on {}", this, listenAddresses[i]);
-					close();
-					throw exception;
-				}
+			listenAddresses(listenAddresses, false);
+			logger.info("Listening on {}", listenAddresses);
+		}
+		if (sslListenAddresses != null) {
+			listenAddresses(sslListenAddresses, true);
+			logger.info("Listening SSL on {}", sslListenAddresses);
+		}
+	}
+
+	private void listenAddresses(List<InetSocketAddress> addresses, final boolean ssl) throws IOException {
+		for (InetSocketAddress address : addresses) {
+			try {
+				serverSocketChannels.add(eventloop.listen(address, serverSocketSettings, new AcceptCallback() {
+					@Override
+					public void onAccept(SocketChannel socketChannel) {
+						AbstractServer.this.onAccept(socketChannel, ssl);
+					}
+				}));
+			} catch (IOException e) {
+				logger.error("Can't listen on {}", this, address);
+				close();
+				throw e;
 			}
-			logger.info("Listening on {}", Arrays.toString(listenAddresses));
 		}
 	}
 
@@ -181,11 +235,11 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	protected void onClose() {
 	}
 
-	public CompletionCallbackFuture listenFuture() {
+	public final CompletionCallbackFuture listenFuture() {
 		return AsyncCallbacks.listenFuture(this);
 	}
 
-	public CompletionCallbackFuture closeFuture() {
+	public final CompletionCallbackFuture closeFuture() {
 		return AsyncCallbacks.closeFuture(this);
 	}
 
@@ -194,15 +248,16 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	private void closeServerSocketChannels() {
-		if (serverSocketChannels == null || serverSocketChannels.length == 0) {
+		if (serverSocketChannels == null || serverSocketChannels.isEmpty()) {
 			return;
 		}
-		for (int i = 0; i < serverSocketChannels.length; i++) {
-			if (serverSocketChannels[i] == null) {
+		for (Iterator<ServerSocketChannel> it = serverSocketChannels.iterator(); it.hasNext(); ) {
+			ServerSocketChannel serverSocketChannel = it.next();
+			if (serverSocketChannel == null) {
 				continue;
 			}
-			closeQuietly(serverSocketChannels[i]);
-			serverSocketChannels[i] = null;
+			closeQuietly(serverSocketChannel);
+			it.remove();
 		}
 	}
 
@@ -212,56 +267,23 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		try {
 			closeable.close();
 		} catch (Exception e) {
-			// jmx
-			closeException.recordException(e, closeable);
-
-			if (logger.isWarnEnabled()) {
-				logger.warn("Exception thrown while closing {}", closeable, e);
-			}
+			eventloop.recordIoError(e, closeable);
 		}
 	}
 
-	// core
-	@Override
-	public final void onAccept(SocketChannel socketChannel) {
-		assert eventloop.inEventloopThread();
-		try {
-			InetAddress remoteAddress = ((InetSocketAddress) socketChannel.getRemoteAddress()).getAddress();
-			if (isInRange(remoteAddress) && checkRemoteAddress(remoteAddress)) {
-				doAccept(socketChannel);
-			} else {
-				rangeBlocked.recordEvent();
-				resolveRangeBlock(socketChannel);
-			}
-		} catch (IOException e) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("Exception thrown while trying to get remoteAddress from socket {}", socketChannel, e);
-			}
+	private boolean satisfiesRestrictions(InetAddress remoteAddress) {
+		if (!(isInRange(remoteAddress))) {
+			rangeBlocked.recordEvent();
+			return false;
 		}
-	}
-
-	protected void doAccept(SocketChannel socketChannel) {
-		totalAccepts.recordEvent();
-		prepareSocket(socketChannel);
-		SocketConnection connection = createConnection(socketChannel);
-		connection.register();
-		if (acceptOnce) {
-			close();
+		if (isBanned(remoteAddress)) {
+			bannedBlocked.recordEvent();
+			return false;
 		}
-	}
-
-	protected void prepareSocket(SocketChannel socketChannel) {
-		try {
-			socketSettings.applySettings(socketChannel);
-		} catch (IOException e) {
-			prepareSocketException.recordException(e, socketChannel);
-			if (logger.isErrorEnabled()) {
-				logger.error("Exception thrown while apply settings socket {}", socketChannel, e);
-			}
+		if (!canAccept(remoteAddress)) {
+			notAllowed.recordEvent();
+			return false;
 		}
-	}
-
-	protected boolean checkRemoteAddress(InetAddress address) {
 		return true;
 	}
 
@@ -269,37 +291,100 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		return range == null || range.contains(address);
 	}
 
-	protected void resolveRangeBlock(SocketChannel socketChannel) {
+	private boolean isBanned(InetAddress remoteAddress) {
+		return bannedAddresses != null && bannedAddresses.contains(remoteAddress);
+	}
+
+	protected boolean canAccept(InetAddress address) {
+		return true;
+	}
+
+	protected EventloopServer getWorkerServer() {
+		return this;
+	}
+
+	private void onAccept(final SocketChannel socketChannel, final boolean ssl) {
+		assert eventloop.inEventloopThread();
+
+		InetAddress remoteAddress = null;
 		try {
-			socketChannel.close();
+			remoteAddress = ((InetSocketAddress) socketChannel.getRemoteAddress()).getAddress();
 		} catch (IOException e) {
-			if (logger.isWarnEnabled()) {
-				logger.warn("Exception thrown on socket close {} while trying to resolve range block", socketChannel, e);
+		}
+
+		if (satisfiesRestrictions(remoteAddress)) {
+			totalAccepts.recordEvent();
+			final EventloopServer workerServer = getWorkerServer();
+			Eventloop workerServerEventloop = workerServer.getEventloop();
+
+			final AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(workerServerEventloop, socketChannel, socketSettings);
+			final AsyncTcpSocket asyncTcpSocket = ssl ? wrapServerSocket(workerServerEventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+
+			if (workerServerEventloop == this.eventloop) {
+				workerServer.onAccept(asyncTcpSocket);
+				asyncTcpSocketImpl.register();
+			} else {
+				workerServerEventloop.execute(new Runnable() {
+					@Override
+					public void run() {
+						workerServer.onAccept(asyncTcpSocket);
+						asyncTcpSocketImpl.register();
+					}
+				});
+			}
+
+			if (acceptOnce) {
+				close();
+			}
+		} else {
+			closeQuietly(socketChannel);
+		}
+	}
+
+	protected abstract EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket);
+
+	@Override
+	public final void onAccept(AsyncTcpSocket asyncTcpSocket) {
+		assert eventloop.inEventloopThread();
+		asyncTcpSocket.setEventHandler(createSocketHandler(asyncTcpSocket));
+	}
+
+	private boolean isInetAddressAny(InetSocketAddress listenAddress) {
+		return listenAddress.getAddress().isAnyLocalAddress();
+	}
+
+	private void ensureNotIntersect(List<InetSocketAddress> container, List<InetSocketAddress> addresses) {
+		if (container != null) {
+			for (InetSocketAddress address : addresses) {
+				check(!container.contains(address), "{} already listened to", address);
 			}
 		}
 	}
 
-	protected abstract SocketConnection createConnection(SocketChannel socketChannel);
-
 	// jmx
 	@JmxAttribute
-	public ExceptionStats getCloseException() {
-		return closeException;
-	}
-
-	@JmxAttribute
-	public ExceptionStats getPrepareSocketException() {
-		return prepareSocketException;
-	}
-
-	@JmxAttribute
-	public EventStats getTotalAccepts() {
+	public final EventStats getTotalAccepts() {
 		return totalAccepts;
 	}
 
 	@JmxAttribute
-	public EventStats getRangeBlocked() {
+	public final EventStats getRangeBlocked() {
 		return rangeBlocked;
+	}
+
+	@JmxAttribute
+	public final EventStats getBannedBlocked() {
+		return bannedBlocked;
+	}
+
+	@JmxAttribute
+	public final EventStats getNotAllowed() {
+		return notAllowed;
+	}
+
+	@JmxAttribute
+	public final long getTotalBlocked() {
+		return rangeBlocked.getTotalCount() + bannedBlocked.getTotalCount() + notAllowed.getTotalCount();
 	}
 
 	@JmxAttribute
@@ -308,7 +393,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	@JmxAttribute
-	public void setSmoothingWindow(double smoothingWindow) {
+	public final void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
 
 		totalAccepts.setSmoothingWindow(smoothingWindow);

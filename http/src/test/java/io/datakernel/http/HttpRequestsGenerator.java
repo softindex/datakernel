@@ -177,7 +177,7 @@ public final class HttpRequestsGenerator {
 						System.out.println("Response empty");
 					} else {
 						try {
-							System.out.println(ByteBufStrings.decodeUTF8(body));
+							System.out.println(ByteBufStrings.decodeUtf8(body));
 						} catch (ParseException e) {
 							onException(e);
 						}
@@ -217,7 +217,7 @@ public final class HttpRequestsGenerator {
 				long elapsed = (scheduleTimeMillis == 0) ? 1 : eventloop.currentTimeMillis() - scheduleTimeMillis;
 				int requests = (int) ((requestsPerInterval * elapsed) / intervalMillis);
 				for (int i = 0; i < requests; i++)
-					client.execute(HttpRequest.get(options.getUrl()), options.timeoutResponse(), callback);
+					client.send(HttpRequest.get(options.getUrl()), options.timeoutResponse(), callback);
 
 				sentRequests += requests;
 				if (sentRequests % options.requestsPerSecond() == 0)

@@ -72,12 +72,12 @@ public final class ConcurrentCallsStats {
 		return rejectedCalls;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "execution duration of one task (in milliseconds)")
 	public ValueStats getExecutionDuration() {
 		return executionDuration;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "awaiting start duration of one task (in milliseconds)")
 	public ValueStats getAwaitingStartDuration() {
 		return awaitingStartDuration;
 	}

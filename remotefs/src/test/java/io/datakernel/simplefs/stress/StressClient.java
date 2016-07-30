@@ -17,9 +17,10 @@
 package io.datakernel.simplefs.stress;
 
 import com.google.common.base.Charsets;
-import io.datakernel.StreamTransformerWithCounter;
+import io.datakernel.StreamForwarderWithCounter;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
+import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.codegen.utils.DefiningClassLoader;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.serializer.BufferSerializer;
@@ -124,19 +125,19 @@ class StressClient {
 							logger.info("Failed to download: {}", e.getMessage());
 						}
 					});
-					client.download(fileName, 0, new ResultCallback<StreamTransformerWithCounter>() {
+					client.download(fileName, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 						@Override
-						public void onResult(StreamTransformerWithCounter result) {
-							result.getOutput().streamTo(consumer);
+						public void onResult(StreamProducer<ByteBuf> producer) {
+							producer.streamTo(consumer);
 						}
 
 						@Override
-						public void onException(Exception exception) {
-							throw new RuntimeException();
+						public void onException(Exception e) {
+							logger.info("can't download: {}", e.getMessage());
 						}
 					});
 				} catch (IOException e) {
-					throw new RuntimeException(e);
+					logger.info("can't create consumer: {}", e.getMessage());
 				}
 
 			}
@@ -247,12 +248,12 @@ class StressClient {
 
 	void downloadSmallObjects(int i) {
 		final String name = "someName" + i;
-		client.download(name, 0, new ResultCallback<StreamTransformerWithCounter>() {
+		client.download(name, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 			@Override
-			public void onResult(StreamTransformerWithCounter result) {
+			public void onResult(StreamProducer<ByteBuf> producer) {
 				try {
 					StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, downloads.resolve(name));
-					result.getOutput().streamTo(writer);
+					producer.streamTo(writer);
 				} catch (IOException e) {
 					this.onException(e);
 				}
@@ -260,7 +261,7 @@ class StressClient {
 
 			@Override
 			public void onException(Exception e) {
-				throw new RuntimeException(e);
+				logger.error("can't download", e);
 			}
 		});
 		eventloop.run();

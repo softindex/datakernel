@@ -20,7 +20,11 @@ import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.bytebuf.ByteBufPool;
 
+@SuppressWarnings({"ThrowableInstanceNeverThrown", "WeakerAccess", "unused"})
 public final class ByteBufStrings {
+	public static final ParseException READ_PAST_LIMIT = new ParseException("Malformed utf-8 input: Read past end");
+	public static final ParseException READ_PAST_ARRAY_LENGTH = new ParseException("Malformed utf-8 input");
+
 	public static final byte CR = (byte) '\r';
 	public static final byte LF = (byte) '\n';
 	public static final byte SP = (byte) ' ';
@@ -30,7 +34,6 @@ public final class ByteBufStrings {
 	}
 
 	// ASCII
-
 	public static void encodeAscii(byte[] array, int pos, String string) {
 		for (int i = 0; i < string.length(); i++) {
 			array[pos++] = (byte) string.charAt(i);
@@ -46,8 +49,8 @@ public final class ByteBufStrings {
 	}
 
 	public static void putAscii(ByteBuf buf, String string) {
-		encodeAscii(buf.array(), buf.position(), string);
-		buf.advance(string.length());
+		encodeAscii(buf.array(), buf.tail(), string);
+		buf.moveTail(string.length());
 	}
 
 	public static ByteBuf wrapAscii(String string) {
@@ -56,6 +59,7 @@ public final class ByteBufStrings {
 		for (int i = 0; i < string.length(); i++) {
 			array[i] = (byte) string.charAt(i);
 		}
+		buf.moveTail(string.length());
 		return buf;
 	}
 
@@ -73,11 +77,11 @@ public final class ByteBufStrings {
 	}
 
 	public static String decodeAscii(ByteBuf buf, char[] tmpBuffer) {
-		return decodeAscii(buf.array(), buf.position(), buf.remaining(), tmpBuffer);
+		return decodeAscii(buf.array(), buf.head(), buf.headRemaining(), tmpBuffer);
 	}
 
 	public static String decodeAscii(ByteBuf buf) {
-		return decodeAscii(buf.array(), buf.position(), buf.remaining(), new char[buf.remaining()]);
+		return decodeAscii(buf.array(), buf.head(), buf.headRemaining(), new char[buf.headRemaining()]);
 	}
 
 	public static String decodeAscii(byte[] array) {
@@ -98,7 +102,7 @@ public final class ByteBufStrings {
 	}
 
 	public static void toLowerCaseAscii(ByteBuf buf) {
-		toLowerCaseAscii(buf.array(), buf.position(), buf.remaining());
+		toLowerCaseAscii(buf.array(), buf.head(), buf.headRemaining());
 	}
 
 	public static void toUpperCaseAscii(byte[] bytes, int pos, int len) {
@@ -115,7 +119,7 @@ public final class ByteBufStrings {
 	}
 
 	public static void toUpperCaseAscii(ByteBuf buf) {
-		toUpperCaseAscii(buf.array(), buf.position(), buf.remaining());
+		toUpperCaseAscii(buf.array(), buf.head(), buf.headRemaining());
 	}
 
 	public static boolean equalsLowerCaseAscii(byte[] lowerCasePattern, byte[] array, int offset, int size) {
@@ -162,7 +166,7 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCode(ByteBuf buf) {
-		return hashCode(buf.array(), buf.position(), buf.remaining());
+		return hashCode(buf.array(), buf.head(), buf.headRemaining());
 	}
 
 	public static int hashCodeLowerCaseAscii(byte[] array, int offset, int size) {
@@ -181,7 +185,7 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCodeLowerCaseAscii(ByteBuf buf) {
-		return hashCodeLowerCaseAscii(buf.array(), buf.position(), buf.remaining());
+		return hashCodeLowerCaseAscii(buf.array(), buf.head(), buf.headRemaining());
 	}
 
 	public static int hashCodeUpperCaseAscii(byte[] array, int offset, int size) {
@@ -200,42 +204,51 @@ public final class ByteBufStrings {
 	}
 
 	public static int hashCodeUpperCaseAscii(ByteBuf buf) {
-		return hashCodeUpperCaseAscii(buf.array(), buf.position(), buf.remaining());
+		return hashCodeUpperCaseAscii(buf.array(), buf.head(), buf.headRemaining());
 	}
 
 	// UTF-8
-
-	public static int encodeUTF8(byte[] array, int pos, String string) {
-		int c, p = pos;
+	public static int encodeUtf8(byte[] array, int pos, String string) {
+		int p = pos;
 		for (int i = 0; i < string.length(); i++) {
-			c = string.charAt(i);
-			if (c <= 0x007F) {
-				array[p++] = (byte) c;
-			} else if (c > 0x07FF) {
-				array[p++] = ((byte) (0xE0 | c >> 12 & 0x0F));
-				array[p++] = ((byte) (0x80 | c >> 6 & 0x3F));
-				array[p++] = ((byte) (0x80 | c & 0x3F));
-			} else {
-				array[p++] = ((byte) (0xC0 | c >> 6 & 0x1F));
-				array[p++] = ((byte) (0x80 | c & 0x3F));
-			}
+			p += encodeUtf8(array, p, string.charAt(i));
 		}
 		return p - pos;
 	}
 
-	public static void putUTF8(ByteBuf buf, String string) {
-		int size = encodeUTF8(buf.array(), buf.position(), string);
-		buf.advance(size);
+	public static int encodeUtf8(byte[] array, int pos, char c) {
+		int p = pos;
+		if (c <= 0x007F) {
+			array[p++] = (byte) c;
+		} else if (c > 0x07FF) {
+			array[p++] = ((byte) (0xE0 | c >> 12 & 0x0F));
+			array[p++] = ((byte) (0x80 | c >> 6 & 0x3F));
+			array[p++] = ((byte) (0x80 | c & 0x3F));
+		} else {
+			array[p++] = ((byte) (0xC0 | c >> 6 & 0x1F));
+			array[p++] = ((byte) (0x80 | c & 0x3F));
+		}
+		return p - pos;
 	}
 
-	public static ByteBuf wrapUTF8(String string) {
+	public static void putUtf8(ByteBuf buf, String string) {
+		int size = encodeUtf8(buf.array(), buf.tail(), string);
+		buf.moveTail(size);
+	}
+
+	public static void putUtf8(ByteBuf buf, char c) {
+		int size = encodeUtf8(buf.array(), buf.tail(), c);
+		buf.moveTail(size);
+	}
+
+	public static ByteBuf wrapUtf8(String string) {
 		ByteBuf byteBuffer = ByteBufPool.allocate(string.length() * 3);
-		int len = encodeUTF8(byteBuffer.array(), 0, string);
-		byteBuffer.limit(len);
+		int size = encodeUtf8(byteBuffer.array(), 0, string);
+		byteBuffer.moveTail(size);
 		return byteBuffer;
 	}
 
-	public static String decodeUTF8(byte[] array, int pos, int len, char[] tmpBuffer) throws ParseException {
+	public static String decodeUtf8(byte[] array, int pos, int len, char[] tmpBuffer) throws ParseException {
 		int c, charIndex = 0, end = pos + len;
 		try {
 			while (pos < end) {
@@ -260,30 +273,30 @@ public final class ByteBufStrings {
 						break;
 				}
 			}
+			if (pos > end) throw READ_PAST_LIMIT;
 		} catch (ArrayIndexOutOfBoundsException e) {
-			throw new ParseException("Malformed utf-8 input", e);
+			throw READ_PAST_ARRAY_LENGTH;
 		}
 		return new String(tmpBuffer, 0, charIndex);
 	}
 
-	public static String decodeUTF8(byte[] array, int pos, int len) throws ParseException {
-		return decodeUTF8(array, pos, len, new char[len]);
+	public static String decodeUtf8(byte[] array, int pos, int len) throws ParseException {
+		return decodeUtf8(array, pos, len, new char[len]);
 	}
 
-	public static String decodeUTF8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
-		return decodeUTF8(buf.array(), buf.position(), buf.remaining(), tmpBuffer);
+	public static String decodeUtf8(ByteBuf buf, char[] tmpBuffer) throws ParseException {
+		return decodeUtf8(buf.array(), buf.head(), buf.headRemaining(), tmpBuffer);
 	}
 
-	public static String decodeUTF8(ByteBuf buf) throws ParseException {
-		return decodeUTF8(buf.array(), buf.position(), buf.remaining(), new char[buf.remaining()]);
+	public static String decodeUtf8(ByteBuf buf) throws ParseException {
+		return decodeUtf8(buf.array(), buf.head(), buf.headRemaining(), new char[buf.headRemaining()]);
 	}
 
-	public static String decodeUTF8(byte[] array) throws ParseException {
-		return decodeUTF8(array, 0, array.length, new char[array.length]);
+	public static String decodeUtf8(byte[] array) throws ParseException {
+		return decodeUtf8(array, 0, array.length, new char[array.length]);
 	}
 
 	// Decimal (unsigned)
-
 	public static int encodeDecimal(byte[] array, int pos, int value) {
 		int digits = digits(value);
 		for (int i = pos + digits - 1; i >= pos; i--) {
@@ -295,13 +308,13 @@ public final class ByteBufStrings {
 	}
 
 	public static void putDecimal(ByteBuf buf, int value) {
-		int digits = encodeDecimal(buf.array(), buf.position(), value);
-		buf.advance(digits);
+		int digits = encodeDecimal(buf.array(), buf.tail(), value);
+		buf.moveTail(digits);
 	}
 
 	public static ByteBuf wrapDecimal(int value) {
 		int digits = digits(value);
-		ByteBuf buf = ByteBuf.allocate(digits);
+		ByteBuf buf = ByteBufPool.allocate(digits);
 		byte[] array = buf.array();
 		for (int i = digits - 1; i >= 0; i--) {
 			int digit = value % 10;

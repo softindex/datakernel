@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-package io.datakernel.service;
+package io.datakernel.guice;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import io.datakernel.service.Service;
 
 public final class TestServiceGraphServices {
 	private TestServiceGraphServices() {

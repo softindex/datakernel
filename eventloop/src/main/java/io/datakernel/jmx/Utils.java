@@ -39,6 +39,14 @@ final class Utils {
 		return map;
 	}
 
+	public static Map<String, Map<String, String>> createDescriptionMap(String name, String description) {
+		if (description != null) {
+			return Collections.singletonMap(name, Collections.singletonMap(name, description));
+		} else {
+			return Collections.singletonMap(name, Collections.<String, String>emptyMap());
+		}
+	}
+
 	public static <T> Iterable<T> concat(final Iterable<? extends Iterable<T>> iterables) {
 		return new Iterable<T>() {
 			@Override

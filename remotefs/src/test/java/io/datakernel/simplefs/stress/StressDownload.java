@@ -1,11 +1,12 @@
 package io.datakernel.simplefs.stress;
 
-import io.datakernel.StreamTransformerWithCounter;
+import io.datakernel.StreamForwarderWithCounter;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.simplefs.SimpleFsClient;
 import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -48,15 +49,15 @@ public class StressDownload {
 
 		for (int i = 0; i < OPERATIONS_QUANTITY; i++) {
 			final String file = FILES.get(rand.nextInt(OPERATIONS_QUANTITY));
-			client.download(file, 0, new ResultCallback<StreamTransformerWithCounter>() {
+			client.download(file, 0, new ResultCallback<StreamProducer<ByteBuf>>() {
 				@Override
-				public void onResult(StreamTransformerWithCounter result) {
+				public void onResult(StreamProducer<ByteBuf> producer) {
 					try {
 						StreamConsumer<ByteBuf> consumer = create(eventloop,
 								open(eventloop, executor,
 										CLIENT_STORAGE.resolve(file),
 										CREATE_OPTIONS));
-						result.getOutput().streamTo(consumer);
+						producer.streamTo(consumer);
 					} catch (IOException e) {
 						onException(e);
 					}

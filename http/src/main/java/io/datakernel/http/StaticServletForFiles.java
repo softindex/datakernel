@@ -49,6 +49,7 @@ public final class StaticServletForFiles extends StaticServlet {
 
 		if (!path.startsWith(storage)) {
 			callback.onResult(null);
+			return;
 		}
 
 		AsyncFile.open(eventloop, executor, path,

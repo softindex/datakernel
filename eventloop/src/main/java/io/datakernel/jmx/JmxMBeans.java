@@ -129,6 +129,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			}
 			checkArgument(!attrName.contains("_"), "@JmxAttribute with name \"%s\" contains underscores", attrName);
 
+			String attrDescription = null;
+			if (!attrAnnotation.description().equals(JmxAttribute.NO_DESCRIPTION)) {
+				attrDescription = attrAnnotation.description();
+			}
+
 			if (attrAnnotation.optional()) {
 				if (!includedOptionals.contains(attrName)) {
 					// do not include optional attributes by default
@@ -148,8 +153,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 			Type type = attrGetter.getGenericReturnType();
 			Method attrSetter = descriptor.getSetter();
-			AttributeNode attrNode =
-					createAttributeNodeFor(attrName, type, attrAnnotation, attrGetter, attrSetter, mbeanClass);
+			AttributeNode attrNode = createAttributeNodeFor(attrName, attrDescription, type,
+					attrAnnotation, attrGetter, attrSetter, mbeanClass);
 			attrNodes.add(attrNode);
 		}
 		return attrNodes;
@@ -213,7 +218,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	}
 
 	@SuppressWarnings("unchecked")
-	private static AttributeNode createAttributeNodeFor(String attrName, Type attrType, JmxAttribute attrAnnotation,
+	private static AttributeNode createAttributeNodeFor(String attrName, String attrDescription, Type attrType,
+	                                                    JmxAttribute attrAnnotation,
 	                                                    Method getter, Method setter, Class<?> mbeanClass) {
 		ValueFetcher defaultFetcher = getter != null ? new ValueFetcherFromGetter(getter) : new ValueFetcherDirect();
 		if (attrType instanceof Class) {
@@ -226,14 +232,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				} catch (Exception e) {
 					throw new RuntimeException(e);
 				}
-				return new AttributeNodeForSimpleType(attrName, defaultFetcher, setter, returnClass, reducer);
+				return new AttributeNodeForSimpleType(
+						attrName, attrDescription, defaultFetcher, setter, returnClass, reducer
+				);
 			} else if (isThrowable(returnClass)) {
-				return new AttributeNodeForThrowable(attrName, defaultFetcher);
+				return new AttributeNodeForThrowable(attrName, attrDescription, defaultFetcher);
 			} else if (returnClass.isArray()) {
 				Class<?> elementType = returnClass.getComponentType();
 				checkNotNull(getter, "Arrays can be used only directly in POJO, JmxRefreshableStats or JmxMBeans");
 				ValueFetcher fetcher = new ValueFetcherFromGetterArrayAdapter(getter);
-				return createListAttributeNodeFor(attrName, fetcher, elementType, mbeanClass);
+				return createListAttributeNodeFor(attrName, attrDescription, fetcher, elementType, mbeanClass);
 			} else if (isJmxStats(returnClass)) {
 				// JmxRefreshableStats case
 
@@ -251,11 +259,11 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 				}
 
 				if (isJmxRefreshableStats(returnClass)) {
-					return new AttributeNodeForJmxRefreshableStats(attrName, defaultFetcher,
+					return new AttributeNodeForJmxRefreshableStats(attrName, attrDescription, defaultFetcher,
 							(Class<? extends JmxRefreshableStats<?>>) returnClass,
 							subNodes);
 				} else {
-					return new AttributeNodeForJmxStats(attrName, defaultFetcher,
+					return new AttributeNodeForJmxStats(attrName, attrDescription, defaultFetcher,
 							(Class<? extends JmxStats<?>>) returnClass,
 							subNodes);
 				}
@@ -267,14 +275,16 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 						createNodesFor(returnClass, mbeanClass, extraSubAttributes, getter);
 
 				if (subNodes.size() == 0) {
-					return new AttributeNodeForAnyOtherType(attrName, defaultFetcher);
+					return new AttributeNodeForAnyOtherType(attrName, attrDescription, defaultFetcher);
 				} else {
 					// POJO case
-					return new AttributeNodeForPojo(attrName, defaultFetcher, subNodes);
+					return new AttributeNodeForPojo(attrName, attrDescription, defaultFetcher, subNodes);
 				}
 			}
 		} else if (attrType instanceof ParameterizedType) {
-			return createNodeForParametrizedType(attrName, (ParameterizedType) attrType, getter, mbeanClass);
+			return createNodeForParametrizedType(
+					attrName, attrDescription, (ParameterizedType) attrType, getter, mbeanClass
+			);
 		} else {
 			throw new RuntimeException();
 		}
@@ -331,22 +341,24 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		return msg;
 	}
 
-	private static AttributeNode createNodeForParametrizedType(String attrName, ParameterizedType pType,
+	private static AttributeNode createNodeForParametrizedType(String attrName, String attrDescription,
+	                                                           ParameterizedType pType,
 	                                                           Method getter, Class<?> mbeanClass) {
 		ValueFetcher fetcher = createAppropriateFetcher(getter);
 		Class<?> rawType = (Class<?>) pType.getRawType();
 		if (rawType == List.class) {
 			Type listElementType = pType.getActualTypeArguments()[0];
-			return createListAttributeNodeFor(attrName, fetcher, listElementType, mbeanClass);
+			return createListAttributeNodeFor(attrName, attrDescription, fetcher, listElementType, mbeanClass);
 		} else if (rawType == Map.class) {
 			Type valueType = pType.getActualTypeArguments()[1];
-			return createMapAttributeNodeFor(attrName, fetcher, valueType, mbeanClass);
+			return createMapAttributeNodeFor(attrName, attrDescription, fetcher, valueType, mbeanClass);
 		} else {
 			throw new RuntimeException("There is no support for Generic classes other than List or Map");
 		}
 	}
 
-	private static AttributeNodeForList createListAttributeNodeFor(String attrName, ValueFetcher fetcher,
+	private static AttributeNodeForList createListAttributeNodeFor(String attrName, String attrDescription,
+	                                                               ValueFetcher fetcher,
 	                                                               Type listElementType, Class<?> mbeanClass) {
 		if (listElementType instanceof Class<?>) {
 			Class<?> listElementClass = (Class<?>) listElementType;
@@ -354,16 +366,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			boolean isListOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(listElementClass));
 			return new AttributeNodeForList(
 					attrName,
+					attrDescription,
 					fetcher,
-					createAttributeNodeFor(typeName, listElementType, null, null, null, mbeanClass),
+					createAttributeNodeFor(typeName, attrDescription, listElementType, null, null, null, mbeanClass),
 					isListOfJmxRefreshable
 			);
 		} else if (listElementType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) listElementType).getRawType()).getSimpleName();
 			return new AttributeNodeForList(
 					attrName,
+					attrDescription,
 					fetcher,
-					createNodeForParametrizedType(typeName, (ParameterizedType) listElementType, null, mbeanClass),
+					createNodeForParametrizedType(
+							typeName, attrDescription, (ParameterizedType) listElementType, null, mbeanClass
+					),
 					false
 			);
 		} else {
@@ -371,7 +387,8 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 		}
 	}
 
-	private static AttributeNodeForMap createMapAttributeNodeFor(String attrName, ValueFetcher fetcher,
+	private static AttributeNodeForMap createMapAttributeNodeFor(String attrName, String attrDescription,
+	                                                             ValueFetcher fetcher,
 	                                                             Type valueType, Class<?> mbeanClass) {
 		if (valueType instanceof Class<?>) {
 			Class<?> valueClass = (Class<?>) valueType;
@@ -379,16 +396,20 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 			boolean isMapOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(valueClass));
 			return new AttributeNodeForMap(
 					attrName,
+					attrDescription,
 					fetcher,
-					createAttributeNodeFor(typeName, valueType, null, null, null, mbeanClass),
+					createAttributeNodeFor(typeName, attrDescription, valueType, null, null, null, mbeanClass),
 					isMapOfJmxRefreshable
 			);
 		} else if (valueType instanceof ParameterizedType) {
 			String typeName = ((Class<?>) ((ParameterizedType) valueType).getRawType()).getSimpleName();
 			return new AttributeNodeForMap(
 					attrName,
+					attrDescription,
 					fetcher,
-					createNodeForParametrizedType(typeName, (ParameterizedType) valueType, null, mbeanClass),
+					createNodeForParametrizedType(
+							typeName, attrDescription, (ParameterizedType) valueType, null, mbeanClass
+					),
 					false
 			);
 		} else {
@@ -486,7 +507,7 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static AttributeNodeForPojo createAttributesTree(Class<?> clazz) {
 		List<AttributeNode> subNodes = createNodesFor(clazz, clazz, new String[0], null);
-		AttributeNodeForPojo root = new AttributeNodeForPojo("", new ValueFetcherDirect(), subNodes);
+		AttributeNodeForPojo root = new AttributeNodeForPojo("", null, new ValueFetcherDirect(), subNodes);
 		return root;
 	}
 	// endregion
@@ -510,15 +531,39 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 
 	private static MBeanAttributeInfo[] fetchAttributesInfo(AttributeNodeForPojo rootNode, boolean refreshEnabled) {
 		Map<String, OpenType<?>> nameToType = rootNode.getFlattenedOpenTypes();
+		Map<String, Map<String, String>> nameToDescriptions = rootNode.getDescriptions();
 		List<MBeanAttributeInfo> attrsInfo = new ArrayList<>();
 		for (String attrName : nameToType.keySet()) {
+			String description = createDescription(attrName, nameToDescriptions.get(attrName));
 			OpenType<?> attrType = nameToType.get(attrName);
 			boolean writable = rootNode.isSettable(attrName);
 			boolean isIs = attrType.equals(SimpleType.BOOLEAN);
-			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType.getClassName(), attrName, true, writable, isIs));
+			attrsInfo.add(new MBeanAttributeInfo(attrName, attrType.getClassName(), description, true, writable, isIs));
 		}
 
 		return attrsInfo.toArray(new MBeanAttributeInfo[attrsInfo.size()]);
+	}
+
+	private static String createDescription(String name, Map<String, String> groupDescriptions) {
+		if (groupDescriptions.isEmpty()) {
+			return name;
+		}
+
+		if (!name.contains("_")) {
+			assert groupDescriptions.size() == 1;
+			return groupDescriptions.values().iterator().next();
+		}
+
+		String descriptionTemplate = "\"%s\": %s";
+		String separator = "  |  ";
+		StringBuilder totalDescription = new StringBuilder("");
+		for (String groupName : groupDescriptions.keySet()) {
+			String groupDescription = groupDescriptions.get(groupName);
+			totalDescription.append(String.format(descriptionTemplate, groupName, groupDescription));
+			totalDescription.append(separator);
+		}
+		totalDescription.delete(totalDescription.length() - separator.length(), totalDescription.length());
+		return totalDescription.toString();
 	}
 
 	private static MBeanOperationInfo[] fetchOperationsInfo(Class<?> monitorableClass, boolean enableRefresh) {

@@ -33,7 +33,7 @@ public final class SerializeFixedSizeHandler implements AnnotationHandler<Serial
 					return ((SerializerGenArray) fallback).fixedSize(annotation.value(), type);
 				}
 				if (fallback instanceof SerializerGenList) {
-					throw new UnsupportedOperationException(); // TODO
+					throw new UnsupportedOperationException();
 				}
 				throw new IllegalArgumentException();
 			}

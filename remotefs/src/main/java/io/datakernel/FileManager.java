@@ -38,13 +38,14 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
 import static io.datakernel.stream.file.StreamFileReader.readFileFrom;
-import static io.datakernel.stream.file.StreamFileWriter.CREATE_OPTIONS;
 import static io.datakernel.stream.file.StreamFileWriter.create;
 import static io.datakernel.util.Preconditions.checkNotNull;
-import static java.nio.file.StandardOpenOption.READ;
+import static java.nio.file.StandardOpenOption.*;
 
 public final class FileManager {
 	private static final Logger logger = LoggerFactory.getLogger(FileManager.class);
+
+	private static final OpenOption[] CREATE_OPTIONS = new OpenOption[]{WRITE, CREATE_NEW};
 
 	private final Eventloop eventloop;
 	private final ExecutorService executor;
@@ -79,7 +80,6 @@ public final class FileManager {
 	}
 
 	public void save(String fileName, final ResultCallback<StreamFileWriter> callback) {
-
 		logger.trace("uploading file: {}", fileName);
 		ensureDirectory(storagePath, fileName, new ForwardingResultCallback<Path>(callback) {
 			@Override

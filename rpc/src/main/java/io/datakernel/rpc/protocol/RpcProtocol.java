@@ -16,7 +16,7 @@
 
 package io.datakernel.rpc.protocol;
 
-import io.datakernel.eventloop.SocketConnection;
+import io.datakernel.eventloop.AsyncTcpSocket;
 
 public interface RpcProtocol {
 	void sendMessage(RpcMessage rpcMessage);
@@ -25,5 +25,5 @@ public interface RpcProtocol {
 
 	void close();
 
-	SocketConnection getSocketConnection();
+	AsyncTcpSocket.EventHandler getSocketConnection();
 }

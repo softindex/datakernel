@@ -113,7 +113,7 @@ public class HttpUriTest {
 
 	@Test(expected = IllegalArgumentException.class)
 	public void testInvalidScheme() {
-		HttpUri.ofUrl("https://abc.com/");
+		HttpUri.ofUrl("ftp://abc.com/");
 	}
 
 	@Test(expected = IllegalArgumentException.class)

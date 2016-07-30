@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-package io.datakernel.stream.processor;
+package io.datakernel.stream.net;
 
+import io.datakernel.async.CompletionCallback;
 import io.datakernel.bytebuf.ByteBuf;
-import io.datakernel.stream.AbstractStreamConsumer;
-import io.datakernel.stream.AbstractStreamProducer;
-import io.datakernel.stream.StreamDataReceiver;
+import io.datakernel.stream.StreamConsumer;
+import io.datakernel.stream.StreamProducer;
 
-/**
- * Represent deserializer which deserializes data from ByteBuffer to some type. Is a {@link AbstractStreamConsumer} which
- * receives ByteBuffers and {@link AbstractStreamProducer} which streams specified type.
- *
- * @param <T> original type of data
- */
-public interface StreamDeserializer<T> extends StreamTransformer<ByteBuf, T> {
-	void drainBuffersTo(StreamDataReceiver<ByteBuf> dataReceiver);
+public interface SocketStreaming {
+	void receiveStreamTo(StreamConsumer<ByteBuf> streamConsumer, CompletionCallback callback);
+
+	void sendStreamFrom(StreamProducer<ByteBuf> streamProducer, CompletionCallback callback);
 }

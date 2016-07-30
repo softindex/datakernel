@@ -16,34 +16,18 @@
 
 package io.datakernel;
 
-import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
 import io.datakernel.eventloop.Eventloop;
 import io.datakernel.stream.AbstractStreamTransformer_1_1;
 import io.datakernel.stream.StreamDataReceiver;
-import io.datakernel.stream.StreamStatus;
 
-public final class StreamTransformerWithCounter extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
+public final class StreamForwarderWithCounter extends AbstractStreamTransformer_1_1<ByteBuf, ByteBuf> {
 	private InputConsumer inputConsumer;
 	private OutputProducer outputProducer;
 	private final long expectedSize;
 	private long streamedSize = 0;
 
-	private ResultCallback<Long> positionCallback;
-
-	public void setPositionCallback(ResultCallback<Long> positionCallback) {
-		if (this.getOutput().getProducerStatus().isOpen()) {
-			this.positionCallback = positionCallback;
-		} else {
-			if (this.getOutput().getProducerStatus() == StreamStatus.END_OF_STREAM) {
-				positionCallback.onResult(streamedSize);
-			} else {
-				positionCallback.onException(this.getOutput().getProducerException());
-			}
-		}
-	}
-
-	public StreamTransformerWithCounter(Eventloop eventloop, long requiredSize) {
+	public StreamForwarderWithCounter(Eventloop eventloop, long requiredSize) {
 		super(eventloop);
 		inputConsumer = new InputConsumer();
 		outputProducer = new OutputProducer();
@@ -55,15 +39,9 @@ public final class StreamTransformerWithCounter extends AbstractStreamTransforme
 		protected void onUpstreamEndOfStream() {
 			if (expectedSize == streamedSize) {
 				outputProducer.sendEndOfStream();
-				if (positionCallback != null) {
-					positionCallback.onResult(streamedSize);
-				}
 			} else {
-				Exception e = new Exception("Expected and actual sizes mismatch. Expected: " + expectedSize + ", Actual: " + streamedSize);
+				Exception e = new RemoteFsException("Expected and actual sizes mismatch. Expected: " + expectedSize + ", Actual: " + streamedSize);
 				onError(e);
-				if (positionCallback != null) {
-					positionCallback.onException(e);
-				}
 			}
 		}
 
@@ -74,7 +52,7 @@ public final class StreamTransformerWithCounter extends AbstractStreamTransforme
 
 		@Override
 		public void onData(ByteBuf item) {
-			streamedSize += (item.limit() - item.position());
+			streamedSize += item.headRemaining();
 			outputProducer.send(item);
 		}
 	}

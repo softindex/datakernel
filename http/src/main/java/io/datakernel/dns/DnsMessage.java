@@ -77,7 +77,7 @@ public final class DnsMessage {
 		ByteBuf byteBuf = ByteBufPool.allocate(MAX_SIZE);
 		DnsMessage m = new DnsMessage(byteBuf.array());
 		m.generateRequest(domainName, ipv6);
-		byteBuf.limit(m.idx);
+		byteBuf.tail(m.idx);
 		return byteBuf;
 	}
 

@@ -27,10 +27,10 @@ abstract class AttributeNodeForJmxStatsAbstract extends AttributeNodeForPojoAbst
 	private final Class<? extends JmxStats<?>> jmxStatsClass;
 	private final List<? extends AttributeNode> subNodes;
 
-	public AttributeNodeForJmxStatsAbstract(String name, ValueFetcher fetcher,
+	public AttributeNodeForJmxStatsAbstract(String name, String description, ValueFetcher fetcher,
 	                                        Class<? extends JmxStats<?>> jmxStatsClass,
 	                                        List<? extends AttributeNode> subNodes) {
-		super(name, fetcher, subNodes);
+		super(name, description, fetcher, subNodes);
 
 		this.jmxStatsClass = checkNotNull(jmxStatsClass);
 		this.subNodes = subNodes;

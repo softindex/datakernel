@@ -20,57 +20,43 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 
-import java.nio.channels.SocketChannel;
+import java.net.InetSocketAddress;
 import java.util.concurrent.TimeoutException;
 
 import static io.datakernel.http.HttpHeaders.CONNECTION;
 import static io.datakernel.util.ByteBufStrings.SP;
 import static io.datakernel.util.ByteBufStrings.decodeDecimal;
 
-/**
- * Realization of {@link AbstractHttpConnection},  which represents a client side and used for sending requests and
- * receiving responses.
- */
 @SuppressWarnings("ThrowableInstanceNeverThrown")
 final class HttpClientConnection extends AbstractHttpConnection {
 	private static final TimeoutException TIMEOUT_EXCEPTION = new TimeoutException();
 	private static final ParseException CLOSED_CONNECTION = new ParseException("Connection unexpectedly closed");
+
 	private static final HttpHeaders.Value CONNECTION_KEEP_ALIVE = HttpHeaders.asBytes(CONNECTION, "keep-alive");
 
 	private ResultCallback<HttpResponse> callback;
 	private AsyncCancellable cancellable;
 	private HttpResponse response;
 	private final AsyncHttpClient httpClient;
-	protected ExposedLinkedList.Node<HttpClientConnection> ipConnectionListNode;
 
-	/**
-	 * Creates a new of  HttpClientConnection
-	 *
-	 * @param eventloop     eventloop which will handle its I/O operations
-	 * @param socketChannel channel for this connection
-	 * @param httpClient    client which will handle this connection
-	 */
-	public HttpClientConnection(Eventloop eventloop, SocketChannel socketChannel, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
-		super(eventloop, socketChannel, httpClient.connectionsList, headerChars, maxHttpMessageSize);
+	ExposedLinkedList<HttpClientConnection> addressPool;
+	final ExposedLinkedList.Node<HttpClientConnection> addressNode = new ExposedLinkedList.Node<>(this);
+
+	final InetSocketAddress remoteAddress;
+
+	HttpClientConnection(Eventloop eventloop, InetSocketAddress remoteAddress, AsyncTcpSocket asyncTcpSocket, AsyncHttpClient httpClient, char[] headerChars, int maxHttpMessageSize) {
+		super(eventloop, asyncTcpSocket, headerChars, maxHttpMessageSize);
+		this.remoteAddress = remoteAddress;
 		this.httpClient = httpClient;
 	}
 
 	@Override
-	protected void onReadException(Exception e) {
-		onException(e);
-		super.onReadException(e);
-	}
-
-	@Override
-	protected void onWriteException(Exception e) {
-		onException(e);
-		super.onWriteException(e);
-	}
-
-	private void onException(Exception e) {
+	public void onClosedWithError(Exception e) {
 		assert eventloop.inEventloopThread();
+		onClosed();
 		if (this.callback != null) {
 			ResultCallback<HttpResponse> callback = this.callback;
 			this.callback = null;
@@ -85,14 +71,14 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 		int sp1;
 		if (line.peek(6) == SP) {
-			sp1 = line.position() + 7;
+			sp1 = line.head() + 7;
 		} else if (line.peek(6) == '.' && (line.peek(7) == '1' || line.peek(7) == '0') && line.peek(8) == SP) {
-			sp1 = line.position() + 9;
+			sp1 = line.head() + 9;
 		} else
-			throw new ParseException("Invalid response: " + new String(line.array(), line.position(), line.remaining()));
+			throw new ParseException("Invalid response: " + new String(line.array(), line.head(), line.headRemaining()));
 
 		int sp2;
-		for (sp2 = sp1; sp2 < line.limit(); sp2++) {
+		for (sp2 = sp1; sp2 < line.tail(); sp2++) {
 			if (line.at(sp2) == SP) {
 				break;
 			}
@@ -118,44 +104,33 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		return (messageCode >= 100 && messageCode < 200) || messageCode == 204 || messageCode == 304;
 	}
 
-	/**
-	 * Calls after receiving header, sets this header to httpResponse.
-	 *
-	 * @param header received header
-	 * @param value  value of header
-	 */
 	@Override
 	protected void onHeader(HttpHeader header, ByteBuf value) throws ParseException {
 		super.onHeader(header, value);
 		response.addHeader(header, value);
 	}
 
-	/**
-	 * After receiving Http Message it creates {@link HttpResponse}, calls callback with it and recycles
-	 * HTTP response.
-	 *
-	 * @param bodyBuf the received message
-	 */
 	@Override
 	protected void onHttpMessage(ByteBuf bodyBuf) {
-		assert isRegistered();
+		assert !isClosed();
 		response.body(bodyBuf);
+		HttpResponse response = this.response;
 		ResultCallback<HttpResponse> callback = this.callback;
+		this.response = null;
 		this.callback = null;
-		callback.onResult(response);
-		if (!isRegistered())
+		if (isClosed())
 			return;
 		if (keepAlive) {
 			reset();
-			httpClient.addToIpPool(this);
+			returnToPool();
 		} else {
 			close();
 		}
+
+		callback.onResult(response);
+		response.recycleBufs();
 	}
 
-	/**
-	 * After reading the end of stream it calls method onHttpMessage() for handling result and closes channel.
-	 */
 	@Override
 	public void onReadEndOfStream() {
 		assert eventloop.inEventloopThread();
@@ -163,18 +138,15 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			if (reading == BODY && contentLength == UNKNOWN_LENGTH) {
 				onHttpMessage(bodyQueue.takeRemaining());
 			} else {
-				onException(CLOSED_CONNECTION);
+				closeWithError(CLOSED_CONNECTION);
 			}
 		}
 		close();
 	}
 
-	/**
-	 * Resets response of this connection for keeping alive it and reusing for other requests.
-	 */
 	@Override
 	protected void reset() {
-		reading = NOTHING;
+		reading = END_OF_STREAM;
 		if (response != null) {
 			response.recycleBufs();
 			response = null;
@@ -190,18 +162,17 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		if (keepAlive) {
 			httpRequest.addHeader(CONNECTION_KEEP_ALIVE);
 		}
-		ByteBuf buf = httpRequest.write();
-		write(buf);
+		asyncTcpSocket.write(httpRequest.write());
 	}
 
 	/**
-	 * Sends the request, recycles it and closes connection after timeout
+	 * Sends the request, recycles it and closes connection in case of timeout
 	 *
 	 * @param request  request for sending
 	 * @param timeout  time after which connection will be closed
 	 * @param callback callback for handling result
 	 */
-	public void request(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
+	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
 		this.callback = callback;
 		writeHttpRequest(request);
 		request.recycleBufs();
@@ -209,26 +180,36 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	}
 
 	private void scheduleTimeout(final long timeoutTime) {
-		assert isRegistered();
+		assert !isClosed();
 
 		cancellable = eventloop.scheduleBackground(timeoutTime, new Runnable() {
 			@Override
 			public void run() {
-				if (isRegistered()) {
-					close();
-					onException(TIMEOUT_EXCEPTION);
+				if (!isClosed()) {
+					closeWithError(TIMEOUT_EXCEPTION);
 				}
 			}
 		});
 	}
 
 	@Override
-	protected void onWriteFlushed() {
-		assert isRegistered();
+	public void onWrite() {
+		assert !isClosed();
 		assert eventloop.inEventloopThread();
-
 		reading = FIRSTLINE;
-		readInterest(true);
+		asyncTcpSocket.read();
+	}
+
+	@Override
+	protected final void returnToPool() {
+		super.returnToPool();
+		httpClient.addToPool(this);
+	}
+
+	@Override
+	protected final void removeFromPool() {
+		super.removeFromPool();
+		httpClient.removeFromPool(this);
 	}
 
 	/**
@@ -236,16 +217,12 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	 * Http response.
 	 */
 	@Override
-	public void onClosed() {
+	protected void onClosed() {
 		super.onClosed();
 		bodyQueue.clear();
-		if (connectionsListNode != null) {
-			connectionsList.removeNode(connectionsListNode);
-		}
 		if (response != null) {
 			response.recycleBufs();
 		}
-		httpClient.removeFromIpPool(this);
 	}
 
 }

@@ -23,6 +23,7 @@ import io.datakernel.bytebuf.ByteBufPool;
 import java.net.InetAddress;
 import java.util.*;
 
+import static io.datakernel.http.GzipProcessor.toGzip;
 import static io.datakernel.http.HttpHeaders.*;
 import static io.datakernel.http.HttpMethod.GET;
 import static io.datakernel.http.HttpMethod.POST;
@@ -76,7 +77,7 @@ public final class HttpRequest extends HttpMessage {
 	}
 
 	public HttpRequest body(byte[] array) {
-		return body(ByteBuf.wrap(array));
+		return body(ByteBuf.wrapForReading(array));
 	}
 
 	public HttpRequest body(ByteBuf body) {
@@ -155,6 +156,14 @@ public final class HttpRequest extends HttpMessage {
 		return this;
 	}
 
+	private boolean gzip = false;
+
+	public HttpRequest compressWithGzip() {
+		setHeader(CONTENT_ENCODING, "gzip");
+		gzip = true;
+		return this;
+	}
+
 	// getters
 	public List<AcceptMediaType> parseAccept() throws ParseException {
 		assert !recycled;
@@ -216,7 +225,7 @@ public final class HttpRequest extends HttpMessage {
 		assert !recycled;
 		if (method == POST && getContentType() != null
 				&& getContentType().getMediaType() == MediaTypes.X_WWW_FORM_URLENCODED
-				&& body.position() != body.limit()) {
+				&& body.head() != body.tail()) {
 			if (bodyParameters == null) {
 				bodyParameters = HttpUtils.extractParameters(decodeAscii(getBody()));
 			}
@@ -241,6 +250,10 @@ public final class HttpRequest extends HttpMessage {
 
 	void setPos(int pos) {
 		this.pos = pos;
+	}
+
+	public boolean isHttps() {
+		return getUrl().getSchema().equals("https");
 	}
 
 	public HttpMethod getMethod() {
@@ -312,7 +325,14 @@ public final class HttpRequest extends HttpMessage {
 	ByteBuf write() {
 		assert !recycled;
 		if (body != null || method != GET) {
-			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.remaining()));
+			if (gzip) {
+				try {
+					body = toGzip(body);
+				} catch (ParseException ignored) {
+					throw new AssertionError("Can't encode http request body");
+				}
+			}
+			setHeader(HttpHeaders.ofDecimal(HttpHeaders.CONTENT_LENGTH, body == null ? 0 : body.headRemaining()));
 		}
 		int estimatedSize = estimateSize(LONGEST_HTTP_METHOD_SIZE
 				+ 1 // SPACE
@@ -326,9 +346,9 @@ public final class HttpRequest extends HttpMessage {
 		buf.put(HTTP_1_1);
 
 		writeHeaders(buf);
+
 		writeBody(buf);
 
-		buf.flip();
 		return buf;
 	}
 

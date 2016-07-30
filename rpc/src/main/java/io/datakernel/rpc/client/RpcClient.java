@@ -19,15 +19,12 @@ package io.datakernel.rpc.client;
 import io.datakernel.async.CompletionCallback;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.async.ResultCallbackFuture;
-import io.datakernel.eventloop.ConnectCallback;
-import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.EventloopService;
+import io.datakernel.eventloop.*;
 import io.datakernel.jmx.CountStats;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxOperation;
 import io.datakernel.net.SocketSettings;
-import io.datakernel.rpc.client.RpcClientConnection.StatusListener;
 import io.datakernel.rpc.client.jmx.RpcConnectStats;
 import io.datakernel.rpc.client.jmx.RpcRequestStats;
 import io.datakernel.rpc.client.sender.RpcNoSenderException;
@@ -40,13 +37,17 @@ import io.datakernel.util.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
 import java.net.InetSocketAddress;
 import java.nio.channels.SocketChannel;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static io.datakernel.async.AsyncCallbacks.postCompletion;
 import static io.datakernel.async.AsyncCallbacks.postException;
+import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
+import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
 import static io.datakernel.rpc.protocol.stream.RpcStreamProtocolFactory.streamProtocol;
 import static io.datakernel.util.Preconditions.checkNotNull;
 import static io.datakernel.util.Preconditions.checkState;
@@ -59,13 +60,18 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	private Logger logger = LoggerFactory.getLogger(RpcClient.class);
 
 	private final Eventloop eventloop;
+	private final SocketSettings socketSettings;
+
+	// SSL
+	private SSLContext sslContext;
+	private ExecutorService sslExecutor;
+
 	private RpcStrategy strategy;
 	private List<InetSocketAddress> addresses;
 	private final Map<InetSocketAddress, RpcClientConnection> connections = new HashMap<>();
 	private RpcProtocolFactory protocolFactory = streamProtocol();
 	private SerializerBuilder serializerBuilder;
 	private final Set<Class<?>> messageTypes = new LinkedHashSet<>();
-	private SocketSettings socketSettings = DEFAULT_SOCKET_SETTINGS;
 	private int connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT;
 	private int reconnectIntervalMillis = DEFAULT_RECONNECT_INTERVAL;
 
@@ -92,18 +98,23 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 	private final Map<Class<?>, RpcRequestStats> requestStatsPerClass;
 	private final Map<InetSocketAddress, RpcConnectStats> connectsStatsPerAddress;
 
-	private RpcClient(Eventloop eventloop) {
+	private RpcClient(Eventloop eventloop, SocketSettings socketSettings) {
 		this.eventloop = eventloop;
+		this.socketSettings = socketSettings;
 
 		// JMX
 		this.generalRequestsStats = new RpcRequestStats();
 		this.generalConnectsStats = new RpcConnectStats();
 		this.requestStatsPerClass = new HashMap<>();
-		this.connectsStatsPerAddress = new HashMap<>(); // TODO(vmykhalko): properly initialize this map with addresses, and add new addresses when needed
+		this.connectsStatsPerAddress = new HashMap<>();
 	}
 
 	public static RpcClient create(final Eventloop eventloop) {
-		return new RpcClient(eventloop);
+		return create(eventloop, DEFAULT_SOCKET_SETTINGS);
+	}
+
+	public static RpcClient create(final Eventloop eventloop, SocketSettings socketSettings) {
+		return new RpcClient(eventloop, socketSettings);
 	}
 
 	public RpcClient messageTypes(Class<?>... messageTypes) {
@@ -141,11 +152,6 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		return this;
 	}
 
-	public RpcClient socketSettings(SocketSettings socketSettings) {
-		this.socketSettings = checkNotNull(socketSettings);
-		return this;
-	}
-
 	public SocketSettings getSocketSettings() {
 		return socketSettings;
 	}
@@ -162,6 +168,12 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 
 	public RpcClient reconnectIntervalMillis(int reconnectIntervalMillis) {
 		this.reconnectIntervalMillis = reconnectIntervalMillis;
+		return this;
+	}
+
+	public RpcClient enableSsl(SSLContext sslContext, ExecutorService executor) {
+		this.sslContext = checkNotNull(sslContext);
+		this.sslExecutor = checkNotNull(executor);
 		return this;
 	}
 
@@ -232,37 +244,19 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		}
 
 		logger.info("Connecting {}", address);
-		eventloop.connect(address, socketSettings, new ConnectCallback() {
+
+		eventloop.connect(address, 0, new ConnectCallback() {
 			@Override
 			public void onConnect(SocketChannel socketChannel) {
-				StatusListener statusListener = new StatusListener() {
-					@Override
-					public void onOpen(RpcClientConnection connection) {
-						addConnection(address, connection);
-					}
+				AsyncTcpSocketImpl asyncTcpSocketImpl = wrapChannel(eventloop, socketChannel, socketSettings);
+				AsyncTcpSocket asyncTcpSocket = sslContext != null ? wrapClientSocket(eventloop, asyncTcpSocketImpl, sslContext, sslExecutor) : asyncTcpSocketImpl;
+				RpcClientConnection connection = new RpcClientConnection(eventloop, RpcClient.this,
+						asyncTcpSocket, address,
+						getSerializer(), protocolFactory);
+				asyncTcpSocket.setEventHandler(connection.getSocketConnection());
+				asyncTcpSocketImpl.register();
 
-					@Override
-					public void onClosed() {
-						logger.info("Connection to {} closed", address);
-						removeConnection(address);
-
-						// jmx
-						generalConnectsStats.getClosedConnects().recordEvent();
-						connectsStatsPerAddress.get(address).getClosedConnects().recordEvent();
-
-						eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
-							@Override
-							public void run() {
-								if (running) {
-									connect(address);
-								}
-							}
-						});
-					}
-				};
-				RpcClientConnection connection = new RpcClientConnection(eventloop, socketChannel,
-						getSerializer(), protocolFactory, statusListener);
-				connection.getSocketConnection().register();
+				addConnection(address, connection);
 
 				// jmx
 				generalConnectsStats.getSuccessfulConnects().recordEvent();
@@ -276,14 +270,14 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 			}
 
 			@Override
-			public void onException(Exception exception) {
+			public void onException(Exception e) {
 				//jmx
 				generalConnectsStats.getFailedConnects().recordEvent();
 				connectsStatsPerAddress.get(address).getFailedConnects().recordEvent();
 
 				if (running) {
 					if (logger.isWarnEnabled()) {
-						logger.warn("Connection failed, reconnecting to {}: {}", address, exception.toString());
+						logger.warn("Connection failed, reconnecting to {}: {}", address, e.toString());
 					}
 					eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
 						@Override
@@ -309,10 +303,25 @@ public final class RpcClient implements EventloopService, EventloopJmxMBean {
 		requestSender = sender != null ? sender : new Sender();
 	}
 
-	private void removeConnection(InetSocketAddress address) {
+	public void removeConnection(final InetSocketAddress address) {
+		logger.info("Connection to {} closed", address);
+
 		connections.remove(address);
 		RpcSender sender = strategy.createSender(pool);
 		requestSender = sender != null ? sender : new Sender();
+
+		// jmx
+		generalConnectsStats.getClosedConnects().recordEvent();
+		connectsStatsPerAddress.get(address).getClosedConnects().recordEvent();
+
+		eventloop.scheduleBackground(eventloop.currentTimeMillis() + reconnectIntervalMillis, new Runnable() {
+			@Override
+			public void run() {
+				if (running) {
+					connect(address);
+				}
+			}
+		});
 	}
 
 	private void closeConnections() {

@@ -18,48 +18,29 @@ package io.datakernel.http;
 
 import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
+import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.eventloop.SocketConnection;
-import io.datakernel.jmx.ValueStats;
-import io.datakernel.util.Stopwatch;
-
-import java.nio.channels.SocketChannel;
-import java.util.concurrent.TimeUnit;
+import io.datakernel.jmx.JmxAttribute;
+import io.datakernel.jmx.JmxReducers;
 
 import static io.datakernel.http.AbstractHttpConnection.MAX_HEADER_LINE_SIZE;
 
-/**
- * A HttpServer is bound to an IP address and port number and listens for incoming connections
- * from clients on this address. A HttpServer is supported  {@link AsyncHttpServlet} that completes all responses asynchronously.
- */
 public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private static final long CHECK_PERIOD = 1000L;
-	private static final long MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
+	private static final long DEFAULT_MAX_IDLE_CONNECTION_TIME = 30 * 1000L;
 
-	private final ExposedLinkedList<AbstractHttpConnection> connectionsList;
-	private final Runnable expiredConnectionsTask = createExpiredConnectionsTask();
+	private final ExposedLinkedList<AbstractHttpConnection> pool;
 
 	private final AsyncHttpServlet servlet;
 
-	private AsyncCancellable scheduleExpiredConnectionCheck;
+	private AsyncCancellable expiredConnectionsCheck;
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
+	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
 
-	//JMX
-	private final ValueStats timeCheckExpired;
-	private final ValueStats expiredConnections;
-	private boolean monitoring;
-	private volatile double smoothingWindow = 10.0;
-
-	/**
-	 * Creates new instance of AsyncHttpServer
-	 *
-	 * @param eventloop eventloop in which will handle this connection
-	 * @param servlet   servlet for handling requests
-	 */
 	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
-		this.connectionsList = new ExposedLinkedList<>();
+		this.pool = new ExposedLinkedList<>();
 		this.servlet = servlet;
 		char[] chars = eventloop.get(char[].class);
 		if (chars == null || chars.length < MAX_HEADER_LINE_SIZE) {
@@ -67,10 +48,11 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 			eventloop.set(char[].class, chars);
 		}
 		this.headerChars = chars;
+	}
 
-		// JMX
-		this.timeCheckExpired = new ValueStats();
-		this.expiredConnections = new ValueStats();
+	public AsyncHttpServer setMaxIdleConnectionTime(long maxIdleConnectionTime) {
+		this.maxIdleConnectionTime = maxIdleConnectionTime;
+		return this;
 	}
 
 	public AsyncHttpServer setMaxHttpMessageSize(int size) {
@@ -78,147 +60,77 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return this;
 	}
 
-	private Runnable createExpiredConnectionsTask() {
-		return new Runnable() {
+	private void scheduleExpiredConnectionsCheck() {
+		assert expiredConnectionsCheck == null;
+		expiredConnectionsCheck = eventloop.scheduleBackground(eventloop.currentTimeMillis() + CHECK_PERIOD, new Runnable() {
 			@Override
 			public void run() {
+				expiredConnectionsCheck = null;
 				checkExpiredConnections();
-				if (!connectionsList.isEmpty())
-					scheduleExpiredConnectionCheck();
+				if (!pool.isEmpty()) {
+					scheduleExpiredConnectionsCheck();
+				}
 			}
-		};
-	}
-
-	private void scheduleExpiredConnectionCheck() {
-		scheduleExpiredConnectionCheck = eventloop.schedule(eventloop.currentTimeMillis() + CHECK_PERIOD, expiredConnectionsTask);
+		});
 	}
 
 	private int checkExpiredConnections() {
-		scheduleExpiredConnectionCheck = null;
-		Stopwatch stopwatch = (monitoring) ? Stopwatch.createStarted() : null;
 		int count = 0;
-		try {
-			final long now = eventloop.currentTimeMillis();
+		final long now = eventloop.currentTimeMillis();
 
-			ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
-			while (node != null) {
-				AbstractHttpConnection connection = node.getValue();
-				node = node.getNext();
-
-				assert connection.getEventloop().inEventloopThread();
-				long idleTime = now - connection.getActivityTime();
-				if (idleTime > MAX_IDLE_CONNECTION_TIME) {
-					connection.close(); // self removing from this pool
-					count++;
-				}
-			}
-			expiredConnections.recordValue(count);
-		} finally {
-			if (stopwatch != null)
-				timeCheckExpired.recordValue((int) stopwatch.elapsed(TimeUnit.MICROSECONDS));
-		}
-		return count;
-	}
-
-	/**
-	 * Creates connection for this server
-	 *
-	 * @param socketChannel socket from new connection
-	 * @return new connection
-	 */
-	@Override
-	protected SocketConnection createConnection(SocketChannel socketChannel) {
-		assert eventloop.inEventloopThread();
-
-		HttpServerConnection connection = new HttpServerConnection(eventloop, socketChannel, servlet, connectionsList, headerChars, maxHttpMessageSize);
-		if (connectionsList.isEmpty())
-			scheduleExpiredConnectionCheck();
-		return connection;
-	}
-
-	/**
-	 * Closes all connections from this server
-	 */
-	@Override
-	protected void onClose() {
-		closeConnections();
-	}
-
-	private void closeConnections() {
-		if (scheduleExpiredConnectionCheck != null)
-			scheduleExpiredConnectionCheck.cancel();
-
-		ExposedLinkedList.Node<AbstractHttpConnection> node = connectionsList.getFirstNode();
+		ExposedLinkedList.Node<AbstractHttpConnection> node = pool.getFirstNode();
 		while (node != null) {
 			AbstractHttpConnection connection = node.getValue();
 			node = node.getNext();
 
-			assert connection.getEventloop().inEventloopThread();
+			assert eventloop.inEventloopThread();
+			long idleTime = now - connection.poolTimestamp;
+			if (idleTime > maxIdleConnectionTime) {
+				connection.close(); // self removing from this pool
+				count++;
+			}
+		}
+		return count;
+	}
+
+	@Override
+	protected AsyncTcpSocket.EventHandler createSocketHandler(AsyncTcpSocket asyncTcpSocket) {
+		assert eventloop.inEventloopThread();
+		return new HttpServerConnection(
+				eventloop, asyncTcpSocket.getRemoteSocketAddress().getAddress(), asyncTcpSocket,
+				this, servlet, pool, headerChars, maxHttpMessageSize);
+	}
+
+	@Override
+	protected void onClose() {
+		ExposedLinkedList.Node<AbstractHttpConnection> node = pool.getFirstNode();
+		while (node != null) {
+			AbstractHttpConnection connection = node.getValue();
+			node = node.getNext();
+
+			assert eventloop.inEventloopThread();
 			connection.close();
 		}
 	}
 
-	@Override
-	protected void onListen() {
-	}
+	void addToPool(HttpServerConnection connection) {
+		pool.addLastNode(connection.poolNode);
+		connection.poolTimestamp = eventloop.currentTimeMillis();
 
-	// JMX
-
-//	@JmxAttribute
-//	public JmxRefreshableStats<?> getConnectionsCount() {
-//		return JmxStatsWrappers.forSummableValue(connectionsList.size());
-//	}
-
-	// TODO (vmykhalko)
-/*	@Override
-	public void startMonitoring() {
-		monitoring = true;
-	}
-
-	@Override
-	public void stopMonitoring() {
-		monitoring = false;
-	}
-
-	@Override
-	public void resetStats() {
-		timeCheckExpired.resetStats();
-	}
-
-	@Override
-	public int getTimeCheckExpiredMicros() {
-		return (int)timeCheckExpired.getLastValue();
-	}
-
-	@Override
-	public String getTimeCheckExpiredMicrosStats() {
-		return timeCheckExpired.toString();
-	}
-
-	@Override
-	public String getExpiredConnectionsStats() {
-		return expiredConnections.toString();
-	}
-
-	@Override
-	public int getConnectionsCount() {
-		return connectionsList.size();
-	}
-
-	@Override
-	public String[] getConnections() {
-		Joiner joiner = Joiner.on(',');
-		List<String> info = new ArrayList<>();
-		info.add("RemoteSocketAddress,isRegistered,LifeTime,ActivityTime");
-		for (Node<AbstractHttpConnection> node = connectionsList.getFirstNode(); node != null; node = node.getNext()) {
-			AbstractHttpConnection connection = node.getValue();
-			String string = joiner.join(connection.getRemoteSocketAddress(), connection.isRegistered(),
-					MBeanFormat.formatPeriodAgo(connection.getLifeTime()),
-					MBeanFormat.formatPeriodAgo(connection.getActivityTime())
-			);
-			info.add(string);
+		if (expiredConnectionsCheck == null) {
+			scheduleExpiredConnectionsCheck();
 		}
-		return info.toArray(new String[info.size()]);
 	}
-	*/
+
+	void removeFromPool(HttpServerConnection connection) {
+		pool.removeNode(connection.poolNode);
+		connection.poolTimestamp = 0L;
+	}
+
+	// jmx
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	public int getConnectionsCount() {
+		return pool.size();
+	}
+
 }

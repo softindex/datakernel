@@ -30,17 +30,21 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	protected static final String ATTRIBUTE_NAME_SEPARATOR = "_";
 
 	protected final String name;
+	private final String description;
 	protected final ValueFetcher fetcher;
 	private final CompositeType compositeType;
 	private final Map<String, OpenType<?>> nameToOpenType;
 	protected final Map<String, AttributeNode> fullNameToNode;
+	private final List<? extends AttributeNode> subNodes;
 
-	public AttributeNodeForPojoAbstract(String name, ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
+	public AttributeNodeForPojoAbstract(String name, String description, ValueFetcher fetcher, List<? extends AttributeNode> subNodes) {
 		this.name = name;
+		this.description = description;
 		this.fetcher = fetcher;
 		this.compositeType = createCompositeType(name, subNodes);
 		this.nameToOpenType = createNameToOpenTypeMap(name, subNodes);
 		this.fullNameToNode = createFullNameToNodeMapping(name, subNodes);
+		this.subNodes = subNodes;
 	}
 
 	private static Map<String, AttributeNode> createFullNameToNodeMapping(String name,
@@ -115,6 +119,25 @@ abstract class AttributeNodeForPojoAbstract implements AttributeNode {
 	@Override
 	public final String getName() {
 		return name;
+	}
+
+	@Override
+	public Map<String, Map<String, String>> getDescriptions() {
+		Map<String, Map<String, String>> nameToDescriptions = new HashMap<>();
+		String prefix = name.isEmpty() ? "" : name + "_";
+		for (AttributeNode subNode : subNodes) {
+			Map<String, Map<String, String>> currentSubNodeDescriptions = subNode.getDescriptions();
+			for (String subNodeAttrName : currentSubNodeDescriptions.keySet()) {
+				String resultAttrName = prefix + subNodeAttrName;
+				Map<String, String> curDescriptions = new LinkedHashMap<>();
+				if (description != null) {
+					curDescriptions.put(name, description);
+				}
+				curDescriptions.putAll(currentSubNodeDescriptions.get(subNodeAttrName));
+				nameToDescriptions.put(resultAttrName, curDescriptions);
+			}
+		}
+		return nameToDescriptions;
 	}
 
 	@Override

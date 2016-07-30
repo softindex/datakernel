@@ -45,7 +45,7 @@ import java.util.concurrent.Executors;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 import static io.datakernel.async.AsyncCallbacks.ignoreCompletionCallback;
-import static io.datakernel.bytebuf.ByteBufPool.getPoolItemsString;
+import static io.datakernel.bytebuf.ByteBufPool.*;
 import static io.datakernel.stream.StreamStatus.CLOSED_WITH_ERROR;
 import static java.lang.Math.min;
 import static java.nio.file.StandardOpenOption.READ;
@@ -71,7 +71,7 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertEquals(Files.exists(Paths.get("test/outWriterWithError.dat")), false);
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -86,7 +86,7 @@ public class StreamFileReaderWriterTest {
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
 		assertArrayEquals(com.google.common.io.Files.toByteArray(tempFile), "Test".getBytes());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -109,11 +109,11 @@ public class StreamFileReaderWriterTest {
 			byteQueue.add(buf);
 		}
 
-		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[byteQueue.remainingBytes()]);
 		byteQueue.drainTo(buf);
 
 		assertArrayEquals(fileBytes, buf.array());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -176,11 +176,11 @@ public class StreamFileReaderWriterTest {
 			byteQueue.add(buf);
 		}
 
-		ByteBuf buf = ByteBuf.allocate(byteQueue.remainingBytes());
+		ByteBuf buf = ByteBuf.wrapForWriting(new byte[byteQueue.remainingBytes()]);
 		byteQueue.drainTo(buf);
 
 		assertArrayEquals(fileBytes, buf.array());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -190,7 +190,7 @@ public class StreamFileReaderWriterTest {
 		File tempFile = tempFolder.newFile("out.dat");
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
-		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes));
+		StreamProducer<ByteBuf> producer = StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes));
 
 		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
 
@@ -199,7 +199,7 @@ public class StreamFileReaderWriterTest {
 
 		byte[] fileBytes = com.google.common.io.Files.toByteArray(tempFile);
 		assertArrayEquals(bytes, fileBytes);
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -210,7 +210,7 @@ public class StreamFileReaderWriterTest {
 		byte[] bytes = new byte[]{'T', 'e', 's', 't', '1', ' ', 'T', 'e', 's', 't', '2', ' ', 'T', 'e', 's', 't', '3', '\n', 'T', 'e', 's', 't', '\n'};
 
 		StreamProducer<ByteBuf> producer = StreamProducers.concat(eventloop,
-				StreamProducers.ofValue(eventloop, ByteBuf.wrap(bytes)),
+				StreamProducers.ofValue(eventloop, ByteBuf.wrapForReading(bytes)),
 				StreamProducers.<ByteBuf>closingWithError(eventloop, new Exception("Test Exception")));
 
 		StreamFileWriter writer = StreamFileWriter.create(eventloop, executor, Paths.get(tempFile.getAbsolutePath()));
@@ -218,7 +218,7 @@ public class StreamFileReaderWriterTest {
 		producer.streamTo(writer);
 		eventloop.run();
 
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Test
@@ -236,7 +236,7 @@ public class StreamFileReaderWriterTest {
 
 		assertEquals(CLOSED_WITH_ERROR, reader.getProducerStatus());
 		assertEquals(CLOSED_WITH_ERROR, writer.getConsumerStatus());
-		assertEquals(getPoolItemsString(), ByteBufPool.getCreatedItems(), ByteBufPool.getPoolItems());
+		assertEquals(getPoolItemsString(), getCreatedItems(), getPoolItems());
 	}
 
 	@Before
@@ -367,7 +367,6 @@ public class StreamFileReaderWriterTest {
 
 		@Override
 		protected void send(ByteBuf item) {
-			item.flip();
 			if (item.toString().equals("1")) {
 				item.recycle();
 				closeWithError(new Exception("Intentionally closed with exception"));
