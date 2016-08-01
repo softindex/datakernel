@@ -35,7 +35,6 @@ import java.nio.channels.SocketChannel;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
-import static io.datakernel.eventloop.AsyncSslSocket.wrapClientSocket;
 import static io.datakernel.eventloop.AsyncSslSocket.wrapServerSocket;
 import static io.datakernel.eventloop.AsyncTcpSocket.EventHandler;
 import static io.datakernel.eventloop.AsyncTcpSocketImpl.wrapChannel;
@@ -81,10 +80,10 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	private static final double DEFAULT_SMOOTHING_WINDOW = 10.0;
 
 	private double smoothingWindow = DEFAULT_SMOOTHING_WINDOW;
-	private final EventStats totalAccepts = new EventStats(DEFAULT_SMOOTHING_WINDOW);
-	private final EventStats rangeBlocked = new EventStats();
-	private final EventStats bannedBlocked = new EventStats();
-	private final EventStats notAllowed = new EventStats();
+	private final EventStats accepts = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats rangeBlocked = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats bannedBlocked = new EventStats(DEFAULT_SMOOTHING_WINDOW);
+	private final EventStats notAllowed = new EventStats(DEFAULT_SMOOTHING_WINDOW);
 
 	// creators & builder methods
 	public AbstractServer(Eventloop eventloop) {
@@ -313,7 +312,7 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 		}
 
 		if (satisfiesRestrictions(remoteAddress)) {
-			totalAccepts.recordEvent();
+			accepts.recordEvent();
 			final EventloopServer workerServer = getWorkerServer();
 			Eventloop workerServerEventloop = workerServer.getEventloop();
 
@@ -362,27 +361,27 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	}
 
 	// jmx
-	@JmxAttribute
-	public final EventStats getTotalAccepts() {
-		return totalAccepts;
+	@JmxAttribute(description = "successful accepts")
+	public final EventStats getAccepts() {
+		return accepts;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "rejected attempts to connect: remote address was not in specified range")
 	public final EventStats getRangeBlocked() {
 		return rangeBlocked;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "rejected attempts to connect: remote address was banned")
 	public final EventStats getBannedBlocked() {
 		return bannedBlocked;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "rejected attempts to connect: remote address was not allowed by any other reason")
 	public final EventStats getNotAllowed() {
 		return notAllowed;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "sum of all rejected attempts to connect (rangeBlocked, bannedBlocked, notAllowed)")
 	public final long getTotalBlocked() {
 		return rangeBlocked.getTotalCount() + bannedBlocked.getTotalCount() + notAllowed.getTotalCount();
 	}
@@ -396,6 +395,9 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	public final void setSmoothingWindow(double smoothingWindow) {
 		this.smoothingWindow = smoothingWindow;
 
-		totalAccepts.setSmoothingWindow(smoothingWindow);
+		accepts.setSmoothingWindow(smoothingWindow);
+		rangeBlocked.setSmoothingWindow(smoothingWindow);
+		bannedBlocked.setSmoothingWindow(smoothingWindow);
+		notAllowed.setSmoothingWindow(smoothingWindow);
 	}
 }

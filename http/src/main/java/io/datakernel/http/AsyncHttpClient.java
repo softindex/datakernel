@@ -22,7 +22,7 @@ import io.datakernel.eventloop.*;
 import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.EventloopJmxMBean;
 import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.JmxReducers;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,8 +72,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private ExecutorService sslExecutor;
 
 	// JMX
-	private final ValueStats expiredConnections = new ValueStats();
-
 	private final EventStats totalRequests = new EventStats();
 
 	private int inetAddressIdx = 0;
@@ -140,7 +138,6 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			connection.close();
 			count++;
 		}
-		expiredConnections.recordValue(count);
 		return count;
 	}
 
@@ -334,15 +331,8 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return result;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
 	public int getConnectionsCount() {
 		return pool.size();
 	}
-
-	@JmxAttribute
-	public ValueStats getExpiredConnectionsStats() {
-		return expiredConnections;
-	}
-
-
 }

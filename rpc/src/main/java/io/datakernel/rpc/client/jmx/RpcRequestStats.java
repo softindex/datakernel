@@ -72,7 +72,7 @@ public final class RpcRequestStats implements JmxRefreshable {
 		return expiredRequests;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "delay between request/response (in milliseconds)")
 	public ValueStats getResponseTime() {
 		return responseTimeStats;
 	}

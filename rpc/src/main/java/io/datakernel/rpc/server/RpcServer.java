@@ -155,7 +155,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	@JmxAttribute
-	public boolean getMonitoring() {
+	public boolean isMonitoring() {
 		return monitoring;
 	}
 
@@ -179,7 +179,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return totalRequests;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "error responses (number of requests which were handled with error)")
 	public EventStats getProcessingErrors() {
 		EventStats errors = new EventStats();
 		for (RpcServerConnection connection : connections) {
@@ -188,7 +188,7 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		return errors;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "time for handling one request (in milliseconds)")
 	public ValueStats getRequestHandlingTime() {
 		ValueStats requestHandlingTime = new ValueStats();
 		for (RpcServerConnection connection : connections) {

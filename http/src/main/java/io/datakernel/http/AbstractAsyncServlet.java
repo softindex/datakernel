@@ -103,17 +103,17 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 		return requests;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "requests that were handled with error")
 	public final ExceptionStats getErrors() {
 		return errors;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "duration of handling one request in case of success")
 	public final ValueStats getRequestsTimings() {
 		return requestsTimings;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "duration of handling one request in case of error")
 	public final ValueStats getErrorsTimings() {
 		return errorsTimings;
 	}

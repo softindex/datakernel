@@ -128,7 +128,10 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	// jmx
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
+	@JmxAttribute(
+			description = "current number of connections",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
 	public int getConnectionsCount() {
 		return pool.size();
 	}
