@@ -83,8 +83,8 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 
 	/**
 	 * Creates a new instance of AbstractHttpConnection
-	 *  @param eventloop       eventloop which will handle its I/O operations
 	 *
+	 * @param eventloop eventloop which will handle its I/O operations
 	 */
 	public AbstractHttpConnection(Eventloop eventloop, AsyncTcpSocket asyncTcpSocket, char[] headerChars, int maxHttpMessageSize) {
 		this.eventloop = eventloop;
@@ -377,9 +377,12 @@ abstract class AbstractHttpConnection implements AsyncTcpSocket.EventHandler {
 				asyncTcpSocket.read();
 			}
 		} catch (ParseException e) {
+			onHttpProtocolError(e);
 			closeWithError(e);
 		}
 	}
+
+	protected abstract void onHttpProtocolError(ParseException e);
 
 	@Override
 	public void onReadEndOfStream() {

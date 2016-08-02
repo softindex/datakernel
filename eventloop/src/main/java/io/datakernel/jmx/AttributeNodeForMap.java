@@ -24,7 +24,7 @@ import static io.datakernel.util.Preconditions.checkArgument;
 import static io.datakernel.util.Preconditions.checkNotNull;
 
 final class AttributeNodeForMap implements AttributeNode {
-	private static final String KEY_COLUMN_NAME = "_key";
+	private static final String KEY_COLUMN_NAME = "> key";
 	private static final String VALUE_COLUMN_NAME = "value";
 	private static final String ROW_TYPE_NAME = "RowType";
 	private static final String TABULAR_TYPE_NAME = "TabularType";

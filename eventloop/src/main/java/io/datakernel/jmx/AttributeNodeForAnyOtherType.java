@@ -35,8 +35,6 @@ final class AttributeNodeForAnyOtherType implements AttributeNode {
 	private final Map<String, OpenType<?>> nameToOpenType;
 
 	public AttributeNodeForAnyOtherType(String name, String description, ValueFetcher fetcher) {
-		checkArgument(!name.isEmpty(), "Leaf attribute cannot have empty name");
-
 		this.name = name;
 		this.description = description;
 		this.fetcher = fetcher;

@@ -20,6 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 
@@ -44,6 +45,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 
 	ExposedLinkedList<HttpClientConnection> addressPool;
 	final ExposedLinkedList.Node<HttpClientConnection> addressNode = new ExposedLinkedList.Node<>(this);
+
+	// jmx
+	private String lastRequestUrl;
 
 	final InetSocketAddress remoteAddress;
 
@@ -120,11 +124,21 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		this.callback = null;
 		if (isClosed())
 			return;
+
+		// jmx
+		boolean isHttpsConnection = asyncTcpSocket.getClass() == AsyncSslSocket.class;
+
 		if (keepAlive) {
 			reset();
 			returnToPool();
+
+			// jmx
+			httpClient.recordRequestEvent(isHttpsConnection, true);
 		} else {
 			close();
+
+			// jmx
+			httpClient.recordRequestEvent(isHttpsConnection, false);
 		}
 
 		callback.onResult(response);
@@ -139,6 +153,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 				onHttpMessage(bodyQueue.takeRemaining());
 			} else {
 				closeWithError(CLOSED_CONNECTION);
+
+				// jmx
+				httpClient.recordHttpProtocolError(CLOSED_CONNECTION, lastRequestUrl);
 			}
 		}
 		close();
@@ -175,6 +192,10 @@ final class HttpClientConnection extends AbstractHttpConnection {
 	public void send(HttpRequest request, long timeout, ResultCallback<HttpResponse> callback) {
 		this.callback = callback;
 		writeHttpRequest(request);
+
+		// jmx
+		lastRequestUrl = request.getFullUrl();
+
 		request.recycleBufs();
 		scheduleTimeout(timeout);
 	}
@@ -187,6 +208,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 			public void run() {
 				if (!isClosed()) {
 					closeWithError(TIMEOUT_EXCEPTION);
+
+					// jmx
+					httpClient.recordTimeoutError();
 				}
 			}
 		});
@@ -225,4 +249,9 @@ final class HttpClientConnection extends AbstractHttpConnection {
 		}
 	}
 
+	// jmx
+	@Override
+	protected void onHttpProtocolError(ParseException e) {
+		httpClient.recordHttpProtocolError(e, lastRequestUrl);
+	}
 }

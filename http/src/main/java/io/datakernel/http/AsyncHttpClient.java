@@ -19,10 +19,7 @@ package io.datakernel.http;
 import io.datakernel.async.*;
 import io.datakernel.dns.DnsClient;
 import io.datakernel.eventloop.*;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.EventloopJmxMBean;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.JmxReducers;
+import io.datakernel.jmx.*;
 import io.datakernel.net.SocketSettings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,8 +68,15 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	private SSLContext sslContext;
 	private ExecutorService sslExecutor;
 
-	// JMX
+	// jmx
 	private final EventStats totalRequests = new EventStats();
+	private final EventStats httpsRequests = new EventStats();
+	private final EventStats httpRequests = new EventStats();
+	private final EventStats keepAliveRequests = new EventStats();
+	private final EventStats nonKeepAliveRequests = new EventStats();
+	private final EventStats expiredConnections = new EventStats();
+	private final ExceptionStats httpProtocolErrors = new ExceptionStats();
+	private final EventStats timeoutErrors = new EventStats();
 
 	private int inetAddressIdx = 0;
 
@@ -138,6 +142,7 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 			connection.close();
 			count++;
 		}
+		expiredConnections.recordEvents(count);
 		return count;
 	}
 
@@ -312,12 +317,39 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 	}
 
 	// jmx
-	@JmxAttribute
-	public EventStats getTotalRequests() {
-		return totalRequests;
+	void recordRequestEvent(boolean https, boolean keepAlive) {
+		totalRequests.recordEvent();
+
+		if (https) {
+			httpsRequests.recordEvent();
+		} else {
+			httpRequests.recordEvent();
+		}
+
+		if (keepAlive) {
+			keepAliveRequests.recordEvent();
+		} else {
+			nonKeepAliveRequests.recordEvent();
+		}
 	}
 
-	@JmxAttribute
+	void recordHttpProtocolError(Throwable e, String url) {
+		httpProtocolErrors.recordException(e, "url: " + url);
+	}
+
+	void recordTimeoutError() {
+		timeoutErrors.recordEvent();
+	}
+
+	@JmxAttribute(
+			description = "current number of connections",
+			reducer = JmxReducers.JmxReducerSum.class
+	)
+	public int getConnectionsCount() {
+		return pool.size();
+	}
+
+	@JmxAttribute(description = "number of connections per address")
 	public List<String> getAddressConnections() {
 		if (addressPools.isEmpty())
 			return null;
@@ -331,8 +363,47 @@ public class AsyncHttpClient implements EventloopService, EventloopJmxMBean {
 		return result;
 	}
 
-	@JmxAttribute(reducer = JmxReducers.JmxReducerSum.class)
-	public int getConnectionsCount() {
-		return pool.size();
+	@JmxAttribute(description = "all requests that were sent (both successful and failed)")
+	public EventStats getTotalRequests() {
+		return totalRequests;
+	}
+
+	@JmxAttribute(description = "successful requests that were sent over secured connection (https)")
+	public EventStats getHttpsRequests() {
+		return httpsRequests;
+	}
+
+	@JmxAttribute(description = "successful requests that were sent over unsecured connection (http)")
+	public EventStats getHttpRequests() {
+		return httpRequests;
+	}
+
+	@JmxAttribute(description = "after receiving response for this type of request connection is returned to pool " +
+			"(request was successful)")
+	public EventStats getKeepAliveRequests() {
+		return keepAliveRequests;
+	}
+
+	@JmxAttribute(description = "after receiving response for this type of request connection is closed " +
+			"(request was successful)")
+	public EventStats getNonKeepAliveRequests() {
+		return nonKeepAliveRequests;
+	}
+
+	@JmxAttribute(description = "number of expired connections in keep-alive pool (after appropriate timeout)")
+	public EventStats getExpiredConnections() {
+		return expiredConnections;
+	}
+
+	@JmxAttribute(description = "Number of HTTP responses which could not be parsed " +
+			"according to http protocol-specific errors (failed requests)")
+	public ExceptionStats getHttpProtocolErrors() {
+		return httpProtocolErrors;
+	}
+
+	@JmxAttribute(description = "Number of requests that didn't receive response in specified timeout " +
+			"(failed requests)")
+	public EventStats getTimeoutErrors() {
+		return timeoutErrors;
 	}
 }

@@ -385,19 +385,4 @@ public abstract class AbstractServer<S extends AbstractServer<S>> implements Eve
 	public final long getTotalBlocked() {
 		return rangeBlocked.getTotalCount() + bannedBlocked.getTotalCount() + notAllowed.getTotalCount();
 	}
-
-	@JmxAttribute
-	public final double getSmoothingWindow() {
-		return smoothingWindow;
-	}
-
-	@JmxAttribute
-	public final void setSmoothingWindow(double smoothingWindow) {
-		this.smoothingWindow = smoothingWindow;
-
-		accepts.setSmoothingWindow(smoothingWindow);
-		rangeBlocked.setSmoothingWindow(smoothingWindow);
-		bannedBlocked.setSmoothingWindow(smoothingWindow);
-		notAllowed.setSmoothingWindow(smoothingWindow);
-	}
 }

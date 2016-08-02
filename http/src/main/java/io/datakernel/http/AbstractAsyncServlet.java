@@ -23,6 +23,9 @@ import io.datakernel.jmx.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Represent an asynchronous HTTP servlet which receives and responds to requests from clients across HTTP.
  * For using this servlet you should override method doServeAsync(, in this method must be logic
@@ -33,11 +36,12 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 
 	protected final Eventloop eventloop;
 
-	// JMX
+	// jmx
 	private final EventStats requests = new EventStats();
 	private final ExceptionStats errors = new ExceptionStats();
 	private final ValueStats requestsTimings = new ValueStats();
 	private final ValueStats errorsTimings = new ValueStats();
+	private final Map<Integer, ExceptionStats> errorCodeToStats = new HashMap<>();
 
 	protected AbstractAsyncServlet(Eventloop eventloop) {
 		this.eventloop = eventloop;
@@ -66,22 +70,55 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 		}
 		requests.recordEvent();
 		final long timestamp = eventloop.currentTimeMillis();
-		doServeAsync(request, new Callback() {
-			@Override
-			public void onResult(HttpResponse result) {
-				int duration = (int) (eventloop.currentTimeMillis() - timestamp);
-				requestsTimings.recordValue(duration);
-				callback.onResult(result);
-			}
+		try {
+			doServeAsync(request, new Callback() {
+				@Override
+				public void onResult(HttpResponse result) {
+					// jmx
+					int duration = (int) (eventloop.currentTimeMillis() - timestamp);
+					requestsTimings.recordValue(duration);
 
-			@Override
-			public void onHttpError(HttpServletError httpServletError) {
-				int duration = (int) (eventloop.currentTimeMillis() - timestamp);
-				errorsTimings.recordValue(duration);
-				errors.recordException(httpServletError, extractUrl(request));
-				callback.onHttpError(httpServletError);
-			}
-		});
+					callback.onResult(result);
+				}
+
+				@Override
+				public void onHttpError(HttpServletError httpServletError) {
+					// jmx
+					int duration = (int) (eventloop.currentTimeMillis() - timestamp);
+					errorsTimings.recordValue(duration);
+					recordError(httpServletError, request);
+
+					callback.onHttpError(httpServletError);
+				}
+			});
+		} catch (ParseException parseException) {
+			int badRequestHttpCode = 400;
+			HttpServletError error = new HttpServletError(badRequestHttpCode, parseException);
+
+			// jmx
+			int duration = (int) (eventloop.currentTimeMillis() - timestamp);
+			errorsTimings.recordValue(duration);
+			recordError(error, request);
+
+			callback.onHttpError(error);
+		}
+	}
+
+	private void recordError(HttpServletError error, HttpRequest request) {
+		String url = extractUrl(request);
+		Throwable cause = error.getCause();
+		errors.recordException(cause, url);
+		ExceptionStats stats = ensureStats(error.getCode());
+		stats.recordException(cause, url);
+	}
+
+	private ExceptionStats ensureStats(int code) {
+		ExceptionStats stats = errorCodeToStats.get(code);
+		if (stats == null) {
+			stats = new ExceptionStats();
+			errorCodeToStats.put(code, stats);
+		}
+		return stats;
 	}
 
 	// jmx
@@ -90,7 +127,7 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 	}
 
 	private static String extractUrl(HttpRequest request) {
-		return "url: " + request.toString();
+		return "url: " + request.getFullUrl();
 	}
 
 	@Override
@@ -118,4 +155,8 @@ public abstract class AbstractAsyncServlet implements AsyncHttpServlet, Eventloo
 		return errorsTimings;
 	}
 
+	@JmxAttribute(description = "servlet errors distributed by http code")
+	public final Map<Integer, ExceptionStats> getErrorCodeToStats() {
+		return errorCodeToStats;
+	}
 }

@@ -66,7 +66,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 	/**
 	 * Creates a new NativeDnsResolver
 	 *
-	 * @param eventloop        eventloop in which it will be ran
+	 * @param eventloop        eventloop in which it will be run
 	 * @param timeout          time which this resolver will wait result
 	 * @param dnsServerAddress address of DNS server which will resolve domain names
 	 */

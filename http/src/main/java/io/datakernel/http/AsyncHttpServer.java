@@ -20,6 +20,7 @@ import io.datakernel.async.AsyncCancellable;
 import io.datakernel.eventloop.AbstractServer;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
+import io.datakernel.jmx.EventStats;
 import io.datakernel.jmx.JmxAttribute;
 import io.datakernel.jmx.JmxReducers;
 
@@ -37,6 +38,16 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	private final char[] headerChars;
 	private int maxHttpMessageSize = Integer.MAX_VALUE;
 	private long maxIdleConnectionTime = DEFAULT_MAX_IDLE_CONNECTION_TIME;
+
+	// jmx
+	private final EventStats totalRequests = new EventStats();
+	private final EventStats httpsRequests = new EventStats();
+	private final EventStats httpRequests = new EventStats();
+	private final EventStats keepAliveRequests = new EventStats();
+	private final EventStats nonKeepAliveRequests = new EventStats();
+	private final EventStats expiredConnections = new EventStats();
+	private final EventStats httpProtocolErrors = new EventStats();
+	private final EventStats applicationErrors = new EventStats();
 
 	public AsyncHttpServer(Eventloop eventloop, AsyncHttpServlet servlet) {
 		super(eventloop);
@@ -90,6 +101,7 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 				count++;
 			}
 		}
+		expiredConnections.recordEvents(count);
 		return count;
 	}
 
@@ -128,6 +140,30 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 	}
 
 	// jmx
+	void recordRequestEvent(boolean https, boolean keepAlive) {
+		totalRequests.recordEvent();
+
+		if (https) {
+			httpsRequests.recordEvent();
+		} else {
+			httpRequests.recordEvent();
+		}
+
+		if (keepAlive) {
+			keepAliveRequests.recordEvent();
+		} else {
+			nonKeepAliveRequests.recordEvent();
+		}
+	}
+
+	void recordHttpProtocolError() {
+		httpProtocolErrors.recordEvent();
+	}
+
+	void recordApplicationError() {
+		applicationErrors.recordEvent();
+	}
+
 	@JmxAttribute(
 			description = "current number of connections",
 			reducer = JmxReducers.JmxReducerSum.class
@@ -136,4 +172,46 @@ public final class AsyncHttpServer extends AbstractServer<AsyncHttpServer> {
 		return pool.size();
 	}
 
+	@JmxAttribute()
+	public EventStats getTotalRequests() {
+		return totalRequests;
+	}
+
+	@JmxAttribute(description = "requests that was sent over secured connection (https)")
+	public EventStats getHttpsRequests() {
+		return httpsRequests;
+	}
+
+	@JmxAttribute(description = "requests that was sent over unsecured connection (http)")
+	public EventStats getHttpRequests() {
+		return httpRequests;
+	}
+
+	@JmxAttribute(description = "after handling this type of request connection is returned to pool")
+	public EventStats getKeepAliveRequests() {
+		return keepAliveRequests;
+	}
+
+	@JmxAttribute(description = "after handling this type of request connection is closed")
+	public EventStats getNonKeepAliveRequests() {
+		return nonKeepAliveRequests;
+	}
+
+	@JmxAttribute(description = "number of expired connections in pool (after appropriate timeout)")
+	public EventStats getExpiredConnections() {
+		return expiredConnections;
+	}
+
+	@JmxAttribute(description = "Number of requests which were invalid according to http protocol. " +
+			"Responses were not sent for this requests")
+	public EventStats getHttpProtocolErrors() {
+		return httpProtocolErrors;
+	}
+
+	@JmxAttribute(description = "Number of requests which were valid according to http protocol, " +
+			"but application produced error during handling this request " +
+			"(responses with 4xx and 5xx HTTP status codes)")
+	public EventStats getApplicationErrors() {
+		return applicationErrors;
+	}
 }

@@ -362,13 +362,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	                                                               Type listElementType, Class<?> mbeanClass) {
 		if (listElementType instanceof Class<?>) {
 			Class<?> listElementClass = (Class<?>) listElementType;
-			String typeName = listElementClass.getSimpleName();
 			boolean isListOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(listElementClass));
 			return new AttributeNodeForList(
 					attrName,
 					attrDescription,
 					fetcher,
-					createAttributeNodeFor(typeName, attrDescription, listElementType, null, null, null, mbeanClass),
+					createAttributeNodeFor("", attrDescription, listElementType, null, null, null, mbeanClass),
 					isListOfJmxRefreshable
 			);
 		} else if (listElementType instanceof ParameterizedType) {
@@ -392,13 +391,12 @@ public final class JmxMBeans implements DynamicMBeanFactory {
 	                                                             Type valueType, Class<?> mbeanClass) {
 		if (valueType instanceof Class<?>) {
 			Class<?> valueClass = (Class<?>) valueType;
-			String typeName = valueClass.getSimpleName();
 			boolean isMapOfJmxRefreshable = (JmxRefreshable.class.isAssignableFrom(valueClass));
 			return new AttributeNodeForMap(
 					attrName,
 					attrDescription,
 					fetcher,
-					createAttributeNodeFor(typeName, attrDescription, valueType, null, null, null, mbeanClass),
+					createAttributeNodeFor("", attrDescription, valueType, null, null, null, mbeanClass),
 					isMapOfJmxRefreshable
 			);
 		} else if (valueType instanceof ParameterizedType) {

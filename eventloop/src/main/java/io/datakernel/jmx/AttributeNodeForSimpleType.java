@@ -40,8 +40,6 @@ final class AttributeNodeForSimpleType implements AttributeNode {
 
 	public AttributeNodeForSimpleType(String name, String description, ValueFetcher fetcher, Method setter,
 	                                  Class<?> attributeType, JmxReducer reducer) {
-		checkArgument(!name.isEmpty(), "SimpleType attribute cannot have empty name");
-
 		this.name = name;
 		this.description = description;
 		this.fetcher = fetcher;

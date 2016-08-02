@@ -18,6 +18,7 @@ package io.datakernel.http;
 
 import io.datakernel.async.ParseException;
 import io.datakernel.bytebuf.ByteBuf;
+import io.datakernel.eventloop.AsyncSslSocket;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
 import org.slf4j.Logger;
@@ -69,7 +70,8 @@ final class HttpServerConnection extends AbstractHttpConnection {
 
 	/**
 	 * Creates a new instance of HttpServerConnection
-	 *  @param eventloop eventloop which will handle its tasks
+	 *
+	 * @param eventloop eventloop which will handle its tasks
 	 * @param server
 	 * @param servlet   servlet for handling requests
 	 * @param pool      pool in which will be stored this connection
@@ -207,10 +209,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 								httpResponse.setHeader(CONTENT_ENCODING, CONTENT_ENCODING_GZIP);
 								httpResponse.setBody(toGzip(httpResponse.detachBody()));
 							}
+							writeHttpResult(httpResponse);
 						} catch (ParseException e) {
 							writeException(new HttpServletError(500));
+							server.recordApplicationError();
 						}
-						writeHttpResult(httpResponse);
 					} else {
 						// connection is closed, but bufs are not recycled, let's recycle them now
 						recycleBufs();
@@ -223,6 +226,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 					assert eventloop.inEventloopThread();
 					if (!isClosed()) {
 						writeException(httpServletError);
+						server.recordApplicationError();
 					} else {
 						// connection is closed, but bufs are not recycled, let's recycle them now
 						recycleBufs();
@@ -231,6 +235,7 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			});
 		} catch (ParseException e) {
 			writeException(new HttpServletError(400, e));
+			server.recordApplicationError();
 		}
 	}
 
@@ -249,15 +254,25 @@ final class HttpServerConnection extends AbstractHttpConnection {
 	public void onWrite() {
 		assert !isClosed();
 		if (reading != NOTHING) return;
+
+		// jmx
+		boolean isHttpsConnection = asyncTcpSocket.getClass() == AsyncSslSocket.class;
+
 		if (keepAlive) {
 			reset();
 			returnToPool();
 			if (readQueue.hasRemaining()) {
 				onRead(null);
 			}
+
+			// jmx
+			server.recordRequestEvent(isHttpsConnection, true);
 		} else {
 			close();
 			recycleBufs();
+
+			// jmx
+			server.recordRequestEvent(isHttpsConnection, false);
 		}
 	}
 
@@ -298,5 +313,11 @@ final class HttpServerConnection extends AbstractHttpConnection {
 			// request is not being processed by asynchronous servlet at the moment
 			recycleBufs();
 		}
+	}
+
+	@Override
+	protected void onHttpProtocolError(ParseException e) {
+		// jmx
+		server.recordHttpProtocolError();
 	}
 }
