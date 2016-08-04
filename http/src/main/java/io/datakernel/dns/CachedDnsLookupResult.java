@@ -23,7 +23,7 @@ import java.net.InetAddress;
 /**
  * Represents a value of entry from DNS Cache
  */
-public class CachedDnsLookupResult {
+public final class CachedDnsLookupResult {
 	private final String domainName;
 	private final InetAddress[] ips;
 	private final long expirationSecond;

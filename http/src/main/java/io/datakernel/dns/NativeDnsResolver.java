@@ -264,8 +264,7 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 		return cache;
 	}
 
-	// JMX
-
+	// jmx
 	@JmxAttribute
 	public int getNumberOfCachedDomainNames() {
 		return cache.getNumberOfCachedDomainNames();
@@ -309,9 +308,9 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 		return asList(cache.getDomainNamesOfFailedRequests());
 	}
 
-	@JmxOperation
-	public void emptyCache() {
-		cache.emptyCache();
+	@JmxAttribute(description = "max time to live for cache entry (resolved ip address for domain)")
+	public long getMaxTtlMillis() {
+		return cache.getMaxTtlMillis();
 	}
 
 	@JmxAttribute
@@ -319,8 +318,8 @@ public final class NativeDnsResolver implements DnsClient, EventloopJmxMBean {
 		cache.setMaxTtlMillis(maxTtlMillis);
 	}
 
-	@JmxAttribute
-	public long getMaxTtlMillis() {
-		return cache.getMaxTtlMillis();
+	@JmxOperation
+	public void emptyCache() {
+		cache.clear();
 	}
 }

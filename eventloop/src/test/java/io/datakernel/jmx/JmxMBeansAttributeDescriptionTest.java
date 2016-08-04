@@ -52,7 +52,7 @@ public class JmxMBeansAttributeDescriptionTest {
 	}
 
 	@Test
-	public void showsDescriptionWithoutChangesIfItNameDoNotContainUnderscores() {
+	public void showsDescriptionWithoutChangesIfAttributeNameDoNotContainUnderscores() {
 		DynamicMBean mbean = JmxMBeans.factory()
 				.createFor(asList(new MBeanWithDescriptionInDirectNonPojoAttribute()), false);
 
@@ -82,7 +82,7 @@ public class JmxMBeansAttributeDescriptionTest {
 	}
 
 	@Test
-	public void formatsDescriptionsIfItIsSpecifiedForPojoOrInPojo() {
+	public void formatsDescriptionsProperlyIfAttributeNameContainsUnderscores() {
 		DynamicMBean mbean = JmxMBeans.factory().createFor(asList(new MBeanWithPojoDescription()), false);
 
 		Map<String, MBeanAttributeInfo> nameToAttr = nameToAttribute(mbean.getMBeanInfo().getAttributes());

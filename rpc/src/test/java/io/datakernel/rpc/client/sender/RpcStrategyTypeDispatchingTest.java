@@ -76,7 +76,6 @@ public class RpcStrategyTypeDispatchingTest {
 		assertEquals(dataTypeOneRequests, connection1.getRequests());
 		assertEquals(dataTypeTwoRequests, connection2.getRequests());
 		assertEquals(dataTypeThreeRequests, connection3.getRequests());
-
 	}
 
 	@Test

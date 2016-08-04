@@ -50,6 +50,10 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 
 	// jmx
 	private CountStats connectionsCount = new CountStats();
+	private EventStats successfulRequests = new EventStats();
+	private EventStats failedRequests = new EventStats();
+	private ValueStats requestHandlingTime = new ValueStats();
+	private ExceptionStats lastRequestHandlingException = new ExceptionStats();
 	private boolean monitoring;
 
 	private RpcServer(Eventloop eventloop) {
@@ -119,16 +123,21 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 	}
 
-	public void add(RpcServerConnection connection) {
+	void add(RpcServerConnection connection) {
 		if (logger.isInfoEnabled())
 			logger.info("Client connected on {}", connection);
+
+		if (monitoring) {
+			connection.startMonitoring();
+		}
+
 		connections.add(connection);
 
 		// jmx
 		connectionsCount.setCount(connections.size());
 	}
 
-	public void remove(RpcServerConnection connection) {
+	void remove(RpcServerConnection connection) {
 		if (logger.isInfoEnabled())
 			logger.info("Client disconnected on {}", connection);
 		connections.remove(connection);
@@ -138,7 +147,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 	}
 
 	// JMX
-	@JmxOperation
+	@JmxOperation(description = "enable monitoring " +
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, requestHandlingTime stats are collected only when monitoring is enabled) ]")
 	public void startMonitoring() {
 		monitoring = true;
 		for (RpcServerConnection connection : connections) {
@@ -146,7 +157,9 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 	}
 
-	@JmxOperation
+	@JmxOperation(description = "disable monitoring " +
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, requestHandlingTime stats are collected only when monitoring is enabled) ]")
 	public void stopMonitoring() {
 		monitoring = false;
 		for (RpcServerConnection connection : connections) {
@@ -154,47 +167,40 @@ public final class RpcServer extends AbstractServer<RpcServer> {
 		}
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, requestHandlingTime stats are collected only when monitoring is enabled)")
 	public boolean isMonitoring() {
 		return monitoring;
 	}
 
-	@JmxAttribute(name = "currentConnections")
+	@JmxAttribute(description = "current number of connections")
 	public CountStats getConnectionsCount() {
 		return connectionsCount;
 	}
 
-	@JmxAttribute
+	@JmxAttribute(description = "detailed information about connections")
 	public List<RpcServerConnection> getConnections() {
-		return new ArrayList<>(connections);
+		return connections;
 	}
 
-	@JmxAttribute
-	public EventStats getRequests() {
-		EventStats totalRequests = new EventStats();
-		for (RpcServerConnection connection : connections) {
-			totalRequests.add(connection.getSuccessfulResponses());
-			totalRequests.add(connection.getErrorResponses());
-		}
-		return totalRequests;
+	@JmxAttribute(description = "number of requests which were processed correctly")
+	public EventStats getSuccessfulRequests() {
+		return successfulRequests;
 	}
 
-	@JmxAttribute(description = "error responses (number of requests which were handled with error)")
-	public EventStats getProcessingErrors() {
-		EventStats errors = new EventStats();
-		for (RpcServerConnection connection : connections) {
-			errors.add(connection.getErrorResponses());
-		}
-		return errors;
+	@JmxAttribute(description = "request with error responses (number of requests which were handled with error)")
+	public EventStats getFailedRequests() {
+		return failedRequests;
 	}
 
-	@JmxAttribute(description = "time for handling one request (in milliseconds)")
+	@JmxAttribute(description = "time for handling one request in milliseconds (both successful and failed)")
 	public ValueStats getRequestHandlingTime() {
-		ValueStats requestHandlingTime = new ValueStats();
-		for (RpcServerConnection connection : connections) {
-			requestHandlingTime.add(connection.getRequestHandlingTime());
-		}
 		return requestHandlingTime;
+	}
+
+	@JmxAttribute(description = "exception for last request which was processed with error")
+	public ExceptionStats getLastRequestHandlingException() {
+		return lastRequestHandlingException;
 	}
 }
 

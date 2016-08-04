@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
-public class DnsClientHandler implements AsyncUdpSocket {
+public final class DnsClientHandler implements AsyncUdpSocket {
 	private static final Logger logger = LoggerFactory.getLogger(DnsClientHandler.class);
 
 	private Map<String, ListenableResultCallback<DnsQueryResult>> resultHandlers = new HashMap<>();

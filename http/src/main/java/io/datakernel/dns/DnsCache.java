@@ -17,7 +17,7 @@
 package io.datakernel.dns;
 
 import io.datakernel.async.ResultCallback;
-import io.datakernel.eventloop.Eventloop;
+import io.datakernel.time.CurrentTimeProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,7 +40,7 @@ public final class DnsCache {
 
 	private final long errorCacheExpirationSeconds;
 	private final long hardExpirationDeltaSeconds;
-	private final Eventloop eventloop;
+	private final CurrentTimeProvider timeProvider;
 
 	private long maxTtlSeconds = Long.MAX_VALUE;
 
@@ -67,15 +67,15 @@ public final class DnsCache {
 	/**
 	 * Creates a new DNS cache.
 	 *
-	 * @param eventloop                  eventloop in which its task will be ran
+	 * @param timeProvider               time provider
 	 * @param errorCacheExpirationMillis expiration time for errors without time to live
 	 * @param hardExpirationDeltaMillis  delta between time at which entry is considered resolved, but needs
 	 *                                   refreshing and time at which entry is considered not resolved
 	 */
-	public DnsCache(Eventloop eventloop, long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
+	public DnsCache(CurrentTimeProvider timeProvider, long errorCacheExpirationMillis, long hardExpirationDeltaMillis) {
 		this.errorCacheExpirationSeconds = errorCacheExpirationMillis / 1000;
 		this.hardExpirationDeltaSeconds = hardExpirationDeltaMillis / 1000;
-		this.eventloop = eventloop;
+		this.timeProvider = timeProvider;
 		this.lastCleanupSecond = getCurrentSecond();
 	}
 
@@ -92,7 +92,7 @@ public final class DnsCache {
 	}
 
 	/**
-	 * Tries to gets status of the entry for some domain name from the cache.
+	 * Tries to get status of the entry for some domain name from the cache.
 	 *
 	 * @param domainName domain name for finding entry
 	 * @param ipv6       type of result, if true - IPv6, false - IPv4
@@ -202,12 +202,12 @@ public final class DnsCache {
 		long callSecond = getCurrentSecond();
 
 		if (callSecond > lastCleanupSecond) {
-			clearCache(callSecond, lastCleanupSecond);
+			clear(callSecond, lastCleanupSecond);
 			lastCleanupSecond = callSecond;
 		}
 	}
 
-	private void clearCache(long callSecond, long lastCleanupSecond) {
+	private void clear(long callSecond, long lastCleanupSecond) {
 		for (long i = lastCleanupSecond; i <= callSecond; ++i) {
 			Collection<String> domainNames = expirations.remove(i);
 
@@ -230,13 +230,13 @@ public final class DnsCache {
 		this.maxTtlSeconds = maxTtlMillis / 1000;
 	}
 
-	public void emptyCache() {
+	public void clear() {
 		cache.clear();
 		expirations.clear();
 	}
 
 	private long getCurrentSecond() {
-		return eventloop.currentTimeMillis() / 1000;
+		return timeProvider.currentTimeMillis() / 1000;
 	}
 
 	private long getHardExpirationSecond(long softExpirationSecond) {

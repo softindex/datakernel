@@ -20,18 +20,16 @@ import io.datakernel.async.ParseException;
 import io.datakernel.async.ResultCallback;
 import io.datakernel.eventloop.AsyncTcpSocket;
 import io.datakernel.eventloop.Eventloop;
-import io.datakernel.jmx.EventStats;
-import io.datakernel.jmx.ExceptionStats;
-import io.datakernel.jmx.JmxAttribute;
-import io.datakernel.jmx.ValueStats;
+import io.datakernel.jmx.*;
 import io.datakernel.rpc.protocol.*;
 import io.datakernel.serializer.BufferSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.util.Map;
 
-public final class RpcServerConnection implements RpcConnection {
+public final class RpcServerConnection implements RpcConnection, JmxRefreshable {
 	private static final Logger logger = LoggerFactory.getLogger(RpcServerConnection.class);
 
 	private final Eventloop eventloop;
@@ -39,12 +37,13 @@ public final class RpcServerConnection implements RpcConnection {
 	private final RpcProtocol protocol;
 	private final Map<Class<?>, RpcRequestHandler<?, ?>> handlers;
 
-	// JMX
-	private final ExceptionStats lastRemoteException = new ExceptionStats();
+	// jmx
+	private final InetSocketAddress remoteAddress;
+	private final ExceptionStats lastRequestHandlingException = new ExceptionStats();
 	private final ValueStats requestHandlingTime = new ValueStats();
-	private EventStats successfulResponses = new EventStats();
-	private EventStats errorResponses = new EventStats();
-	private boolean monitoring;
+	private EventStats successfulRequests = new EventStats();
+	private EventStats failedRequests = new EventStats();
+	private boolean monitoring = false;
 
 	public RpcServerConnection(Eventloop eventloop, RpcServer rpcServer, AsyncTcpSocket asyncTcpSocket,
 	                           BufferSerializer<RpcMessage> messageSerializer,
@@ -54,6 +53,9 @@ public final class RpcServerConnection implements RpcConnection {
 		this.rpcServer = rpcServer;
 		this.protocol = protocolFactory.create(eventloop, asyncTcpSocket, this, messageSerializer);
 		this.handlers = handlers;
+
+		// jmx
+		this.remoteAddress = asyncTcpSocket.getRemoteSocketAddress();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -75,15 +77,23 @@ public final class RpcServerConnection implements RpcConnection {
 		apply(messageData, new ResultCallback<Object>() {
 			@Override
 			public void onResult(Object result) {
+				// jmx
 				updateProcessTime();
+				successfulRequests.recordEvent();
+				rpcServer.getSuccessfulRequests().recordEvent();
+
 				protocol.sendMessage(new RpcMessage(cookie, result));
-				successfulResponses.recordEvent();
 			}
 
 			@Override
 			public void onException(Exception exception) {
+				// jmx
 				updateProcessTime();
-				lastRemoteException.recordException(exception, messageData);
+				lastRequestHandlingException.recordException(exception, messageData);
+				rpcServer.getLastRequestHandlingException().recordException(exception, messageData);
+				failedRequests.recordEvent();
+				rpcServer.getFailedRequests().recordEvent();
+
 				sendError(cookie, exception);
 			}
 
@@ -92,6 +102,7 @@ public final class RpcServerConnection implements RpcConnection {
 					return;
 				int value = (int) (System.currentTimeMillis() - startTime);
 				requestHandlingTime.recordValue(value);
+				rpcServer.getRequestHandlingTime().recordValue(value);
 			}
 		});
 	}
@@ -99,7 +110,6 @@ public final class RpcServerConnection implements RpcConnection {
 	private void sendError(int cookie, Exception error) {
 		protocol.sendMessage(new RpcMessage(cookie, new RpcRemoteException(error)));
 		logger.warn("Exception while process request ID {}", cookie, error);
-		errorResponses.recordEvent();
 	}
 
 	@Override
@@ -116,7 +126,7 @@ public final class RpcServerConnection implements RpcConnection {
 		protocol.close();
 	}
 
-	// JMX
+	// jmx
 	public void startMonitoring() {
 		monitoring = true;
 	}
@@ -126,18 +136,18 @@ public final class RpcServerConnection implements RpcConnection {
 	}
 
 	@JmxAttribute
-	public boolean getOverloaded() {
+	public boolean isOverloaded() {
 		return protocol.isOverloaded();
 	}
 
 	@JmxAttribute
-	public EventStats getSuccessfulResponses() {
-		return successfulResponses;
+	public EventStats getSuccessfulRequests() {
+		return successfulRequests;
 	}
 
 	@JmxAttribute
-	public EventStats getErrorResponses() {
-		return errorResponses;
+	public EventStats getFailedRequests() {
+		return failedRequests;
 	}
 
 	@JmxAttribute
@@ -146,7 +156,19 @@ public final class RpcServerConnection implements RpcConnection {
 	}
 
 	@JmxAttribute
-	public ExceptionStats getLastResponseException() {
-		return lastRemoteException;
+	public ExceptionStats getLastRequestHandlingException() {
+		return lastRequestHandlingException;
+	}
+
+	@JmxAttribute
+	public String getRemoteAddress() {
+		return remoteAddress.toString();
+	}
+
+	@Override
+	public void refresh(long timestamp) {
+		successfulRequests.refresh(timestamp);
+		failedRequests.refresh(timestamp);
+		requestHandlingTime.refresh(timestamp);
 	}
 }

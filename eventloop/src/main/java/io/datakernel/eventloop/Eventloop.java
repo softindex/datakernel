@@ -128,7 +128,7 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	private final EventloopStats stats = new EventloopStats(DEFAULT_SMOOTHING_WINDOW);
 	private final ConcurrentCallsStats concurrentCallsStats = new ConcurrentCallsStats(DEFAULT_SMOOTHING_WINDOW);
 
-	private boolean monitoring;
+	private boolean monitoring = false;
 
 	/**
 	 * Creates a new instance of Eventloop with default instance of ByteBufPool
@@ -1073,14 +1073,25 @@ public final class Eventloop implements Runnable, CurrentTimeProvider, Scheduler
 	}
 
 	// JMX
-	@JmxOperation
+	@JmxOperation(description = "enable monitoring " +
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void startMonitoring() {
 		this.monitoring = true;
 	}
 
-	@JmxOperation
+	@JmxOperation(description = "disable monitoring " +
+			"[ when monitoring is enabled more stats are collected, but it causes more overhead " +
+			"(for example, most of the durationStats are collected only when monitoring is enabled) ]")
 	public void stopMonitoring() {
 		this.monitoring = false;
+	}
+
+	@JmxAttribute(
+			description = "when monitoring is enabled more stats are collected, but it causes more overhead " +
+					"(for example, most of the durationStats are collected only when monitoring is enabled)")
+	public boolean isMonitoring() {
+		return monitoring;
 	}
 
 	@JmxOperation
